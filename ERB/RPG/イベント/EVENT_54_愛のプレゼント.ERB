@@ -1,0 +1,141 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:EVENT_54.ERB
+;	Facility	:愛の프레젠트(친애수태아이템)
+;
+;	Licence		:ライセンスフリー。
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		20XX/XX/XX		XXXX					작성
+;	002		2019/04/20		TR(SAYA)				아이템が正常に취득されなかった問題の수정
+;	003		2020/05/23		名無し					아이템취득조건を黄色キャン디무準拠に
+;	004		2021/04/10		NEO						受胎アイテム取得状況を引継ぎ時リセットできるように処理を変更
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+
+;====================
+;조건
+;수태아이템があり、애정경험1000以上
+;친애、창부、예속のいずれかがある事(周回考慮)
+;임신は필요としないので처녀からでも貰える。やったね。
+;これで조건緩いと感じるなら계약か모성でもつければいいかと
+;====================
+@PLAYABLE_EVENT_54
+VARSET LOCAL
+;すでにフラグが立ってる場合체크しない
+FOR LOCAL,0,CHARANUM
+	SIF EVENT54_GIFTCHECK(LOCAL) == 0
+		CONTINUE
+	SIF !LOCAL:1
+		LOCALS = %CALLNAME:LOCAL%
+	LOCAL:1++
+NEXT
+SIF LOCAL:1 == 0
+	RETURN 0
+RESULTS = \@ LOCAL:1 > 1 ? {LOCAL:1}명의 애정 # %LOCALS%의 \@ 프레젠트
+RETURN 1
+	
+;====================
+;内容
+;====================
+@EVENT54_GIFTCHECK(ARG)
+#FUNCTION
+SIF CFLAG:ARG:この場に居ないフラグ
+	RETURNF 0
+;SIF ABL:ARG:수태아이템 <= 0
+;	RETURNF 0
+SIF ABL:ARG:수태아이템 < 0 || (ABL:ARG:수태아이템 == 0 && !CSVABL(NO:ARG, GETNUM(ABL, "수태아이템"), 0))
+	RETURNF 0
+SIF CFLAG:ARG:受胎アイテム出産済みフラグ != 0
+	RETURNF 0
+SIF 함락(ARG) < 2
+	RETURNF 0
+SIF EXP:ARG:애정경험 < 1000
+	RETURNF 0
+RETURNF 1
+
+;====================
+;内容
+;====================
+@SHOPCOM_EVENT_54
+#DIM L_GIFT,2,200
+#DIM GCOUNT
+VARSET L_GIFT
+GCOUNT = 0
+
+;内部処理
+FOR LOCAL,0,CHARANUM
+	SIF EVENT54_GIFTCHECK(LOCAL) == 0
+		CONTINUE
+	L_GIFT:0:GCOUNT = LOCAL
+	;L_GIFT:1:GCOUNT = ABL:LOCAL:수태아이템
+	L_GIFT:1:GCOUNT = ABL:LOCAL:수태아이템 > 0 ? ABL:LOCAL:수태아이템 # CSVABL(NO:LOCAL, GETNUM(ABL, "수태아이템"), 0)
+	CALL GET_ITEM(L_GIFT:1:GCOUNT,1)
+	CFLAG:LOCAL:受胎アイテム出産済みフラグ = 1
+	GCOUNT++
+NEXT
+EXP:MASTER:애정경험 += GCOUNT
+
+;메시지処理
+LOCALS = ＞%CALLNAME:(L_GIFT:0:0)%\@ GCOUNT > 1 ? 들 # \@에게 호출됐다
+CALL MESSAGE_WINDOW("", LOCALS)
+LOCALS = ＞무언가 주고 싶은게 있는것 같다
+CALL MESSAGE_WINDOW("", LOCALS)
+FOR LOCAL,0,GCOUNT
+	LOCAL:1 = L_GIFT:0:LOCAL
+	LOCAL:2 = L_GIFT:1:LOCAL
+	;구상対応ってこんなんでいいのかな
+	;正直よくわからんので誰か追記頼みたい
+	TRYCCALLFORM MESSAGE_EVENT_54_%구상함수꼬리문자(LOCAL:1)% , LOCAL:1 ,LOCAL:2
+	CATCH
+		CALL MESSAGE_EVENT_54_PUBLIC(LOCAL:1,LOCAL:2)
+	ENDCATCH
+	LOCALS = %ITEMNAME:(LOCAL:2)%을(를) 손에 넣었다
+	CALL MESSAGE_WINDOW("", LOCALS)
+NEXT
+CALL MESSAGE_EVENT_54_FINISH
+PRINTL
+PRINTFORML 애정경험(%CALLNAME:MASTER%) + {GCOUNT}
+PRINTW
+
+;
+;ざっくり汎用메시지
+;汎用なのでボ디무タッチとかはなし
+;금단의지식はその場で生成
+;あとは속성で分岐
+@MESSAGE_EVENT_54_PUBLIC(ARG,ARG:1)
+VARSET LOCALS
+LOCALS = ＞%CALLNAME:ARG%는(은) 
+;LAW속성はラッピングする
+SELECTCASE ABL:ARG:속성LC
+CASE 1
+	LOCALS = %LOCALS% 정정스레 포장한 
+CASE 2
+	LOCALS = %LOCALS% 래핑해 포장한  
+CASE 3
+	LOCALS = %LOCALS% 종이 봉투에 든 
+ENDSELECT
+LOCALS = %LOCALS% 프레젠트를
+SIF TALENT:ARG:금단의지식
+	LOCALS = %LOCALS% 어딘가에서 갑자기 꺼내
+LOCALS = %LOCALS% %CALLNAME:MASTER%에게 내밀었다
+CALL MESSAGE_WINDOW("", LOCALS)
+LOCALS = ＞\@ ABL:ARG:속성LC == 3 ? 뚜껑 # 상자 \@을(를) 열어보니 내용물은 %ITEMNAME:(ARG:1)%이었다
+CALL MESSAGE_WINDOW("", LOCALS)
+LOCALS = 평소에 대한 감사\@ ABL:ARG:속성LC == 3 ? 의 증거일까 # 라고 한다 \@
+
+;
+;당신의 반응
+@MESSAGE_EVENT_54_FINISH
+LOCALS = ＞
+SELECTCASE ABL:MASTER:속성LC
+CASE 1
+	LOCALS = %LOCALS%%조사처리(CALLNAME:MASTER,"는")% 정중하게 감사의 말을 전했고 
+CASE 2
+	LOCALS = %LOCALS%%조사처리(CALLNAME:MASTER,"는")% 감사의 말을 전했고 
+CASE 3
+	LOCALS = %LOCALS%%조사처리(CALLNAME:MASTER,"는")% 간결하게 감사의 말을 전했고 
+ENDSELECT
+LOCALS = %LOCALS% 잠깐이나마 행복한 시간에 젖었다…
+CALL MESSAGE_WINDOW("", LOCALS)

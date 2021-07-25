@@ -1,0 +1,574 @@
+﻿@CHARA_SELL_SELECT
+CALL INPUT_CHARA_LIST("누구를 팔겠습니까?", "CHARASELLABLE")
+SIF RESULT == 1000
+	RETURN 0
+CALL CHARA_SELL, RESULT
+
+;ARGは売るキャラ・ARG:1は가격試算で표시なし
+@CHARA_SELL, ARG, ARG:1
+#DIM PRICE
+#DIM PRICE_T
+#DIM PRICE_A
+#DIM SUMPRICE_T
+#DIM SUMPRICE_A
+#DIM PRICE_EX
+#LOCALSIZE 6
+#LOCALSSIZE 1
+IF ARG:1
+	SKIPDISP 1
+ENDIF
+;-------------------------------------------------------------------
+;기본가격の決定
+;LOCALSは표시名
+;-------------------------------------------------------------------
+;娘・息子
+IF NO:ARG == 3501 || NO:ARG == 3502
+	PRICE = BASE:ARG:LV * (3+BASE:ARG:LV/10) * 1
+	LOCALS = 아이
+;まどマギＭＯＤ추가
+;마법소녀・魔女の매각가격は조마より上。
+ELSEIF NO:ARG == 4391 || NO:ARG == 4392 || NO:ARG == 4393 || NO:ARG == 4394 || NO:ARG == 4395 || NO:ARG == 4396 || NO:ARG == 4397 || NO:ARG == 4398 || NO:ARG == 4399
+	PRICE = 450 + BASE:ARG:LV * (5+BASE:ARG:LV/4) * 3
+	LOCALS = 마법소녀
+ELSEIF NO:ARG == 3392 || NO:ARG == 3393 || NO:ARG == 3394 || NO:ARG == 3395 || NO:ARG == 3396 || NO:ARG == 3397 || NO:ARG == 3398 || NO:ARG == 3399
+	PRICE = 450 + BASE:ARG:LV * (5+BASE:ARG:LV/4) * 3
+	LOCALS = 魔女
+;まどマギＭＯＤ추가ここまで
+;악마
+ELSEIF ABL:ARG:종족 > 0 && ABL:ARG:종족 < 45
+	PRICE = (CSVBASE(NO:ARG,GETNUM(BASE,"LV"),0) < 10 ? 90 # 0 ) + CSVBASE(NO:ARG,GETNUM(BASE,"LV"),0) * (5+MAX(5,CSVBASE(NO:ARG,GETNUM(BASE,"LV"),0)/2)) * 5
+	LOCALS = 악마
+;조마
+ELSEIF ABL:ARG:종족 == 45
+	PRICE = 450 + BASE:ARG:LV * (3+BASE:ARG:LV/4) * 3
+	LOCALS = 조마
+;비전투원でない인간(영매체질は비전투원でも전투員とみなす)
+ELSEIF (TALENT:ARG:비전투원 == 0 || TALENT:ARG:영매체질)
+	PRICE = BASE:ARG:LV * (5+BASE:ARG:LV/2) * 8
+	LOCALS = 능력者
+ELSE
+	PRICE = BASE:ARG:LV * (3+BASE:ARG:LV/2) * 8 / 4
+	LOCALS = 인간
+ENDIF
+
+;-------------------------------------------------------------------
+;인계된 캐릭터の기본가격
+;-------------------------------------------------------------------
+IF CFLAG:ARG:引継ぎ횟수 > 0 && FLAG:ゲームモード < 9 && DAY < 51
+	PRICE = CFLAG:ARG:초기LV * (5+CFLAG:ARG:초기LV/2) * 5 * DAY / 100
+	LOCALS = 인계된 캐릭터
+ENDIF
+
+PRICE /= 2
+CUSTOMDRAWLINE =
+PRINTFORML %종족명(ARG)% %CALLNAME:ARG%
+CUSTOMDRAWLINE =
+FONTBOLD
+PRINTFORML <기본 매각 금액 계산>
+FONTREGULAR
+PRINTFORML %"종별",12, LEFT%%LOCALS%
+IF LOCALS == "인간" || LOCALS == "능력者"
+	PRINTFORML %"레벨",12, LEFT%{BASE:ARG:LV}
+ELSE
+	PRINTFORML %"초기레벨",12, LEFT%{CSVBASE(NO:ARG,GETNUM(BASE,"LV"),0)}
+ENDIF
+PRINTFORML %"결과",12, LEFT%{PRICE}마카
+CUSTOMDRAWLINE =
+FONTBOLD
+PRINTFORML <배율 계산>
+FONTREGULAR
+PRINTFORML ┌% "─"* 9%┬%"─"* 3%┐┌% "─"* 9%┬%"─"* 3%┐┌% "─"* 9%┬%"─"* 3%┐
+PRINTFORML │%"ABL",18,LEFT%│%"보정",6,LEFT%││%"TALENT",18,LEFT%│%"보정",6,LEFT%││%"EXTRA",18,LEFT%│%"보정",6,LEFT%│
+PRINTFORML ├% "─"* 9%┼%"─"* 3%┤├% "─"* 9%┼%"─"* 3%┤├% "─"* 9%┼%"─"* 3%┤
+PRINTFORML │%"기본치",18,LEFT%│+ 100\%││%"기본치",18,LEFT%│+ 100\%││%@"조교난이도<%AUTO_SPLIT("Easy/Normal/Hard","/",FLAG:조교난이도-1)%>",18,LEFT%│* {140 - FLAG:조교난이도 * 20}\%│
+SUMPRICE_A = 100
+SUMPRICE_T = 100
+LOCAL = -1
+LOCAL:1 = -1
+LOCAL:2 = -1
+WHILE LOCAL < 100 || LOCAL:1 < 200
+	PRICE_A = 0
+	WHILE LOCAL < 100
+		LOCAL++
+		PRICE_A = GET_SELLPRICE_ABL(LOCAL, ARG)
+		SIF !PRICE_A
+			CONTINUE
+		SUMPRICE_A += PRICE_A
+		BREAK
+	WEND
+	PRICE_T = 0
+	WHILE LOCAL:1 < 200
+		LOCAL:1++
+		PRICE_T = GET_SELLPRICE_TALENT(LOCAL:1, ARG)
+		SIF !PRICE_T
+			CONTINUE
+		SUMPRICE_T += PRICE_T
+		BREAK
+	WEND
+	IF PRICE_A
+		PRINTFORM │%ABLNAME:LOCAL,14,LEFT%Lv{ABL:ARG:LOCAL,2}│+ {PRICE_A,3}\%│
+	ELSE
+		SIF PRICE_T
+			PRINTFORM │%"",18%│%"",6%│
+	ENDIF
+	IF PRICE_T
+		PRINTFORM │%TALENTNAME:(LOCAL:1),18,LEFT%│%\@PRICE_T > 0 ? + # - \@% {ABS(PRICE_T),3}\%│
+	ELSE
+		SIF PRICE_A
+			PRINTFORM │%"",18%│%"",6%│
+	ENDIF
+	PRICE_EX = 0
+	WHILE LOCAL:2 < 10
+		LOCAL:2++
+		SELECTCASE LOCAL:2
+			CASE 0
+				;붕괴,광기,임신は매각額をかなり低くする（순종によって、80％まで회복）
+				IF TALENT:ARG:붕괴 || TALENT:ARG:광기 || TALENT:ARG:임신
+					PRICE_EX = ABL:ARG:순종 * 8
+					IF TALENT:ARG:붕괴
+						LOCALS = 붕괴
+					ELSEIF TALENT:ARG:광기
+						LOCALS = 광기
+					ELSEIF TALENT:ARG:임신
+						LOCALS = 임신
+					ENDIF
+					PRINTFORM │%LOCALS,18,LEFT%│*{ABL:ARG:순종*8,4}\%│
+				ENDIF
+				;ふたごちゃんパッチ追記：ふたごちゃんフラグがオンかつ6以上の多胎児の場合、かつ崩壊でも狂気でもない場合、ちょっと上昇する
+				;※きちんと育つのは記録上五つ子くらいまでらしいのと、6以上はさすがにけっこう物珍しいため。
+				IF FLAG:ふたごちゃんフラグ > 0 && CFLAG:ARG:今回受胎人数 > 5 && TALENT:ARG:붕괴 == 0 && TALENT:ARG:광기 == 0
+					LOCALS = 多胎妊娠
+					PRICE_EX = 110
+					PRINTFORM │%LOCALS,18,LEFT%│*{PRICE_EX,4}\%│
+				ENDIF
+			CASE 1
+				;옵션、FLAG:악마가챠모드==2、핸디캡 플레이ONの時に매각가격25%へ
+				IF FLAG:악마가챠모드 > 1
+					; {(종족악마and전서소환でない)or(조마である)}andガチャ소질が無い　なら割引
+					IF ((ABL:ARG:종족 > 0 && ABL:ARG:종족 < 45 && CFLAG:전서소환불가 == 0) || (ABL:ARG:종족 == 45)) && TALENT:ARG:ガチャ < 1
+						PRINTFORM │%LOCALS,18,LEFT%│*{25,4}\%│
+						PRICE_EX = 25
+					ENDIF
+				;통상モード
+				ELSE
+					;수요による매각가격저하
+					IF FLAG:(30000+NO:ARG)
+						PRICE_EX = 100/(1+FLAG:(30000+NO:ARG))
+						PRINTFORM │%"수요",18,LEFT%│*{PRICE_EX,4}\%│
+					ENDIF
+				ENDIF
+			CASE 10
+				PRINTFORM └% "─"* 9%┴%"─"* 3%┘
+		ENDSELECT
+		SIF !PRICE_EX
+			CONTINUE
+		BREAK
+	WEND
+	SIF PRICE_A || PRICE_T
+		PRINTL 
+WEND
+PRINTFORML ├% "─"* 9%┼%"─"* 3%┤├% "─"* 9%┼%"─"* 3%┤
+PRINTFORML │%"합계치",18,LEFT%│*{SUMPRICE_A,4}\%││%"합계치",18,LEFT%│*{MAX(SUMPRICE_T,0),4}\%│
+PRINTFORML └% "─"* 9%┴%"─"* 3%┘└% "─"* 9%┴%"─"* 3%┘
+DRAWLINE
+;표시が確定しているABL/TALENT/難度
+PRINTFORM {SUMPRICE_A}\% * {SUMPRICE_T}\% * {140 - FLAG:조교난이도 * 20}\%
+LOCAL:1 = SUMPRICE_A * SUMPRICE_T * (140 - FLAG:조교난이도 * 20)
+LOCAL:2 = 2
+
+IF TALENT:ARG:붕괴 || TALENT:ARG:광기 || TALENT:ARG:임신
+	LOCAL:1 *= ABL:ARG:순종 * 8
+	LOCAL:2++
+	PRINTFORM  * {ABL:ARG:순종 * 8}\%
+ENDIF
+;옵션、FLAG:악마가챠모드==2、핸디캡 플레이ONの時に매각가격25%へ
+IF FLAG:악마가챠모드 >= 2
+	IF ((ABL:ARG:종족 > 0 && ABL:ARG:종족 < 45 && CFLAG:전서소환불가 == 0) || (ABL:ARG:종족 == 45)) && TALENT:ARG:ガチャ > 0
+		; {(종족악마and전서소환でない)or(조마である)}andガチャ소질が無い　なら割引
+		LOCAL:1 /= 4
+		PRINTFORM  * {25}\%
+	ENDIF
+ENDIF
+
+IF FLAG:(30000+NO:ARG)
+	LOCAL:1 *= 100/(1+FLAG:(30000+NO:ARG))
+	PRINTFORM  * {100/(1+FLAG:(30000+NO:ARG))}\%
+	LOCAL:2++
+ENDIF
+FOR LOCAL, 0, LOCAL:2
+	LOCAL:1 /= 100
+NEXT
+PRINTFORML  = {LOCAL:1}\%
+DRAWLINE
+CUSTOMDRAWLINE =
+LOCAL:2 = PRICE
+;보정値の適用
+PRICE *= LOCAL:1
+PRICE /= 100
+
+PRICE = MAX(1, PRICE)
+FONTBOLD
+PRINTFORML <가격>
+FONTREGULAR
+PRINTFORML {LOCAL:2}마카 * {LOCAL:1}\% = {PRICE}마카
+CUSTOMDRAWLINE =
+IF ARG:1
+	SKIPDISP 0
+	RETURN PRICE
+ENDIF
+;매각확인
+PRINTL 매각합니까？
+CALL INPUT_YN
+
+SELECTCASE RESULT
+	CASE 0
+		;매각時の이벤트구상
+		TFLAG:13 = 18
+		SWAP ARG, TARGET
+		CALL KOJO_MESSAGE_EVENT
+		SWAP ARG, TARGET
+		;매각額
+		IF PRICE > 0
+			PRINTFORMW 결과, %조사처리(NAME:ARG,"는")% {PRICE}마카로 마계의 호사가에게 팔렸습니다
+		ELSEIF PRICE == 0
+			PRINTFORMW 결과, %조사처리(NAME:ARG,"는")% 업자에게 인수되었습니다
+		ENDIF
+		CALL CHARASELL_AFTER, ARG, PRICE
+	CASE 1
+		ARG = LOCAL:1
+		RETURN 0
+ENDSELECT
+@CHARASELLABLE(ARG)
+RETURN GET_CHARASELLABLE(ARG)
+
+;----------------------------------------
+;ARG 　매각するキャラ
+;ARG:1 가격
+;----------------------------------------
+@CHARASELL_AFTER, ARG, ARG:1 = -1
+;가격が送られて無い場合は取る
+IF ARG == -1
+	CALL CHARA_SELL, ARG, 1
+	ARG:1 = RESULT
+ENDIF
+IF ARG:1 > 0
+	MONEY:1 += ARG:1
+	FLAG:조교師名声 += ARG:1/100
+ENDIF
+
+;매각내역をつける
+FLAG:(30000+NO:ARG) += 1
+
+;帳簿閲覧の処理へ（SIF～は王国屋固定의뢰での二重処理防止用です）
+SIF ARG:1 > 0
+	CALL 帳簿閲覧, ARG, ARG:1
+
+;デビオク処理
+;매각されたキャラの조교に関する능력、소질、경험、가격を保存
+CALL CHARASELL_AFTER_デビオク, ARG, ARG:1
+
+;キャラクタ－삭제
+CALL キャラ삭제, ARG
+
+FLAG:奴隷매각総数 += 1
+FLAG:奴隷매각数 += 1
+
+;主人の속성値変動
+CALL INCREASE_LD,-10
+CALL SYNC_STATUS,MASTER
+
+
+
+;캐릭터등록삭제
+@DEAL_CHARA
+CALL INPUT_CHARA_LIST("어떤 캐릭터를 삭제합니까", "CASTING_DEAL_CHARA")
+IF RESULT == 1000
+	RETURN 0
+ENDIF
+
+LOCAL:4 = RESULT
+
+PRINTL 등록을 어떻게 해제 하겠습니까？
+PRINTL [1]  - 그대로 삭제한다　　 (통상 삭제)
+PRINTL [2]  - 기억을 지워 해방한다 (5마카 소비 ＋ 약간 L속성으로)
+PRINTL [3]  - 처분한다　　　　　　 (5마카 획득＋ 약간 D속성으로)
+PRINTL [4]  - 취소
+
+CALL INPUTINT(1,2,3,4)
+SELECTCASE RESULT
+	CASE 1
+		PRINTFORMW %조사처리(CALLNAME:(LOCAL:4),"를")% 해방했습니다
+		FLAG:(30000+NO:(LOCAL:4)) += 1
+		CALL キャラ삭제, (LOCAL:4)
+	CASE 2
+		IF MONEY:1 >= 5
+			PRINTFORMW 5마카로 전문가에게 의뢰해 %CALLNAME:(LOCAL:4)%의 기억을 지우고 해방했습니다
+			MONEY:1 -= 5
+			FLAG:(30000+NO:(LOCAL:4)) += 1
+			CALL キャラ삭제, (LOCAL:4)
+			CALL INCREASE_LD,6
+		ELSE
+			PRINTFORMW 마카가 부족합니다
+		ENDIF
+	CASE 3
+		PRINTFORMW %조사처리(CALLNAME:(LOCAL:4),"를")% 처분해 5마카를 얻었습니다
+		MONEY:1 += 5
+		FLAG:(30000+NO:(LOCAL:4)) += 1
+		CALL キャラ삭제, (LOCAL:4)
+		CALL INCREASE_LD,-6
+	CASE 4
+		PRINTFORMW 취소했습니다
+ENDSELECT
+
+RETURN 0
+
+@CASTING_DEAL_CHARA(ARG)
+SIF ARG == MASTER
+	RETURN 0
+SIF CFLAG:ARG:ボスフラグ
+	RETURN 0
+SIF CFLAG:ARG:この場に居ないフラグ == 1
+	RETURN 0
+;育児部屋に移動しているキャラは除外
+SIF CHECK_CHILD_CARE(ARG) && FLAG:출산기능ONOFF == 1
+	RETURN 0
+SIF CFLAG:ARG:노역フラグ == 3
+	RETURN 0
+SIF ABL:ARG:종족 != 0 && NO:ARG != [[キャラ:메어리]]
+	RETURN 0
+RETURN 1
+
+@GET_SELLPRICE_ABL, ARG, ARG:1
+#FUNCTION
+#LOCALSIZE 1000
+#DIM LCOUNT
+;テーブル定義
+IF !MAXARRAY(LOCAL)
+	;										Lv1/Lv2/Lv3/Lv4/Lv5/Lv6/ Lv7/ Lv8/ Lv9/Lv10
+	LOCAL:(GETNUM(ABL, "순종")*10)         =  5, 10, 20, 35, 55, 75, 100, 125, 155, 200
+	LOCAL:(GETNUM(ABL, "욕망")*10)         =  5, 10, 20, 35, 55, 75, 100, 125, 155, 200
+	LOCAL:(GETNUM(ABL, "기교")*10)         =  5, 10, 20, 35, 55, 75, 100, 125, 155, 200
+	
+	;										Lv1/Lv2/Lv3/Lv4/Lv5/Lv6/ Lv7/ Lv8/ Lv9/Lv10
+	LOCAL:(GETNUM(ABL, "Ｃ감각")*10)       =  2,  5,  9, 15, 20, 25,  35,  45,  60,  75
+	LOCAL:(GETNUM(ABL, "Ｖ감각")*10)       =  5,  9, 15, 20, 25, 35,  45,  60,  75,  95
+	LOCAL:(GETNUM(ABL, "Ａ감각")*10)       =  5,  9, 15, 20, 25, 35,  45,  60,  75,  95
+	LOCAL:(GETNUM(ABL, "Ｂ감각")*10)       =  2,  5,  9, 15, 20, 25,  35,  45,  60,  75
+
+	;										Lv1/Lv2/Lv3/Lv4/Lv5/Lv6/ Lv7/ Lv8/ Lv9/Lv10
+	LOCAL:(GETNUM(ABL, "봉사정신")*10)     =  5,  5, 10, 10, 15, 20,  25,  30,  35,  45
+	LOCAL:(GETNUM(ABL, "노출증")*10)       =  5,  5, 15, 20, 25, 35,  45,  60,  75,  90
+	LOCAL:(GETNUM(ABL, "마조끼")*10)     =  5, 10, 15, 20, 30, 40,  50,  60,  70,  80
+	LOCAL:(GETNUM(ABL, "새드끼")*10)     =  5,  5,  5, 30, 40, 45,  50,  60,  70,  75
+
+	;										Lv1/Lv2/Lv3/Lv4/Lv5/Lv6/ Lv7/ Lv8/ Lv9/Lv10
+	LOCAL:(GETNUM(ABL, "요리기능")*10)     =  5,  5, 10, 15, 25, 25,  30,  35,  50,  60
+	LOCAL:(GETNUM(ABL, "촬영기능")*10)     =  0,  5, 10, 15, 20, 25,  30,  35,  45,  70
+	LOCAL:(GETNUM(ABL, "가창기능")*10)     =  0,  5, 10, 15, 20, 25,  30,  35,  45,  70
+
+	;										Lv1/Lv2/Lv3/Lv4/Lv5/Lv6/ Lv7/ Lv8/ Lv9/Lv10
+	LOCAL:(GETNUM(ABL, "자위중독")*10)     =  5, 10, 15, 25, 35, 45,  60,  75,  90, 110
+	LOCAL:(GETNUM(ABL, "정액중독")*10)     = 10, 20, 30, 50, 70, 90, 120, 150, 180, 220
+	LOCAL:(GETNUM(ABL, "섹스중독")*10) =  5, 10, 15, 25, 35, 45,  60,  75,  90, 110
+	LOCAL:(GETNUM(ABL, "분유중독")*10)     =  5, 10, 15, 25, 35, 45,  60,  75,  90, 110
+
+	;										Lv1/Lv2/Lv3/Lv4/Lv5/Lv6/ Lv7/ Lv8/ Lv9/Lv10
+	LOCAL:(GETNUM(ABL, "수간중독")*10)     = 10, 15, 20, 30, 40, 50,  65,  80,  95, 120
+	LOCAL:(GETNUM(ABL, "촉수중독")*10)     = 10, 15, 20, 30, 40, 50,  65,  80,  95, 120
+	LOCAL:(GETNUM(ABL, "윤간중독")*10)     = 10, 20, 30, 40, 50, 60,  80, 100, 140, 180
+
+	;										Lv1/Lv2/Lv3/Lv4/Lv5/Lv6/ Lv7/ Lv8/ Lv9/Lv10
+	LOCAL:(GETNUM(ABL, "레즈끼")*10)     =  5,  5, 10, 10, 15, 20,  25,  30,  35,  45
+	LOCAL:(GETNUM(ABL, "레즈중독")*10)     =  5, 10, 15, 25, 35, 45,  60,  75,  90, 110
+	LOCAL:(GETNUM(ABL, "ＢＬ끼")*10)     =  5,  5, 10, 10, 15, 20,  25,  30,  35,  45
+	LOCAL:(GETNUM(ABL, "ＢＬ중독")*10)     =  5, 10, 15, 25, 35, 45,  60,  75,  90, 110
+	LOCAL:(GETNUM(ABL, "키스중독")*10)     =  5, 10, 15, 25, 35, 45,  60,  75,  90, 110
+ENDIF
+;特殊調整
+SIF GROUPMATCH(ABLNAME:ARG, "레즈끼", "레즈중독") && IS_MALE(ARG:1)
+	RETURNF 0
+SIF GROUPMATCH(ABLNAME:ARG, "ＢＬ끼", "ＢＬ중독") && !IS_MALE(ARG:1)
+	RETURNF 0
+;레벨が値域外の場合弾く
+SIF !RANGE(ABL:(ARG:1):ARG, 1, 10)
+	RETURNF 0
+RETURNF LOCAL:(ARG*10 + ABL:(ARG:1):ARG -1)
+
+;ARGはTALENTの번호, ARG:1はキャラ
+@GET_SELLPRICE_TALENT, ARG, ARG:1 = -1
+#FUNCTION
+SIF !TALENT:(ARG:1):ARG
+	RETURNF 0
+SELECTCASE TALENTNAME:ARG
+	CASE "처녀"
+		RETURNF 100
+	CASE "재생처녀"
+		RETURNF 20
+	CASE "연모"
+		RETURNF -50
+	CASE "친애"
+		RETURNF -80
+	CASE "음란"
+		RETURNF 30
+	CASE "창부"
+		RETURNF 60
+	CASE "복종"
+		RETURNF 60
+	CASE "예속"
+		RETURNF 120
+
+	CASE "겁쟁이"
+		RETURNF -20
+	CASE "반항적"
+		RETURNF 20
+	CASE "꿋꿋함"
+		RETURNF 40
+	CASE "솔직함"
+		RETURNF -20
+	CASE "얌전함"
+		RETURNF -20
+	CASE "프라이드높음"
+		RETURNF 20
+	CASE "건방짐"
+		RETURNF 20
+	CASE "프라이드낮음"
+		RETURNF -20
+	CASE "츤데레"
+		RETURNF 20
+	CASE "자제심"
+		RETURNF 20
+	CASE "무관심"
+		RETURNF -20
+	CASE "감정결핍"
+		RETURNF -20
+	CASE "호기심"
+		RETURNF 10
+	CASE "보수적"
+		RETURNF 10
+	CASE "일선을넘지않음"
+		RETURNF 30
+	CASE "눈에띄고싶어함"
+		RETURNF 10
+	CASE "정조관념"
+		RETURNF 20
+	CASE "정조관결여"
+		RETURNF -20
+	CASE "해방"
+		RETURNF 10
+	CASE "부끄럼쟁이"
+		RETURNF 10
+	CASE "부끄럼없음"
+		RETURNF -10
+	CASE "아픔에약함"
+		RETURNF -20
+	CASE "아픔에강함"
+		RETURNF 20
+	CASE "젖기쉬움"
+		RETURNF 20
+	CASE "젖기어려움"
+		RETURNF -10
+	CASE "임신하기쉬움"
+		RETURNF 10
+	CASE "임신하기어려움"
+		RETURNF -10
+	CASE "습득빠름"
+		RETURNF 10
+	CASE "습득느림"
+		RETURNF -10
+	CASE "혀놀림"
+		RETURNF 30
+	CASE "약독내성"
+		RETURNF -20
+	CASE "오줌싸개"
+		RETURNF 10
+	CASE "자위하기쉬움"
+		RETURNF 10
+	CASE "악취둔감"
+		RETURNF -20
+	CASE "악취민감"
+		RETURNF 20
+	CASE "헌신적"
+		RETURNF 30
+	CASE "쾌감에솔직"
+		RETURNF -30
+	CASE "쾌감을부정"
+		RETURNF 30
+	CASE "즉각함락"
+		RETURNF -250
+	CASE "자위광"
+		RETURNF 20
+	CASE "섹스광"
+		RETURNF 30
+	CASE "애널광"
+		RETURNF 20
+	CASE "음유"
+		RETURNF 30
+	CASE "잉태희망"
+		RETURNF 20
+	CASE "도착적"
+		RETURNF 10
+	CASE "남성혐오"
+		RETURNF -10
+	CASE "새드"
+		RETURNF 30
+	CASE "마조"
+		RETURNF 40
+	CASE "망신"
+		RETURNF 30
+	CASE "소악마"
+		RETURNF 20
+	CASE "여성혐오"
+		RETURNF -10
+	CASE "요호"
+		RETURNF 20
+	CASE "매력"
+		RETURNF 20
+	CASE "수수께끼의매력"
+		RETURNF 100
+	CASE "Ｃ둔감"
+		RETURNF ABL:(ARG:1):Ｃ감각 < 4 ? -30 # 0
+	CASE "Ｃ민감"
+		RETURNF ABL:(ARG:1):Ｃ감각 < 3 ? 0 # 30
+	CASE "Ｖ둔감"
+		RETURNF ABL:(ARG:1):Ｖ감각 < 4 ? -30 # 0
+	CASE "Ｖ민감"
+		RETURNF ABL:(ARG:1):Ｖ감각 < 3 ? 0 # 30
+	CASE "Ａ둔감"
+		RETURNF ABL:(ARG:1):Ａ감각 < 4 ? -30 # 0
+	CASE "Ａ민감"
+		RETURNF ABL:(ARG:1):Ａ감각 < 3 ? 0 # 30
+	CASE "Ｂ둔감"
+		RETURNF ABL:(ARG:1):Ｂ감각 < 4 ? -30 # 0
+	CASE "Ｂ민감"
+		RETURNF ABL:(ARG:1):Ｂ감각 < 3 ? 0 # 30
+	CASE "빈유"
+		RETURNF -10
+	CASE "절벽"
+		RETURNF 10
+	CASE "거유"
+		RETURNF 20
+	CASE "폭유", "魔乳"
+		RETURNF 10
+	CASE "小尻"
+		RETURNF TALENT:(ARG:1):남자 ? 0 # -10
+	CASE "巨尻"
+		RETURNF TALENT:(ARG:1):남자 ? 0 # 20
+	CASE "爆尻"
+		RETURNF TALENT:(ARG:1):남자 ? 0 # 10
+	CASE "회복빠름"
+		RETURNF 20
+	CASE "회복느림"
+		RETURNF -20
+	CASE "흡혈귀"
+		RETURNF 30
+	CASE "동물귀"
+		RETURNF 20
+	CASE "인기"
+		RETURNF 50
+	CASE "봉래인"
+		RETURNF 70
+	CASE "모유체질"
+		RETURNF 20
+ENDSELECT
+RETURNF 0
+

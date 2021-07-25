@@ -1,0 +1,257 @@
+﻿;====================
+;関連フラグリスト
+;====================
+;의뢰フラグ:27:0 進行状況
+;====================
+;조건
+;====================
+@PLAYABLE_REQUEST_27
+;軽子坂攻略後
+IF 던전フラグ:2:11 == 1 || FLAG:DEBUG
+	IF 의뢰フラグ:27:0 == 0
+		RESULTS = 의뢰：세이카 학원 조사
+		RETURN 1
+	ELSEIF 의뢰フラグ:27:0 == 1
+		RESULTS = 의뢰：퇴마학생회 조사
+		RETURN 1
+	ELSEIF 의뢰フラグ:27:0 == 3
+		IF STRFLAG_NUM_REQ("帰還予定日" , , , , 27) <= DAY
+			RESULTS = 세이카 학원 조사보고
+			RETURN 1
+		ENDIF
+	ENDIF
+	RETURN 0
+ENDIF
+RETURN 0
+;====================
+;설명
+;====================
+@EXPLAIN_REQUEST_27
+PRINTL 
+PRINTFORMW -메일이 도착했습니다-
+PRINTFORMW ‥‥팬텀으로부터 일의 의뢰다.
+IF 의뢰フラグ:27:0 == 0
+	PRINTFORMW 세이카(聖華) 학원이라는 사립 고등학교가 있다.
+	PRINTFORMW 일견 평범한 고등학교로 보이지만, 내부에는 많은 이능자들이 있어 부근의 악마사건을 개입하거나 외부 조직과 항쟁을 일으킨 적도 있다고 한다.
+	PRINTFORMW 이번 의회는 팬텀 자체에서 나온 의뢰로, 많은 노예를 거느린 %CALLNAME:MASTER%에게 인간 노예를 세이카 학원에 보내 정보수집을 하라는 것이었다‥‥
+ELSEIF 의뢰フラグ:27:0 == 1
+	PRINTFORMW 팬텀의 세이카 학원에 대한 행동방침이 결정되었다.
+	PRINTFORMW 퇴마학생회의 전력을 떨어뜨려, 자력으로 구역을 지키는 것을 어렵게 만든 후 장사 이야기를 꺼내려는 것 같다.
+	PRINTFORMW 이번의 임무는 퇴마학생회의 전력을 낮추는 것을 목표로 한다.
+ELSEIF 의뢰フラグ:27:0 == 3
+	PRINTFORMW 이전에 보낸 노예로부터 세이카 학원에 대한 조사보고를 받자.
+ENDIF
+;====================
+;内容
+;====================
+@REQUEST_27
+#DIM LCOUNT
+IF 의뢰フラグ:27:0 == 0
+	A = 0
+	PRINTFORMW 그런데 누구를 세이카 학원에 보낼까?
+	PRINTFORMW 보낸 노예의 변통이야 팬텀에게 맡기니 괜찮을 테지만, 보낸 노예는 며칠 동안 연락이 되지 않을 것이다.
+	FOR LCOUNT, 0, CHARANUM
+	;함락済みの인간
+		SIF (함락(LCOUNT) >= 1) && (ABL:LCOUNT:종족 == 0) && (CFLAG:LCOUNT:この場に居ないフラグ == 0) && LCOUNT != MASTER
+			GOTO OK
+	NEXT
+		PRINTFORMW ‥‥보낼 수 있는 노예가 없는 것 같다.
+		PRINTFORMW 잠시 품에서 떼어 놓아도 문제 없을 노예를 확보하면, 다시 맡는다고 하자.
+		RETURN 0
+	$OK
+	
+	CALL INPUT_CHARA_LIST( "" , "CASTING_REQUEST_27")
+	IF RESULT == 1000
+		PRINTFORMW 노예를 보내는 것을 그만두기로 했다
+		PRINTFORMW 잠시 품에서 떼어 놓아도 문제 없을 노예를 확보하면, 다시 맡자.
+	ELSE
+		LOCAL= RESULT
+		PRINTFORMW %조사처리(NAME:LOCAL,"를")% 보냈다.
+		PRINTFORMW 5일 후 돌아올 예정이다.
+		CFLAG:LOCAL:この場に居ないフラグ = 1
+		;만일 파견할 노예가 파티에 있을 경우, 제외한다
+		SIF CPOS(LOCAL) > 0
+			CALL REMOVE_POSITION, CPOS(LOCAL)
+		SIF LOCAL == TARGET
+			TARGET = -1
+		SIF LOCAL == ASSI
+			ASSI = -1
+		;送り込む奴隷を記憶(IDを깨달음えさせておく)
+		CALLF STRFLAG_NUM_REQ("조사奴隷", "=", , CFLAG:LOCAL:キャラ固有の번호)
+		;帰還予定日を記憶
+		CALLF STRFLAG_NUM_REQ("帰還予定日", "=", , DAY + 5)
+		의뢰フラグ:27:0 = 3
+	ENDIF
+ELSEIF 의뢰フラグ:27:0 == 1
+	PRINTFORMW ‥‥작전은 세이카 학원 주변에서 복수의 악마 사건을 일으키는 것에서부터 시작되었다.
+	PRINTFORMW 이 근처의 뒷공작은 팬텀이 한 일이지만 아마 그렇게 고생은 하지 않았을 것이다.
+	PRINTFORMW 자제가 부족한 이능자 학생이나, 가이아교의 에이전트 등, 어쨌든 불씨가 많은 학교다.
+	PRINTFORMW 그 다음에는 학생회측이 대처를 위해 전력이 분산되었을 때, 두들기는 것이 %조사처리(CALLNAME:MASTER,"가")% 할 일이다.
+	PRINTFORMW ‥‥‥‥‥‥
+	PRINTFORMW ‥‥‥‥
+	PRINTFORMW ‥‥
+	PRINTFORMW 팬텀으로부터 연락이 들어왔다.
+	PRINTFORMW 학생회측은 3개조로 분담해 대처를 시작한 것 같다.
+	PRINTFORMW 하나는 학생회장이자 검사인 토요노카 이치고와 네코마타의 2인조.
+	PRINTFORMW 하나는 부회장인 서머너 찰리 베링턴과 함께 부회장 와타라이 유리의 2인조.
+	PRINTFORMW 마지막으로는 시프터인 미조로기 린과 총을 사용하는 애니의 2인조다.
+	PRINTFORMW 오늘은 철저하게 두들기라고 말하진 않았다.
+	PRINTFORMW 어느 하나를 치면 충분하겠지만‥‥.
+	PRINTFORML [0] 학생회장조
+	PRINTFORML [1] 부회장조
+	PRINTFORML [2] 미조로기조
+	$INPUT_LOOP2
+	ONEINPUT
+	PRINTFORMW ‥‥‥‥‥‥
+	PRINTFORMW ‥‥‥‥
+	PRINTFORMW ‥‥
+	FLAG:도주불가フラグ = 1
+	FLAG:회화불능フラグ = 1
+	FLAG:선제기습취소 = 1
+	IF RESULT == 0
+		PRINTFORMW 두 명이 대처하고 있던 것은 학원 내의 이능자가 일으킨 트러블이었던 것 같다.
+		PRINTFORMW 치졸한 소환 의식의 흔적과 알아보기 쉬운 흑마술사 차림의 모습을 한 학생들이 이미 붙잡혀 있다.
+		PRINTFORMW 제압한 것은 칼을 내린 포니테일의 늠름한 소녀와 어째선지 전기톱을 든 네코마타였다.
+		PRINTFORMW 이 두 명이 퇴마학생회 회장 토요노카 이치고와 네코마타 사사즈카 치요일 것이다.
+		PRINTFORMW 우선 이 두 명을 정리하기로 하자‥‥
+		PRINTFORMW 모습을 드러낸 %CALLNAME:MASTER%에게 두 명은 경계심을 드러냈다.
+		PRINTFORMW 다른 방면을 향한 동료가 돌아오면 귀찮다.
+		PRINTFORMW 일을 빨리 정리하지 않으면 안 된다.
+		PRINTL 인간　토요노카 이치고가 １체 나타났다！
+		PRINTL 마수　사사즈카 치요가 １체 나타났다！
+		CUSTOMDRAWLINE =
+		WAIT
+		CALL SET_ENEMY,8,4610,15,0,1
+		CFLAG:(CHARANUM-1):ＨＰ보정 += 100
+		CFLAG:(CHARANUM-1):行動횟수 = 2
+		CALL SET_BATTLE_STATUS(CHARANUM-1, 100, "공격")
+		CALL SYNC_STATUS,(CHARANUM-1)
+		CALL HEALTH_CHARA,(CHARANUM-1)
+		CALL SET_ENEMY,9,840,15,0,1
+		CFLAG:(CHARANUM-1):ＨＰ보정 += 100
+		CFLAG:(CHARANUM-1):行動횟수 = 2
+		CALL SYNC_STATUS,(CHARANUM-1)
+		CALL HEALTH_CHARA,(CHARANUM-1)
+		CALL BATTLE_START
+		CUSTOMDRAWLINE =
+		PRINTFORMW ‥‥두 소녀는 쓰러졌다.
+		PRINTFORMW 이 다음에는 이대로 이들을 데리고 사라져 팬텀에 보고만 하면 된다.
+		CALL ADD_NEW_COMPANION, 4610,0
+		SIF FINDCHARA_B([[キャラ:사사즈카치요(바스테트)]]) < 0
+			CALL ADD_NEW_COMPANION, 840,0
+		PRINTFORML 무에미의 칼을 손에 넣었다.
+		ITEM:무명의도 += 1
+		의뢰フラグ:27:0 = 2
+		;ここで捕獲したキャラの組み合わせを一応保存しておく
+		CALLF STRFLAG_NUM_REQ("捕獲キャラ", "=", , 1)
+	ELSEIF RESULT == 1
+		PRINTFORMW 두 명이 대처하고 있던 것은 학원 내의 이능자가 일으킨 트러블이었던 것 같다.
+		PRINTFORMW 무슨 기계회로의 잔해같은 물건이 여기저기 흩어져 있고, 주위에는 어쩐지 수상한 탄 냄새가 감돌고 있었다.
+		PRINTFORMW 타버린 백의를 입은 교사같아 보이는 남자나 학생이 기절하고 있는 것을 금발의 핸섬한 소년이 서투른 솜씨로 대처하자,
+		PRINTFORMW 적갈색 머리의 소녀가 한숨을 내쉬며 지시를 하고 있었다.
+		PRINTFORMW 이 두사람이 퇴마학생회 부회장 찰리 베링턴과 와타라이 유리다.
+		PRINTFORMW 같은 부회장이란 점에서 이 두 사람은 동격이지만, 명확한 상하 관계가 엿보인다.
+		PRINTFORMW 우선 이 두 사람을 해결하기로 하자‥‥
+		PRINTFORMW 모습을 드러낸 %CALLNAME:MASTER%에게 두 사람은 경계심을 드러냈다.
+		PRINTFORMW 다른 방명으로 향한 동료가 돌아오면 귀찮다.
+		PRINTFORMW 일은 빨리 정리해야 한다.
+		PRINTL 인간　찰리 베링턴이 １체 나왔다！
+		PRINTL 인간　와타라이 유리가 １체 나왔다！
+		CUSTOMDRAWLINE =
+		WAIT
+
+		CALL SET_ENEMY,8,513,20,0,0
+
+		CALL SET_ENEMY,9,4614,15,0,1
+		CFLAG:(CHARANUM-1):ＨＰ보정 += 100
+		CFLAG:(CHARANUM-1):行動횟수 = 2
+		CALL SYNC_STATUS,(CHARANUM-1)
+		CALL HEALTH_CHARA,(CHARANUM-1)
+
+		CALL SET_ENEMY,10,512,15,0,0
+
+		CALL SET_ENEMY,14,501,15,0,0
+		CFLAG:(CHARANUM-1):ＨＰ보정 += 100
+		CFLAG:(CHARANUM-1):行動횟수 = 1
+		ABL:(CHARANUM-1):공격상성 = 17
+		ABL:(CHARANUM-1):사거리= 3
+		CALL SYNC_STATUS,(CHARANUM-1)
+		CALL HEALTH_CHARA,(CHARANUM-1)
+
+		CALL SET_ENEMY,13,4611,15,0,1
+		CFLAG:(CHARANUM-1):ＨＰ보정 += 100
+		CFLAG:(CHARANUM-1):行動횟수 = 1
+		CALL SYNC_STATUS,(CHARANUM-1)
+		CALL HEALTH_CHARA,(CHARANUM-1)
+		CALL SET_BATTLE_STATUS(CHARANUM-1, 80, "공격")
+
+		CALL BATTLE_START
+		CUSTOMDRAWLINE =
+
+		PRINTFORMW ‥‥두 명은 쓰러졌다.
+		PRINTFORMW 이 다음에는 이 둘을 데리고 사라져 팬텀에 보고만 하면 된다.
+		CALL ADD_NEW_COMPANION, 4611,0
+		CALL ADD_NEW_COMPANION, 4614,0
+		PRINTFORML 도리ー・카드몬을 손에 넣었다.
+		ITEM:도리・카드몬 += 1
+		의뢰フラグ:27:0 = 5
+		;ここで捕獲したキャラの組み合わせを一応保存しておく
+		CALLF STRFLAG_NUM_REQ("捕獲キャラ", "=", , 2)
+	ELSE
+		PRINTFORMW 두 명이 대처하고 있던 것은 학원 내의 이능자가 일으킨 트러블이었던 것 같다.
+		PRINTFORMW 이미 거의 박살난 것 같았는데, 흰 옷차림의 안경 소년이 지시를 내려 금발의 소녀에게 정리를 시키고 있었다.
+		PRINTFORMW 이 두 명이 퇴마학생회의 미조로기 린과 애니일 것이다.
+		PRINTFORMW 우선 이 두 사람을 해결하기로 하자‥‥‥‥
+		PRINTFORMW 모습을 드러낸 %CALLNAME:MASTER%에게 두 사람은 경계심을 드러냈다.
+		PRINTFORMW 린은 즉각 악마화하고, 애니는 총을 뽑는다.
+		PRINTFORMW 다른 방면으로 향한 동료가 돌아오면 귀찮다.
+		PRINTFORMW 일은 빨리 정리해야 한다.
+		PRINTL 요귀　아즈미가 １체 나타났다！
+		PRINTL 인간　애니가 １체 나타났다！
+		CUSTOMDRAWLINE =
+		WAIT
+		CALL SET_ENEMY,8,663,15,0,1
+		CFLAG:(CHARANUM-1):ＨＰ보정 += 200
+		CFLAG:(CHARANUM-1):行動횟수 = 2
+		CALL SET_BATTLE_STATUS(CHARANUM-1, 100, "공격")
+		CALL SYNC_STATUS,(CHARANUM-1)
+		CALL HEALTH_CHARA,(CHARANUM-1)
+		CALL SET_ENEMY,9,4613,15,0,1
+		CFLAG:(CHARANUM-1):ＨＰ보정 += 100
+		CFLAG:(CHARANUM-1):行動횟수 = 2
+		CALL SYNC_STATUS,(CHARANUM-1)
+		CALL HEALTH_CHARA,(CHARANUM-1)
+		CALL BATTLE_START
+		CUSTOMDRAWLINE =
+		PRINTFORMW ‥‥두 소녀는 쓰러졌다.
+		PRINTFORMW 이 뒤에는 이대로 이들을 데리고 사라져 팬텀에 보고만 하면 된다.
+		CALL ADD_NEW_COMPANION, 4613,0
+		CALL ADD_NEW_COMPANION, 4612,0
+		의뢰フラグ:27:0 = 4
+		;ここで捕獲したキャラの組み合わせを一応保存しておく
+		CALLF STRFLAG_NUM_REQ("捕獲キャラ", "=", , 3)
+	ENDIF
+	FLAG:도주불가フラグ = 0
+	FLAG:회화불능フラグ = 0
+	FLAG:선제기습취소 = 0
+	PRINTFORMW ‥‥일의 보고를 팬텀에 올리기로 했다.
+	PRINTFORMW -보수로 5000엔이 지급되었습니다-
+	MONEY += 5000
+ELSEIF 의뢰フラグ:27:0 == 3
+	LOCAL = FINDCHARA_ID(STRFLAG_NUM_REQ("조사奴隷"))
+	PRINTFORMW %CALLNAME:LOCAL%의 보고를 받아들였다.
+	PRINTFORMW 세이카 학원에 퇴마학생회라는 이능자 집단이 존재하는 것은 사실이며, 부근의 악마 사건에 개입하고 있다.
+	PRINTFORMW 주된 목적은 학교 부지 내에 존재하는 영지의 보호와
+	PRINTFORMW 내부의 이능자가 일으키는 트러블의 대응 및 외부의 간섭을 배제하기 위한 전력이 퇴마학생회라는 모양이다.
+	PRINTFORMW ‥‥얻어낸 정보를 팬텀에 올리기로 했다.
+	PRINTFORMW -보수로 1000엔이 지급되었습니다-
+	CFLAG:LOCAL:この場に居ないフラグ = 0
+	MONEY += 1000
+	의뢰フラグ:27:0 = 1
+ENDIF
+
+@CASTING_REQUEST_27(ARG:0)
+SIF (함락(ARG:0) >= 1) && (ABL:(ARG:0):종족 == 0) && (CFLAG:(ARG:0):この場に居ないフラグ == 0) && ARG:0 != MASTER
+	RETURN 1
+RETURN 0
+

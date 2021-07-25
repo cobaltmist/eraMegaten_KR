@@ -1,0 +1,293 @@
+﻿;-------------------------------------------------
+;바이브쓴다
+;道具사용コマンド、레벨2
+;촉수삽입시킨다
+;-------------------------------------------------
+@CHECK_COM_ABLE52
+;바이브実行판정
+;촉수조교中はダメ
+SIF TEQUIP:25
+	RETURN 0
+
+;해제はいつでも가능
+SIF TEQUIP:PLAYER:13
+	RETURN 1
+
+;아이템を持っているか、아이템なし설정でないとダメ
+SIF !EXIST_ITEM(4)
+	RETURN 0
+
+SIF !USE_VAGINA(PLAYER)
+	RETURN 0
+
+;조교대상が소인체형の場合は主人が금단의지식持ちじゃないとダメ
+;SIF TALENT:PLAYER:142 && (TALENT:MASTER:144 == 0 && EXP:Ｖ경험 > 10)
+SIF TALENT:PLAYER:소인체형 && PLAYER != MASTER && TALENT:MASTER:144 == 0
+	RETURN 0
+
+;처녀で、순종4以下・레즈끼4以下のASSIの場合바이브はできない（마조ならＯＫ）
+IF TALENT:PLAYER:0 && ASSIPLAY
+	SIF (ABL:ASSI:0 <= 4 || ABL:ASSI:11 <= 4) && TALENT:ASSI:84 == 0
+		RETURN 0
+ENDIF
+;윤활부족で、순종3以下・레즈끼3以下のASSIの場合바이브はできない（마조ならＯＫ）
+IF PALAM:PLAYER:4 < PALAMLV:2 && ASSIPLAY
+	SIF (ABL:ASSI:0 <= 3 || ABL:ASSI:11 <= 3) && TALENT:ASSI:84 == 0
+		RETURN 0
+ENDIF
+RETURN 1
+
+@CHECK_COM_ABLE170
+;촉수바기나
+SIF TEQUIP:25 == 0
+	RETURN 0
+
+;남자だとダメ
+SIF !HAVE_VAGINA(PLAYER)
+	RETURN 0
+RETURN 1
+
+@ACT_COM52
+;-------------------------------------------------
+;特殊派生処理
+;-------------------------------------------------
+IF TEQUIP:25
+	PRINTL 촉수삽입시킨다
+	TSTR:0 = 촉수삽입시킨다
+	SELECTCOM = 170
+ELSE
+	PRINTL 바이브쓴다
+	TSTR:0 = 바이브쓴다
+ENDIF
+;CALL KOJO_MESSAGE_COM
+
+;着脱の処理
+IF TEQUIP:PLAYER:13 == 0
+	TEQUIP:PLAYER:13 = 1
+ELSE
+	TEQUIP:PLAYER:13 = 0
+ENDIF
+
+;-------------------------------------------------
+;ソース추가処理
+;-------------------------------------------------
+;소비체력、기력
+LOSEBASE:0 += 10
+LOSEBASE:1 += 10
+
+SOURCE:4 = 10
+SOURCE:13 = 10
+SOURCE:17 = 10
+
+SOURCE:PLAYER:도구쾌Ｖ = 250
+
+;-------------------------------------------------
+;불결の処理
+;-------------------------------------------------
+;촉수삽입なら、촉수体液が질내に付く
+IF TEQUIP:25
+;	CALL SET_STAIN("바기나", "점액", PLAYER)
+	CALL SET_STAIN("질내", "점액", PLAYER)
+ENDIF
+;-------------------------------------------------
+;경험の処理
+;-------------------------------------------------
+;V경험
+;EXP:PLAYER:0 += 1
+;PRINTL Ｖ경험＋１
+CALL ADDS_EXP("Ｖ경험", 1, PLAYER)
+
+;SIF (TALENT:PLAYER:0 == 1 || TALENT:PLAYER:1 == 1)
+;	TFLAG:31 = 1
+	
+;조교者が처녀か재생처녀（이상경험は一回のみ）
+IF (TALENT:PLAYER:0 == 1 || TALENT:PLAYER:1 == 1)
+	PRINTFORM ＜%조사처리(CALLNAME:PLAYER,"는")% 
+	SIF TALENT:PLAYER:1 == 1
+		PRINT 재생 
+	PRINTL 처녀를 잃었다＞
+	;TALENT:PLAYER:0 = 0
+	;TALENT:PLAYER:1 = 0
+
+	;이상경험추가
+	SIF  !IS_MALE(TARGET)
+		CALL ADDS_ABNORMAL_EXP("처녀탈취（동성）", TARGET)
+ENDIF
+
+;이상경험
+IF TALENT:PLAYER:0 == 1 && TEQUIP:25 == 1
+;	EXP:PLAYER:50 += 2
+;	PRINTFORML %EXPNAME:50%(조교자)＋２
+	CALL ADDS_ABNORMAL_EXP("처녀상실（촉수）", PLAYER)
+ELSEIF TALENT:PLAYER:0 == 1
+;	EXP:PLAYER:50 += 1
+;	PRINTFORML %EXPNAME:50%(조교자)＋１
+	CALL ADDS_ABNORMAL_EXP("처녀상실（바이브）", PLAYER)
+ENDIF
+
+;레즈경험
+A = 1
+IF IS_LESBIAN(TARGET,PLAYER)
+;	PRINTFORML %EXPNAME:40%+{A}
+;	PRINTFORML %EXPNAME:40%(조교자)+{A}
+;	EXP:40 += A
+;	EXP:PLAYER:40 += A
+	CALL ADDS_EXP("레즈경험", A, TARGET)
+	CALL ADDS_EXP("레즈경험", A, PLAYER)
+ELSEIF IS_GAY(TARGET,PLAYER)
+;	PRINTFORML %EXPNAME:41%+{A}
+;	PRINTFORML %EXPNAME:41%(조교자)+{A}
+;	EXP:41 += A
+;	EXP:PLAYER:41 += A
+	CALL ADDS_EXP("ＢＬ경험", A, TARGET)
+	CALL ADDS_EXP("ＢＬ경험", A, PLAYER)
+	
+	
+ENDIF
+
+;촉수소환時、촉수경험の리셋をする
+;SIF TEQUIP:25 == 1
+;	T = 0
+
+;의존도ベクトル
+TFLAG:33 = 0
+
+
+RETURN 1
+
+
+;-------------------------------------------------
+;装着継続の処理
+;-------------------------------------------------
+@EQUIP_COM52
+;바이브挿入中
+
+IF TEQUIP:25
+	PRINTL ＜촉수삽입중(조교자)＞
+ELSE
+	PRINTL ＜바이브삽입중(조교자)＞
+ENDIF
+
+SOURCE:PLAYER:도구쾌Ｖ += 125
+
+;-------------------------------------------------
+;경험の処理
+;-------------------------------------------------
+;자위実行時は경험＋１
+IF SELECTCOM == 11
+;	EXP:PLAYER:0 += 2
+;	PRINTL Ｖ경험＋２(조교자)
+	CALL ADDS_EXP("Ｖ경험", 2, PLAYER)
+ELSE
+;	EXP:PLAYER:0 += 1
+;	PRINTL Ｖ경험＋１(조교자)
+	CALL ADDS_EXP("Ｖ경험", 1, PLAYER)
+ENDIF
+
+;촉수경험加算
+SIF TEQUIP:25 == 1
+	CALL ADDS_EXP("촉수경험", 1, PLAYER)
+;	T += 1
+
+
+RETURN 1
+
+;-------------------------------------------------
+;조교時テ키스ト
+;-------------------------------------------------
+;52,바이브쓴다
+;-------------------------------------------------
+@MESSAGE_COM52
+;装着時
+IF TEQUIP:PLAYER:13
+	PRINTFORM %조사처리(CALLNAME:PLAYER,"는")% 
+	;윤활LV5이상でさらに추가
+	SIF PALAM:PLAYER:4 >= PALAMLV:5
+		PRINT 흥건한 
+	;윤활LV3이상でさらに추가
+	SIF PALAM:PLAYER:4 >= PALAMLV:3
+		PRINT 점액을 머금은 
+	;유아체형
+	IF TALENT:PLAYER:100
+		PRINT 어린 균열에 
+	ELSE
+		PRINT 비렬에 
+	ENDIF
+	PRINTL 바이브의 끝을 대고 길들이고 있다……
+
+	PRINTFORM %조사처리(CALLNAME:PLAYER,"는")% 
+	;처녀＋음란か창부
+	IF TALENT:PLAYER:0 && (TALENT:PLAYER:4 || TALENT:PLAYER:7)
+		PRINT 자신이 처녀라는 사실을 잊은 것처럼 웃어보이고 있
+	;처녀＋음란
+	ELSEIF TALENT:PLAYER:0 && TALENT:PLAYER:4
+		PRINT 처녀라는 사실도 아랑곳하지 않고、허리를 흔들고 있
+	;처녀
+	ELSEIF TALENT:PLAYER:0
+		PRINT 부들부들 떨며、상실의 공포로 긴장하고있
+	;Ｖ경험200이상＋음란か창부
+	ELSEIF EXP:PLAYER:0 > 200 && (TALENT:PLAYER:4 || TALENT:PLAYER:7)
+		PRINT 삽입에대한 기대만으로 허리를 부들부들 떨며 가버릴 것같이 되었
+	;Ｖ경험150이상＋음란か창부
+	ELSEIF EXP:PLAYER:0 > 150 && (TALENT:PLAYER:4 || TALENT:PLAYER:7)
+		PRINTFORM 녹아내릴 것같은 눈으로 %조사처리(CALLNAME:PLAYER,"를")% 바라보며、스스로 음순을 문지르고 있
+	;Ｖ경험120이상＋음란か창부
+	ELSEIF EXP:PLAYER:0 > 120 && (TALENT:PLAYER:4 || TALENT:PLAYER:7)
+		PRINT 황홀한 표정으로 기다릴 수 없다는 듯이 허리를 흔들고 있
+	;Ｖ경험70이상＋음란か창부
+	ELSEIF EXP:PLAYER:0 > 70 && (TALENT:PLAYER:4 || TALENT:PLAYER:7)
+		PRINTFORM 갖고 싶다는 듯 눈을 글썽이고 있
+	;Ｖ경험40이상
+	ELSEIF EXP:PLAYER:0 > 40
+		PRINT 바이브가 스치는 감촉에 도취되어 한숨을 짓고 있
+	;Ｖ경험20이상
+	ELSEIF EXP:PLAYER:0 > 20
+		PRINT 바이브가 스치는 감촉에 몸을 비틀며 애액을 번지게 하고있
+	;それ以外
+	ELSE
+		PRINT 바이브가 스치는 감촉에 육벽을 움찔고리고 있
+	ENDIF
+	PRINTL 다……
+	PRINTFORM %조사처리(CALLNAME:PLAYER,"는")% 
+	;윤활LV4이상
+	SIF PALAM:PLAYER:4 >= PALAMLV:4
+		PRINT 흠뻑 젖은 
+	PRINTFORMW 성기에 바이브를 꽂았다
+;해제時
+ELSE
+	PRINTFORML %조사처리(CALLNAME:PLAYER,"는")% 꿈틀대는 바이브를 천천히 뽑아내었다
+	IF EXP:PLAYER:0 > 20
+		PRINTFORM %조사처리(CALLNAME:PLAYER,"는")% 느슨해진 질구를 움찔거리
+	;それ以外
+	ELSE
+		PRINTFORM %조사처리(CALLNAME:PLAYER,"는")% 인심한 표정을 하
+	ENDIF
+	PRINTW 고있다……
+ENDIF
+
+;-------------------------------------------------
+;170,촉수삽입시킨다
+;-------------------------------------------------
+@MESSAGE_COM170
+IF TEQUIP:PLAYER:13
+	PRINTFORM 미세한 돌기로 뒤덮힌 촉수가 %CALLNAME:PLAYER%의 
+	;처녀
+	SIF TALENT:PLAYER:0
+		PRINT 남자를 모르는 
+	;유아체형
+	IF TALENT:PLAYER:100
+		PRINT 어린 균열
+	ELSE
+		PRINT 비렬
+	ENDIF
+	PRINTFORMW 에 기어들어갔다
+ELSE
+	PRINTFORMW 촉수가 %CALLNAME:PLAYER%의 성기에서 뽑혀졌다
+ENDIF
+
+;===================================================
+;조교타입
+;===================================================
+@COMTYPE_52
+RETURN COMTYPE("대조교자도구계")
+

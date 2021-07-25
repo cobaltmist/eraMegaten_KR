@@ -1,0 +1,142 @@
+﻿
+@ENAMORED_CHECK
+#DIM 신뢰함락
+#DIM 信충성도
+;충성도が一定値以上なら순종が3まで上がり、연모がつく
+LOCAL:2 = 0
+
+;最初に옵션ONしたとき、고통・쾌락・굴복각인が１以上（おそらく조교済み、例外は既に연모付きの치카링だけ？）のキャラは除外するように
+IF MAXBASE:MASTER:충성도 == 0
+	FOR LOCAL,0,CHARANUM
+		SIF LOCAL == MASTER
+			CONTINUE
+		SIF CFLAG:LOCAL:被조교횟수 > 0 || 함락(LOCAL) || CFLAG:LOCAL:NTRフラグ > 0
+			CONTINUE
+		SIF MARK:LOCAL:고통각인 || MARK:LOCAL:쾌락각인 || MARK:LOCAL:굴복각인
+			CFLAG:LOCAL:被조교횟수 += 1
+	NEXT
+	MAXBASE:MASTER:충성도 = 1
+ENDIF
+
+;비전투원が전투員素質を持っていて、훈련경험を持っていれば비전투원が無くなる
+FOR LOCAL,0,CHARANUM
+	;機械の乙女を除外
+	IF TALENT:LOCAL:비전투원 == 1 && EXP:LOCAL:훈련경험 > 99 && (TALENT:LOCAL:석세서 || TALENT:LOCAL:데빌시프터 || TALENT:LOCAL:이능자 || TALENT:LOCAL:페르소나구사자 || TALENT:LOCAL:도구지식 || TALENT:LOCAL:아이템숙련 || TALENT:LOCAL:건슬링거 || TALENT:LOCAL:쿠즈노하 || TALENT:LOCAL:식노 || TALENT:LOCAL:달인 || TALENT:LOCAL:기계의처녀)
+		SETCOLOR 0x0099cc
+		PRINTFORMW 전투경험을 충분히 쌓은 %조사처리(NAME:LOCAL,"는")% 전투에 참가할 수 있게 되었다.
+		TALENT:LOCAL:230 = 0
+		RESETCOLOR
+	ENDIF
+NEXT
+
+IF FLAG:미조교시함락 > 0
+	FOR LOCAL,0,CHARANUM
+		신뢰함락 = 0
+		信충성도 = 0
+		LOCAL:3 = 0
+		SIF LOCAL == MASTER
+			CONTINUE
+		SIF CFLAG:LOCAL:被조교횟수 > 0 || CFLAG:LOCAL:NTRフラグ > 0
+			CONTINUE
+		SIF 함락(LOCAL) > 2
+			CONTINUE
+		SIF RESULTS == "음란" || RESULTS == "복종"
+			CONTINUE
+		SIF TALENT:LOCAL:연모 && TALENT:LOCAL:동료
+			CONTINUE
+		;필요な충성도を算出。
+		LOCAL:1 = 10000 + (ABS(ABL:LOCAL:속성LD - ABL:MASTER:속성LD) + ABS(ABL:LOCAL:속성LC - ABL:MASTER:속성LC)) * 5000
+		;신뢰系함락処理を行う			 
+		IF FLAG:신뢰系함락설정 > 0
+			IF TALENT:LOCAL:동료
+			ELSEIF TALENT:LOCAL:신뢰
+				;【신뢰】→【맹우】の場合필요な충성도４倍
+				信충성도 = LOCAL:1 * 4
+				신뢰함락 = 2
+			ELSE
+				;【신뢰】の場合は필요な충성도1.5倍
+				信충성도 = LOCAL:1 * 3/2
+				신뢰함락 = 1
+			ENDIF
+			SIF TALENT:MASTER:수수께끼의매력
+				TIMES 信충성도,0.8
+		ENDIF
+		IF IS_LESBIAN(LOCAL,MASTER) || IS_GAY(LOCAL,MASTER)
+			;【연모】の場合は수수께끼의매력が필요かつ필요な충성도２倍
+			LOCAL:1 *= 2
+			SIF TALENT:MASTER:수수께끼의매력 == 0
+				LOCAL:3 = 1
+		ELSEIF TALENT:MASTER:수수께끼의매력
+		;異性相손かつ主人が수수께끼의매력持ちの場合、0.8倍
+			TIMES LOCAL:1,0.8
+		ENDIF
+		IF (FLAG:미조교시함락 == 1 && (CFLAG:LOCAL:전투참가불가능 == -1 || TALENT:LOCAL:신뢰)) || FLAG:미조교시함락 == 2
+			IF (BASE:LOCAL:충성도 - MAXBASE:LOCAL:충성도) >= 信충성도
+				IF 신뢰함락 == 1
+					PRINTL
+					PRINTFORMW %CALLNAME:LOCAL%의 %조사처리(CALLNAME:MASTER, "를")% 향한 신뢰는 확실한 것이 된 모양이다				
+					PRINTFORMW %조사처리(NAME:LOCAL, "는")% 【신뢰】를 얻었다
+					PRINTL
+					TALENT:LOCAL:신뢰 = 1
+					CFLAG:LOCAL:未조교함락 = 1
+					;SIF CFLAG:LOCAL:전투참가불가능 == -1
+					;	CFLAG:LOCAL:전투참가불가능 = 0
+					FLAG:信頼人数 += 1
+					FLAG:今周回信頼人数 += 1
+					;主人に落とされていることを保存
+					CDFLAG:LOCAL:キャラ間함락素質:100 = 7;
+					CFLAG:LOCAL:함락キャラ = CFLAG:MASTER:キャラ固有の번호
+					SIF ABL:LOCAL:종족 != 0
+						CALL CHECK_LEVEL_UP, LOCAL
+					LOCAL:2 = 1
+					SETBIT FLAG:(50000+NO:LOCAL), 8
+				ELSEIF 신뢰함락 == 2
+					PRINTL
+					PRINTFORMW %CALLNAME:LOCAL%의 %조사처리(CALLNAME:MASTER, "를")% 향한 신뢰는 깊어지고、돈독한 유대가 된 모양이다		
+					PRINTFORMW %NAME:LOCAL%의 【신뢰】는 【동료】가 되었다
+					PRINTL
+					TALENT:LOCAL:신뢰 = 0
+					TALENT:LOCAL:동료 = 1
+					;主人に落とされていることを保存
+					CDFLAG:LOCAL:キャラ間함락素質:100 = 8;
+					CFLAG:LOCAL:함락キャラ = CFLAG:MASTER:キャラ固有の번호
+					LOCAL:2 = 1
+					SETBIT FLAG:(50000+NO:LOCAL), 9
+				ENDIF
+			ENDIF
+			IF (BASE:LOCAL:충성도 - MAXBASE:LOCAL:충성도) >= LOCAL:1 && LOCAL:3 == 0
+				IF !TALENT:LOCAL:연모 && !TALENT:LOCAL:친애
+					PRINTL 
+					PRINTFORMW %CALLNAME:LOCAL%의 이쪽을 보는 눈이 이상하다
+					PRINTFORMW %CALLNAME:LOCAL%의 %CALLNAME:MASTER%에게의 신뢰는、차곡차곡 쌓여 사랑하는 감정으로 변화한 것 같다
+					PRINTFORMW %조사처리(NAME:LOCAL,"는")% 【연모】를 얻었다
+					PRINTL 
+					MARK:LOCAL:굴복각인 = MAX(MARK:LOCAL:굴복각인,3)
+					ABL:LOCAL:순종 = MAX(ABL:LOCAL:순종,3)
+					TALENT:LOCAL:연모 = 1
+					CFLAG:LOCAL:未조교함락 = 1
+					SIF CFLAG:LOCAL:전투참가불가능 == -1
+						CFLAG:LOCAL:전투참가불가능 = 0
+					;함락人数の二重取りになってしまうのでダメ
+					IF !TALENT:LOCAL:신뢰
+						FLAG:연모人数 += 1
+						FLAG:今周回연모人数 += 1
+					ENDIF
+					;主人に落とされていることを保存
+					CDFLAG:LOCAL:キャラ間함락素質:100 = 1; 恋慕なので1が正しいはず
+					CFLAG:LOCAL:함락キャラ = CFLAG:MASTER:キャラ固有の번호
+					SIF ABL:LOCAL:종족 != 0
+						CALL CHECK_LEVEL_UP, LOCAL
+					LOCAL:2 = 1
+					;함락履歴を記録
+					SETBIT FLAG:(50000+NO:LOCAL), 0
+					SETBIT FLAG:(50000+NO:LOCAL), 1
+				ENDIF
+			ENDIF
+		ENDIF
+	NEXT
+	RETURN LOCAL:2
+ELSE
+	RETURN 0
+ENDIF
+

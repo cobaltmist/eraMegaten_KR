@@ -1,0 +1,992 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:STRIP_THEATER.ERB
+;	Facility	:ストリップ劇場での노역に関する関数群です。
+;
+;	Licence		:ライセンスフリー
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		20XX/XX/XX		----					新規作成
+;	002		2011/09/08		黒天					처녀(재생처녀)상실処理を関数を呼ぶように수정
+;													ＮＴＲ이벤트で一部の処理の대상がACTORではなくLOCALになっていたのを수정
+;	003		2013/11/24		ひみつ					リスト표시数설정
+;	004		2020/05/19		がめら					NTR好感度処理をCDFLAGに変更
+;	005		2021/04/27		JK好き					劇場で多胎OP時でも妊娠するように修正
+;
+;==========================================================
+;@MANAGEMENT_STRIP_THEATER
+; ストリップ劇場の一日の活動報告処理
+;<引数>
+;	ARG - 점포번호
+;<戻り値>
+;	なし
+;==========================================================
+@MANAGEMENT_STRIP_THEATER,ARG
+#LOCALSIZE 5
+#DIM GUEST, 1
+#DIM ACTOR, 1
+#DIM DIFFICULTY, 1
+#DIM ACT, 10
+#DIM REWARD,1
+#DIM EXCITE, 1
+#DIM SUCCESS, 1
+#DIM PLAY_TOTAL, 1
+#DIM LCOUNT
+;変数の초기化
+VARSET ACT, -1
+VARSET LOCAL, 0
+;LOCAL:12 = 0
+GUEST = 0
+;LOCAL:3 = 0
+;FOR LCOUNT, 0, CHARANUM
+;演者のリスト作成 及び　기본の관객数の설정
+FOR LOCAL, 0 , CHARANUM
+	IF CFLAG:LOCAL:노역점포 == ARG+1
+		ACT:(CFLAG:LOCAL:劇場出演順番-1) = LOCAL
+		;기본관객数
+		GUEST += CFLAG:LOCAL:劇場인기/20 + 1
+	ENDIF
+NEXT
+;演者がいない場合はここで종료
+IF MATCH(ACT, -1) == 10
+	PRINTFORML 
+	PRINTFORML 오늘은 휴연입니다
+	PRINTFORML 유지비 ￥{점포("규모",ARG) * 500}
+	MONEY -= 점포("규모",ARG) * 500
+	PRINTL 
+	RETURN 0
+ENDIF
+;NEXT
+;IF ACTOR_TOTAL > 0
+GUEST /= 10
+;客数の범위は10～규모*100
+GUEST = LIMIT(GUEST, 10, 점포("규모",ARG) * 100)
+;SIF GUEST <= 10
+;	GUEST = 10
+;SIF GUEST >= 점포("규모",ARG) * 100
+;	GUEST = 점포("규모",ARG) * 100
+;ENDIF
+;客興奮度
+EXCITE = 10
+;おひねり金額
+REWARD = 0
+FOR LOCAL, 0, 점포("규모",ARG)
+	;一応이상値は蹴る
+	SIF ACT:LOCAL < 0
+		CONTINUE
+	;現在の演者を설정
+	ACTOR = ACT:LOCAL
+	SKIPDISP GETBIT(FLAG:ストリップ劇場報告설정, ARG)
+	PRINTL
+	DRAWLINE
+	PRINTFORM 　상연목록{LOCAL+1}　%CALLNAME:ACTOR% 관객{GUEST}인
+	PRINTFORML
+	;----------------------------
+	;메시지の표시
+	;----------------------------
+	LOCAL:1 = TARGET
+	TARGET = ACTOR
+	TFLAG:13 = 43
+	CALL EVENT_MESSAGE_STRIP, ARG , GUEST
+	CALL KOJO_MESSAGE_EVENT
+	SKIPDISP GETBIT(FLAG:ストリップ劇場報告설정, ARG)
+	TARGET = LOCAL:1
+	;-------------------------
+	;난이도설정
+	;-------------------------
+	;기본치
+	;ストリップ
+	IF CFLAG:ACTOR:劇場상연목록 == 0
+		DIFFICULTY = 12
+	;ポールダンス
+	ELSEIF CFLAG:ACTOR:劇場상연목록 == 1
+		DIFFICULTY = 18
+	;オナニーショー
+	ELSE
+		DIFFICULTY = 24
+	ENDIF
+	;ABLによる난이도수정
+	DIFFICULTY -= ABL:ACTOR:욕망
+	DIFFICULTY -= ABL:ACTOR:노출증
+	DIFFICULTY -= ABL:ACTOR:마조끼
+	;TALENTによる난이도수정
+	SIF TALENT:ACTOR:연모
+		DIFFICULTY += 2
+	SIF TALENT:ACTOR:음란
+		DIFFICULTY -= 2
+	SIF TALENT:ACTOR:복종
+		DIFFICULTY -= 1
+	SIF TALENT:ACTOR:친애
+		DIFFICULTY += 4
+	SIF TALENT:ACTOR:창부
+		DIFFICULTY -= 4
+	SIF TALENT:ACTOR:예속
+		DIFFICULTY -= 2
+	SIF TALENT:ACTOR:붕괴
+		DIFFICULTY += 10
+	SIF TALENT:ACTOR:프라이드높음
+		DIFFICULTY += 1
+	SIF TALENT:ACTOR:프라이드낮음
+		DIFFICULTY -= 1
+	SIF TALENT:ACTOR:보수적
+		DIFFICULTY += 1
+	SIF TALENT:ACTOR:호기심
+		DIFFICULTY -= 1
+	SIF TALENT:ACTOR:일선을넘지않음
+		DIFFICULTY += 2
+	SIF TALENT:ACTOR:눈에띄고싶어함
+		DIFFICULTY -= 1
+	SIF TALENT:ACTOR:정조관념
+		DIFFICULTY += 2
+	SIF TALENT:ACTOR:정조관결여
+		DIFFICULTY -= 2
+	SIF TALENT:ACTOR:부끄럼쟁이
+		DIFFICULTY += 1
+	SIF TALENT:ACTOR:부끄럼없음
+		DIFFICULTY -= 1
+	SIF DIFFICULTY < 0
+		DIFFICULTY = 0
+	;-------------------------
+	;성공판정
+	;최대10回판정で、실패あるいは大실패が出るまで連続して試行(횟수はPLAY_TOTALに취득)
+	;試行中は客の興奮度(EXCITE)/人数(GUEST)/報酬(REWARD)が変動する
+	;また、상연목록の성공度をSUCCESSに취득する
+	;-------------------------
+	;上演횟수
+	PLAY_TOTAL = 0
+	;성공度
+	SUCCESS = 0
+	DRAWLINE
+	DO
+		PLAY_TOTAL++
+		;성공판정Ａ
+		LOCAL:1 = RAND:6 + 1
+		;성공판정Ｂ
+		LOCAL:2 = RAND:6 + 1
+		PRINTFORML 성공판정{PLAY_TOTAL}회차　관객{GUEST}인
+		PRINTFORM 난이도:{DIFFICULTY} 판정:{LOCAL:1} + {LOCAL:2}
+		IF LOCAL:1 + LOCAL:2 == 12  || LOCAL:1 + LOCAL:2 - DIFFICULTY >= 5
+			PRINTL 　<<대성공>>
+			GUEST += RAND:5 + 16
+			SIF GUEST >= 점포("규모",ARG) * 100
+				GUEST = 점포("규모",ARG) * 100
+			EXCITE += RAND:30
+			SIF EXCITE >=  100
+				EXCITE =  100
+			SUCCESS += RAND:10+1
+			IF CFLAG:ACTOR:引継ぎ횟수 && FLAG:5 < 9 && DAY < 51
+				REWARD += MAX(0,RAND:(GUEST*EXCITE*LIMIT(CFLAG:ACTOR:劇場인기/20+100, 100, 500)/(10000 * 점포("규모",ARG))+1)/100)
+			ELSE
+				REWARD += RAND:(GUEST*EXCITE*LIMIT(CFLAG:ACTOR:劇場인기/20+100, 100, 500)/(10000 * 점포("규모",ARG))+1)
+			ENDIF
+		ELSEIF LOCAL:1 + LOCAL:2 == 2  || LOCAL:1 + LOCAL:2 - DIFFICULTY <= -5
+			PRINTL 　<<대실패>>
+			GUEST -= RAND:5 + 6
+			SIF GUEST <= 0
+				GUEST = 1
+			EXCITE -= RAND:20
+			SIF EXCITE <= 0
+				EXCITE = 1
+			SUCCESS -= RAND:5+1
+			BREAK
+		ELSEIF LOCAL:1 + LOCAL:2 - DIFFICULTY >= 0
+			PRINTL 　<<성공>>
+			GUEST += RAND:10 + 1
+			SIF GUEST >= 점포("규모",ARG) * 100
+				GUEST = 점포("규모",ARG) * 100
+			EXCITE += RAND:20
+			SIF EXCITE >=  100
+				EXCITE =  100
+			SUCCESS += RAND:5+1
+			IF CFLAG:ACTOR:引継ぎ횟수 && FLAG:5 < 9 && DAY < 51
+				REWARD += MAX(0,RAND:(GUEST*EXCITE*LIMIT(CFLAG:ACTOR:劇場인기/40+50, 50, 250)/(10000 * 점포("규모",ARG))+1)/100)
+			ELSE
+				REWARD += RAND:(GUEST*EXCITE*LIMIT(CFLAG:ACTOR:劇場인기/40+50, 50, 250)/(10000 * 점포("규모",ARG))+1)
+			ENDIF
+		ELSE
+			PRINTL 　<<실패>>
+			GUEST -= RAND:5 + 1
+			SIF GUEST <= 0
+				GUEST = 1
+			EXCITE -= RAND:10
+			SIF EXCITE <= 0
+				EXCITE = 1
+			SUCCESS -= RAND:3+1
+			BREAK
+		ENDIF
+		DIFFICULTY ++
+	LOOP PLAY_TOTAL < 10
+
+	CALL 帳簿閲覧_노역, ACTOR, GUEST, 0, 5
+
+;	IF FLAG:ストリップ劇場報告설정
+;		NOSKIP
+;			PRINTFORML 상연목록[{LOCAL+1}] %CALLNAME:ACTOR,16, LEFT% 관객:{GUEST,3}인 체력({BASE:ACTOR:체력,5} - {LOCAL:3 * (100 + PLAY_TOTAL), 4} = {BASE:ACTOR:체력-LOCAL:3 * (100 + PLAY_TOTAL), 5})
+;		ENDNOSKIP
+;	ENDIF
+	;----------------------------
+	;체력の소비と스트레스の加算
+	;LOCAL:3は부정의の加算にも用いる
+	;上演횟수(PLAY_TOTAL)に比例する
+	;----------------------------
+	DRAWLINE
+	;ストリップ
+	IF CFLAG:ACTOR:劇場상연목록 == 0
+		LOCAL:3 = 3
+	;ポールダンス
+	ELSEIF CFLAG:ACTOR:劇場상연목록 == 1
+		LOCAL:3 = 5
+	;オナニーショー
+	ELSE
+		LOCAL:3 = 7
+	ENDIF
+	PRINTFORML 체력　　　　　{BASE:ACTOR:체력,10}   - {LOCAL:3 * (100 + PLAY_TOTAL), 6}    = {BASE:ACTOR:체력-LOCAL:3 * (100 + PLAY_TOTAL), 10}
+	BASE:ACTOR:체력 -= LOCAL:3 * (100 + PLAY_TOTAL)
+	IF ACTOR != MASTER
+		PRINTFORML 스트레스　　　{CFLAG:ACTOR:스트레스치,10}   + {LOCAL:3, 6}    = {CFLAG:ACTOR:스트레스치+LOCAL:3, 10}
+		CFLAG:ACTOR:스트레스치 += LOCAL:3
+	ENDIF
+
+	IF FLAG:ストリップ劇場報告설정
+		NOSKIP
+			PRINTFORML 상연목록[{LOCAL+1}] %CALLNAME:ACTOR,16, LEFT% 관객:{GUEST,3}인 체력({BASE:ACTOR:체력,5} - {LOCAL:3 * (100 + PLAY_TOTAL), 4} = {BASE:ACTOR:체력-LOCAL:3 * (100 + PLAY_TOTAL), 5})
+		ENDNOSKIP
+	ENDIF
+
+	;------------------------------
+	;경험と球추가
+	;PLAY_TOTAL 上演횟수
+	;EXCITE 客の興奮度
+	;GUEST 客の人数
+	;LOCAL:1 욕정의 구슬획득数
+	;LOCAL:2 치정의 구슬획득数
+	;------------------------------
+	PRINTFORML 야외노출경험　{EXP:ACTOR:야외노출경험,10}   + {PLAY_TOTAL,6}    = {EXP:ACTOR:야외노출경험+PLAY_TOTAL,10}
+	EXP:ACTOR:야외노출경험 += PLAY_TOTAL
+	IF CFLAG:ACTOR:劇場상연목록 == 2
+		PRINTFORML 자위경험　{EXP:ACTOR:자위경험,10}   + {PLAY_TOTAL,6}    = {EXP:ACTOR:자위경험+PLAY_TOTAL,10}
+		EXP:ACTOR:자위경험 += PLAY_TOTAL
+	ENDIF
+	SELECTCASE CFLAG:ACTOR:劇場상연목록
+		CASE 0
+			LOCAL:1 = GUEST*(PLAY_TOTAL)*ABL:ACTOR:욕망*(100+EXCITE)/100
+			LOCAL:2 = GUEST*(PLAY_TOTAL)*ABL:ACTOR:노출증*(100+EXCITE)/100
+		CASE 1
+			LOCAL:1 = GUEST*(PLAY_TOTAL)*ABL:ACTOR:욕망*2*(100+EXCITE)/100
+			LOCAL:2 = GUEST*(PLAY_TOTAL)*ABL:ACTOR:노출증*2*(100+EXCITE)/100
+		CASE 2
+			LOCAL:1 = GUEST*(PLAY_TOTAL)*ABL:ACTOR:욕망*3/2*(100+EXCITE)/100
+			LOCAL:2 = GUEST*(PLAY_TOTAL)*ABL:ACTOR:노출증*3/2*(100+EXCITE)/100
+	ENDSELECT
+	PRINTFORML 욕정의 구슬　　　{JUEL:ACTOR:욕정,10}   + {LOCAL:1,6}    = {JUEL:ACTOR:욕정+LOCAL:1,10}
+	PRINTFORML 치정의 구슬　　　{JUEL:ACTOR:치정,10}   + {LOCAL:2,6}    = {JUEL:ACTOR:치정+LOCAL:2,10}
+	JUEL:ACTOR:욕정 += LOCAL:1
+	JUEL:ACTOR:치정 += LOCAL:2
+	IF ACTOR != MASTER && GUEST*LOCAL:3/MAX(ABL:ACTOR:노출증, 1)
+		PRINTFORML 부정의 구슬　　　{JUEL:ACTOR:100,10}   + {GUEST*LOCAL:3/MAX(ABL:ACTOR:노출증, 1),6}    = {JUEL:ACTOR:100+GUEST*LOCAL:3/MAX(ABL:ACTOR:노출증, 1),10}
+		JUEL:ACTOR:100 += GUEST*LOCAL:3/MAX(ABL:ACTOR:노출증, 1)
+	ENDIF
+	PRINTFORMW 극장인기　　　{CFLAG:ACTOR:劇場인기, 10}   \@SUCCESS >=0 ? + # - \@ {ABS(SUCCESS), 6}    = {CFLAG:ACTOR:劇場인기+SUCCESS, 10}
+	CFLAG:ACTOR:劇場인기 += SUCCESS
+	;경험と球추가ここまで
+
+;ＮＴＲ進行
+	IF GETBIT(FLAG:ＮＴＲ기능 , 5)
+		;専有奴隷の개목걸이
+		IF (CFLAG:ACTOR:그외 == 1116 || CFLAG:ACTOR:그외2 == 1116 || CFLAG:ACTOR:그외3 == 1116 || CFLAG:ACTOR:그외4 == 1116 || CFLAG:ACTOR:그외5 == 1116 || CFLAG:ACTOR:그외6 == 1116)
+			GOTO SKIP_NTR
+		ENDIF
+		v = 0
+		SIF TALENT:ACTOR:ＮＴＲ == 2
+			x = 30
+		SIF CFLAG:ACTOR:現ＮＴＲ進行度 > 10
+			x = 30
+		SIF TALENT:ACTOR:10 || TALENT:ACTOR:14 || TALENT:ACTOR:111 || TALENT:ACTOR:112
+			z += 10
+		SIF TALENT:ACTOR:145
+			z += 10
+		y = CFLAG:ACTOR:放置日数
+		SIF y > 20
+			y = 20
+		SIF (CFLAG:ACTOR:그외 == 1117 || CFLAG:ACTOR:그외2 == 1117 || CFLAG:ACTOR:그외3 == 1117)
+			PRINTFORMW %CALLNAME:ACTOR%은(는) 뭐라고 할 수 없는 달콤한 향기를 풍기고 있다……
+
+		IF RAND:2 == 0
+			CDFLAG:ACTOR:キャラ間好感度:(89) +=(ABL:ACTOR:욕망 + ABL:ACTOR:노출증 + ABL:ACTOR:섹스중독 + ABL:ACTOR:자위중독) * (2-CFLAG:ACTOR:構ったフラグ) + CFLAG:ACTOR:放置日数*10
+		ELSE
+			CDFLAG:ACTOR:キャラ間好感度:(88) -=(ABL:ACTOR:욕망 + ABL:ACTOR:노출증 + ABL:ACTOR:섹스중독 + ABL:ACTOR:자위중독) * (2-CFLAG:ACTOR:構ったフラグ) + CFLAG:ACTOR:放置日数*10
+		ENDIF
+		CFLAG:ACTOR:음란度 += GUEST / 2
+		IF RAND:100 < 10 + y + x || RAND:100 < x || (CFLAG:ACTOR:그외 == 1117 || CFLAG:ACTOR:그외2 == 1117 || CFLAG:ACTOR:그외3 == 1117) || TALENT:ACTOR:73 == 1
+			IF TALENT:ACTOR:ＮＴＲ == 2
+				PRINTFORML %CALLNAME:ACTOR%은(는) 양아치들에게 권유를 받았다……
+			ELSE
+				PRINTFORML %CALLNAME:ACTOR%은(는) 극장의 팬에게 권유를 받았다……
+			ENDIF
+			PRINTFORML ・
+			PRINTFORML ・・
+			PRINTFORMW ・・・
+
+			IF RAND:2 == 0
+				CDFLAG:ACTOR:キャラ間好感度:(89) +=(ABL:ACTOR:욕망 + ABL:ACTOR:노출증 + ABL:ACTOR:섹스중독 + ABL:ACTOR:자위중독) * (2-CFLAG:ACTOR:構ったフラグ) + CFLAG:ACTOR:放置日数*10
+			ELSE
+				CDFLAG:ACTOR:キャラ間好感度:(88) -=(ABL:ACTOR:욕망 + ABL:ACTOR:노출증 + ABL:ACTOR:섹스중독 + ABL:ACTOR:자위중독) * (2-CFLAG:ACTOR:構ったフラグ) + CFLAG:ACTOR:放置日数*10
+			ENDIF
+			CFLAG:ACTOR:음란度 += GUEST / 2
+
+			IF RAND:100 < 10 + y + x - 10 || TALENT:ACTOR:ＮＴＲ == 2 || (CFLAG:ACTOR:그외 == 1117 || CFLAG:ACTOR:그외2 == 1117 || CFLAG:ACTOR:그외3 == 1117) || TALENT:ACTOR:73 == 1
+
+				CFLAG:ACTOR:음란度 +=  CFLAG:ACTOR:現ＮＴＲ進行度 * 10 + EXCITE * 5
+
+				IF CFLAG:ACTOR:淫ＮＴＲ進行度 == 0
+					CFLAG:ACTOR:淫ＮＴＲ進行度 ++
+					PRINTFORMW 흥분한 극장의 팬이 %CALLNAME:ACTOR%을(를)  골목 안으로 데려갔다……
+
+				ELSEIF RAND:120 < 10 + z + x + y - 10 || TALENT:ACTOR:ＮＴＲ == 2 || (CFLAG:ACTOR:그외 == 1117 || CFLAG:ACTOR:그외2 == 1117 || CFLAG:ACTOR:그외3 == 1117) || TALENT:ACTOR:73 == 1
+					CFLAG:ACTOR:음란度 += ( CFLAG:ACTOR:現ＮＴＲ進行度 * 10 + EXCITE * 5)*2
+					w = 1
+					IF TALENT:ACTOR:ＮＴＲ == 2
+						PRINTFORMW 양아치들은 %CALLNAME:ACTOR%을(를) 맨션의 방 안으로 데려갔다……
+					ELSE
+						PRINTFORMW %CALLNAME:ACTOR%(이)가 극장의 팬에 의해 안내된 곳에는 다수의 남자들이 기다리고 있었다……
+					ENDIF
+
+					IF CFLAG:ACTOR:淫ＮＴＲ進行度 < 2 && ! TALENT:ACTOR:ＮＴＲ == 2
+						CFLAG:ACTOR:淫ＮＴＲ進行度 = 2
+					ENDIF
+					IF CFLAG:ACTOR:108 == 1
+						IF RAND:100 < CFLAG:ACTOR:現ＮＴＲ進行度 * 5
+							CFLAG:ACTOR:108 -= 1
+							PRINTFORML %CALLNAME:ACTOR%의 자궁내피임결계가 남자들 중 한 명에 의해 해제되어 버린 모양이다……
+						ENDIF
+					ENDIF
+					IF RAND:100 < CFLAG:ACTOR:現ＮＴＲ進行度 * 5
+						IF CFLAG:ACTOR:109 == 0
+							CFLAG:ACTOR:109 += 1
+							PRINTFORML 남자들 중 한명이 %CALLNAME:ACTOR%에게 배란유발제를 먹였다……
+						ENDIF
+					ENDIF
+					IF w == 1
+						v = x + y + z
+						SIF v > 40
+							v = 32
+						w = 0
+					ENDIF
+					IF TALENT:ACTOR:ＮＴＲ == 2
+						PRINTFORMW %CALLNAME:ACTOR%은(는) 양아치들에게 노리개 취급을 당하며 범해졌다……
+						PRINTFORMW 양아치들은 %CALLNAME:ACTOR%(이)가 질내사정 당하는 모습을 촬영해、불법 비디오로 유출한 것 같다
+					ELSE
+						PRINTFORMW %CALLNAME:ACTOR%은(는) 주위를 둘러싼 남자들에게 윤간 당했다……
+						PRINTFORMW 윤간 당하고 있는 %CALLNAME:ACTOR%의 생생한 모습이 카메라에 촬영되고 있다……
+					ENDIF
+
+					EXP:ACTOR:63 +=((EXCITE/10 + v) + 1) + ((EXCITE/15 + v/2) + 1)
+					PRINTFORML %EXPNAME:63%＋{((EXCITE/10 + v) + 1) + ((EXCITE/15 + v/2) + 1)}
+
+				ELSE
+					PRINTFORMW %CALLNAME:ACTOR%은(는) 흥분한 극장의 팬에게 골목 안에서 강간 당했다……
+				ENDIF
+
+				EXP:ACTOR:0 += (EXCITE/10 + v) + 1
+				EXP:ACTOR:1 += (EXCITE/15 + v/2) + 1
+				EXP:ACTOR:2 += (((EXCITE/10 + v) + 1) + ((EXCITE/15 + v/2)/3) + 1)
+				EXP:ACTOR:키스경험 += (EXCITE/10 + v) + 1
+				;후타나리か남자
+				SIF TALENT:ACTOR:139 || TALENT:ACTOR:140
+					EXP:ACTOR:3 += (EXCITE/15 + v/2) + 1
+				;오토코노코はケツマンコで임신
+				SIF TALENT:ACTOR:오토코노코 && CFLAG:ACTOR:108 == 0
+					CFLAG:ACTOR:105 += (EXCITE/10 + v) + 1
+				EXP:ACTOR:4 += ((EXCITE/10 + v) + 1) + ((EXCITE/15 + v/2) + 1)
+				;질사경험
+				IF CFLAG:ACTOR:108 == 0
+					EXP:ACTOR:5 += (EXCITE/10 + v) + 1
+					CFLAG:ACTOR:105 += (EXCITE/10 + v) + 1
+				ENDIF
+				EXP:ACTOR:20 += ((EXCITE/10 + v) + 1) + ((EXCITE/15 + v/2) + (EXCITE/12 + v) + 1+ 1)
+				EXP:ACTOR:22 += (EXCITE/10 + v)/2+1
+
+				PRINTFORML %EXPNAME:0%＋{(EXCITE/10 + v) + 1}
+
+				PRINTFORML %EXPNAME:1%＋{(EXCITE/15 + v/2) + 1}
+				PRINTFORML %EXPNAME:2%＋{ (((EXCITE/10 + v) + 1) + ((EXCITE/15 + v/2)/3) + 1)}
+				PRINTFORML 키스경험＋{(EXCITE/10 + v) + 1}
+				SIF (TALENT:ACTOR:후타나리 || TALENT:ACTOR:남자)
+					PRINTFORML %EXPNAME:3%＋{(EXCITE/15 + v/2) + 1}
+
+				PRINTFORML %EXPNAME:4%＋{ ((EXCITE/10 + v) + 1) + ((EXCITE/15 + v/2) + 1)}
+
+				IF CFLAG:ACTOR:108 == 0
+					PRINTFORML %EXPNAME:5%＋{(EXCITE/10 + v) + 1}
+				ELSE
+					PRINTFORML <피임결계>
+				ENDIF
+
+				PRINTFORML %EXPNAME:20%＋{((EXCITE/10 + v) + 1) + ((EXCITE/15 + v/2) + (EXCITE/10 + v)/2 + 1+ 1)}
+				PRINTFORML %EXPNAME:22%＋{(EXCITE/10 + v)/2+1}
+				PRINTFORML 윤간경험 +{1}
+				EXP:ACTOR:윤간경험 += 1
+			;처녀/재생처녀상실
+				CALL 처녀상실, ACTOR
+				CALL 처녀상실이벤트, ACTOR
+				PRINTW
+
+			ELSE
+				PRINTFORMW %CALLNAME:ACTOR%은(는) 극장의 팬과 한동안 회화를 하고 있던 모양이다……
+
+			ENDIF
+
+		ENDIF
+	ENDIF
+	$SKIP_NTR
+
+NEXT
+SKIPDISP 0
+;취득おひねりと入場料입수処理
+DRAWLINE
+PRINTFORML 수입합계: 입장료 {GUEST}마카 팁￥{REWARD}
+IF REWARD >= 점포("규모",ARG) * 500
+	PRINTL 입수한 팁으로 유지비를 냈다
+	REWARD -= 점포("규모",ARG) * 500
+	PRINTFORML 입수금액 {GUEST}마카 ￥{REWARD}
+	MONEY += REWARD
+	MONEY:1 += GUEST
+ELSE
+	PRINTL 입수한 팁으로 유지비를 냈다
+	REWARD = 점포("규모",ARG) * 500 - REWARD
+	PRINTFORML 입수금액 {GUEST}마카 유지비￥{REWARD}
+	MONEY -= REWARD
+	MONEY:1 += GUEST
+ENDIF
+PRINTFORML 
+;==========================================================
+;@ARRANGE_MANAGEMENT_STRIP_THEATER
+; 劇場の演者および상연목록の설정処理
+;<引数>
+;	ARG - 점포번호
+;<戻り値>
+;	なし
+;==========================================================
+@ARRANGE_MANAGEMENT_STRIP_THEATER,ARG
+#DIM ACT, 10
+#DIM LINE, 1
+#DIM LCOUNT
+CLEARLINE 9
+LINE = LINECOUNT
+$START
+CLEARLINE LINECOUNT - LINE
+VARSET ACT, -1
+;演者のリスト作成
+FOR LOCAL, 0 , CHARANUM
+	SIF CFLAG:LOCAL:노역점포 == ARG+1
+		ACT:(CFLAG:LOCAL:劇場出演順番-1) = LOCAL
+NEXT
+
+CUSTOMDRAWLINE = 
+FOR LOCAL, 0, 점포("규모",ARG)
+	PRINTFORM [{LOCAL}] 상연목록{LOCAL+1}　\@ACT:LOCAL >= 0 ? %CALLNAME:(ACT:LOCAL),16,LEFT% # 휴연\@
+	IF ACT:LOCAL < 0
+		PRINTL 
+		CONTINUE
+	ENDIF
+	SELECTCASE CFLAG:(ACT:LOCAL):劇場상연목록
+		CASE 0
+			PRINTL 　스트립쇼
+		CASE 1
+			PRINTL 　폴 댄스
+		CASE 2
+			PRINTL 　자위쇼
+	ENDSELECT
+NEXT
+DRAWLINE
+PRINTL [1000]돌아간다
+$INPUT_LOOP_1
+INPUT
+IF RESULT == 1000
+	CLEARLINE LINECOUNT - LINE
+	CLEARLINE 4
+	RETURN 0
+ELSEIF RESULT < 0 || RESULT >= 점포("규모",ARG)
+	GOTO INPUT_LOOP_1
+ELSEIF ACT:RESULT >= 0
+	LOCAL = ACT:RESULT
+	PRINTFORML %CALLNAME:LOCAL%의 상연목록을 변경합니까？
+	CALL INPUT_SELECT(CFLAG:LOCAL:劇場상연목록 != 0, "스트립쇼로 변경", (CFLAG:LOCAL:劇場상연목록 != 1) * 2, "폴 댄스로 변경" ,(CFLAG:LOCAL:劇場상연목록 != 2) * 3, "자위쇼로 변경",4, "휴연시킨다" , 9, "돌아온다")
+	SELECTCASE RESULT
+		CASE 1, 2, 3
+			CFLAG:LOCAL:劇場상연목록=  RESULT - 1
+		CASE 4
+			CFLAG:LOCAL:노역フラグ = 0
+			CFLAG:LOCAL:劇場出演順番 = 0
+			CFLAG:LOCAL:노역점포 = 0
+			CFLAG:LOCAL:劇場상연목록= 0
+	ENDSELECT
+	GOTO START
+ENDIF
+LOCAL:1 = RESULT
+;FOR LCOUNT, 0, CHARANUM
+;	IF CFLAG:LCOUNT:劇場出演順番 == (LOCAL:1)+1 && CFLAG:LCOUNT:노역점포 == ARG+1
+;		CFLAG:LCOUNT:노역フラグ = 0
+;		CFLAG:LCOUNT:劇場出演順番 = 0
+;		CFLAG:LCOUNT:노역점포 = 0
+;		DE:(50+RESULT):ARG = -1
+;		DE:(60+RESULT):ARG = -1
+;	ENDIF
+;NEXT
+CUSTOMDRAWLINE = 
+
+P = 0
+;표시させるキャラを抽出（Q:*に표시するキャラの등록번호、LOCAL:2に人数）
+VARSET Q, -1
+A = 0
+FOR LCOUNT, 0, CHARANUM
+	SIF WORKABLE(ARG,LCOUNT) == 0
+		CONTINUE
+	;SIF CFLAG:LCOUNT:노역フラグ != 0 && CFLAG:LCOUNT:노역フラグ != 10+ARG
+	SIF CFLAG:LCOUNT:노역フラグ != 0
+		CONTINUE
+	SIF CFLAG:LCOUNT:この場に居ないフラグ == 1
+		CONTINUE
+	Q:A = LCOUNT
+	A += 1
+NEXT
+LOCAL:2 = A
+
+$PRINT_LIST
+DRAWLINE
+PRINTFORML 이 점포에서 노역시키고 싶은 캐릭터를 선택해주세요
+DRAWLINE
+CALL MANAGEMENT_CHARALIST,ARG,0
+DRAWLINE
+PRINTFORMLC \@(P <= 0) ? %" " * 16% # [1007]이전 페이지\@
+PRINTLC [1000]돌아간다
+PRINTFORMLC \@(P >= (LOCAL:2 - 1) / リスト표시数()) ? %" " * 16% # [1009]다음 페이지\@
+
+$INPUT_LOOP_2
+INPUT
+IF RESULT == 1000
+	GOTO START
+ELSEIF RESULT == 1007
+	IF P > 0
+		P -= 1
+		GOTO PRINT_LIST
+	ELSE
+		GOTO INPUT_LOOP_2
+	ENDIF
+ELSEIF RESULT == 1009
+	LOCAL:3 = (LOCAL:2 - 1) / リスト표시数()
+	IF P < LOCAL:3
+		P += 1
+		GOTO PRINT_LIST
+	ELSE
+		GOTO INPUT_LOOP_2
+	ENDIF
+ELSEIF RESULT < 0 || RESULT >= CHARANUM || MATCH(Q,RESULT) == 0
+	GOTO INPUT_LOOP_2
+ENDIF
+LOCAL:4 = RESULT
+
+PRINTFORML 이 캐릭터가 실시할 상연목록을 선택해주세요
+PRINTLC [0]스트립쇼
+PRINTLC [1]폴 댄스
+PRINTLC [2]자위쇼
+$INPUT_LOOP_3
+INPUT
+IF RESULT < 0 || RESULT >= 3
+	GOTO INPUT_LOOP_3
+ENDIF
+CFLAG:(LOCAL:4):노역フラグ = 10+ARG
+CFLAG:(LOCAL:4):劇場出演順番 = LOCAL:1+1
+CFLAG:(LOCAL:4):노역점포 = ARG+1
+CFLAG:(LOCAL:4):劇場상연목록= RESULT
+GOTO START
+;DE:(50+(LOCAL:1)):ARG = CFLAG:(LOCAL:4):キャラ固有の번호
+;DE:(60+(LOCAL:1)):ARG = RESULT
+;==========================================================
+;@EXTEND_MANAGEMENT_STRIP_THEATER
+; 劇場の규모확장処理
+;<引数>
+;	ARG - 점포번호
+;<戻り値>
+;	なし
+;==========================================================
+@EXTEND_MANAGEMENT_STRIP_THEATER,ARG
+PRINTFORML 현재、이 점포의 ＬＶ은 {점포("규모",ARG)}입니다。
+
+SELECTCASE 점포("규모",ARG)
+	CASE IS < 5
+		LOCAL = 2000
+	CASE IS < 10
+		LOCAL = 3000
+ENDSELECT
+IF MONEY < LOCAL
+	PRINTFORML 확장하는 데 ￥{LOCAL} 필요합니다。자금이 충분하지 않습니다。
+	RETURN 0
+ELSEIF 점포("규모",ARG) >= 10
+	PRINTFORML 이 점포는 더 이상 확장할 수 없습니다。
+	RETURN 0
+ELSE
+	PRINTFORML ￥{LOCAL}으로 확장할 수 있습니다。확장합니까？
+ENDIF
+
+CALL INPUT_YN,"YES","NO"
+SIF RESULT == 1
+	RETURN 0
+CALL 점포演算("규모",ARG,1,"+")
+MONEY -= LOCAL
+;==========================================================
+;@EXTEND_MANAGEMENT_STRIP_THEATER
+; ストリップ劇場노역時の구상
+; 메시지としてはCALL EVENT_MESSAGEから呼ばれる
+; が、ARGに引数を入れた場合、관객人数と劇場번호だけ渡して帰る
+;<引数>
+;	ARG		- 점포번호
+;	ARG:1	- 관객人数
+;<戻り値>
+;	なし
+;==========================================================
+@EVENT_MESSAGE_STRIP, ARG = -1, ARG:1
+#DIM GUEST, 1
+#DIM THEATER, 1
+IF ARG >= 0
+	THEATER = ARG
+	GUEST = ARG:1
+	RETURN 0
+ENDIF
+SELECTCASE CFLAG:TARGET:劇場상연목록
+	CASE 0
+		;ストリップ
+		PRINTFORM %타겟은()% 
+		;연모or친애
+		IF TALENT:TARGET:연모 || TALENT:TARGET:친애
+			;친애かつ아내or남편なら、1/4の확률로最愛の人とか言い出す
+			;主人の性別で更に分岐させてもいいんですが、女キャラに「最愛の아내」とか言われると違和感がw
+			IF (RAND:4 == 0) && TALENT:TARGET:친애 && (TALENT:TARGET:아내 || TALENT:TARGET:남편)
+				PRINTFORM 가장 사랑하는 사람 
+			ELSE
+				PRINTFORM %CALLNAME:MASTER% 
+			ENDIF
+			PRINTFORM 이외의 
+		;복종or예속
+		ELSEIF TALENT:TARGET:복종 || TALENT:TARGET:예속
+			PRINTFORM 주인도 아닌 
+		ELSE
+			PRINTFORM 생판 남인 
+		ENDIF
+		PRINTFORM 상대에게 자신의 나체를 보이는 것에 
+		;연모で저항を感じ始め、친애だと저항が強まる
+		IF TALENT:TARGET:연모 || TALENT:TARGET:친애
+			SIF TALENT:TARGET:친애
+				PRINTFORM 강한 
+			PRINTFORM 저항과 
+		ENDIF
+		;노출증のLvで변화。[마조][부끄럼쟁이]があれば、そっち優先。
+		IF TALENT:TARGET:마조
+			PRINTFORM 피학적인 쾌락
+		ELSEIF TALENT:TARGET:부끄럼쟁이
+			PRINTFORM 강한 수치심
+		ELSEIF ABL:TARGET:노출증 >= 7
+			PRINTFORM 강렬한 쾌감
+		ELSEIF ABL:TARGET:노출증 >= 5
+			PRINTFORM 쾌감
+		ELSEIF ABL:TARGET:노출증 >= 3
+			PRINTFORM 수치심
+		ELSE
+			PRINTFORM 혐오감
+		ENDIF
+		PRINTFORML 을 느끼면서、
+		;노출증Lv7以上かつ부끄럼쟁이持ちでないor음란or창부
+		IF ((ABL:TARGET:노출증 >= 7) && (TALENT:TARGET:부끄럼쟁이 == 0)) || TALENT:TARGET:음란 || TALENT:TARGET:창부
+			PRINTFORM 음란하게 몸을 꿈틀대면서 
+		ELSE
+			;노출증Lv2以下で아야추가
+			SIF ABL:TARGET:노출증 < 3
+				PRINTFORM 주저하는 듯한 
+			PRINTFORM 어색한 행동으로 
+		ENDIF
+		;거유or폭유or魔乳
+		IF  TALENT:TARGET:거유 || TALENT:TARGET:폭유 || TALENT:魔乳
+			PRINTFORM 육감적인 몸을 가리는 
+		;유아체형
+		ELSEIF TALENT:TARGET:유아체형
+			PRINTFORM 어린 티가 나는 몸을 가리는 
+		ELSE
+			PRINTFORM 몸에 걸친 
+		ENDIF
+		PRINTFORMW 옷을 벗기 시작했다…
+		LOCAL:11 = 3
+	CASE 1
+;ポールダンス
+		PRINTFORM %타겟은()% 
+		;최대관객数の９割以上
+		IF GUEST >= 점포("규모", THEATER) * 90
+			PRINTFORM 만원상태인 
+		;최대관객数の７割以上
+		ELSEIF GUEST >= 점포("규모", THEATER) * 70
+			PRINTFORM 손님으로 넘치는 
+		;최대客数の３割미만
+		;ELSEIF GUEST < 점포("규모", THEATER) * 30 
+		;	PRINTFORM 빈자리가 눈에 띄는 
+		ENDIF
+		;노출증Lv3이상
+		IF ABL:TARGET:노출증 >= 3
+			PRINTFORM 관객석을 보며 
+			;관객数が少ないと対応変化
+			IF GUEST < 점포("규모", THEATER) * 30
+				IF TALENT:TARGET:음란 || TALENT:TARGET:창부
+					PRINTFORM 유감스러운 듯이 
+				ELSE
+					PRINTFORM 안심한 듯이 
+				ENDIF
+			;음란or창부
+			ELSEIF TALENT:TARGET:음란 || TALENT:TARGET:창부
+				PRINTFORM 음란하게 
+			;노출증Lv5以上かつ부끄럼쟁이持ちでない
+			ELSEIF (ABL:TARGET:노출증 >= 5) && (TALENT:TARGET:부끄럼쟁이 == 0)
+				PRINTFORM 생긋 
+			ELSE
+				PRINTFORM 어색하게 
+			ENDIF
+			PRINTFORM 미소 지으며、
+		ELSE
+			PRINTFORM 관객석을 보려고도 하지도 않으며、
+		ENDIF
+		;음란or창부
+		IF TALENT:TARGET:음란 || TALENT:TARGET:창부
+			PRINTFORML 쾌락에 물든 얼굴로 
+		;노출증Lv5以上かつ부끄럼쟁이持ちでない
+		ELSEIF (ABL:TARGET:노출증 >= 5) && (TALENT:TARGET:부끄럼쟁이 == 0)
+			PRINTFORML 평상시와 변함없는 행동으로 
+		ELSE
+			PRINTFORML 수치심으로 물든 얼굴인 채로 
+		ENDIF
+		;남자と오토코노코以外で가슴関係の表記추가
+		IF (TALENT:TARGET:남자 == 0) && (TALENT:TARGET:오토코노코 == 0)
+			IF TALENT:TARGET:절벽
+				PRINTFORM 평평한 가슴과 
+			ELSE
+				SIF TALENT:TARGET:거유 || TALENT:TARGET:폭유 || TALENT:魔乳
+					PRINTFORM 커다란 
+				SIF TALENT:TARGET:빈유
+					PRINTFORM 작은 
+				PRINTFORM 유방과 
+			ENDIF
+		ENDIF
+		;棒の有無で表記が변화
+		IF TALENT:TARGET:남자 || TALENT:TARGET:오토코노코 || TALENT:TARGET:후타나리
+			IF TALENT:TARGET:유아체형 || TALENT:TARGET:소인체형
+				PRINTFORM 작게 흔들리는 
+			ELSEIF TALENT:TARGET:큰체형
+				PRINTFORM 우람한 
+			ELSEIF TALENT:TARGET:거체
+			;ネタでしかないのでコメントアウト。마라いないし。
+			;	SIF 마라様以外
+			;		PRINTFORM ご立派様のように
+				PRINTFORM 거대한 
+			ENDIF
+			PRINTFORM 자지 
+		ELSE
+			;重ねると長くなり過ぎるので、どちらか一方のみ
+			IF TALENT:TARGET:섹스광
+				PRINTFORM 개발되어 버린 
+			ELSEIF TALENT:TARGET:유아체형
+				PRINTFORM 어린 
+			;ELSE
+			;	PRINTFORM 
+			ENDIF
+			PRINTFORM 성기
+		ENDIF
+		PRINTFORM 를 보이며、
+		;尻꼬리があると文추가
+		IF TALENT:TARGET:꼬리
+			PRINTFORM 꼬리를 
+			IF TALENT:TARGET:부끄럼쟁이
+				PRINTFORM 부끄러운 듯이 
+			ELSEIF TALENT:TARGET:음란 || TALENT:TARGET:창부
+				PRINTFORM 선정적으로 
+			ELSE
+				PRINTFORM 살랑살랑 
+			ENDIF
+			PRINTFORM 흔들면서、
+		ELSEIF TALENT:TARGET:유아체형 || TALENT:TARGET:빈유
+			PRINTFORM 어린 느낌이 나는 
+		ELSEIF TALENT:TARGET:거유 || TALENT:TARGET:폭유 || TALENT:魔乳
+			PRINTFORM 육감적인 
+		ELSEIF TALENT:TARGET:매력 || TALENT:TARGET:수수께끼의매력
+			PRINTFORM 매력적인 
+		ENDIF
+		PRINTFORM 나신을 
+		;노출증Lv5以上かつ부끄럼쟁이持ちでないor음란or창부
+		SIF ((ABL:TARGET:노출증 >= 5) && (TALENT:TARGET:부끄럼쟁이 == 0)) || TALENT:TARGET:음란 || TALENT:TARGET:창부
+			PRINTFORM 음란하게 
+		PRINTFORM 봉에 감으면서 
+		;꼬리があると文が長くなり過ぎるので、ここで改行
+		SIF TALENT:TARGET:꼬리
+			PRINTFORML 
+		PRINTFORMW 춤추기 시작했다…
+		LOCAL:11 = 5
+	CASE 2
+;オナニーショー
+		PRINTFORM %타겟은()% 
+		;최대관객数の９割以上
+		IF GUEST >= 점포("규모", THEATER) * 90
+			PRINTFORM 만원 상태인 
+		;최대관객数の７割以上
+		ELSEIF GUEST >= 점포("규모", THEATER) * 70
+			PRINTFORM 관객으로 넘치는 
+		;최대客数の３割미만
+		;ELSEIF GUEST < 점포("규모",ARG) * 30 
+		;	PRINTFORM 空席の눈立つ
+		ENDIF
+		;노출증Lv3이상で관객席を見れるようになる
+		IF ABL:TARGET:노출증 >= 3
+			PRINTFORM 관객석을 보며 
+			;관객数が少ないと対応変化
+			IF GUEST < 점포("규모", THEATER) * 30
+				IF TALENT:TARGET:음란 || TALENT:TARGET:창부
+					PRINTFORM 유감스러운 듯이 
+				ELSE
+					PRINTFORM 안심한 듯이 
+				ENDIF
+			;음란or창부
+			ELSEIF TALENT:TARGET:음란 || TALENT:TARGET:창부
+				PRINTFORM 음란하게 
+			;노출증Lv5以上かつ부끄럼쟁이持ちでない
+			ELSEIF (ABL:TARGET:노출증 >= 5) && (TALENT:TARGET:부끄럼쟁이 == 0)
+				PRINTFORM 생긋 
+			ELSE
+				PRINTFORM 어색하게 
+			ENDIF
+			PRINTFORM 웃으며、
+		ELSE
+			PRINTFORM 관객석을 보려고 하지도 않으면서、
+		ENDIF
+		;음란or창부
+		IF TALENT:TARGET:음란 || TALENT:TARGET:창부
+			PRINTFORML 쾌락에 물든 얼굴로 
+		;노출증Lv5以上부끄럼쟁이持ちでない
+		ELSEIF (ABL:TARGET:노출증 >= 5) && (TALENT:TARGET:부끄럼쟁이 == 0)
+			PRINTFORML 평소와 다름없는 행동으로 
+		ELSE
+			PRINTFORML 수치심에 물든 얼굴인 채로 
+		ENDIF
+		PRINTFORM 스스로 나신을 보이며、
+		;랜덤で４パターンに分岐。
+		IF RAND:4 == 0
+			;ない乳は揉めないので分岐
+			IF TALENT:TARGET:절벽
+				PRINTFORM 평평한 가슴으로 자기주장을 하는 
+				IF TALENT:TARGET:Ｂ민감
+					PRINTFORM 보통보다 민감한 
+				ELSEIF TALENT:TARGET:음유
+					PRINTFORM 개발되어 버린 
+				ENDIF
+				PRINTFORM 유두를 만지작거리며、
+				SIF TALENT:TARGET:모유체질
+					PRINTFORML 그곳에서 모유를 배어 나오게 하면서、
+			ELSE
+				SIF TALENT:TARGET:거유 || TALENT:TARGET:폭유 || TALENT:魔乳
+					PRINTFORM 커다란 
+				SIF TALENT:TARGET:빈유
+					PRINTFORM 다소 작은 
+				PRINTFORM 유방을 비비면서、
+				SIF TALENT:TARGET:모유체질
+					PRINTFORML 끝에서 모유를 분출시키면서、
+			ENDIF
+		;[남자][오토코노코]の場合はスキップ、후타나리の場合は、スジが棒の下に隠れてると解釈
+		ELSEIF (RAND:4 == 1) && (TALENT:TARGET:남자 == 0) && (TALENT:TARGET:오토코노코 == 0)
+			IF TALENT:TARGET:처녀
+				PRINTFORM 미사용인 
+			ELSEIF TALENT:TARGET:섹스광
+				PRINTFORM 개발되어 버린 
+			ENDIF
+			SIF TALENT:TARGET:유아체형
+				PRINTFORM 어린 
+			PRINTFORM 성기에 
+			;처녀膜がない場合は바이브オナニーに
+			IF (TALENT:TARGET:처녀 == 0) && (TALENT:TARGET:재생처녀 == 0)
+				;바이브구입の有無で分けるべきかもしれませんが、とりあえず劇場側から一時렌탈してると解釈
+				PRINTFORM 바이브를 삽입해、그것을 
+				SIF ABL:TARGET:Ｖ감각 >= 5
+					PRINTFORM 자궁까지 닿을 듯한 기세로 격렬하게 
+				PRINTFORM 앞뒤로 움직여 
+			ELSE
+				PRINTFORM 손가락을 꽂아 넣어、
+				;長くなるので、ここで改行
+;				IF TALENT:TARGET:처녀 || TALENT:TARGET:재생처녀
+				PRINTFORML 막을 다치지 않게 주의하면서、
+;				ENDIF
+				IF TALENT:TARGET:자위광 || TALENT:TARGET:섹스광 || ABL:TARGET:자위중독 >= 7
+					PRINTFORM 격렬하게 
+				ELSEIF ABL:TARGET:자위중독 >= 3
+					PRINTFORM 천천히 
+				ELSE
+					PRINTFORM 어색하게 
+				ENDIF
+				PRINTFORM 손가락을 움직여서 
+			ENDIF
+		;Ａ감각Lv5이상or애널광orＡ민감でアナニーに発展
+		ELSEIF (RAND:4 == 2) && ((ABL:TARGET:Ａ감각 >= 5) || TALENT:TARGET:애널광 || TALENT:TARGET:Ａ민감)
+			IF TALENT:TARGET:Ａ민감
+				PRINTFORM 보통보다 민감한 
+			ELSEIF TALENT:TARGET:애널광
+				PRINTFORM 개발되어 버린 
+			ENDIF
+			PRINTFORM 항문을 
+			;Ａ감각Lv2までは躊躇いがある感じで
+			SIF ABL:TARGET:Ａ감각 < 3
+				PRINTFORM 주저하면서 
+			PRINTFORM 손가락을 찔러 넣어、
+				;Ａ감각Lv5以上で、자위광があるか、자위중독Lv5以上で躊躇がなくなる
+			IF (ABL:TARGET:Ａ감각 >= 5) && (TALENT:TARGET:자위광 || ABL:TARGET:자위중독 >= 5) 
+				PRINTFORM 격렬하게 
+			ELSEIF ABL:TARGET:Ａ감각 >= 3
+				PRINTFORM 천천히 
+			ELSE
+				PRINTFORM 조심조심 
+			ENDIF
+			PRINTFORM 넣다빼며 
+
+		ELSE
+			;棒の有無で内容分岐
+			IF (TALENT:TARGET:남자 == 0) && (TALENT:TARGET:오토코노코 == 0) && (TALENT:TARGET:후타나리 == 0)
+				SIF TALENT:TARGET:자위광
+					PRINTFORM 개발되어 버린 
+				SIF TALENT:TARGET:유아체형 || TALENT:TARGET:소인체형
+					PRINTFORM 작은 
+				SIF TALENT:TARGET:Ｃ민감
+					PRINTFORM 보통보다 
+				PRINTFORM 민감한 콩알을 
+				SIF ABL:TARGET:Ｃ감각 < 3
+					PRINTFORM 주저하면서 
+				PRINTFORM 만지며、
+				IF ABL:TARGET:자위중독 >= 3 || TALENT:TARGET:자위광
+					PRINTFORM 익숙한 
+				ELSE
+					PRINTFORM 익숙하지 않은 
+				ENDIF
+				PRINTFORM 손놀림으로 
+			ELSE
+				IF TALENT:TARGET:유아체형 || TALENT:TARGET:소인체형
+					PRINTFORM 작게 흔들리는 
+				ELSEIF TALENT:TARGET:큰체형
+					PRINTFORM 두툼한 
+				ELSEIF TALENT:TARGET:거체
+					;ネタでしかないのでコメントアウト。마라いないし。
+					;SIF 마라様以外
+					;	PRINTFORM ご立派様のように
+					PRINTFORM 거대한 
+				ENDIF
+				PRINTFORM 육봉을 
+				IF ABL:TARGET:자위중독 >= 3 || TALENT:TARGET:자위광
+					PRINTFORM 익숙한
+				ELSE
+					PRINTFORM 익숙하지 않은 
+				ENDIF
+				PRINTFORM 손놀림으로 훑어 내며 
+			ENDIF
+		ENDIF
+		PRINTFORMW 스스로를 위로했다…
+ENDSELECT

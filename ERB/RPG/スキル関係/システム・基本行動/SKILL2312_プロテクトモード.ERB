@@ -1,0 +1,630 @@
+﻿;프로텍트모드
+;システム用스킬です
+
+;스킬名
+@SKILL_NAME_2312,ARG
+	RESULTS = 프로텍트모드
+;　명중
+@SKILL_HITRATE_2312, ARG
+RETURN 100
+
+;　위력
+@SKILL_POWER_2312, ARG
+RETURN 18
+
+;　최저공격횟수
+@SKILL_MINATTACKNUMBER_2312,ARG
+RETURN 1
+
+;　최대공격횟수
+@SKILL_MAXATTACKNUMBER_2312,ARG
+RETURN 1
+
+;　ＨＰ2を支払うかＭＰ3を支払うか
+@SKILL_COSTTYPE_2312, ARG
+RETURN 1
+;소비なし＝1
+
+;　コストの量
+@SKILL_COST_2312,ARG
+RETURN 18
+
+;　相性
+@SKILL_TYPE_2312,ARG
+RETURN 0
+
+;　1EXTRAか2MAGICか
+@SKILL_DECIDE_TYPE_2312, ARG
+RETURN 1
+;どちらでもない
+
+;　1물리데미지で計算するか2마법데미지で計算するか
+@SKILL_DAMAGETYPE_2312, ARG
+RETURN 1
+
+
+;　대상が1적か2아군か3場전체か4特殊か
+@SKILL_TARGET_2312
+RETURN 2
+
+;　사거리
+@SKILL_RANGE_2312,ARG
+RETURN 1
+
+;　범위　11명　2１열　3전체　4　적아군전체
+@SKILL_SPHERE_2312,ARG
+RETURN 1
+
+;　 効果の타입　1공격、2회복、3상태변화、4特殊、5상태회복
+@SKILL_EFECT_2312
+RETURN 4
+
+;계승타입
+@SKILL_SUCCESSION_TYPE_2312
+RETURN 0
+;継承
+
+;속도보정
+@SKILL_SPEED_2312, ARG = -1
+RETURN 0
+
+;　구상の표시とその타입
+@SKILL_MESSAGE_2312,ARG
+
+;전투時以外に사용できるか
+@SKILL_ACTIONABLE_FIELD_2312
+RETURN 0
+
+;스킬변화？用랭크
+@SKILL_RANK_2312
+RETURN 0
+;변화
+
+;====================================================
+;스킬及び行動の実行
+;要は”ＯＯの壁”の任意選択가능な1명版스킬
+;記述も、相性選択＋各ケースに沿ってコピペ継ぎはぎしただけなので、上손いやり方があれば書き換えて頂けるとありがたいです
+;적아군판정を行う記述に関しては、적사용時の調整や性能の見直しなどをする際に손間を省けるよう残しています
+;데모니카이능자用の통상스킬化した場合、後出しが가능な方がキャラメイクが広がりそうなので、속도보정は優先度無しです
+;메시지をアーサーっぽくするのも考えたけど、くどくなりそうだったので생략
+;効果をこのまま무효or軽減に収めるかどうか、そして속도보정をどうするかは皆さんの判断にお任せします
+;相性を변화させる形式に변경する場合、화염←→빙결のように反눈する相性に약점をつけるのもいいかもしれない
+;====================================================
+@ACTION_2312,ARG,ARG:1
+
+$PRINT_LIST
+DRAWLINE
+PRINTFORML 어느 相性을 방어합니까？
+DRAWLINE
+PRINTL [0]  검격 [1]  비구 [2]  타격 [3]  전술
+PRINTL [4]  화염 [5]  빙결 [6]  전격 [7]  충격
+PRINTL [8]  신경 [9]  정신 [10] 파마 [11] 주살
+PRINTL [12] 지변 [13] 수격 [14] 질풍 [15] 중력
+PRINTL [16] 핵열
+
+INPUTS
+
+IF GROUPMATCH(RESULTS, "0", "1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16")
+	LOCAL:1 = 0
+	TOINT RESULTS
+	;CALL INPUTINT(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16)
+	LOCAL:1 = RESULT
+	SELECTCASE LOCAL:1
+		CASE 0
+			IF CFLAG:ARG:PTフラグ > 0
+				FOR LOCAL,1,7
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):검격가드킬
+							CFLAG:(FLAG:LOCALS):검격가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):검격무효화횟수 < 1
+								CFLAG:(FLAG:LOCALS):검격무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:PARTY >>>>>> 검격을 무효화！
+			ELSE
+
+				FOR LOCAL,7,17
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):검격가드킬
+							CFLAG:(FLAG:LOCALS):검격가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):검격무효화횟수 < 1
+								CFLAG:(FLAG:LOCALS):검격무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:ENEMY >>>>>> 검격을 무효화！
+			ENDIF
+		CASE 1
+			IF CFLAG:ARG:PTフラグ > 0
+				FOR LOCAL,1,7
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):비구가드킬
+							CFLAG:(FLAG:LOCALS):비구가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):비구무효화횟수 < 1
+								CFLAG:(FLAG:LOCALS):비구무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:PARTY >>>>>> 비구를 무효화！
+			ELSE
+
+				FOR LOCAL,7,17
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):비구가드킬
+							CFLAG:(FLAG:LOCALS):비구가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):비구무효화횟수 < 1
+								CFLAG:(FLAG:LOCALS):비구무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:ENEMY >>>>>> 비구를 무효화！
+			ENDIF
+		CASE 2
+			IF CFLAG:ARG:PTフラグ > 0
+				FOR LOCAL,1,7
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):타격가드킬
+							CFLAG:(FLAG:LOCALS):타격가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):타격무효화횟수 < 1
+								CFLAG:(FLAG:LOCALS):타격무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:PARTY >>>>>> 타격을 무효화！
+			ELSE
+
+				FOR LOCAL,7,17
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):타격가드킬
+							CFLAG:(FLAG:LOCALS):타격가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):타격무효화횟수 < 1
+								CFLAG:(FLAG:LOCALS):타격무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:ENEMY >>>>>> 타격을 무효화！
+			ENDIF
+		CASE 3
+			IF CFLAG:ARG:PTフラグ > 0
+				FOR LOCAL,1,7
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):전술가드킬
+							CFLAG:(FLAG:LOCALS):전술가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):전술무효화횟수 < 1
+							CFLAG:(FLAG:LOCALS):전술무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:PARTY >>>>>> 전술을 무효화！
+			ELSE
+
+				FOR LOCAL,7,17
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):전술가드킬
+							CFLAG:(FLAG:LOCALS):전술가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):전술무효화횟수 < 1
+								CFLAG:(FLAG:LOCALS):전술무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:ENEMY >>>>>> 전술을 무효화！
+			ENDIF
+		CASE 4
+			IF CFLAG:ARG:PTフラグ > 0
+				FOR LOCAL,1,7
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):화염가드킬
+							CFLAG:(FLAG:LOCALS):화염가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):화염무효화횟수 < 1
+							CFLAG:(FLAG:LOCALS):화염무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:PARTY >>>>>> 화염을 무효화！
+			ELSE
+
+				FOR LOCAL,7,17
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):화염가드킬
+							CFLAG:(FLAG:LOCALS):화염가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):화염무효화횟수 < 1
+								CFLAG:(FLAG:LOCALS):화염무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:ENEMY >>>>>> 화염을 무효화！
+			ENDIF
+		CASE 5
+			IF CFLAG:ARG:PTフラグ > 0
+				FOR LOCAL,1,7
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):빙결가드킬
+							CFLAG:(FLAG:LOCALS):빙결가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):빙결무효화횟수 < 1
+							CFLAG:(FLAG:LOCALS):빙결무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:PARTY >>>>>> 빙결을 무효화！
+			ELSE
+
+				FOR LOCAL,7,17
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):빙결가드킬
+							CFLAG:(FLAG:LOCALS):빙결가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):빙결무효화횟수 < 1
+								CFLAG:(FLAG:LOCALS):빙결무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:ENEMY >>>>>> 빙결을 무효화！
+			ENDIF
+		CASE 6
+			IF CFLAG:ARG:PTフラグ > 0
+				FOR LOCAL,1,7
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):전격가드킬
+							CFLAG:(FLAG:LOCALS):전격가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):전격무효화횟수 < 1
+							CFLAG:(FLAG:LOCALS):전격무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:PARTY >>>>>> 전격을 무효화！
+			ELSE
+
+				FOR LOCAL,7,17
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):전격가드킬
+							CFLAG:(FLAG:LOCALS):전격가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):전격무효화횟수 < 1
+								CFLAG:(FLAG:LOCALS):전격무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:ENEMY >>>>>> 전격을 무효화！
+			ENDIF
+
+		CASE 7
+			IF CFLAG:ARG:PTフラグ > 0
+				FOR LOCAL,1,7
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):충격가드킬
+							CFLAG:(FLAG:LOCALS):충격가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):충격무효화횟수 < 1
+							CFLAG:(FLAG:LOCALS):충격무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:PARTY >>>>>> 충격을 무효화！
+			ELSE
+
+				FOR LOCAL,7,17
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):충격가드킬
+							CFLAG:(FLAG:LOCALS):충격가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):충격무효화횟수 < 1
+								CFLAG:(FLAG:LOCALS):충격무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:ENEMY >>>>>> 충격을 무효화！
+			ENDIF
+
+
+		CASE 8
+			IF CFLAG:ARG:PTフラグ > 0
+				FOR LOCAL,1,7
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):신경가드킬
+							CFLAG:(FLAG:LOCALS):신경가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):신경무효화횟수 < 1
+							CFLAG:(FLAG:LOCALS):신경무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:PARTY >>>>>> 신경을 무효화！
+			ELSE
+
+				FOR LOCAL,7,17
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):신경가드킬
+							CFLAG:(FLAG:LOCALS):신경가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):신경무효화횟수 < 1
+								CFLAG:(FLAG:LOCALS):신경무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:ENEMY >>>>>> 신경을 무효화！
+			ENDIF
+
+
+		CASE 9
+			IF CFLAG:ARG:PTフラグ > 0
+				FOR LOCAL,1,7
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):정신가드킬
+							CFLAG:(FLAG:LOCALS):정신가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):정신무효화횟수 < 1
+							CFLAG:(FLAG:LOCALS):정신무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:PARTY >>>>>> 정신을 무효화！
+			ELSE
+
+				FOR LOCAL,7,17
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):정신가드킬
+							CFLAG:(FLAG:LOCALS):정신가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):정신무효화횟수 < 1
+								CFLAG:(FLAG:LOCALS):정신무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:ENEMY >>>>>> 정신을 무효화！
+			ENDIF
+		CASE 10
+			IF CFLAG:ARG:PTフラグ > 0
+				FOR LOCAL,1,7
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):파마가드킬
+							CFLAG:(FLAG:LOCALS):파마가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):파마무효화횟수 < 1
+							CFLAG:(FLAG:LOCALS):파마무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:PARTY >>>>>> 파마를 무효화！
+			ELSE
+
+				FOR LOCAL,7,17
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):파마가드킬
+							CFLAG:(FLAG:LOCALS):파마가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):파마무효화횟수 < 1
+								CFLAG:(FLAG:LOCALS):파마무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:ENEMY >>>>>> 파마를 무효화！
+			ENDIF
+		CASE 11
+			IF CFLAG:ARG:PTフラグ > 0
+				FOR LOCAL,1,7
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):주살가드킬
+							CFLAG:(FLAG:LOCALS):주살가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):주살무효화횟수 < 1
+							CFLAG:(FLAG:LOCALS):주살무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:PARTY >>>>>> 주살을 무효화！
+			ELSE
+
+				FOR LOCAL,7,17
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):주살가드킬
+							CFLAG:(FLAG:LOCALS):주살가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):주살무효화횟수 < 1
+								CFLAG:(FLAG:LOCALS):주살무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:ENEMY >>>>>> 주살을 무효화！
+			ENDIF
+		CASE 12
+			IF CFLAG:ARG:PTフラグ > 0
+				FOR LOCAL,1,7
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):지변가드킬
+							CFLAG:(FLAG:LOCALS):지변가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):지변무효화횟수 < 1
+							CFLAG:(FLAG:LOCALS):지변무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:PARTY >>>>>> 지변을 무효화！
+			ELSE
+
+				FOR LOCAL,7,17
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):지변가드킬
+							CFLAG:(FLAG:LOCALS):지변가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):지변무효화횟수 < 1
+								CFLAG:(FLAG:LOCALS):지변무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:ENEMY >>>>>> 지변을 무효화！
+			ENDIF
+		CASE 13
+			IF CFLAG:ARG:PTフラグ > 0
+				FOR LOCAL,1,7
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):수격가드킬
+							CFLAG:(FLAG:LOCALS):수격가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):수격무효화횟수 < 1
+							CFLAG:(FLAG:LOCALS):수격무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:PARTY >>>>>> 수격을 무효화！
+			ELSE
+
+				FOR LOCAL,7,17
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):수격가드킬
+							CFLAG:(FLAG:LOCALS):수격가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):수격무효화횟수 < 1
+								CFLAG:(FLAG:LOCALS):수격무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:ENEMY >>>>>> 수격을 무효화！
+			ENDIF
+		CASE 14
+			IF CFLAG:ARG:PTフラグ > 0
+				FOR LOCAL,1,7
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):질풍가드킬
+							CFLAG:(FLAG:LOCALS):질풍가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):질풍무효화횟수 < 1
+							CFLAG:(FLAG:LOCALS):질풍무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:PARTY >>>>>> 질풍을 무효화！
+			ELSE
+
+				FOR LOCAL,7,17
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):질풍가드킬
+							CFLAG:(FLAG:LOCALS):질풍가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):질풍무효화횟수 < 1
+								CFLAG:(FLAG:LOCALS):질풍무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:ENEMY >>>>>> 질풍을 무효화！
+			ENDIF
+		CASE 15
+			IF CFLAG:ARG:PTフラグ > 0
+				FOR LOCAL,1,7
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):중력가드킬
+							CFLAG:(FLAG:LOCALS):중력가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):중력무효화횟수 < 1
+							CFLAG:(FLAG:LOCALS):중력무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:PARTY >>>>>> 중력을 무효화！
+			ELSE
+
+				FOR LOCAL,7,17
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):중력가드킬
+							CFLAG:(FLAG:LOCALS):중력가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):중력무효화횟수 < 1
+								CFLAG:(FLAG:LOCALS):중력무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:ENEMY >>>>>> 중력을 무효화！
+			ENDIF
+
+		CASE 16
+			IF CFLAG:ARG:PTフラグ > 0
+				FOR LOCAL,1,7
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):핵열가드킬
+							CFLAG:(FLAG:LOCALS):핵열가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):핵열무효화횟수 < 1
+							CFLAG:(FLAG:LOCALS):핵열무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:PARTY >>>>>> 핵열을 무효화！
+			ELSE
+
+				FOR LOCAL,7,17
+					LOCALS = 포지션{LOCAL}
+					IF FLAG:LOCALS > -1
+						IF CFLAG:(FLAG:LOCALS):핵열가드킬
+							CFLAG:(FLAG:LOCALS):핵열가드킬 --
+						ELSE
+							SIF CFLAG:(FLAG:LOCALS):핵열무효화횟수 < 1
+								CFLAG:(FLAG:LOCALS):핵열무효화횟수 = 1
+						ENDIF
+					ENDIF
+				NEXT
+				PRINTW TARGET:ENEMY >>>>>> 핵열을 무효화！
+			ENDIF
+
+	ENDSELECT
+ENDIF
+
+
+
+;====================================================
+;実行内容ここまで
+;====================================================
+
+;　 설명文の표시
+@SKILL_EXPLAIN_2312
+PRINTL 데모니카수트의 적응력을 특정 환경에 특화시켜서、한번만 무효화한다
+
+;사용조건
+@SKILL_SPECIAL_ACTIONABLE_2312,ARG
+RETURN 1
+;とくにない
+

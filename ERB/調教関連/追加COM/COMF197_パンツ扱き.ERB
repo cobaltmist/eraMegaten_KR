@@ -1,0 +1,314 @@
+﻿;-------------------------------------------------
+;팬티훑기
+;-------------------------------------------------
+@CHECK_COM_ABLE197
+#LOCALSSIZE 1
+;팬티훑기実行판정
+;손が使えないとだめ
+SIF !USE_HAND(TARGET)
+	RETURN 0
+
+;조교者が페니스使えないとだめ
+SIF !USE_PENIS(PLAYER)
+	RETURN 0
+
+;촉수조교中はダメ
+SIF TEQUIP:25
+	RETURN 0
+;목욕탕플레이中は플레이매트が無いとダメ
+IF TEQUIP:31
+	SIF ITEM:20 == 0 && NOITEM == 0
+		RETURN 0
+ENDIF
+;삼각목마騎乗中はダメ
+SIF TEQUIP:41
+	RETURN 0
+	
+;パンツor下半身下着を설정していて、かつ脱いでる상태でないとダメ
+SIF !((CFLAG:속옷（하）&& !TEQUIP:속옷（하）) || (CFLAG:전신속옷 && !TEQUIP:전신속옷))
+	RETURN 0
+
+;一部の下着は
+LOCALS = \@ CFLAG:속옷（하） ? 속옷（하） # 전신속옷 \@
+;下に感触が伝わるような柔らか소재じゃないとダメ
+TRYCCALLFORM CLOTHES_촉각_{CFLAG:LOCALS},0
+	SIF !(RESULT & 2)
+		RETURN 0
+CATCH
+	RETURN 0
+ENDCATCH
+ 
+SELECTCASE CFLAG:LOCALS
+	CASE [[衣装:새끼줄]] , [[衣装:라비아피어스]], [[衣装:꼬리플러그]]
+		RETURN 0
+ENDSELECT
+RETURN 1
+
+@COMNAME197,ARG
+#LOCALSSIZE 1
+IF CFLAG:속옷（하）
+	LOCALS = 속옷（하）
+ELSEIF CFLAG:전신속옷
+	LOCALS = 전신속옷
+ELSE
+	RETURN 0
+ENDIF
+SELECTCASE CFLAG:LOCALS
+	CASE [[衣装:학교수영복]] , [[衣装:학교수영복（구멍뚫림）]]
+		RESULTS = 학교수영복훑기
+	CASE [[衣装:슬링샷]], [[衣装:경주용수영복]] , [[衣装:경주용수영복（구멍뚫림）]]
+		RESULTS = 수영복훑기
+	CASE [[衣装:스패츠]]
+		RESULTS = 스패츠훑기
+	CASEELSE
+		IF LOCALS == "전신속옷"
+			RESULTS = 속옷훑기
+		ELSE
+			RESULTS = 팬티훑기
+		ENDIF
+ENDSELECT
+
+@ACT_COM197
+#LOCALSSIZE 1
+CALL COMNAME197
+LOCALS = %RESULTS%
+PRINTFORML %LOCALS%
+;-------------------------------------------------
+;実行決定
+;-------------------------------------------------
+TSTR:0 = %LOCALS%
+;CALL KOJO_MESSAGE_COM
+
+;조교대상→조교者
+TFLAG:28 = 1
+
+;-------------------------------------------------
+;사정ゲージ체크
+;-------------------------------------------------
+B = 500
+
+;ABL:조교者の기교をみる
+IF ABL:2 == 0
+	TIMES B , 1.00
+ELSEIF ABL:2 == 1
+	TIMES B , 1.20
+ELSEIF ABL:2 == 2
+	TIMES B , 1.40
+ELSEIF ABL:2 == 3
+	TIMES B , 1.60
+ELSEIF ABL:2 == 4
+	TIMES B , 1.80
+ELSE
+	TIMES B , 2.00
+ENDIF
+
+;ABL:순종をみる
+IF ABL:0 == 0
+	TIMES B , 0.80
+ELSEIF ABL:0 == 1
+	TIMES B , 0.90
+ELSEIF ABL:0 == 2
+	TIMES B , 1.00
+ELSEIF ABL:0 == 3
+	TIMES B , 1.10
+ELSEIF ABL:0 == 4
+	TIMES B , 1.20
+ELSE
+	TIMES B , 1.30
+ENDIF
+
+;ABL:봉사정신をみる
+IF ABL:7 == 0
+	TIMES B , 0.50
+ELSEIF ABL:7 == 1
+	TIMES B , 0.80
+ELSEIF ABL:7 == 2
+	TIMES B , 1.20
+ELSEIF ABL:7 == 3
+	TIMES B , 1.50
+ELSEIF ABL:7 == 4
+	TIMES B , 1.80
+ELSE
+	TIMES B , 2.40
+ENDIF
+
+;プ레이ヤーのABL:Ｃ감각をみる
+IF ABL:PLAYER:3 == 0
+	TIMES B , 1.00
+ELSEIF ABL:PLAYER:3 == 1
+	TIMES B , 1.50
+ELSEIF ABL:PLAYER:3 == 2
+	TIMES B , 2.00
+ELSEIF ABL:PLAYER:3 == 3
+	TIMES B , 2.50
+ELSEIF ABL:PLAYER:3 == 4
+	TIMES B , 3.50
+ELSE
+	TIMES B , 5.00
+ENDIF
+IF CFLAG:속옷（하）
+	LOCALS = 속옷（하）
+ELSE
+	LOCALS = 전신속옷
+ENDIF
+SELECTCASE CFLAG:LOCALS
+	;すく水、스패츠だと効果ＵＰ
+	CASE [[衣装:학교수영복]] , [[衣装:학교수영복（구멍뚫림）]] , [[衣装:스패츠]] , [[衣装:레오타드]] , [[衣装:레오타드（구멍뚫림）]]
+		TIMES B , 1.20
+ENDSELECT
+
+;再装填処理中は사정ゲージは20分の1に
+SIF CFLAG:PLAYER:9 > 0
+	B /= 20
+
+
+SIF HAVE_PENIS(PLAYER)
+	BASE:PLAYER:2 += B
+
+;-------------------------------------------------
+;ソース추가処理
+;-------------------------------------------------
+;소비체력、기력
+DOWNBASE:TARGET:체력 += 15
+DOWNBASE:TARGET:기력 += 150
+
+SOURCE:TARGET:정애 = 80
+SOURCE:TARGET:성행위 = 225
+SOURCE:TARGET:달성 = 60
+SOURCE:TARGET:굴종 = 300
+SOURCE:TARGET:일탈 = 150
+SOURCE:TARGET:반감 = 150
+
+;上のほうで計算した불결데이터
+SOURCE:TARGET:불결 = Y*10 + 60
+
+;조교者に쾌Ｃ
+SOURCE:PLAYER:0 = 120
+SELECTCASE CFLAG:LOCALS
+	;すく水、스패츠だと効果ＵＰ
+	CASE [[衣装:학교수영복]] , [[衣装:학교수영복（구멍뚫림）]] , [[衣装:스패츠]] , [[衣装:레오타드]] , [[衣装:레오타드（구멍뚫림）]]
+		TIMES SOURCE:PLAYER:0 , 1.20
+ENDSELECT
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;억압、저항持ちには、억울ソース추가
+SIF TALENT:32 || TALENT:34
+	SOURCE:TARGET:울굴 += 200
+
+;-------------------------------------------------
+;사정체크
+;-------------------------------------------------
+;사정先타입の설정
+TCVAR:PLAYER:페니스사용대상 = TARGET
+TCVAR:PLAYER:사정箇所 = 3
+;사정先選択の可・
+TFLAG:704 = 1
+
+;-------------------------------------------------
+;불결の処理
+;-------------------------------------------------
+;사정に関係なく行われる処理はここから
+;奴隷の指⇔조교者のＰの불결が移動
+CALL MOVE_STAIN("손", TARGET, "페니스", PLAYER)
+
+;-------------------------------------------------
+;吸精処理
+;-------------------------------------------------
+IF CFLAG:PLAYER:ＭＡＧ非被흡수 == 0
+	LOCAL = (RAND:2+1) * BASE:LV
+	CALL DRAIN_MAG,PLAYER,LOCAL,TARGET
+ELSEIF CFLAG:TARGET:ＭＡＧ非被흡수 == 0
+	LOCAL = (RAND:2+1) * BASE:LV
+	CALL DRAIN_MAG,TARGET,LOCAL,PLAYER
+ENDIF
+
+;-------------------------------------------------
+;경험の処理
+;-------------------------------------------------
+;레즈경험
+A = 4
+IF IS_LESBIAN(TARGET,PLAYER)
+	CALL ADDS_EXP("레즈경험", A, TARGET)
+	CALL ADDS_EXP("레즈경험", A, PLAYER)
+ELSEIF IS_GAY(TARGET,PLAYER)
+	CALL ADDS_EXP("ＢＬ경험", A, TARGET)
+	CALL ADDS_EXP("ＢＬ경험", A, PLAYER)
+ENDIF
+
+;의존도ベクトル
+TFLAG:33 = 1
+
+;의존도보정値(主人かつ연모、음란、복종で1。친애、창부、예속で2）
+IF (TALENT:3 || TALENT:4 || TALENT:5) && ASSIPLAY == 0
+	TFLAG:30 += 1
+ELSEIF (TALENT:6 || TALENT:7 || TALENT:8) && ASSIPLAY == 0
+	TFLAG:30 += 2
+ENDIF
+
+;봉사쾌락フラグ
+TFLAG:100 = 1
+
+
+RETURN 1
+
+@MESSAGE_COM197
+;전회と今回の조교者が同じで、전회の조교が정상위であり、抜かないフラグがある場合
+PRINTFORM %타겟은()% 벗은
+SELECTCASE TSTR:0
+	CASE "スク水扱き","水着扱き"
+		PRINT 수영복
+	CASE "스패츠扱き"
+		PRINT 스패츠
+	CASEELSE
+		PRINT 속옷
+ENDSELECT
+IF TEQUIP:주도권 || 함락()
+	PRINTFORM (으)로 %CALLNAME:PLAYER%의 페니스
+	SIF (TALENT:3 || TALENT:6)
+		PRINTFORM 를 상냥하게 
+	PRINTFORM 감싸서、그 부드러운 천으로 
+	SIF TALENT:새드
+		PRINTFORM 감질나게 만들 듯이 
+	;카테터
+		SIF TEQUIP:43
+		PRINTFORMW 尿道にカテーテルが挿入された状態のまま、
+	;요도플러그
+		SIF TEQUIP:44
+		PRINTFORMW 尿道プラグが挿入された状態のまま、
+	PRINTFORMW 문지르기 시작했다……
+ELSE
+	PRINTFORM 을(를) %CALLNAME:PLAYER%의 페니스에 씌우고、
+	SIF TALENT:새드
+		PRINTFORM 감질나게 만들듯이 
+	;카테터
+		SIF TEQUIP:43
+		PRINTFORMW 尿道にカテーテルが挿入された状態のまま、
+	;요도플러그
+		SIF TEQUIP:44
+		PRINTFORMW 尿道プラグが挿入された状態のまま、
+	PRINTFORMW 문지르기 시작했다……
+ENDIF
+;-------------------------------------------------
+;実行판정処理
+;수음と同じ
+;-------------------------------------------------
+@COM_ORDER_197, ARG, ARG:1
+IF TEQUIP:ARG:음문발동
+	CALL ADD_COM_ORDER, "판정無視", "음문 발동중"
+	RETURN 0
+ENDIF
+CALL COM_ORDER_80, ARG, ARG:1
+;-------------------------------------------------
+;実行値
+;-------------------------------------------------
+@COM_ORDER_NUM_197
+RETURN 14
+
+;===================================================
+;조교타입
+;===================================================
+@COMTYPE_197
+RETURN COMTYPE("봉사계")
+

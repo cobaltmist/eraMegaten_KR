@@ -1,0 +1,176 @@
+﻿;-------------------------------------------------
+;삼각목마
+;-------------------------------------------------
+@CHECK_COM_ABLE108
+;해제はいつでも可能
+SIF TEQUIP:TARGET:삼각목마
+	RETURN 1
+;묶지 않으면 안된다
+SIF !TEQUIP:TARGET:밧줄
+	RETURN 0
+;복종이나 예속이 있어야 한다
+;SIF !TALENT:TARGET:복종 && !TALENT:TARGET:예속
+;	RETURN 0
+;조교자가 새드끼 LV3 이상, 새드를 가지고 있어야 한다
+SIF ABL:PLAYER:새드끼 < 3 && TALENT:PLAYER:새드 == 0
+	RETURN 0
+SIF !EXIST_ITEM(27)
+	RETURN 0
+;Cが아이てないとダメ
+SIF !USE_CLI(TARGET)
+	RETURN 0
+;Aが아이てないとダメ
+SIF !USE_ANUS(TARGET)
+	RETURN 0
+;Vが아이てないとダメ
+SIF !USE_VAGINA(TARGET)
+	RETURN 0
+;목욕탕플레이中はダメ
+SIF TEQUIP:31
+	RETURN 0
+;야외플레이中はダメ
+SIF TEQUIP:25
+	RETURN 0
+;촉수조교中はダメ
+SIF TEQUIP:25
+	RETURN 0
+RETURN 1
+
+@ACT_COM108
+PRINTL 삼각목마
+TSTR:0 = 삼각목마
+;CALL KOJO_MESSAGE_COM
+INVERTBIT TEQUIP:삼각목마 , 0
+DOWNBASE:TARGET:체력 += 400
+DOWNBASE:TARGET:기력 += 600
+
+;-------------------------------------------------
+;ソース추가処理
+;-------------------------------------------------
+SIF HAVE_VAGINA(TARGET)
+	SOURCE:TARGET:도구쾌Ｖ = 300
+SOURCE:TARGET:도구쾌Ａ = 300
+SOURCE:TARGET:아픔 = 1500
+SOURCE:TARGET:일탈 = 600
+SOURCE:TARGET:노출 = 200
+SOURCE:TARGET:반감 = 1500
+SOURCE:TARGET:굴종 = 600
+SOURCE:TARGET:무서움 = 600
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;고통のパラメータによる고통のソース増加は先に処理しておく
+IF PALAM:10 < PALAMLV:1
+	TIMES SOURCE:TARGET:아픔 , 1.00
+ELSEIF PALAM:10 < PALAMLV:2
+	TIMES SOURCE:TARGET:아픔 , 1.50
+ELSEIF PALAM:10 < PALAMLV:3
+	TIMES SOURCE:TARGET:아픔 , 2.00
+ELSEIF PALAM:10 < PALAMLV:4
+	TIMES SOURCE:TARGET:아픔 , 2.50
+ELSEIF PALAM:10 >= PALAMLV:4
+	TIMES SOURCE:TARGET:아픔 , 3.00
+ENDIF
+;재생처녀だった場合は、고통のソースと반발のソースを추가する
+IF TALENT:1 == 1
+	SOURCE:TARGET:아픔 += 500
+	SOURCE:TARGET:반감 += 1000
+ENDIF
+
+;V경험
+IF HAVE_VAGINA(TARGET)
+	CALL ADDS_EXP("Ｖ경험", 1, TARGET)
+	TFLAG:V경험を伴うコマンド = 1
+ENDIF
+;A경험
+CALL ADDS_EXP("Ａ경험", 1, TARGET)
+
+;이상경험
+SIF TALENT:TARGET:처녀 == 1
+	CALL ADDS_ABNORMAL_EXP("처녀상실（삼각목마）", TARGET)
+
+IF IS_LESBIAN(TARGET,PLAYER)
+	CALL ADDS_EXP("레즈경험", 3, TARGET)
+	CALL ADDS_EXP("레즈경험", 3, PLAYER)
+ELSEIF IS_GAY(TARGET,PLAYER)
+	CALL ADDS_EXP("ＢＬ경험", 3, TARGET)
+	CALL ADDS_EXP("ＢＬ경험", 3, PLAYER)
+ENDIF
+
+;의존도ベクトル
+TFLAG:33 = 5
+
+;의존도보정値(복종で1、예속で2）
+IF TALENT:5 && ASSIPLAY == 0
+	TFLAG:30 += 1
+ELSEIF TALENT:8 && ASSIPLAY == 0
+	TFLAG:30 += 2
+ENDIF
+
+TFLAG:28 = 5
+RETURN 1
+
+;-------------------------------------------------
+;삼각목마乗馬中
+;-------------------------------------------------
+@EQUIP_COM108
+PRINTL ＜삼각목마승마중＞
+DOWNBASE:TARGET:체력 += 250
+DOWNBASE:TARGET:기력 += 300
+SIF HAVE_VAGINA(TARGET)
+	SOURCE:TARGET:도구쾌Ｖ += 300
+SOURCE:TARGET:도구쾌Ａ += 300
+SOURCE:TARGET:아픔 += 1500
+SOURCE:TARGET:일탈 += 600
+SOURCE:TARGET:노출 += 200
+SOURCE:TARGET:반감 += 1500
+SOURCE:TARGET:굴종 += 600
+SOURCE:TARGET:무서움 += 600
+;V경험
+SIF TALENT:남자 == 0
+	CALL ADDS_EXP("Ｖ경험", 1, TARGET)
+
+;A경험
+CALL ADDS_EXP("Ａ경험", 1, TARGET)
+
+A = 1
+IF IS_LESBIAN(TARGET,PLAYER)
+	CALL ADDS_EXP("레즈경험", A, TARGET)
+	CALL ADDS_EXP("레즈경험", A, PLAYER)
+ELSEIF IS_GAY(TARGET,PLAYER)
+	CALL ADDS_EXP("ＢＬ경험", A, TARGET)
+	CALL ADDS_EXP("ＢＬ경험", A, PLAYER)
+ENDIF
+;조교者→조교대상
+TFLAG:28 = 2
+RETURN 1
+
+;--------------------------------------------------
+;조교時메시지
+;--------------------------------------------------
+@MESSAGE_COM108
+PRINTL 
+;装着時
+IF TEQUIP:TARGET:삼각목마
+	PRINTFORM %타겟을()% 목마에 태우자、
+	IF ABL:마조끼 >= 5 || TALENT:마조
+		PRINTL 비명도 교성도 아닌 소리를 흘렸다……
+	ELSE
+		PRINTL 격렬한 고통으로 인해, 소리도 내지 못하고 비명을 질렀다……
+	ENDIF
+;해제時
+ELSE
+	PRINTFORM %타겟을()% 목마에서 내려주자、
+	IF ABL:마조끼 >= 5 || TALENT:마조
+		PRINTL 조금 유감이라는 표정을 하고 있다……
+	ELSE
+		PRINTL 안심한 얼굴을 하고 있다……
+	ENDIF
+ENDIF
+
+;===================================================
+;조교타입
+;===================================================
+@COMTYPE_108
+RETURN COMTYPE("하드계")
+

@@ -1,0 +1,111 @@
+﻿;조수구상を管理
+
+;-----------------------------------------------------------------------------------
+;文字通り조수の구상です
+;----------------------------------------------------------------------------------
+
+
+;--------------------------------------------------
+;@KOJO_MESSAGE_ASSIPLAY_COM関係
+;コマンド実行時に조수が行う場合출력されます
+;--------------------------------------------------
+@KOJO_MESSAGE_ASSIPLAY_COM
+IF FLAG:7 <= 0
+	RETURN 0
+ENDIF
+
+CALL 조수구상呼び出し , "KOJO_MESSAGE_ASSIPLAY_COM"
+SIF RESULT == 0 && FLAG:6 > 0
+	RETURN 0
+	
+
+;--------------------------------------------------
+;@KOJO_MESSAGE_ASSIPAIR_COM関係
+;두개펠라や더블스마타などの時に조수の구상を呼び出す関数
+;もちろん、구상に書き込みが필요になりますが・・・
+;--------------------------------------------------
+@KOJO_MESSAGE_ASSIPAIR_COM(ARG)
+IF FLAG:7 <= 0
+	RETURN 0
+ENDIF
+
+CALL 조수구상呼び出し , "KOJO_MESSAGE_ASSIPAIR_COM", -1 ,ARG
+SIF RESULT == 0 && FLAG:6 > 0
+	CALL C3P_ASSY_TRAIN_MESSAGE(ARG)
+RETURN RESULT
+	
+
+@조수구상呼び出し, ARGS , ARG = -1 , ARG:1 , ARG:2 , ARG:3
+#LOCALSSIZE 1
+SIF ARG == -1
+	ARG = ASSI
+LOCALS = %조수구상함수꼬리문자(ARG)%
+;SIF ARG == -1
+;	ARG = TARGET
+;IF CFLAG:ARG:구상セレクト < 50
+;	LOCALS = _K{NO:ARG}
+;ELSEIF CFLAG:ARG:구상セレクト < 60
+;	LOCALS = _PUB{ABL:회화타입}
+;ELSE
+;	LOCALS = _SP{CFLAG:ARG:구상セレクト - 60}
+;ENDIF
+;SIF CFLAG:ARG:구상セレクト % 50 != 0 && CFLAG:ARG:구상セレクト < 60
+;	LOCALS += @"_{CFLAG:ARG:구상セレクト%50}"
+;[IF_DEBUG]
+;	PRINTFORML 呼び出す구상は %ARGS%%LOCALS% です
+;[ENDIF]
+IF ARGS == "KOJO_MESSAGE_ASSIPLAY_COM"
+	TRYCCALLFORM %ARGS%%LOCALS% , ARG:1 , ARG:2 , ARG:3
+	CATCH
+		TRYCCALLFORM %ARGS%_PUB{ABL:ARG:회화타입} , ARG:1 , ARG:2 , ARG:3
+		CATCH
+			RETURN 0
+		ENDCATCH
+	ENDCATCH
+;ELSEIF ARGS == "BATTLE_MESSAGE"
+;	TRYCCALLFORM %ARGS%%LOCALS% , ARG:1 , ARG:2
+;	CATCH
+;		TRYCCALLFORM %ARGS%_PUB{ABL:ARG:회화타입} , ARG:1 , ARG:2 , ARG:3
+;		CATCH
+;			TRYCCALLFORM %ARGS%_PUB{ABL:ARG:회화타입} , ARG:1 , ARG:2
+;			CATCH
+;				RETURN 0
+;			ENDCATCH
+;		ENDCATCH
+;	ENDCATCH
+ELSEIF ARGS == "KOJO_MESSAGE_ASSIPAIR_COM"
+	TRYCCALLFORM %ARGS%%LOCALS%, ARG:1
+	CATCH
+		TRYCCALLFORM %ARGS%_PUB{ABL:ARG:회화타입}
+		CATCH
+			RETURN 0
+		ENDCATCH
+	ENDCATCH
+	RETURN RESULT
+ELSE
+	TRYCCALLFORM %ARGS%%LOCALS%
+	CATCH
+		TRYCCALLFORM %ARGS%_PUB{ABL:ARG:회화타입}
+		CATCH
+			RETURN 0
+		ENDCATCH
+	ENDCATCH
+ENDIF
+
+RETURN 1
+
+@조수구상함수꼬리문자 , ARG
+#FUNCTIONS
+#LOCALSSIZE 1
+SIF ARG == -1
+	ARG = ASSI
+IF CFLAG:ARG:구상セレクト < 50
+	LOCALS = _K{NO:ARG}
+ELSEIF CFLAG:ARG:구상セレクト < 60
+	LOCALS = _PUB{ABL:ARG:회화타입}
+ELSE
+	LOCALS = _SP{CFLAG:ARG:구상セレクト - 60}
+ENDIF
+SIF CFLAG:ARG:구상セレクト % 50 != 0 && CFLAG:ARG:구상セレクト < 60
+	LOCALS += @"_{CFLAG:ARG:구상セレクト%50}"
+RETURNF LOCALS

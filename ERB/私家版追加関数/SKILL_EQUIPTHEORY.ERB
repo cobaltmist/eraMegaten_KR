@@ -1,0 +1,223 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:SKILL_EQUIPTHEORY.ERB
+;	Facility	:장비스킬(장비지식Lv0～Lv5)に関する関数郡
+;
+;	Licence		:ライセンスフリー。
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		20XX/XX/XX		----					新規作成
+;	002		2019/08/27		空気					인간が장비知識を持った時の보정が이상な수치(Lv5で225%)だったので수정。장비보정Lv4で인간並みに장비を扱えるという설정なので、Lv5でのみ+25%の보정がつくように변경
+;-----------------------------------------------------------------
+;@SKILL_EQUIPTHEORY_IS_HAVE_SKILL
+;장비지식스킬(Lv0～Lv5)を保持しているかを返す
+;　ARG:0 대상のキャラID
+; 戻り値 0=保持していない 1=保持している
+;-----------------------------------------------------------------
+@SKILL_EQUIPTHEORY_IS_HAVE_SKILL, ARG:0 = -1
+#FUNCTION
+#LOCALSIZE  1
+#LOCALSSIZE 1
+	;キャラ指定が不正
+	SIF ARG:0 == -1
+		RETURNF 0
+	;장비지식스킬(Lv0～Lv5)を保持している
+	SIF HAVE_SKILL(ARG:0, [[스킬:장비지식Lv0]])
+		RETURNF 1
+	SIF HAVE_SKILL(ARG:0, [[스킬:장비지식Lv1]])
+		RETURNF 1
+	SIF HAVE_SKILL(ARG:0, [[스킬:장비지식Lv2]])
+		RETURNF 1
+	SIF HAVE_SKILL(ARG:0, [[스킬:장비지식Lv3]])
+		RETURNF 1
+	SIF HAVE_SKILL(ARG:0, [[스킬:장비지식Lv4]])
+		RETURNF 1
+	SIF HAVE_SKILL(ARG:0, [[스킬:장비지식Lv5]])
+		RETURNF 1
+	;ここまでの조건を満たさない場合
+	RETURNF 0
+
+
+;-----------------------------------------------------------------
+;@SKILL_EQUIPTHEORY_IS_SKILL_EQUIPTHEORY
+;指定の스킬Noが장비지식스킬(Lv0～Lv5)のいずれかに該当しているかを返す
+;主に스킬削除時の장비해제の필요有無판정に사용する
+;　ARG:0 대상の스킬No
+; 戻り値 0=대상は장비지식스킬ではない 1=대상は장비지식스킬である
+;-----------------------------------------------------------------
+@SKILL_EQUIPTHEORY_IS_SKILL_EQUIPTHEORY, ARG:0
+#FUNCTION
+#LOCALSIZE  1
+#LOCALSSIZE 1
+	;指定Noは장비지식스킬(Lv0～Lv5)である
+	SIF ARG:0 == [[스킬:장비지식Lv0]]
+		RETURNF 1
+	SIF ARG:0 == [[스킬:장비지식Lv1]]
+		RETURNF 1
+	SIF ARG:0 == [[스킬:장비지식Lv2]]
+		RETURNF 1
+	SIF ARG:0 == [[스킬:장비지식Lv3]]
+		RETURNF 1
+	SIF ARG:0 == [[스킬:장비지식Lv4]]
+		RETURNF 1
+	SIF ARG:0 == [[스킬:장비지식Lv5]]
+		RETURNF 1
+	;ここまでの조건を満たさない場合
+	RETURNF 0
+
+;-----------------------------------------------------------------
+;@SKILL_EQUIPTHEORY_DEL_SKILL
+;스킬削除処理時に대상キャラが악마で削除대상스킬が장비지식系스킬かつ削除の結果、
+;장비지식스킬系をまったく소지していない상태となった場合は장비を해제する
+;主に스킬削除を要する処理(스킬削除、스킬취득時の更新、스킬카드化)
+;　ARG:0 대상となっているキャラID
+;　ARG:1 削除대상の스킬No
+; 戻り値 なし
+;-----------------------------------------------------------------
+@SKILL_EQUIPTHEORY_DEL_SKILL, ARG:0 = -1, ARG:1
+#LOCALSIZE  1
+#LOCALSSIZE 1
+	;キャラ指定が不正
+	SIF ARG:0 == -1
+		RETURN 0
+	;대상キャラが악마で장비지식스킬が削除대상で장비지식스킬系をまったく소지していない場合は장비を해제する
+	IF GET_DEVIL(ARG) && SKILL_EQUIPTHEORY_IS_SKILL_EQUIPTHEORY(ARG:1) == 1 && SKILL_EQUIPTHEORY_IS_HAVE_SKILL(ARG:0) == 0
+		CALL 全장비해제, (ARG:0)
+		PRINTFORMW %CALLNAME:(ARG:0)%이(가) 장비지식의 스킬을 잃었기 떄문에、장비가 해제되었습니다。
+	ENDIF
+
+
+;-----------------------------------------------------------------
+;@SKILL_EQUIPTHEORY_EQUIP_STATUS
+;대상キャラの소지する장비지식스킬に応じて장비により増加する能力値を보정する
+;최저限1は保障する
+;　ARG:0 대상キャラ
+;　ARG:1 보정대상の장비能力値
+; 戻り値 소지스킬に応じて보정した장비能力보정値
+; LOCAL:0 計算した보정値
+;-----------------------------------------------------------------
+@SKILL_EQUIPTHEORY_EQUIP_STATUS, ARG:0 = -1, ARG:1
+#FUNCTION
+#LOCALSIZE  1
+#LOCALSSIZE 1
+	LOCAL:0 = ARG:1
+	;キャラ指定が不正
+	SIF ARG:0 == -1
+		RETURNF 1
+	
+	
+	;종족が인간か半魔
+	IF ABL:(ARG:0):종족 == 0 || ABL:(ARG:0):종족 == 36
+;---- EDIT 002 MOD START -------------------------
+		;레벨によって장비に보정が掛かる설정かどうか
+		IF FLAG:인간전투ステ설정 == 3
+			;장비性能 = 元々の장비性能 * (장비지식の보정値 + 레벨보정)
+			IF HAVE_SKILL(ARG:0, [[스킬:장비지식Lv5]])
+				LOCAL:0 = (LOCAL:0 * (125 + (BASE:(ARG:0):LV / 2))) / 100
+			ELSE
+				LOCAL:0 = (LOCAL:0 * (100 + (BASE:(ARG:0):LV / 2))) / 100
+			ENDIF
+		ELSE
+			;2.25倍
+			IF HAVE_SKILL(ARG:0, [[스킬:장비지식Lv5]])
+				TIMES LOCAL:0, 1.25
+			;1.00倍
+			ELSE
+				TIMES LOCAL:0, 1.00
+			ENDIF
+		ENDIF
+;---- EDIT 002 MOD END ---------------------------
+	ELSE
+		;장비지식스킬(Lv0～Lv5)を保持している
+		;1.25倍
+		IF HAVE_SKILL(ARG:0, [[스킬:장비지식Lv5]])
+			TIMES LOCAL:0, 1.25
+		;1.00倍
+		ELSEIF HAVE_SKILL(ARG:0, [[스킬:장비지식Lv4]])
+			TIMES LOCAL:0, 1.00
+		;0.75倍
+		ELSEIF HAVE_SKILL(ARG:0, [[스킬:장비지식Lv3]])
+			TIMES LOCAL:0, 0.75
+		;0.50倍
+		ELSEIF HAVE_SKILL(ARG:0, [[스킬:장비지식Lv2]])
+			TIMES LOCAL:0, 0.5
+		;0.25倍
+		ELSEIF HAVE_SKILL(ARG:0, [[스킬:장비지식Lv1]])
+			TIMES LOCAL:0, 0.25
+		;0.10倍
+		ELSEIF HAVE_SKILL(ARG:0, [[스킬:장비지식Lv0]])
+			TIMES LOCAL:0, 0.1
+		ENDIF
+	ENDIF
+
+	SIF LOCAL:0 < 1
+		LOCAL:0 = 1;
+	
+	RETURNF LOCAL:0
+
+;-----------------------------------------------------------------
+;@SKILL_EQUIPTHEORY_EQUIP_HIT
+;대상キャラの소지する장비지식스킬に応じて장비の명중値を보정する
+;최저限25は保障する
+;　ARG:0 대상キャラ
+;　ARG:1 보정대상の명중値
+; 戻り値 소지스킬に応じて보정した장비の명중値
+; LOCAL:0 計算した명중値
+;-----------------------------------------------------------------
+@SKILL_EQUIPTHEORY_EQUIP_HIT, ARG:0 = -1, ARG:1
+#FUNCTION
+#LOCALSIZE  1
+#LOCALSSIZE 1
+	LOCAL:0 = ARG:1
+	;キャラ指定が不正
+	SIF ARG:0 == -1
+		RETURNF 25
+		
+	;종족が인간か半魔
+	IF ABL:(ARG:0):종족 == 0 || ABL:(ARG:0):종족 == 36
+		;레벨によって장비に보정が掛かる설정かどうか
+		IF FLAG:인간전투ステ설정 == 3
+			;장비性能 = 元々の장비性能 * (장비지식の보정値 + 레벨보정)
+			IF HAVE_SKILL(ARG:0, [[스킬:장비지식Lv5]])
+				LOCAL:0 = (LOCAL:0 * (125 + (BASE:(ARG:0):LV / 2))) / 100
+			ELSE
+				LOCAL:0 = (LOCAL:0 * (100 + (BASE:(ARG:0):LV / 2))) / 100
+			ENDIF
+		ELSE
+			;2.25倍
+			IF HAVE_SKILL(ARG:0, [[스킬:장비지식Lv5]])
+				TIMES LOCAL:0, 1.25
+			;1.00倍
+			ELSE
+				TIMES LOCAL:0, 1.00
+			ENDIF
+		ENDIF
+	ELSE
+		;장비지식스킬(Lv0～Lv5)を保持している
+		;1.25倍
+		IF HAVE_SKILL(ARG:0, [[스킬:장비지식Lv5]])
+			TIMES LOCAL:0, 1.25
+		;1.00倍
+		ELSEIF HAVE_SKILL(ARG:0, [[스킬:장비지식Lv4]])
+			TIMES LOCAL:0, 1.00
+		;0.75倍
+		ELSEIF HAVE_SKILL(ARG:0, [[스킬:장비지식Lv3]])
+			TIMES LOCAL:0, 0.75
+		;0.50倍
+		ELSEIF HAVE_SKILL(ARG:0, [[스킬:장비지식Lv2]])
+			TIMES LOCAL:0, 0.5
+		;0.25倍
+		ELSEIF HAVE_SKILL(ARG:0, [[스킬:장비지식Lv1]])
+			TIMES LOCAL:0, 0.25
+		;0.10倍
+		ELSEIF HAVE_SKILL(ARG:0, [[스킬:장비지식Lv0]])
+			TIMES LOCAL:0, 0.1
+		ENDIF
+	ENDIF
+
+	SIF LOCAL:0 < 25
+		LOCAL:0 = 25;
+	
+	RETURNF LOCAL:0

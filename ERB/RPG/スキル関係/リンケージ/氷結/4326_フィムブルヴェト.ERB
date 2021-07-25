@@ -1,0 +1,207 @@
+﻿
+
+;스킬名
+@SKILL_NAME_4326,ARG
+RESULTS = 핌블의겨울
+;　명중
+@SKILL_HITRATE_4326, ARG
+RETURN 100
+
+;　위력
+@SKILL_POWER_4326, ARG
+RETURN 450
+
+;高クリティカル
+@SKILL_CRITICAL_RATE_4326, ARG
+RETURN 20
+
+;　최저공격횟수
+@SKILL_MINATTACKNUMBER_4326,ARG
+RETURN 1
+
+;　최대공격횟수
+@SKILL_MAXATTACKNUMBER_4326,ARG
+RETURN 1
+
+;　ＨＰ2を支払うかＭＰ3を支払うか
+@SKILL_COSTTYPE_4326, ARG
+RETURN 3
+;소비なし＝1
+
+;コストの量
+@SKILL_COST_4326, ARG, ARG:1
+RETURN 32
+	
+;　相性
+@SKILL_TYPE_4326,ARG
+RETURN GET_TYPE_NUM("빙결")
+
+;　1EXTRAか2MAGICか
+@SKILL_DECIDE_TYPE_4326, ARG
+RETURN 0
+
+;　1物理데미지で計算するか2魔法데미지で計算するか
+@SKILL_DAMAGETYPE_4326, ARG
+SIF FLAG:拡散フラグ == 0
+	RETURN 1
+RETURN 2
+
+
+
+;　대상が1적か2아군か3場전체か4特殊か
+@SKILL_TARGET_4326
+RETURN 1
+
+;　사거리
+@SKILL_RANGE_4326,ARG
+RETURN 3
+
+;　範囲　11체　21열　3전체　4　적아군전체
+@SKILL_SPHERE_4326,ARG
+RETURN 1
+
+;　 効果の타입　1공격、2회복、3상태変化、4特殊、5상태회복
+@SKILL_EFECT_4326
+RETURN 1
+
+;　 特殊処理の有無、及び処理内容
+@SKILL_SPECIALEFECT_4326,ARG
+;ARG = 1だった場合は処理の有無を返します
+SIF ARG == 1
+	RETURN 0
+;以下に特殊な処理を記述します
+
+;계승타입
+@SKILL_SUCCESSION_TYPE_4326
+RETURN 23
+;지변
+
+;속도보정
+@SKILL_SPEED_4326, ARG = -1
+RETURN 27
+
+;　구상の표시とその타입
+@SKILL_MESSAGE_4326,ARG
+
+;전투時以外に사용できるか
+@SKILL_ACTIONABLE_FIELD_4326
+RETURN 0
+
+;스킬変化？用랭크
+@SKILL_RANK_4326
+RETURN 0
+
+@SKILL_RANKUP_4326
+RETURN 0
+
+;テンプレート用、추가효과シリーズ
+;추가효과스테이터스
+@SKILL_ADDTIONAL_STATE_4326,ARG
+RETURN GET_STATE_NUM("FREEZE")
+
+;추가효과상성
+@SKILL_ADDTIONAL_TYPE_4326,ARG
+RETURN GET_TYPE_NUM("빙결")
+
+;추가효과기본부여확률
+@SKILL_ADDTIONAL_BASE_RATE_4326,ARG
+RETURN 80
+
+;추가효과부여확률上限
+@SKILL_ADDTIONAL_MAX_RATE_4326,ARG
+RETURN 100
+;====================================================
+;스킬及び行動の実行
+;====================================================
+@ACTION_4326,ARG,ARG:1
+#LOCALSIZE 2
+LOCAL:1 = BASE:POS(ARG:1):ＨＰ
+FOR LOCAL , 0, 2
+	FLAG:拡散フラグ = LOCAL
+	SIF  POS(ARG:1) < 0 || GET_STATE(CFLAG:POS(ARG:1):ステート) == "DYING"
+		CONTINUE
+	CALL ATTACK_SINGLE,ARG,POS(ARG:1),4326
+NEXT
+
+
+IF POS(ARG:1) > 0 && LOCAL:1 > BASE:POS(ARG:1):ＨＰ && GET_STATE(CFLAG:POS(ARG:1):ステート) != "DYING"
+	CFLAG:POS(ARG:1):명중강화 = MAX(-16, CFLAG:POS(ARG:1):명중강화 - 4)
+	CFLAG:POS(ARG:1):회피강화 = MAX(-16, CFLAG:POS(ARG:1):회피강화 - 4)
+	PRINTFORML 　　TARGET:[{ARG:1,2}] %CALLNAME:POS(ARG:1),20,LEFT%　>>>>>>　명중・회피가 저하했다！
+ENDIF
+FLAG:拡散フラグ = 0
+
+
+
+
+;====================================================
+;実行内容ここまで
+;====================================================
+
+;　 説明文の표시
+@SKILL_EXPLAIN_4326
+PRINTL 적 1체에 빙결상성의 물리+마법 특대 데미지＆명중회피저하、높은 확률로 FREEZE
+
+;継承に필요な部位
+@継承部位_4326,ARG
+RETURN 0
+
+;사용조건
+@SKILL_SPECIAL_ACTIONABLE_4326,ARG
+CALL CHECK_COST,ARG,4326
+SIF RESULT == 0
+	RETURN 0
+RETURN 1
+;とくにない
+
+
+;=====================================================
+;링케이지설정
+;=====================================================
+@LINKAGE_4326
+RETURN 1
+
+@참가人数_4326
+RETURN 1
+
+@참가조건표시_4326,ARG
+SELECTCASE ARG
+	CASE 1
+		PRINTFORM 합계위력 450이상의 빙결계 1체 스킬
+	CASE 2
+		PRINTFORM 합계위력 300이상의 비구계 1체 스킬
+ENDSELECT
+
+@発動者조건_4326 , ARG
+;비구相性の1체物理공격스킬を사용可能なこと
+CALL HAVE_SKILL_SEARCH2(ARG, "비구", "1체", "공격", , , 300)
+RETURN RESULT
+
+
+@참가者조건_4326, ARG , ARG:1
+SIF CPOS(ARG) < 1 || CPOS(ARG) > 6
+	RETURN 0
+CALL CHECK_COST_LINCAGE, ARG, 4326, ARG:1
+SIF RESULT == 0
+	RETURN 0
+SELECTCASE ARG:1
+	CASE 1
+		;빙결相性の공격스킬を사용可能なこと
+		CALL HAVE_SKILL_SEARCH2(ARG, "빙결", "1체", "공격", , , 450, 4326)
+		RETURN RESULT
+ENDSELECT
+@링케이지능력参照者_4326, ARG
+	SIF FLAG:拡散フラグ == 1
+		RETURN 1
+	RETURN 0
+
+@링케이지コスト타입_4326, ARG
+SELECTCASE ARG
+	CASE 1
+		RETURN 3
+ENDSELECT
+@링케이지コスト_4326, ARG
+SELECTCASE ARG
+	CASE 1
+		RETURN 32
+ENDSELECT

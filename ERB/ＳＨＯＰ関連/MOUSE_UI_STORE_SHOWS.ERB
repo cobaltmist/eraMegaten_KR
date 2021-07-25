@@ -1,0 +1,565 @@
+﻿;-------------------------------------------------
+;MOUSE_UI_STORE_SHOWS.ERB
+;LICENCE: FREE
+;YEAR: 2020
+;REGION: 日本
+;-------------------------------------------------
+;-------------------------------------------------
+;아이템詳細
+;-------------------------------------------------
+@MouseUIStore_Shows_ItemDetail(aCategory, aItemNo)
+#DIMS aCategory
+#DIM aItemNo
+;마이ナスと조교아이템
+IF aItemNo < 0 || aItemNo < 200
+	PRINTL
+	PRINTL
+	RETURN
+ENDIF
+PRINTSL GETLINESTR("━")
+PRINTL
+PRINTFORML %" " + ITEMNAME:aItemNo%
+PRINTL
+SELECTCASE aCategory
+	CASE "검", "총", "머리", "몸통", "팔", "발", "악세사리"
+	TRYCCALLFORM 장비조건설명_{aItemNo}
+	CATCH
+		PRINTL 장비조건：정보없음
+	ENDCATCH
+ENDSELECT
+PRINTL
+SELECTCASE aCategory
+	CASE "검", "총", "머리", "몸통", "팔", "발", "악세사리", "탄환"
+		TRYCCALLFORM 장비해설_{aItemNo}
+		CATCH
+			PRINTL 장비정보없음
+		ENDCATCH
+	CASE "아이템"
+		TRYCCALLFORM SKILL_EXPLAIN_{aItemNo + 2000}
+		CATCH
+			PRINTL 정보없음
+		ENDCATCH
+ENDSELECT
+PRINTL
+RESETCOLOR
+
+;-------------------------------------------------
+;通貨、ユニット
+;-------------------------------------------------
+@MouseUIStore_Shows_WalletBar(rCurrencies, aCurrency="", aUnitNum=0)
+#LOCALSSIZE 1
+#DIMS REF rCurrencies, 0
+#DIMS DYNAMIC aCurrency
+#DIM DYNAMIC aUnitNum
+LOCALS '= GETLINESTR("━") + "<br>"
+SIF aCurrency != ""
+	LOCALS += MouseUIStore_Shows_Currency(aCurrency)
+LOCALS += MouseUIStore_Shows_Money(rCurrencies, aCurrency)
+SIF aUnitNum
+	LOCALS += MouseUIStore_Shows_UnitSelect(aUnitNum)
+
+HTML_PRINT LOCALS
+
+;-------------------------------------------------
+@MouseUIStore_Shows_Currency(aCurrency)
+#FUNCTIONS
+#LOCALSSIZE 1
+#DIMS aCurrency
+RETURNF MouseUIStore_Space() + "ＭＯＮＥＹ：" + TOFULL(aCurrency) + MouseUIStore_Space()
+
+;-------------------------------------------------
+@MouseUIStore_Shows_Money(rCurrencies, aCurrency)
+#FUNCTIONS
+#LOCALSIZE 1
+#LOCALSSIZE 1
+#DIMS REF rCurrencies, 0
+#DIMS aCurrency
+LOCALS '= MouseUIStore_Space()
+FOR LOCAL, 0, VARSIZE("rCurrencies")
+	IF rCurrencies:LOCAL == aCurrency
+		LOCALS += MouseUIStore_HtmlColorS( "[" + MouseUIStore_CurMoneyS(rCurrencies:LOCAL, 12)+ "]", "SELECTED")
+	ELSEIF MouseUIStore_CurMoney(rCurrencies:LOCAL)
+		LOCALS += MouseUIStore_ActiveColorBtn( "[" + MouseUIStore_CurMoneyS(rCurrencies:LOCAL, 12)+ "]", @"pay_{LOCAL}")
+	ELSE
+		LOCALS += MouseUIStore_HtmlColorS( "[" + MouseUIStore_CurMoneyS(rCurrencies:LOCAL, 12)+ "]", "NONACTIVE")
+	ENDIF
+	LOCALS += MouseUIStore_Space()
+NEXT
+RETURNF LOCALS
+
+;-------------------------------------------------
+@MouseUIStore_Shows_UnitSelect(aUnitNum)
+#FUNCTIONS
+#LOCALSIZE 1
+#LOCALSSIZE 1
+#DIM aUnitNum
+#DIM lUnits, 7 = 1, 5, 10, 20, 50, 100, 999
+LOCALS '= MouseUIStore_Space() + "ＵＮＩＴ："
+FOR LOCAL, 0, VARSIZE("lUnits")
+	SIF LOCAL
+		LOCALS += MouseUIStore_Space()
+	IF lUnits:LOCAL == aUnitNum
+		LOCALS += MouseUIStore_HtmlColorS(@"[x{lUnits:LOCAL, 2}]", "SELECTED")
+	ELSE
+		LOCALS += MouseUIStore_ActiveColorBtn(@"[x{lUnits:LOCAL, 2}]", @"uni_{lUnits:LOCAL}")
+	ENDIF
+NEXT
+RETURNF LOCALS + MouseUIStore_Space()
+
+;-------------------------------------------------
+;カート
+;-------------------------------------------------
+@MouseUIStore_Shows_CartBar(rDisplays, rCart, rCurrencies, aCurrency, aMode)
+#LOCALSSIZE 1
+#DIM REF rDisplays, 0, 0
+#DIM REF rCart, 0, 0
+#DIMS REF rCurrencies, 0
+#DIMS aCurrency
+#DIMS aMode
+#DIM lTotalPrice
+#DIM lTotalNum
+#DIM lTotalItem
+CALL MouseUIStore_Calc_TotalPrice(rDisplays, rCart, aMode)
+lTotalPrice = RESULT:0
+lTotalNum = RESULT:1
+lTotalItem = RESULT:2
+LOCALS '= GETLINESTR("━") + "<br>" + MouseUIStore_Space()
+LOCALS += "ＣＡＲＴ：" + MouseUIStore_Space() + @"{lTotalItem}항목" + MouseUIStore_Space() + @"{lTotalNum}個" + MouseUIStore_Space()
+IF lTotalNum
+	LOCALS += MouseUIStore_ActiveColorBtn("[ＣＬＥＡＲ]", "crt_0") + MouseUIStore_Space()
+ELSE
+	LOCALS += MouseUIStore_HtmlColorS("[ＣＬＥＡＲ]", "NONACTIVE") + MouseUIStore_Space()
+ENDIF
+LOCALS += MouseUIStore_Space() + "ＰＲＩＣＥ：" + MouseUIStore_MoneyS("", lTotalPrice) + MouseUIStore_Space()
+IF lTotalNum
+	LOCALS += MouseUIStore_Space() + MouseUIStore_ActiveColorBtn(@"[%TOFULL(aMode)%]", "crt_999")
+ELSE
+	LOCALS += MouseUIStore_Space() + MouseUIStore_HtmlColorS(@"[%TOFULL(aMode)%]", "NONACTIVE")
+ENDIF
+	LOCALS += MouseUIStore_Space()*3 + MouseUIStore_ActiveColorBtn("[ＣＡＮＣＥＬ]", "ext_0")
+HTML_PRINT LOCALS
+
+;-------------------------------------------------
+;カートの中を표시
+;-------------------------------------------------
+@MouseUIStore_Shows_Cart(rDisplays, rCart)
+#LOCALSIZE 2
+#LOCALSSIZE 1
+#DIM REF rDisplays, 0, 0
+#DIM REF rCart, 0, 0
+#DIM lMax, 2
+VARSIZE rDisplays
+lMax:0 = RESULT:0, RESULT:1
+LOCALS '= GETLINESTR("━") + "<br><br>"
+FOR LOCAL:0, 0, lMax:0
+	FOR LOCAL:1, 0, lMax:1
+		IF !(rDisplays:(LOCAL:0):(LOCAL:1))
+			BREAK
+		ENDIF
+		IF !(rCart:(LOCAL:0):(LOCAL:1))
+			CONTINUE
+		ENDIF
+		;実処理
+		LOCALS += MouseUIStore_Space() + ITEMNAME:(rDisplays:(LOCAL:0):(LOCAL:1)) + MouseUIStore_Space() + @"x{(rCart:(LOCAL:0):(LOCAL:1)), 2, RIGHT}" + "<br>"
+	NEXT
+NEXT
+LOCALS += "<br><br>" + GETLINESTR("━") + "<br>"
+HTML_PRINT LOCALS
+
+;-------------------------------------------------
+;ページタブ
+;-------------------------------------------------
+@MouseUIStore_Shows_CategoryTab(rCategories, rDisplays, lCurCategory)
+#LOCALSIZE 1
+#LOCALSSIZE 1
+#DIMS REF rCategories, 0
+#DIM REF rDisplays, 0, 0
+#DIM lCurCategory
+LOCALS '= GETLINESTR("━") + "<br>" + MouseUIStore_Space() + "ＴＹＰＥ："
+FOR LOCAL, 0, VARSIZE("rCategories")
+	SIF LOCAL
+		LOCALS += MouseUIStore_Space()
+	IF lCurCategory == LOCAL
+		LOCALS += MouseUIStore_HtmlColorS("[ " + rCategories:LOCAL + " ]", "SELECTED")
+	ELSEIF rDisplays:LOCAL:0
+		LOCALS += MouseUIStore_ActiveColorBtn("[ " + rCategories:LOCAL + " ]", @"tab_{LOCAL}")
+	ELSE
+		LOCALS += MouseUIStore_HtmlColorS("[ " + rCategories:LOCAL + " ]", "NONACTIVE")
+	ENDIF
+NEXT
+HTML_PRINT LOCALS
+
+;-------------------------------------------------
+;사용者
+;-------------------------------------------------
+@MouseUIStore_Shows_UserBar(aUserNo, aMode="")
+#LOCALSIZE 1
+#LOCALSSIZE 1
+#DIM aUserNo
+#DIMS DYNAMIC aMode
+LOCALS '= GETLINESTR("━") + "<br>" + MouseUIStore_Space() + "ＵＳＥＲ："
+IF aMode != "CHANGE"
+	IF aUserNo < 0
+		LOCALS += MouseUIStore_HtmlColorS("[ＥＭＰＴＹ]", "SELECTED")
+	ELSE
+		LOCALS += MouseUIStore_ActiveColorBtn("[ＥＭＰＴＹ]", "use_-1")
+	ENDIF
+ENDIF
+FOR LOCAL, 71, 77
+	IF FLAG:LOCAL < 0
+		CONTINUE
+	ENDIF
+	LOCALS += MouseUIStore_Space()
+	CALL CASTING_EQUIPMENT(FLAG:LOCAL)
+	IF RESULT > 0
+		IF FLAG:LOCAL == aUserNo
+			LOCALS += MouseUIStore_HtmlColorS(@"[%CALLNAME:(FLAG:LOCAL)%]", "SELECTED")
+		ELSE
+			LOCALS += MouseUIStore_ActiveColorBtn(@"[%CALLNAME:(FLAG:LOCAL)%]", @"use_{FLAG:LOCAL}")
+		ENDIF
+	ELSE
+		LOCALS += MouseUIStore_HtmlColorS(@"[%CALLNAME:(FLAG:LOCAL)%]", "NONACTIVE")
+	ENDIF
+NEXT
+HTML_PRINT LOCALS
+
+;-------------------------------------------------
+;사용者の장비による変化
+;-------------------------------------------------
+@MouseUIStore_Shows_UserStatus(aUserNo, aItemType, aItemNo, aTypeColor)
+#LOCALSIZE 2
+#LOCALSSIZE 7
+#DIM aUserNo
+#DIMS aItemType
+#DIM aItemNo
+#DIMS aTypeColor
+#DIM DYNAMIC lEData, 30
+#DIMS DYNAMIC lEDataS, 30
+#DIM DYNAMIC lIData, 30
+#DIMS DYNAMIC lIDataS, 30
+#DIM lEquipNo
+#DIM lEquipTypeNo
+IF aUserNo < 0
+	RETURN 0
+ENDIF
+LOCALS:0 '= GETLINESTR("─") + "<br>"
+SELECTCASE aItemType
+	CASE "탄환", "아이템", "조교아이템"
+		HTML_PRINT GETLINESTR("─") + "<br><br><br><br><br><br><br><br>"
+		RETURN 0
+	CASE "검", "총"
+		LOCALS:0 += " "*29 + MouseUIStore_Shows_ItemList_HEAD_Detail(aItemType) + "<br>" + GETLINESTR("─") + "<br>"
+		lEquipNo = EQUIP:aUserNo:aItemType
+		CALLFORM MouseUIStore_ITEMDATA_%aItemType%(lEData, lEDataS, lEquipNo, aUserNo)
+		CALLFORM MouseUIStore_ITEMDATA_%aItemType%(lIData, lIDataS, aItemNo, aUserNo)
+		LOCALS:1 '= " "*29 + MouseUIStore_Shows_ItemList_LINE_Detail(lEData, lEDataS, aItemType, "  ") + "<br>"
+		LOCALS:2 '= " "*29 + MouseUIStore_Shows_ItemList_LINE_Detail(lIData, lIDataS, aItemType, "❏") + "<br>"
+		LOCALS:3 '= GETLINESTR("─") + "<br>"
+		LOCALS:3 += " "*29 + " "*45
+		FOR LOCAL, 3, 7
+			LOCALS:3 += TOALIGNMENT(@"{lIData:LOCAL - lEData:LOCAL, 4, RIGHT}", 5, "CENTER")
+		NEXT
+		HTML_PRINT "<nobr>" + LOCALS:0 + LOCALS:1 + LOCALS:2 + LOCALS:3 + "<br><br>"
+	CASE "머리","몸통", "팔", "발", "악세사리"
+		FOR LOCAL, 0, 5
+			CALL MouseUIStore_ITEMDATA_防具(lEData, lEDataS, EQUIP:aUserNo:(GETNUM(EQUIP, "머리") + LOCAL), aUserNo, aTypeColor)
+			LOCALS:(LOCAL + 1) '= " "*29 + MouseUIStore_Shows_ItemList_LINE_Detail(lEData, lEDataS, aItemType, "  ") + "<br>"
+		NEXT
+		;표시中のカテゴリは最下部に
+		LOCAL = GETNUM(EQUIP, aItemType) - GETNUM(EQUIP, "머리") + 1
+		LOCALS:LOCAL '= ""
+		CALL MouseUIStore_ITEMDATA_防具(lEData, lEDataS, EQUIP:aUserNo:aItemType, aUserNo, aTypeColor)
+		CALL MouseUIStore_ITEMDATA_防具(lIData, lIDataS, aItemNo, aUserNo, aTypeColor)
+		LOCALS:6 '= GETLINESTR("─") + "<br>"
+		LOCALS:6 += MouseUIStore_HtmlColorS(" "*29 + MouseUIStore_Shows_ItemList_LINE_Detail(lEData, lEDataS, aItemType, "  "), "SELECTED") + "<br>"
+		LOCALS:6 += MouseUIStore_HtmlColorS(" "*29 + MouseUIStore_Shows_ItemList_LINE_Detail(lIData, lIDataS, aItemType, "❏"), "SEEING") + "<br>"
+		HTML_PRINT "<nobr>" + LOCALS:0 + LOCALS:1 + LOCALS:2 + LOCALS:3 + LOCALS:4 + LOCALS:5 + LOCALS:6
+ENDSELECT
+
+;-------------------------------------------------
+;リスト
+;-------------------------------------------------
+@MouseUIStore_Shows_ItemList(rDisplays, rCart, aPerPage, aCategoryName, aCategory, aPage, aSelectedItem, aUserNo, aMode, aTypeColor)
+#LOCALSIZE 1
+#LOCALSSIZE 3
+#DIM REF rDisplays, 0, 0
+#DIM aPerPage
+#DIM REF rCart, 0, 0
+#DIMS aCategoryName
+#DIM aCategory
+#DIM aPage
+#DIM aSelectedItem
+#DIM aUserNo
+#DIMS aMode
+#DIMS aTypeColor
+#DIM lData, 30
+#DIMS lDataS, 30
+#DIM lPointer
+;ヘッダ
+{
+	LOCALS:0 '= GETLINESTR("━") + "<br>"
+	 + MouseUIStore_Space() + MouseUIStore_Shows_ItemList_HEAD(aCategoryName, aMode) + "<br>"
+	 + GETLINESTR("─") + "<br>"
+}
+;リスト
+LOCALS:1 '= ""
+FOR lPointer, aPage*aPerPage, aPage*aPerPage + aPerPage
+	IF rDisplays:aCategory:lPointer
+		SELECTCASE aCategoryName
+			CASE "머리", "몸통", "팔", "발", "악세사리"
+				CALL MouseUIStore_ITEMDATA_防具(lData, lDataS, rDisplays:aCategory:lPointer, aUserNo, aTypeColor)
+			CASEELSE
+				CALLFORM MouseUIStore_ITEMDATA_%aCategoryName%(lData, lDataS, rDisplays:aCategory:lPointer, aUserNo)
+		ENDSELECT
+		IF lPointer == aSelectedItem
+			LOCALS:1 += MouseUIStore_Space() + MouseUIStore_Shows_ItemList_LINE(lData, lDataS, aCategoryName, lPointer, rCart:aCategory:lPointer, "SELECTED", aMode) + "<br>"
+		ELSE
+			LOCALS:1 += MouseUIStore_Space() + MouseUIStore_Shows_ItemList_LINE(lData, lDataS, aCategoryName, lPointer, rCart:aCategory:lPointer, "", aMode) + "<br>"
+		ENDIF
+	ELSE
+		LOCALS:1 += "<br>"
+	ENDIF
+NEXT
+;ページめくり
+LOCALS:2 '= MouseUIStore_Space()
+IF aPage > 0
+	LOCALS:2 += MouseUIStore_ActiveColorBtn("▲PREV▲", "scr_0")
+ELSE
+	LOCALS:2 += MouseUIStore_HtmlColorS("▲PREV▲", "NONACTIVE")
+ENDIF
+LOCALS:2 += MouseUIStore_Space()
+VARSIZE rDisplays
+IF (aPage*aPerPage + aPerPage) < RESULT:1 && rDisplays:aCategory:(aPage*aPerPage + aPerPage) > 0
+	LOCALS:2 += MouseUIStore_ActiveColorBtn("▼NEXT▼", "scr_1")
+ELSE
+	LOCALS:2 += MouseUIStore_HtmlColorS("▼NEXT▼", "NONACTIVE")
+ENDIF
+LOCALS:2 += "<br>"
+HTML_PRINT "<nobr>" + LOCALS:0 + LOCALS:1 + LOCALS:2
+
+;-------------------------------------------------
+@MouseUIStore_Shows_ItemList_HEAD(aCategoryName, aMode)
+#FUNCTIONS
+#LOCALSSIZE 1
+#DIMS aCategoryName
+#DIMS aMode
+IF aMode == "BUY"
+	LOCALS '= TOALIGNMENT("구입", 9, "CENTER")
+ELSEIF aMode == "TRADEIN" || aMode == "SELL"
+	LOCALS '= TOALIGNMENT("매각", 9, "CENTER")
+ELSE
+	THROW %aMode%は불명な売買形式です。
+ENDIF
+LOCALS += MouseUIStore_ActiveColorBtn(TOALIGNMENT("단가", 12, "CENTER"), "Pri_0") + MouseUIStore_ActiveColorBtn(TOALIGNMENT("소지", 6, "CENTER"), "Pss_0")
+LOCALS += MouseUIStore_Shows_ItemList_HEAD_Detail(aCategoryName) + TOALIGNMENT("備考", 20, "CENTER")
+RETURNF LOCALS
+
+@MouseUIStore_Shows_ItemList_HEAD_Detail(aCategoryName)
+#FUNCTIONS
+#LOCALSSIZE 1
+#DIMS aCategoryName
+SELECTCASE aCategoryName
+	CASE "검"
+		{
+			LOCALS '= ""
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("종별", 8, "CENTER"), "STy_0")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("명칭", 32, "CENTER"), "INo_0")
+			 + TOALIGNMENT("조건", 5, "CENTER")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("공격", 5, "CENTER"), "FAb_0")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("명중", 5, "CENTER"), "FAb_1")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("마공", 5, "CENTER"), "FAb_4")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("마효", 5, "CENTER"), "FAb_5")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("속성", 6, "CENTER"), "ATy_0")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("공격횟수", 8, "CENTER"), "Mul_0")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("사거리", 6, "CENTER"), "Rng_0")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("범위", 7, "CENTER"), "Sph_0")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("효과", 8, "CENTER"), "AAd_0")
+		}
+	CASE "총"
+		{
+			LOCALS '= ""
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("종별", 8, "CENTER"), "GTy_0")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("명칭", 32, "CENTER"), "INo_0")
+			 + TOALIGNMENT("조건", 5, "CENTER")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("공격", 5, "CENTER"), "GPw_0")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("명중", 5, "CENTER"), "GHt_0")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("특수", 5, "CENTER"), "GMg_0")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("속도", 5, "CENTER"), "GSp_0")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("속성", 6, "CENTER"), "ATy_0")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("공격횟수", 8, "CENTER"), "Mul_0")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("사거리", 6, "CENTER"), "Rng_0")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("범위", 7, "CENTER"), "Sph_0")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("효과", 8, "CENTER"), "AAd_0")
+		}
+	CASE "防具", "머리", "몸통", "팔", "발", "악세사리"
+		{
+			LOCALS '= ""
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("명칭", 32, "CENTER"), "INo_0")
+			 + TOALIGNMENT("조건", 5, "CENTER")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("공격", 5, "CENTER"), "FAb_0")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("명중", 5, "CENTER"), "FAb_1")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("방어", 5, "CENTER"), "FAb_2")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("회피", 5, "CENTER"), "FAb_3")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("마효", 5, "CENTER"), "FAb_4")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("마위", 5, "CENTER"), "FAb_5")
+			 + MouseUIStore_HtmlBtn(MouseUIStore_TypeMark_All(), "TyC_0")
+		}
+	CASE "탄환"
+		{
+			LOCALS '= ""
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("명칭", 32, "CENTER"), "INo_0")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("위력", 5, "CENTER"), "BPw_0")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("명중", 5, "CENTER"), "BHt_0")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("속성", 6, "CENTER"), "BTy_0")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("효과", 8, "CENTER"), "BAd_0")
+		}
+	CASE "아이템"
+		{
+			LOCALS '= ""
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("명칭", 32, "CENTER"), "INo_0")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("범위", 7, "CENTER"), "ISp_0")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("타입", 10, "CENTER"), "IEf_0")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("속성", 6, "CENTER"), "ITy_0")
+			 + MouseUIStore_ActiveColorBtn(TOALIGNMENT("효과", 8, "CENTER"), "IAd_0")
+
+		}
+	CASEELSE
+		THROW 
+ENDSELECT
+RETURNF LOCALS
+
+;-------------------------------------------------
+@MouseUIStore_Shows_ItemList_LINE(rContainer, rContainerS, aCategoryName, aPos, aCartNum, aMark, aMode)
+#FUNCTIONS
+#LOCALSSIZE 2
+#DIM REF rContainer, 0
+#DIMS REF rContainerS, 0
+#DIMS aCategoryName
+#DIM aPos
+#DIM aCartNum
+#DIMS aMark
+#DIMS aMode
+LOCALS:0 '= MouseUIStore_Shows_ItemList_CartBtn(aPos, aCartNum, ITEM:(rContainer:0), MouseUIStore_ItemMaxPosses:(rContainer:0), aMode)
+SELECTCASE aMode
+	CASE "BUY"
+		LOCALS:1 '= TOALIGNMENT(TOSTR(ITEMPRICE:(rContainer:0), "#,###"), 12, "RIGHT")
+	CASE "TRADEIN"
+		LOCALS:1 '= TOALIGNMENT(TOSTR(ITEMPRICE:(rContainer:0)/2, "#,###"), 12, "RIGHT")
+	CASE "SELL"
+		IF aCategoryName == "아이템"
+			LOCALS:1 '= TOALIGNMENT(TOSTR(MouseUIStore_ItemValues:(rContainer:0)/2, "#,###"), 12, "RIGHT")
+		ELSE
+			LOCALS:1 '= TOALIGNMENT(TOSTR(MouseUIStore_ItemValues:(rContainer:0)/2, "#,###"), 12, "RIGHT")
+		ENDIF
+ENDSELECT
+LOCALS:1 += TOALIGNMENT(@"x{ITEM:(rContainer:0), 3}", 6, "CENTER")
+IF aMark == "SELECTED"
+	LOCALS:1 += MouseUIStore_Shows_ItemList_LINE_Detail(rContainer, rContainerS, aCategoryName, "❏")
+	LOCALS:1 '= MouseUIStore_HtmlBtn(LOCALS:1, @"clk_{aPos}")
+	RETURNF "<u>" + LOCALS:0 + LOCALS:1 + "</u>"
+ELSE
+	LOCALS:1 += MouseUIStore_Shows_ItemList_LINE_Detail(rContainer, rContainerS, aCategoryName, "　")
+	LOCALS:1 '= MouseUIStore_HtmlBtn(LOCALS:1, @"clk_{aPos}")
+	RETURNF LOCALS:0 + LOCALS:1
+ENDIF
+
+
+
+
+@MouseUIStore_Shows_ItemList_LINE_Detail(rContainer, rContainerS, aCategoryName, aMark)
+#FUNCTIONS
+#LOCALSSIZE 1
+#DIM REF rContainer, 0
+#DIMS REF rContainerS, 0
+#DIMS aCategoryName
+#DIMS aMark
+SELECTCASE aCategoryName
+	CASE "검", "총"
+		{
+			LOCALS '= ""
+			 + TOALIGNMENT(rContainerS:2, 8, "CENTER")
+			 + aMark + TOALIGNMENT(rContainerS:0, 30, "LEFT")
+			 + " " + rContainerS:1 + "　"
+			 + TOALIGNMENT(rContainerS:3, 4, "RIGHT") + " "
+			 + TOALIGNMENT(rContainerS:4, 4, "RIGHT") + " "
+			 + TOALIGNMENT(rContainerS:5, 4, "RIGHT") + " "
+			 + TOALIGNMENT(rContainerS:6, 4, "RIGHT") + " "
+			 + " " + rContainerS:7 + " "
+			 + @" %rContainerS:8, 2, RIGHT%～%rContainerS:9, 2, RIGHT% "
+			 + TOALIGNMENT(rContainerS:10, 6, "CENTER")
+			 + TOALIGNMENT(rContainerS:11, 7, "CENTER")
+			 + " " + TOALIGNMENT(rContainerS:13, 6, "CENTER") + " "
+			 + " " + rContainerS:14
+		}
+	CASE "머리", "몸통", "팔", "발", "악세사리"
+		{
+			LOCALS '= ""
+			 + aMark + TOALIGNMENT(rContainerS:0, 30, "LEFT")
+			 + " " + rContainerS:1 + "　"
+			 + TOALIGNMENT(rContainerS:3, 4, "RIGHT") + " "
+			 + TOALIGNMENT(rContainerS:4, 4, "RIGHT") + " "
+			 + TOALIGNMENT(rContainerS:5, 4, "RIGHT") + " "
+			 + TOALIGNMENT(rContainerS:6, 4, "RIGHT") + " "
+			 + TOALIGNMENT(rContainerS:7, 4, "RIGHT") + " "
+			 + TOALIGNMENT(rContainerS:8, 4, "RIGHT") + " "
+			 + rContainerS:10
+			 + rContainerS:29
+		}
+	CASE "탄환"
+		{
+			LOCALS '= ""
+			 + aMark + TOALIGNMENT(rContainerS:0, 30, "LEFT")
+			 + TOALIGNMENT(rContainerS:1, 4, "RIGHT") + " "
+			 + TOALIGNMENT(rContainerS:2, 4, "RIGHT") + " "
+			 + " " + rContainerS:3 + " "
+			 + " " + rContainerS:4 + " "
+		}
+	CASE "아이템"
+		{
+			LOCALS '= ""
+			 + aMark + TOALIGNMENT(rContainerS:0, 30, "LEFT")
+			 + TOALIGNMENT(rContainerS:1, 7, "CENTER")
+			 + TOALIGNMENT(rContainerS:2, 10, "CENTER")
+			 + " " + rContainerS:3 + " "
+			 + " " + rContainerS:4 + " "
+		}
+	CASEELSE
+		THROW
+ENDSELECT
+RETURNF LOCALS
+
+;-------------------------------------------------
+@MouseUIStore_Shows_ItemList_CartBtn(aPointer, aInCart, aCurPoss, aMaxPoss, aMode)
+#FUNCTIONS
+#LOCALSSIZE 1
+#DIM aPointer
+#DIM aInCart
+#DIM aCurPoss
+#DIM aMaxPoss
+#DIMS aMode
+LOCALS '= ""
+IF aInCart > 0
+	LOCALS += MouseUIStore_ActiveColorBtn(TOALIGNMENT("◀◀", 3, "LEFT"), @"out_{aPointer}")
+ELSE
+	LOCALS += MouseUIStore_HtmlColorS(TOALIGNMENT("◀◀", 3, "LEFT"), "NONACTIVE")
+ENDIF
+LOCALS += TOSTR(aInCart, "000")
+SELECTCASE aMode
+	CASE "BUY"
+		IF aInCart + aCurPoss < aMaxPoss
+			LOCALS += MouseUIStore_ActiveColorBtn(TOALIGNMENT("▶▶", 3, "RIGHT"), @"add_{aPointer}")
+		ELSE
+			LOCALS += MouseUIStore_HtmlColorS(TOALIGNMENT("▶▶", 3, "RIGHT"), "NONACTIVE")
+		ENDIF
+	CASE "SELL", "TRADEIN"
+		IF aInCart != aCurPoss
+			LOCALS += MouseUIStore_ActiveColorBtn(TOALIGNMENT("▶▶", 3, "RIGHT"), @"add_{aPointer}")
+		ELSE
+			LOCALS += MouseUIStore_HtmlColorS(TOALIGNMENT("▶▶", 3, "RIGHT"), "NONACTIVE")
+		ENDIF
+	CASEELSE
+		THROW %aMode%は불명な売買形式です。
+ENDSELECT
+RETURNF LOCALS
+
+

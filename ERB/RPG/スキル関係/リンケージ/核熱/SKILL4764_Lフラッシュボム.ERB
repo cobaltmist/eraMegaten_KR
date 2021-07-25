@@ -1,0 +1,204 @@
+﻿
+
+;스킬名
+@SKILL_NAME_4764,ARG
+RESULTS = Ｌ플래시봄
+
+;　명중
+@SKILL_HITRATE_4764, ARG
+RETURN 80
+
+;　위력
+@SKILL_POWER_4764, ARG
+RETURN 180
+
+@SKILL_CRITICAL_RATE_4764, ARG
+RETURN -200
+
+;　최저공격횟수
+@SKILL_MINATTACKNUMBER_4764,ARG
+RETURN 1
+
+;　최대공격횟수
+@SKILL_MAXATTACKNUMBER_4764,ARG
+RETURN 1
+
+;　ＨＰ2を支払うかＭＰ3を支払うか
+@SKILL_COSTTYPE_4764, ARG
+RETURN 3
+;소비なし＝1
+
+;　コストの量
+@SKILL_COST_4764,ARG
+RETURN 14
+
+;　相性
+@SKILL_TYPE_4764,ARG
+RETURN GET_TYPE_NUM("핵열")
+
+;　1EXTRAか2MAGICか
+@SKILL_DECIDE_TYPE_4764, ARG
+RETURN 1
+
+;　1물리데미지で計算するか2마법데미지で計算するか
+@SKILL_DAMAGETYPE_4764, ARG
+RETURN 1
+
+;　대상が1적か2아군か3場전체か4特殊か
+@SKILL_TARGET_4764
+RETURN 1
+
+;　사거리
+@SKILL_RANGE_4764,ARG
+RETURN 2
+
+;　범위　11명　2１열　3전체　4　적아군전체
+@SKILL_SPHERE_4764,ARG
+RETURN 3
+
+;　 効果の타입　1공격、2회복、3상태변화、4特殊、5상태회복
+@SKILL_EFECT_4764
+RETURN 1
+
+;　 特殊処理の有無、及び処理内容
+@SKILL_SPECIALEFECT_4764,ARG
+;ARG = 1だった場合は処理の有無を返します
+SIF ARG == 1
+	RETURN 0
+;以下に特殊な処理を記述します
+
+;계승타입
+@SKILL_SUCCESSION_TYPE_4764
+RETURN 23
+
+;속도보정
+@SKILL_SPEED_4764, ARG = -1
+RETURN 20
+
+;　구상の표시とその타입
+@SKILL_MESSAGE_4764,ARG
+
+
+;전투時以外に사용できるか
+@SKILL_ACTIONABLE_FIELD_4764
+RETURN 0
+
+;스킬변화？用랭크
+@SKILL_RANK_4764
+RETURN 0
+
+;テン플레이트用、추가효과シリーズ
+;추가효과스테이터스
+@SKILL_ADDTIONAL_STATE_4764,ARG
+RETURN 0
+
+;추가효과상성
+@SKILL_ADDTIONAL_TYPE_4764,ARG
+RETURN 0
+
+;추가효과기본부여확률
+@SKILL_ADDTIONAL_BASE_RATE_4764,ARG
+RETURN 0
+
+;추가효과부여확률上限
+@SKILL_ADDTIONAL_MAX_RATE_4764,ARG
+RETURN 0
+
+;====================================================
+;스킬及び行動の実行
+;====================================================
+@ACTION_4764,ARG,ARG:1
+#LOCALSIZE 3
+#DIM 前HP
+IF CFLAG:(ARG):PTフラグ == 0
+	LOCAL:1 = 1
+	LOCAL:2 = 4
+ELSE
+	LOCAL:1 = 7
+	LOCAL:2 = 12
+ENDIF
+
+FOR LOCAL,LOCAL:1,LOCAL:2
+	SIF POS(LOCAL) < 0 || CFLAG:POS(LOCAL):ステート == GET_STATE_NUM("DYING")
+		CONTINUE
+	前HP = BASE:POS(LOCAL):ＨＰ
+	CALL ATTACK_SINGLE,ARG,POS(LOCAL),4764
+	IF POS(LOCAL) > -1 && BASE:POS(LOCAL):ＨＰ < 前HP
+		CFLAG:POS(LOCAL):명중강화 = MAX(-16, CFLAG:POS(LOCAL):명중강화 - 4)
+		CFLAG:POS(LOCAL):회피강화 = MAX(-16, CFLAG:POS(LOCAL):회피강화 - 4)
+		PRINTFORML 　　TARGET:[{LOCAL,2}] %CALLNAME:POS(LOCAL),20,LEFT%　>>>>>>　명중・회피를 저하시켰다！
+	ENDIF
+NEXT
+
+;====================================================
+;実行内容ここまで
+;====================================================
+
+;　 설명文の표시
+@SKILL_EXPLAIN_4764
+PRINTL 전 １열에 핵열상성 물리 데미지＋명중・회피 저하。후열사용가능。
+
+;継承に필요한部位
+@継承部位_4764,ARG
+RETURN 1
+
+;사용조건
+@SKILL_SPECIAL_ACTIONABLE_4764,ARG
+RETURN 1
+;とくにない
+
+;=====================================================
+;링케이지설정
+;=====================================================
+@LINKAGE_4764
+RETURN 1
+
+@참가人数_4764
+RETURN 1
+
+@참가조건표시_4764,ARG
+SELECTCASE ARG
+	CASE 1
+		PRINTFORM 파마계 범위 마법
+	CASE 2
+		PRINTFORM 핵열계 공격스킬
+ENDSELECT
+
+@発動者조건_4764 , ARG
+;핵열相性의 스킬を사용가능なこと
+CALL HAVE_SKILL_SEARCH(ARG, "핵열", , "공격", )
+RETURN RESULT
+
+
+@참가者조건_4764, ARG , ARG:1
+SIF CPOS(ARG) < 1 || CPOS(ARG) > 6
+	RETURN 0
+CALL CHECK_COST_LINCAGE, ARG, 4764, ARG:1
+SIF RESULT == 0
+	RETURN 0
+SELECTCASE ARG:1
+	CASE 1
+		;파마相性의 마법스킬を사용가능なこと
+		CALL HAVE_SKILL_SEARCH(ARG, "파마", "범위", "공격", "마법", 4764)
+		SIF RESULT
+			RETURN 1
+		CALL HAVE_SKILL_SEARCH(ARG, "파마", "범위", "상태변화", "마법", 4764)
+		SIF RESULT
+			RETURN 1
+ENDSELECT
+@링케이지능력参照者_4764, ARG
+	SIF FLAG:공격횟수 == 1
+		RETURN 1
+	RETURN 0
+
+@링케이지コスト타입_4764, ARG
+SELECTCASE ARG
+	CASE 1
+		RETURN 3
+ENDSELECT
+@링케이지コスト_4764, ARG
+SELECTCASE ARG
+	CASE 1
+		RETURN 14
+ENDSELECT
+

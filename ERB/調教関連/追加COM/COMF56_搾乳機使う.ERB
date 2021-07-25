@@ -1,0 +1,214 @@
+﻿;-------------------------------------------------
+;착유기쓴다
+;道具사용コマンド、레벨3
+;촉수착유시킨다
+;-------------------------------------------------
+@CHECK_COM_ABLE56
+
+;착유기実行판정
+;촉수조교中はダメ
+SIF TEQUIP:25
+	RETURN 0
+
+;해제はいつでも가능
+SIF TEQUIP:PLAYER:17
+	RETURN 1
+
+;소인체형持ちは、双方が조교者と조교대상ならOK
+;それ以外の場合は主人が금단의지식持ちじゃないとダメ
+SIF TALENT:PLAYER:소인체형 && PLAYER != MASTER && TALENT:MASTER:144 == 0
+	RETURN 0
+
+;아이템を持っているか、아이템なし설정でないとダメ
+SIF !EXIST_ITEM(11)
+	RETURN 0
+
+;모유체질でないと使えない
+SIF TALENT:PLAYER:149 == 0
+	RETURN 0
+
+;上半身下着または上半身겉옷または全身겉옷をつけているとダメ
+SIF TEQUIP:PLAYER:유두노출 != -1
+	RETURN 0
+
+;남자だとダメ
+SIF !HAVE_TIT(PLAYER)
+	RETURN 0
+
+SIF !USE_NIPLE(PLAYER)
+	RETURN 0
+
+;Ｂ感度2以下はダメ
+SIF ABL:PLAYER:6 <= 2
+	RETURN 0
+
+;샤워中はダメ
+SIF TEQUIP:32
+	RETURN 0
+
+;새댁플레이中はダメ
+SIF TEQUIP:33
+	RETURN 0
+RETURN 1
+
+@CHECK_COM_ABLE174
+
+;촉수착유
+SIF TEQUIP:25 == 0
+	RETURN 0
+
+;촉수유두자극中は
+SIF TEQUIP:PLAYER:16
+	RETURN 0
+
+;남자だとダメ
+SIF !HAVE_TIT(PLAYER)
+	RETURN 0
+RETURN 1
+
+@ACT_COM56
+
+IF TEQUIP:25
+	PRINTL 촉수착유시킨다
+	TSTR:0 = 촉수착유시킨다
+	SELECTCOM = 174
+ELSE
+	PRINTL 착유기쓴다
+	TSTR:0 = 착유기쓴다
+ENDIF
+;CALL KOJO_MESSAGE_COM
+
+;着脱の処理
+IF TEQUIP:PLAYER:17 == 0
+	TEQUIP:PLAYER:17 = 1
+ELSE
+	TEQUIP:PLAYER:17 = 0
+ENDIF
+
+;-------------------------------------------------
+;ソース추가処理
+;-------------------------------------------------
+;소비체력、기력
+LOSEBASE:0 += 10
+LOSEBASE:1 += 10
+
+SOURCE:4 = 10
+SOURCE:13 = 10
+SOURCE:17 = 10
+
+SOURCE:PLAYER:도구쾌Ｂ = 200
+
+
+;-------------------------------------------------
+;불결の処理
+;-------------------------------------------------
+;촉수착유なら、촉수体液が가슴に付く
+SIF TEQUIP:25
+	CALL SET_STAIN("가슴", "점액", PLAYER)
+
+;-------------------------------------------------
+;경험の処理
+;-------------------------------------------------
+A = 1
+IF IS_LESBIAN(TARGET,PLAYER)
+;	PRINTFORML %EXPNAME:40%+{A}
+;	PRINTFORML %EXPNAME:40%(조교자)+{A}
+;	EXP:40 += A
+;	EXP:PLAYER:40 += A
+	CALL ADDS_EXP("레즈경험", A, TARGET)
+	CALL ADDS_EXP("레즈경험", A, PLAYER)
+ELSEIF IS_GAY(TARGET,PLAYER)
+;	PRINTFORML %EXPNAME:41%+{A}
+;	PRINTFORML %EXPNAME:41%(조교자)+{A}
+;	EXP:41 += A
+;	EXP:PLAYER:41 += A
+	CALL ADDS_EXP("ＢＬ경험", A, TARGET)
+	CALL ADDS_EXP("ＢＬ경험", A, PLAYER)
+	
+	
+ENDIF
+
+;촉수소환時、촉수경험の리셋をする
+;SIF TEQUIP:25 == 1
+;	T = 0
+
+;의존도ベクトル
+TFLAG:33 = 0
+
+
+RETURN 1
+
+
+;-------------------------------------------------
+;装着継続の処理
+;-------------------------------------------------
+@EQUIP_COM56
+;착유기장비中
+IF TEQUIP:25
+	PRINTL ＜촉수착유중(조교자)＞
+ELSE
+	PRINTL ＜착유기장착중(조교자)＞
+ENDIF
+
+;-------------------------------------------------
+;ソース추가処理
+;-------------------------------------------------
+SOURCE:PLAYER:도구쾌Ｂ += 100
+;-------------------------------------------------
+;경험の処理
+;-------------------------------------------------
+;촉수경험加算
+SIF TEQUIP:25 == 1
+	CALL ADDS_EXP("촉수경험", 1, PLAYER)
+;	T += 1
+
+
+RETURN 1
+
+;-------------------------------------------------
+;조교時テ키스ト
+;-------------------------------------------------
+;56,착유기쓴다
+;-------------------------------------------------
+@MESSAGE_COM56
+;装着時
+IF TEQUIP:PLAYER:17
+	PRINTFORMW %CALLNAME:PLAYER%에게 착유기를 붙였다
+;해제時
+ELSE
+	PRINTFORMW %CALLNAME:PLAYER%에게서 착유기를 떼어냈다
+ENDIF
+
+;-------------------------------------------------
+;174,촉수착유시킨다
+;-------------------------------------------------
+@MESSAGE_COM174
+;装着時
+IF TEQUIP:PLAYER:17
+	PRINTFORM 빨판모양의 촉수가 %CALLNAME:PLAYER%의 
+	;유아체형＋빈유、절벽
+	IF (TALENT:PLAYER:100 && TALENT:PLAYER:109) || TALENT:PLAYER:110
+		PRINT 간신히 부푼곳이 느껴지는 정도의 
+	;빈유
+	ELSEIF TALENT:PLAYER:109
+		PRINT 조그마한 
+	;거유
+	ELSEIF TALENT:PLAYER:111
+		PRINT 손에서 흘러내릴 정도의 
+	;폭유
+	ELSEIF TALENT:PLAYER:112 || TALENT:PLAYER:魔乳
+		PRINT 손으로 채 들지 못할 정도의 
+	ENDIF
+	PRINTFORML 가슴 끝의 
+	PRINTFORMW 유두를 빨아올리기 시작했다
+;해제時
+ELSE
+	PRINTFORMW 촉수는 %CALLNAME:PLAYER%의 유두를 풀어주었다
+ENDIF
+
+;===================================================
+;조교타입
+;===================================================
+@COMTYPE_56
+RETURN COMTYPE("대조교자도구계")
+

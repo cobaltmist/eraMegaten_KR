@@ -1,0 +1,522 @@
+﻿
+
+;====================
+;조건
+;====================
+@PLAYABLE_COLOSSEUM_99
+;IF 투기장フラグ:3:0 == 0 && 투기장フラグ:4:0 == 0
+	RESULTS = 콜로세움・랜덤매치
+	RETURN 1
+;ENDIF
+;RETURN 0
+
+
+;====================
+;内容
+;====================
+@COLOSSEUM_99
+#DIMS 対戦チーム
+FLAG:도주불가フラグ = 1
+FLAG:회화불능フラグ = 1
+FLAG:선제기습취소 = 1
+FLAG:RESULTスキップ = 1
+
+SIF SUBSTRING(SAVESTR:콜로세움・랜덤매치, 0, 1) != "/"
+	SAVESTR:콜로세움・랜덤매치 = /%SAVESTR:콜로세움・랜덤매치%
+
+;전투相손決定…は一日の開始時に1週間先まで決める
+対戦チーム = %AUTO_SPLIT(SAVESTR:랜덤대전팀 , "_" , 0)%
+;CALL SELECT_COLOSSEUM_RANDOMBATTLE
+
+;적を配置
+TRYCCALLFORM COLOSSEUM_99_SET_ENEMY_%対戦チーム%
+CATCH
+	;名前を間違っちゃったとか
+	PRINTFORMW 대전 팀으로 잘못된 명칭 %対戦チーム%가 선택되었습니다. 선택을 다시 합니다
+	SAVESTR:랜덤대전팀 =
+	CALL SELECT_COLOSSEUM_RANDOMBATTLE
+	対戦チーム = %AUTO_SPLIT(SAVESTR:랜덤대전팀 , "_" , 0)%
+	$LOOP
+	TRYCCALLFORM COLOSSEUM_99_SET_ENEMY_%対戦チーム%
+	CATCH
+		GOTO LOOP
+	ENDCATCH
+ENDCATCH
+;報酬はここに代入
+LOCAL = RESULT
+;そのチームを撃破した횟수に応じて、報酬減算
+;一度勝利する度に報酬반감
+;STRFLAGつかおうとしたけど使い方忘れたので面倒くさくて直接アクセス
+LOCAL /= POWER(2 , TOINT(AUTO_SPLIT(SAVESTR:콜로세움・랜덤매치 , "_" , 1 , 対戦チーム)))
+
+;메시지표시
+
+FLAG:現던전 = [[던전:콜로세움던전]]
+FLAG:現M = 1
+FLAG:現X = 4
+FLAG:現Y = 6
+CALL MAKE_FLOOR, FLAG:現던전
+DA:4:4 = 4
+CALL FLOOR_ANALYZE
+CALL SHOW_FLOOR
+CALL SHOW_NOW_FORMATION_P,0,2,,2
+
+CALL MESSAGE_WINDOW_D, "사회자", @"레이디이이이스! 앤! 젠틀멘!/기다리셨습니다! 금일 주목할 카드는 여기!"
+CALL MESSAGE_WINDOW_D, "", @"＞스크린에 %CALLNAME:MASTER% 팀과 상태 팀이 떴다…"
+
+TRYCALLFORM COLOSSEUM_MESSAGE_BEFORE_BATTLE_%対戦チーム%
+
+
+CALL MESSAGE_WINDOW_D, "사회자", @"과연 어떠한 시합으로 우리를 매료시켜줄까요?/그러면 곧바로 시작해보겠습니다!/레디～………"
+CALL MESSAGE_WINDOW_D, "사회자", @"파이트!!" , , , , , , , , , "CENTER"
+
+
+CALL BATTLE_START
+
+FLAG:도주불가フラグ = 0
+FLAG:회화불능フラグ = 0
+FLAG:선제기습취소 = 0
+FLAG:RESULTスキップ = 0
+
+SIF LOCAL <= 0
+	LOCAL = 1
+CALL MESSAGE_WINDOW_D, "", @"＞상금으로 ￥{LOCAL*1000}을 받았다"
+MONEY += LOCAL*1000
+CALL MESSAGE_WINDOW_D, "", @"＞%조사처리(CALLNAME:MASTER,"는")% {LOCAL}의 명성을 얻었다"
+FLAG:名声 += LOCAL
+FLAG:闘技場名声 += LOCAL
+IF FLAG:闘技場랭크 < 5 && FLAG:闘技場名声 > 2000
+	FLAG:闘技場랭크 = 5
+ELSEIF FLAG:闘技場랭크 < 4 && FLAG:闘技場名声 > 1300
+	FLAG:闘技場랭크 = 4
+ELSEIF FLAG:闘技場랭크 < 3 && FLAG:闘技場名声 > 500
+	FLAG:闘技場랭크 = 3
+ELSEIF FLAG:闘技場랭크 < 2 && FLAG:闘技場名声 > 200
+	FLAG:闘技場랭크 = 2
+ELSEIF FLAG:闘技場랭크 < 1 && FLAG:闘技場名声 > 50
+	FLAG:闘技場랭크 = 1
+ENDIF
+
+;적チームを倒した횟수を加算
+SAVESTR:콜로세움・랜덤매치 = %CALC_SPLIT(SAVESTR:콜로세움・랜덤매치 , "_" , 1 , 対戦チーム , "+=" , TOSTR(1) )%
+
+FOR LOCAL,0,CHARANUM
+	CALL HEALTH_CHARA,LOCAL
+NEXT
+RETURN 1
+
+
+
+@COLOSSEUM_99_SET_ENEMY_F1
+CALL SET_ENEMY,8,[[キャラ:노커]],8,0,1
+CALL SET_ENEMY,9,[[キャラ:고블린]],8,0,1
+CALL SET_ENEMY,10,[[キャラ:코볼트]],8,0,1
+CALL SET_ENEMY,13,[[キャラ:픽시]],8,0,1
+CALL SET_ENEMY,15,[[キャラ:실키]],8,0,1
+RETURN 10
+
+@COLOSSEUM_99_SET_ENEMY_F2
+CALL SET_ENEMY,8,[[キャラ:엔젤]],8,0,1
+CALL SET_ENEMY,9,[[キャラ:멜뤼지느]],10,0,1
+CALL SET_ENEMY,10,[[キャラ:하피]],8,0,1
+RETURN 10
+
+@COLOSSEUM_99_SET_ENEMY_F3
+CALL SET_ENEMY,8,[[キャラ:아귀]],8,0,1
+CALL SET_ENEMY,9,[[キャラ:화백]],9,0,1
+CALL SET_ENEMY,10,[[キャラ:아귀]],8,0,1
+CALL SET_ENEMY,14,[[キャラ:다크서머너]],9,0,1
+RETURN 10
+
+@COLOSSEUM_99_SET_ENEMY_랜덤F
+;랜덤の種作成
+RANDOMIZE BASE:MASTER:ＥＸＰ + DAY
+;人数と레벨をセット
+LOCAL = ENEMY_NUM_COMMON("初級" , 3)
+LOCAL:1 = 63 / (LOCAL+3)
+;종족数をセット
+LOCAL:2 = CLASS_NUM_COMMON("初級")
+LOCALS =
+LOCALS += @"__{[[キャラ:픽시]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:엔젤]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:아귀]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:춍춍]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:노커]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:아프사라스]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:하피]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:카부소]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:라타토스크]]}_{LOCAL:1}"
+CALL 闘技場랜덤配置 , LOCAL , LOCAL:2 , LOCALS
+;랜덤の種終わり
+RANDOMIZE GETTIME()
+RETURN 10
+
+@COLOSSEUM_99_SET_ENEMY_E1
+CALL SET_ENEMY,8,[[キャラ:멜뤼지느]],12,0,1
+CALL SET_ENEMY,9,[[キャラ:라미아]],14,0,1
+TALENT:(CHARANUM - 1):임신 = 1
+CALL SET_ENEMY,10,[[キャラ:아체리]],12,0,1
+CALL SET_ENEMY,14,[[キャラ:다크서머너]],14,0,1
+TALENT:(CHARANUM-1):남자 = 1
+ABL:(CHARANUM - 1):스킬1 = [[스킬:우황단]]
+ABL:(CHARANUM - 1):스킬2 = [[스킬:네이팜탄]]
+ABL:(CHARANUM - 1):스킬4 = [[스킬:독화살]]
+RETURN 25
+
+@COLOSSEUM_99_SET_ENEMY_E2
+CALL SET_ENEMY,8,[[キャラ:커시]],12,0,1
+CALL SET_ENEMY,9,[[キャラ:필방]],14,0,1
+CALL SET_ENEMY,10,[[キャラ:코볼트]],12,0,1
+CALL SET_ENEMY,14,[[キャラ:다크서머너]],14,0,1
+EXP:(CHARANUM-1):수간경험 = 30
+ABL:(CHARANUM - 1):스킬1 = [[스킬:우황단]]
+ABL:(CHARANUM - 1):스킬2 = [[스킬:네이팜탄]]
+ABL:(CHARANUM - 1):스킬4 = [[스킬:독화살]]
+RETURN 25
+
+@COLOSSEUM_99_SET_ENEMY_甲린様と加速要員
+FOR LOCAL , 7 , 13
+	CALL SET_ENEMY, LOCAL ,[[キャラ:엘프]],5,0,1
+	CFLAG:(CHARANUM -1):속도보정 = 20
+	SIF LOCAL == 12
+		CSTR:(CHARANUM - 1):사고패턴 = ラノワール
+	IF LOCAL == 7
+		ABL:(CHARANUM - 1):스킬1 = [[스킬:라쿤・다]]
+		ABL:(CHARANUM - 1):스킬2 = [[스킬:라쿤・다]]
+	ENDIF
+NEXT
+CALL SET_ENEMY,14,[[キャラ:웜]],21,0,1
+CSTR:(CHARANUM - 1):사고패턴 = 甲린様
+ABL:(CHARANUM - 1):스킬6 = [[스킬:베어넘기기]]
+RETURN 25
+
+@COLOSSEUM_MESSAGE_BEFORE_BATTLE_甲린様と加速要員
+CALL MESSAGE_WINDOW_D, "", @"빙하기 동안 번영의 극한을 누린 이 웜은" , , , , , , "FADE" , , , "CENTER"
+CALL MESSAGE_WINDOW_D, "", @"모든 사람들에게 공포의 존재였다." , , "재이용한다" , , , , "FADE" , , , "CENTER"
+CALL MESSAGE_WINDOW_D, "", @"그 거체와 광포한 성격이 불러일으킨 악몽은 셀 수조차 없다 ――― " , , "재이용한다" , , , , "FADE" , , , "CENTER"
+CALL MESSAGE_WINDOW_D, "", @"그것은 그야말로, 빙하기 재앙의 상징이었다." , , "재이용한다" , , , , "FADE" , , , "CENTER"
+
+
+@SET_ACTION_ラノワール, ARG
+CALL CHECK_ACTIONABLE, ARG, [[스킬:돌격의봉화]]
+IF RESULT == 1
+	CFLAG:ARG:입력行動 =  [[스킬:돌격의봉화]]
+	CALL RANDOM_TARGET, ARG , [[스킬:돌격의봉화]]
+	CFLAG:ARG:링케이지참가자1 = ARG - 1
+	CFLAG:(ARG-1):링케이지참가 = ARG+1
+	CFLAG:ARG:링케이지참가자2 = ARG - 2
+	CFLAG:(ARG-2):링케이지참가 = ARG+1
+	CFLAG:ARG:링케이지참가자3 = ARG - 3
+	CFLAG:(ARG-3):링케이지참가 = ARG+1
+ELSE
+	CALL 랜덤행동 , ARG
+ENDIF
+
+@SET_ACTION_甲린様, ARG
+IF FLAG:経過ターン数 == 0
+	CFLAG:ARG:입력行動 =  [[스킬:기합]]
+	CALL RANDOM_TARGET, ARG , [[스킬:기합]]
+ELSEIF FLAG:経過ターン数 == 1
+	CFLAG:ARG:입력行動 =  [[스킬:베어넘기기]]
+	CALL RANDOM_TARGET, ARG , [[스킬:기합]]
+ELSE
+	CALL 랜덤행동 , ARG
+ENDIF
+
+@COLOSSEUM_99_SET_ENEMY_スリーフェアリーズ
+CALL SET_ENEMY,8,[[キャラ:픽시]],16,0,1
+ABL:(CHARANUM-1):스킬6 = [[스킬:마하・지오]]
+CFLAG:(CHARANUM-1):속도보정 = 5
+CALL SET_ENEMY,9,[[キャラ:실키]],16,0,1
+ABL:(CHARANUM-1):스킬6 = [[스킬:마하・부후]]
+CFLAG:(CHARANUM-1):속도보정 = 6
+CALL SET_ENEMY,10,[[キャラ:픽시]],16,0,1
+ABL:(CHARANUM-1):스킬6 = [[스킬:마하・지오]]
+CFLAG:(CHARANUM-1):속도보정 = 5
+CSTR:(CHARANUM-1):사고패턴 = フェアリーリーダー
+RETURN 25
+
+@SET_ACTION_フェアリーリ－ダー, ARG
+CALL CHECK_ACTIONABLE, ARG, [[스킬:선더블라스트]]
+IF RESULT == 1
+	CFLAG:ARG:입력行動 =  [[스킬:선더블라스트]]
+	CALL RANDOM_TARGET, ARG , [[스킬:선더블라스트]]
+	CFLAG:ARG:링케이지참가자1 = CHARANUM -3
+	CFLAG:(CHARANUM - 3):링케이지참가 = ARG+1
+	CFLAG:ARG:링케이지참가자2 = CHARANUM -2
+	CFLAG:(CHARANUM - 2):링케이지참가 = ARG+1
+ELSE
+	CALL 랜덤행동 , ARG
+ENDIF
+
+@COLOSSEUM_99_SET_ENEMY_랜덤E
+;랜덤の種作成
+RANDOMIZE BASE:MASTER:ＥＸＰ + DAY
+;人数と레벨をセット
+LOCAL = ENEMY_NUM_COMMON("初級" , 3)
+LOCAL:1 = 96 / (LOCAL+3)
+;종족数をセット
+LOCAL:2 = CLASS_NUM_COMMON("初級")
+LOCALS =
+LOCALS += @"__{[[キャラ:아케트라브]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:아메노우즈메]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:안드라스]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:리림]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:멜뤼지느]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:좀비캅]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:아체리]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:고획조]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:커시]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:키쿠리히메]]}_{LOCAL:1}"
+CALL 闘技場랜덤配置 , LOCAL , LOCAL:2 , LOCALS
+;랜덤の種終わり
+RANDOMIZE GETTIME()
+RETURN 25
+
+@COLOSSEUM_99_SET_ENEMY_D1
+CALL SET_ENEMY,7,[[キャラ:한냐]],25,0,1
+CALL SET_ENEMY,9,[[キャラ:모무노후]],25,0,1
+CALL SET_ENEMY,11,[[キャラ:오니]],25,0,1
+RETURN 60
+
+@COLOSSEUM_99_SET_ENEMY_D2
+CALL SET_ENEMY,8,[[キャラ:살라만더]],24,0,1
+CALL SET_ENEMY,10,[[キャラ:놈]],24,0,1
+CALL SET_ENEMY,13,[[キャラ:실프]],24,0,1
+CALL SET_ENEMY,15,[[キャラ:운디네]],24,0,1
+RETURN 60
+
+@COLOSSEUM_99_SET_ENEMY_D3
+CALL SET_ENEMY,8,[[キャラ:보디코니언]],24,0,1
+CALL SET_ENEMY,9,[[キャラ:맨이터]],24,0,1
+CALL SET_ENEMY,10,[[キャラ:보디코니언]],24,0,1
+CALL SET_ENEMY,14,[[キャラ:파계승]],25,0,1
+ABL:(CHARANUM - 1):스킬1 = [[스킬:무도온]]
+RETURN 60
+
+@COLOSSEUM_99_SET_ENEMY_ジャックブラザーズ
+CALL SET_ENEMY,8,[[キャラ:잭프로스트]],28,0,1
+ABL:(CHARANUM - 1):스킬5 = [[스킬:마하・부후라]]
+ABL:(CHARANUM - 1):스킬7 = [[스킬:얼음의난무]]
+CALL SET_ENEMY,10,[[キャラ:잭랜턴]],28,0,1
+ABL:(CHARANUM - 1):스킬2 = [[스킬:마하・라기온]]
+ABL:(CHARANUM - 1):스킬6 = [[스킬:불꽃의난무]]
+RETURN 60
+
+@COLOSSEUM_99_SET_ENEMY_今日のわんこ
+CALL SET_ENEMY,7,[[キャラ:커시]],20,0,1
+ABL:(CHARANUM - 1):스킬1 = [[스킬:마비물어뜯기]]
+ABL:(CHARANUM - 1):스킬3 = [[스킬:디아라마]]
+CALL SET_ENEMY,8,[[キャラ:이누가미]],24,0,1
+ABL:(CHARANUM - 1):스킬3 = [[스킬:디아라마]]
+CALL SET_ENEMY,9,[[キャラ:오르트로스]],24,0,1
+ABL:(CHARANUM - 1):스킬3 = [[스킬:메가클로]]
+CALL SET_ENEMY,10,[[キャラ:야츠후사]],24,0,1
+CALL SET_ENEMY,11,[[キャラ:좀비독]],20,0,1
+RETURN 60
+
+@COLOSSEUM_99_SET_ENEMY_랜덤D
+;랜덤の種作成
+RANDOMIZE BASE:MASTER:ＥＸＰ + DAY
+;人数と레벨をセット
+LOCAL = ENEMY_NUM_COMMON("初級" , 4)
+LOCAL:1 = 150 / (LOCAL+4)
+;종족数をセット
+LOCAL:2 = CLASS_NUM_COMMON("初級")
+LOCALS =
+LOCALS += @"__{[[キャラ:하이픽시]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:요모츠시코메]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:페르세포네]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:카시마레이코]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:랴난시]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:루살카]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:코파텐구]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:그르르]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:노즈치]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:살라만더]]}_{LOCAL:1}"
+CALL 闘技場랜덤配置 , LOCAL , LOCAL:2 , LOCALS
+;랜덤の種終わり
+RANDOMIZE GETTIME()
+RETURN 60
+
+@COLOSSEUM_99_SET_ENEMY_C1
+CALL SET_ENEMY,8,[[キャラ:프린시펄리티]],31,0,1
+CALL SET_ENEMY,9,[[キャラ:파워]],34,0,1
+CALL SET_ENEMY,10,[[キャラ:프린시펄리티]],31,0,1
+CALL SET_ENEMY,13,[[キャラ:엔젤]],30,0,1
+ABL:(CHARANUM - 1):스킬2 = [[스킬:하마온]]
+ABL:(CHARANUM - 1):스킬1 = [[스킬:디아라마]]
+ABL:(CHARANUM - 1):스킬3 = [[스킬:펨파트라]]
+ABL:(CHARANUM - 1):스킬4 = [[스킬:갈라]]
+ABL:(CHARANUM - 1):스킬5 = [[스킬:메・디아라마]]
+CALL SET_ENEMY,14,[[キャラ:니케]],32,0,1
+ABL:(CHARANUM - 1):스킬2 = [[스킬:마하코우하]]
+ABL:(CHARANUM - 1):스킬3 = [[스킬:마하・잔마]]
+CALL SET_ENEMY,15,[[キャラ:엔젤]],30,0,1
+ABL:(CHARANUM - 1):스킬2 = [[스킬:하마온]]
+ABL:(CHARANUM - 1):스킬1 = [[스킬:디아라마]]
+ABL:(CHARANUM - 1):스킬3 = [[스킬:펨파트라]]
+ABL:(CHARANUM - 1):스킬4 = [[스킬:갈라]]
+ABL:(CHARANUM - 1):스킬5 = [[스킬:메・디아라마]]
+RETURN 120
+
+@COLOSSEUM_99_SET_ENEMY_C2
+CALL SET_ENEMY,8,[[キャラ:누에]],31,0,1
+CALL SET_ENEMY,9,[[キャラ:청우괴]],36,0,1
+CALL SET_ENEMY,10,[[キャラ:미즈치]],33,0,1
+CALL SET_ENEMY,13,[[キャラ:모스맨]],30,0,1
+CALL SET_ENEMY,14,[[キャラ:다크서머너]],30,0,1
+EXP:(CHARANUM-1):수간경험 = 100
+ABL:(CHARANUM - 1):스킬1 = [[스킬:우황단]]
+ABL:(CHARANUM - 1):스킬2 = [[스킬:야마타노드링크]]
+ABL:(CHARANUM - 1):스킬3 = [[스킬:메기도스톤]]
+ABL:(CHARANUM - 1):스킬4 = [[스킬:화염의곡옥]]
+ABL:(CHARANUM - 1):스킬5 = [[스킬:스파이럴밤]]
+ABL:(CHARANUM - 1):스킬6 = [[스킬:스턴그레네이드]]
+CALL SET_ENEMY,15,[[キャラ:바질리스크]],30,0,1
+RETURN 120
+
+@COLOSSEUM_99_SET_ENEMY_C3
+CALL SET_ENEMY,7,[[キャラ:네코마타]],35,0,1
+ABL:(CHARANUM - 1):스킬3 = [[스킬:마하・잔마]]
+ABL:(CHARANUM - 1):스킬2 = [[스킬:악셀클로]]
+ABL:(CHARANUM - 1):스킬1 = [[스킬:캔디보이스]]
+CALL SET_ENEMY,9,[[キャラ:바스테트]],38,0,1
+ABL:(CHARANUM - 1):스킬2 = [[스킬:잔다인]]
+CALL SET_ENEMY,10,[[キャラ:선리]],35,0,1
+RETURN 120
+
+@COLOSSEUM_99_SET_ENEMY_C4
+CALL SET_ENEMY,8,[[キャラ:킨키]],32,0,1
+CALL SET_ENEMY,9,[[キャラ:스이키]],36,0,1
+CALL SET_ENEMY,10,[[キャラ:후우키]],34,0,1
+RETURN 120
+
+@COLOSSEUM_99_SET_ENEMY_랜덤C
+;랜덤の種作成
+RANDOMIZE BASE:MASTER:ＥＸＰ + DAY
+;人数と레벨をセット
+LOCAL = ENEMY_NUM_COMMON("中級" , 3)
+LOCAL:1 = 444 / (LOCAL+9)
+;종족数をセット
+LOCAL:2 = CLASS_NUM_COMMON("中級")
+LOCALS =
+LOCALS += @"__{[[キャラ:유키죠로]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:굴라]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:이소라]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:익스타브]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:뷔브르]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:블랙위도우]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:프린시펄리티]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:카라스텐구]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:데메테르]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:고르곤]]}_{LOCAL:1}"
+CALL 闘技場랜덤配置 , LOCAL , LOCAL:2 , LOCALS
+;랜덤の種終わり
+RANDOMIZE GETTIME()
+RETURN 120
+
+@COLOSSEUM_99_SET_ENEMY_랜덤B
+;랜덤の種作成
+RANDOMIZE BASE:MASTER:ＥＸＰ + DAY
+;人数と레벨をセット
+LOCAL = ENEMY_NUM_COMMON("中級" , 3)
+LOCAL:1 = 148*4 / (LOCAL+9)
+;종족数をセット
+LOCAL:2 = CLASS_NUM_COMMON("中級")
+LOCALS =
+LOCALS += @"__{[[キャラ:디스]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:듀라한]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:젤라론즈]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:타라스크]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:오시치]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:청우괴]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:오세]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:카마조츠]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:비비안]]}_{LOCAL:1}"
+LOCALS += @"__{[[キャラ:쿠치사케]]}_{LOCAL:1}"
+CALL 闘技場랜덤配置 , LOCAL , LOCAL:2 , LOCALS
+;랜덤の種終わり
+RANDOMIZE GETTIME()
+RETURN 200
+
+;まだ未実装
+@COLOSSEUM_99_SET_ENEMY_랜덤A
+CALL COLOSSEUM_99_SET_ENEMY_랜덤B
+RETURN RESULT
+
+@闘技場랜덤配置 , ENEMY_NUM , CLASS_NUM , ARGS
+#DIM CLASS_NUM, 1
+#DIM ENEMY_NUM, 1
+#DIM MAXENEMY, 1
+#DIM MINENEMY, 1
+#DIM ENEMY, 20
+#DIM ENEMYLV, 20
+#DIMS 仮ENEMY , 20
+ARGS = %SUBSTRING(ARGS , 2)%
+ENEMY_NUM = LIMIT(ENEMY_NUM, CLASS_NUM, 10)
+VARSET ENEMY, -1
+ARGS = %RANDOM_SPLIT(ARGS , "__" , CLASS_NUM)%
+SPLIT ARGS , "__" , 仮ENEMY
+FOR LOCAL , 0 , CLASS_NUM
+	ENEMY:LOCAL = TOINT(AUTO_SPLIT(仮ENEMY:LOCAL , "_" , 0))
+	ENEMYLV:LOCAL = TOINT(AUTO_SPLIT(仮ENEMY:LOCAL , "_" , 1))
+NEXT
+
+;LOCAL:7~16に7~16を入れる
+FOR LOCAL, 7, 17
+	LOCAL:LOCAL = LOCAL
+NEXT
+;LOCAL:7~16をシャッフル
+FOR LOCAL, 7, 17
+	SWAP LOCAL:LOCAL, LOCAL:RAND(7, 17)
+NEXT
+
+;実際の配置
+FOR LOCAL, 0, ENEMY_NUM
+	LOCAL:1 = LOCAL:(LOCAL + 7)
+	SIF POS(LOCAL:1) >= 0
+		CONTINUE
+	LOCAL:2 = LOCAL < CLASS_NUM ? LOCAL # RAND:CLASS_NUM
+	CALL SET_ENEMY, LOCAL:1, ENEMY:(LOCAL:2), ENEMYLV:(LOCAL:2) , 1 , 1
+NEXT
+
+;전투相손決定
+@SELECT_COLOSSEUM_RANDOMBATTLE
+;対戦チーム表を前にシフトして空きを作る
+IF SAVESTR:랜덤대전팀 != ""
+	SAVESTR:랜덤대전팀 = %SHIFT_SPLIT(SAVESTR:랜덤대전팀 , "_" , -1)%
+	SIF SUBSTRING(SAVESTR:랜덤대전팀 , STRLENS(SAVESTR:랜덤대전팀)) != "_"
+		SAVESTR:랜덤대전팀 += "_"
+ENDIF
+
+FOR LOCAL , 0 , 7-STRCOUNT(SAVESTR:랜덤대전팀 , "_")
+	SELECTCASE FLAG:闘技場랭크
+		;Ｆ랭크
+		CASE 0
+			;LOCALS = %RAND_SPLIT(SUBSTRING("_F1" * 3 + "_F2" * 3 + "_F3" * 2 , 1))%
+			LOCALS = %RAND_SPLIT("F1_F2_F3_랜덤F" , "_")%
+		;Ｅ랭크
+		CASE 1
+			LOCALS = %RAND_SPLIT("E1_E2_甲린様と加速要員_スリーフェアリーズ_랜덤E" , "_")%
+		
+		;Ｄ랭크
+		CASE 2
+			LOCALS = %RAND_SPLIT("D1_D2_D3_今日のわんこ_ジャックブラザーズ_랜덤D" , "_")%
+		
+		;Ｃ랭크
+		CASE 3
+			LOCALS = %RAND_SPLIT("C1_C2_C3_C4_랜덤C" , "_")%
+		;Ｂ랭크
+		CASE 4
+			LOCALS = %RAND_SPLIT("랜덤B" , "_")%
+		;Ａ랭크
+		CASE 5
+			LOCALS = %RAND_SPLIT("랜덤A" , "_")%
+		;Ｓ랭크
+		CASEELSE
+			LOCALS = %RAND_SPLIT("랜덤S" , "_")%
+		
+	ENDSELECT
+	SAVESTR:랜덤대전팀 += LOCALS + "_"
+NEXT

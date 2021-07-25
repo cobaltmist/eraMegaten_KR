@@ -1,0 +1,238 @@
+﻿;-------------------------------------------------
+;자위과시하기
+;-------------------------------------------------
+@CHECK_COM_ABLE127
+
+;下半身下着をつけている、스커트以外の下半身겉옷を履いている、下の空いてない全身겉옷を着ているとダメ
+SIF !USE_CLI(PLAYER) && !USE_PENIS(PLAYER) && !ITEM_PENIS(PLAYER)
+	RETURN 0
+RETURN 1
+
+@ACT_COM127
+;자위과시하기
+
+PRINTL 자위과시하기
+TSTR:0 = 자위과시하기
+
+;CALL KOJO_MESSAGE_COM
+;-------------------------------------------------
+;사정ゲージ체크
+;-------------------------------------------------
+B = 0
+
+;プ레이ヤーの기교をみる
+IF ABL:PLAYER:기교 == 0
+	B = 800
+ELSEIF ABL:PLAYER:기교 == 1
+	B = 1600
+ELSEIF ABL:PLAYER:기교 == 2
+	B = 2400
+ELSEIF ABL:PLAYER:기교 == 3
+	B = 3200
+ELSEIF ABL:PLAYER:기교 == 4
+	B = 4000
+ELSE
+	B = 2800 + (ABL:PLAYER:기교 * 400)
+ENDIF
+
+;プ레이ヤーのABL:Ｃ감각をみる
+IF ABL:PLAYER:3 == 0
+	TIMES B , 1.00
+ELSEIF ABL:PLAYER:3 == 1
+	TIMES B , 1.50
+ELSEIF ABL:PLAYER:3 == 2
+	TIMES B , 2.00
+ELSEIF ABL:PLAYER:3 == 3
+	TIMES B , 2.50
+ELSEIF ABL:PLAYER:3 == 4
+	TIMES B , 3.50
+ELSE
+	TIMES B , 5.00
+ENDIF
+
+LOCAL:99 = B
+
+;再装填処理中は사정ゲージは20分の1に
+IF CFLAG:PLAYER:9 > 0
+	B /= 20
+	LOCAL:99 /= 20
+ENDIF
+SIF HAVE_PENIS(PLAYER)
+	BASE:PLAYER:2 += B
+
+	BASE:PLAYER:99 += LOCAL:99
+;조교者→조교者
+TFLAG:28 = 8
+;-------------------------------------------------
+;ソースの計算
+;-------------------------------------------------
+LOSEBASE:0 += 5
+LOSEBASE:1 += 35
+
+SOURCE:노출 = 200
+SOURCE:불결 = 100
+SOURCE:일탈 = 150
+SOURCE:TARGET:반감 = 250
+
+;-------------------------------------------------
+;特殊ソース処理
+;他のコマンドと性質がかなり違うのでほとんど特殊で定義する
+;-------------------------------------------------
+;PALAM:욕정をみる
+SELECTCASE GETPALAMLV(TARGET, GETNUM(PALAM, "욕정"))
+	CASE 0
+		SOURCE:TARGET:욕정 = 0
+	CASE 1
+		SOURCE:TARGET:욕정 = 25
+	CASE 2
+		SOURCE:TARGET:욕정 = 50
+	CASE 3
+		SOURCE:TARGET:욕정 = 100
+	CASE 4
+		SOURCE:TARGET:욕정 = 200
+	CASEELSE
+		SOURCE:TARGET:욕정 = 400
+ENDSELECT
+SELECTCASE ABL:TARGET:노출증
+	CASE 0
+		SOURCE:TARGET:무서움 = 100
+	TIMES SOURCE:욕정 , 0.00
+	CASE 1
+		SOURCE:TARGET:무서움 = 50
+	TIMES SOURCE:욕정 , 0.40
+	CASE 2
+		SOURCE:TARGET:무서움 = 20
+		TIMES SOURCE:욕정 , 0.60
+	CASE 3
+		SOURCE:TARGET:무서움 = 10
+		TIMES SOURCE:욕정 , 0.75
+	CASE 4
+		SOURCE:TARGET:무서움 = 10
+		TIMES SOURCE:욕정 , 0.90
+	CASEELSE
+		SOURCE:TARGET:무서움 = 0
+		SOURCE:욕정 = SOURCE:욕정 * (100 + (ABL:노출증 - 5) * 10) / 100
+ENDSELECT
+;IF PALAM:욕정 < PALAMLV:1
+;	SOURCE:욕정 = 25
+;ELSEIF PALAM:욕정 < PALAMLV:2
+;	SOURCE:욕정 = 50
+;ELSEIF PALAM:욕정 < PALAMLV:3
+;	SOURCE:욕정 = 100
+;ELSEIF PALAM:욕정 < PALAMLV:4
+;	SOURCE:욕정 = 200
+;ELSE
+;	SOURCE:욕정 = 400
+;ENDIF
+;ABL:자위중독をみる
+IF ABL:자위중독 == 0
+	SOURCE:성행위 = 25
+	SOURCE:굴종 = 100
+	TIMES SOURCE:불결 , 4.00
+	TIMES SOURCE:욕정 , 1.00
+ELSEIF ABL:자위중독 == 1
+	SOURCE:성행위 = 50
+	SOURCE:굴종 = 80
+	TIMES SOURCE:불결 , 2.50
+	TIMES SOURCE:욕정 , 1.05
+ELSEIF ABL:자위중독 == 2
+	SOURCE:성행위 = 75
+	SOURCE:굴종 = 70
+	TIMES SOURCE:불결 , 1.50
+	TIMES SOURCE:욕정 , 1.10
+ELSEIF ABL:자위중독 == 3
+	SOURCE:성행위 = 100
+	SOURCE:굴종 = 60
+	TIMES SOURCE:불결 , 1.00
+	TIMES SOURCE:욕정 , 1.20
+ELSEIF ABL:자위중독 == 4
+	SOURCE:성행위 = 125
+	SOURCE:굴종 = 50
+	TIMES SOURCE:불결 , 0.50
+	TIMES SOURCE:욕정 , 1.35
+ELSE
+	SOURCE:성행위 = 90 + (ABL:자위중독 * 12)
+	SOURCE:굴종 = 0
+	TIMES SOURCE:불결 , 0.10
+	SOURCE:욕정 = SOURCE:욕정 * (150 + (ABL:자위중독 - 5) * 10) / 100
+ENDIF
+
+
+;조교者に쾌Ｃ、쾌Ｂ
+SOURCE:PLAYER:0 = 80
+SOURCE:PLAYER:3 = 80
+;억압、저항持ちには、억울ソース추가
+SIF TALENT:32 || TALENT:34
+	SOURCE:16 += 20
+
+;-------------------------------------------------
+;사정체크
+;-------------------------------------------------
+;사정先타입の설정
+TCVAR:PLAYER:페니스사용대상 = TARGET
+TCVAR:PLAYER:사정箇所 = 14
+;사정先選択の可・不可
+TFLAG:704 = 1
+
+;-------------------------------------------------
+;불결の処理
+;-------------------------------------------------
+;사정に関係なく行われる処理はここから
+;조교者の指⇔조교者のＰの불결が移動
+IF HAVE_PENIS(PLAYER)
+	CALL MOVE_STAIN("손", PLAYER, "페니스", PLAYER)
+;조교者の指⇔조교者のＶの불결が移動
+ELSE
+	CALL MOVE_STAIN("바기나", PLAYER, "페니스", PLAYER)
+ENDIF
+
+;IF TALENT:남자 == 0 && TALENT:PLAYER:남자 == 0
+;	PRINTFORML 레즈경험＋1
+;	EXP:레즈경험 += 1
+;	CALL ADDS_EXP("레즈경험", 1, TARGET)
+;ELSEIF TALENT:남자 && TALENT:PLAYER:남자
+;	PRINTFORML ＢＬ경험＋1
+;	EXP:ＢＬ경험 += 1
+;	CALL ADDS_EXP("ＢＬ경험", 1, TARGET)
+;ENDIF
+
+;조교者が후타나리
+;SIF TALENT:PLAYER:후타나리
+;	SOURCE:굴종 /= 2
+
+;자위경험
+;EXP:PLAYER:자위경험 += 1
+;PRINTFORML 자위경험＋1(%CALLNAME:PLAYER%)
+CALL ADDS_EXP("자위경험", 1, PLAYER)
+
+;公開オナニー時は이상경험付加
+IF TEQUIP:28
+	CALL ADDS_ABNORMAL_EXP("공개자위", PLAYER)
+ENDIF
+RETURN 1
+;-------------------------------------------------
+;吸精処理
+;-------------------------------------------------
+IF CFLAG:PLAYER:ＭＡＧ非被흡수 == 0
+	LOCAL = (RAND:7+1) * BASE:LV
+	CALL DRAIN_MAG,PLAYER,LOCAL,TARGET
+ELSEIF CFLAG:TARGET:ＭＡＧ非被흡수 == 0
+	LOCAL = (RAND:7+1) * BASE:LV
+	CALL DRAIN_MAG,TARGET,LOCAL,PLAYER
+ENDIF
+
+@MESSAGE_COM127
+IF TEQUIP:주도권
+	PRINTFORMW %CALLNAME:PLAYER%は%CALLNAME:TARGET%に命令され눈の前で자위を行った…
+ELSE
+	PRINTFORMW %CALLNAME:PLAYER%は%CALLNAME:TARGET%に見せ付けるように눈の前で자위を行った…
+ENDIF
+		
+
+;===================================================
+;조교타입
+;===================================================
+@COMTYPE_127
+RETURN COMTYPE("조수・레즈계")
+
+

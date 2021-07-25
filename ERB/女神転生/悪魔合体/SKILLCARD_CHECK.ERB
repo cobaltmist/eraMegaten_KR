@@ -1,0 +1,88 @@
+﻿;================================================================
+;[16] 스킬카드確認
+;================================================================
+@SKILLCARD_CHECK
+#DIM L_I
+#DIM L_계승타입
+#DIM L_継承不能
+#DIM L_스킬アップ数
+#DIM COUNT_ALL_SKILLCARD
+#DIM COUNT_GET_SKILLCARD
+
+PRINT --- 스킬카드一覧
+;SETCOLOR COLOR("light-gray")
+;PRINT (継承不能)
+SETCOLOR COLOR("PASTEL-RED")
+PRINT (複製不可)
+RESETCOLOR
+PRINT ---
+PRINTL
+
+COUNT = 0
+FOR L_I, 1 ,3000
+	;총〜システム系はスキップ
+	SIF L_I == 2101
+		L_I = 2400
+
+	RESULT = 0 
+	TRYCALLFORM SKILL_SUCCESSION_TYPE_{L_I}
+	L_계승타입 = RESULT
+	
+	RESULT = 0
+	TRYCALLFORM 継承不能_{L_I}
+	L_継承不能 = RESULT
+
+	RESULT = 0
+	TRYCALLFORM SKILL_RANKUP_{L_I}
+	L_스킬アップ数 = RESULT
+
+	;継承不能の場合は処理を飛ばす
+	SIF L_계승타입 == 0
+		CONTINUE
+	SIF L_継承不能
+		CONTINUE
+
+	;스킬카드種別数カウント
+	COUNT_ALL_SKILLCARD = COUNT_ALL_SKILLCARD + 1
+
+	IF SKILLCARD_CHECK_複製不可(L_I)
+		;複製不可の場合は処理を飛ばす
+		CONTINUE
+		;SETCOLOR COLOR("PASTEL-RED")
+	ELSE
+		COUNT_GET_SKILLCARD = COUNT_GET_SKILLCARD + 1
+	ENDIF
+
+	SIF L_継承不能
+		SETCOLOR COLOR("light-gray")
+
+	;소지스킬카드種別数カウント
+	COUNT = COUNT + 1
+
+	;스킬카드표시
+	CALLFORM SKILL_NAME_{L_I}
+	LOCALS = 【%RESULTS%】
+	PRINTFORM [%TOSTR(COUNT),3,RIGHT%] ×{ITEM:(10000+L_I)}%LOCALS:0,20,LEFT%
+	RESETCOLOR
+
+	;랭크アップ스킬표시
+	FOR LOCAL, 1, L_스킬アップ数+1
+		CALLFORM SKILL_NAME_{D:LOCAL}
+		SIF SKILLCARD_CHECK_複製不可(D:LOCAL)
+			SETCOLOR COLOR("PASTEL-RED")
+		PRINTFORM ->%RESULTS:0,16,LEFT% 
+		RESETCOLOR
+	NEXT
+
+	PRINTL
+NEXT
+
+PRINTFORML --- 스킬카드 총 갯수({COUNT_GET_SKILLCARD}/{COUNT_ALL_SKILLCARD}) ---
+
+RETURN -1
+
+@SKILLCARD_CHECK_複製不可(ARG)
+#FUNCTION
+SIF (ITEM:(10000+ARG) < 1) && !ABLE_MAKESKILLCARD(ARG)
+	RETURNF 1
+RETURNF 0

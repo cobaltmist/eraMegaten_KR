@@ -1,0 +1,133 @@
+﻿
+
+;====================
+;조건
+;====================
+@PLAYABLE_COLOSSEUM_6
+;天体博物館クリア
+IF 던전フラグ:89:1 > 0 && 투기장フラグ:6:0 == 0
+;IF FLAG:闘技場랭크 == 2 && FLAG:闘技場名声 >= 455
+	RESULTS = 시합 랭크 Ｅ　ＶＳ 2인조 여성
+	RETURN 1
+ENDIF
+RETURN 0
+
+
+;====================
+;内容
+;====================
+@COLOSSEUM_6
+FLAG:도주불가フラグ = 1
+FLAG:회화불능フラグ = 1
+FLAG:선제기습취소 = 1
+CUSTOMDRAWLINE =
+PRINTW ＞어딘가 차가운 분위기의 메이드와 다른 한 명은…
+IF FINDCHARA_B(4510) >= 0
+	LOCAL = 1
+ELSEIF FINDCHARA_B(4511) >= 0
+	LOCAL = 2
+ELSEIF FINDCHARA_B(4512) >= 0
+	LOCAL = 3
+ELSE
+	PRINTL [1]밝아 보이는 여자다
+	PRINTL [2]쿨할 것 같은 여자다
+	PRINTL [3]섹시한 여자다
+	$INPUT_LOOP
+	INPUT
+
+	IF RESULT > 0 && RESULT < 4
+		LOCAL= RESULT
+	ELSE
+		GOTO INPUT_LOOP
+	ENDIF
+ENDIF
+
+PRINT ＞그래, 
+IF LOCAL == 1
+	PRINT 밝아 보이는 
+ELSEIF LOCAL == 2
+	PRINT 쿨할 것 같은 
+ELSEIF LOCAL == 3
+	PRINT 섹시한 
+ENDIF
+PRINTW 여자가 있다
+PRINTW 「빅토르에게 말을 듣고 와봤는데, 그가 말하던 것만큼 재미있을 것 같진 않은걸」
+PRINTW 「…옵니다」
+PRINTL
+PRINTW 메어리와 네밋사 2체가 나타났다!
+
+CUSTOMDRAWLINE =
+WAIT
+CALL SET_ENEMY,8,4509,30,0,1
+ABL:(CHARANUM-1):스킬7 = 0
+ABL:(CHARANUM-1):스킬8 = 0
+
+CALL SET_ENEMY,10,4509+LOCAL,30,0,1
+IF LOCAL == 1
+	ABL:(CHARANUM-1):스킬1 = 1301
+	ABL:(CHARANUM-1):스킬2 = 705
+ELSEIF LOCAL == 2
+	ABL:(CHARANUM-1):스킬1 = 1401
+	ABL:(CHARANUM-1):스킬2 = 805
+ELSEIF LOCAL == 3
+	ABL:(CHARANUM-1):스킬1 = 1211
+	ABL:(CHARANUM-1):스킬2 = 905
+ENDIF
+
+
+CALL BATTLE_START
+CUSTOMDRAWLINE =
+PRINTW 「빅…토…… 녀석… 속……어……」
+PRINTW 「…」
+PRINTW 상품으로 기절한 여자들을 받고 링을 뒤로했다.
+PRINTW 메어리와 네밋사가 노예가 되었다.
+CALL ADD_NEW_COMPANION,4509,500
+CALL ADD_NEW_COMPANION,4509+LOCAL,500
+
+CUSTOMDRAWLINE =
+WAIT
+FLAG:도주불가フラグ = 0
+FLAG:회화불능フラグ = 0
+FLAG:선제기습취소 = 0
+PRINTW ￥30000을 상금으로 받고, 명성 125를 얻었다.
+MONEY += 30000
+FLAG:名声 += 125
+FLAG:闘技場名声 += 125
+SAVESTR:랜덤대전팀 =
+CALL SELECT_COLOSSEUM_RANDOMBATTLE
+투기장フラグ:6:0 = 1
+
+FOR LOCAL,0,CHARANUM
+	CALL HEALTH_CHARA,LOCAL
+NEXT
+
+
+;未実装
+;메어리の사고패턴
+@SET_ACTION_4509,ARG
+;아군の中で一番ＨＰが低く、かつ비구相性が1미만or999ではないキャラにＧＵＮ공격
+
+;全員の中で一番ＨＰが低い캐릭터を狙う
+CFLAG:ARG:입력行動 = 2101
+CFLAG:ARG:ターゲット = -1
+FOR LOCAL,1,7
+	LOCALS = 포지션{LOCAL}
+	SIF FLAG:LOCALS == -1
+		CONTINUE
+	SIF CFLAG:(FLAG:LOCALS):ステート >= GET_STATE_NUM("STONE")
+		CONTINUE
+	SIF MAXBASE:(FLAG:LOCALS):비구 < 1 || MAXBASE:(FLAG:LOCALS):비구 == 999
+		CONTINUE
+	IF FLAG:LOCALS > -1 && CFLAG:ARG:ターゲット == -1 
+		CFLAG:ARG:ターゲット = LOCAL
+		CONTINUE
+	ENDIF
+	IF FLAG:LOCALS > -1 && BASE:(FLAG:LOCALS):ＨＰ < BASE:((POS(CFLAG:ARG:ターゲット))):ＨＰ
+		CFLAG:ARG:ターゲット = LOCAL
+	ENDIF
+NEXT
+
+IF CFLAG:ARG:ターゲット == -1
+	CFLAG:ARG:입력行動 = -1
+	CFLAG:ARG:방어フラグ = 1
+ENDIF

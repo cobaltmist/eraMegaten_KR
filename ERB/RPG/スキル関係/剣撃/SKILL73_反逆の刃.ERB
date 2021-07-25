@@ -1,0 +1,216 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:SKILLxxxx_YYYY.csv
+;	Facility	:SKILL:2073 (反逆の刃)。
+;
+;	Licence		:ライセンスフリー。
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		2020/09/18		木綿豆腐				新規作成
+;
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+
+;-------------------------------------------------------------------------------
+; [メモ]
+; Ｐ５Ｒ　明智最終페르소나・ヘリワード전용스킬
+; レバ검同様の내성・결계・방어破壊（即ち実質만능）の１체공격版……
+; に加えて相손の검격내성が高いほど위력が上がるというギミック
+; 基礎공격력４５０（等倍）～최대値６５０（검격반사・흡수）
+; 原典では『대상がダウン상태だと위력上昇』という스킬であり捏造甚だしいですが
+; この스킬のためだけにCFLAG:被ＣＯＯＰ的なのを増設する気にはなれなかったのです
+;-------------------------------------------------------------------------------
+
+;스킬名
+@SKILL_NAME_73,ARG
+RESULTS = 반역의칼날
+
+;　명중
+@SKILL_HITRATE_73, ARG
+RETURN 120
+
+;　위력
+@SKILL_POWER_73, ARG
+SELECTCASE FLAG:拡散フラグ
+	;검격等倍
+	CASE 0
+		RETURN 450
+	;검격내성(+30)
+	CASE 1
+		RETURN 480
+	;검격무효(+100)
+	CASE 2
+		RETURN 550
+	;검격흡수・반사(+200)
+	CASE 3
+		RETURN 650
+ENDSELECT
+
+;クリティカル率
+@SKILL_CRITICAL_RATE_73, ARG
+RETURN FLAG:拡散フラグ * 10
+
+;　최저공격횟수
+@SKILL_MINATTACKNUMBER_73,ARG
+RETURN 1
+
+;　최대공격횟수
+@SKILL_MAXATTACKNUMBER_73,ARG
+RETURN 1
+
+;　ＨＰ2を支払うかＭＰ3を支払うか
+@SKILL_COSTTYPE_73, ARG
+RETURN 3
+;소비なし＝1
+
+;　コストの量
+@SKILL_COST_73,ARG
+;소질보정で0.8倍されるので実質64
+;参考：낙양삼단격(위력480):22/브레이브재퍼(위력550):30/아공양단(위력600):40/천경지폭단(위력680):30
+;내성破壊＋クリティカル率も高いので소비を盛りすぎて困る事はない
+RETURN 80
+
+;　相性
+@SKILL_TYPE_73,ARG
+RETURN 0
+;검격
+
+;　1EXTRAか2MAGICか
+@SKILL_DECIDE_TYPE_73, ARG
+RETURN 1
+;EXTRA
+
+;　1물리데미지で計算するか2마법데미지で計算するか
+@SKILL_DAMAGETYPE_73, ARG
+RETURN 1
+
+;　대상が1적か2아군か3場전체か4特殊か
+@SKILL_TARGET_73
+RETURN 1
+
+;　사거리
+@SKILL_RANGE_73,ARG
+RETURN 1
+
+;　범위　1１체　2１열　3전체　4　적아군 전체
+@SKILL_SPHERE_73,ARG
+RETURN 1
+
+;　 効果の타입　1공격、2회복、3상태변화、4特殊、5상태회복
+@SKILL_EFECT_73
+RETURN 1
+
+;　 特殊処理の有無、及び処理内容
+@SKILL_SPECIALEFECT_73,ARG
+;ARG = 1だった場合は処理の有無を返します
+SIF ARG == 1
+	RETURN 0
+;以下に特殊な処理を記述します
+
+;계승타입
+@SKILL_SUCCESSION_TYPE_73
+RETURN 0
+;검격
+
+;속도보정
+@SKILL_SPEED_73, ARG = -1
+RETURN 0
+
+;　구상の표시とその타입
+@SKILL_MESSAGE_73,ARG
+
+
+;전투時이외に사용できるか
+@SKILL_ACTIONABLE_FIELD_73
+RETURN 0
+
+;스킬변화？用랭크
+@SKILL_RANK_73
+RETURN 23
+
+@SKILL_RANKUP_73
+RETURN 0
+
+@継承不能_73
+RETURN 1
+
+;テン플레이트用、추가효과시리즈
+;추가효과스테이터스
+@SKILL_ADDTIONAL_STATE_73,ARG
+RETURN 0
+
+;추가효과상성
+@SKILL_ADDTIONAL_TYPE_73,ARG
+RETURN 0
+
+;추가효과기본부여확률
+@SKILL_ADDTIONAL_BASE_RATE_73,ARG
+RETURN 0
+
+;추가효과부여확률上限
+@SKILL_ADDTIONAL_MAX_RATE_73,ARG
+RETURN 0
+
+;====================================================
+;스킬及び行動の実行
+;====================================================
+@ACTION_73,ARG,ARG:1
+#LOCALSIZE 1
+LOCAL = POS(ARG:1)
+
+;念のため초기化
+FLAG:拡散フラグ = 0
+
+;검격무효なら
+IF MAXBASE:LOCAL:검격 == 0
+	FLAG:拡散フラグ = 2
+;검격흡수か반사なら
+ELSEIF MAXBASE:LOCAL:검격 < 0 || MAXBASE:LOCAL:검격 == 999
+	FLAG:拡散フラグ = 3
+;검격내성止まりなら
+ELSEIF MAXBASE:LOCAL:검격 < 100
+	FLAG:拡散フラグ = 1
+ENDIF
+
+IF CFLAG:LOCAL:물리반사フラグ == 1
+	;테트라칸張ってたらどんな내성でも強制的に흡수・반사扱いしてくる
+	FLAG:拡散フラグ = 3
+	CFLAG:LOCAL:물리반사フラグ = 0
+	PRINTFORML [{ARG:1}]%CALLNAME:LOCAL,20% >>>>> 물리반사결계를 파괴했다！
+ENDIF
+IF CFLAG:LOCAL:검격무효화횟수 > 0
+	;흡수・반사じゃなくて검격系の壁とか張ってたら強制的に무효扱いしてくる
+	SIF FLAG:拡散フラグ != 3
+		FLAG:拡散フラグ = 2
+	CFLAG:LOCAL:검격무효화횟수 = 0
+	PRINTFORML [{ARG:1}]%CALLNAME:LOCAL,20% >>>>> 검격무효화횟수를 모두 파괴했다！
+ELSEIF 1 > CFLAG:LOCAL:검격가드킬
+	CFLAG:LOCAL:검격가드킬 = 1
+	PRINTFORML [{ARG:1}]%CALLNAME:LOCAL,20% >>>>> 검격내성을 １턴간 파괴했다！
+ENDIF
+
+CALL ATTACK_SINGLE, ARG, LOCAL, 73
+
+FLAG:拡散フラグ = 0
+
+;====================================================
+;実行内容ここまで
+;====================================================
+
+;　설명文の표시
+@SKILL_EXPLAIN_73
+	PRINTL 모든 존재를 파괴하는 마검의 힘을 해방하여、적１체를 벤다。
+	PRINTL 적의 검격내성 및 방어를 파괴하고、확실히 데미지를 준다。
+	PRINTL 대상의 검격내성、또는 전개중인 결계나 벽에 따라서 위력이 증가된다。
+
+;継承に필요한部位
+@継承部位_73,ARG
+RETURN 0
+;だめです
+
+;사용조건
+@SKILL_SPECIAL_ACTIONABLE_73,ARG
+RETURN 1
+;とくにない
+

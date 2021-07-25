@@ -1,0 +1,23 @@
+EXCHANGE
+ドリーカドモンの処理を失敗していたので修正
+
+VELVET_ROOM
+Ａ潜在持ちかつ初期ペルソナ持ちの千早の表示がおかしくなるのでペルソナ強化にＡ潜在除外を追加
+
+SYSTEM_DUNGEON
+@CASTING_COMMAND_MAGIC_FIELD_LIST及び@CASTING_COMP_DDMにCOUNTを使うように差戻
+
+SYSTEM_LEVELUP
+ソフトやアクセサリーの処理をLVUP_BOOSTERに統一
+↓の作成時に気になったところを調整
+
+SYSTEM_COMBATANTING
+新設　SYSTEM_LEVELUPのコピペで作成
+非戦闘員の戦闘員化の際にステータスを戦闘員用に調整するための処理
+
+EVENT_M
+戦闘員化時にCHECK_COMBATANTINGに飛ぶように追加
+
+Rev114用不具合等修正パッチの上からあててください
+
+JK好き

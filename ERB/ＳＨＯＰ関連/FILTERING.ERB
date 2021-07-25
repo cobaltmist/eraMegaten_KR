@@ -1,0 +1,56 @@
+﻿@SHOPCOMABLE_667
+RESULT:1 = 4
+RESULTS = 캐릭터필터
+;一応、マ스타しかいないときは除外
+SIF CHARANUM < 2
+	RETURN 0
+RETURN 1
+
+@SHOP_COM_667
+CALL INPUT_CHARA_LIST("필터링 설정을 변경할 캐릭터를 선택하세요", "CASTING_SHOP_COM_667")
+IF RESULT == 1000
+	;FOR LOCAL, 0, CHARANUM - 1
+	;	IF CFLAG:LOCAL:필터링フラグ
+	;		FOR LOCAL:1, LOCAL, CHARANUM
+	;			SIF CFLAG:(LOCAL:1):필터링フラグ
+	;				CONTINUE
+	;			SIF TARGET == LOCAL:1
+	;				TARGET = LOCAL
+	;			SWAPCHARA LOCAL, LOCAL:1
+	;			BREAK
+	;		NEXT
+	;	ENDIF
+	;NEXT
+	;포지션に齟齬が発生するので、FLAG側を초기化＋CFLAG側から読み込み
+	CALL REFRESH_POS
+	RETURN 0
+ENDIF
+INVERTBIT CFLAG:RESULT:필터링フラグ,0
+IF CFLAG:RESULT:필터링フラグ
+	;ターゲットから外す
+	FOR LOCAL, 0, 4
+		IF LOCAL == 0
+			SIF TARGET == RESULT
+				TARGET = -1
+			SIF ASSI == RESULT
+				ASSI = -1
+		ENDIF
+		SIF TARGET:LOCAL == CFLAG:RESULT:キャラ固有の번호
+			TARGET:LOCAL = -1
+		SIF ASSI:LOCAL == CFLAG:RESULT:キャラ固有の번호 && LOCAL < 3
+			ASSI:LOCAL -= 1
+	NEXT
+ENDIF
+RESTART
+
+@CASTING_SHOP_COM_667(ARG)
+;主人公は除外
+SIF ARG == 0
+	RETURN 0
+;仕事中のキャラも面倒なことになりそうだし、기본的に필터ーかけるとは思えないので除外
+SIF CFLAG:ARG:노역フラグ
+	RETURN 0
+;いないキャラも除外
+SIF CFLAG:ARG:この場に居ないフラグ == 1
+	RETURN 0
+RETURN 1

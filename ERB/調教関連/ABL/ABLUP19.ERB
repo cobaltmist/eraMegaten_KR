@@ -1,0 +1,267 @@
+﻿;분유중독可否
+@ISABLUP19
+;연모、친애、음란、창부はMAXLV10
+IF ABL:19 >= 10
+	RETURN 0
+ELSEIF ABL:19 >= 5 && !함락(TARGET) && TARGET != MASTER
+	RETURN 0
+ENDIF
+
+CALL DECIDE_ABLUP19
+
+IF Z == 0
+	RETURN 0
+ELSE
+	RETURN 1
+ENDIF
+
+
+;분유중독
+@ABLUP19
+$ABLUP_LOOP
+
+DRAWLINE
+;연모、친애、음란、창부はMAXLV10
+IF ABL:19 >= 10
+	PRINTW 이미 MAX입니다
+	RETURN 0
+ELSEIF ABL:19 >= 5 && !함락(TARGET) && TARGET != MASTER
+	PRINTW 이미 MAX입니다
+	RETURN 0
+ENDIF
+
+CALL DECIDE_ABLUP19
+
+
+;ＬＶ２から３に上げるときは이상경험필요（소질：[중독되기쉬움][음유]なら無視できる）
+IF ABL:19 == 2 && TALENT:72 == 0 && TALENT:77 == 0
+	PRINTS EXPNAME:50
+	PRINTL 있음、그리고
+;ＬＶ３から４に上げるときは이상경험2이상필요（소질：[중독되기쉬움][음유]なら無視できる）
+ELSEIF ABL:19 == 3 && TALENT:72 == 0 && TALENT:77 == 0
+	PRINTS EXPNAME:50
+	PRINTL 2이상、그리고
+;ＬＶ４から５に上げるときは이상경험3이상필요（소질：[중독되기쉬움][음유]なら無視できる）
+ELSEIF ABL:19 == 4 && TALENT:72 == 0 && TALENT:77 == 0
+	PRINTS EXPNAME:50
+	PRINTL 3이상、그리고
+;ＬＶ８から９に上げるときは이상경험7이상필요（소질：[중독되기쉬움][음유]なら無視できる）
+ELSEIF ABL:19 == 8 && TALENT:72 == 0 && TALENT:77 == 0
+	PRINTS EXPNAME:50
+	PRINTL 7이상、그리고
+ENDIF
+
+
+;B감각が필요
+PRINTS ABLNAME:6
+PRINTV ABL:19 + 1
+PRINTL LV이상、그리고
+
+PRINT [0] - 
+PRINTS PALAMNAME:6
+PRINT 의 구슬×
+PRINTV A
+PRINT 、
+PRINTS PALAMNAME:3
+PRINT 의 구슬×
+PRINTV B
+PRINT 、
+PRINTS PALAMNAME:7
+PRINT 의 구슬×
+PRINTV C
+PRINT 、
+PRINTS EXPNAME:54
+PRINTV D
+PRINT 이상
+PRINT ……
+
+IF I == 0
+	PRINT ＯＫ
+ELSE
+	SIF I & 1
+		PRINT 구슬부족 
+	SIF I & 2
+		PRINT 경험부족 
+	SIF I & 4
+		PRINT 능력부족 
+ENDIF
+PRINTL 
+
+
+
+IF Z == 0
+	WAIT
+	RETURN
+ENDIF
+
+PRINTLC [100] - 그만둔다
+PRINTFORMLC   %" " * 42%
+PRINTLC [200] - 자동 능력 상승
+
+
+INPUT
+IF (RESULT < 0 || RESULT > 0) && RESULT != 100 && RESULT != 200
+	RESTART
+ELSEIF I != 0 && RESULT == 0
+	PRINTL 조건을 만족하지 못했습니다
+	RETURN 0
+ELSEIF RESULT == 100
+	RETURN 0
+ELSEIF RESULT == 200
+	CALL AUTOMAX, 19
+	RETURN 0
+ENDIF
+
+ABL:19 += 1
+
+IF RESULT == 0
+	JUEL:6 -= A
+	JUEL:3 -= B
+	JUEL:7 -= C
+ENDIF
+
+PRINTS ABLNAME:19
+PRINT 의 레벨이 
+PRINTV ABL:19
+PRINTFORMW %조사만처리(ABL:19,"가")% 되었습니다
+GOTO ABLUP_LOOP
+
+
+;분유중독LVUP판정
+@DECIDE_ABLUP19
+;조건別にＯＫかダメかを記録する
+I = 0
+;능력アップ가능なら1にする
+Z = 0
+
+IF ABL:19 == 0
+	A = 2500
+	B = 6000
+	C = 1000
+	D = 10
+ELSEIF ABL:19 == 1
+	A = 5000
+	B = 14000
+	C = 2500
+	D = 25
+ELSEIF ABL:19 == 2
+	A = 9000
+	B = 27000
+	C = 4800
+	D = 80
+ELSEIF ABL:19 == 3
+	A = 17000
+	B = 65000
+	C = 10000
+	D = 150
+ELSEIF ABL:19 == 4
+	A = 30000
+	B = 80000
+	C = 25000
+	D = 250
+ELSEIF ABL:19 == 5
+	A = 35000
+	B = 100000
+	C = 30000
+	D = 350
+ELSEIF ABL:19 == 6
+	A = 40000
+	B = 120000
+	C = 35000
+	D = 500
+ELSEIF ABL:19 == 7
+	A = 45000
+	B = 140000
+	C = 40000
+	D = 600
+ELSEIF ABL:19 == 8
+	A = 50000
+	B = 160000
+	C = 45000
+	D = 700
+ELSEIF ABL:19 == 9
+	A = 60000
+	B = 200000
+	C = 50000
+	D = 800
+ENDIF
+
+;일선을넘지않음
+IF TALENT:27 && (TALENT:3 == 0 && TALENT:4 == 0 && TALENT:5 == 0 && 함락() < 2)
+	TIMES A , 2.00
+	TIMES B , 2.00
+	TIMES C , 2.00
+	TIMES D , 2.00
+ENDIF
+;중독되기쉬움
+IF TALENT:72
+	TIMES A , 0.50
+	TIMES B , 0.50
+	TIMES C , 0.50
+	TIMES D , 0.50
+ENDIF
+;빈유
+IF TALENT:109
+	TIMES B , 0.90
+ENDIF
+;절벽
+IF TALENT:110
+	TIMES B , 0.70
+ENDIF
+;거유
+IF TALENT:111
+	TIMES B , 1.10
+ENDIF
+;폭유
+IF TALENT:112
+	TIMES B , 1.30
+ENDIF
+
+;ＬＶ２から３に上げるときは이상경험필요（소질：[중독되기쉬움][음유]なら無視できる）
+IF ABL:19 == 2 && TALENT:72 == 0 && TALENT:77 == 0
+	IF EXP:50 == 0
+		;이상경험が부족
+		I |= 2
+	ENDIF
+;ＬＶ３から４に上げるときは이상경험2이상필요（소질：[중독되기쉬움][음유]なら無視できる）
+ELSEIF ABL:19 == 3 && TALENT:72 == 0 && TALENT:77 == 0
+	IF EXP:50 < 2
+		;이상경험が부족
+		I |= 2
+	ENDIF
+;ＬＶ４から５に上げるときは이상경험3이상필요（소질：[중독되기쉬움][음유]なら無視できる）
+ELSEIF ABL:19 == 4 && TALENT:72 == 0 && TALENT:77 == 0
+	IF EXP:50 < 3
+		;이상경험が부족
+		I |= 2
+	ENDIF
+;ＬＶ８から９に上げるときは이상경험7이상필요（소질：[중독되기쉬움][음유]なら無視できる）
+ELSEIF ABL:19 == 8 && TALENT:72 == 0 && TALENT:77 == 0
+	IF EXP:50 < 7
+		;이상경험が부족
+		I |= 2
+	ENDIF
+ENDIF
+
+;B감각が필요
+IF ABL:6 < ABL:19 + 1
+	I |= 4
+ENDIF
+
+;욕정의 구슬で上げる
+SIF JUEL:6 < A
+	I |= 1
+;쾌B의 구슬で上げる
+SIF JUEL:3 < B
+	I |= 1
+;굴복의 구슬で上げる
+SIF JUEL:7 < C
+	I |= 1
+;분유경험が필요
+SIF EXP:54 < D
+	I |= 2
+IF I == 0
+	Z = 1
+ENDIF
+RETURN 1
+

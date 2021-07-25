@@ -1,0 +1,1158 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:REQUEST_xxx_yyy.ERB
+;	Facility	:의뢰:030(데빌서바이버２) １日눈。
+;				 REQUEST_30のサ부후ァイル。
+;				 １日눈の데이터を管理する。
+;
+;	Licence		:ライセンスフリー。
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		2011/08/23		旅人					新規作成
+;	002		2011/09/01		旅人					パーティー加入に조교が필요한バグを수정
+;	003		2011/09/03		旅人					周回用の処理を추가
+;	004		2015/01/15		セーロGUN				デビオクに対応
+;
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+
+;-------------------------------------------------------------------------------
+; 【フラグついて】
+; フラグは下記のみ사용。
+;
+;
+; [00-09] 전투:두베
+; FLAG:デビサバ２進行度 = 000;初回
+; FLAG:デビサバ２進行度 = 001;訪問済み
+; FLAG:デビサバ２進行度 = 005;전투中
+; FLAG:デビサバ２進行度 = 006;전투中(두베내성변화後)
+; FLAG:デビサバ２進行度 = 010;전투クリア
+;
+; [10-19] 이오加入
+; FLAG:デビサバ２進行度 = 010;이오引き取り初回
+; FLAG:デビサバ２進行度 = 011;이오イキ顔
+; FLAG:デビサバ２進行度 = 100;종료(1ST DAY)
+;
+;
+; 【メモ】
+; ・두베は最初全部무효、10ターン経過で통상내성に戻る。
+; ・이오加入はイキ顔有り。
+;
+;
+;-------------------------------------------------------------------------------
+
+;===============================================================================
+;  ◇記載関数一覧(記載順)
+;
+;		Module Name						Explanation
+;
+;	・ REQUEST_xxx_yyy					의뢰:メイン処理(yyy)
+;	・ EVENT_BATTLE_TURNEND_REQUESTxxx_yyy
+;										의뢰:전투中処理(ターン종료시)(yyy)
+;
+; *- 独自関数
+;
+;	・ REQUEST30_1_FIND_ROOM			의뢰:部屋探し
+;	・ REQUEST_30_1_FIND_ROOM_BTL		의뢰:部屋探し(전투)
+;
+;===============================================================================
+
+
+;====================
+;内容
+;====================
+@REQUEST_30_1
+#DIM L_FLAG_REQ
+#DIM L_FLAG_EVENT_DIGIT
+#DIM L_FLAG_EVENT_FIRST_DIGIT
+#DIM L_BTL_FLG
+#DIM L_TMP
+#DIM L_ADD_RESULT
+
+IF (GETBIT(FLAG:発見ED,43) || GETBIT(FLAG:発見ED,44)) && FLAG:デビサバ２進行度 == 0
+	PRINTL 이 세계에 있어서의 집스는…。
+	CALL INPUT_YN("독자적인 목적을 최우선으로 하는 조직이다…", "인명 구조 등도 하는 조직이다…")
+	;BR루트 돌입
+	IF RESULT
+		FLAG:デビサバ２進行度 = 5000
+		CALL REQUEST_30_50
+		RETURN
+	ENDIF
+ENDIF
+
+;- フラグをセット
+L_FLAG_REQ = FLAG:デビサバ２進行度
+
+;- フラグをセット(이벤트フラグ:２桁)
+L_FLAG_EVENT_DIGIT = L_FLAG_REQ % 100
+
+;- フラグをセット(이벤트フラグ:１桁눈)
+L_FLAG_EVENT_FIRST_DIGIT = L_FLAG_REQ % 10
+
+;- 전투フラグ(디버그용。OFFで전투無しで実行出来る)
+L_BTL_FLG = 1
+
+;-----------------------------
+;- 処理開始
+;-----------------------------
+
+SELECTCASE L_FLAG_EVENT_DIGIT
+	;- 전투:두베
+	CASE 00 TO 09
+		;- 初回
+		IF L_FLAG_EVENT_FIRST_DIGIT == 0
+			;- フラグセット
+			FLAG:デビサバ２進行度 = 001
+			FLAG:デビサバ２イキ顔動画進行度 = 0
+
+			PRINTFORMW ＞도쿄 ― 국회의사당。
+			PRINTFORMW ＞정면 현관에서 대기하고 있던 직원과 이야기하자 안으로 안내되었다・・・。
+			PRINTFORMW ＞지하로 가는 엘리베이터・・・。
+			PRINTFORMW ＞자꾸자꾸 지하로 들어간다。
+			PRINTFORMW ＞엘리베이터 조작판에는「JP's」라고 로고가 써 있었다。
+			;'집스설명
+			PRINTFORML
+			PRINTFORMW ＞집스。
+			PRINTFORML ＞「Japan Meteorological Agency,Prescribed Geomagnetism research Department」의 약자。
+			PRINTFORMW ＞번역하면「기상청 지정 지자기 조사부」가 된다。
+			PRINTFORMW ＞도쿄 각지에 악마가 출현하자、여기 저기에 얼굴을 내밀고 있는 기관이다。
+			PRINTFORMW ＞하지만 뭘 하는지 정체가 알려지지 않았고、팬텀조차 전모를 파악하지 못하고 있었다。
+			PRINTFORMW ＞그들은 재해에 피해를 입은 이재민의 구조조차 실시하지 않고、독자적인 목적을 최우선으로 해 활동하고 있다。
+			PRINTFORMW ＞그러한 의미에서 어떤 의미론 팬텀에 가까운 「저쪽 편」의 조직이라 부를만 하다。
+			PRINTFORMW ＞국영이니、사실 더 악질이지만。
+			PRINTFORML
+			PRINTFORMW ＞이 의뢰는 향후의 큰 흐름의 일단이 될지 모른다。
+
+			PRINT ＞각각의 분기점에서는、
+			;- 하늘색
+			SETCOLOR 0xCCFFFF
+			PRINT 선택을 조심하는 것이 좋을
+			RESETCOLOR
+			PRINTFORMW 것이다。
+			PRINTFORMW ＞엘리베이터가 멈춘 것 같다・・・。
+			PRINTFORML
+			PRINTFORML
+			PRINTFORML
+			PRINTFORMW ＞엘리베이터를 나오자 객실이 나왔다。
+			PRINTFORMW ＞중앙이 거대한 시계로 장식된 도서관 같은 모양의 넓은 객실이다。
+			PRINTFORMW ＞원형의 객실 중앙에 은발의 소년이 서 있다。
+			PRINTFORMW 「잘 오셨습니다。집스에」
+			PRINTFORMW …본 적이 있는 단정한 얼굴의 소년이다。
+			PRINTFORML
+			PRINTFORMW 「그럼、팬텀의 서머너여。오늘은 잘 와주었다」
+			PRINTFORMW 「나는 이 집스의 국장을 맡고 있는、호츠인 야마토（峰津院 大和）다」
+			PRINTFORMW 「당신의 경력은 들었다。우수한 서머너라더군」
+			PRINTFORMW ………。
+			PRINTFORMW 아무래도 얕보지 않는게 좋을 것 같다。
+			PRINTFORMW 이런 교섭에도 익숙한 것처럼 보인다。
+			PRINTFORMW 「의뢰 내용을 설명하지。이쪽으로」
+			PRINTFORMW ＞안으로 안내되었다。
+			PRINTFORML
+			PRINTFORMW 「그런데、극비임무라는 건 알고 있는 것 같군。본론으로 옮기겠다」
+			PRINTFORMW 「우리들 집스는、일본의 영적인 면을 수호하고 있는 기관이다」
+			PRINTFORMW 「"영적인 면"이라는 건、악마술사인 너라면 그 의미를 알 것이다」
+			PRINTFORMW 「사방을 수호하는 귀신들、마사카도총、끝으로 나루미 탐정회사의 쿠즈노하 라이도우…」
+			PRINTFORMW 「일본의 수호자는 많다。도쿄만이 아니라、우리는 일본 전 국토를 수호하고 있는 것이다」
+			PRINTFORMW 「무엇보다、규모도 세월도、그들과는 비교되지 않을 정도로 오랫동안… 이 나라를 지켜 왔지」
+			PRINTFORMW 소년은 감정이 함축된 목소리로 말을 걸어왔다。
+			PRINTFORML
+			PRINTFORMW 「그럼、당신이 할 일은 "적"을 잡는 것이다」
+			PRINTFORMW 「이 적은 우리들의"어떤 기술"로 인해、일시적으로 정지궤도상에 "붙들려"있다」
+			PRINTFORML 「본래 하늘에서 내려오는 것을 지상에서 두들기려는 계획이었지만、
+			PRINTFORMW   예상이 빗나가는 바람에 대폭적으로 "기술"을 돌릴 만한 마력을 확보할 필요가 생겼다」
+			PRINTFORMW 「요컨데 언제든지 싸울수 있도록 새장에 넣어져 있는 상황이다」
+			PRINTFORMW 「그 때문에、이 적의 요격이 그렇게 절박하진 않다」
+			PRINTFORMW 「하지만 언제까지나 그렇게 있을 수는 없으니、쓰러뜨리지 않으면 안 된다」
+			PRINTFORMW 「숫자도 나름대로 있다。현재망으로부터 빠져나와 낙하해 온"적"을 집스의 국원이 대응하고 있다」
+			PRINTFORMW …악마 소란때마다 매번 나타나는 노란 교복의 집스 국원。그들의 전력은 대단하며、강력한 악마사용자들이다。
+			PRINTFORMW 그들은 아무래도「극비의 적」의 처리를 하고 있다는 것 같다。
+			PRINTFORMW 무엇보다、그밖에 용건은 있겠지만・・・。
+			PRINTFORMW 일본 고래로부터 계속 이어진 영적 수호기관。
+			PRINTFORMW 아마 팬텀조차 능가하는、강력한 조직일 것이다・・・。
+
+		;- ２回눈以降
+		ELSE
+			PRINTFORMW ＞도쿄 ― 국회의사당。
+			PRINTFORMW ＞엘리베이터에서 내려 야마토와 면회했다。
+		ENDIF
+
+		PRINTFORML
+		PRINTFORML
+		PRINTFORMW 「・・・그러면 의뢰를 재확인하고 싶다」
+		PRINTFORMW 「너는 우리가 "내방"을 막고 있는、인류의 위협을 배제해 줬으면 한다」
+		PRINTFORMW 「하늘에 펼쳐 놓은 그물을 제외하고、예정대로 모든 대상을 지상전에서 섬멸한다」
+		PRINTFORMW 「유감이지만 적에게 화기는 통용되지 않는다。너 같은 서머너와 악마사용이 가능한 국원만이 가능하다」
+		PRINTFORMW 「장소는 도쿄、자세한 것은 이쪽에서 전한다」
+		PRINTFORMW 「적은 정확하게는 악마가 아니지만、악마라고 생각해도 상관없겠지。악마를 처리하는 것처럼 처리해 줘」
+		PRINTFORMW 「그 이상 적의 상세한 정보는 알려지지 않았다」
+
+		PRINTFORMW 「그러면、어떻게 할텐가？」
+		PRINTFORML
+		PRINTFORML  （ 주의：이 의뢰를 받으면 시간대에 관계없이 하루가 종료합니다 ）
+		PRINTFORMW
+
+		CALL INPUT_YN("의뢰를 받는다", "아직 준비가…")
+		IF RESULT == 0
+			PRINTFORMW 「그런가、그러면 작전에 들어가자」
+			PRINTFORMW 「너는 도내에 존재하는 역 주변으로 가줬으면 한다」
+			PRINTFORMW 「고가선로 역이다。장소도 알기 쉬울 것이다」
+		ELSE
+			PRINTFORMW 「그런가。다행히 아직 시간은 있다」
+			PRINTFORMW 「준비를 갖추면、또 여기로 와라」
+			PRINTFORMW ＞준비가 되면、또 여기에 오도록 하자。
+			PRINTFORMW ………
+			PRINTFORMW ……
+			PRINTFORMW …
+			RETURN
+		ENDIF
+
+		PRINTFORML
+		PRINTFORMW 「서포트에는、그녀를 데리고 가게」
+		PRINTFORMW 「네 주위의 선도를 맡겼다」
+		PRINTFORMW 「전투에는 더 이상 추가되지 않는다。서머너 자신의 악마쪽이、쉬울 것이다」
+		PRINTFORMW ＞소개된 여성이 이쪽으로 나온다・・・。
+		PRINTFORML
+		PRINTFORMW 『사코 마코토입니다。잘 부탁합니다』
+		PRINTFORMW 『주위의 악마는 내가 처리하겠으니、본명의 격파를 부탁합니다』
+		PRINTFORMW ＞고지식해 보이는 여성이다・・・。
+		PRINTFORMW ＞하지만、용모는 퍼펙트라 할 수 있다。어른의 매력이랄까。
+		PRINTFORML
+		PRINTFORMW ＞집스에서、특수한 휴대용 단말기가 지급되었다。
+		PRINTFORMW ＞아무래도 특정 악마를 처음부터 100\% 애널라이즈 해 주는 것 같다。
+		PRINTFORMW ＞단말기는 고해상도의 화면을 가지고 있어 화상부터 동영상까지 열람 작업에 최적인 것 같았다。
+		PRINTFORMW ＞출발 시간까지는 아직 시간이 약간 남아있다。
+		PRINTFORMW ＞%조사처리(CALLNAME:MASTER,"는")% 준비가 덜 된 부분은 없는지 꼼꼼하게 체크를 시작했다…。
+		PRINTFORMW ………
+		PRINTFORMW ……
+		PRINTFORMW …
+		PRINTFORML
+		PRINTFORML
+
+		;-----------------------------
+		;- タイトル
+		;-----------------------------
+		;- 의뢰:一日のタイトル
+		CALL REQUEST_30_DAY_TITLE("1ST DAY", "우울의 제 1일")
+		PRINTFORML
+		PRINTFORML
+		PRINTFORMW ＞출발 직전 ― 국회 의사당 지하…집스 도쿄 지국 안。
+		PRINTFORMW ＞출발 직전 도쿄에 큰 재해가 일어나、각지에 정전이나 화재、소란이 일어나고 있는 것 같다。
+		PRINTFORMW ＞도쿄 도내의 각지에서 악마가 출현해 살인과 소란이 벌어지고 있다。
+		PRINTFORMW ＞아무래도 재해는 작전 개시의 시각과 일치하고 있는 것 같다。
+		PRINTFORMW ＞%조사처리(CALLNAME:MASTER,"는")% 신경쓰지 않고 의뢰의 수행을 위해 집스 도쿄 지국을 출발했다。
+		PRINTFORML
+		PRINTFORMW ＞도쿄 ― 도내 모역 부근。
+		PRINTFORMW ＞현장에 도착하자、소년과 소녀가 악마에게 습격당하고 있었다。
+		PRINTFORMW ＞소년들은 악마사용자였는지 악마를 전개해 응전하고 있다。
+		PRINTFORMW ＞그리고 악마의 무리 안에는 한층 더 이질적인 악마가 있었다。
+		PRINTFORMW ＞집스에서 지급된 휴대용 단말기에는 『두베』라고 표시되었다。
+		PRINTFORMW ＞버섯같은 모습를 한 악마가 아닌 그 "무언가"。 인류의 천적。
+		PRINTFORMW ＞두베라 불리는 악마는、그 포자같은 머리부위를 부풀려 갔다。
+		PRINTFORMW ＞소년들의 비명이 들린다。
+		PRINTFORMW 「두베・・・커지고 있어요」
+		PRINTFORMW ＞두베는 2체 존재했는데、그 중 １체가 소년들 주변에서 폭발했다。
+		PRINTFORML 
+		PRINTFORML 퍼어어엉・・・
+		PRINTFORMW 
+		PRINTFORMW ＞날아가는 소년들。 넝마처럼 되서 지면에 쓰러진다。
+		PRINTFORMW ＞아무래도 그 『두베』는 자신을 폭발시켜 대상을 살상하는 것 같다。
+		PRINTFORMW ＞주위의 악마는 몸이 날아가고 부서져 절명했다。
+		PRINTFORMW ＞다행히 소년들은 어느 정도 떨어져 있었던 것 같다。
+		PRINTFORML
+		PRINTFORMW ＞멀리서지만、소년들은 희미하게 움직이고 있었다。 빈사상태의 중상이지만、살아있는 것 같다。
+		PRINTFORMW ＞・・・보니까、소녀는 꽤 얼굴 모양새가 좋다。
+		PRINTFORMW ＞피투성이지만 스커트가 말려 올라가、건강해 보이는 매끈한 허벅지와 속옷이 그대로 보이고 있었다。
+		PRINTFORMW ＞가슴도 크게 부풀어 있어 남자를 즐겁게 하기에 충분할 것 같다。 멀리서 봐도、선정적인 모습이다。
+		PRINTFORML
+		PRINTFORMW ＞마코토를 보자、아무래도 임무를 우선할 생각인 것 같다。
+		PRINTFORMW ＞하지만、그 얼굴은 확실히 흐려져 있다。
+		PRINTFORMW ＞%조사처리(CALLNAME:MASTER,"는")%、마코토에게 그들을 구조하라고 전했다。
+		PRINTFORMW 『………！？』
+		PRINTFORMW 『――알겠습니다』
+		PRINTFORMW ＞마코토는 그들에게 회복 마법을 걸고 소년들의 몸을 질질 끌면서 후퇴했다く。
+		PRINTFORML
+		PRINTFORMW ＞이것으로 이제 서포트는 일절 기대할 수 없겠지・・・。
+		PRINTFORMW ＞눈앞의 이질적인 "뭔가"를 갹파해야 한다。
+		PRINTFORMW ＞휴대용 단말기에는 상대의 정보가 표시되고 있다。
+		PRINTFORML
+		PRINTFORMW ＞적의 내성은――――
+		PRINT ＞――――전부、
+		;- 赤
+		SETCOLOR 0xFF6699
+		PRINT 무효
+		RESETCOLOR
+		PRINTFORMW 라고 표시되었다――――
+		PRINTFORML
+		PRINTFORML
+		PRINTFORMW ＞%조사처리(CALLNAME:MASTER,"는")% 눈 앞의 악마와 대치했다――――
+
+		;- 전투前処理
+		FLAG:도주불가フラグ = 1
+		FLAG:회화불능フラグ = 1
+		FLAG:선제기습취소 = 1
+		;-----------------------------
+		;- 전투開始
+		;-----------------------------
+		;- フラグをセット
+		FLAG:デビサバ２進行度 = 005
+
+		PRINTFORMW 
+		PRINTFORMW 셉텐트리온 탐랑성 두베가 １체 나타났다！
+
+		CUSTOMDRAWLINE =
+		WAIT
+
+		;- CHK:전투フラグ
+		IF L_BTL_FLG
+			;- 악마解析度증가処理(1000でMAX)
+			CALL INCREASE_ANALYZE([[キャラ:두베]],1000)
+
+			;- SET:두베
+			CALL SET_ENEMY,9,[[キャラ:두베]],REQUEST_30_BASE_LV(1),1,1
+			CFLAG:(CHARANUM-1):行動횟수 = 2
+			
+			;내성(全속성무효)
+			FOR LOCAL , GETNUM(MAXBASE, "검격") , GETNUM(MAXBASE, "검격") + FLAG:相性数
+				BASE:(CHARANUM-1):LOCAL = 0
+			NEXT
+			ABL:(CHARANUM-1):스킬1 = [[스킬:연성의불꽃]]
+			
+			CALL SYNC_STATUS,(CHARANUM-1)
+
+			;- 전투開始
+			CALL BATTLE_START
+		ENDIF
+
+		;-----------------------------
+		;- 전투이벤트(中断)
+		;-----------------------------
+		IF FLAG:勝利フラグ
+			PRINTFORMW ＞스킬을 구사해서, 데미지를 입히긴 했지만, 두베는 아직 여유가 있는것같다。
+			PRINTFORMW ＞거기에 두베는 그 포자 같은 원형부를 크게 만들며, 폭발하려는 자세를 취하고 있다。
+		ELSE
+			PRINTFORMW ＞공격이 전혀 효과가 없기 대문에 일단 물러나기로 했다。
+			PRINTFORMW ＞하지만 두베는 그 포자 같은 원형부를 크게 만들며 폭발하려는 자세를 취하고 있다。
+		ENDIF
+		PRINTFORMW ＞이 거리라면 치명상을 면할 수 없을 것이다。
+		PRINTFORMW ＞어딘가로부터 차 엔진 소리가 난다・・・。
+		PRINTFORML 
+		PRINTFORML 브로로로로！！！
+		PRINTFORMW 
+		PRINTFORMW ＞올려다보니 고가선로로 붙더 경트럭이 튀어 나왔다！
+		PRINTFORMW ＞그대로 선로를 뛰쳐나와 수 ｍ의 높이에서 낙하한다。
+		PRINTFORMW ＞그 트럭은 두베를 노리고 있는 것 같다。
+		PRINTFORMW ＞트럭은 힘차게 두베에 돌진해 간다。
+		PRINTFORML 
+		PRINTFORML 도오오옹・・・
+		PRINTFORMW 
+		PRINTFORMW ＞트럭의 충돌과 동시에 두베가 나가떨어졌다。
+		PRINTFORMW ＞다행히 지금의 트럭 덕분에 대폭발은 일어나지 않은 것 같다。
+		PRINTFORMW ＞불완전한 폭발 때문인지、두베는 원형부가 파열되는 손상을 입었다。
+		PRINTFORMW ＞휴대용 단말기를 보니 두베의 일부 내성이 달라졌다・・・。
+		PRINTFORML 
+		PRINTFORMW ＞찬스는 지금 밖에 없다――――
+		PRINTFORML 
+		PRINTFORMW ＞%조사처리(CALLNAME:MASTER,"는")% 다시 두베와 대치했다――――
+		
+		;- 전투前処理
+		FLAG:도주불가フラグ = 1
+		
+		;-----------------------------
+		;- 전투開始(２戦눈)
+		;-----------------------------
+		;- フラグをセット
+		FLAG:デビサバ２進行度 = 006
+		
+		PRINTFORML 
+		PRINTFORML 셉텐트리온 탐랑성 두베가 １체 나타났다！
+		
+		CUSTOMDRAWLINE =
+		WAIT
+		
+		;- CHK:전투フラグ
+		IF L_BTL_FLG
+			;- SET:두베
+			CALL SET_ENEMY,9,[[キャラ:두베]],REQUEST_30_BASE_LV(1),1,1
+			CFLAG:(CHARANUM-1):ＨＰ보정 = 500
+			CFLAG:(CHARANUM-1):ＭＰ보정 = 1000
+			CFLAG:(CHARANUM-1):行動횟수 = 2
+			;내성(비구화염핵열以外약점)
+			FOR LOCAL , GETNUM(MAXBASE, "검격") , GETNUM(MAXBASE, "만능")
+				SIF LOCAL == GETNUM(MAXBASE, "비구") || LOCAL == GETNUM(MAXBASE, "화염") || LOCAL == GETNUM(MAXBASE, "핵열")
+					CONTINUE
+				BASE:(CHARANUM-1):LOCAL = 200
+			NEXT
+			ABL:(CHARANUM-1):스킬1 = [[스킬:연성의불꽃]]
+			CALL SYNC_STATUS,(CHARANUM-1)
+			CALL HEALTH_CHARA,(CHARANUM-1)
+			
+			;- 전투開始
+			CALL BATTLE_START
+			
+		ENDIF
+		PRINTFORMW ＞두베는 붕괴되었다…
+		CUSTOMDRAWLINE =
+		
+		;-----------------------------
+		;- 勝利後
+		;-----------------------------
+		
+		;- 전투종료
+		FLAG:도주불가フラグ = 0
+		FLAG:회화불능フラグ = 0
+		FLAG:선제기습취소 = 0
+		;合体解禁
+		CALL LIFTING_A_BAN([[キャラ:두베]])
+		FLAG:(10000 + [[キャラ:두베]]) = 1
+		
+		PRINTFORMW ＞두베를 격파한 직후、야마토가 모습을 나타나냈다。
+		PRINTFORMW ＞…아무래도 보고 있었던 것 같다。
+		PRINTFORMW 「호우。 두베를 격파할 줄은」
+		PRINTFORMW 「아니、실례했다。 네가 정말 강자인지 조사하고 싶기도 해서」
+		PRINTFORMW 「하지만、이걸로 판명되었다。 향후에도 네게 일을 의뢰해도 좋을 것 같다」
+		PRINTFORMW …아무래도 지금의 활약으로 조금 신뢰받게 된 것 같다。
+		PRINTFORMW 정부조직과의 직접 계약이라면 팬텀의 평가도 크게 오를 것이다。
+		PRINTFORML
+		PRINTFORMW 마코토 쪽을 보니、주위에는 악마의 잔해가 남아 있었다。
+		PRINTFORMW 구조한 소년 소녀를 지키기 위해、벽을 등진 채 배수의 진을 치고 싸우고 있던 것 같다。
+		PRINTFORMW 의복이 찢어져、검은 코트 속에 숨은 부드러운 맨살이 그대로 보이고 있다。
+		PRINTFORMW 목적인 소녀를 보니、기본적인 치료는 받은 것 같다。
+		PRINTFORML
+		PRINTFORMW 「그런데 민간인을 돕다니、혹시 여유부린 건가？」
+		PRINTFORMW 야마토는 의외라는 듯 질문을 던진다。
+		PRINTFORMW 그는 팬텀이라는 조직을 알고 있다。 그 의문도 납득이 간다。
+		PRINTFORMW %조사처리(CALLNAME:MASTER,"는")%「구조한 소년들을 맡고 싶다」라고 전했다。
+		PRINTFORML
+		PRINTFORMW 「흠。 확실히 그 민간인의 구조는 이레귤러로군。 예정에 없던 일이다」
+		PRINTFORMW 「그러나 도운 것은 집스의 사코다」
+		PRINTFORMW …아무래도、에둘러서 교섭하려는 것 같다。
+		PRINTFORMW %조사처리(CALLNAME:MASTER,"는")% 몇 마디 덧붙였다。
+		PRINTFORMW …전리품으로서 받고 싶다 라고。
+		PRINTFORML
+		PRINTFORMW ＞야마토는 잠시 생각하더니 살짝 웃었다。
+		PRINTFORMW 「그러고 보니 너는 노예 상인이었지」
+		PRINTFORMW 「전리품。 과연、구조한 것은 그럴 목적이었나」
+		PRINTFORMW 「소년 소녀라면、뒷세계에서 비싸게 팔리겠지」
+		PRINTFORMW 「싫진 않아。 진정한 강자가 번창하는게 올바른 세계다」
+		PRINTFORMW 「혈통이나 부모의 재산 따위 없이、진정한 개인의 능력에서 유래한다면」
+		PRINTFORMW ＞야마토는 뭔가 생각하고 있다…。
+		PRINTFORMW 「…그렇구나。 약자는 강자에게 소유되는 것이 당연해」
+		PRINTFORMW 「너라면 의외로 그들을 능숙하게 사용할지도 모르겠군」
+		PRINTFORMW 「원래부터 평범한 녀석들 따위 흥미 없다。 마음대로 해도 좋아」
+		PRINTFORMW 「치료와 너에게로의 양도를 약속하지」
+		PRINTFORMW 「그들은 정밀 검사가 필요하다。 일단 집스 도쿄 지국에서 보호한다」
+		PRINTFORMW 「너는 나중에 인수해 가주길 바란다」
+		PRINTFORMW 야마토는 그대로 따라온 국원에게 지시해、소년들을 차에 태웠다。
+		PRINTFORMW 차는 자위대의 차량인 것 같다。
+		PRINTFORMW 집스는 자위대까지 사용 가능한 것일까・・・。
+		PRINTFORML
+		PRINTFORMW 조금 전의 트럭 부근에는 집스 국원이 회수 작업을 하고 있었다。
+		PRINTFORMW 아무래도 운전했던 인물이 아직 살아있는 것 같다。
+		PRINTFORMW 들것으로 옮겨질 때 보니 소년인 것 같다。
+		PRINTFORMW 정신을 잃은 소년을 그대로 차에 싣고 갔다。
+		PRINTFORML
+		PRINTFORMW 깨닫고 보니、마코토가 야마토와 대화하고 있었다。
+		PRINTFORMW 그 뒤 이쪽에 말을 걸어왔다。
+		PRINTFORMW 『훌륭했습니다。 두베를 격파할 줄은』
+		PRINTFORMW 『…솔직히、당신을 오해하고 있었습니다』
+		PRINTFORMW 『실례일지도 모르지만、팬텀이 일반인을 구조하리라곤 생각조차 못했습니다』
+		PRINTFORMW 『구조 지시를 내려줘서、감사합니다』
+		PRINTFORMW …아마 이유를 물었다면、이 오해를 풀 수도 있었을 것이다。
+		PRINTFORMW 그녀는 예를 표한 후 차를 타고 갔다…。
+		PRINTFORML
+		PRINTFORMW …야마토가 말을 걸어 왔다。
+		PRINTFORMW 「이것으로 이번 의뢰는 완료다」
+		PRINTFORMW 「이제 밤도 깊었으니、오늘은 느긋하게 쉬게」
+		PRINTFORMW 「집스에 방을 준비해 뒀다。 이용하고 싶다면 거기를 사용하도록 해라」
+		PRINTFORMW 「향후에 대해서는 또 메일로 연락하겠다。 다음에는 아마 전리품의 회수를 부탁할 것이다」
+		PRINTFORMW 「현재 두베의 잔해를 회수하고 있다。 앞으로 30분에 귀환할 예정이다」
+		PRINTFORMW 「만약 귀가 수단이 없다면、도쿄 지국까지는 차로 보내 줄 수 있다」
+		PRINTFORMW …조금은 신경 써 주고 있는 것 같다。
+		PRINTFORMW 그쪽 편의 인간이라 생각하고 있었지만、그렇게까지 냉혹한 인간은 아닐지도 모른다。
+		PRINTFORML
+		PRINTFORMW …앞으로 ３０분 정도 사이에 귀가 방법을 선책할 필요가 있다。
+		PRINTFORMW 일단 쉬기로 하자。
+		PRINTFORMW %조사처리(CALLNAME:MASTER,"는")% 가까운 곳의 자판기를 향해 걷기 시작했다…。
+		PRINTFORMW ………
+		PRINTFORMW ……
+		PRINTFORMW …
+		PRINTFORML
+		PRINTFORML
+		PRINTFORMW …야마토들로부터 멀어진 잠깐의 순간。
+		PRINTFORMW 자판기 앞에 누군가 있다。
+		PRINTFORMW 붉은 복장을 입은 은발의 소년이다。
+		PRINTFORMW 『…빛나는 자여』
+		PRINTFORMW …소년은 말을 걸어왔다。
+		PRINTFORML
+		PRINTFORMW 『…너에게는 전달해 두지 않으면 안 된다』
+		PRINTFORMW 『…향후、너에게는 여러가지 위협이 닥칠 것이다』
+		PRINTFORMW 『…나는、네 바로 옆에 있다…』
+		PRINTFORMW …요점을 잡을 수 없다。
+		PRINTFORMW 하지만 이 이상한 공기는 인간 세상 밖의 그것에 가깝다。
+		PRINTFORMW …일단 누구인지를 물었다。
+		PRINTFORMW 『…나는 "우려하는 자"…』
+		PRINTFORMW …소년은 자취를 감췄다。
+		PRINTFORML
+		PRINTFORML
+		PRINTFORMW …집스에서 지급된 휴대용 단말기가 울리고 있다。
+		PRINTFORMW 보니까、무언가 어플리케이션이 등록되어 있다。
+		PRINTFORMW 동영상 열람 소프트웨어다。
+		PRINTFORMW 열어보니 『니케아』라고 하는 사이트가 나왔다。
+		PRINTFORML 서브 타이틀에는、
+		PRINTFORMW 『Orgasm Face Delivery Site』라고 쓰여 있었다。
+		PRINTFORMW 조작을 해서 조금 진행하자、여성 모습의 캐릭터가 말을 걸어왔다。
+		PRINTFORML
+		PRINTFORMW 『가는얼굴방송 사이트, 니카이아에 어서오세요！』
+		PRINTFORMW 『나는 안내역의 티코티코、당신의 티코링입니다★』
+		PRINTFORMW 화면으로부터 아픈 분위기가 전해져 온다…。
+		PRINTFORML
+		PRINTFORMW 『당사이트에서는 당신이 범해 주고 싶다고 생각하는 사람들…』
+		PRINTFORML 『즉、알고 있을 뿐만이 아니라、
+		PRINTFORMW   성노예로 하고 싶다거나、교배하고 싶다고 생각하는 사람들이…』
+		PRINTFORMW 『가 버릴 때？ 처녀를 빼앗길 때？
+		PRINTFORMW   라든지 그런 것들을～、먼저 당신에게 보여주며 느끼는 것을』
+		PRINTFORMW 『아、범해지는 느낌 그대로의 동영상으로 올려、그때마다 알려주고 있어요～』
+		PRINTFORMW 『범해지기 시작하면 리얼 타임으로 전달해 주겠어요★』
+		PRINTFORMW 『전달은 당신에게만이니까、당신이 어떻게든 하지 않으면 괴로워져 버려요～』
+		PRINTFORMW 『동영상 업 되면 공지할 테니가 절대로 봐 주셔야 해요～★』
+		PRINTFORML 『그러면！
+		PRINTFORMW   해브・어・나이스다～★』
+		PRINTFORML
+		PRINTFORMW …어플리케이션은 꺼졌다。
+		PRINTFORMW 좋은진 모르겠지만、아무래도 사전에 습격 당하는 상대가 누군지 알 수 있는 것 같다…。
+		PRINTFORMW 이것을 사용하면、누군가에게 자신의 노예를 빼앗기는 일을 피할 수 있을지도 모른다。
+		PRINTFORML
+		PRINTFORMW 집스…수수께끼의 적…붉은 소년…니케아。
+		PRINTFORMW 오늘은 격동의 하루였다…。
+		PRINTFORMW 슬슬 야마토 일행도 돌아갈 무렵인 것 같다。
+		PRINTFORMW 합승시켜 달라고 하자。
+		PRINTFORMW %조사처리(CALLNAME:MASTER,"는")% 야마토 일행에게로 걸어가기 시작했다…。
+		PRINTFORMW ………
+		PRINTFORMW ……
+		PRINTFORMW …
+		PRINTFORMW 
+		PRINTFORMW ￥30000을 입수했습니다.
+		PRINTL 
+		PRINTL 
+
+		MONEY += 30000
+
+		;- フラグをセット
+		FLAG:デビサバ２進行度 = 010
+
+		;- 의뢰:フラグ리셋
+		CALL REQUEST_30_FLAG_RESET
+
+		;- 의뢰:一日の종료
+		CALL REQUEST_30_DAY_END
+
+	;- 이오加入
+	CASE 10 TO 19
+
+		;- 初回
+		IF L_FLAG_EVENT_FIRST_DIGIT == 0
+			;- フラグセット
+			FLAG:デビサバ２進行度 = 011
+
+			PRINTFORMW ＞도쿄 ― 국회의사당。
+			PRINTFORMW ＞집스 도쿄 지국에 도착했다。
+			PRINTFORMW ＞엘리베이터를 내리자 객실이 나왔다。
+			PRINTFORML
+			PRINTFORMW ＞객실에는 야마토가 있었다。
+			PRINTFORMW 「서머너、딱 좋을 때 왔다。 연락이 있다」
+			PRINTFORMW 「무엇보다도 같은 용건인지는 모르겠지만」
+			PRINTFORMW 「전날 구한 소년 소녀의 이름을 전하겠다」
+			PRINTFORML
+			PRINTFORMW 「구조한 것은 3명、소녀 한 명과 소년 2명이다」
+			PRINTFORMW 「소녀는 "닛타 이오"」
+			PRINTFORMW 「소년 중 하나는 "시지마 다이치"」
+			PRINTFORMW 「또 하나의 소년에 대해서는 아직 서류가 오지 않았다」
+			PRINTFORML
+			PRINTFORMW 「닛타라면 숙박 구획에 있다」
+			PRINTFORMW 「모두 호텔 수준의 훌륭한 방이다。 여기는 이른바 엘리트 뿐이니까」
+			PRINTFORMW 「머무를 때 자유롭게 놔 뒀다는 건 알려주지」
+			PRINTFORMW 「그것과 구조한 3명 말인데、전원 부모님이 사망한 것 같다」
+			PRINTFORMW 「전날의 악마 소동으로 죽은 것 같다」
+			PRINTFORMW 「멘탈에 지장이 있을지도 모르겠어」
+			PRINTFORMW 「８호실이다。 면회 하러 가도 좋다」
+			PRINTFORMW 「면회 후、여기로 돌아와 줘。 건네 줄 서류가 있다」
+			PRINTFORMW %조사처리(CALLNAME:MASTER,"는")% 숙박구획으로 향했다…。
+			PRINTFORML
+			PRINTFORMW ＞전해 들은 방에 도착했다。
+			PRINTFORMW ＞노크를 몇 차례 하고 몇 초 후 살며시 문을 열었다。
+			PRINTFORMW ＞싱글 침대 위에 이오가 앉아 있었다。
+			PRINTFORML
+			PRINTFORMW 『아、네。 저、당신이 그 구해주신 은인이시군요』
+			PRINTFORMW 『저기、잘 부탁합니다』
+			PRINTFORMW 『…』
+			PRINTFORMW 이오는 어두운 얼굴을 하고 있다。
+			PRINTFORMW 부모님의 비보가 이미 귀에 들어간 모양이다…。
+			PRINTFORMW %조사처리(CALLNAME:MASTER,"는")% 노예로서 인수한 것을 전했다…。
+			PRINTFORML
+			PRINTFORMW 『에、노예입니까？』
+			PRINTFORMW 『노예라면、혹시 그…』
+			PRINTFORMW 이오는 어째선지 얼굴을 붉히고 있다…。
+			PRINTFORMW 약간의 지식은 있을지도 모른다…。
+			PRINTFORMW %조사처리(CALLNAME:MASTER,"는")% 경우에 따라서는 그런 일도 시킬 것이라고 전했다。
+			PRINTFORMW 악마사용자의 능력이 있기 때문에 그쪽으로 일할지도 모를 것이라고도 알려줬다。
+			PRINTFORMW 『…내게는 당신 밖에 의지할 사람이 없습니다…엄마도 죽어버렸고…』
+			PRINTFORMW 『하、하지만 되도록이면 악마를 사용하는 편이 좋습니다…』
+			PRINTFORMW 『엣찌한 일은 저기…싫습니다』
+			PRINTFORML 이오는 양손을 가슴의 앞에 모으고 조그맣게 만세 자세를 취했다、어색한 미소를 지은 채…。
+			PRINTFORMW 성노예는 싫다고 제대로 대답했다…。
+			PRINTFORMW 팬텀에서 조사한 정보로는 주위의 분위기에 쉽게 휩쓸리는 성격이라고 써 있었는데…。
+			PRINTFORMW 의외로 자신의 의견은 제대로 가지고 있고、심지어 확실히 하는 타입인지도 모르겠다。
+			PRINTFORMW 「네 나름이다」라고 전하고 이오를 데리고 객실로 돌아가기로 했다。
+			PRINTFORML
+			PRINTFORMW …너무 딱딱한 것은 일에 지장이 있다。
+			PRINTFORMW 객실로 돌아가는 도중、이오와 재미 없는 이야기를 했다。
+			PRINTFORMW 『와…후후、의외의 사람』
+			PRINTFORMW 『이런 뒤숭숭한 세상이라면 서머너씨와 함께 있는 것이 안전할지도…』
+			PRINTFORMW …조금은 마음 편하게 대할 수 있게 된 것 같다。
+			PRINTFORML
+			PRINTFORMW 객실로 돌아갔다。
+			PRINTFORMW 야마토가 이쪽에 왔다。
+			PRINTFORMW 「닛타를 데려 왔는가」
+			PRINTFORMW 「연락을 전한다」
+			PRINTFORMW 「이번에 구조한 세 사람을 인도할 예정이었지만、그 중 2명은 불가능하게 되었다」
+			PRINTFORMW 「닛타 이외의 소년 2명은 이쪽에서 맡는다 인재가 부족해서 말이야」
+			PRINTFORMW 「특별히 구조한 소년 중 한사람 시지마 다이치는 차의 운전면허를 가지고 있다」
+			PRINTFORMW 「교통수단이 너무 발달했는지 면허를 가지고 있는 사람은 적어。 그는 나고야에서 사용하고 싶다」
+			PRINTFORMW 「이제 남은 다른 한 소년은 너와 함께 『두베』를 쓰러뜨렸다」
+			PRINTFORMW 「이쪽은 순수한 전력으로서 귀중하다。 집스에서 사용하고 싶다」
+			PRINTFORMW 「본심을 말하면 닛타도 맡고 싶지만、너와의 약속도 있고 해서 그것은 그만두지」
+			PRINTFORMW 「너와의 계약은 이것으로 완료다。 몇 명을 인도할지는 결정하지 않았잖는가？」
+			PRINTFORMW …그러고 보니、누구를 인도 받을지는 결정하지 않았다。
+			PRINTFORML
+			PRINTFORMW …이쯤에서 이 소년을 덮쳐 성노예로 해 줄까 라는 생각도 해봤지만、실력은 상당할거라 생각된다。 그만두자。
+			PRINTFORMW 그런데 그는 면허를 갖고 있지 않은건가？
+			PRINTFORMW 「나는１７세니까。 법률상 차면허를 가질 수 있는 것은 18세부터다」
+			PRINTFORMW 「국장을 하고 있는 것이 의외인가？ 대학 레벨의 과정이라면 어릴 때 끝마쳤다」
+			PRINTFORMW 「상식에 붙잡히지 말게」
+			PRINTFORMW …１７세였는가。
+			PRINTFORMW …수재에 얼굴도 좋고、프라이드도 높은 소년。
+			PRINTFORMW 기회가 있다면、노예로 하는 것도 나쁘지 않을 것 같다。
+			PRINTFORML
+			PRINTFORMW 「서류를 건네주겠다。 대충 훑어봐라。 향후의 의뢰 전망이다」
+			PRINTFORMW 「그리고 닛타를 데려가는 건 나쁘지 않지만、아직 인도할 수 없다」
+			PRINTFORMW 「아직 치료가 끝나지 않았고、데이터도 얻고 싶다」
+			PRINTFORMW 「또 다음에 와줬으면 한다。 걱정하지 않아도 끝나면 제대로 인도한다」
+			PRINTFORMW …아마 치료는 끝났고、데이터를 갖고 싶은 거겠지。
+			PRINTFORML
+			PRINTFORMW 또 다음에 오기로 하자。
+			PRINTFORMW 「그럼 서머너、다음 의뢰도 잘 부탁한다」
+			PRINTFORMW …객실을 나섰다
+			PRINTFORMW ………
+			PRINTFORMW ……
+			PRINTFORMW …
+
+			RETURN
+
+		;- 이오回収
+		ELSE
+			PRINTFORMW 슬슬 이오를 회수하러 가자。
+		ENDIF
+
+		;-----------------------------
+		;- この時点で추가
+		;-----------------------------
+
+		;- キャラ추가(이오)
+		CALL ADD_NEW_COMPANION,[[キャラ:이오]],200
+		L_ADD_RESULT = RESULT
+
+		;조교の有無に関わらず전투には常に참가가능
+		SIF L_ADD_RESULT
+			CFLAG:(CHARANUM - 1):전투참가불가능 = 0
+
+		PRINTL
+		PRINTL
+		PRINTFORMW …집스에서 지급된 휴대용 단말기가 울리고 있다。
+		PRINTFORMW 확인해 보니、니케아가 재생되었다…。
+		PRINTL 
+		CALL REQUEST_30_NICAEA_BOOTVIEW("βver.","Orgasm Face Delivery Site")
+		PRINTFORMW 더블베드에 이오、그리고 여러 명의 남자들이 비치고 있다…。
+		PRINTFORMW 이오는 남자들에 밀려 넘어져、옷이 벗겨진 신체를 엉망진창으로 애무 당하고 있다…。
+		PRINTFORMW 양팔을 붙잡힌 채 눈물을 흘리며 정상위로 거칠게 흔들리는 이오가 비치고 있다…。
+		PRINTFORMW 남자 위에 걸터 앉아、기승위로 허리를 흔드는 이오가 비치고 있다…。
+		PRINTFORMW 후배위로 앞과 뒤를 막힌 채 남자의 욕망을 받아들이는 이오가 비치고 있다…。
+		PRINTFORMW 남자의 페니스를 빨면서、파이즈리펠라로 봉사를 하는 이오가 비치고 있다…。
+		PRINTFORMW 최후에는 남자들 앞에서 등 뒤로 브릿지하며 자위로 절정한 것 같다…。
+		CUSTOMDRAWLINE =
+		PRINTFORMW 영상은 여기서 끊어졌다…。
+		PRINTL
+		PRINTFORMW …
+		PRINTFORMW 이오의 정조가 위험한 것 같다…。
+		PRINTL
+		PRINTL
+
+		CALL INPUT_YN("이오를 구하러 간다", "이오를 구하러 가지 않는다")
+		IF RESULT == 1
+			PRINTFORMW %조사처리(CALLNAME:MASTER,"는")% 도와주러 가지 않기로 했다。
+			PRINTFORMW ………
+			PRINTFORMW ……
+			PRINTFORMW …
+			PRINTFORMW 스트리밍이 전달되기 시작했다…。
+
+			;- 재생ループ
+			FOR L_TMP,1,11
+				PRINTL
+				;- 의뢰:イキ顔動画(이오)
+				CALL REQUEST_30_DELIVERY_이오(L_TMP)
+
+				;- 추가した場合
+				SIF L_ADD_RESULT
+					;- 의뢰:イキ顔動画 조교度加算(이오)
+					CALL REQUEST_30_DELIVERY_이오_ADD(L_TMP,CHARANUM-1)
+
+				PRINTL
+				PRINTW
+			NEXT
+
+			PRINTFORMW 스트리밍의 재생이 끝났다。
+			PRINTFORMW 이오는 남자들에게 처녀를 빼았기고 위안부가 된 것 같다。
+			PRINTFORMW 
+			PRINTFORMW 그 후、몇 명의 집스 국원이 행방을 묘연하게 해、이오도 동시에 자취을 감추었다고 한다
+			PRINTFORML 야마토는、현장의 상황으로부터 행방을 감춘 국원에게 이오가 납치되었다고 보고 있는 것 같지만、
+			PRINTFORMW 그 밖에 우선해야 할 사항이 있다고 하는 일로、적극적인 수색은 실시하지 않는다는 것이었다…
+			;- 추가했을 경우
+			IF L_ADD_RESULT
+				;데빌 옥션 처리
+				;매각된 캐릭터의 조교에 관한 능력、소질、경험、가격을 보존
+				;아헤 얼굴로 음란화한 이오를 즉매각 했을 경우보다 아주 조금 싼 가격
+				CALL CHARASELL_AFTER_デビオク, GETCHARA([[キャラ:이오]]), 1000
+				
+				;キャラクタ－삭제
+				CALL キャラ삭제, GETCHARA([[キャラ:이오]])
+			ENDIF
+			;--------------------------------------------
+			;PRINTFORMW …
+			;PRINTFORMW ……나중에 회수하러 가기로 했다。
+			PRINTL
+			PRINTL
+			;PRINTFORMW ………
+			;PRINTFORMW ……
+			;PRINTFORMW …
+			;PRINTFORMW 조교된 이오를 회수했다。
+			;--------------------------------------------
+		ELSE
+
+			;-----------------------------
+			;- 以下、助けに行く場合
+			;-----------------------------
+
+			PRINTFORMW 이오는 집스 도쿄 지국에 있다。
+			PRINTFORMW 서둘러 가자。
+
+			PRINTFORMW 현지에 도착하자마자、엘리베이터로 내려와 객실에 들어갔다。
+			PRINTFORMW …
+			PRINTFORMW ……
+			PRINTFORML
+			PRINTFORMW 「서머너…배후를 놓치지 말게」
+			PRINTFORML
+			PRINTFORMW …야마토 같다。 아슬아슬하게 수도로 내리치던 것을 받아냈다…。
+			PRINTFORML
+			PRINTFORMW 「닛타의 회수를 하러 왔는가？」
+			PRINTFORMW 「그러고 보니 닛타가 있는 층의 방 지정이 변경되서 말이야」
+			PRINTFORMW 「정 가운데를 중심으로、180도로 방을 움직였다」
+			PRINTFORMW 「점 대상으로 말하면 360도로 1회전 하면… 그 전대로다」
+			PRINTFORMW 「그리고 지금으로서는 다음 의뢰는 없다」
+			PRINTFORMW 「개인적으로는 허락하고 싶기도 하지만、공교롭게도 여기는 기밀투성이인 장소라」
+			PRINTFORMW 「진부한 대사지만、용무가 없다면 출입을 삼가주길 부탁한다」
+			PRINTFORMW …빨리 용건을 끝내자。
+			PRINTFORML
+			PRINTFORMW 객실에서 이오의 방에 가기로 했다。
+			PRINTFORMW …
+			PRINTFORMW ……
+			PRINTFORMW ………마코토와 만났다。
+			PRINTFORML
+			PRINTFORMW 『당신은 서머너、일전의 일 이후 간만이네요』
+			PRINTFORMW 『…닛타의 인수입니까？』
+			PRINTFORMW 『아아、방 지정의 변경은 들었습니까？』
+			PRINTFORMW 『닛타라면 방 지정 변경 후、제일 위의 방으로 이동했습니다』
+			PRINTFORMW 『창도 없는 방이니 불쌍하네요』
+			PRINTFORMW 『북측의 방은 전부、이 객실 쪽으로 창이 붙어 있습니다』
+			PRINTFORMW 『그러니、아무튼 지하같긴 해도 그 나름의 해방감은 이득이에요』
+			PRINTFORMW 『요인 전용의 방이라、침대도 더블베드로 되어 있습니다』
+			PRINTFORMW 『이제 국장에게 보고하러 가보겠습니다』
+			PRINTFORMW …배치를 바꿨는가…방의 장소가 바뀌다니、귀찮은 일이 돼 버린 것 같다。
+			PRINTFORML
+			PRINTFORML
+			PRINTFORML 휴대용 단말기가 울리고 있다…。
+			PRINTFORMW
+			PRINTFORMW 단말기를 열어보니、동영상이 스트리밍으로 재생되기 시작했다…。
+			PRINTFORMW 서두르지 않으면、이오가 남자들에게…。
+
+			;- 의뢰:部屋探し
+			CALL REQUEST_30_1_FIND_ROOM(L_ADD_RESULT)
+
+		ENDIF
+
+		PRINTFORML 
+		PRINTFORMW 이제 여기에 용무는 없다。 돌아가기로 했다。
+		PRINTFORMW ………
+		PRINTFORMW ……
+		PRINTFORMW …
+		PRINTFORML
+		PRINTFORML
+		PRINTFORML 『1ST DAY』 가 완료되었습니다。
+		PRINTFORML
+		PRINTFORMW
+
+		;- フラグセット
+		FLAG:デビサバ２進行度 = 100
+
+		;- 의뢰:フラグ리셋
+		CALL REQUEST_30_FLAG_RESET
+
+ENDSELECT
+
+
+
+;=================================================
+;   sub EVENT_BATTLE_TURNEND_REQUESTxxx_yyy
+;=================================================
+;   의뢰:전투中処理(ターン종료시)
+;-------------------------------------------------
+;   FLAG:勝利フラグに1をセットすると、전투を強制종료出来る
+;   FLAG:敗北フラグに1をセットすると、ゲームオーバーに出来る
+;-------------------------------------------------
+@EVENT_BATTLE_TURNEND_REQUEST30_1
+#DIM L_FLAG_EVENT_DIGIT
+
+;- フラグをセット(이벤트フラグ:２桁)
+L_FLAG_EVENT_DIGIT = FLAG:デビサバ２進行度 % 100
+
+;-----------------------------
+;- 処理開始
+;-----------------------------
+
+SELECTCASE L_FLAG_EVENT_DIGIT
+	;-----------------------------
+	;- 05:전투中(두베)
+	;-----------------------------
+	CASE 05
+		;- 10ターン経過で도주가능に
+		SELECTCASE FLAG:経過ターン数
+			CASE 9
+				CUSTOMDRAWLINE =
+				PRINTFORML
+				;- 赤
+				SETCOLOR 0xFF0000
+				CALL MESSAGE_B(3,"안되겠다…","전혀 효과가 없다………。",)
+				PRINTL
+				CALL MESSAGE_B(3,"여기는 일단 물러나야 하는 건가…",,)
+				RESETCOLOR
+				;こっそりオフにしておく
+				FLAG:도주불가フラグ = 0
+		ENDSELECT
+
+ENDSELECT
+
+
+;-------------------------------------------------------------------------------
+;   独自関数
+;-------------------------------------------------------------------------------
+
+;=================================================
+;   sub REQUEST30_1_FIND_ROOM
+;=================================================
+;   의뢰:部屋探し
+;-------------------------------------------------
+; Input:
+;  ARG:0				등록성공フラグ
+;-------------------------------------------------
+@REQUEST_30_1_FIND_ROOM(ARG)
+#DIM L_BAD
+#DIM L_CNT
+#DIM L_進行度
+#DIM L_ADD_RESULT
+
+L_ADD_RESULT = ARG
+L_CNT = 1
+L_進行度 = 1
+
+PRINTL
+PRINTL
+;- 의뢰:イキ顔動画(이오)
+CALL REQUEST_30_DELIVERY_이오(L_進行度)
+PRINTL
+PRINTL
+PRINTW
+
+
+;- 部屋探しループ
+L_BAD = 0
+WHILE 1
+
+	PRINTL
+	CUSTOMDRAWLINE =
+
+	;- 部屋探し
+	PRINTFORML ┏━┳━┳━┳━┳━┳━┳━┳━┳━┓ 탐색횟수: {L_CNT}번째
+	PRINTFORML ┃　┃１┃　┃２┃　┃３┃　┃４┃　┃ 
+	PRINTFORML ┃　┗─┛　┗─┛　┗─┛　┗─┛　┃
+	PRINTFORML ┃　　　　　　　　　　　　　　　　　┃
+	PRINTFORML ┃　┏━┓　┏━┓　┏━┓　┏━┓　┃
+	PRINTFORML ┃　┃５┃　┃６┃　┃７┃　┃８┃　┃
+	PRINTFORML ┃　┗─┛　┗─┛　┗─┛　┗─┛　┃
+	PRINTFORML ┃　　　　　　　　　　　　　　　　　┃
+	PRINTFORML ┃　┏━┓　┏━┓　┏━┓　┏━┓　┃
+	PRINTFORML ┃　┃９┃　┃10┃　┃11┃　┃12┃　┃
+	PRINTFORML ┃　┗─┛　┗─┛　┗─┛　┗─┛　┃
+	PRINTFORML ┃　　　　　　　　　　　　　　　　　┃
+	PRINTFORML ┃　┏━┓　┏━┓　┏━┓　┏━┓　┃
+	PRINTFORML ┃　┃13┃　┃14┃　┃15┃　┃16┃　┃
+	PRINTFORML ┃　┗─┛　┗─┛　┗─┛　┗─┛　┃
+	PRINTFORML ┃　　　　　　　　　　　　　　　　　┃
+	PRINTFORML ┗━━━━━━━━━━━━━━━━━┛
+	PRINTFORML
+	PRINTFORML [ 1] １호실  [ 2] ２호실  [ 3] ３호실  [ 4] ４호실
+	PRINTFORML [ 5] ５호실  [ 6] ６호실  [ 7] ７호실  [ 8] ８호실
+	PRINTFORML [ 9] ９호실  [10] 10호실  [11] 11호실  [12] 12호실
+	PRINTFORML [13] 13호실  [14] 14호실  [15] 15호실  [16] 16호실
+	PRINTFORML
+	PRINTFORML 탐색할 방을 선책해 주세요。
+	PRINTFORML
+
+	;- 입력
+	$INPUT_LOOP
+	INPUT
+	SELECTCASE RESULT
+		CASE 1
+			BREAK
+		CASE 2 TO 16
+			PRINTFORMW {RESULT}호실의 문을 열었다…
+			PRINTFORMW 하지만、방에는 아무도 없었다…
+			PRINTFORMW {RESULT}호실은 아닌 것 같다…
+		CASEELSE
+			CLEARLINE 1
+			REUSELASTLINE （입력치 {RESULT} 는 범위외입니다）
+			GOTO INPUT_LOOP
+	ENDSELECT
+
+	;- 탐색횟수で進行
+	SELECTCASE L_CNT
+		;- 進行度:1
+		CASE 1 TO 2
+			L_進行度 = 1
+
+		;- 進行度:2〜10
+		CASE 3 TO 11
+			L_進行度 = L_CNT - 1
+
+		CASEELSE
+			L_BAD = 1
+			BREAK
+	ENDSELECT
+
+	PRINTL
+	PRINTL
+	PRINTL
+
+	;- 의뢰:イキ顔動画(이오)
+	CALL REQUEST_30_DELIVERY_이오(L_進行度)
+
+	;- 추가した場合
+	IF L_ADD_RESULT
+		;- 의뢰:イキ顔動画 조교度加算(이오)
+		CALL REQUEST_30_DELIVERY_이오_ADD(L_進行度,CHARANUM-1)
+	ENDIF
+
+	PRINTL
+	PRINTL
+
+	PRINTL
+	PRINTL
+	PRINTW
+
+	L_CNT ++
+
+WEND
+
+;-----------------------------
+;- BAD
+;-----------------------------
+IF L_BAD
+	PRINTFORMW ………
+	PRINTFORMW ……
+	PRINTFORMW …
+	PRINTFORMW 그후로 상당한 시간이 지나 버렸다…
+	PRINTFORMW 아마 이 방일 것이다…
+	PRINTFORMW
+	PRINTFORMW %조사처리(CALLNAME:MASTER,"는")% 1호실의 문을 열었다…
+	;-------------------------------------------------------------------------------------
+	;PRINTFORMW 이미 남자들의 모습은 없고 비참하게 능욕 당한 이오만이 침대에 놓여 있었다…
+	;PRINTFORMW 이오는 잠시 정신을 놓고 있었지만、자신이 당한 일이 떠올랐는지 조용히 쓰러져 울었다…
+	;PRINTFORMW
+	;PRINTFORMW %조사처리(CALLNAME:MASTER,"는")% 이오를 보호했다…
+	;-------------------------------------------------------------------------------------
+	PRINTFORMW 방안에는 아무도 없고、감도는 성적인 냄새와 침대의 흐트러진 시트가 여기서 일어난 일을 말해주고 있었다…
+	PRINTFORMW 
+	PRINTFORMW 도망한 남자들에 의해 이오는 납치되어 버린 것 같다…
+	;- 추가했을 경우
+	IF L_ADD_RESULT
+		;데빌 옥션 처리
+		;매각된 캐릭터의 조교에 관한 능력、소질、경험、가격을 보존
+		;아헤 얼굴로 음란화한 이오를 즉매각 했을 경우보다 아주 조금 싼 가격
+		CALL CHARASELL_AFTER_デビオク, GETCHARA([[キャラ:이오]]), 1000
+		
+		;キャラクタ－삭제
+		CALL キャラ삭제, GETCHARA([[キャラ:이오]])
+	ENDIF
+	RETURN
+ENDIF
+
+
+;-----------------------------
+;- BAD以外
+;-----------------------------
+PRINTFORMW {RESULT}호실의 문을 열었다…
+PRINTFORMW 안에는 이오와 남자 5명이 있었다…
+PRINTFORMW 남자들은 어리둥절해 했다…
+PRINTFORML
+
+SELECTCASE L_進行度
+	;- 無傷
+	CASE 1
+		PRINTFORMW 이오는 서둘러 %CALLNAME:MASTER%의 앞으로 뛰어들었다。
+		PRINTFORMW ５명의 남자는 %CALLNAME:MASTER%에게 서서히 다가왔다。
+		PRINTFORMW 「팬텀의 살인 청부업자를 고용했다는 소문이 있던데、네 녀석인가？」
+		PRINTFORMW 「이오짱에게 가르쳐 주고 있었어。 네가 노예상인이라는 것을」
+		PRINTFORMW 「성노예가 되기 전에、우리들에게 상냥하게 처녀를 빼앗기는 편이 절대로 좋을 거라고 말이야」
+		PRINTFORMW 이오의 신체를 핥고 빨았던 5명。
+		PRINTFORMW 이오는 %CALLNAME:MASTER%의 등 뒤에 숨어、옷을 꼭 붙잡고 있다。
+		PRINTFORMW 처녀인 이오에게 남자의 욕망은 공포 그 자체였을 것이다。
+		PRINTL
+		PRINTFORMW %조사처리(CALLNAME:MASTER,"는")% 전원 몰살하기로 했다。
+	;- 애무
+	CASE 2 TO 4
+		PRINTFORMW 이오가 입은 옷은 흐트러져 가슴이 드러나 있었다…。
+		PRINTFORMW 지금까지 남자들에게 몸을 장난감처럼 다뤄지고 있었던 것 같다…。
+		PRINTFORMW 이오는 서둘러 %CALLNAME:MASTER%의 앞으로 뛰어들었다。
+		PRINTFORMW ５명의 남자는 %CALLNAME:MASTER%에게 서서히 다가왔다。
+		PRINTFORMW 「팬텀의 살인 청부업자를 고용했다는 소문이 있던데、네 녀석인가？」
+		PRINTFORMW 「이오짱에게 가르쳐 주고 있었어。 네가 노예상인이라는 것을」
+		PRINTFORMW 「성노예가 되기 전에、우리들에게 상냥하게 처녀를 빼앗기는 편이 절대로 좋을 거라고 말이야」
+		PRINTFORMW 이오의 신체를 핥고 빨았던 5명。
+		PRINTFORMW 이오는 %CALLNAME:MASTER%의 등 뒤에 숨어、울면서 옷을 꼭 붙잡고 있다。
+		PRINTFORMW 처녀인 이오에게 남자의 욕망은 공포 그 자체였을 것이다。
+		PRINTL
+		PRINTFORMW %CALLNAME:MASTER%의 것인 이오의 몸에 손을 댄 이 남자들의 죄는 무겁다。
+		PRINTFORMW %조사처리(CALLNAME:MASTER,"는")% 전원 몰살하기로 했다。
+	;- 성교
+	CASE 5 TO 7
+		PRINTFORMW 이오는 거의 알몸으로 벗겨져서、남자에게 비소를 관통당하고 있었다。
+		PRINTFORMW 비소 뿐만이 아니라、가슴도、입도、몸 안까지도 범해졌을 것이다。
+		PRINTFORMW 알몸이거나、반쯤 벗은 남자들이、단말기를 한 손에 든 %CALLNAME:MASTER%에게 말을 걸어왔다。
+		PRINTFORMW 「팬텀의 살인 청부업자를 고용했다는 소문이 있던데、네 녀석인가？」
+		PRINTFORMW 「이오짱에게 가르쳐 주고 있었어。 섹스의 쾌락을」
+		PRINTFORMW 「성노예가 되기 전에、우리들이 상냥하게 처녀를 빼았아 주었지」
+		PRINTFORMW 「이오짱은 처녀를 바칠 정도로、우리들을 정말 좋아했다고」
+		PRINTFORMW 이오는 눈물을 흘리면서、남자들로부터의 성행위를 받아들였다。
+		PRINTFORMW 처녀인 이오에게 있어서、상상조차 하지 못했던 첫 경험이었을 것이다。
+		PRINTFORMW 이오의 비부에서는 붉은 선혈이 흐르고 있었다…。
+		PRINTFORMW 흐느껴 우는 이오는、강제로 무리하게 처녀를 빼앗긴 것이다…。
+		PRINTFORMW 이오는 당신에게、조그맣게「구해주세요」라고 말한다…。
+		PRINTL
+		PRINTFORMW %CALLNAME:MASTER%의 물건인 이오의 몸에 손을 댄 이 남자들의 죄는 무겁다。
+		PRINTFORMW %조사처리(CALLNAME:MASTER,"는")% 전원 몰살하기로 했다。
+	;- 性奴隷
+	CASE IS >= 8
+		PRINTFORMW 이오는 알몸 상태로 남자에게 봉사 하고 있다。
+		PRINTFORMW 비소에서 대량의 정액이 흘러 넘치고 있었다。
+		PRINTFORMW 비소 뿐만이 아니라、가슴도、입도、몸 안까지도 범해졌을 것이다。
+		PRINTFORMW 알몸이거나、반쯤 벗은 남자들이、단말기를 한 손에 든 %CALLNAME:MASTER%에게 말을 걸어왔다。
+		PRINTFORMW 「팬텀의 살인 청부업자를 고용했다는 소문이 있던데、네 녀석인가？」
+		PRINTFORMW 「이오짱에게 가르쳐 주고 있었어。 성노예의 신분을」
+		PRINTFORMW 「네 녀석 보다는 우리들 쪽이 성노예 조교사에 적합한 것 같은걸」
+		PRINTFORMW 「이오짱도 성노예가 될 수 있어서 기뻐했다니까」
+		PRINTFORMW 「스스로 허리를 흔들어 첫 절정하는 모습을 네게 보여주고 싶었어」
+		PRINTFORMW 이오는 쾌락에 들뜬 표정으로 남자의 페니스를 빨며 봉사를 계속 하고 있다。
+		PRINTFORMW 손가락으로는 다른 한쪽의 페니스를 훑고、다른 한쪽은 자신의 비소를 만지작거리며 쾌락을 탐하고 있는 것 같다…。
+		PRINTFORMW 처녀를 빼앗기고 봉사를 강요받아、남자들의 정액을 자궁으로 계속 받아들인 이오。
+		PRINTFORMW 이오는 몸도 마음도 더럽혀져 이제 청순하고 순진한 소녀가 아니게 되버린 것 같다…。
+		PRINTL
+		PRINTFORMW %CALLNAME:MASTER%의 물건인 이오의 몸에 손을 댄 이 남자들의 죄는 무겁다。
+		PRINTFORMW %조사처리(CALLNAME:MASTER,"는")% 전원 몰살하기로 했다。
+ENDSELECT
+
+
+;- 의뢰:部屋探し(전투)
+CALL REQUEST_30_1_FIND_ROOM_BTL
+
+PRINTFORMW 남자들을 몰살하고 제재를 끝냈다…。
+PRINTFORMW 이오는 잠시 정신을 놓고 있었지만、자신이 당한 일이 떠올랐는지 조용히 쓰러져 울었다…。
+PRINTFORMW
+PRINTFORMW %조사처리(CALLNAME:MASTER,"는")% 이오를 보호했다…
+
+
+
+;=================================================
+;   sub REQUEST_30_1_FIND_ROOM_BTL
+;=================================================
+;   의뢰:部屋探し(전투)
+;-------------------------------------------------
+@REQUEST_30_1_FIND_ROOM_BTL
+#DIM L_BTL_FLG
+#DIM L_ENEMY
+#DIM L_LV
+
+;- 전투フラグ
+L_BTL_FLG = 1
+
+PRINTL
+PRINTFORMW 「해、해보자는 거냐！？」
+PRINTFORMW 「팬텀의 개 따위가、우리들 집스한테！」
+
+;-----------------------------
+;- 전투開始
+;-----------------------------
+
+PRINTFORMW 
+PRINTFORMW 인간 집스 국원이 5체 나타났다！
+
+CUSTOMDRAWLINE =
+WAIT
+
+;- CHK:전투フラグ
+IF L_BTL_FLG
+
+	;-----------------------------
+	;- 집스국원を５体설정
+	;-----------------------------
+
+	L_LV = REQUEST_30_BASE_LV(1)
+	L_ENEMY = [[キャラ:집스국원]]
+
+	;- 악마解析度증가処理(1000でMAX)
+	CALL INCREASE_ANALYZE(L_ENEMY,1000)
+
+	;- SET:xxx(집스국원)
+	CALL SET_ENEMY,07,L_ENEMY,L_LV,1,0
+	CALL SET_ENEMY,08,L_ENEMY,L_LV,1,0
+	CALL SET_ENEMY,09,L_ENEMY,L_LV,1,0
+	CALL SET_ENEMY,10,L_ENEMY,L_LV,1,0
+	CALL SET_ENEMY,11,L_ENEMY,L_LV,1,0
+
+	;- 전투前処理
+	FLAG:도주불가フラグ = 1
+	FLAG:회화불능フラグ = 1
+	FLAG:선제기습취소 = 1
+
+	;- 전투開始
+	CALL BATTLE_START
+
+	;- 전투종료
+	FLAG:도주불가フラグ = 0
+	FLAG:회화불능フラグ = 0
+	FLAG:선제기습취소 = 0
+
+ENDIF
+
+PRINTFORMW ＞집스 국원의 살점이、방에 흩뿌려졌다…
+CUSTOMDRAWLINE =
+
+
+

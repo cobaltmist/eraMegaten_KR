@@ -1,0 +1,96 @@
+﻿;========================================
+;相性판정関数
+;ARG:1（PLAYER）→ARG（TARGET）に対する相性を返す
+;========================================
+@GET_RELATION(ARG = -1, ARG:1 = -1 , ARG:2 = -1)
+#FUNCTION
+#LOCALSIZE 2
+#DIM L_RELATION
+#DIMS L_GROUP, 10
+SIF ARG == -1
+	ARG = TARGET
+SIF ARG:1 == -1
+	ARG:1 =PLAYER
+;기초値
+L_RELATION = 100
+;個別のNOによる定義
+IF STRFIND("_" + CSTR:ARG:相性_最高, "_" + CSVCALLNAME(NO:(ARG:1), 0)) >= 0
+	L_RELATION = 200
+ELSEIF STRFIND("_" + CSTR:ARG:相性_抜群, "_" + CSVCALLNAME(NO:(ARG:1), 0)) >= 0
+	L_RELATION = 150
+ELSEIF STRFIND("_" + CSTR:ARG:相性_良好, "_" + CSVCALLNAME(NO:(ARG:1), 0)) >= 0
+	L_RELATION = 125
+ELSEIF STRFIND("_" + CSTR:ARG:相性_不良, "_" + CSVCALLNAME(NO:(ARG:1), 0)) >= 0
+	L_RELATION = 75
+ELSEIF STRFIND("_" + CSTR:ARG:相性_最悪, "_" + CSVCALLNAME(NO:(ARG:1), 0)) >= 0
+	L_RELATION = 50
+;배우자체크
+ELSEIF CSV배우자(ARG, ARG:1)
+	L_RELATION = 200
+;家族関係による相性
+ELSEIF 近親체크(ARG , ARG:1)
+	L_RELATION = 150
+ELSE
+	;個別 × 相性グループによる相性체크
+	IF CSTR:(ARG:1):相性グループ != ""
+		SPLIT CSTR:(ARG:1):相性グループ, "_", L_GROUP
+		FOR LOCAL, 0, RESULT
+			IF STRFIND("_" + CSTR:ARG:相性_最高, "_" + L_GROUP:LOCAL) >= 0
+				L_RELATION = 200
+			ELSEIF STRFIND("_" + CSTR:ARG:相性_抜群, "_" + L_GROUP:LOCAL) >= 0
+				L_RELATION = 150
+			ELSEIF STRFIND("_" + CSTR:ARG:相性_良好, "_" + L_GROUP:LOCAL) >= 0
+				L_RELATION = 125
+			ELSEIF STRFIND("_" + CSTR:ARG:相性_不良, "_" + L_GROUP:LOCAL) >= 0
+				L_RELATION = 75
+			ELSEIF STRFIND("_" + CSTR:ARG:相性_最悪, "_" + L_GROUP:LOCAL) >= 0
+				L_RELATION = 50
+			ENDIF
+			SIF L_RELATION != 100
+				BREAK
+		NEXT
+		;相性グループ × 相性グループ
+		IF L_RELATION == 100 && CSTR:ARG:相性グループ != ""
+			SPLIT CSTR:(ARG:1):相性グループ, "_", L_GROUP
+			FOR LOCAL, 0, RESULT
+				L_RELATION = GET_RELATION_GROUP(ARG, ARG:1, L_GROUP:LOCAL)
+				;100以外のをひいた時点でBREAK
+				SIF L_RELATION != 100
+					BREAK
+			NEXT
+		ENDIF
+	ENDIF
+ENDIF
+;主にあとから추가することになるキャラIDに対する호감도
+FOR LOCAL, 1, 21
+	SIF CFLAG:ARG:@"キャラ相性{LOCAL}" < 0
+		CONTINUE
+	IF CFLAG:ARG:@"キャラ相性{LOCAL}" == CFLAG:(ARG:1):キャラ固有の번호
+		L_RELATION = CFLAG:ARG:@"キャラ相性치{LOCAL}"
+		BREAK
+	ENDIF
+NEXT
+;第三引数を渡されている場合、속성を생략する
+SIF ARG:2 > -1
+	RETURNF L_RELATION
+;속성による相性변경
+;NはLDにたいして、변경なしだが
+;N同士でも보정が弱い
+IF ABL:ARG:속성LD == 2 && ABL:(ARG:1):속성LD == 2
+	L_RELATION += 10
+;LDは一致してると+25
+ELSEIF ABL:ARG:속성LD == ABL:(ARG:1):속성LD
+	L_RELATION += 25
+;LDはお互いに-25
+ELSEIF (ABL:ARG:속성LD == 1 && ABL:(ARG:1):속성LD == 3) || (ABL:ARG:속성LD == 3 && ABL:(ARG:1):속성LD == 1)
+	L_RELATION -= 25
+ENDIF
+
+IF ABL:ARG:속성LC == 2 && ABL:(ARG:1):속성LC == 2
+	L_RELATION += 10
+ELSEIF ABL:ARG:속성LC == ABL:(ARG:1):속성LC
+	L_RELATION += 25
+ELSEIF (ABL:ARG:속성LC == 1 && ABL:(ARG:1):속성LC == 3) || (ABL:ARG:속성LC == 3 && ABL:(ARG:1):속성LC == 1)
+	L_RELATION -= 25
+ENDIF
+RETURNF L_RELATION

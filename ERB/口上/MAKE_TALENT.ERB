@@ -1,0 +1,435 @@
+﻿@MAKE_CHARA_TALENT(ARG, ARG:1)
+PRINTFORML 포인트 {ARG:1}
+IF LOCAL:1
+	FOR LOCAL, 51 ,71
+		IF TALENT:ARG:남자
+			SIF LOCAL == 63 || LOCAL == 66
+				CONTINUE
+		ENDIF
+		CALL PRINT_MAKE_CHARA_TALENT(ARG, LOCAL)
+	NEXT
+ELSE
+	FOR LOCAL, 0 ,19
+		CALL PRINT_MAKE_CHARA_TALENT(ARG, LOCAL)
+	NEXT
+ENDIF
+DRAWLINE
+PRINTFORMLC [1007] \@ LOCAL:1 == 0 ? 육체・기술・성벽계소질 # 정신계소질 \@
+PRINTLC [1000] 종료
+INPUT
+SIF RESULT == 1000
+	RETURN
+IF RESULT == 1007
+	INVERTBIT LOCAL:1, 1
+	RESTART
+ENDIF
+		IF TALENT:ARG:남자
+			SIF RESULT % 3 == 62 || RESULT % 3 == 66
+				RESTART
+		ENDIF
+LOCAL = RESULT
+CALLF SET_MAKE_CHARA_TALENT(ARG, LOCAL / 3)
+SIF (RESULT:1 == -1 && RESULT:2 == -1) || (LOCAL % 3 == 0 && RESULT:1 == -1) || (LOCAL % 3 == 2 && RESULT:2 == -1)
+	RESTART
+IF LOCAL % 3 == 0
+	SIF RESULT:1 >= 0 && TALENT:ARG:(RESULT:1)
+		RESTART
+ELSEIF LOCAL % 3 == 1
+	SIF RESULT:1 >= 0 && TALENT:ARG:(RESULT:1) == 0 && RESULT:2 == -1
+		RESTART
+	SIF RESULT:2 >= 0 && TALENT:ARG:(RESULT:2) == 0 && RESULT:1 == -1
+		RESTART
+	SIF RESULT:1 >= 0 && TALENT:ARG:(RESULT:1) == 0 && RESULT:2 >= 0 && TALENT:ARG:(RESULT:2) == 0
+		RESTART
+ELSE
+	SIF RESULT:2 >= 0 && TALENT:ARG:(RESULT:2)
+		RESTART
+ENDIF
+IF ARG:1 >= GET_P_MAKE_CHARA_TALENT(ARG, LOCAL / 3, LOCAL % 3)
+	ARG:1 -= GET_P_MAKE_CHARA_TALENT(ARG, LOCAL / 3, LOCAL % 3)
+ELSE
+	RESTART
+ENDIF
+IF LOCAL % 3 == 0
+	TALENT:ARG:(RESULT:1) = 1
+	SIF RESULT:2 >= 0
+		TALENT:ARG:(RESULT:2) = 0
+ELSEIF LOCAL % 3 == 1
+	SIF RESULT:1 >= 0
+		TALENT:ARG:(RESULT:1) = 0
+	SIF RESULT:2 >= 0
+		TALENT:ARG:(RESULT:2) = 0
+ELSE
+	TALENT:ARG:(RESULT:2) = 1
+	SIF RESULT:1 >= 0
+		TALENT:ARG:(RESULT:1) = 0
+ENDIF
+RESTART
+;ARGのTALENTを操作するための関数
+@PRINT_MAKE_CHARA_TALENT(ARG, ARG:1)
+SETCOLOR 102, 255, 255
+CALLF SET_MAKE_CHARA_TALENT(ARG, ARG:1)
+IF RESULT:1 == -1
+	PRINTFORMLCD %" "* 16%
+ELSE
+	IF TALENT:ARG:(RESULT:1)
+		PRINTFORMLC [{ARG:1 * 3}] %TALENTNAME:(RESULT:1)%
+	ELSE
+		PRINTFORMLCD [{ARG:1* 3}] %TALENTNAME:(RESULT:1)%({GET_P_MAKE_CHARA_TALENT(ARG,ARG:1, 0)})
+	ENDIF
+ENDIF
+IF (RESULT:1 >= 0 && TALENT:ARG:(RESULT:1)) || (RESULT:2 >= 0 && TALENT:ARG:(RESULT:2))
+	PRINTFORMLCD [{ARG:1 * 3 + 1}] 보통({GET_P_MAKE_CHARA_TALENT(ARG,ARG:1, 1)})
+ELSE
+	PRINTFORMLC [{ARG:1 * 3 + 1}] 보통
+ENDIF
+IF RESULT:2 == -1
+	PRINTFORMLCD %" "* 16%
+ELSE
+	IF TALENT:ARG:(RESULT:2)
+		PRINTFORMLC [{ARG:1 * 3 + 2}] %TALENTNAME:(RESULT:2)%
+	ELSE
+		PRINTFORMLCD [{ARG:1 * 3 + 2}] %TALENTNAME:(RESULT:2)%({GET_P_MAKE_CHARA_TALENT(ARG,ARG:1, 2)})
+	ENDIF
+ENDIF
+RESETCOLOR
+PRINTL 
+@GET_P_MAKE_CHARA_TALENT(ARG, ARG:1, ARG:2 = -1)
+#FUNCTION
+;LOCAL:1 普通から마이ナスにするためのコスト
+;LOCAL:2 普通からプラスにするためのコスト
+LOCAL:1 = 0
+LOCAL:2 = 0
+SELECTCASE ARG:1
+	;겁쟁이・꿋꿋함
+	CASE 0
+		LOCAL:1 = 6
+		LOCAL:2 = 4
+	;건방짐・솔직함
+	CASE 1
+		LOCAL:1 = 2
+		LOCAL:2 = 5
+	;반항적・얌전함
+	CASE 2
+		LOCAL:1 = -5
+		LOCAL:2 = 5
+	;프라이드낮음・프라이드높음
+	CASE 3
+		LOCAL:1 = 6
+		LOCAL:2 = -4
+	;츤데레
+	CASE 4
+		LOCAL:2 = 5
+	;자제심
+	CASE 5
+		LOCAL:2 = 4
+	;보수적・호기심
+	CASE 6
+		LOCAL:1 = 3
+		LOCAL:2 = 6
+	;낙관적・비관적
+	CASE 7
+		LOCAL:1 = 6
+		LOCAL:2 = -4
+	;일선을넘지않음
+	CASE 8
+		LOCAL:2 = 5
+	;눈에띄고싶어함
+	CASE 9
+		LOCAL:2 = 7
+	;정조관결여・정조관념
+	CASE 10
+		LOCAL:1 = 3
+		LOCAL:2 = 5
+	;억압・해방
+	CASE 11
+		LOCAL:1 = -8
+		LOCAL:2 = 5
+	;부끄럼없음・부끄럼쟁이
+	CASE 12
+		LOCAL:1 = 3
+		LOCAL:2 = 5
+	;헌신적
+	CASE 13
+		LOCAL:2 = 8
+	;소악마
+	CASE 14
+		LOCAL:2 = 8
+	;감정결핍
+	CASE 15
+		LOCAL:1 = -4
+	;무관심
+	CASE 16
+		LOCAL:1 = -4
+	;광기
+	CASE 17
+		LOCAL:1 = -20
+	;유치
+	CASE 18
+		LOCAL:1 = 4
+		
+		
+	;처녀,経験絡んでめんどいのでとりあえずコメントアウト
+	;CASE 50
+	;	LOCAL:2 = 
+	;아픔에약함・強い
+	CASE 51
+		LOCAL:1 = 6
+		LOCAL:2 = 3
+	;젖기어려움・젖기쉬움
+	CASE 52
+		LOCAL:1 = -3
+		LOCAL:2 = -5
+	;습득느림・습득빠름
+	CASE 53
+		LOCAL:1 = -4
+		LOCAL:2 = 6
+	;혀놀림
+	CASE 54
+		LOCAL:2 = 8
+	;바늘다루기
+	CASE 55
+		LOCAL:2 = 8
+	;자위하기쉬움
+	CASE 56
+		LOCAL:2 = 6
+	;악취둔감・민감
+	CASE 57
+		LOCAL:1 = -3
+		LOCAL:2 = 5
+	;쾌감을부정・쾌감에솔직
+	CASE 58
+		LOCAL:1 = -10
+		LOCAL:2 = 5
+	;중독되기쉬움
+	CASE 59
+		LOCAL:2 = 7
+	;도착적
+	CASE 60
+		LOCAL:2 = 5
+	;바이
+	CASE 61
+		LOCAL:2 = 8
+	;Ｃ둔감・민감
+	CASE 62
+		LOCAL:1 = -5
+		LOCAL:2 = 8
+	;Ｖ둔감・민감
+	CASE 63
+		LOCAL:1 = -5
+		LOCAL:2 = 8
+	;Ａ둔감・민감
+	CASE 64
+		LOCAL:1 = -5
+		LOCAL:2 = 8
+	;Ｂ둔감・민감
+	CASE 65
+		LOCAL:1 = -5
+		LOCAL:2 = 8
+	;빈유・거유
+	CASE 66
+		LOCAL:1 = 2
+		LOCAL:2 = 4
+	;회복느림・早い
+	CASE 67
+		LOCAL:1 = -4
+		LOCAL:2 = 10
+	;남성혐오
+	CASE 68
+		LOCAL:1 = -4
+	;여성혐오
+	CASE 69
+		LOCAL:1 = -4
+	;小尻・巨尻
+	CASE 70
+		LOCAL:1 = 2
+		LOCAL:2 = 4
+ENDSELECT
+CALLF SET_MAKE_CHARA_TALENT(ARG, ARG:1)
+;+素質がついてれば1、-素質がついてれば-1
+IF RESULT:2 >= 0 && TALENT:ARG:(RESULT:2)
+	LOCAL = 1
+ELSEIF RESULT:1 >= 0 && TALENT:ARG:(RESULT:1)
+	LOCAL = -1
+ELSE
+	LOCAL = 0
+ENDIF
+;마이ナス
+IF LOCAL == -1
+	;마이ナスからふつうにする
+	IF ARG:2 == 1
+		RETURNF -LOCAL:1
+	;마이ナスからプラスにする
+	ELSE
+		RETURNF LOCAL:2 - LOCAL:1
+	ENDIF
+;普通
+ELSEIF LOCAL == 0
+	;普通から마이ナスにする
+	IF ARG:2 == 0
+		RETURNF LOCAL:1
+	;普通からプラスにする
+	ELSE
+		RETURNF LOCAL:2
+	ENDIF
+;プラス
+ELSE
+	;プラスから普通にする
+	IF ARG:2 == 1
+		RETURNF -LOCAL:2
+	;마이ナスからプラスにする
+	ELSE
+		RETURNF LOCAL:1 - LOCAL:2
+	ENDIF
+ENDIF
+@SET_MAKE_CHARA_TALENT(ARG, ARG:1)
+#FUNCTION
+LOCAL:1 = -1
+LOCAL:2 = -1
+SELECTCASE ARG:1
+	;겁쟁이・꿋꿋함
+	CASE 0
+		LOCAL:1 = 10
+		LOCAL:2 = 12
+	;건방짐・솔직함
+	CASE 1
+		LOCAL:1 = 16
+		LOCAL:2 = 13
+	;반항적・얌전함
+	CASE 2
+		LOCAL:1 = 11
+		LOCAL:2 = 14
+	;프라이드낮음・프라이드높음
+	CASE 3
+		LOCAL:1 = 17
+		LOCAL:2 = 15
+	;츤데레
+	CASE 4
+		LOCAL:2 = 18
+	;자제심
+	CASE 5
+		LOCAL:2 = 20
+	;보수적・호기심
+	CASE 6
+		LOCAL:1 = 24
+		LOCAL:2 = 23
+	;낙관적・비관적
+	CASE 7
+		LOCAL:1 = 26
+		LOCAL:2 = 25
+	;일선을넘지않음
+	CASE 8
+		LOCAL:2 = 27
+	;눈에띄고싶어함
+	CASE 9
+		LOCAL:2 = 28
+	;정조관결여・정조관념
+	CASE 10
+		LOCAL:1 = 31
+		LOCAL:2 = 30
+	;억압・해방
+	CASE 11
+		LOCAL:1 = 32
+		LOCAL:2 = 33
+	;부끄럼없음・부끄럼쟁이
+	CASE 12
+		LOCAL:1 = 36
+		LOCAL:2 = 35
+	;헌신적
+	CASE 13
+		LOCAL:2 = 63
+	;소악마
+	CASE 14
+		LOCAL:2 = 87
+	;감정결핍
+	CASE 15
+		LOCAL:1 = 22
+	;무관심
+	CASE 16
+		LOCAL:1 = 21
+	;광기
+	CASE 17
+		LOCAL:1 = 141
+	;유치
+	CASE 18
+		LOCAL:1 = 151
+
+	;처녀,経験絡んでめんどいのでとりあえずコメントアウト
+	;CASE 50
+	;LOCAL:2 = 
+	;아픔에약함・強い
+	CASE 51
+		LOCAL:1 = 40
+		LOCAL:2 = 41
+	;젖기어려움・젖기쉬움
+	CASE 52
+		LOCAL:1 = 43
+		LOCAL:2 = 42
+	;습득느림・습득빠름
+	CASE 53
+		LOCAL:1 = 51
+		LOCAL:2 = 50
+	;혀놀림
+	CASE 54
+		LOCAL:2 = 52
+	;바늘다루기
+	CASE 55
+		LOCAL:2 = 53
+	;자위하기쉬움
+	CASE 56
+		LOCAL:2 = 60
+	;악취둔감・민감
+	CASE 57
+		LOCAL:1 = 61
+		LOCAL:2 = 62
+	;쾌감을부정・쾌감에솔직
+	CASE 58
+		LOCAL:1 = 71
+		LOCAL:2 = 70
+	;중독되기쉬움
+	CASE 59
+		LOCAL:2 = 72
+	;도착적
+	CASE 60
+		LOCAL:2 = 80
+	;바이
+	CASE 61
+		LOCAL:2 = 81
+	;Ｃ둔감・민감
+	CASE 62
+		LOCAL:1 = 101
+		LOCAL:2 = 102
+	;Ｖ둔감・민감
+	CASE 63
+		LOCAL:1 = 103
+		LOCAL:2 = 104
+	;Ａ둔감・민감
+	CASE 64
+		LOCAL:1 = 105
+		LOCAL:2 = 106
+	;Ｂ둔감・민감
+	CASE 65
+		LOCAL:1 = 107
+		LOCAL:2 = 108
+	;빈유・거유
+	CASE 66
+		LOCAL:1 = 109
+		LOCAL:2 = 111
+	;회복느림・早い
+	CASE 67
+		LOCAL:1 = 131
+		LOCAL:2 = 130
+	;남성혐오
+	CASE 68
+		LOCAL:1 = 82
+	;여성혐오
+	CASE 69
+		LOCAL:1 = 88
+	;小尻・巨尻
+	CASE 70
+		LOCAL:1 = 121
+		LOCAL:2 = 123
+ENDSELECT
+RESULT:1 = LOCAL:1
+RESULT:2 = LOCAL:2
+RETURNF

@@ -1,0 +1,170 @@
+﻿;マサカドが使う스킬でもあるので위력以外の性能を高めに
+
+;스킬名
+@SKILL_NAME_70,ARG
+RESULTS = 오의일섬
+
+;
+;　명중
+@SKILL_HITRATE_70, ARG
+RETURN 120
+
+;　위력
+@SKILL_POWER_70, ARG
+RETURN 320
+
+;クリティカル率
+@SKILL_CRITICAL_RATE_70, ARG
+SIF SKILLGAGE_H_GET(FLAG:行動順1,[[스킬:분노폭발]]) == 200 && SKILLGAGE_D_GET(FLAG:行動順1,[[스킬:분노폭발]]) > 0
+	RETURN 50
+RETURN 20
+
+;　최저공격횟수
+@SKILL_MINATTACKNUMBER_70,ARG
+RETURN 1
+
+;　최대공격횟수
+@SKILL_MAXATTACKNUMBER_70,ARG
+RETURN 1
+
+;　ＨＰ2を支払うかＭＰ3を支払うか
+@SKILL_COSTTYPE_70, ARG
+RETURN 3
+;소비なし＝1
+
+;　コストの量
+@SKILL_COST_70,ARG
+RETURN 30
+
+;　相性
+@SKILL_TYPE_70,ARG
+RETURN 0
+;검격
+
+;　1EXTRAか2MAGICか
+@SKILL_DECIDE_TYPE_70, ARG
+RETURN 1
+;EXTRA
+
+;　1물리데미지で計算するか2마법데미지で計算するか
+@SKILL_DAMAGETYPE_70, ARG
+RETURN 1
+
+
+;　대상が1적か2아군か3場전체か4特殊か
+@SKILL_TARGET_70
+RETURN 1
+
+;　사거리
+@SKILL_RANGE_70,ARG
+RETURN 1
+
+;　범위　11명　2１열　3전체　4　적아군전체
+@SKILL_SPHERE_70,ARG
+RETURN 2
+
+;　 効果の타입　1공격、2회복、3상태변화、4特殊、5상태회복
+@SKILL_EFECT_70
+RETURN 1
+
+;　 特殊処理の有無、及び処理内容
+@SKILL_SPECIALEFECT_70,ARG
+;ARG = 1だった場合は処理の有無を返します
+SIF ARG == 1
+	RETURN 0
+;以下に特殊な処理を記述します
+
+;계승타입
+@SKILL_SUCCESSION_TYPE_70
+RETURN 0
+;검격
+
+;@継承不能_70
+;RETURN 1
+
+;속도보정
+@SKILL_SPEED_70, ARG = -1
+RETURN 1
+
+;　구상の표시とその타입
+@SKILL_MESSAGE_70,ARG
+
+
+;전투時以外に사용できるか
+@SKILL_ACTIONABLE_FIELD_70
+RETURN 0
+
+;스킬변화？用랭크
+@SKILL_RANK_70
+RETURN 15
+
+;テン플레이트用、추가효과シリーズ
+;추가효과스테이터스
+@SKILL_ADDTIONAL_STATE_70,ARG
+RETURN GET_STATE_NUM("DYING")
+
+;추가효과상성
+@SKILL_ADDTIONAL_TYPE_70,ARG
+RETURN 0
+
+;추가효과기본부여확률
+@SKILL_ADDTIONAL_BASE_RATE_70,ARG
+SIF SKILLGAGE_H_GET(ARG,[[스킬:분노폭발]]) == 200 && SKILLGAGE_D_GET(ARG,[[스킬:분노폭발]]) > 0
+	RETURN 80
+RETURN 30
+
+;추가효과부여확률上限
+@SKILL_ADDTIONAL_MAX_RATE_70,ARG
+SIF SKILLGAGE_H_GET(ARG,[[스킬:분노폭발]]) == 200 && SKILLGAGE_D_GET(ARG,[[스킬:분노폭발]]) > 0
+	RETURN 100
+RETURN 90
+
+
+;====================================================
+;스킬及び行動の実行
+;====================================================
+@ACTION_70,ARG,ARG:1
+#DIM 対象範囲 , 2
+IF SKILLGAGE_H_GET(ARG,[[스킬:분노폭발]]) == 200 && SKILLGAGE_D_GET(ARG,[[스킬:분노폭발]]) > 0
+	対象範囲 = AUTO_SPLIT_INT("1_4_1_7_12_7_1" , "_" , ARG:1 - 17) , AUTO_SPLIT_INT("4_7_7_12_17_17_17" , "_" , ARG:1 - 17)
+	FOR LOCAL, 対象範囲:0 , 対象範囲:1
+		LOCAL:1 = POS(LOCAL)
+		SIF LOCAL:1 < 0
+			CONTINUE
+		SIF GET_STATE(CFLAG:(LOCAL:1):ステート) == "DYING"
+			CONTINUE
+		LOCAL:2 = 0
+		IF CFLAG:(LOCAL:1):검격가드킬 != 0 && MAXBASE:(LOCAL:1):검격 < 100 && MAXBASE:(LOCAL:1):검격 >= 0
+			LOCAL:2 = 1
+			CFLAG:(LOCAL:1):검격가드킬 = 1
+		ENDIF
+	
+		CALL ATTACK_SINGLE,ARG,LOCAL:1,70
+		
+		SIF LOCAL:2 == 1
+			CFLAG:(LOCAL:1):검격가드킬 = 0
+	NEXT
+	CALL SKILLGAGE_D_SET,ARG,[[스킬:분노폭발]],0
+	RETURN
+ENDIF
+CALL ATTACK_FIELD,ARG,ARG:1,70
+
+;====================================================
+;実行内容ここまで
+;====================================================
+
+;　 설명文の표시
+@SKILL_EXPLAIN_70
+PRINTL [전열] 적 전열에 검격속성 대 물리데미지. 명중률이 조금 높고, 크리티컬이 발생하기 쉽다. (낮은 확률로 즉사)
+SIF U >= 0 && U < CHARANUM && HAVE_SKILL(U, [[스킬:분노폭발]])
+	PRINTL 분노폭발状態で使用するとCT率と即死率が上がり、耐剣撃と剣撃無効を관통し、분노폭발状態が消える
+
+;継承に필요한部位
+@継承部位_70,ARG
+SIF TALENT:ARG:무기
+	RETURN 1
+RETURN 0
+
+;사용조건
+@SKILL_SPECIAL_ACTIONABLE_70,ARG
+RETURN 1

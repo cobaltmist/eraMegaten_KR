@@ -1,0 +1,916 @@
+;ダンジョン作成する前にやること
+;　ダンジョンを作る際すべてのXXを番号に置き換える
+
+;ダンジョン作成後、デバッグする時にやること
+;　DUNGEON_MAPPING.ERHのダンジョンXXをM,X,Y(階層、横、縦)の順でダンジョンの最大の大きさに合わせる
+
+;ダンジョンフラグ:XX:0 ダンジョンクリアフラグ　0未クリア　1クリア
+;ダンジョンフラグ:XX:1 1階の2番目の9メッセンジャー
+;ダンジョンフラグ:XX:2 1階の開かない扉
+;ダンジョンフラグ:XX:3 5階の開かない扉
+
+;ダンジョンフラグ:XX:80~ 宝箱管理用変数（ビット演算）
+;=======================================================================
+;
+;=======================================================================
+
+;=======================================================================
+;攻略条件
+;=======================================================================
+@PREREQUISITE_DUNGEON_XX
+
+SIF ダンジョンフラグ:XX:0 == 0
+	RETURN 1
+;RETURN 1 でダンジョン出現
+RETURN 0
+;RETURN 0 でダンジョン未出現
+
+;=======================================================================
+;ダンジョン名
+;=======================================================================
+@GET_DUNGEON_NAME_XX
+RESULTS = (タイトル)
+
+;=======================================================================
+;フロア名表示
+;=======================================================================
+@FLOORNAME_XX
+SELECTCASE FLAG:現M
+	CASE 0
+		PRINTL 1階
+	CASE 1
+		PRINTL 2階
+	CASEELSE
+		PRINTFORML {FLAG:現M + 1}階
+ENDSELECT
+
+;=======================================================================
+;スタート地点入力
+;=======================================================================
+@START_DUNGEON_XX, ARG
+FLAG:現M = 0
+FLAG:現X = 1
+FLAG:現Y = 2
+;CALL AUTOMAP
+
+;=======================================================================
+;攻略開始時のイベント
+;=======================================================================
+@EVENT_DUNGEON_START_XX
+PRINTFORMW ここはダンジョンに入ったときのイベント
+PRINTFORMW ダンジョンに入ったときの雰囲気とかを書くのがいいかもね
+
+;=======================================================================
+;脱出時のイベント
+;=======================================================================
+@EVENT_DUNGEON_END_XX
+PRINTFORMW ここはダンジョンから脱出したときのイベント
+PRINTFORMW 出口から出てもこのイベントは起こるよ
+IF ダンジョンフラグ:XX:0 == 1
+	PRINTFORMW ここからはクリア後に出てくる　報酬ももらえる
+	PRINTFORMW ＞10円貰った
+	MONEY += 10
+	PRINTFORMW 名声とかもここで上げるといいよ
+	ダンジョンフラグ:XX:0 = 2
+ENDIF
+
+;=======================================================================
+;指定したマスに進入可能か
+;=======================================================================
+;DA:ARG:(ARG:1)
+;ARG、ARG:1はそれぞれ対象のマスのX、Y座標を表しています。
+;このダンジョンではエレベーターの扉が一度右側から開けておかないと左側からは開けられない、という処理に使用しています。
+;どのマップでも座標(2,7)がエレベータの扉。ダンジョンフラグ:1:13 ＝ エレベータフラグ管理用変数の{現在のマップ番号}番目のビットが立っていなければ開けられるかどうかの判定を行う
+@CAN_ENTER_XX, ARG, ARG:1
+#LOCALSIZE 1
+LOCAL = DA:ARG:(ARG:1)
+SELECTCASE DA:ARG:(ARG:1)
+	CASE 2
+		IF FLAG:現M == 0 && ARG == 4 && ARG:1 == 9 && ダンジョンフラグ:XX:2 == 0
+			IF FLAG:現X > 4
+				CALL MESSAGE_WINDOW_D, "", "鍵を開けた "
+				CALL MESSAGE_WINDOW_D, "", "フラグを使えば鍵の操作ができる "
+				ダンジョンフラグ:XX:2 = 1
+			ELSE
+				CALL MESSAGE_WINDOW_D, "", "向こうから鍵がかかってる "
+				CALL MESSAGE_WINDOW_D, "", "このマスに侵入不可にするには「CAN_ENTER」をいじる "
+			ENDIF
+			RETURN 0
+		ELSEIF FLAG:現M == 4 && ARG == 7 && ARG:1 == 7 && ダンジョンフラグ:XX:3 == 0
+			CALL MESSAGE_WINDOW_D, "", "鍵がかかってる "
+			CALL MESSAGE_WINDOW_D, "", "これは鍵を探すタイプ "
+			RETURN 0
+		ENDIF
+ENDSELECT
+CALL CAN_ENTER,ARG,ARG:1
+RETURN RESULT
+
+;=======================================================================
+;タイル定義
+;=======================================================================
+;ARGS  フロアデータで得た1マスの文字
+;ARG   X軸
+;ARG:1 Y軸
+;ARGSとタイル文字が合えば指定のタイル番号をRETURNする
+;使い方
+;SIF ARGS == "S"
+;	RETURN 22
+
+@DEFINE_TILES_XX, ARGS, ARG, ARG:1
+#LOCALSIZE 1
+
+;=======================================================================
+;タイル調整
+;=======================================================================
+;ARG:1、ARG:2はそれぞれX座標とY座標
+;ARGはその座標に現在代入されている番号
+;0：壁　1：床もしくは通路　2：扉　3：宝箱　4：イベント　5：罠　6：上り階段 7：下り階段　8：出口　9：その他特殊処理等
+;これらの内、3～9が代入されているマスに、個別の番号を与える処理を実行します。
+;この処理を行った後、これらのマスには 「マップ番号*1000 + そのマスがそのマップで左上から数えて何個目のARGタイプのマスか*10 + ARG」が代入されます
+;例えば 2003 であった場合、「2番のマップ＝３Ｆで、左上から数えて0個目の3＝宝箱である」という事を意味しています
+;尚、0～2はどのマップにも大量に設置されるので、ここでは基本的に個別の番号を与えません。
+;
+;何個目のARGタイプのマスなのか、は左上の(0,0)から右まで探し、その後一つ下の段に移って同様に探す、というのを右下まで繰り返して数えます。
+@MAKE_FLOOR_LINE_COMMON_XX, ARG, ARG:1, ARG:2
+#LOCALSIZE 30
+;ARG:3(LOCAL:3) 宝箱 DB:75~99(現M+75)の1ビット目から、自動的に使う
+;LOCAL:4 イベント
+;LOCAL:6 昇り階段　端に6を置くと自動的に置き換わる
+;LOCAL:7 降り階段　端に7を置くと自動的に置き換わる
+
+SIF ARG:1 == 0 && ARG:2 == 0
+	VARSET LOCAL
+SELECTCASE ARG
+	CASE 3
+		;宝箱は多くの場合、開けたフラグが立っていると床を代入します
+		;そのマップでどの宝箱を開けたかは、そのマップの宝箱管理用変数の何番目のビットが立っているかで判断します
+		IF GETBIT(ダンジョンフラグ:(FLAG:現ダンジョン):(FLAG:現M / 5 + 80), (FLAG:現M % 5 * 10 + LOCAL:3))
+			DA:(ARG:1):(ARG:2) = 1
+		ELSE
+			DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:3 * 10 + 3
+		ENDIF
+		LOCAL:3++
+	CASE 6
+		IF ARG:1 == (FLAG:最大X -1) || ARG:2 == (FLAG:最大Y - 1) || ARG:1 == 0 || ARG:2 == 0
+			DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:16 * 10 + 506
+			LOCAL:16++
+		ELSE
+			DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:6 * 10 + 6
+			LOCAL:6++
+		ENDIF
+	CASE 7
+		IF ARG:1 == (FLAG:最大X -1) || ARG:2 == (FLAG:最大Y - 1) || ARG:1 == 0 || ARG:2 == 0
+			DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:17 * 10 + 507
+			LOCAL:17++
+		ELSE
+			DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:7 * 10 + 7
+			LOCAL:7++
+		ENDIF
+	CASE 4 TO 9
+		DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:ARG * 10 + ARG
+		LOCAL:ARG++
+	CASE IS > 9
+		DA:(ARG:1):(ARG:2) = ARG
+ENDSELECT
+
+;=======================================================================
+;フロアデータ
+;=======================================================================
+@MAKE_FLOOR_XX
+;0　壁(■)
+;1　床(□)
+;2　扉(扉)
+;3　宝箱(宝)
+;4　イベント（！）
+;5　罠(踏破すると表示)
+;6　上り階段(昇、矢印)
+;7　下り階段(降、矢印)
+;8　出口(出)
+;9　イベント2（□）
+;D　ダークゾーン(灰色)
+;R　回復の泉(Ｒ)
+;T　ターミナル(Ｔ)
+;E　エレベーター(Ｅ)
+SELECTCASE FLAG:現M
+	CASE 0
+		FLAG:最大X = 20 
+		FLAG:最大Y = 20 
+							;	  01234567890123456789
+   		CALL MAKE_FLOOR_LINE, 0, "                    "
+   		CALL MAKE_FLOOR_LINE, 1, " 8                  "
+   		CALL MAKE_FLOOR_LINE, 2, " 1                  "
+   		CALL MAKE_FLOOR_LINE, 3, " 1                  "
+   		CALL MAKE_FLOOR_LINE, 4, " 4                  "
+   		CALL MAKE_FLOOR_LINE, 5, " 4                  "
+   		CALL MAKE_FLOOR_LINE, 6, " 13                 "
+   		CALL MAKE_FLOOR_LINE, 7, " 13                 "
+   		CALL MAKE_FLOOR_LINE, 8, " 9                  "
+   		CALL MAKE_FLOOR_LINE, 9, " 1912E              "
+   		CALL MAKE_FLOOR_LINE,10, " 6                  "
+   		CALL MAKE_FLOOR_LINE,11, "                    "
+   		CALL MAKE_FLOOR_LINE,12, "                    "
+   		CALL MAKE_FLOOR_LINE,13, "                    "
+   		CALL MAKE_FLOOR_LINE,14, "                    "
+   		CALL MAKE_FLOOR_LINE,15, "                    "
+   		CALL MAKE_FLOOR_LINE,16, "                    "
+   		CALL MAKE_FLOOR_LINE,17, "                    "
+   		CALL MAKE_FLOOR_LINE,18, "                    "
+   		CALL MAKE_FLOOR_LINE,19, "                    "
+   		
+	CASE 1
+		FLAG:最大X = 20 
+		FLAG:最大Y = 20 
+							;	  01234567890123456789
+   		CALL MAKE_FLOOR_LINE, 0, "                    "
+   		CALL MAKE_FLOOR_LINE, 1, " T R                "
+   		CALL MAKE_FLOOR_LINE, 2, " 41111111111113     "
+   		CALL MAKE_FLOOR_LINE, 3, " 1           43     "
+   		CALL MAKE_FLOOR_LINE, 4, " 9           13     "
+   		CALL MAKE_FLOOR_LINE, 5, " 2           13     "
+   		CALL MAKE_FLOOR_LINE, 6, " 11114111111113     "
+   		CALL MAKE_FLOOR_LINE, 7, " 1           1      "
+   		CALL MAKE_FLOOR_LINE, 8, " 1           1      "
+   		CALL MAKE_FLOOR_LINE, 9, " 1112E       1      "
+   		CALL MAKE_FLOOR_LINE,10, " 7           1      "
+   		CALL MAKE_FLOOR_LINE,11, "             2      "
+   		CALL MAKE_FLOOR_LINE,12, "          5551      "
+   		CALL MAKE_FLOOR_LINE,13, "          5554      "
+   		CALL MAKE_FLOOR_LINE,14, "             1      "
+   		CALL MAKE_FLOOR_LINE,15, "             1      "
+   		CALL MAKE_FLOOR_LINE,16, "             1      "
+   		CALL MAKE_FLOOR_LINE,17, "             1      "
+   		CALL MAKE_FLOOR_LINE,18, "             6      "
+   		CALL MAKE_FLOOR_LINE,19, "                    "
+   		
+	CASE 2
+		FLAG:最大X = 20 
+		FLAG:最大Y = 20 
+							;	  01234567890123456789
+   		CALL MAKE_FLOOR_LINE, 0, "                    "
+   		CALL MAKE_FLOOR_LINE, 1, " 7                  "
+   		CALL MAKE_FLOOR_LINE, 2, " 41DDDDDDDDDDD      "
+   		CALL MAKE_FLOOR_LINE, 3, " 1DDDDDDDDDDDD      "
+   		CALL MAKE_FLOOR_LINE, 4, " 1           1      "
+   		CALL MAKE_FLOOR_LINE, 5, " 1           1      "
+   		CALL MAKE_FLOOR_LINE, 6, " 1111111111111      "
+   		CALL MAKE_FLOOR_LINE, 7, " 1           1      "
+   		CALL MAKE_FLOOR_LINE, 8, " 1           1      "
+   		CALL MAKE_FLOOR_LINE, 9, " 111         1      "
+   		CALL MAKE_FLOOR_LINE,10, " 1           1      "
+   		CALL MAKE_FLOOR_LINE,11, "             1      "
+   		CALL MAKE_FLOOR_LINE,12, "          1111      "
+   		CALL MAKE_FLOOR_LINE,13, " E115555     1      "
+   		CALL MAKE_FLOOR_LINE,14, "  415555     1      "
+   		CALL MAKE_FLOOR_LINE,15, "           141      "
+   		CALL MAKE_FLOOR_LINE,16, "           911      "
+   		CALL MAKE_FLOOR_LINE,17, "    419             "
+   		CALL MAKE_FLOOR_LINE,18, "    616             "
+   		CALL MAKE_FLOOR_LINE,19, "                    "
+   		
+	CASE 3
+		FLAG:最大X = 20 
+		FLAG:最大Y = 20 
+							;	  01234567890123456789
+   		CALL MAKE_FLOOR_LINE, 0, "                    "
+   		CALL MAKE_FLOOR_LINE, 1, " 7           7      "
+   		CALL MAKE_FLOOR_LINE, 2, " 1           9      "
+   		CALL MAKE_FLOOR_LINE, 3, " 1411111111111      "
+   		CALL MAKE_FLOOR_LINE, 4, " 1111111111111      "
+   		CALL MAKE_FLOOR_LINE, 5, " 1111111111111      "
+   		CALL MAKE_FLOOR_LINE, 6, " 1111111111111      "
+   		CALL MAKE_FLOOR_LINE, 7, " 1           1      "
+   		CALL MAKE_FLOOR_LINE, 8, " 1           1      "
+   		CALL MAKE_FLOOR_LINE, 9, " 114         1      "
+   		CALL MAKE_FLOOR_LINE,10, " 1           1      "
+   		CALL MAKE_FLOOR_LINE,11, "             1      "
+   		CALL MAKE_FLOOR_LINE,12, "          6111      "
+   		CALL MAKE_FLOOR_LINE,13, "             1      "
+   		CALL MAKE_FLOOR_LINE,14, "             1      "
+   		CALL MAKE_FLOOR_LINE,15, "                    "
+   		CALL MAKE_FLOOR_LINE,16, "                    "
+   		CALL MAKE_FLOOR_LINE,17, "                    "
+   		CALL MAKE_FLOOR_LINE,18, "                    "
+   		CALL MAKE_FLOOR_LINE,19, "                    "
+   		
+	CASE 4
+		FLAG:最大X = 20 
+		FLAG:最大Y = 20 
+							;	  01234567890123456789
+   		CALL MAKE_FLOOR_LINE, 0, "                    "
+   		CALL MAKE_FLOOR_LINE, 1, " 7                  "
+   		CALL MAKE_FLOOR_LINE, 2, " 1                  "
+   		CALL MAKE_FLOOR_LINE, 3, " 1111111111111      "
+   		CALL MAKE_FLOOR_LINE, 4, " 1111111111111      "
+   		CALL MAKE_FLOOR_LINE, 5, " 1111111111111      "
+   		CALL MAKE_FLOOR_LINE, 6, " 1111111141111      "
+   		CALL MAKE_FLOOR_LINE, 7, " 1     2     1      "
+   		CALL MAKE_FLOOR_LINE, 8, " 1    111    1      "
+   		CALL MAKE_FLOOR_LINE, 9, " 1    111    1      "
+   		CALL MAKE_FLOOR_LINE,10, " 1     9     1      "
+   		CALL MAKE_FLOOR_LINE,11, " 1     1     1      "
+   		CALL MAKE_FLOOR_LINE,12, " 1    T14    1      "
+   		CALL MAKE_FLOOR_LINE,13, " 1           1      "
+   		CALL MAKE_FLOOR_LINE,14, " 1111114111114      "
+   		CALL MAKE_FLOOR_LINE,15, "                    "
+   		CALL MAKE_FLOOR_LINE,16, "                    "
+   		CALL MAKE_FLOOR_LINE,17, "                    "
+   		CALL MAKE_FLOOR_LINE,18, "                    "
+   		CALL MAKE_FLOOR_LINE,19, "                    "
+	
+	
+	
+	CASE 10
+	CASEELSE
+ENDSELECT
+
+;=======================================================================
+;特殊タイル表示
+;=======================================================================
+;ARG:1がX座標、ARG:2がY座標
+;ARGはそこに代入されている値
+;RESULTSに代入した文字がマップに表示されますが、必ず全角1文字分になるようにしてください。そうでないと表示が崩れます。
+;IF GET_FLOOR_ANALYZE_T(ARG:1, ARG:2) == 2
+
+
+@TILE_MARK_COMMON_XX_4, ARG, ARG:1, ARG:2
+SELECTCASE ARG / 10
+	CASE 100
+		SETCOLOR 0x00ff00
+		RESULTS = ｍ
+ENDSELECT
+
+
+@TILE_MARK_COMMON_XX_6, ARG, ARG:1, ARG:2
+SELECTCASE ARG / 10
+	CASEELSE
+		IF ARG % 1000 > 500
+			IF ARG:1 == 0
+				RESULTS = ←
+			ELSEIF ARG:2 == 0
+				RESULTS = ↑
+			ELSEIF ARG:1 == FLAG:最大X - 1
+				RESULTS = →
+			ELSEIF ARG:2 == FLAG:最大Y - 1
+				RESULTS = ↓
+			ENDIF
+		ENDIF
+ENDSELECT
+
+@TILE_MARK_COMMON_XX_7, ARG, ARG:1, ARG:2
+SELECTCASE ARG / 10
+	CASEELSE
+		IF ARG % 1000 > 500
+			IF ARG:1 == 0
+				RESULTS = ←
+			ELSEIF ARG:2 == 0
+				RESULTS = ↑
+			ELSEIF ARG:1 == FLAG:最大X - 1
+				RESULTS = →
+			ELSEIF ARG:2 == FLAG:最大Y - 1
+				RESULTS = ↓
+			ENDIF
+		ENDIF
+ENDSELECT
+@TILE_MARK_COMMON_XX_9, ARG, ARG:1, ARG:2
+SELECTCASE ARG / 10
+	CASE 100
+		SETCOLOR 0x00ff00
+		RESULTS = ？
+	CASE 200,201
+		RESULTS = Ｗ
+	CASE 400
+		IF ダンジョンフラグ:XX:0 == 0
+			RESULTS = ボ
+		ELSE
+			RESULTS = 　
+		ENDIF
+	CASEELSE
+		RESULTS = 　
+ENDSELECT
+
+;=======================================================================
+;[5]調べる　実行時のイベント
+;=======================================================================
+@EVENT_CHECK_DUNGEON_XX
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y)% 10
+	;========
+	;宝の処理
+	;========
+	CASE 3
+		CALL TREASURE_XX
+		RETURN 1
+	;========================
+	;イベント、メッセンジャー
+	;========================
+	CASE 4
+		SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+			CASE 0
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "調べたから喋ったよ "
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "ここのタイル番号は0004 "
+			CASE 1
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "ここのタイル番号は0014 "
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "二番目だから10増えた "
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "ちなみにここにある宝箱/上は魔石/下は100円が手に入るよ "
+			CASE 100
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "ここのタイル番号は1004 "
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "２階だから1000増えた "
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "ちなみにここのタイルだけはｍになってる "
+			CASE 101
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "ここのタイル番号は1014 "
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "一回、消えるけど階段通ればまた出てくるよ "
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "ちなみにここのある宝箱は上から/マッカ、MAG、ダメージ罠、MPダメージ罠、毒罠/が入ってるよ "
+				DA:(FLAG:現X):(FLAG:現Y) = 1
+			CASE 103
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "ここのタイル番号は1024 "
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "ちなみに宝箱にもタイル番号は付いてるよ "
+			CASE 103
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "ここのタイル番号は1034 "
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "ちなみにここはダメージ床ばかりだよ "
+			CASE 200
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "ここのタイル番号は2004 "
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "座標は合ってなくでも階段の設定はできるよ "
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "あとここはダークゾーンだらけだ "
+			CASE 201
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "ここのタイル番号は2014 "
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "毒床部屋へようこそ… "
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "ちなみにフロアデータに5を入れるだけだと罠は機能しないよ "
+			CASE 202
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "ここのタイル番号は2024 "
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "これに乗ればワープするよ "
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "階段は２つあっても大丈夫だよ "
+			CASE 203
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "ここのタイル番号は2034 "
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "ここの階段を上ると敵が出てくるしバトルができるよ "
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "階段は２つあっても大丈夫だよ "
+			CASE 300
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "ここのタイル番号は3004 "
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "俺と戦え！ "
+				CALL INPUT_SELECT_D, "[1]はい/[0]いいえ "
+				IF RESULT == 1
+					CALL MESSAGE_WINDOW_D, "メッセンジャー", "ありがとう！ "
+					FLAG:逃走不可フラグ = 1
+					FLAG:会話不能フラグ = 1
+					FLAG:先制不意打ちキャンセル = 1
+					;CALL SET_ENEMY,[[キャラ:○○]],LV,0,ボス強度(0だとザコ)
+					CALL SET_ENEMY,9,[[キャラ:ピクシー]],9,0,0
+					CALL SYNC_STATUS,(CHARANUM-1)
+					CALL HEALTH_CHARA,(CHARANUM-1)
+					
+					CALL BATTLE_START
+					
+					FLAG:逃走不可フラグ = 0
+					FLAG:会話不能フラグ = 0
+					FLAG:先制不意打ちキャンセル = 0
+					FLAG:未遭遇歩数 = 0
+				ELSE
+					CALL MESSAGE_WINDOW_D, "メッセンジャー", "あっそう "
+				ENDIF
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "選択肢作るときはINPUTは欠かせないよね/RESULTもセットで必要だね "
+			CASE 301
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "ここのタイル番号は3014 "
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "悪魔を仲魔にさせてあげるよ、誰が欲しい？ "
+				PRINTL 
+				PRINTL [1]ピクシー
+				PRINTL [2]ノッカー
+				PRINTL [3]ナイトメア
+				PRINTL [0]いらない
+				
+				$繰り返し
+				INPUT
+				IF RESULT == 1
+					CALL ADD_NEW_COMPANION,[[キャラ:ピクシー]],500
+					PRINTL ピクシーが仲魔になった
+				ELSEIF RESULT == 2
+					CALL ADD_NEW_COMPANION,[[キャラ:ノッカー]],500
+					PRINTL ノッカーが仲魔になった
+				ELSEIF RESULT == 3
+					CALL ADD_NEW_COMPANION,[[キャラ:ナイトメア]],500
+					PRINTL ナイトメアが仲魔になった
+				ELSEIF RESULT == 0
+					PRINTL とりあえず断った
+				ELSE
+					CLEARLINE 1
+					GOTO 繰り返し
+				ENDIF
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "この処理は人間でもできるよ "
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "でも、人間の場合は戦闘に出すことができない状態で仲間になるよ "
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "一工夫加えないと戦闘に出すことができないから注意してね "
+			CASE 400
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "ここのタイル番号は4004 "
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "この扉の向こうにボスがいるよ "
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "どっかに鍵持ってる人がいるから探してね "
+			CASE 401
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "ここのタイル番号は4014 "
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "強制脱出するフラグを管理してるよ "
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "本当はボスと一緒にやるのがいいかもしれないけど別のほうがいいような気がしてね "
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "どうする脱出する？ "
+				CALL INPUT_SELECT_D, "[1]はい/[0]いいえ "
+				IF RESULT == 1
+					CALL MESSAGE_WINDOW_D, "メッセンジャー", "じゃあ、脱出するよ "
+					FLAG:脱出 = 1
+				ELSE
+					CALL MESSAGE_WINDOW_D, "メッセンジャー", "ちなみに魔法のトラエストやターミナルから/脱出できること知ってるかな？ "
+					CALL MESSAGE_WINDOW_D, "メッセンジャー", "FLAG:脱出スキル禁止というフラグをONにすると封印することができるよ "
+					CALL MESSAGE_WINDOW_D, "メッセンジャー", "ダンジョン開始時に　FLAG:脱出スキル禁止 = 1　でONにするのが一番いいかもね "
+				ENDIF
+			CASE 402
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "ここのタイル番号は4024 "
+				IF ダンジョンフラグ:XX:3 == 0
+					CALL MESSAGE_WINDOW_D, "メッセンジャー", "この鍵あげる "
+					CALL MESSAGE_WINDOW_D, "", "鍵を貰った "
+					ダンジョンフラグ:XX:3 = 1
+					CALL MESSAGE_WINDOW_D, "メッセンジャー", "これがあればボスの所に行けるよ "
+				ELSE
+					CALL MESSAGE_WINDOW_D, "メッセンジャー", "もう鍵を上げたからボスの所に行けるよ "
+				ENDIF
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "鍵とかのアイテムは無理に新アイテムとか作る必要ないからね "
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "こういうのはフラグでやってね "
+			CASE 403
+				PRINTFORMW 妖艶な女の人がいる…
+				PRINTFORMW 「こういうコメントがあるけど私も他の人と同じメッセンジャーよ」
+				PRINTFORMW 「ちなみにタイルの番号は4034よ」
+				PRINTFORML 「他の人達は　MESSAGE_WINDOW_D　っていう関数を使って喋ってるけど
+				PRINTFORMW 　私はPRINTを使って直接文字を出して喋るタイプよ」
+				PRINTFORMW 「こういう風に長い文章を残したいときに使うのがいいのかもね」
+				PRINTFORMW 「PRINTとPRINTFORMの2種類あるけどおすすめはPRINTFORMの方かしらね」
+				PRINTFORML 「あとその二つの後ろにLを付けると最後に改行するわ
+				PRINTFORMW 　Wだとその場でストップ、WAITのWね」
+				PRINTFORMW 「LやWを付けないで長文作っちゃうと横に長い文ができちゃうから注意してね」
+				PRINTFORML 「MESSAGE_WINDOW_Dの関数を使ってるとわかりにくいし見にくいなって思ったら
+				PRINTFORMW 　この方法を使うのもいいかもね」
+				
+				
+		ENDSELECT
+		;CALL EVENT_XX
+		RETURN 0
+	;=======
+	;フロア移動
+	;=======
+	CASE 6,7
+		CALL STAIRS_XX
+		RETURN RESULT
+	;=======
+	;出口
+	;=======
+	CASE 8
+		CALL DUNGEON_EXIT
+		RETURN 1
+	;=======
+	;イベント2
+	;=======
+	;CASE 9
+		;CALL SPECIAL_XX
+		;RETURN 1
+	CASEELSE
+ENDSELECT
+
+;=======================================================================
+;タイル進入時のイベント
+;=======================================================================
+@EVENT_ENTER_DUNGEON_XX,ARG
+;ARG = 進入時の向き　0の場合ワープなど
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y) % 10
+	;==========
+	;扉の処理
+	;==========
+	CASE 2
+		CALL DUNGEON_DOOR,ARG
+		RETURN 1
+	;========
+	;宝の処理
+	;========
+	CASE 3
+		CALL TREASURE_XX
+		RETURN 1
+	;========================
+	;イベント
+	;========================
+	;CASE 4
+		;CALL EVENT_XX, 1
+		;RETURN 0
+	CASE 5
+		SELECTCASE FLAG:現M
+			CASE 1
+				;10％のダメージ床(２階)
+				CALL DUNGEON_TRAP_HP,10
+			CASE 2
+				;25％の毒床(３階)
+				CALL DUNGEON_TRAP_POISON,25
+		ENDSELECT
+		RETURN 1
+	;=======
+	;フロア移動
+	;=======
+	CASE 6,7
+		CALL STAIRS_XX
+		RETURN RESULT
+;=======
+;出口
+;=======
+	CASE 8
+		CALL DUNGEON_EXIT
+		RETURN 1
+;=======
+;イベント2
+;=======
+	CASE 9
+		SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+			CASE 0
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "入ったから喋ったよ "
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "ここのタイル番号は0009 "
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "ちなみに調べてもしゃべらないようになってる "
+			CASE 1
+				IF ダンジョンフラグ:XX:1 == 0
+					CALL MESSAGE_WINDOW_D, "メッセンジャー", "ここのタイル番号は0019 "
+					CALL MESSAGE_WINDOW_D, "メッセンジャー", "フラグ処理付きだからもう俺とは喋れない "
+					CALL MESSAGE_WINDOW_D, "メッセンジャー", "ボスとかの一度きりの戦闘とかで使う "
+				ENDIF
+			CASE 100
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "ここのタイル番号は1009 "
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "２階だから1000増えた "
+			CASE 200
+				;3階の5X:17Yへワープ
+				CALL DUNGEON_WORP,2,5,17
+			CASE 201
+				;3階の12X:16Yへワープ
+				CALL DUNGEON_WORP,2,12,16
+			CASE 300
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "ここのタイル番号は3009 "
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "とりあえず奇襲 "
+				FLAG:逃走不可フラグ = 1
+				FLAG:会話不能フラグ = 1
+				FLAG:先制不意打ちキャンセル = 1
+				;
+				CALL SET_ENEMY,9,[[キャラ:ピクシー]],9,0,0
+				CALL SYNC_STATUS,(CHARANUM-1)
+				CALL HEALTH_CHARA,(CHARANUM-1)
+				
+				CALL BATTLE_START
+				
+				FLAG:逃走不可フラグ = 0
+				FLAG:会話不能フラグ = 0
+				FLAG:先制不意打ちキャンセル = 0
+				FLAG:未遭遇歩数 = 0
+				
+				CALL MESSAGE_WINDOW_D, "メッセンジャー", "こんな感じでいきなり戦闘とかできる "
+			CASE 400
+				IF ダンジョンフラグ:XX:0 == 0
+					CALL MESSAGE_WINDOW_D, "メッセンジャー", "ここのタイル番号は4009　ボスです "
+					CALL MESSAGE_WINDOW_D, "メッセンジャー", "戦って勝てば、クリアフラグ付くよ？/戦う？ "
+					CALL INPUT_SELECT_D, "[1]はい/[0]いいえ "
+					IF RESULT == 0
+						FLAG:逃走不可フラグ = 1
+						FLAG:会話不能フラグ = 1
+						FLAG:先制不意打ちキャンセル = 1
+					
+						CALL SET_ENEMY,9,[[キャラ:ピクシー]],11,0,1
+						CALL SYNC_STATUS,(CHARANUM-1)
+						CALL HEALTH_CHARA,(CHARANUM-1)
+						
+						CALL BATTLE_START
+						
+						FLAG:逃走不可フラグ = 0
+						FLAG:会話不能フラグ = 0
+						FLAG:先制不意打ちキャンセル = 0
+						FLAG:未遭遇歩数 = 0
+					
+						CALL MESSAGE_WINDOW_D, "メッセンジャー", "ボス作るときはSET_ENEMYにでボスフラグを付けるのを忘れないでね "
+						CALL MESSAGE_WINDOW_D, "メッセンジャー", "一番左がボススラグだからね "
+						CALL MESSAGE_WINDOW_D, "メッセンジャー", "じゃあ、クリアフラグつけて帰るから… "
+						ダンジョンフラグ:XX:0 = 1
+						CALL MESSAGE_WINDOW_D, "メッセンジャー", "この先には脱出フラグに詳しい人がいるよ "
+					ELSE
+						CALL MESSAGE_WINDOW_D, "メッセンジャー", "ボス倒さないとこの道を通ることできないから後ろに下げる "
+						CALL DUNGEON_WORP,(FLAG:現M),(FLAG:現X),(FLAG:現Y)-1
+					ENDIF
+				ENDIF
+		ENDSELECT
+		RETURN 1
+ENDSELECT
+
+
+
+;===============================
+;宝箱の中身
+;===============================
+@TREASURE_XX
+#LOCALSIZE 3
+;ダンジョンフラグの80~99は宝箱用
+;１階ごとに10個まで
+;宝箱のフラグ管理用変数の番号
+LOCAL = FLAG:現M / 5 + 80
+;そのマップの何番目の宝箱か
+LOCAL:1 = (DA:(FLAG:現X):(FLAG:現Y) / 10) % 100
+LOCAL:1 += FLAG:現M % 5 * 10
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+	CASE 0
+		;魔石
+		CALL GET_TREASURE, [[アイテム:魔石]] , 1 , FLAG:現ダンジョン, LOCAL , LOCAL:1
+	CASE 1
+		;100円
+		CALL GET_TREASURE_MONEY , 0 , 100 , FLAG:現ダンジョン, LOCAL , LOCAL:1
+	CASE 100
+		;100魔貨
+		CALL GET_TREASURE_MONEY , 1 , 100 , FLAG:現ダンジョン, LOCAL , LOCAL:1
+	CASE 101
+		;100MAG
+		CALL GET_TREASURE_MAG , 1 , 100 , FLAG:現ダンジョン, LOCAL , LOCAL:1
+	CASE 102
+		;罠(HP25％ダメージ)
+		CALL GET_TREASURE_TRAP, "ＨＰ", 25 , GET_TYPE_NUM("万能") , FLAG:現ダンジョン, LOCAL , LOCAL:1
+	CASE 103
+		;罠(MP25％ダメージ)
+		CALL GET_TREASURE_TRAP, "ＭＰ", 25 , GET_TYPE_NUM("万能") , FLAG:現ダンジョン, LOCAL , LOCAL:1
+	CASE 104
+		;罠(25％毒)
+		CALL GET_TREASURE_TRAP, "POISON", 25 , GET_TYPE_NUM("神経") , FLAG:現ダンジョン, LOCAL , LOCAL:1
+ENDSELECT
+
+
+
+;=======================================================================
+;階段置き場
+;=======================================================================
+;6だと上の階層の7、7だと下の階層の6へ移動する処理
+;特に変わった処理を入れない限り何も触らない方がいい
+@STAIRS_XX
+LOCAL = DA:(FLAG:現X):(FLAG:現Y)
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y) % 10
+	;=======================================================================
+	;昇り階段(一つ上のフロアへ)
+	;=======================================================================
+	CASE 6
+		SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+			;CASE ○○
+			CASEELSE
+				;汎用処理
+				IF LOCAL % 1000 < 500
+					CALL DUNGEON_UPSTAIRS_ID, FLAG:現M + 1, LOCAL + 1001
+				ELSE
+					CALL DUNGEON_WORP_ID, FLAG:現M+1, LOCAL+1001, 1
+				ENDIF
+		ENDSELECT
+	;=======================================================================
+	;下り階段(一つ下のフロアへ)
+	;=======================================================================
+	CASE 7
+		SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+			;CASE ○○
+			CASEELSE
+				;汎用処理
+				IF LOCAL % 1000 < 500
+					CALL DUNGEON_DOWNSTAIRS_ID, FLAG:現M - 1, LOCAL - 1001
+				ELSE
+					CALL DUNGEON_WORP_ID, FLAG:現M-1, LOCAL-1001, 1
+				ENDIF
+		ENDSELECT
+ENDIF
+;端にいると中に移動（エラー避け）
+IF FLAG:現X == 0
+	FLAG:現X += 1
+	SIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 2
+		FLAG:現X += 1
+ELSEIF FLAG:現Y == 0
+	FLAG:現Y += 1
+	SIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 2
+		FLAG:現Y += 1
+ELSEIF FLAG:現X == FLAG:最大X - 1
+	FLAG:現X -= 1
+	SIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 2
+		FLAG:現X -= 1
+ELSEIF FLAG:現Y == FLAG:最大Y - 1
+	FLAG:現Y -= 1
+	SIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 2
+		FLAG:現Y -= 1
+ENDIF
+
+;=======================================================================
+;エレベーター定義
+;=======================================================================
+;ARGはそのエレベーターのタイル
+;RESULT:1～　は階層を入れる　その階のＥの位置にワープする
+;RESULTS:1～　は名前を入れる
+@DUNGEON_ELEVATOR_XX, ARG
+RESULT:1 = 0
+RESULT:2 = 1
+RESULT:3 = 2
+RESULTS:1 = １Ｆ
+RESULTS:2 = ２Ｆ
+RESULTS:3 = ３Ｆ
+RETURN -1
+
+;=======================================================================
+;必要レベル目,安
+;推奨LV 雑魚最低LV 雑魚最高LV ボスLV 
+;=======================================================================
+@GET_DUNGEON_LV_XX
+RETURN 1, 1, 1, 1
+
+
+@TRAIN_DUNGEON_XX
+
+;=======================================================================
+;エンカウント率
+;=======================================================================
+@ENCOUNT_RATE_XX
+SELECTCASE FLAG:現M
+	CASE 3,4
+		FLAG:エンカウント率 = FLAG:未遭遇歩数 * 5
+	CASEELSE
+		FLAG:エンカウント率 = 0
+ENDSELECT
+SIF FLAG:未遭遇歩数 < 5
+	FLAG:エンカウント率 = 0
+	
+;=======================================================================
+;エンカウント処理
+;=======================================================================
+@CHECK_ENCOUNT_XX
+IF RAND:100 < FLAG:エンカウント率
+	CALL ENEMY_TABLE
+	RETURN 1
+ELSE
+	FLAG:未遭遇歩数 += 1
+	RETURN 0
+ENDIF
+;=======================================================================
+;敵の種族の種類数
+;RETURN X でXが種類の数になります
+;あまりいろんなのが混ざっているとCOOPがとりにくくなったり
+;敵の攻撃属性が多くなる傾向にあるので、
+;種類の数は1・2種類を主体に時々3種類くらいを基本にするのが望ましいと思われます
+;=======================================================================
+@CLASS_NUM_XX
+SELECTCASE FLAG:現M
+	CASE 3,4
+		RETURN CLASS_NUM_COMMON("初級")
+ENDSELECT
+;RETURN CLASS_NUM_COMMON("中級")
+;RETURN CLASS_NUM_COMMON("上級")
+;RETURN CLASS_NUM_COMMON("最上級")
+
+;=======================================================================
+;敵の総数
+;ARGは出現する敵の種類です
+;RAND(X, Y)はX～Y-1のうちのどれかになるRANDです
+;なお、ここで帰った数字は下限を種族数、上限を10として自動的に調整されます
+;
+;エコービルは最初のダンジョンということで少なめで、最大でも6体ということに
+;=======================================================================
+@ENEMY_NUM_XX, ARG
+SELECTCASE FLAG:現M
+	CASE 3,4
+		RETURN ENEMY_NUM_COMMON("初級")
+ENDSELECT
+;RETURN ENEMY_NUM_COMMON("中級")
+;RETURN ENEMY_NUM_COMMON("上級")
+;RETURN ENEMY_NUM_COMMON("最上級")
+
+
+;=======================================================================
+;敵の種類
+;=======================================================================
+;エンカウントでダンジョンに出てくる敵を設定
+;RETURN (敵の種類),(レベル)
+;LOCAL = 5とSIF !RAND:(LOCAL --)　はいちいち出現確率をやるのがめんどくさい人用
+@ENEMY_XX, ARG
+#LOCALSIZE 1
+
+SELECTCASE FLAG:現M
+	;4階
+	CASE 3,4
+		;LOCALに種類数を入れる
+		LOCAL = 5
+		SIF !RAND:(LOCAL --)
+			RETURN [[キャラ:ピクシー]],1
+		SIF !RAND:(LOCAL --)
+			RETURN [[キャラ:ハーピー]], 1
+		SIF !RAND:(LOCAL --)
+			RETURN [[キャラ:カブソ]], 1
+		SIF !RAND:(LOCAL --)
+			RETURN [[キャラ:キューピッド]], 1
+		SIF !RAND:(LOCAL --)
+			RETURN [[キャラ:コダマ]], 1
+ENDSELECT
+
+;=======================================================================
+;敵ステータス設定
+;=======================================================================
+;↑のザコ敵のステータスを変える処理
+;耐性とかスキルとかを変えれる
+@SET_ENEMY_STATUS_XX,ARG
+
+;=======================================================================
+;輪姦参加悪魔
+;=======================================================================
+@DUNGEON_RAPE_DEVIL_XX
+;ランダムにどの悪魔が出るか決定
+;RETURN CSV番号 , 人数 , レベル
+SELECTCASE RAND:3
+	CASE 0
+		RETURN [[キャラ:カブソ]] , 3 + RAND:10 , CSVBASE([[キャラ:カブソ]] , GETNUM(BASE , "LV") , 0) + RAND:3
+	CASE 1
+		RETURN [[キャラ:コダマ]] , 3 + RAND:10 , CSVBASE([[キャラ:コダマ]] , GETNUM(BASE , "LV") , 0) + RAND:3
+	CASE 2
+		RETURN [[キャラ:カーシー]] , 3 + RAND:10 , CSVBASE([[キャラ:カーシー]] , GETNUM(BASE , "LV") , 0) + RAND:3
+ENDSELECT

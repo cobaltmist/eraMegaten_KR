@@ -1,0 +1,1637 @@
+﻿;-------------------------------------------------
+;MOUSE_UI_STORE_UTILS.ERB
+;LICENCE: FREE
+;YEAR: 2020
+;REGION: 日本
+;-------------------------------------------------
+;-------------------------------------------------
+;아이템存在リスト
+;-------------------------------------------------
+@MouseUIStore_Exsits_Items()
+#LOCALSIZE 1
+;era系아이템
+FOR LOCAL, 0, 200
+	IF !ITEMPRICE:LOCAL
+		CONTINUE
+	ENDIF
+	MouseUIStore_ItemExsits:LOCAL = ITEMPRICE:LOCAL
+NEXT
+VARSET MouseUIStore_ItemMaxPosses, 1, 0, 200
+VARSET MouseUIStore_ItemMaxPosses, 999, 40, 60
+;RPG아이템
+FOR LOCAL, 1001, 2000
+	IF !ITEMPRICE:LOCAL
+		CONTINUE
+	ENDIF
+	MouseUIStore_ItemExsits:LOCAL = ITEMPRICE:LOCAL
+	CALLFORM 최대소지수_{COUNT_ITEMMAX(LOCAL)}
+	MouseUIStore_ItemMaxPosses:LOCAL = RESULT
+NEXT
+;RPG장비
+FOR LOCAL, 2000, VARSIZE("ITEM")
+	;カスタム아이템は구입/매각リスト生成の度に체크するため別
+	IF 마정장비(LOCAL) || 개조장비(LOCAL)
+		CONTINUE
+	ENDIF
+	TRYCCALLFORM 장비箇所_{LOCAL}
+		MouseUIStore_RPGEquipParts:LOCAL = RESULT
+		MouseUIStore_ItemExsits:LOCAL = ITEMPRICE:LOCAL
+		MouseUIStore_ItemMaxPosses:LOCAL = 999
+	CATCH
+	ENDCATCH
+NEXT
+;-------------------------------------------------
+;カスタム系存在체크
+;持ってない場合存在しないものとして扱う
+;-------------------------------------------------
+@MouseUIStore_Exsits_CustomItem()
+#LOCALSIZE 1
+FOR LOCAL, 2000, VARSIZE("ITEM")
+	IF 마정장비(LOCAL)
+		IF ITEM:LOCAL
+			MouseUIStore_ItemExsits:LOCAL = ITEMPRICE:LOCAL
+			MouseUIStore_RPGEquipParts:LOCAL = EQ_장비箇所_마정장비(LOCAL)
+		ELSE
+			MouseUIStore_ItemExsits:LOCAL = 0
+			MouseUIStore_RPGEquipParts:LOCAL = 0
+		ENDIF
+	ENDIF
+	IF 개조장비(LOCAL)
+		IF ITEM:LOCAL
+			CALLFORM 장비箇所_{LOCAL}
+			MouseUIStore_RPGEquipParts:LOCAL = RESULT
+			MouseUIStore_ItemExsits:LOCAL = ITEMPRICE:LOCAL
+		ELSE
+			MouseUIStore_ItemExsits:LOCAL = 0
+			MouseUIStore_RPGEquipParts:LOCAL = 0
+		ENDIF
+	ENDIF
+NEXT
+
+;-------------------------------------------------
+;아이템매각リスト
+;円で売るべきものをリストアップ
+;NOTE:道具구입조건系の関数は現時点で구입できるかどうかしかわからない
+;-------------------------------------------------
+@MouseUIStore_Set_Value()
+VARSET MouseUIStore_ItemValues
+FOR LOCAL, 1001, 2000
+	IF ITEMPRICE:LOCAL <= 1 || !MouseUIStore_ItemExsits:LOCAL
+		CONTINUE
+	ENDIF
+	TRYCCALLFORM 道具구입조건_{LOCAL + 2000}
+		IF RESULT > 0
+			CONTINUE
+		ENDIF
+	CATCH
+	ENDCATCH
+	MouseUIStore_ItemValues:LOCAL = ITEMPRICE:LOCAL
+NEXT
+;換金可能素材
+FOR LOCAL, 1420, 1433
+	MouseUIStore_ItemValues = ITEMPRICE:LOCAL
+NEXT
+;장비
+FOR LOCAL, 2000, VARSIZE("ITEM")
+	IF ITEMPRICE:LOCAL <= 1 || !MouseUIStore_ItemExsits:LOCAL
+		CONTINUE
+	ENDIF
+	TRYCCALLFORM 구입조건_{LOCAL}
+		IF RESULT > 0
+			CONTINUE
+		ENDIF
+	CATCH
+	ENDCATCH
+	MouseUIStore_ItemValues:LOCAL = ITEMPRICE:LOCAL
+NEXT
+
+;-------------------------------------------------
+;円での구입可否リスト
+;-------------------------------------------------
+@MouseUIStore_Yen_OnSales(rOnSales)
+#LOCALSIZE 1
+#DIM REF rOnSales, 0
+VARSET rOnSales
+;era系아이템
+FOR LOCAL, 0, 200
+	IF !MouseUIStore_ItemExsits:LOCAL
+		CONTINUE
+	ENDIF
+	;노역系
+	IF LOCAL >= 100 && LOCAL < 110
+		CONTINUE
+	ENDIF
+	rOnSales:LOCAL = TRAINITEM_SALEABLE(LOCAL)
+NEXT
+;RPG아이템
+FOR LOCAL, 1001, 2000
+	IF !MouseUIStore_ItemExsits:LOCAL
+		CONTINUE
+	ENDIF
+	TRYCCALLFORM 道具구입조건_{LOCAL+2000}
+		rOnSales:LOCAL = RESULT
+	CATCH
+	ENDCATCH
+NEXT
+;RPG장비
+FOR LOCAL, 2000, VARSIZE("ITEM")
+	IF !MouseUIStore_ItemExsits:LOCAL
+		CONTINUE
+	ENDIF
+	TRYCCALLFORM 구입조건_{LOCAL}
+		rOnSales:LOCAL = RESULT
+	CATCH
+	ENDCATCH
+NEXT
+
+;-------------------------------------------------
+;마카での구입可否リスト
+;-------------------------------------------------
+@MouseUIStore_Macca_OnSales(rOnSales)
+#LOCALSIZE 1
+#DIM REF rOnSales, 0
+VARSET rOnSales
+;RPG아이템
+FOR LOCAL, 1001, 2000
+	IF !MouseUIStore_ItemExsits:LOCAL
+		CONTINUE
+	ENDIF
+	TRYCCALLFORM ITEM_EXCHANGE_{LOCAL+2000}
+		rOnSales:LOCAL = RESULT
+	CATCH
+	ENDCATCH
+NEXT
+;RPG장비
+FOR LOCAL, 2000, VARSIZE("ITEM")
+	IF !MouseUIStore_ItemExsits:LOCAL
+		CONTINUE
+	ENDIF
+	TRYCCALLFORM EQUIP_EXCHANGE_{LOCAL}
+		rOnSales:LOCAL = RESULT
+	CATCH
+	ENDCATCH
+NEXT
+
+;-------------------------------------------------
+;店の상품リスト
+;-------------------------------------------------
+@MouseUIStore_Displays(rOnSales, rEnables, rDisplays)
+#LOCALSIZE 1
+#DIM REF rOnSales, 0
+#DIMS REF rEnables, 0
+#DIM REF rDisplays, 0, 0
+VARSET rDisplays
+FOR LOCAL, 0, VARSIZE("rEnables")
+	SELECTCASE rEnables:LOCAL
+		CASE ""
+		CASE "아이템"
+			CALL MouseUIStore_Displays_RPGItems(rDisplays, LOCAL, rOnSales)
+		CASE "조교아이템"
+			CALL MouseUIStore_Displays_EraItems(rDisplays, LOCAL, rOnSales)
+		CASE "검", "총", "머리", "몸통", "팔", "발", "악세사리", "탄환"
+			CALL MouseUIStore_Displays_RPGEquips(rDisplays, LOCAL, rOnSales, rEnables:LOCAL)
+	ENDSELECT
+NEXT
+
+;-------------------------------------------------
+@MouseUIStore_Displays_EraItems(rDisplays, aTypeNo, rOnSales)
+#LOCALSIZE 1
+#DIM REF rDisplays, 0, 0
+#DIM aTypeNo
+#DIM REF rOnSales, 0
+#DIM lPoint
+VARSET lPoint
+FOR LOCAL, 0, 200
+	;구입できない
+	IF rOnSales:LOCAL != 1
+		CONTINUE
+	ENDIF
+	rDisplays:aTypeNo:(lPoint) = LOCAL
+	lPoint ++
+NEXT
+
+;-------------------------------------------------
+@MouseUIStore_Displays_RPGItems(rDisplays, aTypeNo, rOnSales)
+#LOCALSIZE 1
+#DIM REF rDisplays, 0, 0
+#DIM aTypeNo
+#DIM REF rOnSales, 0
+#DIM lPoint
+VARSET lPoint
+FOR LOCAL, 1001, 2000
+	;구입できない
+	IF rOnSales:LOCAL != 1
+		CONTINUE
+	ENDIF
+	rDisplays:aTypeNo:(lPoint) = LOCAL
+	lPoint ++
+NEXT
+;-------------------------------------------------
+@MouseUIStore_Displays_RPGEquips(rDisplays, aTypeNo, rOnSales, aItemType)
+#LOCALSIZE 1
+#DIM REF rDisplays, 0, 0
+#DIM aTypeNo
+#DIM REF rOnSales, 0
+#DIMS aItemType
+#DIM lPoint
+VARSET lPoint
+FOR LOCAL, 2000, VARSIZE("ITEM")
+	;구입できないか部位が違う
+	IF rOnSales:LOCAL == 0 || MouseUIStore_ItemType(MouseUIStore_RPGEquipParts:LOCAL) != aItemType
+		CONTINUE
+	ENDIF
+	rDisplays:aTypeNo:(lPoint) = LOCAL
+	lPoint ++
+NEXT
+
+;-------------------------------------------------
+;店の下取り品매각リスト
+;-------------------------------------------------
+@MouseUIStore_TradeIn(rEnables, rTradeIn)
+#DIMS REF rEnables, 0
+#DIM REF rTradeIn, 0, 0
+VARSET rTradeIn
+FOR LOCAL, 0, VARSIZE("rEnables")
+	SELECTCASE rEnables:LOCAL
+		CASE ""
+		CASE "조교아이템"
+			CALL MouseUIStore_TradeIn_EraItems(rTradeIn, LOCAL)
+		CASE "아이템"
+			CALL MouseUIStore_TradeIn_RPGItems(rTradeIn, LOCAL)
+		CASE "검", "총", "머리", "몸통", "팔", "발", "악세사리", "탄환"
+			CALL MouseUIStore_TradeIn_RPGEquips(rTradeIn, LOCAL, rEnables:LOCAL)
+	ENDSELECT
+NEXT
+
+;-------------------------------------------------
+@MouseUIStore_TradeIn_EraItems(rTradeIn, aTypeNo)
+#LOCALSIZE 1
+#DIM REF rTradeIn, 0, 0
+#DIM aTypeNo
+#DIM lPoint
+VARSET lPoint
+FOR LOCAL, 0, 200
+	;非存在
+	IF MouseUIStore_ItemExsits:LOCAL != 1
+		CONTINUE
+	ENDIF
+	;未사용関数
+NEXT
+
+;-------------------------------------------------
+@MouseUIStore_TradeIn_RPGItems(rTradeIn, aTypeNo)
+#LOCALSIZE 1
+#DIM REF rTradeIn, 0, 0
+#DIM aTypeNo
+#DIM lPoint
+VARSET lPoint
+FOR LOCAL, 1001, 2000
+	;非存在
+	IF !MouseUIStore_ItemExsits:LOCAL
+		CONTINUE
+	ENDIF
+	;売るようなものじゃない
+	IF ITEMPRICE:LOCAL == 1
+		CONTINUE
+	ENDIF
+	;貴重品
+	IF MouseUIStore_ItemValues:LOCAL
+		CONTINUE
+	ENDIF
+	;소지していない
+	IF ITEM:LOCAL <= 0
+		CONTINUE
+	ENDIF
+	rTradeIn:aTypeNo:(lPoint) = LOCAL
+	lPoint ++
+NEXT
+
+;-------------------------------------------------
+@MouseUIStore_TradeIn_RPGEquips(rTradeIn, aTypeNo, aItemType)
+#LOCALSIZE 1
+#DIM REF rTradeIn, 0, 0
+#DIM aTypeNo
+#DIMS aItemType
+#DIM lPoint
+VARSET lPoint
+FOR LOCAL, 2000, VARSIZE("ITEM")
+	;非存在
+	IF !MouseUIStore_ItemExsits:LOCAL
+		CONTINUE
+	ENDIF
+	;売るようなものじゃない
+	IF ITEMPRICE:LOCAL == 1 || 마정장비(LOCAL)
+		CONTINUE
+	ENDIF
+	;貴重品
+	IF MouseUIStore_ItemValues:LOCAL
+		CONTINUE
+	ENDIF
+	;部位が違う
+	IF MouseUIStore_ItemType(MouseUIStore_RPGEquipParts:LOCAL) != aItemType
+		CONTINUE
+	ENDIF
+	;소지していない
+	IF ITEM:LOCAL <= 0
+		CONTINUE
+	ENDIF
+	rTradeIn:aTypeNo:(lPoint) = LOCAL
+	lPoint ++
+NEXT
+
+;-------------------------------------------------
+;店の貴重品매각リスト
+;-------------------------------------------------
+@MouseUIStore_Sells(rEnables, rSells)
+#DIMS REF rEnables, 0
+#DIM REF rSells, 0, 0
+VARSET rSells
+FOR LOCAL, 0, VARSIZE("rEnables")
+	SELECTCASE rEnables:LOCAL
+		CASE ""
+		CASE "조교아이템"
+		CASE "아이템"
+			CALL MouseUIStore_Sells_RPGItems(rSells, LOCAL)
+		CASE "검", "총", "머리", "몸통", "팔", "발", "악세사리", "탄환"
+			CALL MouseUIStore_Sells_RPGEquips(rSells, LOCAL, rEnables:LOCAL)
+	ENDSELECT
+NEXT
+;-------------------------------------------------
+@MouseUIStore_Sells_RPGItems(rSells, aTypeNo)
+#LOCALSIZE 1
+#DIM REF rSells, 0, 0
+#DIM aTypeNo
+#DIM lPoint
+VARSET lPoint
+FOR LOCAL, 1001, 2000
+	;貴重品のみ
+	IF !MouseUIStore_ItemValues:LOCAL
+		CONTINUE
+	ENDIF
+	;소지していない
+	IF ITEM:LOCAL <= 0
+		CONTINUE
+	ENDIF
+	rSells:aTypeNo:(lPoint) = LOCAL
+	lPoint ++
+NEXT
+
+;-------------------------------------------------
+@MouseUIStore_Sells_RPGEquips(rSells, aTypeNo, aItemType)
+#LOCALSIZE 1
+#DIM REF rSells, 0, 0
+#DIM aTypeNo
+#DIMS aItemType
+#DIM lPoint
+VARSET lPoint
+FOR LOCAL, 2000, VARSIZE("ITEM")
+	;貴重品のみ
+	IF !MouseUIStore_ItemValues:LOCAL
+		CONTINUE
+	ENDIF
+		;部位が違う
+	IF MouseUIStore_ItemType(MouseUIStore_RPGEquipParts:LOCAL) != aItemType
+		CONTINUE
+	ENDIF
+	;소지していない
+	IF ITEM:LOCAL <= 0
+		CONTINUE
+	ENDIF
+	rSells:aTypeNo:(lPoint) = LOCAL
+	lPoint ++
+NEXT
+
+;-------------------------------------------------
+;ソート記号
+;-------------------------------------------------
+@MouseUIStore_Sorts_CondSymbol(aSymbol)
+#FUNCTION
+#DIMS aSymbol
+{
+	#DIMS lSymbols = "INo", "Pri", "Pss"
+	, "STy", "GTy", "FAb", "GPw", "GHt", "GMg", "GSp", "ATy", "Mul", "Rng", "Sph", "AAd"
+	, "IEf", "ISp", "ITy", "IAd"
+	, "BPw", "BHt", "BTy", "BAd"
+}
+{
+	#DIMS lNames = "번호", "가격", "소지수"
+	, "검타입", "총타입", "전투능력수정", "총공격", "총명중", "특수탄창", "속도보정", "공격상성", "공격횟수", "사거리", "공격범위", "추가효과"
+	, "I_SKILL_EFECT", "I_SKILL_SPHERE", "I_SKILL_TYPE", "I_SKILL_ADDTIONAL_STATE"
+	, "B_SKILL_POWER", "B_SKILL_HITRATE", "B_SKILL_TYPE", "B_SKILL_ADDTIONAL_STATE"
+}
+#DIM found
+found = FINDELEMENT(lSymbols, aSymbol, , , 1)
+IF found >= 0
+	RESULTS '= lNames:found
+	RETURNF 1
+ENDIF
+RETURNF 0
+
+;-------------------------------------------------
+;昇順ソート
+;-------------------------------------------------
+@MouseUIStore_Sorts(r2dDisplays, r2DCart, aTypeNo, aUserNo, aCond, aCondNum)
+#LOCALSIZE 1
+#DIM REF r2dDisplays, 0, 0
+#DIM REF r2DCart, 0, 0
+#DIM aTypeNo
+#DIM aUserNo
+#DIMS aCond
+#DIM aCondNum
+#DIM lMax, 2
+#DIM DYNAMIC lBucket_No, 20000
+#DIM DYNAMIC lBucket_Cart, 20000
+#DIM DYNAMIC lBucketNum, 2
+#DIM DYNAMIC lCond, 10, 1000
+#DIM DYNAMIC lCount, 20000 ;-10000 ~ 10000
+#DIM DYNAMIC lOffset, 20000 ;-10000 ~ 10000
+#DIM DYNAMIC lPoint
+VARSIZE r2dDisplays
+lMax:0 = RESULT:0, RESULT:1
+SELECTCASE MouseUIStore_ItemType(aTypeNo)
+	CASE "조교아이템"
+		RETURN 0
+	CASE "아이템"
+		lBucketNum:0 = 1000, 2000
+	CASEELSE
+		lBucketNum:0 = 2000, VARSIZE("ITEM")
+ENDSELECT
+;まずItemNoでソート、ダブらないので가운純なバケットソートで安定する
+FOR LOCAL, 0, lMax:1
+	IF !r2dDisplays:aTypeNo:LOCAL
+		BREAK
+	ENDIF
+	lBucket_No:(r2dDisplays:aTypeNo:LOCAL) = r2dDisplays:aTypeNo:LOCAL
+	lBucket_Cart:(r2dDisplays:aTypeNo:LOCAL) = r2DCart:aTypeNo:LOCAL
+NEXT
+FOR LOCAL, lBucketNum:0, lBucketNum:1
+	IF lBucket_No:LOCAL
+		r2dDisplays:aTypeNo:lPoint = lBucket_No:LOCAL
+		r2DCart:aTypeNo:lPoint = lBucket_Cart:LOCAL
+		lPoint ++
+	ENDIF
+NEXT
+;係数ソート
+SELECTCASE aCond
+	;上でソート済み
+	CASE "番号"
+		RETURN 1
+	;変数を直接見る
+	CASE "소지数"
+		FOR LOCAL, 0, lMax:1
+			IF !r2dDisplays:aTypeNo:LOCAL
+				BREAK
+			ENDIF
+			lCond:aTypeNo:LOCAL = ITEM:(r2dDisplays:aTypeNo:LOCAL) % 10000
+			lCount:(ITEM:(r2dDisplays:aTypeNo:LOCAL) % 10000) ++
+		NEXT
+	;桁が多いので基底ソート
+	CASE "가격"
+		FOR LOCAL, 0, lMax:1
+			IF !r2dDisplays:aTypeNo:LOCAL
+				BREAK
+			ENDIF
+			lCond:aTypeNo:LOCAL = ITEMPRICE:(r2dDisplays:aTypeNo:LOCAL) % 10000
+			lCount:(ITEMPRICE:(r2dDisplays:aTypeNo:LOCAL) % 10000) ++
+		NEXT
+		CALL MouseUIStore_Sorts_Sort(r2dDisplays, r2DCart, aTypeNo, lCond, lCount, lOffset, lMax)
+		VARSET lCond
+		VARSET lCount
+		VARSET lOffset
+		FOR LOCAL, 0, lMax:1
+			IF !r2dDisplays:aTypeNo:LOCAL
+				BREAK
+			ENDIF
+			lCond:aTypeNo:LOCAL = ITEMPRICE:(r2dDisplays:aTypeNo:LOCAL) % 100000000 / 10000
+			lCount:(ITEMPRICE:(r2dDisplays:aTypeNo:LOCAL) % 100000000 / 10000) ++
+		NEXT
+		CALL MouseUIStore_Sorts_Sort(r2dDisplays, r2DCart, aTypeNo, lCond, lCount, lOffset, lMax)
+		VARSET lCond
+		VARSET lCount
+		VARSET lOffset
+		FOR LOCAL, 0, lMax:1
+			IF !r2dDisplays:aTypeNo:LOCAL
+				BREAK
+			ENDIF
+			;1兆以上は見ない
+			lCond:aTypeNo:LOCAL = ITEMPRICE:(r2dDisplays:aTypeNo:LOCAL) % 1000000000000 / 100000000
+			lCount:(ITEMPRICE:(r2dDisplays:aTypeNo:LOCAL) % 1000000000000 / 100000000) ++
+		NEXT
+	;최저と최대で基底ソート
+	CASE "공격횟수"
+		FOR LOCAL, 0, lMax:1
+			IF !r2dDisplays:aTypeNo:LOCAL
+				BREAK
+			ENDIF
+			RESULT = 0
+			TRYCALLFORM 최저공격횟수_{r2dDisplays:aTypeNo:LOCAL}, aUserNo
+			lCond:aTypeNo:LOCAL = RESULT + 10000
+			lCount:(RESULT + 10000) ++
+		NEXT
+		CALL MouseUIStore_Sorts_Sort(r2dDisplays, r2DCart, aTypeNo, lCond, lCount, lOffset, lMax)
+		VARSET lCond
+		VARSET lCount
+		VARSET lOffset
+		FOR LOCAL, 0, lMax:1
+			IF !r2dDisplays:aTypeNo:LOCAL
+				BREAK
+			ENDIF
+			RESULT = 0
+			TRYCALLFORM 최대공격횟수_{r2dDisplays:aTypeNo:LOCAL}, aUserNo
+			lCond:aTypeNo:LOCAL = RESULT + 10000
+			lCount:(RESULT + 10000) ++
+		NEXT
+	;引数不要
+	CASE "검타입", "총타입", "속도보정"
+		FOR LOCAL, 0, lMax:1
+			IF !r2dDisplays:aTypeNo:LOCAL
+				BREAK
+			ENDIF
+			RESULT = 0
+			TRYCALLFORM %aCond%_{r2dDisplays:aTypeNo:LOCAL}
+			lCond:aTypeNo:LOCAL = RESULT + 10000
+			lCount:(RESULT + 10000) ++
+		NEXT
+	;引数は장비者番号
+	CASE "공격상성", "사거리", "공격범위", "추가효과", "총공격", "총명중", "특수탄창"
+		FOR LOCAL, 0, lMax:1
+			IF !r2dDisplays:aTypeNo:LOCAL
+				BREAK
+			ENDIF
+			RESULT = 0
+			TRYCALLFORM %aCond%_{r2dDisplays:aTypeNo:LOCAL}, aUserNo
+			lCond:aTypeNo:LOCAL = RESULT + 10000
+			lCount:(RESULT + 10000) ++
+		NEXT
+	;戻り値を引数指定、장비者番号
+	CASE "전투능력수정", "방어상성"
+		FOR LOCAL, 0, lMax:1
+			IF !r2dDisplays:aTypeNo:LOCAL
+				BREAK
+			ENDIF
+			RESULT = 0
+			TRYCALLFORM %aCond%_{r2dDisplays:aTypeNo:LOCAL}, aCondNum, aUserNo
+			lCond:aTypeNo:LOCAL = RESULT + 10000
+			lCount:(RESULT + 10000) ++
+		NEXT
+	;스킬系
+	;引数なし
+	CASE "I_SKILL_EFECT"
+		FOR LOCAL, 0, lMax:1
+			IF !r2dDisplays:aTypeNo:LOCAL
+				BREAK
+			ENDIF
+			CALLFORM %SUBSTRING(aCond, 2, )%_{r2dDisplays:aTypeNo:LOCAL + 2000}
+			lCond:aTypeNo:LOCAL = RESULT + 10000
+			lCount:(RESULT + 10000) ++
+		NEXT
+	;引数は장비者番号
+	CASE "I_SKILL_SPHERE", "I_SKILL_TYPE", "I_SKILL_ADDTIONAL_STATE"
+		FOR LOCAL, 0, lMax:1
+			IF !r2dDisplays:aTypeNo:LOCAL
+				BREAK
+			ENDIF
+			RESULT = 0
+			TRYCALLFORM %SUBSTRING(aCond, 2, )%_{r2dDisplays:aTypeNo:LOCAL + 2000}, aUserNo
+			lCond:aTypeNo:LOCAL = RESULT + 10000
+			lCount:(RESULT + 10000) ++
+		NEXT
+	;탄환
+	CASE "B_SKILL_POWER", "B_SKILL_HITRATE", "B_SKILL_TYPE", "B_SKILL_ADDTIONAL_STATE"
+		FOR LOCAL, 0, lMax:1
+			IF !r2dDisplays:aTypeNo:LOCAL
+				BREAK
+			ENDIF
+			CALLFORM 총스킬_{r2dDisplays:aTypeNo:LOCAL}
+			CALLFORM %SUBSTRING(aCond, 2, )%_{RESULT}, aUserNo
+			lCond:aTypeNo:LOCAL = RESULT + 10000
+			lCount:(RESULT + 10000) ++
+		NEXT
+	CASEELSE
+		THROW %aCond%は불명なソート조건です。
+ENDSELECT
+CALL MouseUIStore_Sorts_Sort(r2dDisplays, r2DCart, aTypeNo, lCond, lCount, lOffset, lMax)
+
+;-------------------------------------------------
+@MouseUIStore_Sorts_Sort(r2dDisplays, r2DCart, aTypeNo, rCond, rCount, rOffset, rMax)
+#LOCALSIZE 1
+#DIM REF r2dDisplays, 0, 0
+#DIM REF r2DCart, 0, 0
+#DIM aTypeNo
+#DIM REF rMax, 0
+#DIM REF rCond, 0, 0
+#DIM REF rCount, 0
+#DIM REF rOffset, 0
+#DIM DYNAMIC lBucket_No, 20000
+#DIM DYNAMIC lBucket_Cart, 20000
+FOR LOCAL, 1, VARSIZE("rOffset")
+	rOffset:LOCAL = rOffset:(LOCAL-1) + rCount:(LOCAL-1)
+NEXT
+FOR LOCAL, 0, rMax:1
+	IF !r2dDisplays:aTypeNo:LOCAL
+		BREAK
+	ENDIF
+	lBucket_No:(rOffset:(rCond:aTypeNo:LOCAL)) = r2dDisplays:aTypeNo:LOCAL
+	lBucket_Cart:(rOffset:(rCond:aTypeNo:LOCAL)) = r2DCart:aTypeNo:LOCAL
+	rOffset:(rCond:aTypeNo:LOCAL) ++
+NEXT
+;コピー
+FOR LOCAL, 0, rMax:1
+	IF !lBucket_No:LOCAL
+		BREAK
+	ENDIF
+	r2dDisplays:aTypeNo:LOCAL = lBucket_No:LOCAL
+	r2DCart:aTypeNo:LOCAL = lBucket_Cart:LOCAL
+NEXT
+RETURN 1
+
+;-------------------------------------------------
+@MouseUIStore_Sorts_Reverse(r2dDisplays, r2DCart, aTypeNo)
+#LOCALSIZE 1
+#DIM REF r2dDisplays, 0, 0
+#DIM REF r2DCart, 0, 0
+#DIM aTypeNo
+#DIM DYNAMIC lBucket_No, 20000
+#DIM DYNAMIC lBucket_Cart, 20000
+#DIM lMax, 2
+#DIM lLast
+VARSIZE r2dDisplays
+lMax:0 = RESULT:0, RESULT:1
+FOR LOCAL, 0, lMax:1
+	IF !r2dDisplays:aTypeNo:LOCAL
+		BREAK
+	ENDIF
+	lBucket_No:LOCAL = r2dDisplays:aTypeNo:LOCAL
+	lBucket_Cart:LOCAL = r2DCart:aTypeNo:LOCAL
+	lLast = LOCAL
+NEXT
+FOR LOCAL, 0, lLast + 1
+	r2dDisplays:aTypeNo:LOCAL = lBucket_No:(lLast - LOCAL)
+	r2DCart:aTypeNo:LOCAL = lBucket_Cart:(lLast - LOCAL)
+NEXT
+
+;-------------------------------------------------
+;장비변경ダイアログ
+;-------------------------------------------------
+@MouseUIStore_Dialog_ChangeEquip(aUserNo, aItemNo)
+#LOCALSSIZE 1
+#DIM aUserNo
+#DIM aItemNo
+;比較キャラ不在
+SIF aUserNo < 0
+	RETURN 0
+;장비以外を弾く
+TRYCCALLFORM 장비箇所_{aItemNo}
+	;탄환は弾く
+	SIF RESULT == GET_EQUIPNUM("탄환")
+		RETURN 0
+CATCH
+	RETURN 0
+ENDCATCH
+;장비조건체크
+TRYCCALLFORM 장비조건_{aItemNo}, aUserNo
+	SIF !RESULT
+		RETURN 0
+CATCH
+	RETURN 0
+ENDCATCH
+LOCALS '= @"　%CALLNAME:aUserNo%에게 %조사처리(ITEMNAME:aItemNo, "를")% 장비시키겠습니까？"
+CALL MouseUIStore_Dialog_YN(LOCALS)
+SIF RESULT
+	RETURN 0
+CALL 장비변경, aUserNo, MouseUIStore_RPGEquipParts:aItemNo, aItemNo
+
+;-------------------------------------------------
+;売買ダイアログ
+;-------------------------------------------------
+@MouseUIStore_Dialog_Buy(rCurrencies, aFirstCur, aPrice, aName)
+#LOCALSSIZE 1
+#DIMS REF rCurrencies
+#DIMS aFirstCur
+#DIM aPrice
+#DIMS aName
+LOCALS '= "　" + aName + "를"
+IF MouseUIStore_CurMoney(aFirstCur) >= aPrice
+	LOCALS += @" {aPrice} %MouseUIStore_MoneyName(aFirstCur)%으로 구입합니다"
+ELSEIF MouseUIStore_CurMoney(aFirstCur)
+	LOCALS += @"%MouseUIStore_MoneyName(aFirstCur)%및 그외의 통화로 합계 {aPrice}지불해 구입합니다"
+ELSE
+	LOCALS += @"합계 {aPrice}지불해 구입합니다"
+ENDIF
+LOCALS += "<br>" + "　좋습니까？"
+CALL MouseUIStore_Dialog_YN(LOCALS)
+RETURN RESULT
+
+;-------------------------------------------------
+@MouseUIStore_Dialog_Sell(rCurrencies, aFirstCur, aPrice, aName)
+#LOCALSSIZE 1
+#DIMS REF rCurrencies
+#DIMS aFirstCur
+#DIM aPrice
+#DIMS aName
+LOCALS '= "　" + aName + @"를 {aPrice} %MouseUIStore_MoneyName(aFirstCur)%로 매각합니다"
+LOCALS += "<br>" + "　좋습니까？"
+CALL MouseUIStore_Dialog_YN(LOCALS)
+RETURN RESULT
+
+;-------------------------------------------------
+@MouseUIStore_Dialog_YN(ARGS)
+HTML_PRINT GETLINESTR("━") + "<br><br>"
+HTML_PRINT ARGS + "<br><br>"
+HTML_PRINT "　　　　" + MouseUIStore_ActiveColorBtn("[ 　네　 ]", "0") + "　　" + MouseUIStore_ActiveColorBtn("[ 아니요 ]", "1")
+HTML_PRINT "<br>" + GETLINESTR("━")
+CALL MouseUIStore_Input_YN()
+RETURN RESULT
+
+;-------------------------------------------------
+@MouseUIStore_Input_YN()
+#DIMS lYes = "0", "y", "Y"
+#DIMS lNoes = "1", "n", "N"
+ONEINPUTS
+SELECTCASE FLAG:二択입력설정
+	CASE 0
+		IF RESULTS == "0" || RESULTS == "1"
+			RETURN TOINT(RESULTS)
+		ENDIF
+	CASE 1, 2
+		IF FINDELEMENT(lYes, RESULTS, , , 1) >= 0
+			RETURN 0
+		ELSEIF FINDELEMENT(lNoes, RESULTS, , , 1) >= 0
+			RETURN 1
+		ENDIF
+ENDSELECT
+CLEARLINE 1
+RESTART
+
+;-------------------------------------------------
+;通貨選択
+;-------------------------------------------------
+@MouseUIStore_Select_Currency(rCurrencies, aFirstCur)
+#FUNCTION
+#LOCALSIZE 1
+#DIMS REF rCurrencies, 0
+#DIMS aFirstCur
+IF MouseUIStore_CurMoney(aFirstCur)
+	RETURNF FINDELEMENT(rCurrencies, aFirstCur, , , 1)
+ENDIF
+FOR LOCAL, 0, VARSIZE("rCurrencies")
+	IF MouseUIStore_CurMoney(rCurrencies:LOCAL)
+		RETURNF LOCAL
+	ENDIF
+NEXT
+RETURNF FINDELEMENT(rCurrencies, aFirstCur, , , 1)
+
+;-------------------------------------------------
+;カテゴリ選択
+;-------------------------------------------------
+@MouseUIStore_Select_ItemType(rDisplays, aCurType)
+#FUNCTION
+#LOCALSIZE 1
+#DIM REF rDisplays, 0, 0
+#DIM aCurType
+IF rDisplays:aCurType:0
+	RETURNF aCurType
+ENDIF
+VARSIZE rDisplays
+FOR LOCAL, 0, RESULT
+	IF rDisplays:LOCAL:0
+		RETURNF LOCAL
+	ENDIF
+NEXT
+RETURNF 0
+
+;-------------------------------------------------
+;カート内の金額を計算
+;-------------------------------------------------
+@MouseUIStore_Calc_TotalPrice(rDisplays, rCart, aMode)
+#LOCALSIZE 2
+#DIM REF rDisplays, 0, 0
+#DIM REF rCart, 0, 0
+#DIMS aMode
+#DIM lMax, 2
+#DIM lTotal, 3
+VARSIZE rDisplays
+lMax:0 = RESULT:0, RESULT:1
+VARSET lTotal, 0
+FOR LOCAL:0, 0, lMax:0
+	FOR LOCAL:1, 0, lMax:1
+		IF !(rDisplays:(LOCAL:0):(LOCAL:1))
+			BREAK
+		ENDIF
+		IF !(rCart:(LOCAL:0):(LOCAL:1))
+			CONTINUE
+		ENDIF
+		;実処理
+		SELECTCASE aMode
+			CASE "BUY"
+				lTotal:0 += ITEMPRICE:(rDisplays:(LOCAL:0):(LOCAL:1)) * rCart:(LOCAL:0):(LOCAL:1)
+			CASE "SELL"
+				lTotal:0 += MouseUIStore_ItemValues:(rDisplays:(LOCAL:0):(LOCAL:1))/2 * rCart:(LOCAL:0):(LOCAL:1)
+			CASE "TRADEIN"
+				lTotal:0 += ITEMPRICE:(rDisplays:(LOCAL:0):(LOCAL:1))/2 * rCart:(LOCAL:0):(LOCAL:1)
+			CASEELSE
+				THROW %aMode%は불명な売買形式です。
+		ENDSELECT
+		lTotal:1 += rCart:(LOCAL:0):(LOCAL:1)
+		lTotal:2 ++
+	NEXT
+NEXT
+RESULT:1 = lTotal:1, lTotal:2
+RETURN lTotal:0
+
+;-------------------------------------------------
+;支払い可能か체크
+;-------------------------------------------------
+@MouseUIStore_Is_Payable(aPrice, rCurrencies)
+#FUNCTION
+#LOCALSIZE 2
+#DIMS REF rCurrencies, 0
+#DIM aPrice
+;그외
+FOR LOCAL, 0, VARSIZE("rCurrencies")
+	LOCAL:1 = MouseUIStore_CurMoney(rCurrencies:LOCAL)
+	IF LOCAL:1 >= aPrice
+		RETURNF 1
+	ENDIF
+	aPrice -= LOCAL:1
+NEXT
+RETURNF 0
+
+
+
+;-------------------------------------------------
+;カートに아이템を추가
+;-------------------------------------------------
+@MouseUIStore_Add_ToCart(rCart, aSelectedType, aSelectedItem, aItemNo, aUnit, aMode)
+#DIM REF rCart, 0, 0
+#DIM aSelectedType
+#DIM aSelectedItem
+#DIM aItemNo
+#DIM aUnit
+#DIMS aMode
+SELECTCASE aMode
+	CASE "BUY"
+		rCart:aSelectedType:aSelectedItem = LIMIT(rCart:aSelectedType:aSelectedItem + aUnit, 0, MouseUIStore_ItemMaxPosses:aItemNo - ITEM:aItemNo)
+	CASE "TRADEIN", "SELL"
+		rCart:aSelectedType:aSelectedItem = LIMIT(rCart:aSelectedType:aSelectedItem + aUnit, 0, ITEM:aItemNo)
+	CASEELSE
+		THROW 
+ENDSELECT
+
+;-------------------------------------------------
+;各種通貨
+;-------------------------------------------------
+@MouseUIStore_Add_Money(aName, aVal)
+#DIMS aName
+#DIM aVal
+SIF aVal <= 0
+	THROW {aVal}は有効でない획득金額です。
+SELECTCASE aName
+	CASE "YEN"
+		MONEY:0 += aVal
+	CASE "MACCA"
+		MONEY:1 += aVal
+	CASE "COIN"
+		MONEY:3 += aVal
+	CASE "JP"
+		MONEY:4 += aVal
+	CASE "MAG"
+		BASE:MASTER:ＭＡＧ += aVal
+	CASE "TICKET"
+		ITEM:행복티켓 += aVal
+	CASEELSE
+		THROW %aName%は불명な通貨名です。
+ENDSELECT
+
+;-------------------------------------------------
+@MouseUIStore_Remove_Money(aName, aVal)
+#DIMS aName
+#DIM aVal
+SIF aVal <= 0
+	THROW {aVal}は有効でない消失金額です。
+LOCAL = MAX(0, aVal - MouseUIStore_CurMoney(aName))
+SELECTCASE aName
+	CASE "YEN"
+		MONEY:0 = MAX(0, MONEY:0 - aVal)
+	CASE "MACCA"
+		MONEY:1 = MAX(0, MONEY:1 - aVal)
+	CASE "COIN"
+		MONEY:3 = MAX(0, MONEY:3 - aVal)
+	CASE "JP"
+		MONEY:4 = MAX(0, MONEY:4 - aVal)
+	CASE "MAG"
+		BASE:MASTER:ＭＡＧ = MAX(0, BASE:MASTER:ＭＡＧ - aVal)
+	CASE "TICKET"
+		ITEM:행복티켓 = MAX(0, ITEM:행복티켓 - aVal)
+	CASEELSE
+		THROW %aName%は불명な通貨名です。
+ENDSELECT
+;支払いきれなかった場合は残額を返す
+RETURN LOCAL
+;-------------------------------------------------
+;通貨取得
+;-------------------------------------------------
+@MouseUIStore_CurMoneyS(aName, aDigit)
+#FUNCTIONS
+#DIMS aName
+#DIM aDigit
+RETURNF MouseUIStore_MoneyS(aName, MouseUIStore_CurMoney(aName), aDigit)
+
+;-------------------------------------------------
+@MouseUIStore_MoneyS(aName, aVal, aDigit=100)
+#FUNCTIONS
+#DIMS aName
+#DIM aVal
+#DIM DYNAMIC aDigit
+SIF aVal <= 0
+	RETURNF MouseUIStore_MoneyMark(aName) + " " + "0"
+SIF STRLENS(TOSTR(aVal)) > aDigit
+	aVal = TOINT("9" * aDigit)
+RETURNF MouseUIStore_MoneyMark(aName) + " " + TOSTR(aVal, "#,###")
+
+;-------------------------------------------------
+@MouseUIStore_CurMoney(ARGS)
+#FUNCTION
+SELECTCASE ARGS
+	CASE "YEN"
+		RETURNF MONEY:0
+	CASE "MACCA"
+		RETURNF MONEY:1
+	CASE "COIN"
+		RETURNF MONEY:3
+	CASE "JP"
+		RETURNF MONEY:4
+	CASE "MAG"
+		RETURNF BASE:MASTER:ＭＡＧ
+	CASE "TICKET"
+		RETURNF ITEM:행복티켓
+	CASEELSE
+		THROW %ARGS%は불명な通貨名です。
+ENDSELECT
+
+;-------------------------------------------------
+@MouseUIStore_MoneyName(ARGS)
+#FUNCTIONS
+#DIMS lPaymentName, 6 = "", "YEN", "MACCA", "JP", "COIN", "TICKET"
+#DIMS lReturnName, 6 = "", "円", "마카", "정크포인트", "카지노코인", "행복티켓"
+FINDELEMENT lPaymentName, ARGS, , , 1
+SIF RESULT >= 0
+	RETURNF lReturnName:RESULT
+THROW %ARGS%は불명な通貨名です。
+
+;-------------------------------------------------
+@MouseUIStore_MoneyMark(ARGS)
+#FUNCTIONS
+#DIMS lPaymentName, 6 = "", "YEN", "MACCA", "JP", "COIN", "TICKET"
+#DIMS lPaymentMark, 6 = "", "\\", "Ћ", "JP", "C", "HT"
+FINDELEMENT lPaymentName, ARGS, , , 1
+SIF RESULT >= 0
+	RETURNF lPaymentMark:RESULT
+THROW %ARGS%は불명な通貨名です。
+
+
+;-------------------------------------------------
+;カテゴリ
+;-------------------------------------------------
+@MouseUIStore_ItemNo_ToType(ARG)
+#FUNCTIONS
+SELECTCASE ARG
+	CASE IS < 0
+	CASE 0 TO 199
+		RETURNF "조교아이템"
+	CASE 200 TO 1999
+		RETURNF "아이템"
+	CASE 2000 TO VARSIZE("ITEM")
+		RETURNF MouseUIStore_ItemType(MouseUIStore_RPGEquipParts:ARG)
+ENDSELECT
+RETURNF ""
+;-------------------------------------------------
+@MouseUIStore_ItemType(ARG)
+#FUNCTIONS
+#DIMS lName = "검", "총", "머리", "몸통", "팔", "발", "악세사리", "탄환", "아이템", "조교아이템"
+RETURNF lName:ARG
+
+;-------------------------------------------------
+@MouseUIStore_ItemType_ToNo(ARGS)
+#FUNCTION
+#DIMS lName = "검", "총", "머리", "몸통", "팔", "발", "악세사리", "탄환", "아이템", "조교아이템"
+RETURNF FINDELEMENT(lName, ARGS, , , 1)
+
+;-------------------------------------------------
+;검
+;-------------------------------------------------
+@MouseUIStore_SwordType(ARG)
+#FUNCTIONS
+#DIMS CONST lName = "", "도", "레이피어", "활", "검", "창", "도끼・둔기", "채찍", "투척기", "지팡이・제구", "곤봉", "권갑", "그외"
+RETURNF lName:ARG
+
+;-------------------------------------------------
+@MouseUIStore_SwordType_Short(ARG)
+#FUNCTIONS
+#DIMS CONST lName = "", "도", "레", "활", "검", "창", "둔", "채", "투", "지", "봉", "권", "외"
+RETURNF lName:ARG
+
+;-------------------------------------------------
+;총
+;-------------------------------------------------
+@MouseUIStore_GunType(ARG)
+#FUNCTIONS
+#DIMS CONST lName = "", "핸드건", "샷건", "머신건", "라이플", "그외의총"
+RETURNF lName:ARG
+
+;-------------------------------------------------
+@MouseUIStore_GunType_Short(ARG)
+#FUNCTIONS
+#DIMS CONST lName = "", "ＨＧ", "ＳＧ", "ＳＭＧ", "ＬＧ", "그외"
+RETURNF lName:ARG
+
+;-------------------------------------------------
+;相性
+;-------------------------------------------------
+@MouseUIStore_TypeName(ARG)
+#FUNCTIONS
+#DIMS CONST effName, 18 = "검격", "비구", "타격", "전술", "화염", "빙결", "전격", "충격", "신경", "정신", "파마", "주살", "지변", "수격", "질풍", "중력", "핵열", "만능"
+RETURNF MouseUIStore_HtmlColorS(effName:ARG, effName:ARG)
+
+;-------------------------------------------------
+@MouseUIStore_TypeMark(ARG)
+#FUNCTIONS
+#DIMS CONST effName, 18 = "검", "비", "타", "술", "화", "빙", "전", "충", "신", "정", "파", "주", "지", "수", "질", "중", "핵", "만"
+RETURNF MouseUIStore_HtmlColorS(effName:ARG, effName:ARG)
+
+;-------------------------------------------------
+@MouseUIStore_TypeMark_All()
+#LOCALSIZE 1
+#LOCALSSIZE 1
+#FUNCTIONS
+IF LOCALS != ""
+	RETURNF LOCALS
+ELSE
+	FOR LOCAL, 0, 18
+		LOCALS += MouseUIStore_TypeMark(LOCAL)
+	NEXT
+	RETURNF LOCALS
+ENDIF
+
+;-------------------------------------------------
+;내성
+;-------------------------------------------------
+@MouseUIStore_TypeResistName(ARG)
+#FUNCTIONS
+SELECTCASE ARG
+	CASE 999
+		RETURNF "반사"
+	CASE IS < 0
+		RETURNF "흡수"
+	CASE 0
+		RETURNF "무효"
+	CASE 100
+		RETURNF "－－"
+	CASE IS > 100
+		RETURNF "약점"
+	CASE IS < 50
+		RETURNF "반감"
+	CASE IS < 100
+		RETURNF "내성"
+ENDSELECT
+THROW
+
+;-------------------------------------------------
+@MouseUIStore_TypeResistMark(ARG)
+#FUNCTIONS
+SELECTCASE ARG
+	CASE 999
+		RETURNF "반"
+	CASE 0
+		RETURNF "무"
+	CASE IS < 0
+		RETURNF "흡"
+	CASE 100
+		RETURNF "－"
+	CASE IS > 100
+		RETURNF "약"
+	CASE IS <= 50
+		RETURNF "감"
+	CASE IS < 100
+		RETURNF "내"
+ENDSELECT
+THROW
+
+;-------------------------------------------------
+;상태이상
+;-------------------------------------------------
+@MouseUIStore_State(ARG)
+#FUNCTIONS
+RETURNF MouseUIStore_HtmlColor(GET_STATE(ARG) + " "*(6 - STRLENS(GET_STATE(ARG))), STATE_COLOR(ARG))
+
+;-------------------------------------------------
+@MouseUIStore_StateResist_ToName(ARG)
+#FUNCTIONS
+SELECTCASE ARG
+	CASE 0
+		RETURNF ""
+	CASE IS > 0
+		RETURNF "약점"
+	CASE IS <= -100
+		RETURNF "무효"
+	CASE IS <= -50
+		RETURNF "반감"
+	CASE IS < 0
+		RETURNF "내성"
+ENDSELECT
+THROW
+
+;-------------------------------------------------
+@MouseUIStore_StateResist_ToMark(ARG)
+#FUNCTIONS
+SELECTCASE ARG
+	CASE 0
+		RETURNF ""
+	CASE IS > 0
+		RETURNF "약"
+	CASE IS <= -100
+		RETURNF "무"
+	CASE IS <= -50
+		RETURNF "반"
+	CASE IS < 0
+		RETURNF "내"
+ENDSELECT
+THROW
+
+;-------------------------------------------------
+;사거리、範囲
+;-------------------------------------------------
+@MouseUIStore_EffectTypeName(ARG)
+#FUNCTIONS
+#DIMS CONST effName, 6 = "", "공격", "회복", "상태변화" , "특수", "상태회복"
+RETURNF effName:ARG
+
+;-------------------------------------------------
+@MouseUIStore_RangeName(ARG)
+#FUNCTIONS
+#DIMS CONST effName, 4 = "", "Ｓ", "Ｍ", "Ｌ"
+RETURNF effName:ARG
+
+;-------------------------------------------------
+@MouseUIStore_SphereName(ARG)
+#FUNCTIONS
+#DIMS CONST effName, 5 = "", "1체", "1열", "전체", "적아군"
+RETURNF effName:ARG
+
+
+;-------------------------------------------------
+;html
+;-------------------------------------------------
+@MouseUIStore_ActiveColorBtn(ARGS, ARGS:1)
+#FUNCTIONS
+RETURNF MouseUIStore_HtmlBtn(MouseUIStore_HtmlColorS(ARGS, "ACTIVE"), ARGS:1)
+
+;-------------------------------------------------
+@MouseUIStore_HtmlBtn(ARGS, ARGS:1)
+#FUNCTIONS
+RETURNF @"<button value='%ARGS:1%'>%ARGS%</button>"
+
+;-------------------------------------------------
+@MouseUIStore_HtmlColorS(ARGS, ARGS:1)
+#FUNCTIONS
+LOCAL = COLOR(ARGS:1)
+SIF LOCAL <= 0
+	LOCAL = MouseUIStore_COLOR(ARGS:1)
+SIF LOCAL <= 0
+	LOCAL = MouseUIStore_TypeColor(ARGS:1)
+SIF LOCAL < 0
+	THROW %ARGS:1%は불명な色名です。
+RETURNF @"<font color='#%TOSTR(LOCAL, "x")%'>" + ARGS + "</font>"
+
+;-------------------------------------------------
+@MouseUIStore_HtmlColor(ARGS, ARG)
+#FUNCTIONS
+RETURNF @"<font color='#%TOSTR(ARG, "x")%'>" + ARGS + "</font>"
+
+;-------------------------------------------------
+@MouseUIStore_Space()
+#FUNCTIONS
+RETURNF "　"
+
+;-------------------------------------------------
+@MouseUIStore_TypeColorS(ARGS)
+#FUNCTIONS
+RETURNF TOSTR(MouseUIStore_TypeColor(ARGS), "x")
+
+;-------------------------------------------------
+@MouseUIStore_TypeNoColor(ARG)
+#FUNCTION
+#DIMS CONST effName, 18 = "검격", "비구", "타격", "전술", "화염", "빙결", "전격", "충격", "신경", "정신", "파마", "주살", "지변", "수격", "질풍", "중력", "핵열", "만능"
+RETURNF MouseUIStore_TypeColor(effName:ARG)
+
+;-------------------------------------------------
+@MouseUIStore_TypeColor(ARGS)
+#FUNCTION
+SELECTCASE ARGS
+	CASE "검격", "타격", "비구", "전술", "검", "비", "타", "술"
+		RETURNF GETDEFCOLOR()
+	CASE "화염", "화"
+		RETURNF 0xFF9292
+	CASE "빙결", "빙"
+		RETURNF 0x92ECFF
+	CASE "수격", "수"
+		RETURNF 0x92C4FF
+	CASE "질풍", "질"
+		RETURNF 0x9BFF92
+	CASE "지변", "지"
+		RETURNF 0xFFBF92
+	CASE "전격", "전"
+		RETURNF 0xFFF492
+	CASE "핵열", "핵"
+		RETURNF 0xd8ffb2
+	CASE "충격", "충"
+		RETURNF 0x92FFBD
+	CASE "중력", "중"
+		RETURNF 0xFB92FF
+	CASE "주살", "주"
+		RETURNF 0xA792FF
+	CASE "신경", "신"
+		RETURNF 0xA792FF
+	CASE "파마", "파"
+		RETURNF 0xffffef
+	CASE "정신", "정"
+		RETURNF 0xffffef
+	CASE "만능", "만"
+		RETURNF 0xffffff
+	CASEELSE
+		RETURNF -1
+ENDSELECT
+
+;-------------------------------------------------
+@MouseUIStore_ResistColor(ARG)
+#LOCALSIZE 1
+#FUNCTION
+SELECTCASE ARG
+	CASE 999
+		LOCAL = FLAG:반사칼라
+	CASE 0
+		LOCAL = FLAG:무효칼라
+	CASE IS < 0
+		LOCAL = FLAG:흡수칼라
+	CASE 100
+		LOCAL = FLAG:통상칼라
+	CASE IS > 100
+		LOCAL = FLAG:약점칼라
+	CASE IS < 100
+		LOCAL = FLAG:내성칼라
+ENDSELECT
+RETURNF COLOR_FROMRGB(MIN(LOCAL / 1000 / 1000, 255), MIN(LOCAL / 1000 % 1000, 255), MIN(LOCAL % 1000, 255))
+
+;-------------------------------------------------
+@MouseUIStore_COLOR(ARGS)
+#FUNCTION
+SELECTCASE ARGS
+	CASE "FRAME"
+		RETURNF GETDEFCOLOR()
+	CASE "ACTIVE"
+		RETURNF 0x7FFF83
+	CASE "SELECTED"
+		RETURNF 0x7FABFF
+	CASE "NONACTIVE"
+		RETURNF COLOR("DARK-GRAY")
+	CASE "SEEING"
+		RETURNF 0xFFF27F
+	CASE "OK"
+		RETURNF 0x7fff7f
+	CASE "NG"
+		RETURNF COLOR("RED")
+	CASEELSE
+		RETURNF -1
+ENDSELECT
+
+;-------------------------------------------------
+;데이터
+;-------------------------------------------------
+;-------------------------------------------------
+;무기
+;-------------------------------------------------
+@MouseUIStore_ITEMDATA_검(rData, rDataS, aItemNo, aUserNo=-1)
+#LOCALSIZE 1
+#DIM REF rData, 0
+#DIMS REF rDataS, 0
+#DIM aItemNo
+#DIM aUserNo
+VARSET rData
+VARSET rDataS
+;마정무기は別関数
+IF 마정장비(aItemNo)
+	CALL MouseUIStore_ITEMDATA_마정장비(rData, rDataS, aItemNo, aUserNo)
+	RETURN
+ENDIF
+CALL MouseUIStore_ITEMDATA_EquipCommon(rData, rDataS, aItemNo, aUserNo)
+;熟練分類
+TRYCCALLFORM 검타입_{aItemNo}
+	rData:(2) = RESULT
+	rDataS:(2) '= MouseUIStore_SwordType(RESULT)
+CATCH
+ENDCATCH
+;공격、명중
+FOR LOCAL, 0, 2
+	CALLFORM 전투능력수정_{aItemNo}, LOCAL, aUserNo
+	rData:(3 + LOCAL) = RESULT
+	rDataS:(3 + LOCAL) = {RESULT}
+NEXT
+;마법위력
+CALLFORM 전투능력수정_{aItemNo}, 4, aUserNo
+rData:(5) = RESULT
+rDataS:(5) = {RESULT}
+;마법효과
+CALLFORM 전투능력수정_{aItemNo}, 5, aUserNo
+rData:(6) = RESULT
+rDataS:(6) = {RESULT}
+CALL MouseUIStore_ITEMDATA_WeaponCommon(rData, rDataS, aItemNo, aUserNo)
+
+;-------------------------------------------------
+@MouseUIStore_ITEMDATA_총(rData, rDataS, aItemNo, aUserNo=-1)
+#DIM REF rData, 0
+#DIMS REF rDataS, 0
+#DIM aItemNo
+#DIM aUserNo
+VARSET rData
+VARSET rDataS
+CALL MouseUIStore_ITEMDATA_EquipCommon(rData, rDataS, aItemNo, aUserNo)
+;分類
+TRYCCALLFORM 총타입_{aItemNo}
+	rData:(2) = RESULT
+	rDataS:(2) '= MouseUIStore_GunType_Short(RESULT)
+CATCH
+ENDCATCH
+TRYCCALLFORM 총공격_{aItemNo}, aUserNo
+	rData:(3) = RESULT
+	rDataS:(3) = {RESULT}
+CATCH
+ENDCATCH
+TRYCCALLFORM 총공격_{aItemNo}, aUserNo
+	rData:(4) = RESULT
+	rDataS:(4) = {RESULT}
+CATCH
+ENDCATCH
+TRYCCALLFORM 특수탄창_{aItemNo}, aUserNo
+	rData:(5) = RESULT
+	rDataS:(5) = {RESULT}
+CATCH
+ENDCATCH
+TRYCCALLFORM 속도보정_{aItemNo}
+	rData:(6) = RESULT
+	rDataS:(6) = {RESULT}
+CATCH
+ENDCATCH
+CALL MouseUIStore_ITEMDATA_WeaponCommon(rData, rDataS, aItemNo, aUserNo)
+TRYCCALLFORM GUN_RANDOMTARGET_{aItemNo}
+	IF RESULT
+		rData:(14) = RESULT
+		rDataS:(14) = 랜덤
+	ENDIF
+CATCH
+ENDCATCH
+
+
+;-------------------------------------------------
+@MouseUIStore_ITEMDATA_WeaponCommon(rData, rDataS, aItemNo, aUserNo)
+#DIM REF rData, 0
+#DIMS REF rDataS, 0
+#DIM aItemNo
+#DIM aUserNo
+CALLFORM 공격상성_{aItemNo}, aUserNo
+rData:(7) = RESULT
+rDataS:(7) '= MouseUIStore_TypeName(RESULT)
+CALLFORM 최저공격횟수_{aItemNo}, aUserNo
+rData:(8) = RESULT
+rDataS:(8) = {RESULT}
+CALLFORM 최대공격횟수_{aItemNo}, aUserNo
+rData:(9) = RESULT
+rDataS:(9) = {RESULT}
+CALLFORM 사거리_{aItemNo}, aUserNo
+rData:(10) = RESULT
+rDataS:(10) '= MouseUIStore_RangeName(RESULT)
+CALLFORM 공격범위_{aItemNo}, aUserNo
+rData:(11) = RESULT
+rDataS:(11) '= MouseUIStore_SphereName(RESULT)
+TRYCCALLFORM 추가효과_{aItemNo}, aUserNo
+	IF RESULT
+		rData:(13) = RESULT
+		rDataS:(13) '= MouseUIStore_State(RESULT)
+	ENDIF
+CATCH
+ENDCATCH
+;-------------------------------------------------
+;防具
+;-------------------------------------------------
+@MouseUIStore_ITEMDATA_防具(rData, rDataS, aItemNo, aUserNo=-1, aTypeColor)
+#LOCALSIZE 1
+#DIM REF rData, 0
+#DIMS REF rDataS, 0
+#DIM aItemNo
+#DIM aUserNo
+#DIMS aTypeColor
+VARSET rData
+VARSET rDataS
+CALL MouseUIStore_ITEMDATA_EquipCommon(rData, rDataS, aItemNo, aUserNo)
+;공격、명중、방어、회피、마법위력、마법효과
+FOR LOCAL, 0, 6
+	TRYCCALLFORM 전투능력수정_{aItemNo}, LOCAL, aUserNo
+		rData:(3 + LOCAL) = RESULT
+		rDataS:(3 + LOCAL) = {RESULT}
+	CATCH
+		rDataS:(3 + LOCAL) = "0"
+	ENDCATCH
+NEXT
+FOR LOCAL, 0, 18
+	TRYCCALLFORM 방어상성_{aItemNo}, LOCAL, aUserNo
+		rData:(11 + LOCAL) = RESULT
+		rDataS:(11 + LOCAL) '= MouseUIStore_TypeResistName(RESULT)
+		IF RESULT == 100
+			rDataS:(10) += MouseUIStore_TypeResistMark(100)
+		ELSE
+			SELECTCASE aTypeColor
+				CASE "TYPE"
+					rDataS:(10) += MouseUIStore_HtmlColor(MouseUIStore_TypeResistMark(RESULT), MouseUIStore_TypeNoColor(LOCAL))
+				CASE "EFFECT"
+					rDataS:(10) += MouseUIStore_HtmlColor(MouseUIStore_TypeResistMark(RESULT), MouseUIStore_ResistColor(RESULT))
+				CASEELSE
+					THROW %aTypeColor%は불명な표시指定です
+				ENDSELECT
+		ENDIF
+	CATCH
+		rDataS:(11 + LOCAL) '= MouseUIStore_TypeResistName(100)
+		rDataS:(10) += MouseUIStore_TypeResistMark(100)
+	ENDCATCH
+NEXT
+FOR LOCAL, 0, 21
+	TRYCCALLFORM バステ내성_{aItemNo}, LOCAL, aUserNo
+		IF RESULT
+			rDataS:29 += " " + GET_STATE_KANJI(LOCAL) + MouseUIStore_StateResist_ToName(RESULT) + " "
+		ENDIF
+	CATCH
+	ENDCATCH
+NEXT
+;-------------------------------------------------
+@MouseUIStore_ITEMDATA_EquipCommon(rData, rDataS, aItemNo, aUserNo)
+#LOCALSIZE 1
+#DIM REF rData, 0
+#DIMS REF rDataS, 0
+#DIM aItemNo
+#DIM aUserNo
+;ITEMNo
+rData:(0) = aItemNo
+IF INRANGE(aItemNo, 3703, 3710) || aItemNo == 2556
+	rDataS:(0) '= TOFULL(ITEMNAME:aItemNo)
+ELSE
+	rDataS:(0) '= ITEMNAME:aItemNo
+ENDIF
+;조건
+IF aUserNo < 0
+	rDataS:(1) '= "？"
+ELSE
+	RESULT = 0
+	TRYCALLFORM 장비조건_{aItemNo}, aUserNo
+	rData:(1) = RESULT
+	IF RESULT
+		rDataS:(1) '= MouseUIStore_HtmlColorS("✔", "OK")
+	ELSE
+		rDataS:(1) '= MouseUIStore_HtmlColorS("✖", "NG")
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+;탄환
+;-------------------------------------------------
+@MouseUIStore_ITEMDATA_탄환(rData, rDataS, aItemNo, aUserNo)
+#LOCALSIZE 1
+#DIM REF rData, 0
+#DIMS REF rDataS, 0
+#DIM aItemNo
+#DIM aUserNo
+#DIM lSkillNo
+VARSET rData
+VARSET rDataS
+;아이템情報
+rData:(0) = aItemNo
+rDataS:(0) '= ITEMNAME:aItemNo
+;対応스킬
+CALLFORM 총스킬_{aItemNo}
+lSkillNo = RESULT
+;스킬情報
+CALLFORM SKILL_POWER_{lSkillNo}(aUserNo)
+rData:(1) = RESULT
+rDataS:(1) = {RESULT}
+CALLFORM SKILL_HITRATE_{lSkillNo}(aUserNo)
+rData:(2) = RESULT
+rDataS:(2) = {RESULT}
+CALLFORM SKILL_TYPE_{lSkillNo}(aUserNo)
+rData:(3) = RESULT
+rDataS:(3) '= MouseUIStore_TypeName(RESULT)
+CALLFORM SKILL_ADDTIONAL_STATE_{lSkillNo}(aUserNo)
+IF RESULT
+	rData:(4) = RESULT
+	rDataS:(4) '= MouseUIStore_State(RESULT)
+ENDIF
+
+;-------------------------------------------------
+;아이템
+;-------------------------------------------------
+@MouseUIStore_ITEMDATA_아이템(rData, rDataS, aItemNo, aUserNo)
+#LOCALSIZE 1
+#DIM REF rData, 0
+#DIMS REF rDataS, 0
+#DIM aItemNo
+#DIM aUserNo
+#DIM lSkillNo
+VARSET rData
+VARSET rDataS
+lSkillNo = aItemNo + 2000
+;아이템情報
+rData:(0) = aItemNo
+rDataS:(0) '= ITEMNAME:aItemNo
+;
+TRYCCALLFORM SKILL_SPHERE_{lSkillNo}(aUserNo)
+	rData:(1) = RESULT
+	rDataS:(1) '= MouseUIStore_SphereName(RESULT)
+CATCH
+ENDCATCH
+TRYCCALLFORM SKILL_EFECT_{lSkillNo}
+	rData:(2) = RESULT
+	rDataS:(2) '= MouseUIStore_EffectTypeName(RESULT)
+CATCH
+ENDCATCH
+IF rData:(2) == 1 || rData:(2) == 3
+	CALLFORM SKILL_TYPE_{lSkillNo}
+	rData:(3) = RESULT
+	rDataS:(3) '= MouseUIStore_TypeName(RESULT)
+ENDIF
+RESULT = 0
+TRYCALLFORM SKILL_ADDTIONAL_STATE_{lSkillNo}(aUserNo)
+IF RESULT
+	rData:(4) = RESULT
+	rDataS:(4) '= MouseUIStore_State(RESULT)
+ENDIF
+
+;-------------------------------------------------
+;마정장비
+;-------------------------------------------------
+@MouseUIStore_ITEMDATA_마정장비(rData, rDataS, aItemNo, aUserNo)
+#LOCALSIZE 1
+#DIM REF rData, 0
+#DIMS REF rDataS, 0
+#DIM aItemNo
+#DIM aUserNo
+#DIM lCustomNo
+#DIMS lCustomPart
+VARSET rData
+VARSET rDataS
+lCustomNo = EQ_GETID_마정장비(aItemNo)
+CALL 장비箇所_마정장비, lCustomNo
+lCustomPart = MouseUIStore_ItemType(RESULT)
+;ITEMNo
+rData:(0) = aItemNo
+rDataS:(0) '= EQ_GETNAME_마정장비(lCustomNo)
+;조건
+IF aUserNo < 0
+	rDataS:(1) '= "？"
+ELSE
+	RESULT = 0
+	TRYCALLFORM 장비조건_마정장비, aUserNo, lCustomNo
+	rData:(1) = RESULT
+	IF RESULT
+		rDataS:(1) '= MouseUIStore_HtmlColorS("✔", "OK")
+	ELSE
+		rDataS:(1) '= MouseUIStore_HtmlColorS("✖", "NG")
+	ENDIF
+ENDIF
+CALL 기본능력수정_마정장비, 0, lCustomNo
+rData:(3) = RESULT
+rDataS:(3) = {RESULT}
+CALL 기본능력수정_마정장비, 1, lCustomNo
+rData:(4) = RESULT
+rDataS:(4) = {RESULT}
+CALL 기본능력수정_마정장비, 4, lCustomNo
+rData:(5) = RESULT
+rDataS:(5) = {RESULT}
+CALL 기본능력수정_마정장비, 5, lCustomNo
+rData:(6) = RESULT
+rDataS:(6) = {RESULT}
+CALL 공격상성_마정장비, lCustomNo
+rData:(7) = RESULT
+rDataS:(7) '= MouseUIStore_TypeName(RESULT)
+CALL 최저공격횟수_마정장비, lCustomNo
+rData:(8) = RESULT
+rDataS:(8) = {RESULT}
+CALL 최대공격횟수_마정장비, lCustomNo
+rData:(9) = RESULT
+rDataS:(9) = {RESULT}
+CALL 사거리_마정장비, lCustomNo
+rData:(10) = RESULT
+rDataS:(10) '= MouseUIStore_RangeName(RESULT)
+CALL 공격범위_마정장비, lCustomNo
+rData:(11) = RESULT
+rDataS:(11) '= MouseUIStore_SphereName(RESULT)
+CALL 추가효과_마정장비, lCustomNo
+IF RESULT
+	rData:(13) = RESULT
+	rDataS:(13) '= MouseUIStore_State(RESULT)
+ENDIF

@@ -1,0 +1,1404 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:DUNGEON94_시아크.ERB
+;	Facility	:던전ナンバー94　시아크　ＭＡＰ0~10
+;
+;	Licence		:ライセンスフリー。
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		2012/12/22		ネトリス				新規作成
+;	002		2014/06/09		ネトリス				出現악마の処理を大幅변경、손動で등록しなくてもいいように변경
+;	003		2015/03/15		총Ｐ					扉で악마の出現を制御。악마の出現する종류が少ない場合ループするのを회피するように加筆。전체的に加筆整理。
+;	004		2016/02/11		ああああ				キャプスロック사용時の最上階の過疎抑制、特殊레어枠악마が三体이상出現できそれ以外に出現できる악마が居ない時出現악마に0が来るのを抑制
+;	005		2016/02/12		ああああ				キャプスロック사용時に三종류以下だとエ라になるのを防止
+;	006		2016/05/12		ああああ				레어枠악마とエンカウント時に出現する종류の数で無限ループのエ라になるのを회피の為出現する악마の종류が十以下の場合레어枠は一切出現しない点を徹底化
+;	007		2016/08/19		ああああ				エンカウント時に악마の選出の度に出現する악마のリストアップをしていたのをエンカウントの最初にリストアップしてその中から選ぶように변경、4Fまで入れる상태で4F右下の階段のところまで行くと탈출不能になるのを수정
+;	008		2017/06/26		ああああ				악마の증가に伴い10Fで出現する악마の配列をはみ出す가능性が出たので配列のサイズを倍に
+;	009		2020/05/05		がめら					エンカウントで1800番以降の악마も出るように。ダークおやじの選択肢パターン추가。ラン란다ンジョンによるエンカウント反転バグの修正。
+;	010		2020/06/19		JK好き					던전フラグ:94:4をシーアーク装備品支給フラグに使うって書いただけ
+
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;=======================================================================
+;시아크
+;=======================================================================
+;コンセプトは추가された악마を放り込む던전！
+;ただし今のところは特殊、조건合体악마と대천사など一部の악마は自重中です
+;이벤트なども作るかも？
+;
+;=======================================================================
+;フラグ
+;=======================================================================
+;던전フラグ:94: 1 = 탐색허가フラグ:フラグが進むごとに시아크内の鍵が開いていく
+;던전フラグ:94: 2 = ダークおやじフラグ:악마の出現변경を이용しているかどうか、이용している場合はどちらを이용しているか판정
+;던전フラグ:94: 3 = 악마が出現が0,する　1,しない
+;던전フラグ:94: 4 = シーアーク装備品支給フラグ
+;던전フラグ:94:10 = 다크서머너
+;던전フラグ:94:11 = 소악마리리스
+;=======================================================================
+;攻略조건
+;=======================================================================
+@PREREQUISITE_DUNGEON_94
+;이벤트『시설이용허가』の後に탐색가능
+SIF 던전フラグ:94:1 > 0
+	RETURN 1
+RETURN 0
+
+
+;=======================================================================
+;던전名
+;=======================================================================
+@GET_DUNGEON_NAME_94
+RESULTS = 시아크
+
+
+;=======================================================================
+;フ로어名표시
+;=======================================================================
+@FLOORNAME_94
+PRINT 시아크
+SELECTCASE FLAG:現M
+	CASE 0
+		PRINTL １Ｆ
+	CASE 1
+		PRINTL ２Ｆ
+	CASE 2
+		PRINTL ３Ｆ
+	CASE 3
+		PRINTL ４Ｆ
+	CASE 4
+		PRINTL ５Ｆ
+	CASE 5
+		PRINTL ６Ｆ
+	CASE 6
+		PRINTL ７Ｆ
+	CASE 7
+		PRINTL ８Ｆ
+	CASE 8
+		PRINTL ９Ｆ
+	CASE 9
+		PRINTL １０Ｆ
+	CASE 10
+		PRINTL １１Ｆ
+	CASEELSE
+		PRINTL
+ENDSELECT
+
+;=======================================================================
+;스타ト地点입력
+;=======================================================================
+@START_DUNGEON_94,ARG
+FLAG:現M = 0
+FLAG:現X = 7
+FLAG:現Y = 12
+;CALL AUTOMAP
+
+;=======================================================================
+;攻略開始時の이벤트
+;=======================================================================
+@EVENT_DUNGEON_START_94
+
+;=======================================================================
+;탈출時の이벤트
+;=======================================================================
+@EVENT_DUNGEON_END_94
+;ダークおやじフラグ（던전フラグ:94:2）、악마出現フラグ（던전フラグ:94:3）を리셋
+던전フラグ:94:2 = 0
+던전フラグ:94:3 = 0
+
+;=======================================================================
+;指定したマスに進入가능か
+;=======================================================================
+@CAN_ENTER_94,ARG,ARG:1
+LOCAL:1 = 0
+SELECTCASE DA:ARG:(ARG:1)
+	CASE 12
+		SELECTCASE FLAG:現M
+			CASE 1
+			;３Ｆへの階段
+			;이벤트『시설이용허가２』まで탐색
+				IF FLAG:現Y < 4 && 던전フラグ:94:1 == 1
+					LOCAL:1 = 1
+			;２Ｆエレベーター
+			;이벤트『시설이용허가３』まで탐색
+				ELSEIF FLAG:現Y > 4 && 던전フラグ:94:1 <= 2
+					LOCAL:1 = 1
+				ENDIF
+			CASE 3
+			;５Ｆへの階段
+			;이벤트『시설이용허가４』まで탐색
+				SIF FLAG:現Y > 14 && 던전フラグ:94:1 <= 3
+					LOCAL:1 = 1
+			CASE 5
+			;６Ｆエレベーター
+			;이벤트『시설이용허가５』まで탐색
+				IF FLAG:現Y > 8 && 던전フラグ:94:1 <= 4
+					LOCAL:1 = 1
+			;７Ｆへの階段
+			;이벤트『시설이용허가６』まで탐색
+				ELSEIF FLAG:現Y < 8 && 던전フラグ:94:1 <= 5
+					LOCAL:1 = 1
+				ENDIF
+			CASE 7
+			;８Ｆエレベーター
+			;이벤트『시설이용허가７』まで탐색
+				IF FLAG:現Y > 8 && 던전フラグ:94:1 <= 6
+					LOCAL:1 = 1
+			;９Ｆへの階段
+			;이벤트『시설이용허가８』まで탐색
+				ELSEIF FLAG:現Y < 8 && 던전フラグ:94:1 <= 7
+					LOCAL:1 = 1
+				ENDIF
+			CASE 9
+			;１０Ｆエレベーター
+			;이벤트『시설이용허가９』まで탐색
+				SIF 던전フラグ:94:1 <= 8
+					LOCAL:1 = 1
+			CASE 10
+			;１１Ｆエレベーター
+				SIF 던전フラグ:94:1 <= 8
+					LOCAL:1 = 1
+		ENDSELECT
+
+		IF LOCAL:1 == 1
+			CALL MESSAGE_WINDOW_D, "", "＞열쇠가 걸려있다/＞이 앞의 탐색은 아직 허용 되지 않은 모양이다"
+			RETURN 0
+			LOCAL:1 = 0
+		ENDIF
+
+ENDSELECT
+CALL CAN_ENTER,ARG,ARG:1
+RETURN RESULT
+;=======================================================================
+;タイル定義
+;=======================================================================
+@DEFINE_TILES_94, ARGS, ARG, ARG:1
+SELECTCASE ARGS
+	CASE "!"
+		RETURN 12
+	CASE "#"
+		RETURN 14
+	CASE "$"
+		RETURN 24
+	CASE "%"
+		RETURN 34
+ENDSELECT
+
+;=======================================================================
+;特殊タイル표시
+;=======================================================================
+@TILE_MARK_COMMON_94_4, ARG , ARG:1 , ARG:2
+SELECTCASE ARG / 10
+	CASE 1 TO 3
+		SETCOLOR 0x00ff00
+		RESULTS = ｍ
+ENDSELECT
+
+;=======================================================================
+;フ로어데이터
+;=======================================================================
+@MAKE_FLOOR_94
+SELECTCASE FLAG:現M
+	CASE 0
+	;１階
+		FLAG:최대X = 15
+		FLAG:최대Y = 16
+;								 			1		  2
+;								  012345678901234567890123
+		CALL MAKE_FLOOR_LINE, 0, "0              "
+		CALL MAKE_FLOOR_LINE, 1, "       6       "
+		CALL MAKE_FLOOR_LINE, 2, "   111111111   "
+		CALL MAKE_FLOOR_LINE, 3, "   1       1   "
+		CALL MAKE_FLOOR_LINE, 4, "   1 11111 1   "
+		CALL MAKE_FLOOR_LINE, 5, "   111111111   "
+		CALL MAKE_FLOOR_LINE, 6, "   111111111   "
+		CALL MAKE_FLOOR_LINE, 7, "   111111111   "
+		CALL MAKE_FLOOR_LINE, 8, " T211111111121 "
+		CALL MAKE_FLOOR_LINE, 9, "   111111111   "
+		CALL MAKE_FLOOR_LINE,10, " #111111111111 "
+		CALL MAKE_FLOOR_LINE,11, "   11111111111 "
+		CALL MAKE_FLOOR_LINE,12, "   11111111111 "
+		CALL MAKE_FLOOR_LINE,13, "       2       "
+		CALL MAKE_FLOOR_LINE,14, "       8       "
+		CALL MAKE_FLOOR_LINE,15, "              0"
+
+	CASE 1
+	;２階
+		FLAG:최대X = 23
+		FLAG:최대Y = 24
+;								 			1		  2
+;								  012345678901234567890123
+		CALL MAKE_FLOOR_LINE, 0, "0                      "
+		CALL MAKE_FLOOR_LINE, 1, "         1 6 $         "
+		CALL MAKE_FLOOR_LINE, 2, "         1 ! 1         "
+		CALL MAKE_FLOOR_LINE, 3, "     1111111111111     "
+		CALL MAKE_FLOOR_LINE, 4, "     1     2     1     "
+		CALL MAKE_FLOOR_LINE, 5, "   111     1     111   "
+		CALL MAKE_FLOOR_LINE, 6, "   111     1     111   "
+		CALL MAKE_FLOOR_LINE, 7, "   111   11111   111   "
+		CALL MAKE_FLOOR_LINE, 8, "   111   11111     1   "
+		CALL MAKE_FLOOR_LINE, 9, " 111112111111111   111 "
+		CALL MAKE_FLOOR_LINE,10, " 1     1 !   ! 1     1 "
+		CALL MAKE_FLOOR_LINE,11, " 1     1 1 E 1 111   1 "
+		CALL MAKE_FLOOR_LINE,12, " 1     1 1 2 1 111   1 "
+		CALL MAKE_FLOOR_LINE,13, " 111   1 11111 1112111 "
+		CALL MAKE_FLOOR_LINE,14, "   1   1       1   1   "
+		CALL MAKE_FLOOR_LINE,15, "   1112111111111   1   "
+		CALL MAKE_FLOOR_LINE,16, "   111     1       1   "
+		CALL MAKE_FLOOR_LINE,17, "   111     1     111   "
+		CALL MAKE_FLOOR_LINE,18, "     1     2     1     "
+		CALL MAKE_FLOOR_LINE,19, "     1111111111111     "
+		CALL MAKE_FLOOR_LINE,20, "         11111         "
+		CALL MAKE_FLOOR_LINE,21, "         11111         "
+		CALL MAKE_FLOOR_LINE,22, "           7           "
+		CALL MAKE_FLOOR_LINE,23, "                      0"
+	CASE 2
+	;３階
+		FLAG:최대X = 23
+		FLAG:최대Y = 23
+;								 			1		  2
+;								  012345678901234567890123
+		CALL MAKE_FLOOR_LINE, 0, "0                      "
+		CALL MAKE_FLOOR_LINE, 1, "           7           "
+		CALL MAKE_FLOOR_LINE, 2, "           !           "
+		CALL MAKE_FLOOR_LINE, 3, "         11111         "
+		CALL MAKE_FLOOR_LINE, 4, "         11111         "
+		CALL MAKE_FLOOR_LINE, 5, "       111111111       "
+		CALL MAKE_FLOOR_LINE, 6, "       1       2       "
+		CALL MAKE_FLOOR_LINE, 7, " 1111111       1111111 "
+		CALL MAKE_FLOOR_LINE, 8, "   111         11111   "
+		CALL MAKE_FLOOR_LINE, 9, "   111   11111111111   "
+		CALL MAKE_FLOOR_LINE,10, "     1   1   1   2     "
+		CALL MAKE_FLOOR_LINE,11, "     11121   1   1     "
+		CALL MAKE_FLOOR_LINE,12, "     1   1   1         "
+		CALL MAKE_FLOOR_LINE,13, "   111   1111111   1   "
+		CALL MAKE_FLOOR_LINE,14, "   111     11111   1   "
+		CALL MAKE_FLOOR_LINE,15, " 1111121   11111111111 "
+		CALL MAKE_FLOOR_LINE,16, "       1   2   1       "
+		CALL MAKE_FLOOR_LINE,17, "       11111   1       "
+		CALL MAKE_FLOOR_LINE,18, "         111           "
+		CALL MAKE_FLOOR_LINE,19, "         11111         "
+		CALL MAKE_FLOOR_LINE,20, "           1           "
+		CALL MAKE_FLOOR_LINE,21, "           1           "
+		CALL MAKE_FLOOR_LINE,22, "                      0"
+
+	CASE 3
+	;４階
+		FLAG:최대X = 23
+		FLAG:최대Y = 23
+;								 			1		  2
+;								  012345678901234567890123
+		CALL MAKE_FLOOR_LINE, 0, "0                      "
+		CALL MAKE_FLOOR_LINE, 1, " 1111111       1111111 "
+		CALL MAKE_FLOOR_LINE, 2, " 1   111       1   111 "
+		CALL MAKE_FLOOR_LINE, 3, " 1   111       1   111 "
+		CALL MAKE_FLOOR_LINE, 4, " 1   111       1     1 "
+		CALL MAKE_FLOOR_LINE, 5, " 1   11111   111     1 "
+		CALL MAKE_FLOOR_LINE, 6, " 1   111     1       1 "
+		CALL MAKE_FLOOR_LINE, 7, " 1111111   111   11111 "
+		CALL MAKE_FLOOR_LINE, 8, "     111   111   1     "
+		CALL MAKE_FLOOR_LINE, 9, "     1111111111111     "
+		CALL MAKE_FLOOR_LINE,10, "       1 !   ! 1       "
+		CALL MAKE_FLOOR_LINE,11, "       1 1 E 1 1       "
+		CALL MAKE_FLOOR_LINE,12, "       1 1 2 1 1       "
+		CALL MAKE_FLOOR_LINE,13, "     111 11111 111     "
+		CALL MAKE_FLOOR_LINE,14, "     111       111     "
+		CALL MAKE_FLOOR_LINE,15, " 111111111111111111111 "
+		CALL MAKE_FLOOR_LINE,16, " 1   11111   111   ! 1 "
+		CALL MAKE_FLOOR_LINE,17, " 1   11111   111 6 1 1 "
+		CALL MAKE_FLOOR_LINE,18, " 1     1       1 2 1 1 "
+		CALL MAKE_FLOOR_LINE,19, " 1     1       1 111 1 "
+		CALL MAKE_FLOOR_LINE,20, " 1     1       1     1 "
+		CALL MAKE_FLOOR_LINE,21, " 1111111       1111111 "
+		CALL MAKE_FLOOR_LINE,22, "                      0"
+
+	CASE 4
+	;５階
+		FLAG:최대X = 21
+		FLAG:최대Y = 23
+;								 			1		  2
+;								  012345678901234567890123
+		CALL MAKE_FLOOR_LINE, 0, "0                    "
+		CALL MAKE_FLOOR_LINE, 1, "          1          "
+		CALL MAKE_FLOOR_LINE, 2, "          1          "
+		CALL MAKE_FLOOR_LINE, 3, "    1111111111111    "
+		CALL MAKE_FLOOR_LINE, 4, "    11111       1    "
+		CALL MAKE_FLOOR_LINE, 5, "  1111111       111  "
+		CALL MAKE_FLOOR_LINE, 6, "  1     1       111  "
+		CALL MAKE_FLOOR_LINE, 7, "  1     1   1   111  "
+		CALL MAKE_FLOOR_LINE, 8, "  1     1   1   111  "
+		CALL MAKE_FLOOR_LINE, 9, "  111   11111111111  "
+		CALL MAKE_FLOOR_LINE,10, "  111   1   1     1  "
+		CALL MAKE_FLOOR_LINE,11, " 1111   1   1     11 "
+		CALL MAKE_FLOOR_LINE,12, "  111   1   1     1  "
+		CALL MAKE_FLOOR_LINE,13, "  111   11111111111  "
+		CALL MAKE_FLOOR_LINE,14, "  1       1   11111  "
+		CALL MAKE_FLOOR_LINE,15, "  1       1   11111  "
+		CALL MAKE_FLOOR_LINE,16, "  1       1       1  "
+		CALL MAKE_FLOOR_LINE,17, "  111   111     7 1  "
+		CALL MAKE_FLOOR_LINE,18, "    1   111     2    "
+		CALL MAKE_FLOOR_LINE,19, "    1111111!11111    "
+		CALL MAKE_FLOOR_LINE,20, "          1          "
+		CALL MAKE_FLOOR_LINE,21, "          1          "
+		CALL MAKE_FLOOR_LINE,22, "                    0"
+
+	CASE 5
+	;６階
+		FLAG:최대X = 23
+		FLAG:최대Y = 23
+;								 			1		  2
+;								  012345678901234567890123
+		CALL MAKE_FLOOR_LINE, 0, "0                      "
+		CALL MAKE_FLOOR_LINE, 1, "         11111         "
+		CALL MAKE_FLOOR_LINE, 2, "         11111         "
+		CALL MAKE_FLOOR_LINE, 3, "     1111111111111     "
+		CALL MAKE_FLOOR_LINE, 4, "     1     1   111     "
+		CALL MAKE_FLOOR_LINE, 5, "   111     1   11111   "
+		CALL MAKE_FLOOR_LINE, 6, "   111     !   1   1   "
+		CALL MAKE_FLOOR_LINE, 7, " 1111111   6   1   111 "
+		CALL MAKE_FLOOR_LINE, 8, " 2   111       1     2 "
+		CALL MAKE_FLOOR_LINE, 9, " 111 11111   111   111 "
+		CALL MAKE_FLOOR_LINE,10, "   1 111 !   ! 1   1   "
+		CALL MAKE_FLOOR_LINE,11, "   1 111 1 E 1 1   1   "
+		CALL MAKE_FLOOR_LINE,12, "   1   1 1 2 1 1   1   "
+		CALL MAKE_FLOOR_LINE,13, "   111 1 11111 11111   "
+		CALL MAKE_FLOOR_LINE,14, "     1 2       111     "
+		CALL MAKE_FLOOR_LINE,15, "     111 111111111     "
+		CALL MAKE_FLOOR_LINE,16, "       1 2     1       "
+		CALL MAKE_FLOOR_LINE,17, "       111   1 1       "
+		CALL MAKE_FLOOR_LINE,18, "         1   1         "
+		CALL MAKE_FLOOR_LINE,19, "         11111         "
+		CALL MAKE_FLOOR_LINE,20, "           1           "
+		CALL MAKE_FLOOR_LINE,21, "           1           "
+		CALL MAKE_FLOOR_LINE,22, "                      0"
+
+	CASE 6
+	;７階
+		FLAG:최대X = 23
+		FLAG:최대Y = 23
+;								 			1		  2
+;								  012345678901234567890123
+		CALL MAKE_FLOOR_LINE, 0, "0                      "
+		CALL MAKE_FLOOR_LINE, 1, " 111111111111111111111 "
+		CALL MAKE_FLOOR_LINE, 2, " 1     1     1       1 "
+		CALL MAKE_FLOOR_LINE, 3, " 1     1     1       1 "
+		CALL MAKE_FLOOR_LINE, 4, " 1     1     1       1 "
+		CALL MAKE_FLOOR_LINE, 5, " 1   1111111111111   1 "
+		CALL MAKE_FLOOR_LINE, 6, " 1   11111 ! 1   1   1 "
+		CALL MAKE_FLOOR_LINE, 7, " 1   11111 7 1   1   1 "
+		CALL MAKE_FLOOR_LINE, 8, " 1   11111   1   1   1 "
+		CALL MAKE_FLOOR_LINE, 9, " 1111111111111   1   1 "
+		CALL MAKE_FLOOR_LINE,10, " 1       1   1   1   1 "
+		CALL MAKE_FLOOR_LINE,11, " 1       1   1   1   1 "
+		CALL MAKE_FLOOR_LINE,12, " 1       1   1   1   1 "
+		CALL MAKE_FLOOR_LINE,13, " 1111111111111   1   1 "
+		CALL MAKE_FLOOR_LINE,14, " 111     1   1   1   1 "
+		CALL MAKE_FLOOR_LINE,15, " 111     1   11111   1 "
+		CALL MAKE_FLOOR_LINE,16, " 111     1           1 "
+		CALL MAKE_FLOOR_LINE,17, " 11111   1           1 "
+		CALL MAKE_FLOOR_LINE,18, " 1   1   1           1 "
+		CALL MAKE_FLOOR_LINE,19, " 1   1   1   111111111 "
+		CALL MAKE_FLOOR_LINE,20, " 1   1   1   111111111 "
+		CALL MAKE_FLOOR_LINE,21, " 111111111111111111111 "
+		CALL MAKE_FLOOR_LINE,22, "                      0"
+
+
+	CASE 7
+	;８階
+		FLAG:최대X = 23
+		FLAG:최대Y = 23
+
+;								 			1		  2
+;								  012345678901234567890123
+		CALL MAKE_FLOOR_LINE, 0, "0                      "
+		CALL MAKE_FLOOR_LINE, 1, "       111111111       "
+		CALL MAKE_FLOOR_LINE, 2, "       1 !   ! 1       "
+		CALL MAKE_FLOOR_LINE, 3, "       1 1 6 1 1       "
+		CALL MAKE_FLOOR_LINE, 4, "       1 1 2 1 1       "
+		CALL MAKE_FLOOR_LINE, 5, "       1 11111 1       "
+		CALL MAKE_FLOOR_LINE, 6, "       1       1       "
+		CALL MAKE_FLOOR_LINE, 7, " 1111111 11111 1111111 "
+		CALL MAKE_FLOOR_LINE, 8, " 1       11111       1 "
+		CALL MAKE_FLOOR_LINE, 9, " 1 11111111111111111 1 "
+		CALL MAKE_FLOOR_LINE,10, " 1 11111 !   ! 11111 1 "
+		CALL MAKE_FLOOR_LINE,11, " 1 11111 1 E 1 11111 1 "
+		CALL MAKE_FLOOR_LINE,12, " 1 11111 1 2 1 11111 1 "
+		CALL MAKE_FLOOR_LINE,13, " 1 11111 11111 11111 1 "
+		CALL MAKE_FLOOR_LINE,14, " 1     1       1     1 "
+		CALL MAKE_FLOOR_LINE,15, " 111111111111111111111 "
+		CALL MAKE_FLOOR_LINE,16, "       1 2   2 1       "
+		CALL MAKE_FLOOR_LINE,17, "       1 1 1 1 1       "
+		CALL MAKE_FLOOR_LINE,18, "       1 1 2 1 1       "
+		CALL MAKE_FLOOR_LINE,19, "       1 11111 1       "
+		CALL MAKE_FLOOR_LINE,20, "       1       1       "
+		CALL MAKE_FLOOR_LINE,21, "       111111111       "
+		CALL MAKE_FLOOR_LINE,22, "                      0"
+
+
+	CASE 8
+	;９階
+		FLAG:최대X = 21
+		FLAG:최대Y = 21
+;								 			1		  2
+;								  012345678901234567890123
+		CALL MAKE_FLOOR_LINE, 0, "0                    "
+		CALL MAKE_FLOOR_LINE, 1, "        1 7 1        "
+		CALL MAKE_FLOOR_LINE, 2, "        1 ! 1        "
+		CALL MAKE_FLOOR_LINE, 3, "      111111111      "
+		CALL MAKE_FLOOR_LINE, 4, "      1   1   1      "
+		CALL MAKE_FLOOR_LINE, 5, "    111   1   111    "
+		CALL MAKE_FLOOR_LINE, 6, "    1     1   111    "
+		CALL MAKE_FLOOR_LINE, 7, "  111 1111111 11111  "
+		CALL MAKE_FLOOR_LINE, 8, "  1   111   1 2   1  "
+		CALL MAKE_FLOOR_LINE, 9, " 11   111   1 1   11 "
+		CALL MAKE_FLOOR_LINE,10, "  2   1     1 1   1  "
+		CALL MAKE_FLOOR_LINE,11, "  11111   111 11111  "
+		CALL MAKE_FLOOR_LINE,12, "    111   1   111    "
+		CALL MAKE_FLOOR_LINE,13, "    1111111   111    "
+		CALL MAKE_FLOOR_LINE,14, "      1   2   1      "
+		CALL MAKE_FLOOR_LINE,15, "      1   11111      "
+		CALL MAKE_FLOOR_LINE,16, "          111        "
+		CALL MAKE_FLOOR_LINE,17, "        11111        "
+		CALL MAKE_FLOOR_LINE,18, "          1          "
+		CALL MAKE_FLOOR_LINE,19, "          1          "
+		CALL MAKE_FLOOR_LINE,20, "                    0"
+
+
+	CASE 9
+	;１０階
+		FLAG:최대X = 23
+		FLAG:최대Y = 23
+;								 			1		  2
+;								  012345678901234567890123
+		CALL MAKE_FLOOR_LINE, 0, "0                      "
+		CALL MAKE_FLOOR_LINE, 1, "         11111         "
+		CALL MAKE_FLOOR_LINE, 2, "         1 2 1         "
+		CALL MAKE_FLOOR_LINE, 3, "     11111 1 11111     "
+		CALL MAKE_FLOOR_LINE, 4, "     1     1     1     "
+		CALL MAKE_FLOOR_LINE, 5, "   111     1     111   "
+		CALL MAKE_FLOOR_LINE, 6, "   1       2       1   "
+		CALL MAKE_FLOOR_LINE, 7, "   1     11111     1   "
+		CALL MAKE_FLOOR_LINE, 8, "   1     11111     1   "
+		CALL MAKE_FLOOR_LINE, 9, " 111   111111111   111 "
+		CALL MAKE_FLOOR_LINE,10, " 1     1 !   ! 1     1 "
+		CALL MAKE_FLOOR_LINE,11, " 1     1 1 E 1 1     1 "
+		CALL MAKE_FLOOR_LINE,12, " 1     1 1 2 1 1     1 "
+		CALL MAKE_FLOOR_LINE,13, " 111   1 11111 1   111 "
+		CALL MAKE_FLOOR_LINE,14, "   1   1       1   1   "
+		CALL MAKE_FLOOR_LINE,15, "   1   111111111   1   "
+		CALL MAKE_FLOOR_LINE,16, "   1     11111     1   "
+		CALL MAKE_FLOOR_LINE,17, "   111   11111   111   "
+		CALL MAKE_FLOOR_LINE,18, "     1     1     1     "
+		CALL MAKE_FLOOR_LINE,19, "     11111 1 11111     "
+		CALL MAKE_FLOOR_LINE,20, "         1 2 1         "
+		CALL MAKE_FLOOR_LINE,21, "         11111         "
+		CALL MAKE_FLOOR_LINE,22, "                      0"
+
+	CASE 10
+	;１１階
+		FLAG:최대X = 15
+		FLAG:최대Y = 17
+;								 			1		  2
+;								  012345678901234567890123
+		CALL MAKE_FLOOR_LINE, 0, "0              "
+		CALL MAKE_FLOOR_LINE, 1, "       %       "
+		CALL MAKE_FLOOR_LINE, 2, "       2       "
+		CALL MAKE_FLOOR_LINE, 3, "       1       "
+		CALL MAKE_FLOOR_LINE, 4, "       2       "
+		CALL MAKE_FLOOR_LINE, 5, "   111111111   "
+		CALL MAKE_FLOOR_LINE, 6, "   1   1   1   "
+		CALL MAKE_FLOOR_LINE, 7, " 111   1   111 "
+		CALL MAKE_FLOOR_LINE, 8, " 1     2     1 "
+		CALL MAKE_FLOOR_LINE, 9, " 1     1     1 "
+		CALL MAKE_FLOOR_LINE,10, " 1     1     1 "
+		CALL MAKE_FLOOR_LINE,11, " 1111111111111 "
+		CALL MAKE_FLOOR_LINE,12, "     !   !     "
+		CALL MAKE_FLOOR_LINE,13, "     1 E 1     "
+		CALL MAKE_FLOOR_LINE,14, "     1 2 1     "
+		CALL MAKE_FLOOR_LINE,15, "     11111     "
+		CALL MAKE_FLOOR_LINE,16, "              0"
+	CASEELSE
+
+ENDSELECT
+;=======================================================================
+;タイル調整
+;=======================================================================
+@MAKE_FLOOR_LINE_COMMON_94, ARG, ARG:1, ARG:2
+#LOCALSIZE 10
+;LOCAL:0～9 それぞれ何個눈のARGなのかを記憶しています
+;LOCAL:3 宝箱→사용フラグは던전フラグ:70~74
+;指定された座標が(0,0)である場合、つまり新しいマップを読み込んだ時はLOCALを소거します
+SIF ARG:1 == 0 && ARG:2 == 0
+	VARSET LOCAL
+SELECTCASE ARG
+	CASE 3
+		;宝箱は多くの場合、開けたフラグが立っていると床を代入します
+		;そのマップでどの宝箱を開けたかは、そのマップの宝箱管理用変数の何番눈のビットが立っているかで判断します
+		IF GETBIT(던전フラグ:(FLAG:現던전):(FLAG:現M+70), LOCAL:3)
+			DA:(ARG:1):(ARG:2) = 1
+		ELSE
+			DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:3 * 10 + 3
+		ENDIF
+		LOCAL:3++
+	CASE 4 TO 9
+		DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:ARG * 10 + ARG
+		LOCAL:ARG++
+
+ENDSELECT
+
+
+;=======================================================================
+;[5]조사　実行時の이벤트
+;=======================================================================
+@EVENT_CHECK_DUNGEON_94
+CALL EVENT_DUNGEON_94
+RETURN RESULT
+;=======================================================================
+;タイル進入時の이벤트
+;=======================================================================
+@EVENT_ENTER_DUNGEON_94,ARG
+;ARG = 進入時の向き　0の場合ワープなど
+CALL EVENT_DUNGEON_94, ARG , 0
+RETURN RESULT
+
+@EVENT_DUNGEON_94, ARG, ARG:1
+;악마出現フラグ切り替え扉
+SIF DA:(FLAG:現X):(FLAG:現Y) == 12
+	던전フラグ:94:3 = !던전フラグ:94:3
+
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y) % 10
+
+;==========
+;出입の処理
+;==========
+CASE 8
+	CALL DUNGEON_EXIT
+RETURN 1
+;==========
+;扉の処理
+;==========
+CASE 2
+	CALL DUNGEON_DOOR,ARG
+RETURN 1
+;========
+;宝の処理
+;========
+CASE 3
+CALL TREASURE_94
+RETURN 1
+
+;=======
+;階段
+;=======
+CASE 6
+CALL UPSTAIRS_94
+RETURN RESULT
+
+CASE 7
+CALL DOWNSTAIRS_94
+RETURN RESULT
+;==========
+;이벤트
+;==========
+CASE 4
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+	CASE 1
+	;１Ｆ다크서머너
+		IF 던전フラグ:94:10 == 0
+			CALL MESSAGE_WINDOW_D, "다크서머너", "후우……　옷？/너 이근처에서 못 본 얼굴인데、처음이냐？"
+			CALL MESSAGE_WINDOW_D, "다크서머너", "여기는 원래는 호텔이 세워질 예정이었지만/문제가 생겨버려서 방치되버렸어"
+			CALL MESSAGE_WINDOW_D, "다크서머너", "가상이 안좋았던것인지 이계화…/뭐어 악마가 나와버렸지"
+			CALL MESSAGE_WINDOW_D, "다크서머너", "그래서、꽤 다양한 악마가 나오는 거고 『사냥터』가 되었지/…중립이랄까"
+			CALL MESSAGE_WINDOW_D, "다크서머너", "그런 의미로 여기엔 여러가지 녀석이 나와…/서로 간섭은 하지 않는것이 암묵적인 룰/뭐어、돈도 관련되지 않는데 무슨 일은 없을거다"
+			CALL MESSAGE_WINDOW_D, "다크서머너", "말하고 싶은건 이정도다/자아、조심해서 가라"
+			던전フラグ:94:10 = 1
+		ELSE
+			CALL MESSAGE_WINDOW_D, "다크서머너", "오～、힘내고 있나？/나는 허리가 다쳐버려서 말이지、어이쿠"
+			CALL MESSAGE_WINDOW_D, "다크서머너", "아까 리림을 동료마로 할 때 조금、말이지"
+			CALL MESSAGE_WINDOW_D, "다크서머너", "하아、이게 늙어간다는 건가/예전에는 서큐버스정도라면 낙승이었는데"
+		ENDIF
+	CASE 2
+	;ダークおやじ
+		IF 던전フラグ:94:2 == 0
+			CALL MESSAGE_WINDOW_D, "다크서머너", "거기의 너/남악마만 발생하게 된다면 곤란하지 않겠어？"
+			CALL MESSAGE_WINDOW_D, "다크서머너", "나에게 맡겨준다면/남악마가 출현하지 않도록 할수 있지"
+			CALL MESSAGE_WINDOW_D, "다크서머너", @"물론 공짜는 아니지만/너라면…{던전フラグ:94:1*50}마카정도"
+			CALL MESSAGE_WINDOW_D, "다크서머너", "어떡할래？"
+		ELSEIF 던전フラグ:94:2 == 1
+			CALL MESSAGE_WINDOW_D, "ダークおやじ", "やあオマエサンか/オンナ악마とばかり会う気分は最高だろ？"
+			CALL MESSAGE_WINDOW_D, "ダークおやじ", "もし飽きてきたなら/両性出てくるよう元に戻してやれるぞ"
+			CALL MESSAGE_WINDOW_D, "ダークおやじ", @"もちろんタダではないがな/オマエサンなら…{던전フラグ:94:1*50}마카だな"
+			CALL MESSAGE_WINDOW_D, "ダークおやじ", "どうする？"
+		ELSEIF 던전フラグ:94:2 == 2
+			CALL MESSAGE_WINDOW_D, "ダークおやじ", "あっオマエサン！/남자악마とばかり会う気分は最悪だよ！"
+			CALL MESSAGE_WINDOW_D, "ダークおやじ", "お願いだから/オンナ악마だけにさせてくれないか？"
+			CALL MESSAGE_WINDOW_D, "ダークおやじ", @"タダではできないんだが…/オマエサンなら…{던전フラグ:94:1*50}마카だな"
+			CALL MESSAGE_WINDOW_D, "ダークおやじ", "どうする？"
+		ENDIF
+		$再選択
+		SELECTCASE 던전フラグ:94:2
+			;통상
+			CASE 0
+				CALL INPUT_SELECT_D, "[0] 여악마만 나오게 한다/[1] 남악마만 나오게 한다/[3] 그만둔다"
+			;女악마のみ설정中
+			CASE 1
+				CALL INPUT_SELECT_D, "[1] 남악마만 나오게 한다/[2] 취소/[3] 그만둔다"
+			;男악마のみ설정中
+			CASE 2
+				CALL INPUT_SELECT_D, "[0] 여악마만 나오게 한다/[2] 취소/[3] 그만둔다"
+		ENDSELECT
+		IF RESULT < 3 && MONEY:1 < 던전フラグ:94:1*50
+			CALL MESSAGE_WINDOW_D, "", "마카가 부족하다"
+			GOTO 再選択
+		ENDIF
+		SELECTCASE RESULT
+			;出現악마をオンナ악마だけに
+			CASE 0
+				SIF 던전フラグ:94:2 == 1
+					GOTO 再選択
+
+				IF 던전フラグ:94:2 == 0
+					CALL MESSAGE_WINDOW_D, "다크서머너", "좋아좋아、출현하는 악마를 여악마만으로 했어！/어이 얼른 가라、바빠질꺼야"
+				ELSEIF 던전フラグ:94:2 == 2
+					CALL MESSAGE_WINDOW_D, "ダークおやじ", "ありがとうよ、これでまたオンナ악마に会える…/ほら行った行った、これから忙しいんだ"
+				ENDIF
+				MONEY:1 -= 던전フラグ:94:1*50
+				던전フラグ:94:2 = 1
+			;出現악마を남자악마だけに
+			CASE 1
+				SIF 던전フラグ:94:2 == 2
+					GOTO 再選択
+
+				IF 던전フラグ:94:2 == 0
+					CALL MESSAGE_WINDOW_D, "다크서머너", "…어이、이걸로 남악마가 푸짐해졌어/빨리 끝내줘…투덜투덜"
+				ELSEIF 던전フラグ:94:2 == 1
+					CALL MESSAGE_WINDOW_D, "ダークおやじ", "オンナの次は남자か/もしやオマエサン寝取らせ趣味かい？/さっさと済ませてくれよ…ﾌﾞﾂﾌﾞﾂ"
+				ENDIF
+				MONEY:1 -= 던전フラグ:94:1*50
+				던전フラグ:94:2 = 2
+			;元に戻す
+			CASE 2
+				SIF 던전フラグ:94:2 == 0
+					GOTO 再選択
+
+				IF 던전フラグ:94:2 == 1
+					CALL MESSAGE_WINDOW_D, "다크서머너", "좋아、취소했어/또 언제든지 와줘"
+				ELSEIF 던전フラグ:94:2 == 2
+					CALL MESSAGE_WINDOW_D, "ダークおやじ", "ありがたい、元に戻したぞ/また何時でもきてくれよ"
+				ENDIF
+				MONEY:1 -= 던전フラグ:94:1*50
+				던전フラグ:94:2 = 0
+			;아무것도안한다
+			CASE 3
+				CALL MESSAGE_WINDOW_D, "다크서머너", "안하는거냐/또 언제든지 와줘"
+		ENDSELECT
+	CASE 3
+	;１１Ｆ이벤트
+		IF 던전フラグ:94:11 == 0
+			CALL MESSAGE_WINDOW_D, "소악마리림", "어레？인간이다～/잘도 여기까지 왔네、무엇때문에 왔어？"
+			CALL MESSAGE_WINDOW_D, "소악마리림", "에？차원의 복도？？"
+			CALL MESSAGE_WINDOW_D, "소악마리림", "으～응…너는 조금 모르겠네/그렇지만 뭐、모처럼 왔는데 조금은 쉬었다 가는것도 좋다고 생각해"
+			던전フラグ:94:11 = 1
+		ELSE
+			;소악마리림、マジ소악마
+			CALL MESSAGE_WINDOW_D, "소악마리림", "인간의 마을은 정말로 재밌네～/이전에 모르는 아저씨가 밥을 대접해줬어♪"
+			CALL MESSAGE_WINDOW_D, "소악마리림", "그 다음에？/물론 답례로 서비스 해줬지%ハート()%"
+			CALL MESSAGE_WINDOW_D, "소악마리림", "디저트도 대접 받아버려서/대만족이었어、에헷♪"
+		ENDIF
+		RETURN 0
+ENDSELECT
+
+ENDSELECT
+RETURN 0
+
+
+;=======================================================================
+;エンカウント率
+;=======================================================================
+@ENCOUNT_RATE_94
+SIF 던전フラグ:94:3 == 1
+	FLAG:エンカウント率 = 0
+SELECTCASE FLAG:現M
+	CASE 0 , 10
+		FLAG:エンカウント率 = 0
+	CASEELSE
+		FLAG:エンカウント率 = FLAG:未遭遇歩数*3
+ENDSELECT
+SIF FLAG:未遭遇歩数 < 5
+	FLAG:エンカウント率 = 0
+SIF 던전フラグ:94:3 == 1
+	FLAG:エンカウント率 = 0
+;=======================================================================
+;필요레벨눈安
+;권장LV 雑물고기최저LV 雑물고기最高LV ボスLV
+;=======================================================================
+@GET_DUNGEON_LV_94
+RETURN 5, 3, 9, 10
+;=======================================================================
+;エンカウント処理
+;=======================================================================
+@CHECK_ENCOUNT_94
+IF RAND:100 < FLAG:エンカウント率
+	CALL ENEMY_TABLE_94
+	RETURN 1
+ELSE
+	FLAG:未遭遇歩数 += 1
+	RETURN 0
+ENDIF
+;=======================================================================
+;적の종족の종류数
+;RETURN X でXが종류の数になります
+;あまりいろんなのが混ざっているとCOOPがとりにくくなったり
+;적の공격속성が多くなる傾向にあるので、
+;종류の数は1・2종류を主体に時々3종류くらいを기본にするのが望ましいと思われます
+;=======================================================================
+@CLASS_NUM_94
+SELECTCASE FLAG:現M
+	CASE 1
+		RETURN CLASS_NUM_COMMON("初級")
+	CASE 2
+		RETURN CLASS_NUM_COMMON("中級")
+	CASE 3
+		RETURN CLASS_NUM_COMMON("中級")
+	CASE 4
+		RETURN CLASS_NUM_COMMON("中級")
+	CASE 5
+		RETURN CLASS_NUM_COMMON("上級")
+	CASE 6
+		RETURN CLASS_NUM_COMMON("上級")
+	CASE 7
+		RETURN CLASS_NUM_COMMON("上級")
+	CASE 8
+		RETURN CLASS_NUM_COMMON("最上級")
+	CASE 9
+		RETURN CLASS_NUM_COMMON("最上級")
+ENDSELECT
+
+;=======================================================================
+;적の総数
+;ARGは出現する적の종류です
+;RAND(X, Y)はX～Y-1のうち중 하나になるRANDです
+;なお、ここで帰った数字は下限を종족数、上限を10として自動的に調整されます
+;
+;=======================================================================
+@ENEMY_NUM_94, ARG
+SELECTCASE FLAG:現M
+	CASE 1
+		RETURN ENEMY_NUM_COMMON("初級", ARG)
+	CASE 2
+		RETURN ENEMY_NUM_COMMON("中級", ARG)
+	CASE 3
+		RETURN ENEMY_NUM_COMMON("中級", ARG)
+	CASE 4
+		RETURN ENEMY_NUM_COMMON("中級", ARG)
+	CASE 5
+		RETURN ENEMY_NUM_COMMON("上級", ARG)
+	CASE 6
+		RETURN ENEMY_NUM_COMMON("上級", ARG)
+	CASE 7
+		RETURN ENEMY_NUM_COMMON("上級", ARG)
+	CASE 8
+		RETURN ENEMY_NUM_COMMON("最上級", ARG)
+	CASE 9
+		RETURN ENEMY_NUM_COMMON("最上級", ARG)
+ENDSELECT
+;=======================================================================
+;적스테이터스설정
+;=======================================================================
+@SET_ENEMY_STATUS_94,ARG
+ABL:ARG:아이템1 = 0
+ABL:ARG:입수확률1 = 0
+ABL:ARG:아이템2 = 0
+ABL:ARG:입수확률2 = 0
+ABL:ARG:아이템3 = 0
+ABL:ARG:입수확률3 = 0
+
+;=======================================================================
+;적の종류
+;=======================================================================
+@ENEMY_TABLE_94
+#DIM CLASS_NUM, 1
+#DIM ENEMY_NUM, 1
+#DIM MAXENEMY, 1
+#DIM MINENEMY, 1
+#DIM ENEMY, 10
+#DIM ENEMYLV, 10
+#DIM 出現악마, 200
+#DIM 出現最高레벨, 1
+#DIM 出現최저레벨, 1
+#DIM 出現する악마の종류, 1
+#DIM LCOUNT
+VARSET 出現악마
+VARSET RESULT
+VARSET ENEMY, -1
+;最初に종족数を취득
+TRYCCALLFORM CLASS_NUM_{FLAG:現던전}
+	CLASS_NUM = RESULT
+CATCH
+	;一応、定義ファイルがない場合、디폴트の数値を代入
+	SELECTCASE RAND:100
+		CASE IS < 40
+			CLASS_NUM = 1
+		CASE IS < 80
+			CLASS_NUM = 2
+		CASEELSE
+			CLASS_NUM = 3
+	ENDSELECT
+ENDCATCH
+;적の総数を취득
+TRYCCALLFORM ENEMY_NUM_{FLAG:現던전}, CLASS_NUM
+	ENEMY_NUM = LIMIT(RESULT, CLASS_NUM, 10)
+CATCH
+	ENEMY_NUM = LIMIT(RESULT, CLASS_NUM*2, CLASS_NUM*4)
+ENDCATCH
+
+LOCAL   = 0
+LOCAL:1 = 0 ;레어악마数카운트
+LOCAL:2 = 0 ;캡스・락
+;フ로어に対応した出現악마の最高레벨と최저레벨を설정
+SELECTCASE FLAG:現M
+	;２Ｆ（ＬＶ１～１０）
+	CASE 1
+		出現最高레벨 = 10
+		出現최저레벨 = 1
+	;３Ｆ（ＬＶ１１～１６）
+	CASE 2
+		出現最高레벨 = 16
+		出現최저레벨 = 11
+	;４Ｆ（ＬＶ１７～２２）
+	CASE 3
+		出現最高레벨 = 22
+		出現최저레벨 = 17
+	;５Ｆ（ＬＶ２３～２９）
+	CASE 4
+		出現最高레벨 = 29
+		出現최저레벨 = 23
+	;６Ｆ（ＬＶ３０～３６）
+	CASE 5
+		出現最高레벨 = 36
+		出現최저레벨 = 30
+	;７Ｆ（ＬＶ３７～４３）
+	CASE 6
+		出現最高레벨 = 43
+		出現최저레벨 = 37
+	;８Ｆ（ＬＶ４４～５０）
+	CASE 7
+		出現最高레벨 = 50
+		出現최저레벨 = 44
+	;９Ｆ（ＬＶ５１～５７）
+	CASE 8
+		出現最高레벨 = 57
+		出現최저레벨 = 51
+	;１０Ｆ（ＬＶ５８～）
+	CASE 9
+		出現最高레벨 = 100
+		出現최저레벨 = 58
+ENDSELECT
+
+FOR LCOUNT, 1, 6900
+	;- 악마出現능력판정部 -------------------------------------------------------------------------
+
+	;メガテン系이벤트以外불허가の場合は영웅以降は판정생략
+	SIF GETBIT(FLAG:EXTRA이벤트설정, 0) == 0 && LCOUNT > 4400
+		BREAK
+
+	;クラスを弾く
+	SIF LCOUNT > 4700 && LCOUNT < 4761
+		CONTINUE
+
+	;CSVがあるか확인、なければ弾く
+	SIF EXISTCSV(LCOUNT, 0) == 0
+		CONTINUE
+
+	;エンカウントしてはいけない종족は弾く
+	SIF SEA_ARCH_VALIDATE_RACE(CSVABL(LCOUNT, GETNUM(ABL, "종족"))) == 0
+		CONTINUE
+
+	;비전투원は弾く
+	SIF CSVTALENT(LCOUNT, GETNUM(TALENT, "비전투원"))
+		CONTINUE
+
+	;全書소환불가は弾く
+	SIF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "전서소환불가")) || CSVCFLAG(LCOUNT, GETNUM(CFLAG, "소환불가"))
+		CONTINUE
+
+	;레벨がフ로어に合わない場合は弾く
+	SIF CSVBASE(LCOUNT, GETNUM(BASE, "LV")) > 出現最高레벨 || CSVBASE(LCOUNT, GETNUM(BASE, "LV")) < 出現최저레벨
+		CONTINUE
+
+	; ;一部特殊악마は조건次第で出現させる
+	; SIF LCOUNT == [[キャラ:하루트]]
+	; 	GOTO SET_ENEMYS_NO
+	; SIF LCOUNT == [[キャラ:마루트]]
+	; 	GOTO SET_ENEMYS_NO
+
+	;解析率が50미만の악마は出現しない
+	SIF FLAG:(LCOUNT+20000) < 500
+		CONTINUE
+
+	;特殊合体のみは解析率100％なら解禁
+	SIF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "特殊合体のみ")) && FLAG:(LCOUNT+20000) < 1000
+		CONTINUE
+
+	;合体조건ありは解禁済みなら出現
+	SIF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "合体조건有り")) && FLAG:(10000+RESULT) == 0
+		CONTINUE
+
+	;- 악마出現던전설정판정部と出現추가処理 -------------------------------------------------
+	$SET_ENEMYS_NO
+	;ダークおやじでオンナ악마のみに설정している場合
+	SIF 던전フラグ:94:2 == 1 && CSVTALENT(LCOUNT, GETNUM(TALENT, "남자")) != 0
+		CONTINUE
+	;ダークおやじで남자악마のみに설정している場合
+	SIF 던전フラグ:94:2 == 2 && CSVTALENT(LCOUNT, GETNUM(TALENT, "남자")) != 1
+		CONTINUE
+	出現악마:LOCAL = LCOUNT
+	LOCAL ++
+NEXT
+
+;레어?악마処理
+;メガテン系이벤트以外불허가の場合は出現させない
+IF GETBIT(FLAG:EXTRA이벤트설정, 0) == 0
+	FOR LCOUNT, 5000, 5049
+		;CSVがあるか확인、なければ弾く
+		SIF EXISTCSV(LCOUNT, 0) == 0
+			CONTINUE
+		;레벨がフ로어に合わない場合は弾く
+		SIF CSVBASE(LCOUNT, GETNUM(BASE, "LV")) > 出現最高레벨 || CSVBASE(LCOUNT, GETNUM(BASE, "LV")) < 出現최저레벨
+			CONTINUE
+		;ダークおやじでオンナ악마のみに설정している場合
+		SIF 던전フラグ:94:2 == 1 && CSVTALENT(LCOUNT, GETNUM(TALENT, "남자")) != 0
+			CONTINUE
+		;ダークおやじで남자악마のみに설정している場合
+		SIF 던전フラグ:94:2 == 2 && CSVTALENT(LCOUNT, GETNUM(TALENT, "남자")) != 1
+			CONTINUE
+		出現악마:LOCAL = LCOUNT
+		LOCAL ++
+		LOCAL:1 ++
+	NEXT
+ENDIF
+
+;出現する악마の종류が十以下の場合に레어枠全てを消す
+
+IF LOCAL < 11
+	LOCAL -= LOCAL:1
+	LOCAL:1 = 0
+ENDIF
+
+LOCAL:2 = LOCAL
+
+;キャプスロックで出現出来ない악마をリストから除外して再構成
+IF EQUIP:MASTER:캡스・락 && LOCAL:2 > 2
+	LOCAL = 0
+	FOR LCOUNT, 0, LOCAL:2
+		IF CSVBASE(出現악마:LCOUNT, GETNUM(BASE, "LV")) > BASE:MASTER:LV - 12
+			出現악마:LOCAL = 出現악마:LCOUNT
+			LOCAL ++
+		ELSEIF LCOUNT > LOCAL:2 - LOCAL:1 -1
+			LOCAL:1 --
+		ENDIF
+	NEXT
+;出現악마の종류が3以下だとエ라を吐く가능性があるのでキャプスロックで出現出来ないであろう適当な악마で防止
+	IF LOCAL < 3 && LOCAL > 0
+;레어枠악마をずらす
+		IF LOCAL:1 > 0
+			FOR LCOUNT, 0, LOCAL:1
+				出現악마:(2 - LCOUNT) = 出現악마:(LOCAL - LCOUNT -1)
+			NEXT
+		ENDIF
+;ずらした数に応じて出現できないであろう악마で埋める
+		IF LOCAL == 1
+			IF LOCAL:1
+				出現악마:1 = 501
+				出現악마:0 = 1028
+			ELSE
+				出現악마:1 = 501
+				出現악마:2 = 1028
+			ENDIF
+		ELSE
+			IF LOCAL:1 == 2
+				出現악마:0 = 1028
+			ELSEIF LOCAL:1 == 1
+				出現악마:1 = 1028
+			ELSE
+				出現악마:2 = 1028
+			ENDIF
+		ENDIF
+		LOCAL = 3
+	ENDIF
+ENDIF
+
+IF LOCAL:2 < 3 || LOCAL == 0 || LOCAL == LOCAL:1
+	出現する악마の종류 = 6
+	出現악마:0 = [[キャラ:픽시]]
+	出現악마:1 = [[キャラ:하피]]
+	出現악마:2 = [[キャラ:아프사라스]]
+	出現악마:3 = [[キャラ:노커]]
+	出現악마:4 = [[キャラ:춍춍]]
+	出現악마:5 = [[キャラ:아귀]]
+	LOCAL:1 = 0
+ELSE
+	出現する악마の종류 = LOCAL
+ENDIF
+
+LOCAL = 0
+
+
+WHILE LOCAL < CLASS_NUM
+	IF (RAND:100 < 15) && (LOCAL:1>0)
+		LOCAL:2 = (出現する악마の종류 - (LOCAL:1)) + RAND:(LOCAL:1)
+	ELSEIF (出現する악마の종류 - (LOCAL:1)) > 0
+		LOCAL:2 = RAND:(出現する악마の종류 - (LOCAL:1))
+	ENDIF
+	SIF MATCH(ENEMY, 出現악마:(LOCAL:2))
+		CONTINUE
+	ENEMY:LOCAL = 出現악마:(LOCAL:2)
+	ENEMYLV:LOCAL = CSVBASE(出現악마:(LOCAL:2),GETNUM(BASE, "LV"))
+	LOCAL += 1
+WEND
+
+LOCAL = 0
+;LOCAL:7~16に7~16を入れる
+FOR LOCAL, 7, 17
+	LOCAL:LOCAL = LOCAL
+NEXT
+;LOCAL:7~16をシャッフル
+FOR LOCAL, 7, 17
+	SWAP LOCAL:LOCAL, LOCAL:RAND(7, 17)
+NEXT
+
+;実際の配置
+FOR LOCAL, 0, ENEMY_NUM
+	LOCAL:1 = LOCAL:(LOCAL + 7)
+	SIF POS(LOCAL:1) >= 0
+		CONTINUE
+	LOCAL:2 = LOCAL < CLASS_NUM ? LOCAL # RAND:CLASS_NUM
+	CALL SET_ENEMY, LOCAL:1, ENEMY:(LOCAL:2), ENEMYLV:(LOCAL:2)
+	;ここで스테이터스변화させる場合の関数を呼ぶ
+	TRYCALLFORM SET_ENEMY_STATUS_{FLAG:現던전}, CHARANUM - 1
+NEXT
+@ENEMY_94, ARG
+#DIM 出現악마, 100
+#DIM 出現最高레벨, 1
+#DIM 出現최저레벨, 1
+#DIM 出現する악마の종류, 1
+#DIM LCOUNT
+VARSET 出現악마
+LOCAL   = 0
+LOCAL:1 = 0 ;레어악마数카운트
+LOCAL:2 = 0 ;캡스・락
+;フ로어に対応した出現악마の最高레벨と최저레벨を설정
+SELECTCASE FLAG:現M
+	;２Ｆ（ＬＶ１～１０）
+	CASE 1
+		出現最高레벨 = 10
+		出現최저레벨 = 1
+	;３Ｆ（ＬＶ１１～１６）
+	CASE 2
+		出現最高레벨 = 16
+		出現최저레벨 = 11
+	;４Ｆ（ＬＶ１７～２２）
+	CASE 3
+		出現最高레벨 = 22
+		出現최저레벨 = 17
+	;５Ｆ（ＬＶ２３～２９）
+	CASE 4
+		出現最高레벨 = 29
+		出現최저레벨 = 23
+	;６Ｆ（ＬＶ３０～３６）
+	CASE 5
+		出現最高레벨 = 36
+		出現최저레벨 = 30
+	;７Ｆ（ＬＶ３７～４３）
+	CASE 6
+		出現最高레벨 = 43
+		出現최저레벨 = 37
+	;８Ｆ（ＬＶ４４～５０）
+	CASE 7
+		出現最高레벨 = 50
+		出現최저레벨 = 44
+	;９Ｆ（ＬＶ５１～５７）
+	CASE 8
+		出現最高레벨 = 57
+		出現최저레벨 = 51
+	;１０Ｆ（ＬＶ５８～）
+	CASE 9
+		出現最高레벨 = 100
+		出現최저레벨 = 58
+ENDSELECT
+
+FOR LCOUNT, 1, 6900
+	;- 악마出現능력판정部 -------------------------------------------------------------------------
+
+	;メガテン系이벤트以外불허가の場合は영웅以降は판정생략
+	SIF GETBIT(FLAG:EXTRA이벤트설정, 0) == 0 && LCOUNT > 4400
+		BREAK
+
+	;クラスを弾く
+	SIF LCOUNT > 4700 && LCOUNT < 4761
+		CONTINUE
+
+	;CSVがあるか확인、なければ弾く
+	SIF EXISTCSV(LCOUNT, 0) == 0
+		CONTINUE
+
+	;エンカウントしてはいけない종족は弾く
+	SIF SEA_ARCH_VALIDATE_RACE(CSVABL(LCOUNT, GETNUM(ABL, "종족"))) == 0
+		CONTINUE
+
+	;비전투원は弾く
+	SIF CSVTALENT(LCOUNT, GETNUM(TALENT, "비전투원"))
+		CONTINUE
+
+	;소환불가は弾く
+	SIF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "전서소환불가")) || CSVCFLAG(LCOUNT, GETNUM(CFLAG, "소환불가"))
+		CONTINUE
+
+	;레벨がフ로어に合わない場合は弾く
+	SIF CSVBASE(LCOUNT, GETNUM(BASE, "LV")) > 出現最高레벨 || CSVBASE(LCOUNT, GETNUM(BASE, "LV")) < 出現최저레벨
+		CONTINUE
+
+	;一部特殊악마は조건次第で出現させる
+	; SIF LCOUNT == [[キャラ:하루트]]
+	; 	GOTO SET_ENEMYS_NO
+	; SIF LCOUNT == [[キャラ:마루트]]
+	; 	GOTO SET_ENEMYS_NO
+
+	;解析率が50미만の악마は出現しない
+	SIF FLAG:(LCOUNT+20000) < 500
+		CONTINUE
+
+	;特殊合体のみは解析率100％なら解禁
+	SIF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "特殊合体のみ")) && FLAG:(LCOUNT+20000) < 1000
+		CONTINUE
+
+	;合体조건ありは解禁済みなら出現
+	SIF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "合体조건有り")) && FLAG:(10000+RESULT) == 0
+		CONTINUE
+
+	;- 악마出現던전설정판정部と出現추가処理 -------------------------------------------------
+	$SET_ENEMYS_NO
+	;ダークおやじでオンナ악마のみに설정している場合
+	SIF 던전フラグ:94:2 == 1 && CSVTALENT(LCOUNT, GETNUM(TALENT, "남자")) != 0
+		CONTINUE
+	;ダークおやじで남자악마のみに설정している場合
+	SIF 던전フラグ:94:2 == 2 && CSVTALENT(LCOUNT, GETNUM(TALENT, "남자")) != 1
+		CONTINUE
+	出現악마:LOCAL = LCOUNT
+	LOCAL ++
+NEXT
+
+
+;레어?악마処理
+;メガテン系이벤트以外불허가の場合は出現させない
+IF GETBIT(FLAG:EXTRA이벤트설정, 0) == 0
+	FOR LCOUNT, 5000, 5049
+		;CSVがあるか확인、なければ弾く
+		SIF EXISTCSV(LCOUNT, 0) == 0
+			CONTINUE
+		;레벨がフ로어に合わない場合は弾く
+		SIF CSVBASE(LCOUNT, GETNUM(BASE, "LV")) > 出現最高레벨 || CSVBASE(LCOUNT, GETNUM(BASE, "LV")) < 出現최저레벨
+			CONTINUE
+		;ダークおやじでオンナ악마のみに설정している場合
+		SIF 던전フラグ:94:2 == 1 && CSVTALENT(LCOUNT, GETNUM(TALENT, "남자")) != 0
+			CONTINUE
+		;ダークおやじで남자악마のみに설정している場合
+		SIF 던전フラグ:94:2 == 2 && CSVTALENT(LCOUNT, GETNUM(TALENT, "남자")) != 1
+			CONTINUE
+		出現악마:LOCAL = LCOUNT
+		LOCAL ++
+		LOCAL:1 ++
+	NEXT
+ENDIF
+
+;出現する악마の종류が十以下の場合に레어枠全てを消す
+
+IF LOCAL < 11
+	LOCAL -= LOCAL:1
+	LOCAL:1 = 0
+ENDIF
+
+LOCAL:2 = LOCAL
+
+;キャプスロックで出現出来ない악마をリストから除外して再構成
+IF EQUIP:MASTER:캡스・락 && LOCAL:2 > 2
+	LOCAL = 0
+	FOR LCOUNT, 0, LOCAL:2
+		IF CSVBASE(出現악마:LCOUNT, GETNUM(BASE, "LV")) > BASE:MASTER:LV - 12
+			出現악마:LOCAL = 出現악마:LCOUNT
+			LOCAL ++
+		ELSEIF LCOUNT > LOCAL:2 - LOCAL:1 -1
+			LOCAL:1 --
+		ENDIF
+	NEXT
+;出現악마の종류が3以下だとエ라を吐く가능性があるのでキャプスロックで出現出来ないであろう適当な악마で防止
+	IF LOCAL < 3 && LOCAL > 0
+;레어枠악마をずらす
+		IF LOCAL:1 > 0
+			FOR LCOUNT, 0, LOCAL:1
+				出現악마:(2 - LCOUNT) = 出現악마:(LOCAL - LCOUNT -1)
+			NEXT
+		ENDIF
+;ずらした数に応じて出現できないであろう악마で埋める
+		IF LOCAL == 1
+			IF LOCAL:1
+				出現악마:1 = 501
+				出現악마:0 = 1028
+			ELSE
+				出現악마:1 = 501
+				出現악마:2 = 1028
+			ENDIF
+		ELSE
+			IF LOCAL:1 == 2
+				出現악마:0 = 1028
+			ELSEIF LOCAL:1 == 1
+				出現악마:1 = 1028
+			ELSE
+				出現악마:2 = 1028
+			ENDIF
+		ENDIF
+		LOCAL = 3
+	ENDIF
+ENDIF
+
+IF LOCAL:2 < 3 || LOCAL == 0 || LOCAL == LOCAL:1
+	SELECTCASE RAND:6
+		CASE IS < 1
+			RETURN [[キャラ:픽시]],3
+		CASE IS < 2
+			RETURN [[キャラ:하피]],4
+		CASE IS < 3
+			RETURN [[キャラ:아프사라스]],5
+		CASE IS < 4
+			RETURN [[キャラ:노커]],4
+		CASE IS < 5
+			RETURN [[キャラ:춍춍]],4
+		CASE IS < 6
+			RETURN [[キャラ:아귀]],4
+	ENDSELECT
+ELSE
+	;등록した악마の数を保存
+	出現する악마の종류 = LOCAL
+	;번호を랜덤で選出
+	;15%で레어枠出現するよう調整
+	IF (RAND:100 < 15) && (LOCAL:1 > 0)
+		LOCAL = (出現する악마の종류 - (LOCAL:1)) + RAND:(LOCAL:1)
+	ELSEIF (出現する악마の종류  - (LOCAL:1)) > 0
+		LOCAL = RAND:(出現する악마の종류 - (LOCAL:1))
+	ENDIF
+	;出現악마決定、레벨はＣＳＶの데이터のまま
+	RETURN 出現악마:LOCAL, CSVBASE(出現악마:LOCAL, GETNUM(BASE, "LV"))
+ENDIF
+
+
+;=======================================================================
+;宝箱の中身
+;=======================================================================
+@TREASURE_94
+#LOCALSIZE 3
+;宝箱のフラグ管理用変数の번호
+LOCAL = FLAG:現M + 70
+;そのマップの何番눈の宝箱か
+LOCAL:1 = (DA:(FLAG:現X):(FLAG:現Y) / 10) % 100
+
+;/10はIDを10で割る。つまり、下一桁をなくして、二桁눈と三桁눈を二桁の数字として取り出している
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+	;マップ번호*100+そのマップで何番눈の宝箱かを示す数値でどの宝箱かを判別します。
+	;例えば0の場合、0版のマップの0番눈の宝箱であることを表しています。
+
+ENDSELECT
+RETURN 1
+
+;=======================================================================
+;階段置き場
+;=======================================================================
+;上り階段処理
+@UPSTAIRS_94
+;位置とIDが対応しているはずなので、同IDの階段を探させれば良い
+SELECTCASE FLAG:現M
+	CASEELSE
+		CALL DUNGEON_UPSTAIRS_ID, FLAG:現M+1 , DA:(FLAG:現X):(FLAG:現Y) + 1000 + 1
+ENDSELECT
+RETURN 1
+
+;下り階段処理
+@DOWNSTAIRS_94
+SELECTCASE FLAG:現M
+	CASEELSE
+		CALL DUNGEON_DOWNSTAIRS_ID, FLAG:現M-1 , DA:(FLAG:現X):(FLAG:現Y) - 1000 - 1
+ENDSELECT
+RETURN 1
+
+;=======================================================================
+;エレベーター定義
+;=======================================================================
+;ARGはそのエレベーターのタイル
+@DUNGEON_ELEVATOR_94, ARG
+;RESULT:1～5にエレベータが存在するマップの번호を代入し、RESULTS:1～5には표시したい명칭を代入、RETURNでは-1を返しておく
+RESULT:1 = 1
+RESULT:2 = 3
+RESULT:3 = 5
+RESULT:4 = 7
+RESULT:5 = 9
+RESULT:6 = 10
+RESULTS:1 = ２Ｆ
+RESULTS:2 = ４Ｆ
+RESULTS:3 = ６Ｆ
+RESULTS:4 = ８Ｆ
+RESULTS:5 = １０Ｆ
+RESULTS:6 = １１Ｆ
+RETURN -1
+
+;=======================================================================
+;윤간참가악마
+;=======================================================================
+@DUNGEON_RAPE_DEVIL_94
+;랜덤にどの악마が出るか決定
+;RETURN CSV번호 , 人数 , 레벨
+SELECTCASE RAND:3
+	CASE 0
+		RETURN [[キャラ:아귀]] , 3 + RAND:10 , CSVBASE([[キャラ:아귀]] , GETNUM(BASE , "LV") , 0) + RAND:3
+	CASE 1
+		RETURN [[キャラ:코볼트]] , 3 + RAND:10 , CSVBASE([[キャラ:코볼트]] , GETNUM(BASE , "LV") , 0) + RAND:3
+	CASE 2
+		RETURN [[キャラ:좀비군]] , 3 + RAND:10 , CSVBASE([[キャラ:좀비군]] , GETNUM(BASE , "LV") , 0) + RAND:3
+ENDSELECT
+
+;=======================================================================
+;除外종족판정
+;=======================================================================
+@SEA_ARCH_VALIDATE_RACE, ARG
+#FUNCTION
+SELECTCASE ARG
+	CASE 0;인간
+		RETURNF 0
+	CASE IS < 19;通常종족
+		RETURNF 1
+	CASE 30;칠성
+		RETURNF 0
+	CASE 31;광인
+		RETURNF 1
+	CASE 32;괴이
+		RETURNF 1
+	CASE 33;ボス戦用
+		RETURNF 0
+	CASE 36;半魔
+		RETURNF 0
+	CASE 39;링크악마専用
+		RETURNF 0
+	CASE 40;페르소나専用
+		RETURNF 0
+	CASE 41;페르소나2
+		RETURNF 0
+	CASE 42;마인
+		RETURNF 1
+	CASE 43;초인
+		RETURNF 0
+	CASE 44;영웅
+		RETURNF 1
+	CASE 45;조마
+		RETURNF 0
+	CASE 73;악마인
+		RETURNF 0
+ENDSELECT

@@ -1,0 +1,184 @@
+﻿;노이즈샷
+;ガードフラグ・기합フラグ・集中フラグを破壊する
+;ガードだけと思ったけどまぁいいか。実際のところ、この스킬で기합集中を妨害するのって難しいし
+;いっそ、사용されたら、以降そのターンでは기합・集中実行能でもいいかなぁ。速度重視キャラで、ノイズ出しまくって기합潰しとかもまぁアリな気はするし
+;ガード崩し効果については적はうまくガード使いこなさないし、공격しながらガード組んでくるような적でも出てこないかぎり、あんま役に立たないとも言う
+;조건を満たしてれば100%発動する代わりに데미지0仕様、총の종류に依存せずに常に전체しようかなぁと思ったけど、そうすると적が使ったとき強すぎるんで、断念
+
+;스킬名
+@SKILL_NAME_2117,ARG
+RESULTS = 노이즈샷
+
+;　명중
+@SKILL_HITRATE_2117, ARG
+RETURN 2000
+
+;　위력
+@SKILL_POWER_2117, ARG
+RETURN 0
+
+;　최저공격횟수
+@SKILL_MINATTACKNUMBER_2117,ARG
+CALLFORM 최저공격횟수_{EQUIP:ARG:총},ARG
+RETURN RESULT
+
+;　최대공격횟수
+@SKILL_MAXATTACKNUMBER_2117,ARG
+CALLFORM 최대공격횟수_{EQUIP:ARG:총},ARG
+RETURN RESULT
+
+;　ＨＰ2を支払うかＭＰ3を支払うか
+@SKILL_COSTTYPE_2117, ARG
+RETURN 1
+;소비なし＝1
+
+;　コストの量
+@SKILL_COST_2117,ARG
+RETURN 0
+
+;　相性
+@SKILL_TYPE_2117,ARG
+RETURN 17
+;만능
+
+;　1EXTRAか2MAGICか
+@SKILL_DECIDE_TYPE_2117, ARG
+RETURN 0
+;どちらでもない
+
+;　1물리데미지で計算するか2마법데미지で計算するか
+@SKILL_DAMAGETYPE_2117, ARG
+RETURN 1
+
+
+;　대상が1적か2아군か3場전체か4特殊か
+@SKILL_TARGET_2117
+RETURN 1
+
+;　사거리
+@SKILL_RANGE_2117,ARG
+CALLFORM 사거리_{EQUIP:ARG:총},ARG
+RETURN RESULT
+
+;　범위　1１체　2１열　3전체　4　적아군전체
+@SKILL_SPHERE_2117,ARG
+CALLFORM 공격범위_{EQUIP:ARG:총},ARG
+RETURN RESULT
+
+;　 効果の타입　1공격、2회복、3상태변화、4特殊、5상태회복
+@SKILL_EFECT_2117
+RETURN 1
+;　 特殊処理の有無、及び処理内容
+@SKILL_SPECIALEFECT_2117,ARG
+;ARG = 1だった場合は処理の有無を返します
+SIF ARG == 1
+	RETURN 0
+;以下に特殊な処理を記述します
+
+;계승타입
+@SKILL_SUCCESSION_TYPE_2117
+RETURN 0
+;継承
+
+;속도보정
+@SKILL_SPEED_2117, ARG = -1
+SIF ARG == -1
+	RETURN 0
+TRYCCALLFORM 속도보정_{EQUIP:ARG:총}
+	RETURN RESULT
+CATCH
+	RETURN 0
+ENDCATCH
+
+;　구상の표시とその타입
+@SKILL_MESSAGE_2117,ARG
+
+;전투時以外に사용できるか
+@SKILL_ACTIONABLE_FIELD_2117
+RETURN 0
+
+;스킬변화？用랭크
+@SKILL_RANK_2117
+RETURN 0
+;변화
+
+;テン플레이트用、추가효과シリーズ
+;추가효과스테이터스
+@SKILL_ADDTIONAL_STATE_2117,ARG
+RETURN 0
+
+;추가효과상성
+@SKILL_ADDTIONAL_TYPE_2117,ARG
+RETURN 0
+
+;추가효과기본부여확률
+@SKILL_ADDTIONAL_BASE_RATE_2117,ARG
+RETURN 0
+
+;추가효과부여확률上限
+@SKILL_ADDTIONAL_MAX_RATE_2117,ARG
+RETURN 0
+;====================================================
+;스킬及び行動の実行
+;====================================================
+@ACTION_2117,ARG,ARG:1
+CALL SKILL_SPHERE_2117,ARG
+IF RESULT == 1
+	LOCAL = POS(ARG:1)
+	CALL GUN_SINGLE,ARG,LOCAL,2117
+ELSE
+	RESULT = 0
+	TRYCALLFORM GUN_RANDOMTARGET_{EQUIP:ARG:총}
+	IF RESULT == 1
+		CALL GUN_RAND,ARG,ARG:1,2117
+	ELSE
+		CALL GUN_FIELD,ARG,ARG:1,2117
+	ENDIF
+	
+ENDIF
+SIF CFLAG:ARG:PTフラグ > 0
+	ITEM:음향탄 -= 1
+
+@SKILL_GUN_SPECIALACTION2117, ARG, ARG:1
+IF CFLAG:(ARG:1):방어フラグ == 0 && CFLAG:(ARG:1):集中フラグ == 0 && CFLAG:(ARG:1):기합フラグ == 0
+	PRINTFORM 　　TARGET:[{CPOS(ARG:1),2}] %CALLNAME:(ARG:1),20,LEFT%　>>>>>>　
+	PRINTW 효과가 없다
+ENDIF
+IF CFLAG:(ARG:1):방어フラグ
+	PRINTFORM 　　TARGET:[{CPOS(ARG:1),2}] %CALLNAME:(ARG:1),20,LEFT%　>>>>>>　
+	PRINTW 가드가 무너졌다
+	CFLAG:(ARG:1):방어フラグ = 0
+ENDIF
+IF CFLAG:(ARG:1):기합フラグ
+	PRINTFORM 　　TARGET:[{CPOS(ARG:1),2}] %CALLNAME:(ARG:1),20,LEFT%　>>>>>>　
+	PRINTW 기합이 빠졌다
+	CFLAG:(ARG:1):기합フラグ = 0
+ENDIF
+IF CFLAG:(ARG:1):集中フラグ
+	PRINTFORM 　　TARGET:[{CPOS(ARG:1),2}] %CALLNAME:(ARG:1),20,LEFT%　>>>>>>　
+	PRINTW 집중력이 끊어졌다
+	CFLAG:(ARG:1):集中フラグ = 0
+ENDIF
+
+;====================================================
+;実行内容ここまで
+;====================================================
+
+;　 설명文の표시
+@SKILL_EXPLAIN_2117
+PRINTL 커다란 소음을 내는 탄환으로、적의 집중력을 빼앗고、자세를 무너뜨린다
+PRINTL 방어・기합・컨센트레이트를 해제하지만 데미지는 없다。
+
+;사용조건
+@SKILL_SPECIAL_ACTIONABLE_2117,ARG
+SIF EQUIP:ARG:총 == 0
+	RETURN 0
+SIF CFLAG:ARG:PTフラグ == 0
+	RETURN 1
+SIF ITEM:음향탄 < 1
+	RETURN 0
+SIF HAVE_BULLET(ARG,5515) == 0
+	RETURN 0
+RETURN 1
+;とくにない
+

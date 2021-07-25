@@ -1,0 +1,2607 @@
+﻿;=======================================================================
+;팩토리
+;=======================================================================
+;=======================================================================
+;変数 던전フラグ:[[던전:팩토리]]:X
+;0 팩토리の情報（侵入조건)
+;1 暴走するデミナン디무
+;2 ベテルギウス
+;3 야누스
+;4 벨페고르
+;5 姫宮키쿠에の상태 (-1以下 救出済み 0 何もない 1 拉致られてきたばかり 2 軽度の洗脳 3 重度の洗脳 4 家畜化)
+;6 収容所のパスコード 1 , 2 , 4 でそれぞれの扉해방
+;7 中央のエレベータへの扉 1 = 鍵を持っている 2 = 開けた
+;8 팩토리に入ったことがある 1 教会に来た 2 教会を出た 3 팩토리
+;9 家畜体験済み
+;10 성욕처리業務体験済み
+;11 パック 1 = 鍵をもらった
+;12 나쟈 1 = 鍵をもらった 2 = 仲魔になった
+;13 収容所の人について助けるヒントをもらった
+;14 地下通路のパスコード입력 1 , 2 , 4 で三つの扉の制御
+;15 救出時の姫宮키쿠에の상태 (5に準じる)
+;
+;他던전や의뢰などで関係する変数
+;의뢰フラグ:13:0 의뢰・姫무녀救出의뢰の進行度 請け負っている場合、進行度は2。断った・실패した場合は-1
+
+;의뢰フラグ:38:1 監視塔クリアフラグ（1で洗脳音波해제）
+;↑作るっていう人がいるのでとりあえず確保
+
+;更新내역
+;201X/XX/XX　　　　　　　　　　実装
+;2020/06/02　kamedakeisuke 　　救出실패した키쿠에さんのその後を추가、時間経過で단계進行。ついでに既存の文章も追記
+;
+;=======================================================================
+;収容所については原作では旧水道橋から向かうのですが、팩토리内部で完結するように변경しました
+
+;=======================================================================
+;攻略조건
+;=======================================================================
+@PREREQUISITE_DUNGEON_28
+;[IF_DEBUG]
+;	RETURN 1
+;[ENDIF]
+;조건：팩토리の情報を得ている
+IF 던전フラグ:[[던전:팩토리]]:0
+	RETURN 1
+ENDIF
+
+RETURN 0
+
+
+
+;=======================================================================
+;던전名
+;=======================================================================
+@GET_DUNGEON_NAME_28
+RESULTS = 팩토리
+
+
+;=======================================================================
+;フ로어名표시
+;=======================================================================
+@FLOORNAME_28
+PRINT 팩토리
+SELECTCASE FLAG:現M
+	CASE 0
+		PRINTL 
+	CASE 1
+		PRINTL ・메시아 교회
+	CASE 2
+		PRINTL ・타운
+	CASE 3
+		PRINTL ・노동자 기숙사
+	CASE 4
+		PRINTL ・지하 발굴 현장 １Ｆ
+	CASE 5
+		PRINTL ・지하 발굴 현장 Ｂ１Ｆ
+	CASE 6
+		PRINTL ・지하 발굴 현장 Ｂ２Ｆ
+	CASE 7
+		PRINTL ・지하 발굴 현장 Ｂ３Ｆ
+	CASE 8
+		PRINTL ・강제수용소 １Ｆ
+	CASE 9
+		PRINTL ・강제수용소 ２Ｆ
+	CASE 10
+		PRINTL ・지하 통로 Ｂ１Ｆ
+	CASE 11
+		PRINTL ・지하 통로 Ｂ７Ｆ
+ENDSELECT
+
+
+
+;=======================================================================
+;スタート地点입력
+;=======================================================================
+@START_DUNGEON_28,ARG
+#LOCALSSIZE 1
+FLAG:現M = 1
+FLAG:現X = 1
+FLAG:現Y = 1
+;CALL AUTOMAP
+
+;=======================================================================
+;スタート時이벤트
+;=======================================================================
+@EVENT_DUNGEON_START_28
+;フィールドマップを全アナライズ
+IF 던전フラグ:[[던전:팩토리]]:8 == 0
+	FLAG:現M = 0
+	CALL MAKE_FLOOR, 28
+	FOR LOCAL , 0 , 31
+		FOR LOCAL:1 , 0 , 41
+			CALL SET_FLOOR_ANALYZE, 2 , [[던전:팩토리]] , 0 , LOCAL:1, LOCAL
+		NEXT
+	NEXT
+	FLAG:現M = 1
+	CALL MAKE_FLOOR, 28
+	던전フラグ:[[던전:팩토리]]:8 = 1
+ENDIF
+;키쿠에の상태
+IF 던전フラグ:[[던전:팩토리]]:5 > -1 && 던전フラグ:[[던전:팩토리]]:5 < 7 && 의뢰フラグ:13:0 == 2
+	SELECTCASE DAY - STRFLAG_NUM_REQ("의뢰を受けた日" , , , , 13)
+		;이틀 이내라면 완전히 무사
+		CASE IS <= 2
+			던전フラグ:[[던전:팩토리]]:5 = 1
+		;5일 이내라면 살아난다
+		CASE IS <= 5
+			SIF 던전フラグ:[[던전:팩토리]]:5 < 2
+				던전フラグ:[[던전:팩토리]]:5 = 2
+		;15일까지는 중도의 세뇌
+		CASE IS <= 15
+			던전フラグ:[[던전:팩토리]]:5 = 3
+		;25일까지는 세뇌 완료·임신 완료·미출산
+		CASE IS <= 25
+			던전フラグ:[[던전:팩토리]]:5 = 4
+		;35일까지는 반쯤은 소(牛)가 됨·임신출산 완료·세뇌 풀어도 인격에 영향
+		CASE IS <= 35
+			던전フラグ:[[던전:팩토리]]:5 = 5
+		;그 이후는 그냥 소(牛)
+		CASEELSE
+			던전フラグ:[[던전:팩토리]]:5 = 6
+		
+	ENDSELECT
+ENDIF
+
+;=======================================================================
+;탈출時の이벤트
+;=======================================================================
+@EVENT_DUNGEON_END_28
+IF 던전フラグ:[[던전:팩토리]]:5 == -1
+	IF 던전フラグ:[[던전:팩토리]]:15 == 1
+		CALL SHOW_PICTURE, "NONFLOORD", @"%CALLNAME:MASTER%의 방"
+		CALL MESSAGE_WINDOW, "", "수시간 후……" , , , "CENTER" , , 4
+		CALL MESSAGE_WINDOW, "히메미야 키쿠에", @"……이대로 저기에 붙잡혀 있었으면、/「노래」에 의해 나는 정신을 잃고、/메시아 교회의 하인으로 전락했을 것입니다" , , , "CENTER" , , 4
+		CALL MESSAGE_WINDOW, "히메미야 키쿠에", @"거듭 감사를 표합니다。/정말로 고맙습니다" , , , "CENTER" , , 4
+		CALL MESSAGE_WINDOW, "", "＞히메미야 키쿠에는 깊숙이 머리를 숙였다……" , , , "CENTER" , , 4
+		CALL MESSAGE_WINDOW, "히메미야 키쿠에", @"상상했던 것보다 훨씬 무서운 일입니다。/헤브루의 사람들이 암약하고 있다고는 해도、/사람이 같은 사람을 그와 같은 수단으로 꼭두각시로 하려는 것은……" , , , "CENTER" , , 4
+		CALL MESSAGE_WINDOW, "히메미야 키쿠에", @"……머지않아、이 거리를 해방시켜야 할지도 모르겠습니다" , , , "CENTER" , , 4
+		CALL MESSAGE_WINDOW, "히메미야 키쿠에", @"그러나 지금의 저로서는 이 몸 하나 밖에 없으니、/그것조차도 실현하지 못할 겁니다。/한시라도 빨리、지금 당장이라도 히루코 님 곁으로 가지 않으면……" , , , "CENTER" , , 4
+		CALL INPUT_YN_M , "오늘은 쉰다" , "연락를 기다려야 한다" , , , "CENTER" , 4
+		IF RESULT == 0
+			CALL MESSAGE_WINDOW, "히메미야 키쿠에", @"배려해 주셔서 감사합니다。/그렇지만、걱정하지 마세요。/쉰 덕분에 몸 상태는 이제 상당히 좋아졌으니" , , , "CENTER" , , 4
+		ELSE
+			CALL MESSAGE_WINDOW, "히메미야 키쿠에", @"그렇군요……/내가 팩토리에 끌려간 일이、/히루코님에게 전해져 있으면 좋겠습니다만…" , , , "CENTER" , , 4
+		ENDIF
+		CALL MESSAGE_WINDOW, "히메미야 키쿠에", @"그렇네요。적어도 답례를 하게 해주지 않겠습니까？/히루코 님 곁으로 갈 때까지、당신을 돕고 싶습니다/변변치 못한 힘이나마 당신의 도움이 될 수 있도록 힘껏 노력하겠습니다" , , , "CENTER" , , 4
+		CALL MESSAGE_WINDOW, "", "＞히메미야 키쿠에가 동료마가 되었다" , , "로그를 남긴다" , "CENTER" , , 4
+	ELSEIF 던전フラグ:[[던전:팩토리]]:15 == 2
+		CALL SHOW_PICTURE, "NONFLOORD", @"%CALLNAME:MASTER%의 방"
+		CALL MESSAGE_WINDOW, "", "＞수시간 후……" , , , "CENTER" , , 4
+		CALL MESSAGE_WINDOW, "", "＞제정신을 되찾은 키쿠에가、새파래진 얼굴로 자신의 몸을 껴안았다" , , , "CENTER" , , 4
+		CALL MESSAGE_WINDOW, "히메미야 키쿠에", @"나는……스스로、저런……무슨 짓을……" , , , "CENTER" , , 4
+		CALL MESSAGE_WINDOW, "", "＞혐오스러움으로 메스꺼워 토하는 키쿠에를 달래며 / 당신은 자신의 상황과 부탁에 대해 설명했다" , , , "CENTER" , , 4
+		CALL MESSAGE_WINDOW, "히메미야 키쿠에", @"그렇습니까、히루코 님이……/당신에 대한 이야기는 들어본적이 있습니다/당신이 소문에 이름을 듣는 그분이었군요" , , , "CENTER" , , 4
+		CALL MESSAGE_WINDOW, "히메미야 키쿠에", @"제가 탈출한 것으로 상황이 움직이고 있을지도 모릅니다./이러고 있을 순 없어요. /부탁해요! 저를 지금 당장이라도 힐코님 곁으로... 윽" , , , "CENTER" , , 4
+		CALL MESSAGE_WINDOW, "", "＞키쿠에는 코를 벌름벌름 떨더니 / 입가를 누르고 구르듯이 방을 뛰쳐나갔다" , , , "CENTER" , , 4		
+		CALL MESSAGE_WINDOW, "", "잠시 후 / 그녀는 지친 걸음으로 당신의 개인실로 돌아왔다" , , , "CENTER" , , 4
+		CALL MESSAGE_WINDOW, "히메미야 키쿠에", @"……죄송합니다/역시 오늘은、이제 좀 쉬게 해 주세요/……기분이 좋지 않아서……" , , , "CENTER" , , 4
+		CALL MESSAGE_WINDOW, "", "＞휘청거리는 발걸음으로 키쿠에는 배정받은 방으로 들어갔다" , , , "CENTER" , , 4
+		CALL MESSAGE_WINDOW, "", "＞히메미야 키쿠에가 동료마가 되었다" , , "로그를 남긴다" , "CENTER" , , 4
+	ENDIF
+	
+	CALL ADD_NEW_COMPANION , [[キャラ:키쿠에]] , 500
+	IF RESULT == 1
+		LOCAL = RESULT:1
+		BASE:LOCAL:LV += 10
+		BASE:LOCAL:힘 += 1
+		BASE:LOCAL:지혜 += 3
+		BASE:LOCAL:마력 += 3
+		BASE:LOCAL:인내력 += 2
+		BASE:LOCAL:속도 += 3
+		BASE:LOCAL:운 += 3
+		CFLAG:LOCAL:전투참가불가능 = -1
+		IF 던전フラグ:[[던전:팩토리]]:15 == 2
+			TALENT:LOCAL:처녀 = 0
+			EXP:LOCAL:Ｖ경험 += 30
+			EXP:LOCAL:키스경험 += 10
+			EXP:LOCAL:절정경험 += 10
+			EXP:LOCAL:성교경험 += 45
+			EXP:LOCAL:질사경험 += 45
+			EXP:LOCAL:자위경험 += 10
+			EXP:LOCAL:정액경험 += 60
+			EXP:LOCAL:봉사쾌락경험 += 30
+			EXP:LOCAL:펠라경험 += 10
+			EXP:LOCAL:윤간경험 += 3
+			CALL ADDS_ABNORMAL_EXP("처녀상실（윤간）", LOCAL)
+			CALL SHOW_ABNORMAL_EXP , LOCAL, 0
+		ENDIF
+	ENDIF
+	의뢰フラグ:13:0 = 3
+	던전フラグ:[[던전:팩토리]]:5 = -2
+ENDIF
+
+;=======================================================================
+;指定したマスに進入可能か
+;=======================================================================
+@CAN_ENTER_28,ARG,ARG:1
+RESULT = 1
+SELECTCASE DA:ARG:(ARG:1)
+	CASE 12
+		;監視塔入り입
+		IF BASE:MASTER:지혜 >= 10
+			RETURN 1
+		ELSE
+			RETURN 0
+		ENDIF
+	CASE 11002
+		IF 던전フラグ:[[던전:팩토리]]:7 == 2
+			RETURN 1
+		ELSEIF 던전フラグ:[[던전:팩토리]]:7 == 1
+			CALL MESSAGE_WINDOW_D , "" , "＞지하 통로의 열쇠를 사용해서 문을 열었다"
+			던전フラグ:[[던전:팩토리]]:7 = 2
+			RETURN 1
+		ELSE
+			CALL MESSAGE_WINDOW_D , "" , "＞문은 닫혀있다"
+			RETURN 0
+		ENDIF
+	CASE 11012, 11022, 11032
+		IF !GETBIT(던전フラグ:[[던전:팩토리]]:14 , DA:ARG:(ARG:1) / 10 % 10 -1)
+			CALL MESSAGE_WINDOW_D , "" , "＞전자 자물쇠로 된 문이 있다"
+			CALL MESSAGE_WINDOW_D , "목소리" , "＞패스코드를 입력해 주세요" , "/" , "로그를 남긴다/버튼을 이용한다/재이용하지 않는다"
+			CALL INPUT_MANY , 0 , 9999
+			IF (DA:ARG:(ARG:1) == 11012 && RESULT == 9192) || (DA:ARG:(ARG:1) == 11022 && RESULT == 1213) || (DA:ARG:(ARG:1) == 11032 && RESULT == 1834)
+				CALL MESSAGE_WINDOW_D , "" , "＞………/＞……/＞…"
+				CALL MESSAGE_WINDOW_D , "목소리" , "＞패스코드를 확인/　락을 해제 합니다"
+				SETBIT 던전フラグ:[[던전:팩토리]]:14 , DA:ARG:(ARG:1) / 10 % 10 -1
+				RETURN 1
+			ELSE
+				CALL MESSAGE_WINDOW_D , "" , "＞………/＞……/＞…"
+				CALL MESSAGE_WINDOW_D , "목소리" , "＞패스코드가 다릅니다"
+				RETURN 0
+			ENDIF
+		ELSE
+			RETURN 1
+		ENDIF
+		
+	CASEELSE
+		CALL CAN_ENTER,ARG,ARG:1
+ENDSELECT
+RETURN RESULT
+
+;=======================================================================
+;フ로어데이터
+;=======================================================================
+@MAKE_FLOOR_28
+SELECTCASE FLAG:現M
+	;팩토리
+	CASE 0
+		FLAG:최대X = 41
+		FLAG:최대Y = 39
+		;						           1         2         3         4
+		;						 01234567890123456789012345678901234567890
+		CALL MAKE_FLOOR_LINE, 0,"                                         "
+		CALL MAKE_FLOOR_LINE, 1,"                                 4       "
+		CALL MAKE_FLOOR_LINE, 2,"      111         11111         111      "
+		CALL MAKE_FLOOR_LINE, 3,"     11 11       111 111       11 11     "
+		CALL MAKE_FLOOR_LINE, 4,"    11   11      11   11      11 1111    "
+		CALL MAKE_FLOOR_LINE, 5,"   11 191111     11 9 11     11 111 11   "
+		CALL MAKE_FLOOR_LINE, 6,"  1111111 111     11111     11 11111 11  "
+		CALL MAKE_FLOOR_LINE, 7," 11 1    11111     111     11111 11   11 "
+		CALL MAKE_FLOOR_LINE, 8,"  11 1111111 11     1     11 11   11911  "
+		CALL MAKE_FLOOR_LINE, 9,"   11 1111111 11    1    11 1111911111   "
+		CALL MAKE_FLOOR_LINE,10,"   11111141111 11   1   11111111111111   "
+		CALL MAKE_FLOOR_LINE,11,"  1111111111111 11  A  1111111111111111  "
+		CALL MAKE_FLOOR_LINE,12," 111111111111111111111111111111111111111 "
+		CALL MAKE_FLOOR_LINE,13," 11111   11111111h1141111h11111111111111 "
+		CALL MAKE_FLOOR_LINE,14,"  1111   1111111hhh11111hhh111111111111  "
+		CALL MAKE_FLOOR_LINE,15,"   111 9 11111h11h1111 11h111111111111   "
+		CALL MAKE_FLOOR_LINE,16,"    111111111hhh11111   1111111111111    "
+		CALL MAKE_FLOOR_LINE,17,"     111111111h111111191111111111111     "
+		CALL MAKE_FLOOR_LINE,18,"      11111111111111111111111111111      "
+		CALL MAKE_FLOOR_LINE,19,"       111  111111  111111  111111       "
+		CALL MAKE_FLOOR_LINE,20,"       11    1111    1111    1111        "
+		CALL MAKE_FLOOR_LINE,21,"          11  11  11  11  11  11         "
+		CALL MAKE_FLOOR_LINE,22,"         9111    1111    1111            "
+		CALL MAKE_FLOOR_LINE,23,"        111 11  111111  111111           "
+		CALL MAKE_FLOOR_LINE,24,"         1191    1111    1111  11        "
+		CALL MAKE_FLOOR_LINE,25,"          11  11      11      9111       "
+		CALL MAKE_FLOOR_LINE,26,"             9111    1111    111111      "
+		CALL MAKE_FLOOR_LINE,27,"            111111111111111111111111     "
+		CALL MAKE_FLOOR_LINE,28,"           1111 11111111111111111111     "
+		CALL MAKE_FLOOR_LINE,29,"            111911  111111   111111      "
+		CALL MAKE_FLOOR_LINE,30,"             1111    1111     1111       "
+		CALL MAKE_FLOOR_LINE,31,"                  11       11            "
+		CALL MAKE_FLOOR_LINE,32,"                 1111     1119           "
+		CALL MAKE_FLOOR_LINE,33,"         1111111111111   111111          "
+		CALL MAKE_FLOOR_LINE,34,"       111   11h11111h1111h11111  11     "
+		CALL MAKE_FLOOR_LINE,35,"       111   111h1h11111111h11111111     "
+		CALL MAKE_FLOOR_LINE,36,"        11 9 1111111111111111111111      "
+		CALL MAKE_FLOOR_LINE,37,"         11111  11111 11111   1111       "
+		CALL MAKE_FLOOR_LINE,38,"                                         "
+		;						 01234567890123456789012345678901234567890
+		;						           1         2         3         4
+		
+	;メシア教会
+	CASE 1
+		FLAG:최대X = 9
+		FLAG:최대Y = 9
+;								012345678
+		CALL MAKE_FLOOR_LINE,0,"         "
+		CALL MAKE_FLOOR_LINE,1," T 1 4 9 "
+		CALL MAKE_FLOOR_LINE,2," 2 1 2 2 "
+		CALL MAKE_FLOOR_LINE,3," 11111 1 "
+		CALL MAKE_FLOOR_LINE,4,"   111 2 "
+		CALL MAKE_FLOOR_LINE,5," 1211111 "
+		CALL MAKE_FLOOR_LINE,6,"   1 2 1 "
+		CALL MAKE_FLOOR_LINE,7," 121 8 1 "
+		CALL MAKE_FLOOR_LINE,8,"         "
+	;タウン
+	CASE 2
+		FLAG:최대X = 9
+		FLAG:최대Y = 17
+;								012345678
+		CALL MAKE_FLOOR_LINE, 0,"         "
+		CALL MAKE_FLOOR_LINE, 1," 4 1 4 1 "
+		CALL MAKE_FLOOR_LINE, 2," 2 2 2 2 "
+		CALL MAKE_FLOOR_LINE, 3," 1111111 "
+		CALL MAKE_FLOOR_LINE, 4," 1     1 "
+		CALL MAKE_FLOOR_LINE, 5," 121 121 "
+		CALL MAKE_FLOOR_LINE, 6," 1     1 "
+		CALL MAKE_FLOOR_LINE, 7," 1111111 "
+		CALL MAKE_FLOOR_LINE, 8,"   2 2   "
+		CALL MAKE_FLOOR_LINE, 9," 1111111 "
+		CALL MAKE_FLOOR_LINE,10," 1     1 "
+		CALL MAKE_FLOOR_LINE,11," 124 421 "
+		CALL MAKE_FLOOR_LINE,12," 1     1 "
+		CALL MAKE_FLOOR_LINE,13," 1111111 "
+		CALL MAKE_FLOOR_LINE,14,"     2   "
+		CALL MAKE_FLOOR_LINE,15,"     8   "
+		CALL MAKE_FLOOR_LINE,16,"         "
+	;労働者寮
+	CASE 3
+		FLAG:최대X = 9
+		FLAG:최대Y = 9
+;								012345678
+		CALL MAKE_FLOOR_LINE,0,"         "
+		CALL MAKE_FLOOR_LINE,1,"   4 4 4 "
+		CALL MAKE_FLOOR_LINE,2,"   2 2 2 "
+		CALL MAKE_FLOOR_LINE,3," C211111 "
+		CALL MAKE_FLOOR_LINE,4,"     2   "
+		CALL MAKE_FLOOR_LINE,5," 4211111 "
+		CALL MAKE_FLOOR_LINE,6,"   2 2 2 "
+		CALL MAKE_FLOOR_LINE,7,"   4 4 8 "
+		CALL MAKE_FLOOR_LINE,8,"         "
+
+	;発掘現場１Ｆ
+	CASE 4
+		FLAG:최대X = 9
+		FLAG:최대Y = 9
+;								012345678
+		CALL MAKE_FLOOR_LINE,0,"         "
+		CALL MAKE_FLOOR_LINE,1,"     1   "
+		CALL MAKE_FLOOR_LINE,2,"     2   "
+		CALL MAKE_FLOOR_LINE,3,"   11111 "
+		CALL MAKE_FLOOR_LINE,4,"   1   1 "
+		CALL MAKE_FLOOR_LINE,5," 111 1 1 "
+		CALL MAKE_FLOOR_LINE,6," 2 1 1 2 "
+		CALL MAKE_FLOOR_LINE,7," 7 121 8 "
+		CALL MAKE_FLOOR_LINE,8,"         "
+	;発掘現場Ｂ１Ｆ
+	CASE 5
+		FLAG:최대X = 17
+		FLAG:최대Y = 17
+;								 0         1
+;								 01234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"                 "
+		CALL MAKE_FLOOR_LINE, 1,"         6 1   1 "
+		CALL MAKE_FLOOR_LINE, 2,"         2 1   1 "
+		CALL MAKE_FLOOR_LINE, 3,"         1112111 "
+		CALL MAKE_FLOOR_LINE, 4,"         1   1   "
+		CALL MAKE_FLOOR_LINE, 5,"         1 111 3 "
+		CALL MAKE_FLOOR_LINE, 6,"         1 1   2 "
+		CALL MAKE_FLOOR_LINE, 7,"         1 1 DDD "
+		CALL MAKE_FLOOR_LINE, 8,"           2 D   "
+		CALL MAKE_FLOOR_LINE, 9," 111112DDDDD D   "
+		CALL MAKE_FLOOR_LINE,10," 2 111       D   "
+		CALL MAKE_FLOOR_LINE,11," 8 111 12DDDDDDD "
+		CALL MAKE_FLOOR_LINE,12,"   1   1     2   "
+		CALL MAKE_FLOOR_LINE,13," 321 1 11111 111 "
+		CALL MAKE_FLOOR_LINE,14,"     2 1 2 1   2 "
+		CALL MAKE_FLOOR_LINE,15,"     111 8 111 7 "
+		CALL MAKE_FLOOR_LINE,16,"                 "
+
+	;発掘現場Ｂ２Ｆ
+	CASE 6
+		FLAG:최대X = 17
+		FLAG:최대Y = 17
+;								 0         1
+;								 01234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"                 "
+		CALL MAKE_FLOOR_LINE, 1,"       111   1 6 "
+		CALL MAKE_FLOOR_LINE, 2,"       111   1 2 "
+		CALL MAKE_FLOOR_LINE, 3,"   3 D2111111111 "
+		CALL MAKE_FLOOR_LINE, 4,"   2 D   111     "
+		CALL MAKE_FLOOR_LINE, 5," 1 DDDDD 111 721 "
+		CALL MAKE_FLOOR_LINE, 6," 1   D 2       1 "
+		CALL MAKE_FLOOR_LINE, 7," 1112D 3 DDD23 1 "
+		CALL MAKE_FLOOR_LINE, 8," 111     DDD   1 "
+		CALL MAKE_FLOOR_LINE, 9," 11111 32DDD2111 "
+		CALL MAKE_FLOOR_LINE,10," 2         D     "
+		CALL MAKE_FLOOR_LINE,11," 8 1 12111 DDD   "
+		CALL MAKE_FLOOR_LINE,12,"   1   111   D   "
+		CALL MAKE_FLOOR_LINE,13," 12111111111 D   "
+		CALL MAKE_FLOOR_LINE,14,"     111 2 1 2   "
+		CALL MAKE_FLOOR_LINE,15,"     111 8 11111 "
+		CALL MAKE_FLOOR_LINE,16,"                 "
+
+	;発掘現場Ｂ３Ｆ
+	CASE 7
+		FLAG:최대X = 17
+		FLAG:최대Y = 9
+;								 0         1
+;								 01234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"                 "
+		CALL MAKE_FLOOR_LINE, 1," 42D       126   "
+		CALL MAKE_FLOOR_LINE, 2,"   DDDDD   1     "
+		CALL MAKE_FLOOR_LINE, 3,"   DDDDD   111   "
+		CALL MAKE_FLOOR_LINE, 4,"   DDDDD     1   "
+		CALL MAKE_FLOOR_LINE, 5," 32DDDDDDDDD2111 "
+		CALL MAKE_FLOOR_LINE, 6,"   DDD       1   "
+		CALL MAKE_FLOOR_LINE, 7,"   DDD   12111   "
+		CALL MAKE_FLOOR_LINE, 8,"                 "
+
+	;強制収容所１Ｆ
+	CASE 8
+		FLAG:최대X = 25
+		FLAG:최대Y = 25
+;								 0         1         2
+;								 0123456789012345678901234
+		CALL MAKE_FLOOR_LINE, 0,"                         "
+		CALL MAKE_FLOOR_LINE, 1," 82111 121111111111111   "
+		CALL MAKE_FLOOR_LINE, 2,"     1 1 1 2 2 1 2 2 1   "
+		CALL MAKE_FLOOR_LINE, 3," 11121 1 1 1 1 1 1 1 1   "
+		CALL MAKE_FLOOR_LINE, 4," 1   1 1 1     1     1   "
+		CALL MAKE_FLOOR_LINE, 5," 126 1 1 1 1 1 1 1 1 111 "
+		CALL MAKE_FLOOR_LINE, 6,"       1 1 2 2 1 2 2 1 2 "
+		CALL MAKE_FLOOR_LINE, 7," 1111111 1111111111111 6 "
+		CALL MAKE_FLOOR_LINE, 8," 2                       "
+		CALL MAKE_FLOOR_LINE, 9," 1111111                 "
+		CALL MAKE_FLOOR_LINE,10,"   111                   "
+		CALL MAKE_FLOOR_LINE,11," 4211124                 "
+		CALL MAKE_FLOOR_LINE,12,"   111                   "
+		CALL MAKE_FLOOR_LINE,13," 4211124                 "
+		CALL MAKE_FLOOR_LINE,14,"   111                   "
+		CALL MAKE_FLOOR_LINE,15," 1111111                 "
+		CALL MAKE_FLOOR_LINE,16,"   111                   "
+		CALL MAKE_FLOOR_LINE,17," 1211124                 "
+		CALL MAKE_FLOOR_LINE,18,"   111                   "
+		CALL MAKE_FLOOR_LINE,19," 4211124                 "
+		CALL MAKE_FLOOR_LINE,20,"   111                   "
+		CALL MAKE_FLOOR_LINE,21," 1111111                 "
+		CALL MAKE_FLOOR_LINE,22,"     2                   "
+		CALL MAKE_FLOOR_LINE,23,"     8                   "
+		CALL MAKE_FLOOR_LINE,24,"                         "
+
+	;強制収容所２Ｆ
+	CASE 9
+		FLAG:최대X = 25
+		FLAG:최대Y = 9
+;								 0         1         2
+;								 0123456789012345678901234
+		CALL MAKE_FLOOR_LINE, 0,"                         "
+		CALL MAKE_FLOOR_LINE, 1," 9 11121111111 1111111   "
+		CALL MAKE_FLOOR_LINE, 2," 2 2 1 1 2 2 2 2 2 2 1   "
+		CALL MAKE_FLOOR_LINE, 3," 1 1 1 1 1 1 4 1 1 1 1   "
+		CALL MAKE_FLOOR_LINE, 4," 1   1 1             1   "
+		CALL MAKE_FLOOR_LINE, 5," 1 721 1 1 1 1 1 1 1 111 "
+		CALL MAKE_FLOOR_LINE, 6," 2     1 2 2 2 2 2 2 1 2 "
+		CALL MAKE_FLOOR_LINE, 7," 1111111111111 1111111 7 "
+		CALL MAKE_FLOOR_LINE, 8,"                         "
+
+	;地下通路Ｂ１Ｆ
+	CASE 10
+		FLAG:최대X = 9
+		FLAG:최대Y = 9
+;								012345678
+		CALL MAKE_FLOOR_LINE,0,"         "
+		CALL MAKE_FLOOR_LINE,1," 1111111 "
+		CALL MAKE_FLOOR_LINE,2," 1 1   2 "
+		CALL MAKE_FLOOR_LINE,3," 1 9 1 1 "
+		CALL MAKE_FLOOR_LINE,4," 1   1   "
+		CALL MAKE_FLOOR_LINE,5," 1 12111 "
+		CALL MAKE_FLOOR_LINE,6," 2   1 2 "
+		CALL MAKE_FLOOR_LINE,7," 11111 8 "
+		CALL MAKE_FLOOR_LINE,8,"         "
+
+	;地下通路Ｂ７Ｆ
+	CASE 11
+		FLAG:최대X = 33
+		FLAG:최대Y = 33
+;								 0         1         2         3
+;								 012345678901234567890123456789012
+		CALL MAKE_FLOOR_LINE, 0,"                                 "
+		CALL MAKE_FLOOR_LINE, 1," 1111121 111111111 111 1 1111111 "
+		CALL MAKE_FLOOR_LINE, 2," 1     1 1 2     1 1 2 1   111 2 "
+		CALL MAKE_FLOOR_LINE, 3," 123 111 1 11121 121 3 121 111 9 "
+		CALL MAKE_FLOOR_LINE, 4,"     1   1     1 1 1   1 1   1   "
+		CALL MAKE_FLOOR_LINE, 5," 11111 1 123 111 1 1 1 1 1 1 1 1 "
+		CALL MAKE_FLOOR_LINE, 6," 1     1 1   2 1   1 2 1 1 2 2 2 "
+		CALL MAKE_FLOOR_LINE, 7," 1111111 1 111 1 1 111 1 1 11111 "
+		CALL MAKE_FLOOR_LINE, 8,"       2 1 111   1   1 1 1 1   1 "
+		CALL MAKE_FLOOR_LINE, 9," 111111111 111 121 1 1 1 121 1 1 "
+		CALL MAKE_FLOOR_LINE,10," 1       1 2   1 1 2 1 1   1 2 1 "
+		CALL MAKE_FLOOR_LINE,11," 1 111 1 1 111 1 111 1 1 1 111 1 "
+		CALL MAKE_FLOOR_LINE,12," 1   1 2 1     1 1   1 1 2 111 2 "
+		CALL MAKE_FLOOR_LINE,13," 1 321 111 1 111 1 111 1 11111 1 "
+		CALL MAKE_FLOOR_LINE,14," 1   1     2 1   1 1   1     2   "
+		CALL MAKE_FLOOR_LINE,15," 1 11111111111 9 121 321 123 111 "
+		CALL MAKE_FLOOR_LINE,16," 1       2     2         1   111 "
+		CALL MAKE_FLOOR_LINE,17," 1 11111 11111 1 1111111 1111111 "
+		CALL MAKE_FLOOR_LINE,18," 2 1   1 1   1 1 1   2   1     1 "
+		CALL MAKE_FLOOR_LINE,19," 111 1 1 121 1 1 1 111 121 121 1 "
+		CALL MAKE_FLOOR_LINE,20," 1   2 1 1   1 2 1 1   1   1   1 "
+		CALL MAKE_FLOOR_LINE,21," 1 111 1 121 1 1 1 1 1 1 111 111 "
+		CALL MAKE_FLOOR_LINE,22," 2 1   1 1   1 2 1 1 2 1 111 111 "
+		CALL MAKE_FLOOR_LINE,23," 1 12111 123 11111 111 1 111 111 "
+		CALL MAKE_FLOOR_LINE,24,"   1               1   1 2 1   2 "
+		CALL MAKE_FLOOR_LINE,25," 111 1111124 1 4 111 111 4 11111 "
+		CALL MAKE_FLOOR_LINE,26," 1   1 2     1 2 1   1 2 2     1 "
+		CALL MAKE_FLOOR_LINE,27," 1 321 1 11111 1 1 111 1 1 111 1 "
+		CALL MAKE_FLOOR_LINE,28," 1     1 1 2 1 2 1   2 1 1 1 2 1 "
+		CALL MAKE_FLOOR_LINE,29," 1111111 1 1 1 1 111 1 1 1 1 1 1 "
+		CALL MAKE_FLOOR_LINE,30," 1       1   1 2   1   1 2 1   1 "
+		CALL MAKE_FLOOR_LINE,31," 121112111 11121 1211111 9 11121 "
+		CALL MAKE_FLOOR_LINE,32,"                                 "
+;								 012345678901234567890123456789012
+;								 0         1         2         3
+		DA:15:22 += 11000
+		DA:29:6 += 11010
+		DA:29:14 += 11020
+		DA:31:24 += 11030
+ENDSELECT
+
+;=======================================================================
+;特殊タイル표시
+;=======================================================================
+@TILE_MARK_COMMON_28_0, ARG , ARG:1 , ARG:2
+SELECTCASE ARG / 10
+	CASE 1
+		RESULTS = 　
+	CASEELSE
+		RETURN 1
+ENDSELECT
+
+@TILE_MARK_COMMON_28_1, ARG , ARG:1 , ARG:2
+IF FLAG:現M == 0
+	SELECTCASE ARG:2
+		CASE IS > 30
+			SETCOLOR 0x441100
+		CASE IS >= 26
+			SETCOLOR 0x663300
+		CASE 25
+			IF GROUPMATCH(ARG:1, 10, 11)
+				SETCOLOR 0x996600
+			ELSE
+				SETCOLOR 0x663300
+			ENDIF
+		CASE 24
+			IF GROUPMATCH(ARG:1, 31, 32)
+				SETCOLOR 0x663300
+			ELSE
+				SETCOLOR 0x996600
+			ENDIF
+		CASE IS >= 22
+			SETCOLOR 0x996600
+		CASE 21
+			SIF GROUPMATCH(ARG:1, 14, 15 , 22 , 23 , 30 , 31)
+				RETURN 1
+			SETCOLOR 0x996600
+		CASEELSE
+			RETURN 1
+	ENDSELECT
+	RESULTS = ::
+ELSE
+	RETURN 1
+ENDIF
+
+@TILE_MARK_COMMON_28_9, ARG , ARG:1 , ARG:2
+SELECTCASE ARG / 10
+	;寮
+	CASE 0
+		RESULTS = 寮
+	;メシア教会
+	CASE 2
+		RESULTS = %UNICODE(0x2020)%
+	;タウン
+	CASE 3
+		RESULTS = 街
+	CASE 1 , 4 TO 12
+		RESULTS = 入
+	CASE 1100 , 1101 , 1102
+		RESULTS = Ｅ
+	CASEELSE
+		RETURN 1
+ENDSELECT
+
+@TILE_MARK_COMMON_28_2, ARG , ARG:1 , ARG:2
+SELECTCASE ARG / 10
+	CASE 1
+		IF BASE:MASTER:지혜 >= 10
+			RETURN 1
+		ELSE
+			RESULTS = ■
+		ENDIF
+	CASEELSE
+		RETURN 1
+ENDSELECT
+
+@TILE_MARK_COMMON_28_4, ARG , ARG:1 , ARG:2
+SELECTCASE ARG / 10
+	;メッセンジャー
+	CASE 0, 2
+		SETCOLOR 0x00ff00
+		RESULTS = ｍ
+	CASE 1
+		RESULTS = 牧
+	CASE 310
+		RESULTS = CB
+	CASEELSE
+		RETURN 1
+ENDSELECT
+
+;=======================================================================
+;タイル定義
+;=======================================================================
+@DEFINE_TILES_28, ARGS, ARG, ARG:1
+SELECTCASE ARGS
+	CASE "h"
+		RETURN 10
+	CASE "A"
+		RETURN 12
+	CASE "C"
+		RETURN 3104
+ENDSELECT
+
+;=======================================================================
+;タイル調整
+;=======================================================================
+@MAKE_FLOOR_LINE_COMMON_28, ARG, ARG:1, ARG:2
+#LOCALSIZE 30
+;LOCAL:3 宝箱 던전フラグ:84~99
+;LOCAL:4 이벤트
+;(0/0)でLOCALを소거
+SIF ARG:1 == 0 && ARG:2 == 0
+	VARSET LOCAL
+SELECTCASE ARG
+	CASE 3
+		IF GETBIT(던전フラグ:(FLAG:現던전):(FLAG:現M+70), LOCAL:3)
+			DA:(ARG:1):(ARG:2) = 1
+		ELSE
+			DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:3 * 10 + 3
+		ENDIF
+		LOCAL:3++
+	CASE 4
+		IF (FLAG:現M *1000 + LOCAL:4 * 10 + 4 == 11024) && 던전フラグ:[[던전:팩토리]]:4 == 1
+			;ヤヌス倒してる場合はヤヌスのタイルはスキップ
+			DA:(ARG:1):(ARG:2) = 1
+		ELSE
+			DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:4 * 10 + 4
+		ENDIF
+		LOCAL:4++
+	CASE 5
+		;DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:5 * 10 + 5
+		;LOCAL:5++
+	CASE 6
+		DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:6 * 10 + 6
+		LOCAL:6++
+	CASE 7
+		DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:7 * 10 + 7
+		LOCAL:7++
+	CASE 8
+		DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:8 * 10 + 8
+		LOCAL:8++
+	CASE 9
+		DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:9 * 10 + 9
+		SELECTCASE DA:(ARG:1):(ARG:2) / 10
+			CASE 100
+				DA:(ARG:1):(ARG:2) = 11009
+			CASE 900
+				DA:(ARG:1):(ARG:2) = 11019
+			CASE 1000
+				DA:(ARG:1):(ARG:2) = 11029
+		ENDSELECT
+		LOCAL:9++
+	
+ENDSELECT
+SIF FLAG:現M == 0 && RANGE(ARG:1 , 17 , 23) && RANGE(ARG:2 , 2 , 10) && BASE:MASTER:지혜 < 10
+	DA:(ARG:1):(ARG:2) = 0
+	
+
+;=======================================================================
+;[5]調べる　実行時の이벤트
+;=======================================================================
+@EVENT_CHECK_DUNGEON_28
+CALL EVENT_DUNGEON_28
+RETURN RESULT
+
+
+;=======================================================================
+;タイル進入時の이벤트
+;=======================================================================
+@EVENT_ENTER_DUNGEON_28,ARG
+;ARG = 進入時の向き　0の場合ワープなど
+CALL EVENT_DUNGEON_28, ARG
+RETURN RESULT
+
+@EVENT_DUNGEON_28, ARG
+#DIM 交渉可能キャラ , 7
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y) % 10
+;==========
+;出입の処理
+;==========
+	CASE 8
+		CALL MESSAGE_WINDOW_D, "", "출구가 있다。밖으로 나갑니까？"
+		CALL INPUT_YN_D
+		IF RESULT == 0
+			SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+				CASE 300
+					;労働者寮
+					CALL DUNGEON_WORP_ID, 0 , 9 , 1
+				;CASE 1200
+				;	;監視塔
+				;	CALL DUNGEON_WORP_ID, 0 , 9 , 1
+				CASE 100
+					;メシア教会
+					CALL DUNGEON_WORP_ID, 0 , 29 , 1
+				CASE 200
+					;タウン
+					CALL DUNGEON_WORP_ID, 0 , 39 , 1
+				CASE 400
+					;発掘現場１Ｆ
+					CALL DUNGEON_WORP_ID, 0 , 49 , 1
+				CASE 500
+					;発掘現場Ｂ１Ｆ−１
+					CALL DUNGEON_WORP_ID, 0 , 69 , 1
+				CASE 501
+					;発掘現場Ｂ１Ｆ−２
+					CALL DUNGEON_WORP_ID, 0 , 79 , 1
+				CASE 801
+					;強制収容所１Ｆ表입
+					CALL DUNGEON_WORP_ID, 0 , 89 , 1
+				CASE 600
+					;発掘現場Ｂ１Ｆ−１
+					CALL DUNGEON_WORP_ID, 0 , 99 , 1
+				CASE 601
+					;発掘現場Ｂ１Ｆ−２
+					CALL DUNGEON_WORP_ID, 0 , 109 , 1
+				CASE 800
+					;強制収容所１Ｆ裏입
+					CALL DUNGEON_WORP_ID, 0 , 119 , 1
+				CASE 1000
+					;地下通路Ｂ１Ｆ
+					CALL DUNGEON_WORP_ID, 0 , 129 , 1
+			ENDSELECT
+		ENDIF
+		IF FLAG:現Y >= 31 && !GETBIT(던전フラグ:[[던전:팩토리]]:8 , 2)
+			FOR LOCAL , 31 , 38
+				FOR LOCAL:1 , 0 , 41
+					CALL SET_FLOOR_ANALYZE, 2 , [[던전:팩토리]] , 0 , LOCAL:1, LOCAL
+				NEXT
+			NEXT
+			SETBIT 던전フラグ:[[던전:팩토리]]:8 , 2
+		ENDIF
+		IF !GETBIT(던전フラグ:[[던전:팩토리]]:8 , 1)
+			IF BASE:MASTER:지혜 >= 10
+				CALL MESSAGE_WINDOW_D , "" , "＞어디선가 난데없이 노래소리와도 같은 교성이라고도 부르기 어려운 소리가 들려온다……/＞듣고 있으니、몸의 안쪽이 뜨거워지는 것 같은 느낌이 든다"
+			ELSE
+				CALL MESSAGE_WINDOW_D , "" , "＞왠지、몸의 안쪽이 차근차근 열기를 띠기 시작했다……"
+			ENDIF
+			SETBIT 던전フラグ:[[던전:팩토리]]:8 , 1
+		ENDIF
+		RETURN 1
+;========
+;宝の処理
+;========
+	CASE 3
+		CALL TREASURE_28
+		RETURN 1
+	
+;=======
+;階段
+;=======
+	CASE 6
+		CALL UPSTAIRS_28
+		RETURN 1
+
+	CASE 7
+		CALL DOWNSTAIRS_28
+		RETURN 1
+
+;==========
+;扉の処理
+;==========
+	CASE 2
+		CALL DUNGEON_DOOR,ARG
+		RETURN 1
+
+;========================
+;이벤트
+;========================
+	CASE 4
+		SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+			;
+			CASE 0
+				;街머리ヴィジョン
+				CALL MESSAGE_WINDOW_D , "" , "＞도시의 길거리에 있는 비젼에 뉴스가 흐르고 있다"
+				CALL MESSAGE_WINDOW_D , "" , "＞……특별히 바뀐 것은 없는 것 같다"
+				
+			CASE 1
+				CALL MESSAGE_WINDOW_D, "", "＞데미난디 목장"
+				CALL MESSAGE_WINDOW_D, "", "＞널찍한 목장 안 여기저기에서、알몸의 여성들이 소를 닮은 악마들에게 범해지고 있다……"
+				CALL MESSAGE_WINDOW_D, "", "＞범해지고 있는 여성들은 각각 교성을 내며、/　전원 모두 악마의 남근을 기뻐하며 받아들이고 있는 것 같다" , "/"  , "로그를 남기지 않는다/버튼을 이용한다/재이용한다"
+				CALL MESSAGE_WINDOW_D, "", "＞여성 중 반수 이상은 하복부가 부풀어 올랐고 유방에는 착유기가 장착되고 있었다" , "/"  , "로그를 남기지 않는다/버튼을 이용한다/재이용한다"
+				IF 던전フラグ:[[던전:팩토리]]:5 == 3
+					CALL MESSAGE_WINDOW_D, "", "＞목장의 한 쪽에는 히메미야 키쿠에가 데미난디에게 범해지고 있었다……"
+					CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"앗%ハート()% 하앗%ハート()%/좀 더、보지에、정액을 주세요%ハート()%/임신시켜 주세요%ハート()%"
+					CALL MESSAGE_WINDOW_D, "", "＞악마와의 정사에 열중하고 있는 것 같다……"
+					CALL INPUT_YN_D, "데리고 나간다" , "떠난다"
+					IF RESULT == 0
+						CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"……！？/그만둬！ 나를 어디로 데리고 갈 생각입니까！？"
+						CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"나에게는 여기서 데미난디의 아이를 낳을 숭고한 사명이…………/아、앗%ハート()%/가、가요 뜨거운 정액이、보지에 정액이 잔뜩……%ハート()%"
+						CALL MESSAGE_WINDOW_D, "", "＞저항받아 버렸다…/＞제정신을 되찾지 못하면 데리고 나가는 것은 어려울 것 같다"
+					ELSE
+						CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"응、야앗♥/정액、정액이 잔뜩、두꺼운 것이 벌컥벌컥………%ハート()%"
+						CALL MESSAGE_WINDOW_D, "", "＞배 안에 정액이 토해지는 감각에 기뻐하는 키쿠에를 남겨 두고 떠났다……"
+						
+					ENDIF
+				;洗脳完了（まだ인간）
+				ELSEIF 던전フラグ:[[던전:팩토리]]:5 == 4
+					CALL MESSAGE_WINDOW_D, "", "＞목장의 한 구석에서、추접스러운 누더기를 걸친 여자가、/　데미난디와 격렬하게 허리를 부딪치고 있다……"
+					CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"아힛%ハート()%　우기잇%ハート()%/안돼、안 됩니다、아기、찌부러저요！/나、난폭하게 굴지 말아요？　모처럼、이제 곧、나도 낳을 수 있는데%ハート()%"
+					CALL MESSAGE_WINDOW_D, "", "＞그 뱃속은、터질 듯이 부풀어 있었다。/＞애를 배고 있는 것일 테지。/＞다만、그 부푼 곳은 모체를 짓누를 듯하게 크게、/　몇 개의『무언가』의 머리가、/　불룩한 배 밑에서 거품이 일듯 서로 꿈틀거리고 있었다。"
+					CALL INPUT_YN_D, "관찰한다" , "말을 건다"
+					IF RESULT == 0
+						CALL MESSAGE_WINDOW_D, "", "＞키쿠에는、기쁜 듯이 헐떡거리면서、거무스름하게 부어오른 비부로 황소의 육봉을 꽉 깨물고 있다……/＞건초와 분뇨가 섞인 비린내가 진동하고 있었다。/＞그것은、대부분은 데미난디에게 문질러진 것들이었지만、/　몇 개는、키쿠에의 엉덩이와 다리、입속에서 감돌고 있었다。"
+						CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"힛、히잇！　배、배를 차고 있어……！/빨리 낳고 싶어%ハート()%　낳고싶어 낳고싶어%ハート()%/송아지를 낳고 또 임신하고 싶어%ハート()%　누구보다도、누구보다도 많이 임신할 거야%ハート()%/나는 난자를 전부 꺼내어 강하고 늠름한 수컷에게 바치는 것이 사명이니까、아앗%ハート()%%ハート()%%ハート()%"
+						CALL MESSAGE_WINDOW_D, "", "＞진지한 얼굴로、마음이 망가졌을 뿐만 아니라 털이 수북해진 몸을 흔들면서、/　히메미야 키쿠에는 황소의 페니스를 조였다。/＞황소는 으르렁 하고 우렁차게 외치더니、/　그 경트럭 같은 몸으로 키쿠에의 몸을 짓누르고、/　페니스를 꽉하고 안쪽까지 비틀어 박았다。"
+						CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"오게엣！？　우구구、구헤에에에……！？/아기……흘러……버려……%ハート()%/후、후고오오옷!!!"
+						CALL MESSAGE_WINDOW_D, "", "＞자그마한 코에서 성대하게 콧물을 내뿜었다。/＞이래서는 구제할 도리가 없다/＞흰눈을 부릅뜨고 보기 흉하게 절정된 키쿠에를 남기고、당신은 그 자리를 떠났다"
+					ELSE
+						CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"아……죄송하、지만、아앙%ハート()%/이런、상스러운、모습으、로……/밥먹을 시간이네요？　영차、여엉-차、/아앙%ハート()%"
+						CALL MESSAGE_WINDOW_D, "", "＞키쿠에는 입을 크게 벌렸다。/＞그리고、스스로의 두 손으로 입꼬리를 꾹 잡아당기면서、/　혀를 날름 늘어뜨렸다。/＞……암모니아와 건초 발효 냄새가 났다。"
+						;あなたのチンコチェック
+						IF TALENT:MASTER:남자 || TALENT:MASTER:후타나리
+							CALL INPUT_YN_D, "페니스를 내민다" , "그렇군、근처에 건초가 놓여있구나!"
+						;ちんこが無ければ差し出せない
+						ELSE
+							RESULT = 1
+						ENDIF
+						;짐コ出した
+						IF RESULT == 0
+							CALL MESSAGE_WINDOW_D, "", "＞당신이 내민 페니스에 키쿠에는 주저없이 달라붙었다"
+							CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"후츕！　츄루우……츄부웁……쭙……！/좋아、좋아해요、이 맛%ハート()%/하아아、부탁합니다、좀 더……%ハート()%/무구……무구……무구……"
+							CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"푸핫！　하아아、하아아！/……죄송합니다、배가 고파서、견딜 수 없어서、/죄、죄송합니다만 얼른 자비를……이대로는 저……/아무웃……응응읏……쮸루우웁!!"
+							CALL MESSAGE_WINDOW_D, "", "＞필사적으로 달라붙는 그녀의 얼굴은 심하게 인중이 뻗쳐있어서、/　개인가、말인가――아니면 소인가、/　아무튼、인간으로는、보이지 않았다。"
+							CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"아아……부탁드려요……！/얼른、저에게 당신의 더러움을!　『어느쪽이라도』상관없으니까요!"
+							CALL INPUT_YN_D, "머리를 잡고 이라마치오한다" , "오줌을 선사한다"
+							;イラマ
+							IF RESULT == 0
+								CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"오무웃！？　에겟、응고……옷%ハート()%"
+								CALL MESSAGE_WINDOW_D, "", "＞엉켜버린、윤기 없어진 검은 머리를 움켜쥐고、당신은 키쿠에의 목구멍을 찔렀다。/＞뱀처럼 꼬여오는 혀와 펌프처럼 꾸물거리는 목살(喉肉)이、/　당신의 육봉을 절정으로 끌어올려 간다。"
+								CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"푸하앗!　아아、많이 베풀어 주세요%ハート()%/저는 갖고 싶습니다%ハート()%　불알 안의 모든 것을 갖고 싶습니다%ハート()%/부탁이에요、/당신의 열정을、전부、저언부、저의 몸에 끼얹어주세요%ハート()%"
+								CALL MESSAGE_WINDOW_D, "", "＞스스로 목구멍으로 수컷의 성기를 집어넣는 모습은、/　자진해서 호스를 물고 푸아그라가 되러 가는/　어리석은 오리를 많이 닮았다。"
+								CALL MESSAGE_WINDOW_D, "", "＞당신은 키쿠에의 머리를 위로 향하게 하여、목구멍의 가장 깊은 곳에 물건을 넣으면서、/　그녀의 얼굴에 배를 눌러붙이면서 사정했다。"
+								CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"고큐우%ハート()%　고큐우%ハート()%　고큐우%ハート()%"
+								CALL MESSAGE_WINDOW_D, "", "＞키쿠에가 목을 움직일 때마다、딱딱 하고 그녀의 뼈가 울렸다。/　체모와 체취가 조금 짙어진 것 같다"
+								CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"하아、하아、부루룻……/저는 암소(牝牛)、신으로부터 선별된 암소 0013호%ハート()%/저의 사명은 송아지를 잉태시키는 것……/저의 사명은 난자를 모두 강한 수컷에게 바치는 것……부뭇%ハート()%"
+								CALL MESSAGE_WINDOW_D, "", "＞당신은、불결한 두피의 기름과 냄새가 묻은 손을 그 언저리에 문질러주면서、/　커져버린 배를 두 손으로 잡고 질질 끌듯이 이동하면서、다음 페니스를 찾는 히메미야 키쿠에를/　어떻게 된 걸까 하고 잠시 바라보았다……"
+							;방뇨
+							ELSE
+								CALL MESSAGE_WINDOW_D, "", "＞당신은 아랫배에 힘을 주었다"
+								CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"흐붓!?　……응무웃、응무웃、응뭇"
+								CALL MESSAGE_WINDOW_D, "", "＞키쿠에는 한순간 겁을 먹었지만、곧 필사적인 얼굴이 되어、당신의 허리에 매달렸다。/　그리고、한 방울 남김없이 당신의 오수를 뱃속에 담으면、/「게에에에에……푸」하고 괴물 같은 트림을 했다。"
+								CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"우푸웃、부부부……/죄송합니、다……게부웃!　처、천하다니、알고 있기 때문에――게부우웃!/……알고 있습니다만、/건초(干し草)의……우풋、소화에……오줌이 필요……게에에에에붓%ハート()%"
+								CALL MESSAGE_WINDOW_D, "", "＞보훗 하고、변기에서 발효시킨 맥주와 같은 악취를 입 밖으로 내면서 대화가 끊겼다"
+								CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"――에헤헤、헤헤헤헤、헤헤에헤헤헤헤%ハート()%%ハート()%%ハート()%"
+								CALL MESSAGE_WINDOW_D, "", "＞뱃속에서 술이라도 만들고 있는 걸까?/＞당신은 물티슈로 페니스를 청소한 뒤、/　허공을 보며 웃는 키쿠에를 등진 채、툭툭 하고、옷에 묻은 악취를 털어 냈다……"
+							ENDIF
+						;干し草を出した
+						ELSE
+							CALL MESSAGE_WINDOW_D, "", "＞당신이 건초 한 송이를 꺼내자、키쿠에는 파스타처럼 빨아올렸다。"
+							CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"질겅、질겅……。/저、저기、죄송합니다만、/조금만 더 묶음으로 주시면、고맙겠습니다……?"
+							CALL MESSAGE_WINDOW_D, "", "＞주뼛주뼛하는 표정으로 간청했기 때문에、/　건초를 손바닥 가득 쥐고 키쿠에 앞에 내밀었다"
+							CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"와아……%ハート()%/자、잘 먹겠습니다!　질겅、질겅、쩌업……쩝……쩌업……/아아、맛있어、건초 맛있어요오……%ハート()%"
+							CALL MESSAGE_WINDOW_D, "", "＞뚝뚝 하고、타액을 입꼬리로 흘리면서、/　히메미야 키쿠지는 햄스터처럼 건초를 베어 물었다/＞이 풀、혹시 마약인가?/＞그녀는 금세 만취하여 큰 배를 안고 그 자리에 풀썩 주저앉았다"
+							CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"쩌업……쩝쩝……/건초……맛있어……쩌업……게붓……%ハート()%"
+							CALL MESSAGE_WINDOW_D, "", "＞키쿠에는 허공을 바라보며 진짜 소처럼、/　한 번 삼킨 것을 입속에서 되새기기 시작했다。/＞신맛 나는 악취를 견딜 수 없어 당신은 재빨리 그 자리를 떠났다……"
+						ENDIF
+						
+					ENDIF
+				;半分牛
+				ELSEIF 던전フラグ:[[던전:팩토리]]:5 == 5
+					CALL MESSAGE_WINDOW_D, "", "＞목장 한 구석에서 데미난디가 기묘한 생물과 어울리고 있다……"
+					CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"후웃%ハート()% 하읏%ハート()%/좀 더、하는 겁니다、후웃!/저의 사명은 새끼를 낳는 것!/이 태아의 난자를 모두 사용할 때까지 쉴 수는 없습니다、후고옷%ハート()%"
+					CALL MESSAGE_WINDOW_D, "", "＞쇠뿔을 가지고 온몸을 검은 털로 뒤덮은 커다란 몸뚱이 생물이었다。/＞그것은 사람 형상을 하고 있었지만 골격이 뒤틀려 있어 걷기 힘들 것 같았다。/＞갈기갈기 찢어진 무녀복과 털북숭이면서도 간신히 모습이 남은 얼굴로、/　그것이 히메미야 키쿠에의 몰골인 것은 이해할 수 있었다。"
+					CALL INPUT_YN_D, "데리고 나가볼까?" , "잠자코 바라볼까?"
+					IF RESULT == 0
+						CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"……！？/싫어요、부뭇!　저는 아직 낳을 수 있습니다、고기는 되고 싶지 않습니다!/놔주세요、싫어어어!　부뭇!/브오오오오오오오!!!"
+						CALL MESSAGE_WINDOW_D, "", "＞대화가 안 된다……/＞당신은 이 소가 크게 울면서 날뛰기 전에 거리를 두었다"
+						CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"이 큰 배가 보이지 않다니、이 얼마나 어리석은 인간인가!/불쾌합니다、후슈루루……!"
+						CALL MESSAGE_WINDOW_D, "", "＞이제 와서 세뇌를 풀어도 소용이 없을 것이다。/＞사람의 마음은 커녕 사람의 모습까지 잃어가는 키쿠에를 바라보며、/　당신은 그 자리를 떠났다……"
+					ELSE
+						CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"부뭇%ハート()%/조、좀 더、부딛혀어、부딛혀버려!!!/아기씨、아기씨、수컷의 아기씨이이이……부오오오오오오옷%ハート()%"
+						CALL MESSAGE_WINDOW_D, "", "＞태내에 정액이 뿜어져 나올 때마다 그녀의 몸이 술렁거렸다。/＞지끈지끈 하고 고기가 찢어진다。/　골격이 삐걱삐걱 소리를 내며 그 체격이 커져 간다。/＞높은 영력이 마이너스가 되었는가、/　그녀는 사정될 때마다 마수에 근접하는 것처럼 보였다。"
+						CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"도망치지 말아주세요、후굿、한가하시다면 빨아주세요!"
+						CALL MESSAGE_WINDOW_D, "", "＞사람의 머리 정도는 여유있게 들어갈 정도로 발달된 대음순에 한 마리 수컷을 문 채/　키쿠에는 한 마리에게 질질 달라붙은 다음、/　뿔을 부딪쳐 쓰러뜨렸다、/　비명을 지르는 황소의 다리를 억지로 벌리고 잽싸게 잔학한 펠라치오를 시작했다"
+						CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"하붓!　부뭇、쮸보보보보보옷!/허리를 흔들어라!　허리를 부딛혀라!　내가 말한 대로 사정해라!/후슈우룻……얇아……부족해……이놈 저놈 할 것 없이 연약한 수컷뿐……/이래서는 새끼를 낳을 수 없습니다!　부오오오오오오오오오오오오!"
+						CALL MESSAGE_WINDOW_D, "", "＞사람의 모습은 커녕、/　사람의 마음까지 잃어가고 있는 키쿠에를 곁눈질로 보며、/　당신은 그 자리를 떠났다……"
+					ENDIF
+				;牛
+				ELSEIF 던전フラグ:[[던전:팩토리]]:5 == 6
+					CALL MESSAGE_WINDOW_D, "", "＞목장 한 구석에서 데미난디끼리 어울리고 있다……"
+					CALL MESSAGE_WINDOW_D, "퀸・데미난디", @"후고오오오오!!!/약한 아기씨로는、잉태되지 않아!!!/후루룩……강한 수컷……강한 수컷……!　후슈루루루웃!"
+					CALL MESSAGE_WINDOW_D, "", "＞굵게 휘어진 뿔과 검고 긴 뻣뻣한 털로 전신을 감싼 굉장히 큰 소였다。/＞몸이 다른 개체보다 2배나 컸기 때문에 틀림없이 황소인 줄 알았는데、/＞아직도 털에 휘감기는 홍백의 천조각과、약간 섞인 사람의 목소리로、/＞그것이 히메미야 키쿠에의 몰골이라고 추측할 수 있었다。"
+					CALL MESSAGE_WINDOW_D, "퀸・데미난디", @"저！　낳겠어요!　사명(使命)!/약한 수컷、필요 없어!/사명、완수、할 수 없다!!!/후고고……방해입니다、죽어어어!"
+					CALL MESSAGE_WINDOW_D, "", "＞대포 같은 뒷차기가 수놈의 안면을 아래에서 걷어 올렸다/＞그것만으로 데미난디는 휙 머리를 튕겨서、/＞잠시 동안 공중 부양을 즐긴 후、꽝 하고 땅에 떨어져 스스로의 체중으로 잠자리에 들었다。"
+					CALL MESSAGE_WINDOW_D, "퀸・데미난디", @"후굿、후고오오오오!　낳을거야!　낳을 거에요!!!/저、배가、비었어요!　임신、하고 싶은데……/후고오오……자지、자지이、/자지이이이이이이이!!!"
+					CALL INPUT_YN_D, "갖고싶은데 이거" , "내버려 두자"
+					IF RESULT == 0
+						CALL MESSAGE_WINDOW_D, "", "＞절규하는 괴물 소를 당신이 탐나는 듯이 바라보고 있으면、/　팩토리 직원이 말을 걸어왔다"
+						CALL MESSAGE_WINDOW_D, "직원", @"당신、데빌 서머너인가?/마침 잘됐군!　저 괴물을 데려가주게!/이제 새끼를 배지 않으니까 슬슬 처분하고 싶은데、/보다시피 엉망진창이라서 말이지、감당할 수 없단 말이야"
+						CALL MESSAGE_WINDOW_D, "", "＞좋은 모체였지만 다음 씨받이도 확보할 수 있었고……/＞라고 직원은 난처한 듯이 말했다。"
+						CALL MESSAGE_WINDOW_D, "직원", @"아니 말야、사실은 딱 도살해서、“본보기로 삼았어야 했어。그치만 말야……/자、또 한 마리 찢겨 죽었다。/이제 템플 나이트도 감당할 수 없어、/지금은 어떻게든 격리를 하고 있지만、이미 시간문제야"
+						CALL MESSAGE_WINDOW_D, "퀸・데미난디", @"강한 수컷、낳는다、저、사명……"
+						CALL MESSAGE_WINDOW_D, "직원", @"제발、부탁이야!　보수는 후하게 쳐줄 테니까 말이야!"
+						CALL INPUT_YN_D, "해보자고" , "나하고는 상관없어"
+						IF RESULT == 0
+							CALL MESSAGE_WINDOW_D, "", "＞당신은 무기를 잡고、퀸・데미난디의 우리 안으로、당당하게 들어갔다"
+							;LV40이상の남자or후타나리당신で加入
+							IF (TALENT:MASTER:남자 || TALENT:MASTER:후타나리) && BASE:MASTER:LV > 39
+								CALL MESSAGE_WINDOW_D, "퀸・데미난디", @"수컷……수컷의 냄새!"
+								CALL MESSAGE_WINDOW_D, "", "＞어라?　괴물 소는 무릎을 구부리고 목을 늘어뜨렸다。/＞넋을 잃고 눈을 가늘게 뜨면서、/　거대한 엉덩이에서 강한 냄새를 풍기며 부르르 떨었다。"
+								CALL MESSAGE_WINDOW_D, "퀸・데미난디", @"아아……알겠어요、당신은 강한 수컷 소/멋져요%ハート()%　부뭇、후슈웃%ハート()%/안돼지、저 흥분해서 군침이!"
+								CALL MESSAGE_WINDOW_D, "", "＞아마도 당신은 그녀의 눈높이에 딱 맞는 것 같다、/＞그녀는 거구를 구부리고 아양을 떨며 코를 내밀더니、/　두꺼운 혀로 당신의 사타구니를 후루룩 핥았다。"
+								CALL MESSAGE_WINDOW_D, "퀸・데미난디", @"부탁이에요、저와、교미하지 않겠어요?%ハート()%"
+								CALL INPUT_YN_D, "계약 처리를 하자" , "한방 때리고 나서 계약 처리를 하자"
+								IF RESULT == 0
+									CALL MESSAGE_WINDOW_D, "퀸・데미난디", @"아앗、자비는、받을 수 없는가 보군요、후모모……/그래도 계약해 주다니 감격스럽네요、저、살쪄버렸으니、까/더 이상은、인간 남성에게、사랑을 받을 수 없다고、생각 했으니까。"
+									CALL MESSAGE_WINDOW_D, "", "＞일순、그녀의 네모난 동공에 이성의 빛이 번져 보였다/＞그러나 눈을 깜빡이는 순간、흐릿한 괴물의 눈으로 돌아가고 있었다"
+									CALL MESSAGE_WINDOW_D, "퀸・데미난디", @"저、데미난디라고 합니다/반드시、당신님의 아기씨로、/송아지를 많이 낳아 보이겠어요、부못!"
+									CALL MESSAGE_WINDOW_D, "", "＞Ｑ・데미난디가 동료마가 되었다."
+									CALL DUNGEON_28_Ｑ데미난디加入処理
+								ELSE
+									CALL MESSAGE_WINDOW_D, "퀸・데미난디", @"아아、아아……향기로운 냄새……후슈루루루……%ハート()%/어서、어서 자비를 주세요%ハート()%/분명、당신님의 애를 낳기 위해、저는 태어난거에요%ハート()%"
+									CALL MESSAGE_WINDOW_D, "", "＞너는 그녀의 머리에서 들어올 수 있을 만큼 커다란 비부 속에 물건을 집어넣었다。/＞보기보다 통통한 점막은 잘 말린 이불처럼 당신을 감싸고、/　그리고、쯋쯋 하고 소리를 내며、감격이 극에 달한 듯이 긴장되었다。"
+									CALL MESSAGE_WINDOW_D, "퀸・데미난디", @"하우우、아후우우%ハート()%/좋아、좋아해요、아아……이 얼마나 진한 마그네타이트%ハート()%/이런、강한 수컷……처음이야%ハート()%"
+									CALL MESSAGE_WINDOW_D, "", "＞귀두의 끝에 뜨거운 덩어리가 느껴진다。/＞아무래도、그녀의 자궁이、정액이 탐나서 내려온 것 같다。/＞당신은 갈듯이 허리를 흔들자、/　젤리 같은 자궁에 남근을 밀어넣고 수놈의 새끼 씨를 그녀 속에 쏟아부었다。"
+									CALL MESSAGE_WINDOW_D, "퀸・데미난디", @"후우고오오오오오오오오%ハート()%/아아……뱃속이 뜨거워……%ハート()%/난자가、우우응、저의 혼이、당신의 정자에 의해 침범당하고 있는 것을 알 수 있어!/아아……당신님의……아기즙……/강하고……난폭해서……저、저는……/후모오옷%ハート()%"
+									CALL MESSAGE_WINDOW_D, "", "＞응?/　그녀의 신체가、당신의 강렬한 마그네타이트로 인해、/　인간의 DNA를 기억해 내려고 하고 있다……"
+									CALL INPUT_YN_D, "인간으로 돌아가라!" , "쓸데없는 짓 하지마 암퇘지가!"
+									IF RESULT == 0
+										CALL MESSAGE_WINDOW_D, "", "＞당신이 그녀에게、전에는 인간이었던 일을/　히메미야 키쿠에라는 이름으로 있었던 것을 속삭이자/　암소는 빛과 열을 발하면서 순식간에 압축되어、그리고、"
+										CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"후루루……기분 나빠"
+										CALL MESSAGE_WINDOW_D, "", "＞굵게 휘어진 뿔이 난 검은 머리의 여자가 서 있었다。"
+										CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"우으、뭡니까、이 한심한 손발은"
+										CALL MESSAGE_WINDOW_D, "", "＞팔다리와 하복부、가슴 등은 두껍고 뻣뻣한 털로 덮여 있다。/　엉덩이에서는 가늘고 긴 꼬리가 채찍처럼 늘어져 있었다。/　여자는、자기 모습을 대충 확인하자 몹시 싫은 듯이 얼굴을 찡그렸다。"
+										CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"저、털끝에는 자신 있었는데……/어떻게 된 거예요、여기저기 벗겨져 땜빵이 생기지 않았습니까?/불쾌합니다、기분 나쁘네요、너무해요/하지만――%ハート()%"
+										CALL MESSAGE_WINDOW_D, "", "＞두툼한 혀가 날름 입술을 핥는다/＞네모난 눈동자와 눈이 마주쳤다。/＞몸집이 크고 뻣뻣하며、피하지방이 많은 육체가 당신의 몸에 기대어 있었다。"
+										CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"저、알아버렸어요/당신님과 자식을 이룰 수 있다면……/분명히 기분 좋을거라고%ハート()%"
+										CALL MESSAGE_WINDOW_D, "", "＞마그마처럼 뜨거운 애액이 당신의 배에 흘러내린다。"
+										CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"부디 자비를、베풀어주세요%ハート()%"
+										CALL MESSAGE_WINDOW_D, "", "＞여자는、비릿한 한숨을 내쉬면서、/　힘차게 허리를 부딪쳤다。/＞그리고 황홀하게 입술을 내밀고 환희의 웅성을 지르면서、/　실컷 이상형 수컷과의 난폭한 섹스를 즐겼다……"
+										;テンポ悪いかなーと思いコメントアウト
+										;CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"부루루룻、힘이 세네、요%ハート()%/임신하게 해주세요、몇 번이고 저의 난자가 다 떨어질 때까지……/아아、자궁이、찌그러져……%ハート()%　후슈、후슈우――후가아아아아앗%ハート()%%ハート()%%ハート()%"
+										CALL MESSAGE_WINDOW_D, "", "＞암소 히메미야 키쿠에가 동료마가 되었다"
+
+										CALL DUNGEON_28_Ｑ데미난디加入処理_인간
+									ELSE
+										CALL MESSAGE_WINDOW_D, "", "＞당신은 거대한 젖을 꽉 쥐고 힘껏 당겼다"
+										CALL MESSAGE_WINDOW_D, "퀸・데미난디", @"호쿄오오오옷!>"
+										CALL MESSAGE_WINDOW_D, "", "＞통증인지 쾌락인지 암소는 절규하며 솨 하고 우유를 뿜었다。/＞당신은 어디까지나 거대한 암소를 원했다。/＞이것의 근원이 무엇이든지 이젠 아무래도 좋았다。"
+										CALL MESSAGE_WINDOW_D, "퀸・데미난디", @"자……지이、매우 세다、후고옷%ハート()%/이、이런 거、이상해질 거 같아요오!　저의 뱃속、갈기갈기 찢어져버려요!/시、싫어%ハート()%　응구웃!　응고고고……%ハート()%/푸모오오오오옷%ハート()%%ハート()%%ハート()%"
+										CALL MESSAGE_WINDOW_D, "", "＞거대한 암소를 제멋대로 유린하던 당신은、/　직성이 풀릴 때까지 질내사정을 한 뒤 난폭하게 땅에 굴려、/　비릿한 헐떡이는 소리를 계속 내고 있는 안면에 마음껏 욕망을 뿜어냈다。"
+										CALL MESSAGE_WINDOW_D, "퀸・데미난디", @"아아、이、이런 제가、이렇게 난폭하게 당하다니……/마치……천사들에게 순결을 빼았겼을 때의……우우응、아니야、저런 건 쓰레기야%ハート()%/부탁이에요、더、당신 없이는 살아갈 수 없습니다!/부탁이에요、무엇이든지 하겠습니다!/부탁입니다、부디 저도、당신의 동료마가 될 수 있게 해주세……요%ハート()%"
+										CALL MESSAGE_WINDOW_D, "", "＞암소　Ｑ・데미난디가 동료마가 되었다"
+										CALL DUNGEON_28_Ｑ데미난디加入処理
+									ENDIF
+									
+								ENDIF
+								CALL MESSAGE_WINDOW_D, "직원", @"……다、당신、도대체 누구야?"
+								CALL MESSAGE_WINDOW_D, "", "＞어안이 벙벙해진 직원으로부터 20,000엔을 받고、당신은 그 자리를 떴다……"
+								CALL MESSAGE_WINDOW_D, "", "＞―― Ending No.058 (姫宮菊枝　END　“モーモーモー”)"
+								FLAG:5 = 9
+								SETBIT FLAG:취소된ED,58
+								SETBIT FLAG:発見ED,58
+								MONEY += 20000
+								
+								;牛加入フラグ
+								던전フラグ:[[던전:팩토리]]:5 = 7
+								
+							;それ이외は害짐승駆除
+							ELSE
+								IF (TALENT:MASTER:남자 || TALENT:MASTER:후타나리)
+									CALL MESSAGE_WINDOW_D, "퀸・데미난디", @"저보다、약한、수컷"
+									CALL MESSAGE_WINDOW_D, "", "＞아차! 상대방이 LV가 높았던가/　암소는 분명히 기분이 언짢아졌다。/＞슈ー、하고 코로 날카롭게 숨을 들이마신 뒤 뒷발로 땅을 차고、그리고、"
+								ELSE
+									CALL MESSAGE_WINDOW_D, "퀸・데미난디", @"암컷……"
+									CALL MESSAGE_WINDOW_D, "", "＞아차! 페니스가 없으면 안되는 걸까?/　암소는 분명히 기분이 언짢아졌다。/＞슈ー、하고 코로 날카롭게 숨을 들이마신 뒤 뒷발로 땅을 차고、그리고、"
+							ENDIF
+								CALL MESSAGE_WINDOW_D, "퀸・데미난디", @"부모오오오오오오오오오오오오오오오오오오오!"
+								
+								CALL MESSAGE_WINDOW_D, "", "/＞암소 퀸・데미난디가 한 마리 나타났다!/" , , , , , , , , , "CENTER"
+								
+								FLAG:도주불가フラグ = 1
+								FLAG:회화불능フラグ = 1
+								FLAG:선제기습취소 = 1
+								CALL SET_ENEMY,9,[[キャラ:데미난디]],39,0,1
+								CFLAG:(CHARANUM-1):行動횟수 = 2
+								CFLAG:(CHARANUM-1):ＨＰ보정 += 500
+								
+								NAME:(CHARANUM-1) = Ｑ・데미난디
+								CALLNAME:(CHARANUM-1) = Ｑ・데미난디
+								
+								;아군의時とは違う능력
+								BASE:(CHARANUM-1):LV = 39
+								BASE:(CHARANUM-1):힘 = 31
+								BASE:(CHARANUM-1):지혜 = 5
+								BASE:(CHARANUM-1):마력 =  10
+								BASE:(CHARANUM-1):인내력 = 30
+								BASE:(CHARANUM-1):속도 = 19
+								BASE:(CHARANUM-1):운 = 1
+								BASE:(CHARANUM-1):ＥＸＰ = 5*(BASE:(CHARANUM-1):LV - 1)*(BASE:(CHARANUM-1):LV)*(BASE:(CHARANUM-1):LV + 1)/3
+								BASE:(CHARANUM-1):CP = 10
+									
+								TALENT:(CHARANUM-1):해방 = 1
+								TALENT:(CHARANUM-1):즉각함락 = 1
+								TALENT:(CHARANUM-1):악취둔감 = 1
+								TALENT:(CHARANUM-1):부끄럼없음 = 1
+								TALENT:(CHARANUM-1):불결무시 = 1
+								TALENT:(CHARANUM-1):정조관결여 = 1
+								TALENT:(CHARANUM-1):아픔에강함 = 1
+								TALENT:(CHARANUM-1):쾌감에솔직 = 1
+								TALENT:(CHARANUM-1):중독되기쉬움 = 1
+								TALENT:(CHARANUM-1):폭유 = 1
+								TALENT:(CHARANUM-1):거체 = 1
+								TALENT:(CHARANUM-1):포동포동 = 1
+								TALENT:(CHARANUM-1):광기 = 1
+								TALENT:(CHARANUM-1):발정가능 = 1
+								TALENT:(CHARANUM-1):Ｖ민감 = 1
+								TALENT:(CHARANUM-1):모피 = 1
+								
+								TALENT:(CHARANUM-1):타격 = 1
+								TALENT:(CHARANUM-1):회복 = 1
+								TALENT:(CHARANUM-1):지원 = 1
+
+								TALENT:(CHARANUM-1):남자 = 0
+															
+								;ダーク
+								ABL:(CHARANUM-1):속성LD = 3
+								;カオス
+								ABL:(CHARANUM-1):속성LC = 3
+								CFLAG:(CHARANUM-1):秩混치 = -256
+								CFLAG:(CHARANUM-1):善悪치 = -256
+								
+
+								ABL:(CHARANUM-1):순종 = 3
+								ABL:(CHARANUM-1):욕망 = 3
+								ABL:(CHARANUM-1):Ｖ감각 = 3
+								ABL:(CHARANUM-1):Ｂ감각 = 1
+								ABL:(CHARANUM-1):정액중독 = 3
+								ABL:(CHARANUM-1):섹스중독 = 3
+								ABL:(CHARANUM-1):분유중독 = 2
+								ABL:(CHARANUM-1):수간중독 = 3
+								
+								;女・성인
+								ABL:(CHARANUM-1):회화타입 = 305
+								
+								;마수
+								ABL:(CHARANUM-1):종족 = 9
+								CSTR:(CHARANUM-1):종족명 = 『牝牛』
+								
+								CSTR:(CHARANUM-1):一人称 = 저
+								CSTR:(CHARANUM-1):二人称 = 당신님
+								CSTR:(CHARANUM-1):タイトル = 거대 암퇘지
+								
+								CSTR:(CHARANUM-1):30 = 굵게 치켜 올라간 뿔과 검은 빛의 긴 털을 가진 거대한 암소。젖가슴에는【NO.0013】의 낙인이 찍혀 있다。
+								CSTR:(CHARANUM-1):31 = 본인은 자신을 데미난디라고 생각하고 있지만、더욱 이질적인 존재이다。
+								CSTR:(CHARANUM-1):32 = 
+								CSTR:(CHARANUM-1):33 = 이 영혼은、이전에는 인간 히메미야 키쿠에였지만、
+								CSTR:(CHARANUM-1):34 = 데빌 시프터로서의 감수성에、데미난디의 정액이 반응。
+								CSTR:(CHARANUM-1):35 = 거기에 메시아교도의 세뇌에 의한 자기암시가 겹쳐 이러한 괴물로 변모하고 말았다。
+								CSTR:(CHARANUM-1):36 = 
+								CSTR:(CHARANUM-1):37 = 사람의 말은 할 수 있지만 가치관이 달라서 회화가 성립하지 않는다。
+								CSTR:(CHARANUM-1):38 = 강한『수컷 소』를 잉태하는 것을 지상의 명제로 삼고 있어、항상 남자에 굶주려 있다。
+								CSTR:(CHARANUM-1):39 = 언젠가는『신부』가 되고 싶다고 생각하고 있지만、정확히 그것이 무엇인지는 이미 잊어버린 것 같다。
+								
+								ABL:(CHARANUM-1):스킬1 = [[스킬:메가톤프레스]]
+								ABL:(CHARANUM-1):스킬2 = [[스킬:육탄]]
+								ABL:(CHARANUM-1):스킬3 = [[스킬:꼬치꿰기]]
+								ABL:(CHARANUM-1):스킬4 = 0
+								ABL:(CHARANUM-1):스킬5 = 0
+								ABL:(CHARANUM-1):스킬6 = 0
+								ABL:(CHARANUM-1):스킬7 = 0
+								ABL:(CHARANUM-1):스킬8 = 0
+								
+								CALL SYNC_STATUS,(CHARANUM-1)
+								CALL HEALTH_CHARA,(CHARANUM-1)
+								CALL BATTLE_START
+								
+								FLAG:도주불가フラグ = 0
+								FLAG:회화불능フラグ = 0
+								FLAG:선제기습취소 = 0
+								CALL SHOW_PICTURE, "D"
+								
+								IF (TALENT:MASTER:남자 || TALENT:MASTER:후타나리)
+									CALL MESSAGE_WINDOW_D, "퀸・데미난디", @"부모옷、부모모……/그런……네 녀석、아니、당신님이 이렇게 강할 줄이야……/아아、그런、/저、당신의 아이를、낳고 싶었다!"
+								ELSE
+									CALL MESSAGE_WINDOW_D, "퀸・데미난디", @"부모옷、부모모……/저、저는、이런 곳에서 쓰러질 수는/좀 더 낳아서、낳고 낳아서、난자를 다 사용할 때까지 아이를 낳아야 하는데!/부모오오오오오오오오오오오오오!?"
+								ENDIF
+								CALL MESSAGE_WINDOW_D, "", "＞단말마를 울리면서 퀸・데미난디는 절명했다"
+								CALL MESSAGE_WINDOW_D, "직원", @"고맙다、살았어/내친김에 가죽이나 고기 가공도……농담이야、이쪽에서 할게"
+								CALL MESSAGE_WINDOW_D, "", "＞안도의 한숨을 내쉬는 직원들로부터 20,000엔을 받아들고、당신은 그곳을 떠났다……"
+								MONEY += 20000
+								
+								;牛屠殺フラグ
+								던전フラグ:[[던전:팩토리]]:5 = 8
+								
+							ENDIF
+							
+							
+						ELSE
+							CALL MESSAGE_WINDOW_D, "직원", @"우우、역시 안 되나、어떡하면 좋을까나……"
+							CALL MESSAGE_WINDOW_D, "", "＞머리를 싸매는 직원과、/　강한 수컷을 찾아 날뛰는 히메미야 키쿠에였던 물건을 거들떠보지도 않고、/　당신은 그 자리를 떠났다……"
+						ENDIF
+						
+					ELSE
+						CALL MESSAGE_WINDOW_D, "", "＞뭐어、아무래도 상관없어。/＞당신은 참상에서 눈을 떼고 그 자리를 떠났다……"
+						
+					ENDIF
+				;もう誰もいない
+				ELSEIF 던전フラグ:[[던전:팩토리]]:5 == 6
+					
+				ELSE
+					;飛んだ先の処理が作られておらず、同じ텍스트が２回出てくるため、コメントアウト
+					;CALL DUNGEON_28_EVENT_SUB
+				ENDIF
+			CASE 2
+				
+				CALL MESSAGE_WINDOW_D, "노동자", "노동이야 말로 내 기쁨/노동이야말로 내가 사는 보람"
+				IF BASE:MASTER:지혜 >= 10
+					CALL MESSAGE_WINDOW_D, "노동자", "……당신은 저 문과 저 너머의 감시탑이 보이는가"
+					CALL MESSAGE_WINDOW_D, "노동자", "여기의 사람들은 모두/그 탑에서 흘러 나오는 노래소리를 들으면/무언가에 씌인 것처럼 일한다"
+					CALL MESSAGE_WINDOW_D, "노동자", "저것이 보인다 라고 한 녀석은 모두 강제 수용소로 끌려 간다고 한다/당신도 조심하게"
+				ENDIF
+				
+			CASE 100
+				CALL MESSAGE_WINDOW_D , "신부" , "메시아 교회에 어서오세요/무슨 용무입니까？"
+				
+			CASE 200
+				CALL MESSAGE_WINDOW_D, "노동자", "오늘의 일은 끝내줬어……"
+				CALL MESSAGE_WINDOW_D, "노동자", "내일도 힘내자……" , "/" , "로그를 남기지 않는다/버튼을 이용한다/재이용한다る"
+			CASE 201
+				CALL MESSAGE_WINDOW_D, "메시아 교도", "머지않아 신은 우리들 곁으로/메시아를 보내실 것이므로/신을 믿는 사람은 구원받습니다"
+				CALL MESSAGE_WINDOW_D, "메시아 교도", "일하는 사람은 다행입니다/잘 일하는 사람에게야말로 신께서 도움의 손길을 뻗쳐 주십니다"
+
+			CASE 202
+				;酒場
+				CALL MESSAGE_WINDOW_D, "바텐더", "어서 오세요"
+				$BAR_LOOP
+				CALL MESSAGE_WINDOW_D, "바텐더", "어떤 일이신가요？"
+				CALL INPUT_SELECT_D, "[1]술을 마신다/[2]이야기를 듣는다/////[0]밖으로 나간다" , , , 2
+				IF RESULT == 0
+					CALL MESSAGE_WINDOW_D, "바텐더", "또 부디"
+				ELSEIF RESULT == 1
+					CALL MESSAGE_WINDOW_D, "바텐더", "가게에서의 음주는 아직 미구현인 것 같군요"
+				ELSEIF RESULT == 2
+					$BAR_LOOP_2
+					CALL INPUT_SELECT_D , "＞누구에게 말을 걸까？//[1]남자 노동자/[2]수상한 남자/[3]술취한 노동자/[4]이상한 남자/[0]그만둔다" , , , 2
+					IF RESULT == 0
+						GOTO BAR_LOOP
+					ELSEIF RESULT == 1
+						CALL MESSAGE_WINDOW_D, "남자 노동자", "나는 여기 지하 3층의 현장에서 일하고 있어/하지만 거기에 큰 악마가 출현하는 바람에/일을 할 수가 없어서 곤란하다"
+					ELSEIF RESULT == 2
+						CALL MESSAGE_WINDOW_D, "수상한 남자", "데미난디는 난디를 바탕으로/식용으로 만들어진 데모노이드 이다/인간 여자를 모체로 해서 만들어내면 특히 고기의 질이 좋아진다"
+					ELSEIF RESULT == 3
+						CALL MESSAGE_WINDOW_D, "술취한노동자", "오늘 하루도 정말 잘 일했어/나는 회사의 귀감이라니까"
+					ELSEIF RESULT == 4
+						CALL MESSAGE_WINDOW_D, "이상한 남자", "이 에리어에서 일하는 사람은 모두 행복해 보인다/그렇게도 일하는 것이 좋은 건가……"
+						IF 의뢰フラグ:13:0 == 2
+							CALL MESSAGE_WINDOW_D, "이상한 남자", "……당신이 예의 건의 협력자인가？/공주 씨는 여기의 지하 수용소…/그것도 평범하게는 갈 수 없는 장소에 잡혀 있는 모양이다"
+							CALL MESSAGE_WINDOW_D, "상한 남자", "거기에 겨우 도착하면 패스코드가 필요할테니 알려주마/「1213」「1834」「9192」다/어떤 순서로 사용하는지는 모르지만 코드 자체는 맞는 것 같다"
+						ENDIF
+					ENDIF
+					GOTO BAR_LOOP_2
+				ENDIF
+				
+			CASE 203
+				CALL MESSAGE_WINDOW_D, "노동자", "메시아 교회가 있는 건물에、지하로 이어지는 엘리베이터가 있다/거기 그 앞으로는 패스코드를 모르면 진행 할 수 없는 것 같다/그 안쪽에는 무엇이 있을까？"
+			CASE 303
+				CALL MESSAGE_WINDOW_D, "", "＞성욕 처리 업무 중인 여성 노동자가 있다…"
+				;・성욕처리係として生きる　・성욕처리係の一日体験
+				;等ができるようにしたいなあ
+			CASE 300
+				CALL MESSAGE_WINDOW_D, "노동자", "여기 팩토리는 천년왕국을 위해 필요한 것 모두를 생산하는 것을 목적으로 만들어진 에리어입니다/내 아내와 딸들도 데미난디나 아기를 낳는 일에 종사하고 있습니다"
+			CASE 300 TO 305
+				
+				CALL MESSAGE_WINDOW_D, "", "＞아무도 없다…"
+			CASE 310
+				CALL MESSAGE_WINDOW_D, "난디 씨", "나마스테！/나 인도에서 온 난디 씨네/또 만났던 사람 오랜만이 네 기쁘 네"
+				CALL MESSAGE_WINDOW_D, "난디 씨", "코드브레이커네 하게"
+				CALL MESSAGE_WINDOW_D, "", "＞난디 씨로부터 『XTH』라고 쓰여진 게임의 패키지를 받았다…"
+				CALL MESSAGE_WINDOW_D, "난디 씨", "……미안하네 지금 코드브레이커 준비 중이네/또 다음에 노세"
+			CASE 700
+				CALL MESSAGE_WINDOW_D, "", "＞베테르기우스 예정지"
+				;CALL BATTLE_DUNGEON_28_ベテルギウス
+			;収容所シリーズ
+			CASE 800
+				CALL MESSAGE_WINDOW_D, "", "＞안에 사람이 있다/＞도와주겠습니까？"
+				CALL INPUT_YN_D
+				IF RESULT == 0
+					CALL MESSAGE_WINDOW_D, "남자", "나를 어디로 데려가려는 거야"
+				ENDIF
+				RETURN 1
+			CASE 801
+				CALL MESSAGE_WINDOW_D, "", "＞안에 사람이 있다/＞도와주겠습니까？"
+				CALL INPUT_YN_D
+				IF RESULT == 0
+					CALL MESSAGE_WINDOW_D, "고우・미후네", "싫어요、모두를 위해/성실하게 일하는 것은 기분이 좋아요"
+				ENDIF
+				RETURN 1
+			CASE 802
+				CALL MESSAGE_WINDOW_D, "", "＞안에 사람이 있다/＞도와주겠습니까？"
+				CALL INPUT_YN_D
+				IF RESULT == 0
+					CALL MESSAGE_WINDOW_D, "남자", "엣、어디로 가라는 겁니까？/여기서 사람들을 위해 일하는 것이 내 일입니다"
+				ENDIF
+				RETURN 1
+			CASE 803
+				
+				CALL MESSAGE_WINDOW_D, "", "＞안에 사람이 있다/＞도와주겠습니까？"
+				CALL INPUT_YN_D
+				IF RESULT == 0
+					CALL MESSAGE_WINDOW_D, "토머스・탱크", "나는 살기 위해/싸움에서 많은 사람을 죽여 왔어……/지금은 여기서 그들의 명복을 빌며 죄를 속죄하기 위해/메시아 교회에 마그네타이트를 바치고 있다……"
+				ENDIF
+				RETURN 1
+			CASE 804
+				CALL MESSAGE_WINDOW_D, "", "＞안에 사람이 있다/＞도와주겠습니까？"
+				CALL INPUT_YN_D
+				IF RESULT == 0
+					CALL MESSAGE_WINDOW_D, "소년", "너는 악마로구나/나를 어디론가 데려갈 셈이야"
+				ENDIF
+				RETURN 1
+			CASE 805
+				CALL MESSAGE_WINDOW_D, "", "＞안에 사람이 있다/＞도와주겠습니까？"
+				CALL INPUT_YN_D
+				IF RESULT == 0
+					CALL MESSAGE_WINDOW_D, "여자", "그만둬！/나를 도대체 어디로 데려가려고 이러는 거야！？"
+				ENDIF
+				RETURN 1
+			CASE 806
+				CALL MESSAGE_WINDOW_D, "", "＞안에 사람이 있다/＞도와주겠습니까？"
+				CALL INPUT_YN_D
+				IF RESULT == 0
+					CALL MESSAGE_WINDOW_D, "소녀", "소녀", "나를 유괴할 생각이야？/나는 여기서 모두의 시중을 들 거야！/어디에도 가지 않을 거라고！"
+				ENDIF
+				RETURN 1
+			CASE 900
+				;姫宮키쿠에이벤트
+				;CALL MESSAGE_WINDOW_D, "", "＞강제수용소：히메미야 키쿠에"
+				;키쿠에の상태で分岐
+				IF 던전フラグ:[[던전:팩토리]]:5 == 1
+					CALL MESSAGE_WINDOW_D, "", "＞히메미야 키쿠에가 있다/＞이를 딱딱 부딪치며, 양쪽 귀를 꽉 쥐면서 얕은 호흡을 반복하고 있다"
+					CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", "나는…… 흐, 나는 가축……이 아니야. /데미난디의…… 아이를 낳을…… 잉태 주머니…… / 아니야! 나는, 나는…… 가랑이를…… 여러분에게 내밀어……가축...? / 으아아...악!"
+					CALL INPUT_YN_D, "도와준다" , "떠난다"
+					IF RESULT == 0
+						CALL MESSAGE_WINDOW_D, "", "＞당신가지고 있던 기운차리는 약을 사용했다"
+						CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", "게흑！？　하아、하아……/여기는……당신은？"
+						CALL MESSAGE_WINDOW_D, "", "＞………"
+						CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", "……그렇습니까、히루코 님의 의뢰로……/감사함니다"
+						CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", "가도록 해요、어서 탈출하지 않으면……/…오랫동안 이 「노래」를 듣고 있으면 당신도 나도 무사하게 끝나지 않을 거에요/가능하다면 한 사람이라도 더 많이 해방시켜 주고 싶습니다만…"
+						던전フラグ:[[던전:팩토리]]:5 = -1
+						던전フラグ:[[던전:팩토리]]:15 = 1
+					ENDIF
+				ELSEIF 던전フラグ:[[던전:팩토리]]:5 == 2
+					;産めよ増やせよの牧場でソドミーなど塩の柱になるのでは？？？　という공포が湧いたので텍스트を弄る
+					CALL MESSAGE_WINDOW_D, "", @"＞숨이 막힐 것 같은 수컷과 암컷의 수상한 냄새가 코를 찔렀다……"
+					CALL MESSAGE_WINDOW_D, "", @"방 안에는 몇 명의 템플나이트가 한 사람의 여성을 둘러싸고 범하고 있다"
+					CALL MESSAGE_WINDOW_D, "템플나이트", @"……그럼、한 번 더 물어보지。/히메미야 키쿠에님、그대는 누구인가?/무엇을 위해 살고、무엇을 하기 위해 태어난 건가?"
+					CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"네……"
+					CALL MESSAGE_WINDOW_D, "", @"츄퐁。"
+					CALL MESSAGE_WINDOW_D, "", @"＞키쿠에는 페니스에서 살그머니 입을 떼고、/잔뜩 흐려진 눈동자로 대답했다/……유방에는 관리 번호 같은 낙인이 찍혀 있는 것이 보였다"
+					CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"저는……/저는 데미난디의 정액을 음부에 받아、/여러분의 양식이 되는 데미난디를 낳는 암소입니다%ハート()%"
+					CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"제 자궁은 데미난디의 아이를 임신하기 위해……/제 손과 입、엉덩이 구멍은 데미난디의 정액을 짜기 위해……/그리고 메시아 교도 여러분의 정욕을 받아 들이기 위해서 존재합니다%ハート()%"
+					CALL MESSAGE_WINDOW_D, "", @"＞고기 타는 냄새가 코를 스쳤다。/＞받침대 위에、아직 연기가 솟아오르는 인두가 열을 띤 채 나뒹굴고 있다。"
+					CALL MESSAGE_WINDOW_D, "", @"＞……키쿠에의、드러난 유방에는 관리번호로 보이는 낙인――/　【NO.0013】이 찍혀 있었다。"
+					CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"저의 몸과 마음은 모두 고귀한 유일신을 위해……/부디 죄많은 암퇘지로서 봉사하게 해주소서%ハート()%/아무쪼록 고기 한 조각、난자 한 알까지 유일신에게 바치게 해주십시오%ハート()%"
+					CALL MESSAGE_WINDOW_D, "템플나이트", @"용케도 깨달음을 얻으셨군요、히메미야 키쿠에。/그럼、직장(お勤め)에 들어가기 전에、/우리의 정액으로 당신의 마지막 인간성을 벗겨내 드리겠습니다。"
+					CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"아아、감격입니다%ハート()%/히메미야 키쿠에、여러분들의 죄、기꺼이 받아들이겠습니다%ハート()%"
+					CALL MESSAGE_WINDOW_D, "", @"＞키쿠에는 무릎을 꿇고 입을 열었다。"
+					CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"아ー……무읏%ハート()%"
+					CALL MESSAGE_WINDOW_D, "", @"＞복숭아빛 입술에 기름기가 도는 남근을 물었다。/＞가느다란 손가락이 스스로의 질구를 잡아、/　막 찢어진 처녀막을 거추장스럽게 펼쳤다。"
+					CALL MESSAGE_WINDOW_D, "", @"＞그리고 또 윤간이 시작됐다。"
+					CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"아아、자지、냄새 나%ハート()%/냄새가 나서……토할 것 같은데……배 안쪽이 쑤셔 죽겠습니다%ハート()%/정자%ハート()%　수정%ハート()%　자지이%ハート()%/부탁이에요、저에게、부디 진하고 뜨거운 자비를%ハート()%%ハート()%%ハート()%/――아"
+					CALL MESSAGE_WINDOW_D, "", @"＞도브류……웃!"
+					CALL MESSAGE_WINDOW_D, "", @"＞마그네타이트를 함유한 노랗게 탁한 정액이、/　키쿠에의 몸을 베일처럼 덮었다。"
+					CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"고보보……부보옷っ%ハート()%"
+					CALL MESSAGE_WINDOW_D, "", @"＞입에서 역류하여 코가 막힌다。/　아직 처녀의 모습을 남기고 있던 여성기가 새빨갛게 충혈되면서 오탁을 뿜는다。/　열린 눈은 마치 물잎 같은 정력에 꼭 감겨 있었다。/＞키쿠에는 황홀해하며 끈적거리는 정을 온몸에 마구 발랐다。"
+					CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"맛……있어……%ハート()%/정액이……저에게……퍼져서……%ハート()%"
+					CALL MESSAGE_WINDOW_D, "템플나이트", @"어떻습니까"
+					CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"아아、감사합니다、/이만큼 더럽혀주신 덕분에 이제 더 이상 사람이 아니게 되었습니다%ハート()%/저는 암소、새끼를 배고、낳기 위해서만 존재하는 암소……/아아……빨리 데미난디가 되어 훌륭히 사명을 다하고 싶어……%ハート()%"
+					CALL MESSAGE_WINDOW_D, "템플나이트", @"그럼、목장에 갑시다、히메미야 키쿠에……/아아、실례、그 이름은 임시변통이었습니다。/……따라오너라、암소【0013】호。/당신의 태반과 구멍을 제자리에 돌려놓읍시다。"
+					CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"예에%ハート()%"
+					CALL MESSAGE_WINDOW_D, "", @"＞템플 나이트들이 방심 상태의 키쿠에를 이 자리에서 끌어내려 하고 있다……"
+					CALL INPUT_YN_D, "뛰쳐나간다" , "출발이 늦다"
+					IF RESULT == 0
+						CALL MESSAGE_WINDOW_D, "템플나이트", @"뭡니까、당신은!"
+						;전투
+						FLAG:도주불가フラグ = 1
+						FLAG:회화불능フラグ = 1
+						FLAG:선제기습취소 = 1
+						FOR LOCAL , 0 , 10
+							CALL SET_ENEMY,7+LOCAL,[[キャラ:템플나이트]],22,0,0
+						NEXT
+						CALL SYNC_STATUS, (LOCAL)
+						CALL HEALTH_CHARA, (LOCAL)
+						CALL BATTLE_START
+						FLAG:도주불가フラグ = 0
+						FLAG:회화불능フラグ = 0
+						FLAG:선제기습취소 = 0
+						
+						CALL MESSAGE_WINDOW_D, "히메미야 키쿠에", @"응……하아…"
+						CALL MESSAGE_WINDOW_D, "", @"＞키쿠에는 무슨 일이 일어났는지도 모르고 황홀감에 잠긴 상태로、/자신의 몸에 정액을 바르거나、/손가락에 찍어 핥아보거나 하고 있다………"
+						CALL MESSAGE_WINDOW_D, "姫宮 菊枝", @"しぇいえき……おいひいでしゅ……%ハート()%"
+						CALL INPUT_YN_D, "무리하게 데리고 간다" , "놓아 둔다"
+						IF RESULT == 0
+							CALL MESSAGE_WINDOW_D, "", "＞질퍽질퍽한 몸으로 행복한 표정을 짓는 그녀의 손을 잡고、그 자리를 뒤로 했다……"
+							FLAG:탈출 = 1
+							던전フラグ:[[던전:팩토리]]:5 = -1
+							던전フラグ:[[던전:팩토리]]:15 = 2
+							
+							RETURN 1
+						ELSE
+							던전フラグ:[[던전:팩토리]]:5 = 3
+						ENDIF
+					ELSE
+						CALL MESSAGE_WINDOW_D, "", "＞………"
+						CALL MESSAGE_WINDOW_D, "", "＞템플나이트들은 키쿠에를 데리고 나가 버렸다"
+						던전フラグ:[[던전:팩토리]]:5 = 3
+					ENDIF
+					FLAG:現Y -= 2
+				ELSE
+					CALL MESSAGE_WINDOW_D, "", "＞아무도 없다……"
+				ENDIF
+			CASE 1100
+				;パック
+				;女を抱かせてくれたら鍵をくれる。フェラ＜애널＜本番＜中出し＜フルコースの順でMAGが多くもらえる
+				;とか思ってたけど기력がなくなって来たのでとりあえずフェラだけ
+				IF 던전フラグ:[[던전:팩토리]]:12 != 0 || 던전フラグ:[[던전:팩토리]]:11 != 0
+					CALL MESSAGE_WINDOW_D, "", "＞아무도 없다……"
+					RETURN 1
+				ENDIF
+				VARSET 交渉可能キャラ , -1
+				LOCAL:1 = 0
+				LOCAL:2 = 0
+				LOCALS = 누가 퍼크의 상대를 할까？/[9] 그만둔다
+				FOR LOCAL , 1 , 7
+					IF POS(LOCAL) > -1 
+						CALL INPUTABLE_CHARA , POS(LOCAL)
+						SIF RESULT == 0
+							CONTINUE
+						LOCAL:2 ++
+						IF !IS_LOOKSLIKE_MALE(POS(LOCAL))
+							LOCAL:1 ++
+							LOCALS += @"/[{LOCAL}] %CALLNAME:POS(LOCAL)%"
+						ENDIF
+					ENDIF
+				NEXT
+				SIF LOCAL:2 == 0
+					RETURN 1
+				CALL MESSAGE_WINDOW_D, "", "＞건방져 보이는 소년의 모습을 한 악마가 서있다……"
+				;コイツ真2で一人称一回も喋ってねえ
+				;소년악마だしオイラでいいよね
+				;とか言ってたら別人になってきた。まあパックだしいいよね
+				IF LOCAL:1 == 0
+					CALL MESSAGE_WINDOW_D, "퍼크", @"하ー아、지루해……/어디에 귀여운 여자아이라도 없나……"
+				ELSE
+					CALL MESSAGE_WINDOW_D, "퍼크", @"오옷……/당신、혹시 여기의/강제수용소에 가고 싶지 않아？"
+					CALL MESSAGE_WINDOW_D, "퍼크", @"실은 나、비장의 비밀통로를 알고 있는데……알고 싶어？"
+					CALL INPUT_YN_D
+					IF RESULT == 1
+						CALL MESSAGE_WINDOW_D, "퍼크", @"정말？ 정말로 알고 싶지 않아？/이야ー유감인데ー、그 얼간이 같은 문지기도 무시하고 갈 수 있는 길인데ー"
+					ELSE
+						CALL MESSAGE_WINDOW_D, "퍼크", @"……내가 말야、최근 좀이 쑤셔서 그런데……/불끈불끈하고 있다고。/누군가 귀여운 아가씨가 한 발 뽑아주면/뭐든지 말해 줄 생각이 들텐데……"
+						CALL INPUT_SELECT_D, LOCALS, , , 2
+						IF RESULT == 9
+							CALL MESSAGE_WINDOW_D, "퍼크", @"비밀통로、듣고 싶지 않는 건가ー？"
+						ELSE
+							LOCAL = POS(RESULT)
+							CALL MESSAGE_WINDOW_D, "퍼크", @"역시！말이 통하네！"
+							CALL MESSAGE_WINDOW_D, "퍼크", @"그렇다면 어서 빨리 그 입으로 빨아줄래？/제대로 정액을 맛보면서 삼켜 줘？\@ LOCAL:2 > 1 ? /동료들에게도、내 자지빠는 모습 충분히 보여 주자고♪ # \@"
+							CALL MESSAGE_WINDOW_D, "", @"＞%CALLNAME:LOCAL%는 노출된 팩의 페니스 앞에 무릎을 꿇고、우뚝 솟은 거기에 혀를 댔다……"
+							CALL MESSAGE_WINDOW_D, "", @"＞………/＞……/＞…"
+							CALL MESSAGE_WINDOW_D, "", @"＞%CALLNAME:LOCAL%는 1000MAG를 얻었다"
+							CALL CONTROL_MAG , LOCAL , 1000
+							CALL MESSAGE_WINDOW_D, "퍼크", @"후ー……/당신 입、마치 보지 같아서 기분 좋았어"
+							CALL MESSAGE_WINDOW_D, "퍼크", @"그러면、나는 이걸로……"
+							CALL MESSAGE_WINDOW_D, "퍼크", @"……농담이야 농담/화내지 말아줘、이 녀석을 줄 테니까"
+							CALL MESSAGE_WINDOW_D, "", @"＞팩토리 지하 통로의 열쇠를 손에 넣었다"
+							던전フラグ:[[던전:팩토리]]:7 = 2
+							던전フラグ:[[던전:팩토리]]:11 = 1
+							CALL MESSAGE_WINDOW_D, "퍼크", @"여기로 오는 도중에……여기서 정확히 북동쪽 근처에、열리지 않는 문이 있었지？/이 녀석을 사용하면 열리고― 끝！이야"
+							CALL MESSAGE_WINDOW_D, "퍼크", @"그러면 우리는 이쯤에서 돌아가야겠군/나의 자지를 잊을 수 없어서、신주쿠까지 찾아온다면 상대해 달라는 걸로 봐도 괜찮겠지？"
+							CALL MESSAGE_WINDOW_D, "", @"＞퍼크은 낄낄 웃으면서 떠나갔다"
+							
+						ENDIF
+					ENDIF
+				ENDIF
+				RETURN 1
+			CASE 1101
+				;나쟈
+				;ビッチ化してるけど元ネタ창부だしいいよね
+				;というかアレフさんの時も通りすがりのいい男についていくような子だし
+				IF 던전フラグ:[[던전:팩토리]]:12 != 0 || 던전フラグ:[[던전:팩토리]]:11 != 0
+					CALL MESSAGE_WINDOW_D, "", "＞아무도 없다……"
+					RETURN 1
+				ENDIF
+				VARSET 交渉可能キャラ , -1
+				LOCAL:1 = 0
+				LOCAL:2 = 0
+				LOCALS = 누가 ＭＡＧ를 줄까？/[9] 그만둔다
+				FOR LOCAL , 1 , 7
+					IF POS(LOCAL) > -1 
+						CALL INPUTABLE_CHARA , POS(LOCAL)
+						SIF RESULT == 0
+							CONTINUE
+						LOCAL:2 ++
+						IF HAVE_PENIS(POS(LOCAL)) && BASE:POS(LOCAL):ＭＡＧ >= 3000
+							LOCAL:1 ++
+							LOCALS += @"/[{LOCAL}] %CALLNAME:POS(LOCAL)%"
+						ENDIF
+					ENDIF
+				NEXT
+				SIF LOCAL:2 == 0
+					RETURN 1
+				CALL MESSAGE_WINDOW_D, "", "＞연령대를 가늠할 수 없는 소녀의 모습을 한 악마가 서 있다/＞외형에 어울리지 않게、소녀의 눈이나 입가에는 음란한 분위기가 감돌고 있다……"
+					
+				IF LOCAL:1 == 0
+					CALL MESSAGE_WINDOW_D, "나쟈", @"여자아이\@LOCAL:2 > 1 ?  혼자서 # 가 \@이런 곳에서 뭐 하는 거야？/빨리 돌아가지 않으면 무서운 악마에게 잡아먹혀♪/쿡쿡……"
+				ELSE
+					;チンポからMAGをくれたら鍵をくれる、MAGが多ければ本番＋仲間になる
+					CALL MESSAGE_WINDOW_D, "나쟈", @"어머……/우후후、\@IS_LOOKSLIKE_MALE(MASTER) ? 오빠 # 누나 \@、수용소로 가고 싶지요？"
+					CALL MESSAGE_WINDOW_D, "나쟈", @"나에게 마그네타이트를 주거나、소중한 도구를 줘도 괜찮아요%ハート()%"
+					CALL INPUT_YN_D , "준다" , "주지 않는다"
+					IF RESULT == 1
+						CALL MESSAGE_WINDOW_D, "나쟈", @"\@IS_LOOKSLIKE_MALE(MASTER) ? 오빠 # 언니 \@는 정말 꽤나 구두쇠구나？/상관없어、나는 여기에 있을 테니 생각 바뀌면 언제라도 와♪"
+					ELSE
+						CALL INPUT_SELECT_D, LOCALS, , , 2
+						IF RESULT == 9
+							CALL MESSAGE_WINDOW_D, "나쟈", @"\@IS_LOOKSLIKE_MALE(MASTER) ? 오빠 # 언니 \@는 정말 꽤나 구두쇠구나？/상관없어、나는 여기에 있을 테니 생각 바뀌면 언제라도 와♪"
+						ELSE
+							LOCAL = POS(RESULT)
+							CALL MESSAGE_WINDOW_D, "나쟈", @"우후후、그러면……/당신의 자지로、잔뜩 마그네타이트 줘%ハート()%"
+							IF TEQUIP:LOCAL:음순노출 == 0
+								CALL MESSAGE_WINDOW_D, "", @"＞나쟈는 눈깜짝할 사이에 %CALLNAME:LOCAL%의 하반신을 벗겨낸 후、/　페니스 앞에 무릎을 꿇고 넋을 잃은 얼굴로 그것을 어루만져 세웠다"
+							ELSE
+								CALL MESSAGE_WINDOW_D, "", @"＞나쟈는 눈깜짝할 사이에 %CALLNAME:LOCAL%의 페니스 앞에 무릎을 꿇고、/　넋을 잃은 표정으로 그것을 어루만져 세웠다"
+							ENDIF
+							IF TALENT:LOCAL:오토코노코
+								IF PALAM:LOCAL:욕정 >= 3000
+									CALL MESSAGE_WINDOW_D, "나쟈", @"귀여운 얼굴을 하고 이렇게 딱딱하게 해 버리다니……/후훗、즉시 쌩쌩하게 만들어 줄 테니까요ー%ハート()%"
+								ELSE
+									CALL MESSAGE_WINDOW_D, "나쟈", @"여자 아이 같은 얼굴을 하고 이렇게나 훌륭한 자지를 달고 있다니……/후훗、잔뜩 나오게 해 줄게요%ハート()%"
+								ENDIF
+							ELSEIF TALENT:LOCAL:남자 == 0
+								IF PALAM:LOCAL:욕정 >= 3000
+									CALL MESSAGE_WINDOW_D, "나쟈", @"귀여운 얼굴을 하고 이렇게 딱딱하게 해 버리다니……/후훗、즉시 쌩쌩하게 만들어 줄 테니까요ー%ハート()%"
+								ELSE
+									CALL MESSAGE_WINDOW_D, "나쟈", @"여자아이면서、이렇게 훌륭한 자지가 붙어 있다니……/후훗、잔뜩 나오게 해 줄게요%ハート()%"
+								ENDIF
+							ELSE
+								IF PALAM:LOCAL:욕정 >= 3000
+									CALL MESSAGE_WINDOW_D, "나쟈", @"와아……벌써 딱딱하구나♪/나의 입에、잔뜩 정액 내 줘%ハート()%"
+								ELSE
+									CALL MESSAGE_WINDOW_D, "나쟈", @"하아……굉장한 남자아이의 냄새……/아앙、맛있어 보여%ハート()%"
+								ENDIF
+							ENDIF
+							CALL MESSAGE_WINDOW_D, "나쟈", @"그러면、잘 먹겠습니다%ハート()%/쪽……아음…흠……"
+							CALL MESSAGE_WINDOW_D, "", @"＞나쟈는 입 안에 타액을 충분히 모아、그 작은 입으로 %CALLNAME:LOCAL%의 페니스를 삼켜 갔다……"
+							CALL MESSAGE_WINDOW_D, "나쟈", @"응……음、후、하아……/크기도 하고、냄새도 대단하고、이렇게 굉장한 자지 오랜만일지도%ハート()%/싸고 싶어지면 사양하지 말고 내 입에 싸 줘%ハート()%"
+							;略
+							CALL MESSAGE_WINDOW_D, "", @"＞작은 여자아이의 그 사랑스러운 입은 외형과는 정반대로、/　숙련된 창녀의 그것과 같이 혀가、타액을、뺨이 근육까지도 페니스에 얽혀들었다……"
+							CALL MESSAGE_WINDOW_D, "", @"＞%CALLNAME:LOCAL%는 격렬한 펠라치오에 이윽고 한계를 맞이해 나쟈의 입 안에 정액을 쏟아냈다"
+							CALL MESSAGE_WINDOW_D, "나쟈", @"응、후、응、으응읏%ハート()%"
+							CALL MESSAGE_WINDOW_D, "", @"＞나쟈는 내뿜어진 정액에 웃을을 띄우며 황홀한 표정으로 그것을 삼키고、/　마지막 한 방울까지 짜 마시려 교묘하게 사정 직후의 페니스를 괴롭혔다……"
+							CALL MESSAGE_WINDOW_D, "", @"＞%CALLNAME:LOCAL%는 3000MAG를 잃었다……"
+							던전フラグ:[[던전:팩토리]]:7 = 2
+							던전フラグ:[[던전:팩토리]]:12 = 1
+							
+							BASE:LOCAL:ＭＡＧ -= 3000
+							IF BASE:LOCAL:ＭＡＧ >= 7000
+								CALL MESSAGE_WINDOW_D, "나쟈", @"……응、하아…"
+								CALL MESSAGE_WINDOW_D, "", @"＞나쟈는 멍한 표정으로、흠뻑 젖은 팬티를 벗고、/　%CALLNAME:LOCAL%에게 엉덩이를 향하고 납작 업드렸다/＞미니스커트 아래로 얼굴이 드러난 비밀의 입술을 벌리자 번들번들 요염하게 빛나고 있다"
+								CALL MESSAGE_WINDOW_D, "나쟈", @"마그네타이트만 받으려고 생각했지만…/이렇게나 진한 정액을 마시면 참을 수 없어%ハート()%"
+								CALL MESSAGE_WINDOW_D, "나쟈", @"저기、부탁이야/당신의 자지로、나의 여기、엉망진창으로 만들어 줘%ハート()%"
+								CALL INPUT_YN_D , "Yes" , "No"
+								IF RESULT == 0
+									CALL MESSAGE_WINDOW_D, "", @"＞%CALLNAME:LOCAL%는 유혹받은 대로 페니스를 찔러넣어、/　소녀의 질 안을 마음껏 맛보았다…"
+									CALL MESSAGE_WINDOW_D, "", @"＞………/＞……/＞…"
+									CALL MESSAGE_WINDOW_D, "", @"＞%CALLNAME:LOCAL%는 7000MAG를 잃었다……"
+									CALL MESSAGE_WINDOW_D, "나쟈", @"하응……%ハート()%/잔뜩 정액 나와버렸다……%ハート()%"
+									CALL MESSAGE_WINDOW_D, "나쟈", @"알고 있어요、약속이었지？/이렇게 잔뜩 받아버렸으니 지키지 않으면 안되겠지♪"
+									CALL MESSAGE_WINDOW_D, "나쟈", @"그러면、따라와。여기야/……응、싫어、흘러 내리네%ハート()%"
+									CALL MESSAGE_WINDOW_D, "", @"＞%CALLNAME:MASTER%는 소녀에게 안내 받는 대로 통로를 계속 걸어갔다……"
+									
+									FLAG:現X = 15
+									FLAG:現Y = 23
+									CALL SHOW_PICTURE, "D"
+									CALL MESSAGE_WINDOW_D, "나쟈", @"여기야。이 열쇠가 있으면、여기서 수용소에 갈 수 있어/전에、바보같은 템플나이트씨가 떨어뜨렸던 것을 주웠어"
+									CALL MESSAGE_WINDOW_D, "나쟈", @"그렇다면、나는…"
+									CALL MESSAGE_WINDOW_D, "나쟈", @"우ー응、결정했다。/나、당신의 동료마가 되어줄게" , "/" , "로그를 남기지 않는다/버튼을 이용한다/재이용한다"
+									CALL MESSAGE_WINDOW_D, "나쟈", @"또 나랑 하고 싶어지면 언제든 불러주세요♪"
+									CALL MESSAGE_WINDOW_D, "", @"＞나쟈는 키스를 날리고 떠났다………"
+									CALL MESSAGE_WINDOW_D, "", @"＞요정 나쟈가 동료마가 되었다"
+									CALL MESSAGE_WINDOW_D, "", @"＞팩토리 지하 통로의 열쇠를 손에 넣었다"
+									CALL ADD_NEW_COMPANION , [[キャラ:나쟈]] , 500 , 1
+								ELSE
+									CALL MESSAGE_WINDOW_D, "나쟈", @"그런……"
+									CALL MESSAGE_WINDOW_D, "나쟈", @"……좋아、근처의 악마로 해도 되니까……"
+									CALL MESSAGE_WINDOW_D, "", @"＞나쟈는 비틀비틀 거리는 걸음으로 떠나갔다"
+									CALL MESSAGE_WINDOW_D, "", @"＞……바닥에 뭔가 떨어져 있다"
+									CALL MESSAGE_WINDOW_D, "", @"＞팩토리 지하 통로의 열쇠를 손에 넣었다"
+									
+								ENDIF
+							ELSE
+								CALL MESSAGE_WINDOW_D, "나쟈", @"후우……잘 먹었어요、진하고 맛있었어요♪/그러면、약속대로 가르쳐 줄께。따라와！"
+								CALL MESSAGE_WINDOW_D, "", @"＞%CALLNAME:MASTER%는 소녀에게 안내 받는 대로 통로를 계속 걸어갔다……"
+								
+								FLAG:現X = 15
+								FLAG:現Y = 23
+								CALL SHOW_PICTURE, "D"
+								CALL MESSAGE_WINDOW_D, "나쟈", @"여기야。이 열쇠가 있으면、여기서 수용소에 갈 수 있어/전에、바보같은 템플나이트씨가 떨어뜨렸던 것을 주웠어"
+								CALL MESSAGE_WINDOW_D, "나쟈", @"그러면、나는 이제 갈 테니까/또 만나면、다음엔 좀 더 기분 좋은 일 해 줘%ハート()%"
+								CALL MESSAGE_WINDOW_D, "", @"＞나쟈는 키스를 날리고 떠났다…"
+								CALL MESSAGE_WINDOW_D, "", @"＞팩토리 지하 통로의 열쇠를 손에 넣었다"
+								
+							ENDIF
+						ENDIF
+					ENDIF
+					
+				ENDIF
+				RETURN 1
+			CASE 1102
+				;야누스
+				IF 던전フラグ:[[던전:팩토리]]:4 == 0
+					CALL MESSAGE_WINDOW_D, "", "＞남자와 여자、2개의 얼굴과 몸을 가진 쌍두의 악마가 서 있다…"
+					
+					CALL MESSAGE_WINDOW_D, "야누스", "여기를 통과 하고 싶은 거야？/여기를 지나가고 싶은 건가？"
+					CALL INPUT_YN_D
+					IF RESULT == 0
+					
+						CALL MESSAGE_WINDOW_D, "야누스", "통과할 수는 없네요/통과하게 놔둘 순 없지"
+						CALL MESSAGE_WINDOW_D, "야누스", "통과하려고 하는 아이는 마음대로 해도 괜찮다고/통과하려고 하는 녀석은 마음대로 해도 좋다고"
+						CALL MESSAGE_WINDOW_D, "야누스", "했었어요오、오홋홋홋호/했었다고오 히힛힛히！"
+						
+						CALL MESSAGE_WINDOW_D, "", "＞요마 야누스가 １체 나타났다！"
+						
+						;전투開始
+						
+						FLAG:도주불가フラグ = 1
+						FLAG:회화불능フラグ = 1
+						FLAG:선제기습취소 = 1
+						CALL SET_ENEMY,9,[[キャラ:야누스]],34,0,1
+						LOCAL = CHARANUM -1
+						CFLAG:(LOCAL):行動횟수 = 2
+						CFLAG:(LOCAL):ＭＰ보정 = 500
+						CFLAG:(LOCAL):속도보정 = MAXBASE:LOCAL:속도
+						ABL:LOCAL:스킬2 = [[스킬:마하・마그나스]]
+						ABL:LOCAL:스킬5 = [[스킬:마하・라기온]]
+						ABL:LOCAL:스킬1 = [[스킬:마하코우하]]
+						ABL:LOCAL:스킬6 = [[스킬:마하에이하]]
+						ABL:LOCAL:스킬7 = [[스킬:마카라칸]]
+						ABL:LOCAL:스킬8 = [[스킬:테트라칸]]
+						ABL:(LOCAL):아이템1 = 10000 + [[스킬:마하・갈라]]
+						ABL:(LOCAL):입수확률1 = 100
+						
+						CALL SYNC_STATUS, (LOCAL)
+						CALL HEALTH_CHARA, (LOCAL)
+						CALL BATTLE_START
+						FLAG:도주불가フラグ = 0
+						FLAG:회화불능フラグ = 0
+						FLAG:선제기습취소 = 0
+						CALL SHOW_PICTURE, "D"
+						CALL MESSAGE_WINDOW_D, "", "＞요마 야누스는 힘이 다했다"
+						던전フラグ:[[던전:팩토리]]:4 = 1
+						DA:(FLAG:現X):(FLAG:現Y) = 1
+						;ヤヌス해방　特殊合体は何が良いだろう。特定の男×女とか？
+						CALL LIFTING_A_BAN([[キャラ:야누스]])
+						;FLAG:(10000 + [[キャラ:야누스]]) = 1
+					ELSE
+						CALL MESSAGE_WINDOW_D, "야누스", "뭐야、물러서는 거야？/뭐야、물러서는 건가？"
+						CALL SHOW_FORCEMOVE, \@ARG == 2 ? UU # DD \@, "D", , "야누스", "재미 없군요/재미없구나"
+						
+					ENDIF
+				ELSE
+						CALL MESSAGE_WINDOW_D, "", "＞誰もいない……"
+				ENDIF
+		ENDSELECT
+		RETURN 1
+		
+;========================
+;그외
+;========================
+	CASE 9
+		SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+			;出入り입
+			CASE 0
+				;労働者寮へ
+				CALL DUNGEON_WORP_ID, 3 , 3008 , 1
+				RETURN 1
+			CASE 1
+				;監視塔へ
+				;CALL DUNGEON_WORP_ID, 3 , 3008
+				;RETURN 1
+				CALL MESSAGE_WINDOW_D , "" , "＞문은 닫혀있다"
+				RETURN 1
+			CASE 2
+				;メシア教会へ
+				CALL DUNGEON_WORP_ID, 1 , 1008 , 1
+				RETURN 1
+			CASE 3
+				;タウンへ
+				CALL DUNGEON_WORP_ID, 2 , 2008 , 1
+				RETURN 1
+			CASE 4
+				;発掘現場１Ｆへ
+				CALL DUNGEON_WORP_ID, 4 , 4008 , 1
+				RETURN 1
+			CASE 5
+				;センター-팩토리間通路へ
+				;CALL DUNGEON_WORP_ID, 4 , 4008
+				;RETURN 1
+				CALL MESSAGE_WINDOW_D , "" , "＞문은 닫혀있다"
+				RETURN 1
+			CASE 6
+				;発掘現場Ｂ１Ｆ−１へ
+				CALL DUNGEON_WORP_ID, 5 , 5008 , 1
+				RETURN 1
+			CASE 7
+				;発掘現場Ｂ１Ｆ−２へ
+				CALL DUNGEON_WORP_ID, 5 , 5018 , 1
+				RETURN 1
+			CASE 8
+				;強制収容所１Ｆ表입へ
+				CALL DUNGEON_WORP_ID, 8 , 8018 , 1
+				RETURN 1
+			CASE 9
+				;発掘現場Ｂ２Ｆ−１へ
+				CALL DUNGEON_WORP_ID, 6 , 6008 , 1
+				RETURN 1
+			CASE 10
+				;発掘現場Ｂ２Ｆ−２へ
+				CALL DUNGEON_WORP_ID, 6 , 6018 , 1
+				RETURN 1
+			CASE 11
+				;強制収容所１Ｆ裏입へ
+				CALL DUNGEON_WORP_ID, 8 , 8008 , 1
+				RETURN 1
+			CASE 12
+				;地下通路Ｂ１Ｆへ
+				CALL DUNGEON_WORP_ID, 10 , 10008 , 1
+				RETURN 1
+			;エレベーター
+			CASE 1100
+				CALL DUNGEON_ELEVATOR , 11009
+			CASE 1101
+				CALL DUNGEON_ELEVATOR , 11019
+			CASE 1102
+				CALL DUNGEON_ELEVATOR , 11029
+		ENDSELECT
+		RETURN 1
+ENDSELECT
+RETURN 0
+
+;=======================================================================
+;宝箱の中身
+;=======================================================================
+@TREASURE_28
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+	CASE 500
+		LOCALS = 메디컬파우더
+		LOCAL = 1
+	CASE 501
+		LOCALS = 덫
+		LOCALS:1 = ＨＰ
+		LOCAL = 25
+	CASE 600
+		LOCALS = 인내력의향
+		LOCAL = 1
+	CASE 601
+		LOCALS = 메디컬파우더
+		LOCAL = 1
+	CASE 602
+		LOCALS = 덫
+		LOCALS:1 = ＭＰ
+		LOCAL = 10
+	CASE 603
+		LOCALS = 화제신부
+		LOCAL = 2
+	CASE 700
+		LOCALS = 魔法の箱
+		LOCALS:1 = 사파이어
+		LOCALS:2 = 마석
+		LOCAL = 8
+		LOCAL:1 = 1
+	CASE 1100
+		LOCALS = 디스클로즈
+		LOCAL = 3
+	CASE 1101
+		LOCALS = 힘의향
+		LOCAL = 1
+	CASE 1102
+		LOCALS = 魔法の箱
+		LOCALS:1 = 오팔
+		LOCALS:2 = 마석
+		LOCAL = 8
+		LOCAL:1 = 1
+	CASE 1103
+		LOCALS = MAG
+		LOCAL = 3000
+	CASE 1104
+		LOCALS = 魔法の箱
+		LOCALS:1 = 오닉스
+		LOCALS:2 = 마석
+		LOCAL = 8
+		LOCAL:1 = 1
+	CASE 1105
+		LOCALS = 마카
+		LOCAL = 160
+	CASE 1106
+		LOCALS = 눈속임의구슬
+		LOCAL = 1
+	CASE 1107
+		LOCALS = 순미가라지시
+		LOCAL = 2
+	CASEELSE
+ENDSELECT
+IF LOCALS == "￥"
+	CALL GET_TREASURE_MONEY, 0, LOCAL, FLAG:現던전, FLAG:現M + 70, (DA:(FLAG:現X):(FLAG:現Y) / 10) % 100
+ELSEIF LOCALS == "마카"
+	CALL GET_TREASURE_MONEY, 1, LOCAL, FLAG:現던전, FLAG:現M + 70, (DA:(FLAG:現X):(FLAG:現Y) / 10) % 100
+ELSEIF LOCALS == "MAG" || LOCALS == "ＭＡＧ"
+	CALL GET_TREASURE_MAG, 0, LOCAL, FLAG:現던전, FLAG:現M + 70, (DA:(FLAG:現X):(FLAG:現Y) / 10) % 100
+ELSEIF LOCALS == "덫"
+	;LOCALS:1 종류 LOCAL 데미지量or확률 LOCALS:2 相性
+	CALL GET_TREASURE_TRAP, LOCALS:1, LOCAL, GET_TYPE_NUM(LOCALS:2), FLAG:現던전, FLAG:現M + 70, (DA:(FLAG:現X):(FLAG:現Y) / 10) % 100
+ELSEIF LOCALS == "魔法の箱"
+	IF GETNUM(ITEM, LOCALS:1) == -1 || GETNUM(ITEM, LOCALS:2) == -1
+		PRINTL ＞아이템名の指定が間違ってます
+		PRINTW ＞아이템の取得処理を中断します
+	ELSE
+		CALL MAGIC_BOX , LOCAL , GETNUM(ITEM, LOCALS:1) , GETNUM(ITEM, LOCALS:2) , LOCAL:1 , FLAG:現던전, FLAG:現M + 70, (DA:(FLAG:現X):(FLAG:現Y) / 10) % 100
+	ENDIF
+ELSE
+	IF GETNUM(ITEM, LOCALS) == -1
+		PRINTL ＞아이템名の指定が間違ってます
+		PRINTW ＞아이템の取得処理を中断します
+	ELSE
+		CALL GET_TREASURE, GETNUM(ITEM, LOCALS), LOCAL , FLAG:現던전, FLAG:現M + 70, (DA:(FLAG:現X):(FLAG:現Y) / 10) % 100
+	ENDIF
+ENDIF
+RETURN 1
+
+;=======================================================================
+;階段置き場
+;=======================================================================
+@UPSTAIRS_28
+;位置とIDが対応しているはずなので、同IDの階段を探させれば良い
+SELECTCASE FLAG:現M
+	CASE 8, 9
+		CALL DUNGEON_UPSTAIRS_ID, FLAG:現M+1 , DA:(FLAG:現X):(FLAG:現Y) + 1000 + 1
+	CASEELSE
+		CALL DUNGEON_UPSTAIRS_ID, FLAG:現M-1 , DA:(FLAG:現X):(FLAG:現Y) - 1000 + 1
+ENDSELECT
+RETURN 1
+
+@DOWNSTAIRS_28
+SELECTCASE FLAG:現M
+	CASE 8, 9
+		CALL DUNGEON_DOWNSTAIRS_ID, FLAG:現M-1 , DA:(FLAG:現X):(FLAG:現Y) - 1000 - 1
+	CASEELSE
+		CALL DUNGEON_DOWNSTAIRS_ID, FLAG:現M+1 , DA:(FLAG:現X):(FLAG:現Y) + 1000 - 1
+ENDSELECT
+RETURN 1
+;=======================================================================
+;エレベーター定義
+;=======================================================================
+@DUNGEON_ELEVATOR_28, ARG
+VARSET RESULT, -1
+VARSET RESULTS
+SELECTCASE ARG
+	CASE 11009
+		RESULT:1 = 1
+		RESULT:2 = 11
+		RESULTS:1 = 教会
+		RESULTS:2 = 地下通路Ｂ７Ｆ
+		RETURN -1
+	CASE 11019
+		RESULT:1 = 9
+		RESULT:2 = 11
+		RESULTS:1 = 強制収容所２Ｆ
+		RESULTS:2 = 地下通路Ｂ７Ｆ
+		RETURN -1
+	CASE 11029
+		RESULT:1 = 10
+		RESULT:2 = 11
+		RESULTS:1 = 地下通路Ｂ１Ｆ
+		RESULTS:2 = 地下通路Ｂ７Ｆ
+		RETURN -1
+ENDSELECT
+;=======================================================================
+;エンカウント率
+;=======================================================================
+@ENCOUNT_RATE_28
+SELECTCASE FLAG:現M
+	;팩토리
+	CASE 0
+		FLAG:エンカウント率 = MAX(FLAG:未遭遇歩数 * 3 - 15, 0)
+		FLAG:MAG소비율 = 0
+		FOR LOCAL , 1 , 7
+			SIF POS(LOCAL) > -1
+				PALAM:POS(LOCAL):욕정 += (ABL:POS(LOCAL):욕망+ 1) * 5
+		NEXT
+	;タウン、教会、労働者寮、強制収容所
+	CASE 1, 2, 3
+		FLAG:未遭遇歩数 = 0
+		FLAG:エンカウント率 = 0
+		FLAG:MAG소비율 = 0
+	CASEELSE
+		FLAG:エンカウント率 = MAX(FLAG:未遭遇歩数 * 5 - 25, 0)
+		FLAG:MAG소비율 = 100
+ENDSELECT
+;=======================================================================
+;エンカウント処理
+;=======================================================================
+@CHECK_ENCOUNT_28
+#LOCALSIZE 3
+IF RAND:100 < FLAG:エンカウント率
+	CALL ENEMY_TABLE
+	RETURN 1
+ELSE
+	FLAG:未遭遇歩数 += 1
+	RETURN 0
+ENDIF
+
+;=======================================================================
+;적の종족の종류数
+;=======================================================================
+@CLASS_NUM_28
+SELECTCASE FLAG:現M
+	;팩토리
+	CASE 0 
+		RETURN CLASS_NUM_COMMON("初級")
+	;発掘現場・地下通路
+	CASE 4 TO 11
+		RETURN CLASS_NUM_COMMON("中級")
+ENDSELECT
+
+;=======================================================================
+;적の総数
+;=======================================================================
+@ENEMY_NUM_28, ARG
+SELECTCASE FLAG:現M
+	;팩토리
+	CASE 0 
+		RETURN ENEMY_NUM_COMMON("中級", ARG)
+	;発掘現場・地下通路
+	CASE 4 TO 11
+		RETURN ENEMY_NUM_COMMON("上級", ARG)
+ENDSELECT
+;=======================================================================
+;적の종류
+;=======================================================================
+@ENEMY_28, ARG
+SELECTCASE FLAG:現M
+	;팩토리
+	CASE 0
+		IF FLAG:現Y < 22
+			SELECTCASE RAND:100
+				CASE IS < 15
+					RETURN [[キャラ:부쳐]], 9
+				CASE IS < 30
+					RETURN [[キャラ:보디코니언]], 12
+				CASE IS < 45
+					RETURN [[キャラ:슬레이브]], 9
+				CASE IS < 55
+					RETURN [[キャラ:데미난디]], 11
+				CASE IS < 60
+					RETURN [[キャラ:돌연변이데미난디]],15
+				CASE IS < 75
+					RETURN [[キャラ:뎁스]], 12
+				CASE IS < 90
+					RETURN [[キャラ:슬라임]], 9
+				CASE IS < 100
+					RETURN [[キャラ:리림]], 9
+			ENDSELECT
+		ELSEIF FLAG:現Y < 32
+			SELECTCASE RAND:100
+				CASE IS < 15
+					RETURN [[キャラ:부쳐]], 9
+				CASE IS < 30
+					RETURN [[キャラ:리림]], 11
+				CASE IS < 45
+					RETURN [[キャラ:슬레이브]], 9
+				CASE IS < 55
+					RETURN [[キャラ:데미난디]], 11
+				CASE IS < 60
+					RETURN [[キャラ:돌연변이데미난디]],15
+				CASE IS < 75
+					RETURN [[キャラ:이누가미]], 13
+				CASE IS < 90
+					RETURN [[キャラ:임프]], 9
+				CASE IS < 100
+					RETURN [[キャラ:잭프로스트]], 15
+			ENDSELECT
+		ELSE
+			SELECTCASE RAND:100
+				CASE IS < 15
+					RETURN [[キャラ:네코마타]], 12
+				CASE IS < 30
+					RETURN [[キャラ:모・쇼보]], 15
+				CASE IS < 45
+					RETURN [[キャラ:슬레이브]], 9
+				CASE IS < 55
+					RETURN [[キャラ:데미난디]], 11
+				CASE IS < 60
+					RETURN [[キャラ:돌연변이데미난디]],15
+				CASE IS < 75
+					RETURN [[キャラ:이누가미]], 13
+				CASE IS < 90
+					RETURN [[キャラ:오키쿠무시]], 16
+				CASE IS < 95
+					RETURN [[キャラ:템플나이트]], 22
+				CASE IS < 100
+					RETURN [[キャラ:잭랜턴]], 20
+			ENDSELECT
+		ENDIF
+	;発掘現場１Ｆ〜Ｂ１Ｆ
+	CASE 4, 5
+		SELECTCASE RAND:100
+			CASE IS < 15
+				RETURN [[キャラ:부쳐]], 9
+			CASE IS < 30
+				RETURN [[キャラ:보디코니언]], 12
+			CASE IS < 45
+				RETURN [[キャラ:슬레이브]], 9
+			CASE IS < 60
+				RETURN [[キャラ:데미난디]], 11
+			CASE IS < 75
+				RETURN [[キャラ:뎁스]], 12
+			CASE IS < 90
+				RETURN [[キャラ:슬라임]], 9
+			CASE IS < 100
+				RETURN [[キャラ:리림]], 9
+		ENDSELECT
+	;発掘現場Ｂ２Ｆ〜Ｂ３Ｆ
+	CASE 6, 7
+		SELECTCASE RAND:100
+			CASE IS < 15
+				RETURN [[キャラ:웜]], 13
+			CASE IS < 35
+				RETURN [[キャラ:가기손]], 15
+			CASE IS < 50
+				RETURN [[キャラ:슬레이브]], 12
+			CASE IS < 65
+				RETURN [[キャラ:데미난디]], 13
+			CASE IS < 85
+				RETURN [[キャラ:엠푸사]], 15
+			CASE IS < 90
+				RETURN [[キャラ:다츠에바]], 18
+			CASE IS < 95
+				RETURN [[キャラ:오니]], 20
+			CASE IS < 100
+				RETURN [[キャラ:워커홀릭]], 21
+		ENDSELECT
+	;強制収容所
+	CASE 8, 9
+		SELECTCASE RAND:100
+			CASE IS < 15
+				RETURN [[キャラ:광신자]], 15
+			CASE IS < 40
+				RETURN [[キャラ:엔젤]], 21
+			CASE IS < 55
+				RETURN [[キャラ:부쳐]], 13
+			CASE IS < 75
+				RETURN [[キャラ:엔젤]], 14
+			CASE IS < 94
+				RETURN [[キャラ:템플나이트]], 22
+			CASE IS < 97
+				RETURN [[キャラ:아크엔젤]], 24
+			CASE IS < 100
+				RETURN [[キャラ:프린시펄리티]], 28
+		ENDSELECT
+	;地下通路Ｂ１Ｆ、Ｂ７Ｆ
+	CASE 10, 11
+		SELECTCASE RAND:100
+			CASE IS < 15
+				RETURN [[キャラ:좀비아미]], 15
+			CASE IS < 40
+				RETURN [[キャラ:엠푸사]], 15
+			CASE IS < 55
+				RETURN [[キャラ:웜]], 13
+			CASE IS < 75
+				RETURN [[キャラ:엔젤]], 14
+			CASE IS < 94
+				RETURN [[キャラ:이누가미]], 16
+			CASE IS < 97
+				RETURN [[キャラ:아크엔젤]], 24
+			CASE IS < 100
+				RETURN [[キャラ:맨이터]], 27
+		ENDSELECT
+ENDSELECT
+;=================================
+;特殊調整
+;=================================
+@SET_ENEMY_STATUS_28, ARG
+#LOCALSIZE 1
+SELECTCASE NO:ARG
+	CASE [[キャラ:엔젤]]
+		ABL:ARG:스킬1 = [[스킬:디아라마]]
+		ABL:ARG:스킬2 = [[스킬:마한마]]
+		ABL:ARG:스킬3 = [[스킬:갈라]]
+		ABL:ARG:스킬6 = [[스킬:마하・갈]]
+		SIF BASE:ARG:LV >= 21
+			ABL:ARG:스킬7 = [[스킬:하마온]]
+	CASEELSE
+ENDSELECT
+
+
+;=======================================================================
+;윤간참가악마
+;=======================================================================
+@DUNGEON_RAPE_DEVIL_28
+;랜덤にどの악마が出るか決定
+;RETURN CSV番号 , 人数 , 레벨
+SELECTCASE RAND:6
+	CASE 0
+		RETURN [[キャラ:부쳐]] , 3 + RAND:10 , CSVBASE([[キャラ:부쳐]] , GETNUM(BASE , "LV") , 0) + RAND:3
+	CASE 1
+		RETURN [[キャラ:데미난디]] , 3 + RAND:10 , CSVBASE([[キャラ:데미난디]] , GETNUM(BASE , "LV") , 0) + RAND:3
+	CASE 2
+		RETURN [[キャラ:템플나이트]] , 3 + RAND:10 , CSVBASE([[キャラ:템플나이트]] , GETNUM(BASE , "LV") , 0) + RAND:3
+	CASE 3
+		RETURN [[キャラ:광신자]] , 3 + RAND:10 , CSVBASE([[キャラ:광신자]] , GETNUM(BASE , "LV") , 0) + RAND:3
+	CASE 4
+		RETURN [[キャラ:아크엔젤]] , 3 + RAND:10 , CSVBASE([[キャラ:아크엔젤]] , GETNUM(BASE , "LV") , 0) + RAND:3
+	CASE 5
+		RETURN [[キャラ:슬레이브]] , 3 + RAND:10 , CSVBASE([[キャラ:슬레이브]] , GETNUM(BASE , "LV") , 0) + RAND:3
+ENDSELECT
+
+
+
+
+
+
+
+
+
+
+;=======================================================================
+;未作成部分を実装
+;=======================================================================
+@DUNGEON_28_EVENT_SUB
+	CALL MESSAGE_WINDOW_D, "", "＞데미난디 목장"
+	CALL MESSAGE_WINDOW_D, "", "＞널찍한 목장 안 여기저기에서、알몸의 여성들이 소를 닮은 악마들에게 범해지고 있다……"
+	CALL MESSAGE_WINDOW_D, "", "＞범해지고 있는 여성들은 각각 교성은 지르며、전원 모두 악마의 남근을 기뻐하며 받아들이고 있는 것 같다/＞여성 중 반수 이상은 하복부가 부풀어 올랐고 유방에는 착유기가 장착되고 있었다"
+
+;処理方바늘が불명のため一旦コメントアウト
+;	CALL MESSAGE_WINDOW_D, "여성 노동자", "안녕하세요、노동 종사 희망자 입니까？"
+;	CALL MESSAGE_WINDOW_D, "", "＞목장에서 일하고 있는 것 같은 여성 노동자가 말을 걸어왔다/＞다른 만은 여성들처럼 복부가 부풀어 올랐고、/＞팽팽한 유방에는 ＩＤ같은 숫자가 찍혀 있다"
+;	CALL MESSAGE_WINDOW_D, "여성 노동자", "이쪽에서는 식용의 데미난디의 번식을 위해/여성의 자궁에의 교배와 출산을 실시하고 있습니다"
+;	
+;	;牧場に男主人が来た場合
+;	IF IS_LOOKSLIKE_MALE(MASTER)
+;		CALL MESSAGE_WINDOW_D, "여성 노동자", "또、임신중인 여성의 업무로서/남성 노동자의 성욕 처리 임무도 일부 담당하고 있습니다"
+;		CALL MESSAGE_WINDOW_D, "여성 노동자", "지금은 제가 상대 할 수 있습니다만、이용하시겠습니까？"
+;		CALL INPUT_SELECT_D, "[0] 입을 이용한다/[1] 질을 이용한다/[2] 엉덩이 구멍을 이용한다/[3] 이용하지 않는다"
+;		IF RESULT == 0
+;			
+;		ELSEIF RESULT == 1
+;			
+;		ELSEIF RESULT == 2
+;			
+;		ELSE
+;			
+;		ENDIF
+;	ELSE
+;		CALL MESSAGE_WINDOW_D, "여성 노동자", "노동의 기쁨、신에게 시중드는 기쁨、/그리고 여성으로서의 기쁨 모두를 얻을 수 있는 훌륭한 일이에요"
+;		CALL MESSAGE_WINDOW_D, "여성 노동자", "어떻습니까/우리들하고 함께 몸도 마음도 신과 메시아 교도 여러분에게 바쳐 보지 않겠습니까？"
+;		CALL INPUT_YN_D, "데미난디를 낳는 공장이 된다 (게임오버)" , "그만둔다"
+;		IF RESULT == 0
+;			CALL BADENDING_NO43
+;		ELSE
+;			CALL MESSAGE_WINDOW_D, "여성 노동자", "그렇습니까…/그럼、체험 지원을 해보지 않겠습니까？"
+;			CALL MESSAGE_WINDOW_D, "성 노동자", "데미난디에 의해 교배로부터 출산까지를 이틀간에 걸쳐서 체험할 수 있습니다/후유증 같은 건 남지 않고、육체의 안전도 교회의 견실한 케어와 서포트가 붙어 있습니다/한 번 체험해 보지 않겠습니까？"
+;			CALL INPUT_YN_D, "체험 지원을 한다 (다음 다음날의 아침이 됩니다)" , "그만둔다"
+;			IF RESULT == 0
+;
+;			ELSE
+;				CALL MESSAGE_WINDOW_D, "여성 노동자", "그렇습니까/그럼、체험해 보고 싶다면 언제라도 와 주세요"
+;
+;		;ここで욕정を加算してループ
+;		;二段階눈
+;		;CALL MESSAGE_WINDOW_D, "", @"＞%CALLNAME:MASTER%의 하복부가 희미하게 열기를 띠고 있다……"
+;		;さらに욕정を加算してループ
+;		;三段階눈
+;		;CALL MESSAGE_WINDOW_D, "", @"＞%CALLNAME:MASTER%의 자궁 안쪽이 쿡쿡 거리며 안타깝게 쑤셔왔다……/＞이제、도저히 참아 낼 수 있을 것 같지 않다"
+;		;選択肢から「やめておく」が削除される
+;		;
+;		;CALL MESSAGE_WINDOW_D, "여성 노동자", "어떻습니까/우리들과 함께 여기서 일생을 신에게 바칠 생각은 없습니까？"
+;
+;
+;				CALL INPUT_SELECT_D, "[0] 데미난디를 낳는 공장이 된다 (게임오버)/[1] 체험 지원을 한다 (다음 다음날의 아침이 됩니다)/[2] 그만둔다"
+;
+;				IF RESULT == 0
+;					
+;				ELSEIF RESULT == 1
+;					
+;				ELSEIF RESULT == 2
+;					
+;				ELSE
+;					
+;				ENDIF
+;			ENDIF
+;		ENDIF
+;	ENDIF
+
+
+
+
+
+
+
+;=======================================================================
+;ゲームオーバー
+;=======================================================================
+;デミナン디무を産む工場になるEND
+@BADENDING_NO43
+	PRINTW ………… 
+	PRINTW ……… 
+	PRINTW …… 
+	PRINTW … 
+	PRINTW 오늘도 탑에서 노래가 흘러나온다
+	PRINTW  광활한 데미난디 목장의 일각
+	PRINTFORMW 메시아교도가 된 %CALLNAME:MASTER%는 소의 모습 을한 데미난디의 번식노예로써 몸과 마음을 바친 날들을 보내고 있다
+	PRINTFORMW 아름다운 노래를 듣는것 만으로 %CALLNAME:MASTER%의 마음은 행복으로 가득차, 비부에서 끊임없이 애액을 흘려보낸다
+	PRINTFORMW 몸도 마음도 번식노예가 된 %CALLNAME:MASTER%는 엎드려 기는듯한 자세에, 공허한 표정을 짓고서 데미난디를 요구하며 허리를 흔든다
+	PRINTFORMW 소젖처럼 커다랗게 늘어진 유방, 크게 부풀어 오른 배는 %CALLNAME:MASTER%가 악마를 임신하고 있는 것을 나타내고 있다
+	PRINTFORMW 수컷을 요구하는 %CALLNAME:MASTER%의 뒤에서 한마리의 데미난디가 올라탔다
+	PRINTFORMW 삽입하기 쉽도록 허리를 올리는 %CALLNAME:MASTER%
+	PRINTFORMW %CALLNAME:MASTER%의 비소에 데미난의 단단한 성기가 단숨에 안쪽까지 파고들었다.
+	PRINTFORMW 몇번이나 숫소에게 당해 완전히 익숙해져 버린 %CALLNAME:MASTER%의 질은 뿌리까지 육봉을 삼키고、
+	PRINTFORMW 질벽을 찌를때면 %CALLNAME:MASTER%의 눈동자는 욕정에 젖고, 입술에서는 요염한 한숨을 흘린다.
+	PRINTL 
+	PRINTW 고통은 쾌락이고, 교배는 지금까지 계속 저질러왔던 자신의 죄에 대한 사죄
+	PRINTFORMW 신에 의한 구제의 날 까지 데미난디를 임신해, 신에게 용서받기 위한 공물을 진상하는 것이 필요하다고 템플나이트들에게 교육받은 %CALLNAME:MASTER%의 눈동자에 빛은 없다
+	PRINTFORML 
+	PRINTFORMW 황홀한듯한 표정으로 노래를 들으면서 오늘도 %CALLNAME:MASTER%은 데미난디에 교미를 재촉하면서 공허한 웃음을 띄웠다
+	PRINTW 
+	PRINTW 　　　　　　　　――  Bad Ending No.043 ( 데미난디 번식노예END -생육하고 번성하라- )
+	CALL GLOBAL_BADEND_SET(43)
+
+
+
+@DUNGEON_28_Ｑ데미난디加入処理
+#DIM 日付計算
+日付計算 = DAY - STRFLAG_NUM_REQ("의뢰を受けた日" , , , , 13)
+;裏コンセプトは生まれたてのジュプ＝ニグラス
+;인간と比べ인내력多め
+CALL ADD_NEW_COMPANION,3315,0
+IF RESULT == 1
+	NAME:(RESULT:1) = Ｑ・데미난디
+	CALLNAME:(RESULT:1) = Ｑ・데미난디
+
+	;新しく精製された場合、데이터書き換え
+	BASE:(RESULT:1):LV = 39
+	BASE:(RESULT:1):힘 = 31
+	BASE:(RESULT:1):지혜 = 5
+	BASE:(RESULT:1):마력 =  1
+	BASE:(RESULT:1):인내력 = 36
+	BASE:(RESULT:1):속도 = 13
+	BASE:(RESULT:1):운 = 1
+	BASE:(RESULT:1):ＥＸＰ = 5*(BASE:(RESULT:1):LV - 1)*(BASE:(RESULT:1):LV)*(BASE:(RESULT:1):LV + 1)/3
+	BASE:(RESULT:1):CP = 10
+	;基準値76.5＋10
+	
+	TALENT:(RESULT:1):해방 = 1
+	TALENT:(RESULT:1):즉각함락 = 1
+	TALENT:(RESULT:1):악취둔감 = 1
+	TALENT:(RESULT:1):부끄럼없음 = 1
+	TALENT:(RESULT:1):여성혐오 = 1
+	TALENT:(RESULT:1):불결무시 = 1
+	TALENT:(RESULT:1):정조관결여 = 1
+	TALENT:(RESULT:1):아픔에강함 = 1
+	TALENT:(RESULT:1):쾌감에솔직 = 1
+	TALENT:(RESULT:1):중독되기쉬움 = 1
+	TALENT:(RESULT:1):폭유 = 1
+	TALENT:(RESULT:1):거체 = 1
+	TALENT:(RESULT:1):포동포동 = 1
+	TALENT:(RESULT:1):광기 = 1
+	TALENT:(RESULT:1):발정가능 = 1
+	TALENT:(RESULT:1):Ｖ민감 = 1
+	TALENT:(RESULT:1):모피 = 1
+	TALENT:(RESULT:1):모유체질 = 1
+	
+	TALENT:(RESULT:1):타격 = 1
+	TALENT:(RESULT:1):전술 = 1
+	TALENT:(RESULT:1):지원 = 1
+
+	TALENT:(RESULT:1):남자 = 0
+	
+	ABL:(RESULT:1):순종 = 3
+	ABL:(RESULT:1):욕망 = 3
+	ABL:(RESULT:1):Ｖ감각 = 3
+	ABL:(RESULT:1):Ｂ감각 = 1
+	ABL:(RESULT:1):정액중독 = 3
+	ABL:(RESULT:1):섹스중독 = 3
+	ABL:(RESULT-1):분유중독 = 1
+	ABL:(RESULT:1):수간중독 = 3
+
+	;ダーク
+	ABL:(RESULT:1):속성LD = 3
+	;カオス
+	ABL:(RESULT:1):속성LC = 3
+	CFLAG:(RESULT:1):秩混치 = -256
+	CFLAG:(RESULT:1):善悪치 = -256
+	
+	;コンセプトはやけくそ（どうせ광기付いてるし）
+	EXP:(RESULT:1):Ｖ경험 = 30 + (13 * 日付計算)
+	EXP:(RESULT:1):절정경험 = 11 + (6 * 日付計算)
+	EXP:(RESULT:1):성교경험 = 45 + (11 * 日付計算)
+	EXP:(RESULT:1):질사경험 = 45 + (9 * 日付計算)
+	EXP:(RESULT:1):정액경험 = 61 + (23 * 日付計算)
+	EXP:(RESULT:1):펠라경험 = 11 + (17 * 日付計算)
+	;途中から봉사とかどうでもよくなってるし控えめに
+	EXP:(RESULT:1):봉사쾌락경험 = 61 + (日付計算 / 2)
+	;同上
+	EXP:(RESULT:1):키스경험 = 11 + (日付計算)
+	;자위もする필요한いし……
+	EXP:(RESULT:1):자위경험 = 10
+
+	EXP:(RESULT:1):Ｖ확장경험 = 0 + (4 * 日付計算)
+	EXP:(RESULT:1):수간경험 = 0 + (21 * 日付計算)
+	EXP:(RESULT:1):윤간경험 = 3 + (21 * 日付計算)
+	EXP:(RESULT:1):분유경험 = 0 + (13 * 日付計算)
+
+	;출산だけは日数ごとに加速度的に増えていく
+	EXP:(RESULT:1):출산경험 = 0 + (((日付計算 - 34)) * 日付計算)
+	
+	CALL ADDS_ABNORMAL_EXP("수간", (RESULT:1))
+	CALL ADDS_ABNORMAL_EXP("분유", (RESULT:1))
+	CALL ADDS_ABNORMAL_EXP("처녀상실（윤간）", (RESULT:1))
+	CALL SHOW_ABNORMAL_EXP , (RESULT:1), 0
+	
+	;これを세트すると연모と이상경험を両立できると聞いた
+	CFLAG:(RESULT:1):초기이상경험 = EXP:(RESULT:1):이상경험
+	
+	MARK:(RESULT:1):쾌락각인 = 3
+	MARK:(RESULT:1):굴복각인 = 3
+	
+	;女・성인
+	ABL:(RESULT:1):회화타입 = 305
+	
+	;마수
+	ABL:(RESULT:1):종족 = 9
+	CSTR:(RESULT:1):종족명 = 『암소』
+	
+	CSTR:(RESULT:1):一人称 = ワタクシ
+	CSTR:(RESULT:1):二人称 = 당신님
+	CSTR:(RESULT:1):タイトル = 어머니인 암소
+
+	;리캄
+	ABL:(RESULT:1):스킬3 = 417
+	;메가톤프레스
+	ABL:(RESULT:1):스킬4 = 205
+	;눌러으깨기
+	ABL:(RESULT:1):스킬5 = 236
+	;이할의활천
+	ABL:(RESULT:1):스킬4 = 2401
+	ABL:(RESULT:1):스킬5 = 0
+	ABL:(RESULT:1):스킬6 = 0
+	ABL:(RESULT:1):스킬7 = 0
+	ABL:(RESULT:1):스킬8 = 0
+	
+	;꼬치꿰기・베어먹기・포효・치유촉진(중)
+	ABL:(RESULT:1):습득스킬1 = 331
+	ABL:(RESULT:1):습득스킬2 = 326
+	ABL:(RESULT:1):습득스킬3 = 514
+	ABL:(RESULT:1):습득스킬4 = 2410
+
+	ABL:(RESULT:1):습득LV1 = 42
+	ABL:(RESULT:1):습득LV2 = 44
+	ABL:(RESULT:1):습득LV3 = 52
+	ABL:(RESULT:1):습득LV4 = 58
+	
+	
+	;
+	BASE:(RESULT:1):검격 = 50
+	BASE:(RESULT:1):비구 = 75
+	BASE:(RESULT:1):타격 = 0
+	BASE:(RESULT:1):전술 = 0
+	BASE:(RESULT:1):화염 = 150
+	BASE:(RESULT:1):빙결 = 150
+	BASE:(RESULT:1):전격 = 100
+	BASE:(RESULT:1):충격 = 50
+	BASE:(RESULT:1):신경 = 0
+	BASE:(RESULT:1):정신 = 0
+	BASE:(RESULT:1):파마 = 200
+	BASE:(RESULT:1):주살 = 0
+	BASE:(RESULT:1):지변 = 50
+	BASE:(RESULT:1):수격 = 150
+	BASE:(RESULT:1):질풍 = 150
+	BASE:(RESULT:1):중력 = 100
+	BASE:(RESULT:1):핵열 = 50
+	BASE:(RESULT:1):만능 = 100
+	BASE:(RESULT:1):사이코 = 100
+	MAXBASE:(RESULT:1):검격 = 50
+	MAXBASE:(RESULT:1):비구 = 75
+	MAXBASE:(RESULT:1):타격 = 0
+	MAXBASE:(RESULT:1):전술 = 0
+	MAXBASE:(RESULT:1):화염 = 150
+	MAXBASE:(RESULT:1):빙결 = 150
+	MAXBASE:(RESULT:1):전격 = 100
+	MAXBASE:(RESULT:1):충격 = 50
+	MAXBASE:(RESULT:1):신경 = 0
+	MAXBASE:(RESULT:1):정신 = 0
+	MAXBASE:(RESULT:1):파마 = 200
+	MAXBASE:(RESULT:1):주살 = 0
+	MAXBASE:(RESULT:1):지변 = 50
+	MAXBASE:(RESULT:1):수격 = 150
+	MAXBASE:(RESULT:1):질풍 = 150
+	MAXBASE:(RESULT:1):중력 = 100
+	MAXBASE:(RESULT:1):핵열 = 50
+	MAXBASE:(RESULT:1):만능 = 100
+	MAXBASE:(RESULT:1):사이코 = 100
+	
+	
+	CSTR:(RESULT:1):30 = 굵게 치켜 올라간 뿔과 검은 빛의 긴 머리카락를 가진 거대한 암소。유방에는【NO.0013】의 낙인이 있다。
+	CSTR:(RESULT:1):31 = 본인은 자신을 데미난디라고 생각하고 있지만、더욱 이질적인 존재이다。
+	CSTR:(RESULT:1):32 = 
+	CSTR:(RESULT:1):33 = 이 혼은、전에는 인간・히메미야 키쿠에이었던 물건이지만、
+	CSTR:(RESULT:1):34 = 데빌시프터로서의 감수성에、데미난디의 정액에 반응。
+	CSTR:(RESULT:1):35 = 거기에 메시아교도의 세뇌에 의한 자기암시가 겹쳐 이러한 괴물로 변모해 버렸다。
+	CSTR:(RESULT:1):36 = 
+	CSTR:(RESULT:1):37 = 사람의 말은 할 줄 알지만 가치관이 달라서 회화가 성립하지 않는다。
+	CSTR:(RESULT:1):38 = 강한『수컷 소』를 아이를 갖는 것을 지상의 명제로 삼고 있으며、임신하지 않았을 때는 침착하지 못하다。
+	CSTR:(RESULT:1):39 = 언젠가는『신부』가 되고싶다고 생각하지만、그것이 무엇인지는 잊어버린것 같다。
+	CSTR:(RESULT:1):40 = 
+	CSTR:(RESULT:1):41 = 또한、그 몸길이는 6미터、
+	CSTR:(RESULT:1):42 = 일반적인 축우와 같은 비율로 가정했을 때 체고(体高)는 5.3미터、
+	CSTR:(RESULT:1):43 = 무게는 추정 30톤이 된다。
+	CSTR:(RESULT:1):44 = 
+	CSTR:(RESULT:1):45 = 『무게 4배의 런던 버스가 달려온다』고 생각하면、
+	CSTR:(RESULT:1):46 = 그녀가 가지고 있는 운동 에너지에 대해 쉽게 이해할 수 있다。
+	CSTR:(RESULT:1):47 = 
+	CSTR:(RESULT:1):48 = 
+	CSTR:(RESULT:1):49 = 등장작품：오리지널
+
+	CALL SYNC_STATUS,(RESULT:1)
+	CALL HEALTH_CHARA,(RESULT:1)
+	
+ENDIF
+
+
+;裏コンセプトは生まれたてのジュプ＝ニグラス
+;짐승型と比べ힘馬鹿に
+@DUNGEON_28_Ｑ데미난디加入処理_인간
+#DIM 日付計算
+日付計算 = DAY - STRFLAG_NUM_REQ("의뢰を受けた日" , , , , 13)
+
+CALL ADD_NEW_COMPANION,3315,0
+IF RESULT == 1
+	NAME:(RESULT:1) = ヒメミヤキクエ
+	CALLNAME:(RESULT:1) = ヒメミヤキクエ
+
+	;新しく精製された場合、데이터書き換え
+	;こっちは힘＞인내력
+	BASE:(RESULT:1):LV = 39
+	BASE:(RESULT:1):힘 = 40
+	BASE:(RESULT:1):지혜 = 7
+	BASE:(RESULT:1):마력 =  1
+	BASE:(RESULT:1):인내력 = 20
+	BASE:(RESULT:1):속도 = 18
+	BASE:(RESULT:1):운 = 1
+	BASE:(RESULT:1):ＥＸＰ = 5*(BASE:(RESULT:1):LV - 1)*(BASE:(RESULT:1):LV)*(BASE:(RESULT:1):LV + 1)/3
+	BASE:(RESULT:1):CP = 10
+	;基準値76.5＋10
+	
+	TALENT:(RESULT:1):해방 = 1
+	TALENT:(RESULT:1):즉각함락 = 1
+	TALENT:(RESULT:1):악취둔감 = 1
+	TALENT:(RESULT:1):부끄럼없음 = 1
+	TALENT:(RESULT:1):여성혐오 = 1
+	TALENT:(RESULT:1):불결무시 = 1
+	TALENT:(RESULT:1):정조관결여 = 1
+	TALENT:(RESULT:1):아픔에강함 = 1
+	TALENT:(RESULT:1):쾌감에솔직 = 1
+	TALENT:(RESULT:1):중독되기쉬움 = 1
+	TALENT:(RESULT:1):폭유 = 1
+	TALENT:(RESULT:1):큰체형 = 1
+	TALENT:(RESULT:1):포동포동 = 1
+	TALENT:(RESULT:1):광기 = 1
+	TALENT:(RESULT:1):발정가능 = 1
+	TALENT:(RESULT:1):Ｖ민감 = 1
+	TALENT:(RESULT:1):모유체질 = 1
+
+	TALENT:(RESULT:1):팔 = 1
+	TALENT:(RESULT:1):인간화 = 1
+	
+	TALENT:(RESULT:1):짐승 = 0
+
+	TALENT:(RESULT:1):타격 = 1
+	TALENT:(RESULT:1):전술 = 1
+	TALENT:(RESULT:1):회복 = 1
+
+	TALENT:(RESULT:1):남자 = 0
+
+	ABL:(RESULT:1):순종 = 3
+	ABL:(RESULT:1):욕망 = 3
+	ABL:(RESULT:1):Ｖ감각 = 3
+	ABL:(RESULT:1):Ｂ감각 = 1
+	ABL:(RESULT:1):정액중독 = 3
+	ABL:(RESULT:1):섹스중독 = 3
+	ABL:(RESULT-1):분유중독 = 1
+	ABL:(RESULT:1):수간중독 = 3
+
+	;ダーク
+	ABL:(RESULT:1):속성LD = 3
+	;カオス
+	ABL:(RESULT:1):속성LC = 3
+	CFLAG:(RESULT:1):秩混치 = -256
+	CFLAG:(RESULT:1):善悪치 = -256
+	
+	;コンセプトはやけくそ（どうせ광기付いてるし）
+	EXP:(RESULT:1):Ｖ경험 = 30 + (13 * 日付計算)
+	EXP:(RESULT:1):절정경험 = 11 + (6 * 日付計算)
+	EXP:(RESULT:1):성교경험 = 45 + (11 * 日付計算)
+	EXP:(RESULT:1):질사경험 = 45 + (9 * 日付計算)
+	EXP:(RESULT:1):정액경험 = 61 + (23 * 日付計算)
+	EXP:(RESULT:1):펠라경험 = 11 + (17 * 日付計算)
+	;途中から봉사とかどうでもよくなってるし控えめに
+	EXP:(RESULT:1):봉사쾌락경험 = 61 + (日付計算 / 2)
+	;同上
+	EXP:(RESULT:1):키스경험 = 11 + (日付計算)
+	;자위もする필요한いし……
+	EXP:(RESULT:1):자위경험 = 10
+
+	EXP:(RESULT:1):Ｖ확장경험 = 0 + (4 * 日付計算)
+	EXP:(RESULT:1):수간경험 = 0 + (21 * 日付計算)
+	EXP:(RESULT:1):윤간경험 = 3 + (21 * 日付計算)
+	EXP:(RESULT:1):분유경험 = 0 + (13 * 日付計算)
+	;출산だけは日数ごとに加速度的に増えていく
+	EXP:(RESULT:1):출산경험 = 0 + (((日付計算 - 34)) * 日付計算)
+	
+	CALL ADDS_ABNORMAL_EXP("수간", (RESULT:1))
+	CALL ADDS_ABNORMAL_EXP("분유", (RESULT:1))
+	CALL ADDS_ABNORMAL_EXP("처녀상실（윤간）", (RESULT:1))
+	CALL SHOW_ABNORMAL_EXP , (RESULT:1), 0
+	
+	;これを세트すると연모と이상경험を両立できると聞いた
+	CFLAG:(RESULT:1):초기이상경험 = EXP:(RESULT:1):이상경험
+	
+	MARK:(RESULT:1):쾌락각인 = 3
+	MARK:(RESULT:1):굴복각인 = 3
+	
+	;半魔に
+	ABL:(RESULT:1):종족 = 36
+	CSTR:(RESULT:1):종족명 = 『牝牛』
+	
+	CSTR:(RESULT:1):一人称 = ワタクシ
+	CSTR:(RESULT:1):二人称 = アナタサマ
+	CSTR:(RESULT:1):タイトル = 母なる牝牛
+	
+	
+	CFLAG:(RESULT:1):전투참가불가능 = -1
+	EQUIP:(RESULT:1):검 = 2093;생득무기（角とか怪힘とか）
+	
+	;디아라한
+	ABL:(RESULT:1):스킬1 = 403
+	;사마리캄
+	ABL:(RESULT:1):스킬2 = 418
+	;꼬치꿰기
+	ABL:(RESULT:1):스킬3 = 331
+	;몸통박치기
+	ABL:(RESULT:1):스킬4 = 235
+	;빛의벽
+	ABL:(RESULT:1):스킬5 = 1307
+	ABL:(RESULT:1):스킬6 = 0
+	ABL:(RESULT:1):스킬7 = 0
+	ABL:(RESULT:1):스킬8 = 0
+	
+	;페트라디
+	ABL:(RESULT:1):습득스킬1 = 413
+	ABL:(RESULT:1):습득LV1 = 41
+	;테트라쟈
+	ABL:(RESULT:1):습득스킬2 = 601
+	ABL:(RESULT:1):습득LV2 = 44
+	;포효
+	ABL:(RESULT:1):습득스킬3 = 514
+	ABL:(RESULT:1):습득LV3 = 46
+	;수호의방패
+	ABL:(RESULT:1):습득스킬4 = 610
+	ABL:(RESULT:1):습득LV4 = 49
+	;사마・카쟈
+	ABL:(RESULT:1):습득스킬5 = 558
+	ABL:(RESULT:1):습득LV5 = 40
+	;비틀어꺾기
+	ABL:(RESULT:1):습득스킬6 = 359
+	ABL:(RESULT:1):습득LV6 = 52
+	;리캄도라
+	ABL:(RESULT:1):습득스킬7 = 419
+	ABL:(RESULT:1):습득LV7 = 56
+	;모탈지하드
+	ABL:(RESULT:1):습득스킬8 = 218
+	ABL:(RESULT:1):습득LV8 = 62
+	
+	
+	;
+	BASE:(RESULT:1):검격 = 50
+	BASE:(RESULT:1):비구 = 75
+	BASE:(RESULT:1):타격 = 0
+	BASE:(RESULT:1):전술 = 0
+	BASE:(RESULT:1):화염 = 150
+	BASE:(RESULT:1):빙결 = 150
+	BASE:(RESULT:1):전격 = 100
+	BASE:(RESULT:1):충격 = 50
+	BASE:(RESULT:1):신경 = 0
+	BASE:(RESULT:1):정신 = 0
+	BASE:(RESULT:1):파마 = 200
+	BASE:(RESULT:1):주살 = 0
+	BASE:(RESULT:1):지변 = 50
+	BASE:(RESULT:1):수격 = 150
+	BASE:(RESULT:1):질풍 = 150
+	BASE:(RESULT:1):중력 = 100
+	BASE:(RESULT:1):핵열 = 50
+	BASE:(RESULT:1):만능 = 100
+	BASE:(RESULT:1):사이코 = 100
+	MAXBASE:(RESULT:1):검격 = 50
+	MAXBASE:(RESULT:1):비구 = 75
+	MAXBASE:(RESULT:1):타격 = 0
+	MAXBASE:(RESULT:1):전술 = 0
+	MAXBASE:(RESULT:1):화염 = 150
+	MAXBASE:(RESULT:1):빙결 = 150
+	MAXBASE:(RESULT:1):전격 = 100
+	MAXBASE:(RESULT:1):충격 = 50
+	MAXBASE:(RESULT:1):신경 = 0
+	MAXBASE:(RESULT:1):정신 = 0
+	MAXBASE:(RESULT:1):파마 = 200
+	MAXBASE:(RESULT:1):주살 = 0
+	MAXBASE:(RESULT:1):지변 = 50
+	MAXBASE:(RESULT:1):수격 = 150
+	MAXBASE:(RESULT:1):질풍 = 150
+	MAXBASE:(RESULT:1):중력 = 100
+	MAXBASE:(RESULT:1):핵열 = 50
+	MAXBASE:(RESULT:1):만능 = 100
+	MAXBASE:(RESULT:1):사이코 = 100
+
+	
+	CSTR:(RESULT:1):30 = 굵게 휘어진 뿔과 검게 윤이 나는 뻣뻣한 털을 가진『암소』。가슴에는【NO.0013】의 낙인이 있다。
+	CSTR:(RESULT:1):31 = 본인은 자신을 데미난디라고 생각하고 있지만、더욱 이질적인 존재이다。
+	CSTR:(RESULT:1):32 = 
+	CSTR:(RESULT:1):33 = 이 혼은、전에는 인간・히메미야 키쿠에이었던 물건이지만、
+	CSTR:(RESULT:1):34 = 데빌시프터로서의 감수성에、데미난디의 정액에 반응。
+	CSTR:(RESULT:1):35 = 거기에 메시아교도의 세뇌에 의한 자기암시가 겹쳐 이러한 괴물로 변모해 버렸다。
+	CSTR:(RESULT:1):36 = 
+	CSTR:(RESULT:1):37 = 당신이 원했던 대로、인간의 모양새가 생각난 것 같은데、
+	CSTR:(RESULT:1):38 = 그 마음은 이미 마수 그 자체이며、인간의 상식은 통용되지 않는다。
+	CSTR:(RESULT:1):39 = 강한『수컷 소』의 새끼를 낳는 것을 사명으로 여기고 있어、틈만 나면 당신과 아이를 만들고 싶다고 생각하고 있다。
+	CSTR:(RESULT:1):40 = 
+	CSTR:(RESULT:1):41 = 
+	CSTR:(RESULT:1):42 = 
+	CSTR:(RESULT:1):43 = 
+	CSTR:(RESULT:1):44 = 
+	CSTR:(RESULT:1):45 = 
+	CSTR:(RESULT:1):46 = 
+	CSTR:(RESULT:1):47 = 
+	CSTR:(RESULT:1):48 = 
+	CSTR:(RESULT:1):49 = 등장작품：오리지널
+	
+	;まあ임신願望の強い毛深いドラフとでも思ってくれ
+	;メスなのにデカいけど
+
+	CALL SYNC_STATUS,(RESULT:1)
+	CALL HEALTH_CHARA,(RESULT:1)
+
+
+ENDIF
+

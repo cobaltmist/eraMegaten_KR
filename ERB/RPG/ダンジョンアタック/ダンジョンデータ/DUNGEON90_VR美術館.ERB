@@ -1,0 +1,2373 @@
+﻿;作業環境:ver0.295　適用パッチ:修正パッチ9　最終更新:2011/08/14
+;지뢰탐지기 수정본	1번째 수정 : 2018/12/02
+;					2번째 수정 : 2018/12/20
+;=======================================================================
+;ＶＲ미술관
+;ボス・스내피
+;던전ナンバー90　ＭＡＰ0~6
+;登場악마레벨15~19　ボス레벨24
+;=======================================================================
+;던전フラグ:(FLAG:現던전):0 조교이벤트深度
+;던전フラグ:(FLAG:現던전):1 이벤트進行状況 1 駒集め前で再挑戦時  2 駒集め開始 3 스내피撃破後 4 스내피取引後 5 토토코를 위해 스내피와 거래 
+;던전フラグ:(FLAG:現던전):2 이벤트進行状況 ナイトの駒
+;던전フラグ:(FLAG:現던전):3 이벤트進行状況 ルークの駒
+;던전フラグ:(FLAG:現던전):4 이벤트進行状況 ビSHOPの駒
+;던전フラグ:(FLAG:現던전):5 通行人회화用
+;던전フラグ:(FLAG:現던전):6 すなっぴーが命乞いした？
+;던전フラグ:(FLAG:現던전):7 마스터 조교이벤트 심도
+;=======================================================================
+;攻略조건
+;=======================================================================
+@PREREQUISITE_DUNGEON_90
+IF 던전フラグ:90:1 == 3
+	RETURN 0
+;ED달성後消滅の用意だけ
+;ELSEIF FLAG:5 == 9
+;	RETURN 0
+ELSEIF BASE:MASTER:LV >= 15
+	RETURN 1
+ENDIF
+
+;=======================================================================
+;던전名
+;=======================================================================
+@GET_DUNGEON_NAME_90
+RESULTS = ＶＲ미술관
+
+
+;=======================================================================
+;플로어 이름 표시
+;=======================================================================
+@FLOORNAME_90
+PRINT ＶＲ미술관
+SELECTCASE FLAG:現M
+	CASE 0
+		PRINTL １Ｆ
+	CASE 1
+		PRINTL ２Ｆ
+	CASE 2
+		PRINTL 숨겨진 폭포
+	CASE 3
+		PRINTL 스트레인지 에리어
+	CASE 4
+		PRINTL 창가의 체스
+	CASEELSE
+		PRINTL
+ENDSELECT
+
+
+;=======================================================================
+;特殊タイル표시
+;=======================================================================
+@TILE_MARK_90_1_12_8
+RESULTS = Ｔ
+;=======================================================================
+;시작 지점 입력
+;=======================================================================
+@START_DUNGEON_90,ARG
+FLAG:現M = 0
+FLAG:現X = 8
+FLAG:現Y = 10
+;CALL AUTOMAP
+
+;=======================================================================
+;시작 이벤트
+;=======================================================================
+@EVENT_DUNGEON_START_90
+IF 던전フラグ:90:1 == 0
+	PRINTFORML 텐카이(天海)시에서 행방불명이 된 소녀의 수색 의뢰가 들어왔다
+	PRINTFORML 단순한 가출수색은 서모너를 필요할 정도의 일이 아니지만…
+	PRINTFORML 이번에 들어온 의뢰는 외부의 중개자가 있었다
+	PRINTFORML 최근 판매가 시작된 가상공간도시 패러다임 X
+	PRINTFORML 그 개발에는 조직도 깊숙이 관련된 것으로 알고 있다
+	PRINTFORML 그리고 소녀는 실종직전까지 패러다임 X에 로그인하고 있던 것 같다
+	PRINTFORML 조직의 기밀이 드러날 가능성이 있어 외부인에겐 최대한 맡기고 싶지 않았던 것 같다
+	PRINTFORML 실종 당시 모니터에 비친 장소에서 의뢰 받은 소녀를 닮은 모습이 목격되었다는 이야기가 전해지고 있다
+	PRINTFORML 패러다임 X에 악마가 숨어 있다면 악마 퇴치 전문가인 %조사처리(NAME:MASTER,"와")% 동료마들이 싸울 수 밖에 없다
+	PRINTFORML 그렇지만 이 일이 조직에 대한 배임 행위가 되지 않았으면 좋겠지만…
+	PRINTFORML %조사처리(NAME:MASTER,"는")% 일말의 불안감을 품으면서도 중개하는 인물이 준비한 해커의 손을 빌려
+	PRINTFORMW 프로그램 내부에서 실체화 할 수 있게되어 사이버 공간의 바다로 몸을 던질 수 있었다……
+	던전フラグ:90:1 = 1
+	던전フラグ:90:5 = 1
+ELSEIF 던전フラグ:90:1 == 2
+	PRINTFORML 소녀의 구출은 아직 완료되지 않았다
+	PRINTFORMW 서둘러 해결하지 않으면 %NAME:MASTER%의 평판에도 영향을 줄지 모른다……
+ELSEIF 던전フラグ:90:1 == 6
+	PRINTFORMW 스내피의 유혹에 넘어간 %조사처리(NAME:MASTER,"는")% 동료들을 뒤로하고 몰래 미술관으로 들어왔다……
+	FOR LOCAL:0,1,7
+		LOCALS = 포지션{LOCAL:0}
+		IF FLAG:LOCALS != 0 && FLAG:LOCALS != -1
+			CALL REMOVE_POSITION,LOCAL:0
+		ENDIF
+	NEXT
+ELSE
+ENDIF
+
+;=======================================================================
+;指定したマスに進入可能か
+;=======================================================================
+@CAN_ENTER_90,ARG,ARG:1
+CALL CAN_ENTER,ARG,ARG:1
+RETURN RESULT
+;=======================================================================
+;플로어데이터
+;=======================================================================
+@MAKE_FLOOR_90
+SELECTCASE FLAG:現M
+	CASE 0
+	;１階
+		FLAG:최대X = 17
+		FLAG:최대Y = 12
+;X座標をこんな形でふっとくと、見やすいかもしれません
+;							     01234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"                 "
+		CALL MAKE_FLOOR_LINE, 1,"      1   1      "
+		CALL MAKE_FLOOR_LINE, 2,"      1   1      "
+		CALL MAKE_FLOOR_LINE, 3,"      1   1      "
+		CALL MAKE_FLOOR_LINE, 4,"      1 6 1      "
+		CALL MAKE_FLOOR_LINE, 5,"      1 1 1      "
+		CALL MAKE_FLOOR_LINE, 6,"     1111111     "
+		CALL MAKE_FLOOR_LINE, 7," 111111111111111 "
+		CALL MAKE_FLOOR_LINE, 8,"     1111111     "
+		CALL MAKE_FLOOR_LINE, 9,"      11111      "
+		CALL MAKE_FLOOR_LINE,10,"       111       "
+		CALL MAKE_FLOOR_LINE,11,"        8        "
+
+		;IDセット
+		DA:8:4 += 10
+
+		CALL SET_TILE, 8, 5,던전フラグ:(FLAG:現던전):1,2,14
+		CALL SET_TILE, 1, 7,던전フラグ:(FLAG:現던전):1,2,14
+		CALL SET_TILE,15, 7,던전フラグ:(FLAG:現던전):1,2, 4
+		CALL SET_TILE, 6, 1,던전フラグ:(FLAG:現던전):1,2,14
+		CALL SET_TILE,10, 1,던전フラグ:(FLAG:現던전):1,2,14
+		CALL SET_TILE,10, 8,던전フラグ:(FLAG:現던전):5,1,14
+		CALL SET_TILE, 7, 6,던전フラグ:(FLAG:現던전):5,1,14
+
+	CASE 1
+	;２階
+		FLAG:최대X = 17
+		FLAG:최대Y = 15
+;								 01234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"                 "
+		CALL MAKE_FLOOR_LINE, 1,"       111       "
+		CALL MAKE_FLOOR_LINE, 2,"       111       "
+		CALL MAKE_FLOOR_LINE, 3,"        2        "
+		CALL MAKE_FLOOR_LINE, 4,"        1        "
+		CALL MAKE_FLOOR_LINE, 5,"     11 1 11     "
+		CALL MAKE_FLOOR_LINE, 6," 111111 1 111111 "
+		CALL MAKE_FLOOR_LINE, 7,"     1111111     "
+		CALL MAKE_FLOOR_LINE, 8,"    111111119    "
+		CALL MAKE_FLOOR_LINE, 9,"     1111111     "
+		CALL MAKE_FLOOR_LINE,10," 111111111111111 "
+		CALL MAKE_FLOOR_LINE,11,"     1111111     "
+		CALL MAKE_FLOOR_LINE,12,"      11111      "
+		CALL MAKE_FLOOR_LINE,13,"        7        "
+		CALL MAKE_FLOOR_LINE,14,"                 "
+
+		;IDセット
+		DA:8:13 += 10
+
+		;이벤트の設置
+		CALL SET_TILE, 1,10,던전フラグ:(FLAG:現던전):1,2,4
+		CALL SET_TILE, 1, 6,던전フラグ:(FLAG:現던전):1,2,14
+		CALL SET_TILE,15, 6,던전フラグ:(FLAG:現던전):1,2,14
+		CALL SET_TILE,15,10,던전フラグ:(FLAG:現던전):1,2,4
+		CALL SET_TILE, 8, 1,던전フラグ:(FLAG:現던전):1,2,14
+		CALL SET_TILE, 8, 1,던전フラグ:(FLAG:現던전):1,4,14
+		CALL SET_TILE, 8, 1,던전フラグ:(FLAG:現던전):1,6,14
+		CALL SET_TILE, 8, 3,던전フラグ:(FLAG:現던전):1,1,14
+		CALL SET_TILE, 8, 3,던전フラグ:(FLAG:現던전):1,2,14
+		CALL SET_TILE, 7,12,던전フラグ:(FLAG:現던전):5,1,14
+		CALL SET_TILE,10, 7,던전フラグ:(FLAG:現던전):5,1,14
+
+
+	CASE 2
+	;숨겨진 폭포
+		FLAG:최대X = 18
+		FLAG:최대Y = 18
+;								 012345678901234567
+		CALL MAKE_FLOOR_LINE, 0,"                  "
+		CALL MAKE_FLOOR_LINE, 1," 111111 111       "
+		CALL MAKE_FLOOR_LINE, 2,"    1   111  1111 "
+		CALL MAKE_FLOOR_LINE, 3," 111111 111 111 1 "
+		CALL MAKE_FLOOR_LINE, 4," 1  1 1  1  111 1 "
+		CALL MAKE_FLOOR_LINE, 5," 1   111 1  11  1 "
+		CALL MAKE_FLOOR_LINE, 6," 11  111 1      1 "
+		CALL MAKE_FLOOR_LINE, 7,"  1      1      1 "
+		CALL MAKE_FLOOR_LINE, 8,"  1     111111111 "
+		CALL MAKE_FLOOR_LINE, 9,"  111111111       "
+		CALL MAKE_FLOOR_LINE,10," 11     1 1 1 111 "
+		CALL MAKE_FLOOR_LINE,11," 1  111 1 1 1 111 "
+		CALL MAKE_FLOOR_LINE,12," 1  111 1 1111 1  "
+		CALL MAKE_FLOOR_LINE,13," 11  1  1  1 111  "
+		CALL MAKE_FLOOR_LINE,14,"  1  1 111 1 1    "
+		CALL MAKE_FLOOR_LINE,15,"  1111 111 1 11   "
+		CALL MAKE_FLOOR_LINE,16,"    11 141 1  11  "
+		CALL MAKE_FLOOR_LINE,17,"                  "
+
+		CALL SET_TILE,9,1,던전フラグ:(FLAG:現던전):1,2,14
+		CALL SET_TILE,2,9,던전フラグ:(FLAG:現던전):1,2,14
+		CALL SET_TILE,8,9,던전フラグ:(FLAG:現던전):1,2,14
+		CALL SET_TILE,5,11,던전フラグ:(FLAG:現던전):1,2,14
+		CALL SET_TILE,6,6,던전フラグ:(FLAG:現던전):1,2,14
+		CALL SET_TILE,12,4,던전フラグ:(FLAG:現던전):1,2,14
+		CALL SET_TILE,15,10,던전フラグ:(FLAG:現던전):1,2,14
+		CALL SET_TILE,10,9,던전フラグ:(FLAG:現던전):5,1,14
+
+
+	CASE 3
+	;스트레인지 에리어
+		FLAG:최대X = 18
+		FLAG:최대Y = 18
+;								 012345678901234567
+		CALL MAKE_FLOOR_LINE, 0,"                  "
+		CALL MAKE_FLOOR_LINE, 1," 111111111111 4 1 "
+		CALL MAKE_FLOOR_LINE, 2," 11111 141111 1 1 "
+		CALL MAKE_FLOOR_LINE, 3," 1111111111 1 1 1 "
+		CALL MAKE_FLOOR_LINE, 4," 111111111111 1 4 "
+		CALL MAKE_FLOOR_LINE, 5," 1111 141  111    "
+		CALL MAKE_FLOOR_LINE, 6," 11111 4 41 11111 "
+		CALL MAKE_FLOOR_LINE, 7," 111114  11 11111 "
+		CALL MAKE_FLOOR_LINE, 8," 1111111     1111 "
+		CALL MAKE_FLOOR_LINE, 9," 1111111111111111 "
+		CALL MAKE_FLOOR_LINE,10," 11111 1111111 11 "
+		CALL MAKE_FLOOR_LINE,11," 1111111111111111 "
+		CALL MAKE_FLOOR_LINE,12," 111 1111411 11   "
+		CALL MAKE_FLOOR_LINE,13," 1  4  111111   4 "
+		CALL MAKE_FLOOR_LINE,14," 1 414 111111 411 "
+		CALL MAKE_FLOOR_LINE,15," 11   1111111   1 "
+		CALL MAKE_FLOOR_LINE,16," 11111111111111 1 "
+		CALL MAKE_FLOOR_LINE,17,"                  "
+
+		CALL SET_TILE,16,1,던전フラグ:(FLAG:現던전):1,2,14
+		CALL SET_TILE,16,16,던전フラグ:(FLAG:現던전):1,2,14
+		CALL SET_TILE,14,4,던전フラグ:(FLAG:現던전):1,2,14
+		CALL SET_TILE,2,9,던전フラグ:(FLAG:現던전):1,2,14
+		CALL SET_TILE,13,5,던전フラグ:(FLAG:現던전):1,2,14
+		CALL SET_TILE,4,9,던전フラグ:(FLAG:現던전):5,1,14
+
+
+	CASE 4
+	;창가의 체스
+		FLAG:최대X = 18
+		FLAG:최대Y = 18
+;								 012345678901234567
+		CALL MAKE_FLOOR_LINE, 0,"                  "
+		CALL MAKE_FLOOR_LINE, 1," 11 11111 1       "
+		CALL MAKE_FLOOR_LINE, 2,"  1111 1111       "
+		CALL MAKE_FLOOR_LINE, 3,"        1         "
+		CALL MAKE_FLOOR_LINE, 4,"    111111111     "
+		CALL MAKE_FLOOR_LINE, 5,"         1        "
+		CALL MAKE_FLOOR_LINE, 6,"     11111111     "
+		CALL MAKE_FLOOR_LINE, 7,"     11111111     "
+		CALL MAKE_FLOOR_LINE, 8,"     11111111     "
+		CALL MAKE_FLOOR_LINE, 9,"     11111111     "
+		CALL MAKE_FLOOR_LINE,10,"     11111111     "
+		CALL MAKE_FLOOR_LINE,11,"     11111111     "
+		CALL MAKE_FLOOR_LINE,12,"        1         "
+		CALL MAKE_FLOOR_LINE,13,"     111111111    "
+		CALL MAKE_FLOOR_LINE,14,"        1 1 1 1   "
+		CALL MAKE_FLOOR_LINE,15,"        111 1 11  "
+		CALL MAKE_FLOOR_LINE,16,"         11111114 "
+		CALL MAKE_FLOOR_LINE,17,"                  "
+
+		CALL SET_TILE,1,1,던전フラグ:(FLAG:現던전):1,2,14
+		CALL SET_TILE,9,6,던전フラグ:(FLAG:現던전):1,2,14
+		CALL SET_TILE,8,11,던전フラグ:(FLAG:現던전):1,2,14
+		CALL SET_TILE,8,8,던전フラグ:(FLAG:現던전):1,2,14
+		CALL SET_TILE,10,8,던전フラグ:(FLAG:現던전):1,2,14
+		CALL SET_TILE,10,9,던전フラグ:(FLAG:現던전):5,1,14
+
+
+	CASEELSE
+
+
+ENDSELECT
+
+
+;=======================================================================
+;[5]조사　런타임 이벤트
+;=======================================================================
+@EVENT_CHECK_DUNGEON_90
+
+;==========
+;出입の処理
+;==========
+IF DA:(FLAG:現X):(FLAG:現Y) == 8
+	CALL DUNGEON_EXIT
+	RETURN 1
+;========
+;宝の処理
+;========
+;% 10は10で割ったあまり、つまり下一桁がでてきます
+;그리고 、下一桁はタイルの종류を表す
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 3
+	CALL TREASURE_90
+	RETURN RESULT
+;=======
+;階段
+;=======
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 6
+	CALL UPSTAIRS_90
+	RETURN RESULT
+
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 7
+	CALL DOWNSTAIRS_90
+	RETURN RESULT
+
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 9
+	CALL DUNGEON_TERMINAL
+	RETURN 1
+
+
+ELSEIF 던전フラグ:90:2 == 1 && 던전フラグ:90:3 == 1 && 던전フラグ:90:4 == 1
+	PRINTFORMW %조사처리(NAME:MASTER,"는")% 포켓 안의 말을 확인했다
+	PRINTFORMW 필요한 말 3개를 모두 갖췄다……
+	RETURN 0
+ELSEIF 던전フラグ:90:2 == 1 && 던전フラグ:90:3 == 1
+	PRINTFORMW %조사처리(NAME:MASTER,"는")% 포켓 안의 말을 확인했다
+	PRINTFORMW 필요한 말 중에서 나이트와 룩을 가지고 있다……
+	RETURN 0
+ELSEIF 던전フラグ:90:2 == 1 && 던전フラグ:90:4 == 1
+	PRINTFORMW %조사처리(NAME:MASTER,"는")% 포켓 안의 말을 확인했다
+	PRINTFORMW 필요한 말 중에서 나이트와 비숍을 가지고 있다……
+	RETURN 0
+ELSEIF 던전フラグ:90:3 == 1 && 던전フラグ:90:4 == 1
+	PRINTFORMW %조사처리(NAME:MASTER,"는")% 포켓 안의 말을 확인했다
+	PRINTFORMW 필요한 말 중에서 룩과 비숍을 가지고 있다……
+	RETURN 0
+ELSEIF 던전フラグ:90:2 == 1
+	PRINTFORMW %조사처리(NAME:MASTER,"는")% 포켓 안의 말을 확인했다
+	PRINTFORMW 필요한 말 중에서 나이트만을 가지고 있다……
+	RETURN 0
+ELSEIF 던전フラグ:90:3 == 1
+	PRINTFORMW %조사처리(NAME:MASTER,"는")% 포켓 안의 말을 확인했다
+	PRINTFORMW 필요한 말 중에서 룩만을 가지고 있다……
+	RETURN 0
+ELSEIF 던전フラグ:90:4 == 1
+	PRINTFORMW %조사처리(NAME:MASTER,"는")% 포켓 안의 말을 확인했다
+	PRINTFORMW 필요한 말 중에서 비숍만을 가지고 있다……
+	RETURN 0
+
+ELSE
+	PRINTW 아무 것도 없는 것 같다
+	RETURN 0
+ENDIF
+
+;=======================================================================
+;タイル進入時の이벤트
+;=======================================================================
+@EVENT_ENTER_DUNGEON_90,ARG
+;ARG = 進入時の向き　0の場合ワープなど
+;==========
+;出입の処理
+;==========
+IF DA:(FLAG:現X):(FLAG:現Y) % 10 == 8
+	CALL DUNGEON_EXIT
+	RETURN 1
+;========
+;宝の処理
+;========
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 3
+	CALL TREASURE_90
+	RETURN RESULT
+;=======
+;階段
+;=======
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 6
+	CALL UPSTAIRS_90
+	RETURN RESULT
+
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 7
+	CALL DOWNSTAIRS_90
+	RETURN RESULT
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 9
+	CALL DUNGEON_TERMINAL
+	RETURN 1
+
+;========
+;ワープの処理
+;========
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 4
+	SELECTCASE FLAG:現M
+		CASE 0
+			IF FLAG:現X == 15 && FLAG:現Y == 7
+				FLAG:現M = 2
+				FLAG:現X = 8
+				FLAG:現Y = 16
+			ENDIF
+		CASE 1
+			IF FLAG:現X == 15 && FLAG:現Y == 10
+				FLAG:現M = 4
+				FLAG:現X = 16
+				FLAG:現Y = 16
+			ELSEIF FLAG:現X == 1 && FLAG:現Y == 10
+				FLAG:現M = 3
+				FLAG:現X = 7
+				FLAG:現Y = 6
+			ENDIF
+		CASE 2
+			IF FLAG:現X == 8 && FLAG:現Y == 16
+				FLAG:現M = 0
+				FLAG:現X = 15
+				FLAG:現Y = 7
+			ENDIF
+		CASE 3
+			IF FLAG:現X == 7 && FLAG:現Y == 6
+				FLAG:現M = 1
+				FLAG:現X = 1
+				FLAG:現Y = 10
+			ELSEIF FLAG:現X == 7 && FLAG:現Y == 5
+				FLAG:現X = 9
+				FLAG:現Y = 6
+			ELSEIF FLAG:現X == 9 && FLAG:現Y == 6
+				FLAG:現X = 7
+				FLAG:現Y = 5
+			ELSEIF FLAG:現X == 6 && FLAG:現Y == 7
+				FLAG:現X = 4
+				FLAG:現Y = 13
+			ELSEIF FLAG:現X == 4 && FLAG:現Y == 13
+				FLAG:現X = 6
+				FLAG:現Y = 7
+			ELSEIF FLAG:現X == 5 && FLAG:現Y == 14
+				FLAG:現X = 16
+				FLAG:現Y = 13
+			ELSEIF FLAG:現X == 16 && FLAG:現Y == 13
+				FLAG:現X = 5
+				FLAG:現Y = 14
+			ELSEIF FLAG:現X == 3 && FLAG:現Y == 14
+				FLAG:現X = 14
+				FLAG:現Y = 1
+			ELSEIF FLAG:現X == 14 && FLAG:現Y == 1
+				FLAG:現X = 3
+				FLAG:現Y = 14
+			ELSEIF FLAG:現X == 14 && FLAG:現Y == 14
+				FLAG:現X = 16
+				FLAG:現Y = 4
+			ELSEIF FLAG:現X == 16 && FLAG:現Y == 4
+				FLAG:現X = 14
+				FLAG:現Y = 14
+			ELSEIF FLAG:現X == 8 && FLAG:現Y == 2
+				FLAG:現X = 9
+				FLAG:現Y = 12
+			ELSEIF FLAG:現X == 9 && FLAG:現Y == 12
+				FLAG:現X = 8
+				FLAG:現Y = 2
+
+
+			ENDIF
+		CASE 4
+			IF FLAG:現X == 16 && FLAG:現Y == 16
+				FLAG:現M = 1
+				FLAG:現X = 15
+				FLAG:現Y = 10
+			ENDIF
+	ENDSELECT
+
+	CALL MAKE_FLOOR, FLAG:現던전
+	CALL AUTOMAP
+	RETURN 1
+
+;==========
+;扉の処理
+;==========
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 2
+	CALL DUNGEON_DOOR,ARG
+	RETURN 1
+
+
+;========================
+;이벤트
+;========================
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 4
+
+	IF FLAG:現M == 2 && FLAG:現X == 9 && FLAG:現Y == 1
+		IF 던전フラグ:(FLAG:現던전):2 == 0
+			PRINTFORML 체스판 위에 나이트 말이 하나 놓여있다
+			PRINTFORMW %조사처리(NAME:MASTER,"는")% 나이트 말을 주머니에 넣었다……
+			던전フラグ:(FLAG:現던전):2 = 1
+		ELSE
+			PRINTFORML 체스판 위에는 아무것도 없다
+			PRINTFORMW 여기에 놓여져 있던 나이트 말은 이미 손에 넣었다…………
+		ENDIF
+	ELSEIF FLAG:現M == 3 && FLAG:現X == 16 && FLAG:現Y == 1
+		IF 던전フラグ:(FLAG:現던전):3 == 0
+			PRINTFORML 체스판 위에 룩 말이 하나 놓여 있다
+			PRINTFORMW %조사처리(NAME:MASTER,"는")% 룩 말을 주머니에 넣었다……
+			던전フラグ:(FLAG:現던전):3 = 1
+		ELSE
+			PRINTFORML 체스판 위에는 아무것도 없다
+			PRINTFORMW 여기에 놓여져 있던 룩 말은 이미 손에 넣었다…………
+		ENDIF
+	ELSEIF FLAG:現M == 4 && FLAG:現X == 1 && FLAG:現Y == 1
+		IF 던전フラグ:(FLAG:現던전):4 == 0
+			PRINTFORML 체스판 위에 비숍 말이 하나 놓여있다
+			PRINTFORMW %조사처리(NAME:MASTER,"는")% 비숍 말을 주머니 안에 넣었다……
+			던전フラグ:(FLAG:現던전):4 = 1
+		ELSE
+			PRINTFORML 체스판 위에는 아무것도 없다
+			PRINTFORMW 여기에 놓여져 있던 비숍 말은 이미 손에 넣었다…………
+		ENDIF
+
+
+	ELSEIF FLAG:現M == 1 && FLAG:現X == 8 && FLAG:現Y == 3
+
+		IF 던전フラグ:(FLAG:現던전):2 == 1 && 던전フラグ:(FLAG:現던전):3 == 1 && 던전フラグ:(FLAG:現던전):4 == 1
+			PRINTFORML %조사처리(NAME:MASTER,"가")% 손에 넣은 장기말들을 체스판에 올려 놓자, 철컹 하고 문에서 소리가 났다
+			PRINTFORMW 잠금장치가 풀린 문을 열고 실내로 들어갔다……
+		ELSEIF 던전フラグ:(FLAG:現던전):1 <= 2
+			PRINTL 관내 안내판에 의하면 이 방은 돌고래 스내피의 입체 회화가 전시되고 있는 것 같았지만 문은 굳게 닫혀있었다
+			PRINTL 문 옆의 받침대에는 어째선지 장기말이 부족한 체스판이 설치되어 있다
+			PRINTW 판 위의 장기말을 세어보니 말 3개가 부족했다……
+			FLAG:現M = 1
+			FLAG:現X = 8
+			FLAG:現Y = 4
+			던전フラグ:(FLAG:現던전):1 = 2
+		ELSE
+		ENDIF
+
+
+	ELSEIF FLAG:現M == 0 && FLAG:現X == 10 && FLAG:現Y == 8
+			PRINTW 정장 차림의 남자가 있다
+			PRINTL 「이상한 인형 같은 무리가 덤벼들었어…!」
+			PRINTW 「시스템이 미비해! 이건 누구에게 항의하면 좋은가…!?」
+
+	ELSEIF FLAG:現M == 0 && FLAG:現X == 7 && FLAG:現Y == 6
+			PRINTW 안절부절 못하는 남자가 있다
+			PRINTL 「돌고래는 평화의 상징인 생물이잖아…? 그런 줄 알았는데 그 녀석은 말이야」
+			PRINTW 「내 말 좀 들어보라니까? 무리 지어서 집단 린치도 가하고, 집단 강간도 하는게 일상다반사라네…!」
+
+	ELSEIF FLAG:現M == 1 && FLAG:現X == 7 && FLAG:現Y == 12
+			PRINTW 영리해 보이는 중학생 정도의 남자아이가 있다
+			PRINTW 「돌고래는 영리하니까 자신의 몸을 지키기 위해 거짓말 하기도 한다고 생각해」
+
+	ELSEIF FLAG:現M == 1 && FLAG:現X == 10 && FLAG:現Y == 7
+			PRINTW 재수생 차림의 젊은 남자가 있다。
+			PRINTL 「여기에 오면 여자가 즐거워 하는 목소리… 그러니까 그… Ｈ할 때의 목소리가 들리더라…」
+			PRINTW 「…역시 쌓인 걸까……」
+
+	ELSEIF FLAG:現M == 2 && FLAG:現X == 10 && FLAG:現Y == 9
+			PRINTW 노출이 심한 화려한 복장의 젊은 여자가 있다
+			PRINTW 「추―워! 이건 차가운 수준을 넘고 있다고…」
+
+	ELSEIF FLAG:現M == 3 && FLAG:現X == 4 && FLAG:現Y == 9
+			PRINTW 중년의 여성이 있다
+			PRINTL 「뭐지 이곳은. 조금도 나갈 수가 없잖아…!」
+			PRINTW 「거기다가 조금 전부터는 이상한 무리가 나를 든다니까. 성희롱이라고!」
+
+	ELSEIF FLAG:現M == 4 && FLAG:現X == 10 && FLAG:現Y == 9
+			PRINTW 망연자실한 모습의 젊은 남자가 있다
+			PRINTL 「제기랄, 여기에 오면 중학생의 무수정 비디오를 손에 넣을 수 있다고 들었는데…」
+			PRINTL 「또 속은 건가…. 당신도 동류…? 도대체 여기는 어디야…」
+			PRINTW 가만 놔 두자……
+
+
+	ELSEIF FLAG:現M == 1 && FLAG:現X == 8 && FLAG:現Y == 1
+
+	
+;		CALL ALONE_MASTER
+;		IF LOCAL:1 != 1 && 던전フラグ:(FLAG:現던전):1 == 5
+;			PRINTFORML 짙은 푸른 색의 바다 가 그려져 있는 특대 사이즈의 입체그림 속에 돌고래가 유유히 해엄치고 있었다.
+;			PRINTFORMW %CALLNAME:MASTER% 일행의 시선을 느끼고 가까이 다가온 스내피는 천연덕스럽게 말했다.
+;			PRINTFORML 「왜 또 여기에 온거지 큐?」
+;			PRINTFORMW 「난 이제 아무짓도 안 하고 있다고 큐」
+;			PRINTFORMW 스내피는 그렇게 말하며 %CALLNAME:MASTER%에게 눈으로 동료를 돌려보내라는 신호를 보냈다.
+;		ENDIF
+		
+		IF 던전フラグ:(FLAG:現던전):1 == 6
+			IF 던전フラグ:(FLAG:現던전):7 >= 5
+				PRINTFORML 짙은 푸른 색의 바다 가 그려져 있는 특대 사이즈의 입체그림 속에 돌고래가 유유히 해엄치고 있었다.
+				PRINTFORMW %CALLNAME:MASTER%의 시선을 느끼고 가까이 다가온 스내피가 그윽하게 바라보며 말했다.
+				PRINTFORML 「왔다갔다 하는게 지겹지 않나 큐?」
+				PRINTFORMW 「여기서 영원히 함께 지내는건 어떤가 큐?」
+				PRINTL [0] 스내피와 영원히 함께 지낸다 (게임오버)
+				PRINTL [1] 육체 관계를 맺는다
+				PRINTL [2] 뒤돌아선다
+				$INPUT_LOOP_8
+				INPUT
+					IF RESULT == 0
+						PRINTFORMW 「좋은 선택이다 큐!」
+						PRINTFORML %CALLNAME:MASTER%의 선택에 스내피는 만족스럽다는 듯이 미소를 지었다.
+						PRINTFORMW 아무에게 알리지 않고 스내피를 찾아왔기 때문에, %조사처리(CALLNAME:MASTER,"는")% 실종처리 되었다… 
+						PRINTFORML 
+						CALL BADENDING_NO45
+					ELSEIF RESULT == 1
+						PRINTFORML 스내피의 제안에 잠시 흔들렸지만, 세이프 하우스에서 기다리고 있는 동료들을 생각하며 거절했다.
+						PRINTFORM 하지만 그것이 관계를 맺지 않겠다는 뜻은 아니었기에, %조사처리(CALLNAME:MASTER,"는")% 
+							;스커트 걷어올리기
+							IF TEQUIP:PLAYER:스커트걷어올림 && RAND:3 == 0 
+									IF TEQUIP:가랑이구조 == 10 || TEQUIP:가랑이구조 == 11 || TEQUIP:가랑이구조 == 14
+										PRINTFORML 스커트 끝을 살짝 들어올리며 
+									ELSEIF TEQUIP:가랑이구조 == 12
+										PRINTFORML 스커트를 걷어올리며 
+									ELSEIF TEQUIP:가랑이구조 == 13
+										PRINTFORML 스커트 자락을 걷어올려 입에 물고 
+									ENDIF
+							;M자 다리
+							ELSEIF RAND:2 == 0
+									IF TEQUIP:가랑이구조 == 10 || TEQUIP:가랑이구조 == 11 || TEQUIP:가랑이구조 == 14
+										PRINTFORM 스커트 끝을 살짝 들어올리고 
+									ELSEIF TEQUIP:가랑이구조 == 12
+										PRINTFORM 스커트를 걷어올리고 
+									ELSEIF TEQUIP:가랑이구조 == 13
+										PRINTFORM 스커트 자락을 입에 물고 
+									ELSE
+										PRINTFORM 하의를 벗고 
+									ENDIF
+								PRINTFORML 다리를 벌려 
+							;뒤로 조르기
+							ELSE
+								PRINTFORM 엉덩이를 내밀고 
+									IF TEQUIP:가랑이구조 == 10 || TEQUIP:가랑이구조 == 11 || TEQUIP:가랑이구조 == 14
+										PRINTFORML 스커트 끝을 살짝 들어올려 
+									ELSEIF TEQUIP:가랑이구조 == 12
+										PRINTFORML 스커트를 걷어올려 
+									ELSEIF TEQUIP:가랑이구조 == 13
+										PRINTFORML 스커트 자락을 들어올려 
+									ELSE
+										PRINTFORML 하의를 벗어 
+									ENDIF
+							ENDIF
+						CALL HOLE_DSC_MASTER
+						PRINTFORML 비부를 드러내며 유혹했다.
+						PRINTFORML 언제 봐도 거대한 음경을 꺼내자 %조사처리(CALLNAME:MASTER,"는")% 침을 삼키며 비부를 벌렸고, 스내피는 그것에 호응하듯이 강하게 박아넣었다.
+						PRINTFORML %CALLNAME:MASTER%의 질벽과 약점을 자극하는 돌기와 귀두가 자궁구에 맞닿을 정도의 크기에 달콤한 비음을 흘렸다.
+						PRINTFORML 스내피가 주둥이를 내밀자, %조사처리(CALLNAME:MASTER,"는")% 자신도 모르게 키스하며 가볍게 가버렸다.
+						PRINTFORML %조사처리(CALLNAME:MASTER,"가")% 질벽을 조여오자, 그것에 맞춰 스내피는 자궁이 짜부라질 정도로 빠르게 찔러대기 시작했다.
+						PRINTFORML 몰아치는 쾌감에 %조사처리(CALLNAME:MASTER,"는")% 신음소리만 내고 있었지만, 육체는 자동적으로 양 다리로 허리를 휘감아 정액을 갈구하였고,
+						PRINTFORML %CALLNAME:MASTER%의 자궁에 마지막 한 방울까지 털어넣은 이후에야 몸을 다리가 풀렸다.
+						PRINTFORML 바닥에 쓰러져 절정의 여운을 느끼던 %조사처리(CALLNAME:MASTER,"는")% 아직도 단단함을 유지하는 음경이 가까워지자 반사적으로 빨기 시작했다.
+						PRINTFORMW 황홀한 표정으로 정성껏 봉사하는 도중에 스내피의 제안이 머릿속에 떠올랐지만, 이내 질내를 가득 채우는 음경의 감촉에 머릿속이 새하얗게 변해버렸다.
+						EXP:MASTER:Ｖ경험 += 15
+						EXP:MASTER:키스경험 += 1
+						EXP:MASTER:수간경험 += 25
+						EXP:MASTER:절정경험 += 5
+						EXP:MASTER:성교경험 += 25
+						EXP:MASTER:질사경험 += 15
+						EXP:MASTER:정액경험 += 20
+						EXP:MASTER:고통쾌락경험 += 10
+						EXP:MASTER:Ｖ확장경험 += 10
+						던전フラグ:(FLAG:現던전):7 += 1
+						CALL INCREASE_LC,-5
+						CALL INCREASE_LD,-5
+						FLAG:탈출 = 1
+						CALL IMPREGNATION_MASTER
+					ELSEIF RESULT == 2
+						PRINTW 「나중에라도 생각이 바뀌면 돌아와 큐」
+						PRINTFORMW 아무 말 없이 뒤돌아 서는 %조사처리(CALLNAME:MASTER,"를")% 보며, 스내피는 아쉽다는 듯이 입을 쩝쩝거렸다.
+					ELSE
+						GOTO INPUT_LOOP_8
+					ENDIF		
+			ELSEIF 던전フラグ:(FLAG:現던전):7 <= 4
+				PRINTFORML 짙은 푸른 색의 바다 가 그려져 있는 특대 사이즈의 입체그림 속에 돌고래가 유유히 해엄치고 있었다.
+				PRINTFORMW %CALLNAME:MASTER%의 시선을 느끼고 가까이 다가온 스내피가 씩 웃었다.
+				PRINTFORMW 「또 하고 싶어서 온건가 큐?」
+				PRINTL [0] 끄덕인다
+				PRINTL [1] 거절한다
+				$INPUT_LOOP_7
+				INPUT
+					IF RESULT == 0
+						PRINTFORM 스내피의 말대로 혼자 온 %조사처리(CALLNAME:MASTER,"는")% 
+							IF TALENT:MASTER:연모 || TALENT:MASTER:친애 || TALENT:MASTER:겁쟁이 || TALENT:MASTER:얌전함 || TALENT:MASTER:프라이드낮음 || TALENT:MASTER:부끄럼쟁이
+								PRINTFORM 부끄러운 듯이 
+							ELSEIF TALENT:MASTER:음란 || TALENT:MASTER:복종 || TALENT:MASTER:창부 || TALENT:MASTER:예속 || TALENT:MASTER:섹스광 || (위험일(MASTER) == 2) || CFLAG:PLAYER:던전内発情用욕정치 >= 8000
+								PRINTFORM 녹아내릴듯한 표정으로 
+							ENDIF
+						PRINTFORML 고개를 끄덕였다.
+							IF TALENT:MASTER:프라이드높음 || TALENT:MASTER:반항적 || TALENT:MASTER:꿋꿋함
+								PRINTFORM 프라이드 높은 
+							ELSEIF TALENT:MASTER:남성혐오
+								PRINTFORM 남성을 혐오하는 
+							ELSEIF TALENT:MASTER:연모 || TALENT:MASTER:친애
+								PRINTFORM 좋아하는 사람이 있는 
+							ELSEIF TALENT:MASTER:복종 || TALENT:MASTER:예속
+								PRINTFORM 복종하는 
+							ENDIF
+						PRINTFORM %CALLNAME:MASTER%의 
+							SIF TALENT:MASTER:음란 || TALENT:MASTER:창부 || TALENT:MASTER:섹스광 || (위험일(MASTER) == 2) || CFLAG:PLAYER:던전内発情用욕정치 >= 8000
+								PRINTFORM 음란한 
+						PRINTFORML 모습에 스내피는 만족하며 비부에 흉악한 음경을 찔러넣었다.
+							SIF TALENT:MASTER:재생처녀 || TALENT:MASTER:처녀
+								TALENT:MASTER:처녀 = 0
+								TALENT:MASTER:재생처녀 = 0
+								EXP:MASTER:이상경험 += 1
+						PRINTFORM 질 내부를 가득 채우는 느낌에 %조사처리(CALLNAME:MASTER,"는")% 
+							IF TALENT:MASTER:음란 || TALENT:MASTER:창부 || TALENT:MASTER:섹스광 || (위험일(MASTER) == 2) || CFLAG:PLAYER:던전内発情用욕정치 >= 8000
+								PRINTFORM 음란한 
+							ELSE
+								PRINTFORM 달콤한 
+							ENDIF
+						PRINTFORML 신음소리를 흘리며 매달렸고, 
+						PRINTFORML 스내피는 그런 %CALLNAME:MASTER%에게 호응하듯이 음경을 뿌리까지 찔러넣으며 %CALLNAME:MASTER%의 약점을 공략했다.
+							IF TALENT:MASTER:임신
+								PRINTFORM 아이의 생사가 걱정될 
+							ELSE
+								PRINTFORM 임신 했다고 보일
+							ENDIF
+						PRINTFORML 정도로 자궁에 정액을 부어넣자, %조사처리(CALLNAME:MASTER,"는")% 십수번이나 절정을 한 이후에 결국 기절해버리고 말았다.
+						IF TALENT:MASTER:프라이드높음 || TALENT:MASTER:반항적 || TALENT:MASTER:꿋꿋함
+								PRINTFORM 늘 당당하던 
+							ELSEIF TALENT:MASTER:남성혐오
+								PRINTFORM 남성을 혐오하던 
+							ELSEIF TALENT:MASTER:연모 || TALENT:MASTER:친애
+								PRINTFORM 누군가를 좋아하던 
+							ELSE
+								PRINTFORM 해결사라고 불리던 
+							ENDIF 
+						PRINTFORML %조사처리(CALLNAME:MASTER,"라")%고 볼 수 없을 정도로 망가진 표정으로 부들거리며 바닥에 쓰러졌다.
+							SIF 던전フラグ:(FLAG:現던전):0 > 21
+								PRINTFORML 자궁에 다 들어가지 못한 정액이 꿀럭거리며 흘러나오는 %CALLNAME:MASTER%의 모습은 예전의 토모코의 모습과 흡사했다.
+						PRINTFORML 
+						EXP:MASTER:Ｖ경험 += 15
+						EXP:MASTER:수간경험 += 25
+						EXP:MASTER:절정경험 += 15
+						EXP:MASTER:성교경험 += 25
+						EXP:MASTER:질사경험 += 15
+						EXP:MASTER:정액경험 += 20
+						EXP:MASTER:고통쾌락경험 += 10
+						EXP:MASTER:Ｖ확장경험 += 10
+						CALL INCREASE_LC,-3
+						CALL INCREASE_LD,-3
+						던전フラグ:(FLAG:現던전):7 += 1
+						FLAG:탈출 = 1
+						CALL IMPREGNATION_MASTER
+					ELSEIF RESULT == 1
+						PRINTW 「그럼 어쩔 수 없지 큐」
+						PRINTW 스내피는 아쉽다는 듯이 입을 쩝쩝거렸다.
+					ELSE
+						GOTO INPUT_LOOP_7
+					ENDIF
+			ENDIF
+		
+		ELSEIF 던전フラグ:(FLAG:現던전):1 == 4
+			PRINTL 짙은 파란 색깔의 입체 그림 속에 줄곧 찾아다녔던 토모코가 홀로 누워 있었다.
+			IF RAND:10 == 0
+				PRINTL 토모코의 배는 한 눈에 알 수 있을 정도로 부풀어 있어서, 스내피나 손님의 아이를 임신 중인 것 같았다.
+			ENDIF
+			PRINTFORM %조사처리(NAME:MASTER,"는")% 
+			IF RAND:8 == 0
+				PRINT 사양하지 않고 
+			ELSEIF RAND:7 == 0
+				PRINT 가차없이 
+			ELSEIF RAND:6 == 0
+				PRINT 정신없이 
+			ELSEIF RAND:5 == 0
+				PRINT 무작위로 
+			ELSEIF RAND:4 == 0
+				PRINT 콧김을 거칠게 내뿜으며 
+			ELSEIF RAND:3 == 0
+				PRINT 정신없이 
+			ELSEIF RAND:2 == 0
+				PRINT 무작위로 
+			ELSE
+				PRINT 콧김을 거칠게 내뿜으며 
+			ENDIF
+			IF RAND:3 == 0
+				PRINT 찢어진 
+			ELSEIF RAND:2 == 0
+				PRINT 구멍이 뚫린 
+			ENDIF
+			IF RAND:4 == 0
+				PRINTL 스웨터를 밀어 올린 다음 청바지를 단숨에 발목까지 끌어내리자, 
+			ELSEIF RAND:3 == 0
+				PRINTL 세일러복과 스커트를 걷어 올리자, 
+			ELSEIF RAND:2 == 0
+				PRINTL 블레이저 코트를 풀어해쳐 하얀 피부를 드러낸 후 스커트를 걷어 올리자, 
+			ELSE
+				PRINTL 반쯤 벗겨낸 학교수영복의 아랫도리를 옆으로 빗겨내자, 
+			ENDIF
+			IF RAND:2 == 0
+				PRINT 거뭇한 흔적만 남기고 깍여나간 
+			ELSE
+				PRINT 얇고 청초한 풀숲에 덮인 
+			ENDIF
+			IF 던전フラグ:(FLAG:現던전):0 > 24
+				IF RAND:6 == 0
+					PRINT 피어싱이 빛나는 
+				ELSEIF RAND:5 == 0
+					PRINT 노예 
+				ELSEIF RAND:4 == 0
+					PRINT 형태가 무너진 
+				ELSEIF RAND:3 == 0
+					PRINT 사용된 
+				ELSEIF RAND:2 == 0
+					PRINT 거무스름해진 
+				ELSE
+					PRINT 비어져 나온 
+				ENDIF
+			ELSE
+				IF RAND:5 == 0
+					PRINT 중학생의 
+				ELSEIF RAND:4 == 0
+					PRINT 아이같은 
+				ELSEIF RAND:3 == 0
+					PRINT 소변 냄새나는 
+				ELSEIF RAND:2 == 0
+					PRINT 사랑스러운 
+				ELSE
+					PRINT 예쁜 
+				ENDIF
+			ENDIF
+			PRINTL 성기가 드러났다.
+			PRINT 그리고 
+			IF RAND:6 == 0
+				PRINT 의식이 없는 
+			ELSEIF RAND:5 == 0
+				PRINT 부들부들 떨고 있는 
+			ELSEIF RAND:4 == 0
+				PRINT 덜덜거리며 무서워 하고 있는 
+			ELSEIF RAND:3 == 0
+				PRINT 발정하고 있는 
+			ELSEIF RAND:2 == 0
+				PRINT 울면서 비명을 지르는 
+			ELSE
+				PRINT 몽롱한 눈의 
+			ENDIF
+			PRINT 토모코의 몸 안으로 
+			IF RAND:3 == 0
+				PRINT 난폭하게 
+			ELSEIF RAND:2 == 0
+				PRINT 깊숙하게 
+			ELSE
+				PRINT 간단하게
+			ENDIF
+			;おちんちん有り
+			IF TALENT:MASTER:139 || TALENT:MASTER:140 || TALENT:MASTER:157
+				IF RAND:4 == 0
+					PRINTL 침입했다.
+				ELSEIF RAND:3 == 0
+					PRINTL 삽입했다.
+				ELSEIF RAND:2 == 0
+					PRINTL 돌입했다.
+				ELSE
+					PRINTL 억지로 쑤셔 넣었다.
+				ENDIF
+			ELSE
+				;새드
+				IF TALENT:MASTER:83
+					IF RAND:2 == 0
+						PRINTL 주먹을 억지로 넣었다.
+					ELSE
+						PRINTL 엄청나게 큰 바이브레이터를 강제로 밀어넣었다.
+					ENDIF
+				ELSE
+					IF RAND:2 == 0
+						PRINTL 손가락을 집어 넣었다.
+					ELSE
+						PRINTL 바이브레이터로 꿰뚫었다.
+					ENDIF
+				ENDIF
+			ENDIF
+			IF RAND:4 == 0
+				PRINTL 끝에서 느껴지는 미약한 저항을 꿰뚫어버리자 토모코는 고통스러운 신음을 흘리며 몸을 떨었고, 한 줄기 피가 성기에서부터 천천히 가랑이를 따라 아래로 흘러내렸다.
+				PRINTL 센스 있는 스내피가 토모코의 처녀막을 재생해 둔 것 같다.
+				PRINT 파과혈로 젖은, 
+			ELSEIF RAND:3 == 0
+				PRINT 선객이 뿌려놓은 정액으로 매끄러워진 
+			ELSEIF RAND:2 == 0
+				PRINT 아직 충분히 젖지도 않은 
+			ELSE
+				PRINT 애액이 넘치는 
+			ENDIF
+			PRINT 토모코의 
+			IF RAND:2 == 0
+				IF RAND:4 == 0
+					PRINT 육
+				ELSEIF RAND:3 == 0
+					PRINT 노예 
+				ELSEIF RAND:2 == 0
+					PRINT 변소 
+				ELSE
+					PRINT 암컷 
+				ENDIF
+				PRINT 구멍을 
+			ELSE
+				PRINT 질을 
+			ENDIF
+			PRINTFORM %조사처리(NAME:MASTER,"는")% 
+			IF RAND:4 == 0
+				PRINT 제멋대로 
+			ELSEIF RAND:3 == 0
+				PRINT 정신없이 
+			ELSEIF RAND:2 == 0
+				PRINT 즐기면서 
+			ELSE
+				PRINT 담담하게 
+			ENDIF
+			IF RAND:4 == 0
+				PRINT 탐욕스럽게 
+			ELSEIF RAND:3 == 0
+				PRINT 맛보며 
+			ELSEIF RAND:2 == 0
+				PRINT 사용하면서 
+			ELSE
+				PRINT 휘저으면서 
+			ENDIF
+			;おちんちん有り
+			IF TALENT:MASTER:139 || TALENT:MASTER:140 || TALENT:MASTER:157
+				IF RAND:4 == 0
+					PRINTL 사정했다.
+				ELSEIF RAND:3 == 0
+					PRINTL 정액을 쏟아냈다.
+				ELSEIF RAND:2 == 0
+					PRINTL 짐승 같은 성욕을 처리했다.
+				ELSE
+					PRINTL 교배를 했다.
+				ENDIF
+				PRINTL 생각 외로 변기를 상대로 시간을 낭비한 것 같다…….
+				PRINTFORMW 넘쳐 흐른 정자가 바닥까지 줄줄 흘러내리는 토모코에게서 떨어져 %조사처리(NAME:MASTER,"는")% 미술관을 뒤로했다.
+			ELSE
+				IF RAND:4 == 0
+					PRINTL 자위에 빠졌다.
+				ELSEIF RAND:3 == 0
+					PRINTL 토모코의 얼굴에 비밀스런 장소를 갖다 대고 꽉 눌렀다.
+				ELSEIF RAND:2 == 0
+					PRINTL 토모코에게 엉덩이 구멍을 빨게 했다.
+				ELSE
+					PRINTL 토모코의 부드러운 살갗에 인정사정없이 바늘을 꽂았다.
+				ENDIF
+				PRINTL 생각 외로 변기를 상대로 시간을 낭비한 것 같다…….
+				PRINTFORMW 넘쳐 흐른 체액을 바닥까지 줄줄 흘리는 토모코에게서 떨어져 %조사처리(NAME:MASTER,"는")% 미술관을 뒤로했다.
+			ENDIF
+			CALL INCREASE_LD,-5
+
+		ELSEIF 던전フラグ:(FLAG:現던전):0 == 27
+			PRINTL 문을 열자 가슴에 나쁜 영향을 줄 가능성이 농후한 진한 냄새로 가득 차 있었다.
+			PRINTL 짙은 파란 색깔 바다 속 사람도 같이 그려져 있는 그림 속에서 몇 마리의 악마와 그 외 녀석들이 이쪽을 돌아본다.
+			PRINTFORML %NAME:MASTER%의 발 밑에서 무언가를 찬 것처럼 딸랑하는 가벼운 소리가 났다.
+			PRINTL 바닥을 주르륵 미끄러진 것은 토모코가 쓰고 있던 것과 똑같은 안경이었다.
+			PRINTL 안경이 멈춘 곳에는 원래의 주인인 토모코가 있었다.
+			PRINTL 그녀는 누워 있는 아귀의 허리 위에서 찌르는 대로 무력하게 벌벌 부들거리며 흔들거리고 있다.
+			PRINTL 그녀의 배 부분은 마치 아귀들의 동료라도 된 것처럼 괴상하게 부풀어 있었다.
+			PRINTW 쾌락의 광연을 방해받은 아귀들은 분노의 외침을 내뱉으며 입체 그림에서 뛰쳐나왔다!
+
+			PRINTL 외도 아귀가 ６체 나타났다!
+			CUSTOMDRAWLINE =
+			WAIT
+			FLAG:도주불가フラグ = 1
+			FLAG:회화불능フラグ = 1
+			FLAG:선제기습취소 = 1
+
+			CALL SET_ENEMY,13,1093,13,0,0
+			CALL SET_ENEMY,14,1093,13,0,0
+			CALL SET_ENEMY,15,1093,13,0,0
+			CALL SET_ENEMY,8,1093,13,0,0
+			CALL SET_ENEMY,9,1093,13,0,0
+			CALL SET_ENEMY,10,1093,13,0,0
+		
+			CALL BATTLE_START
+			FLAG:도주불가フラグ = 0
+			FLAG:회화불능フラグ = 0
+			FLAG:선제기습취소 = 0
+
+			PRINTL 아귀 시체의 산을 발로 밀어내며 가로로 누워 있는 더럽혀진 소녀에게로 다가갔다
+			PRINTL 더러워진 안경만 남은 알몸의 소녀는 악마들에게 성욕구를 해소하는 배출구로 사용되어 
+			PRINTL 온 몸에는 아직 채 마르지 않아 악취가 나는 정액의 흔적이 여기저기 달라붙어 있었다
+			PRINTL 간신히 위아래로 오르내리는 가슴에 안도하긴 했지만, 예쁘게 도드라진 그곳에는 이빨 모양의 멍자국이 무수하게 남아 있었다
+			PRINTL 악마들의 장난감으로 사용되어 가혹하게 학대받은 앞뒤의 구멍은 넘칠대로 넘쳐서 
+			PRINTL 호홉의 리듬에 따라 몸 안에 쏟아진 오염된 체액이 서서히 흘러나와 주위로 번져나가고 있었다 
+			PRINTL 입체 그림 속에서 들리는 흥겨운 콧노래로 보아 스내피가 돌아온 것 같다
+			PRINTL 「누구냐 큐? 오늘의 변기는 이제 사용중지… 큐큐!? …인간, 이란 말은…」
+			PRINTL 「스내피의 장난감에 용무가 있나 큐…!」
+			PRINTW 「장사를 방해하게 두진 않는다 큐!」
+
+		ELSEIF 던전フラグ:(FLAG:現던전):0 > 24
+			PRINTL 짙은 푸른 색의 바다 속에 사람까지 들어가 있는 특대 사이즈의 입체그림 속에 돌고래와 알몸의 소녀가 놀고 있었다.
+			PRINTL 소녀의 등 뒤를 뒤덮고 있던 스내피가 몸을 떼어내자, 
+			PRINTL 보통의 돌고래에게는 달려있을 리 없는 흉악한 남근이 있는 대로 벌려진 소녀의 항문에서 기세 좋게 떨어져 나왔다.
+			PRINTL 소녀는 몸을 활처럼 휘며 잠시 경직되었다가 실이 끊어진 인형처럼 축 늘어졌다.
+			PRINTL 「토모코쨩은 완전히 스내피의 육노… 아아아니… 부, 부인이다 큐」
+			PRINTL 돌고래의 정액과 토모코 자신의 장액으로 덮여져 돌기가 눈에 띄는 활력 넘치는 흉악한 음경이
+			PRINTL 거칠게 숨을 내쉬는 토모코의 뺨에 접촉하자 토모코는 자그마한 혀를 쭉 내밀어 적극적으로 핥았다.
+			PRINTL 입가에 흐르던 침 한 방울이 빛나는 실을 당기다 끝내 끊어져 이상하게 부풀어 오른 토모코의 배 위로 방울져 떨어져 내렸다.
+			PRINTL 안경 너머 토모코의 눈동자에 빛이 없는 걸로 봐서 이 음몽에 완전히 사로잡힌 상태란 걸 엿볼 수 있었다.
+			PRINTL 스내피는 나즈막한 목소리로 혼잣말을 할 생각이었겠지만 입체 스피커의 위치 때문인지
+			PRINTL 그 군소리는 선명하게 들려왔다.
+			PRINTL 「슬슬 파는 것도 질렸으니, 다른 악마에게 빌려줘서 ＭＡＧ나 벌게 하는 거야 큐…」
+			PRINTW 「장사를 방해하게 두진 않는다 큐!」
+
+		ELSEIF 던전フラグ:(FLAG:現던전):0 > 22
+			PRINTL 짙은 푸른 색의 바다 속에 사람까지 들어가 있는 특대 사이즈의 입체그림 속에 돌고래와 알몸의 소녀가 놀고 있었다。
+			PRINTL 토모코의 등 뒤를 뒤덮고 있던 스내피가 몸을 떼어내자、
+			PRINTL 보통의 돌고래에겐 달려있을 리 없는 흉악한 음경이、가혹하게 벌려진 토모코의 질에서 기세좋게 떨어져 나왔다。
+			PRINTL 토모코는 몸을 활처럼 휘며 잠시 경직되었다가、실이 끊어진 인형처럼 축 늘어졌다。
+			PRINTL 「토모코짱은 완전히 스내피의 육노…아아아니… 부、부인이다 큐」
+			PRINTL 돌고래의 정액과 토모코 자신의 애액으로 덮여져 돌기가 눈에 띄는 흉악한  성기를、
+			PRINTL 거칠게 숨을 내쉬는 토모코의 뺨에 갖다 대자 토모코는 자그마한 혀를 쭉 내밀고 적극적으로 핥았다。
+			PRINTL 입가에 흐르던 침 한 방울이 빛나는 실을 당기다 끝내 끊어져 이상하게 부풀어 오른 토모코의 배 위로 방울져 떨어져 내렸다。
+			PRINTL 안경 너머 토모코의 눈동자에 빛이 없는 걸로 봐서、이 음몽에 완전히 사로잡힌 상태란 걸 엿볼 수 있었다。
+			PRINTL 스내피는 나즈막한 목소리로 혼잣말을 할 생각이었겠지만 입체 스피커의 위치 때문인지、
+			PRINTL 그 군소리는 선명하게 들려왔다。
+			PRINTL 「슬슬 파는 것도 질렸으니、다른 악마에게 빌려줘서 ＭＡＧ나 벌게 하는 거야 큐…」
+			PRINTW 「장사를 방해하게 두진 않는다 큐!」
+
+		ELSEIF 던전フラグ:(FLAG:現던전):0 > 21
+			PRINTL 짙은 푸른 색의 바다 속에 사람까지 들어가 있는 특대 사이즈의 입체그림 속에 돌고래와 알몸의 소녀가 놀고 있었다。
+			PRINTL 한껏 벌려진 토모코의 사타구니 사이에 허리를 묻고 있던 스내피가 몸을 가볍게 돌리자、
+			PRINTL 보통의 돌고래는 가질 수 없는 흉악한 음경이 토모코의 가련한 비부에서 기세 좋게 빠져 나왔고、
+			PRINTL 고통에서 해방된 토모코의 몸은 실이 끊어진 인형처럼 축 늘어졌다。
+			PRINTL 평생 한번 밖에 겪을 수 없는 시련에서 해방되어 천천히 닫혀져 가는 토모코의 비부는 가늘게 흘러나오는 피로 더러워져 있었다。
+			PRINTL 돌고래는 자랑스러운 듯 신이 났고 조금 전까지 소녀의 비부에 박혀 처녀막을 유린한 음경에는、
+			PRINTL 서로의 체액으로 뒤덮인 상태였지만 간간이 소량의 붉은 색도 섞여 있는 것을 확인할 수 있었다。
+			PRINTL 「토모코짱은 스스로 스내피와 사랑을 나누고 싶다고 말했다 큐」
+			PRINTL 돌고래와 토모코 자신의 채액으로 젖은 돌기가 눈에 띄는 활기 넘치는 음란한 성기를、
+			PRINTL 거칠게 숨을 내쉬는 토모코의 뺨에 갖다 대자 토모코는 자그마한 혀를 쭉 내밀고 적극적으로 핥았다。
+			PRINTL 안경 너머 토모코의 눈동자에 빛이 없는 걸로 봐서、이 음몽에 완전히 사로잡힌 상태란 걸 엿볼 수 있었다。
+			PRINTL 「방해충들은 돌아가 줬으면 해 큐,이제서야 드디어、이 어린 처녀와 교배를…아앗... 아니 아니…!」
+			PRINTL 「종족을 초월한 사랑으로、토모코짱과 사랑을 나눌거다 큐!」
+			PRINTW 「방해하지 말고 사라져 큐!」
+
+		ELSEIF 던전フラグ:(FLAG:現던전):0 > 20
+			PRINTL 짙은 푸른 색의 바다 속에 사람까지 들어가 있는 특대 사이즈의 입체그림 속에 돌고래와 알몸의 소녀가 놀고 있었다。
+			PRINTL 가끔 가늘게 몸을 떠는 토모코의 다리 사이에 얼굴을 묻고 있던 스내피가 얼굴을 위아래로 가볍게 흔들자、
+			PRINTL 보통의 돌고래에는 있을 리 없는 너무나도 긴 혀가 토모코의 젖어버린 비부 전체를 감싸고 민감한 부위를 핥으며 유린했다。
+			PRINTL 토모코는 몸을 활처럼 휘며 잠시 경직되었다가、실이 끊어진 인형처럼 축 늘어졌다。
+			PRINTL 「토모코짱은 스스로 스내피와 연결되고 싶다고 말했다」
+			PRINTL 돌고래의 군침과 토모코 자신의 체액으로 젖어있는 돌기가 눈에 띄는 음란한 혀를、
+			PRINTL 거칠게 숨을 내쉬고 있는 토모코의 뺨에 갖다 대자、토모코는 자그마한 혀를 내밀며 적극적으로 얽혔다。
+			PRINTL 안경 너머 토모코의 눈동자에 빛이 없는 걸로 봐서、이 음몽에 완전히 사로잡힌 상태란 걸 엿볼 수 있었다。
+			PRINTL 「방해충은 돌아가 줬으면 해. 이제서야 드디어、이 어린 처녀의 봊… 앗、아니 아니…!」
+			PRINTL 「토모코짱에게 상～냥하게 즐거운 어른의 놀이를 가르쳐 주고 있는 거다 큐!」
+			PRINTW 「방해하지 말고 사라져 큐!」
+
+		ELSEIF 던전フラグ:(FLAG:現던전):0 > 14
+			PRINTL 짙은 푸른 색의 바다 속에 사람까지 들어가 있는 특대 사이즈의 입체그림 속에 돌고래와 알몸의 소녀가 놀고 있었다。
+			PRINTL 가끔 가늘게 몸을 떠는 토모코의 다리 사이에 얼굴을 묻고 있던 스내피가 얼굴을 위아래로 가볍게 흔들자、
+			PRINTL 보통의 돌고래에는 있을 리 없는 너무나도 긴 혀가 토모코의 젖어버린 비부 전체를 감싸고 민감한 부위를 핥으며 유린했다。
+			PRINTL 토모코는 몸을 활처럼 휘며 잠시 경직되었다가、실이 끊어진 인형처럼 축 늘어졌다。
+			PRINTL 「토모코짱은 스내피와 진지하게 사귀고 싶다고 했다 큐」
+			PRINTL 돌고래의 군침과 토모코 자신의 체액으로 젖어있는 돌기가 눈에 띄는 음란한 혀를、
+			PRINTL 거칠게 숨을 내쉬고 있는 토모코의 뺨에 갖다 대자、토모코는 자그마한 혀를 내밀며 적극적으로 얽혔다。
+			PRINTL 안경 너머 토모코의 눈동자에 빛이 없는 걸로 봐서、이 음몽에 완전히 사로잡힌 상태란 걸 엿볼 수 있었다。
+			PRINTL 「방해충은 돌아가 줬으면 해. 이제서야 드디어、이 어린 처녀의 봊… 앗、아니 아니…!」
+			PRINTL 「토모코짱에게 상～냥하게 즐거운 어른의 놀이를 가르쳐 주고 있는 거다 큐!」
+			PRINTW 「방해하지 말고 사라져 큐!」
+
+		ELSEIF 던전フラグ:(FLAG:現던전):0 > 12
+			PRINTL 짙은 푸른 색의 바다 속에 사람까지 들어가 있는 특대 사이즈의 입체그림 속에 돌고래와 알몸의 소녀가 놀고 있었다。
+			PRINTL 자신의 왼쪽 손이 오른쪽 가슴을 비비고、비부 사이에 끼워진 오른손이 꿈틀거릴 때마다、
+			PRINTL 토모코의 입은 크게 벌어지고 가늘게 떨리는 알몸은 앞으로 기울어져가、점점 く자 모양이 되어갔다。
+			PRINTL 얼마 되지 않아 토모코의 몸은 부들부들 떨리더니 잠시 그대로 굳어졌다가 실이 끊어진 인형처럼 축 늘어졌다。
+			PRINTL 「토모코짱은 스스로 스내피와 친해지고 싶다고 말했다 큐」
+			PRINTL 돌고래가 커다란 입을 토모코의 빰에 갖다 댄 채 강요하자、토모코는 조그마한 입술을 내밀며 입맞춤으로 돌려줫다。
+			PRINTL 안경 너머 토모코의 눈동자에 빛이 없는 걸로 봐서、이 음몽에 완전히 사로잡힌 상태란 걸 엿볼 수 있었다。
+			PRINTL 「방해충들은 돌아가 주길 바래 큐、이제서야 드디어、이 어린 것을 벗기는데…아、아니 아니…!」
+			PRINTL 「토모코짱과 즐겁게 놀 준비를 하고 있는거다 큐!」
+			PRINTW 「방해하지 말고 사라져 큐!」
+
+		ELSEIF 던전フラグ:(FLAG:現던전):0 > 8
+			PRINTL 짙은 푸른 색의 바다 속에 사람까지 들어가 있는 특대 사이즈의 입체그림 속에 돌고래와 반쯤 벗은 소녀가 놀고 있었다。
+			PRINTL 스웨터와 청바지 속으로 기어들어간 토모코의 손이 멈추자、신음하는 듯한 목소리가 새어나왔다。
+			PRINTL 절정에 다다른 토모코는 난폭하게 숨을 몰아쉬며 완전히 탈진한 것 같다。
+			PRINTL 「토모코짱은 스스로 스내피와 친해지고 싶다고 말했다 큐」
+			PRINTL 돌고래가 커다란 입으로 토모코의 뺨을 누르자 토모코는 주저주저하면서도 살그머니 입맞춤했다。
+			PRINTL 안경 너머 토모코의 눈동자에 빛이 없는 걸로 봐서、이 음몽에 완전히 사로잡힌 상태란 걸 엿볼 수 있었다。
+			PRINTL 「방해충들은 돌아가 주길 바래 큐、이제서야 드디어、이 어린 것을 벗기는데…아、아니 아니…!」
+			PRINTL 「토모코짱과 즐겁게 놀 준비를 하고 있는거다 큐!」
+			PRINTW 「방해하지 말고 사라져 큐!」
+
+		ELSE
+			PRINTL 관내 안내판에 따르면 이 방은 돌고래의 활기찬 모습이 담긴 입체 그림이 전시되고 있어야 하지만、
+			PRINTW 지금은 그런 건 없고、짙은 푸른 색 바다 속이 그려진 특대 사이즈의 입체 그림으로 장식되어 있을 뿐이다……。
+			RETURN 1
+		ENDIF
+		
+		IF TALENT:MASTER:남자 == 0 && (TALENT:MASTER:수수께끼의매력 || TALENT:MASTER:인기 || TALENT:MASTER:간판아가씨 || TALENT:MASTER:간판창부 || HAVE_SKILL(MASTER,[[스킬:유혹]])) && (TALENT:MASTER:음란 || TALENT:MASTER:복종 || TALENT:MASTER:창부 || TALENT:MASTER:예속 || TALENT:MASTER:섹스광 || (위험일(MASTER) == 2) || CFLAG:PLAYER:던전内発情用욕정치 >= 8000) && 던전フラグ:(FLAG:現던전):7 == 0
+		PRINTL 
+		PRINTW 「하지만…」
+		PRINTFORMW 돌고래가 %플레이어를()% 품평하듯이 한 번 훑어보더니 음흉한 미소를 지었다.
+		PRINTW 「만약 이 아이 대신에 네가 몸을 대신 내준다면 보내주마 큐!」
+		PRINTL [0] 몸을 내준다
+		PRINTL [1] 거절한다
+		$INPUT_LOOP_6
+		INPUT
+			IF RESULT == 0
+				IF 던전フラグ:(FLAG:現던전):0 == 27
+					PRINTFORM 이미 더럽혀질대로 더럽혀졌지만, 
+				ELSEIF 던전フラグ:(FLAG:現던전):0 > 21
+					PRINTFORM 이미 돌고래에게 유린당했지만, 
+				ELSEIF 던전フラグ:(FLAG:現던전):0 > 8
+					PRINTFORM 아직 더렵혀지지 않은 
+				ENDIF
+				PRINTFORML 소녀를 구하기 위해 어쩔 수 없이 고개를 끄덕이고, 
+				PRINTFORML 걸치고 있는 옷을 벗고 알몸으로 특대 사이즈의 입체그림에 들어갔다.
+				PRINTFORML 마치 구름에 몸을 담그는 느낌과 함께 몸이 나른해지는 동시에
+				PRINTFORMW 하반신이 민감해 지는 것을 느끼고 본능적으로 이 입체그림에 무슨 술수를 부렸다는 것을 깨달았다.
+				PRINTFORMW 「내 자지에서 해어나오지 못하게 해주겠다 큐!」
+				PRINTFORML 스내피는 %플레이어가()% 뭐라고 말하기도 전에 흉악한 음경이 비부를 꿰뚫었다.
+				;처녀
+				IF (TALENT:MASTER:재생처녀 || TALENT:MASTER:처녀) && EXP:MASTER:수간경험 == 0
+					PRINTFORML 이제까지 지켜온 자신의 순결을 돌고래에게 뺏긴다는 생각에 눈을 질끈 감았지만,
+					PRINTFORMW 들어오는 음경의 쾌락에 눈을 뜨며 한 번 가볍게 가버렸다.
+					TALENT:MASTER:처녀 = 0
+					TALENT:MASTER:재생처녀 = 0
+					EXP:MASTER:이상경험 += 2
+						SIF EXP:MASTER:Ｖ확장경험 == 0
+							CALL ADDS_ABNORMAL_EXP("확장첫경험", MASTER)
+							CALL SHOW_ABNORMAL_EXP, MASTER
+				ELSEIF TALENT:MASTER:재생처녀 || TALENT:MASTER:처녀
+					PRINTFORMW 처음은 아플것이라고 생각했지만, 하복부를 가득 채우는 쾌감에 자신도 모르게 신음소리를 내뱉었다.
+					TALENT:MASTER:처녀 = 0
+					TALENT:MASTER:재생처녀 = 0
+					EXP:MASTER:이상경험 += 1
+					CALL ADDS_ABNORMAL_EXP, "수간", MASTER
+					CALL SHOW_ABNORMAL_EXP, MASTER
+						SIF EXP:MASTER:Ｖ확장경험 == 0
+							CALL ADDS_ABNORMAL_EXP("확장첫경험", MASTER)
+							CALL SHOW_ABNORMAL_EXP, MASTER
+				ELSEIF EXP:MASTER:수간경험 == 0
+					PRINTFORMW 처음 겪어보는 짐승의 육봉에 움찔했으나, 평소보다 더한 쾌감에 이성이 녹아버렸다.
+					EXP:MASTER:이상경험 += 1
+					CALL ADDS_ABNORMAL_EXP, "수간", MASTER
+					CALL SHOW_ABNORMAL_EXP, MASTER
+						SIF EXP:MASTER:Ｖ확장경험 == 0
+							CALL ADDS_ABNORMAL_EXP("확장첫경험", MASTER)
+							CALL SHOW_ABNORMAL_EXP, MASTER
+				ELSEIF EXP:MASTER:Ｖ확장경험 == 0
+					PRINTFORML 이제까지 본 음경 중 가장 거대한 음경이 %CALLNAME:MASTER%의 비부에 들어오려고 하자 새파랗게 질렸지만,
+					PRINTFORMW 자궁구를 두드리는 쾌감에 허덕이며 스내피에게 매달렸다.
+					CALL ADDS_ABNORMAL_EXP("확장첫경험", MASTER)
+					CALL SHOW_ABNORMAL_EXP, MASTER
+				ELSE
+					PRINTFORM 단단하고 거대한 음경이 자궁에 부딪치자, 
+						IF TALENT:MASTER:음란 || TALENT:MASTER:창부 || TALENT:MASTER:복종 || TALENT:MASTER:예속 || TALENT:MASTER:섹스광 || 위험일(MASTER) == 2 || CFLAG:PLAYER:던전内発情用욕정치 >= 8000
+							PRINTFORMW 자동적으로 양손으로 허리를 감싸고 교성을 흘리기 시작했다.
+						ELSEIF TALENT:MASTER:프라이드높음 || TALENT:MASTER:반항적 || TALENT:MASTER:꿋꿋함
+							PRINTFORMW 프라이드 높던 %조사처리(CALLNAME:MASTER,"는")% 암컷의 표정으로 변했다.
+						ELSEIF TALENT:MASTER:남성혐오
+							PRINTFORMW 남성을 혐오하던 %조사처리(CALLNAME:MASTER,"도")% 녹아내린듯한 표정으로 바뀌었다.
+						ELSE
+							PRINTFORMW 부끄러운 것도 잊어버리고 달콤한 신음소리가 새어나왔다.
+						ENDIF
+				ENDIF
+				EXP:MASTER:Ｖ경험 += 15
+				EXP:MASTER:수간경험 += 25
+				EXP:MASTER:절정경험 += 5
+				EXP:MASTER:성교경험 += 25
+				EXP:MASTER:질사경험 += 15
+				EXP:MASTER:정액경험 += 20
+				EXP:MASTER:고통쾌락경험 += 10
+				EXP:MASTER:Ｖ확장경험 += 10
+				CALL INCREASE_LC,-1
+				CALL INCREASE_LD,-1
+				PRINTL
+				WAIT
+				PRINTFORML %조사처리(CALLNAME:MASTER,"는")% 범해지던 도중 몇번이나 정신을 놓을 뻔 했지만
+				PRINTFORMW 소녀를 구해야 한다는 사명감으로 정신을 잃지 않고 버텼다. 
+				PRINTFORML 
+				PRINTFORML 「헤헷, 내가 이제까지 먹어본 여자 중 최고였다 큐!」
+				PRINTFORMW 「약속대로 너에게 넘겨주마 큐!」
+				PRINTFORML 
+				PRINTFORMW 소녀를 넘겨줄 때, 스내피가 귓가에 대고 속삭였다.
+				PRINTFORML 
+				PRINTFORML 「만약 또 하길 원한다면, 이곳으로 혼자 와라 큐」
+				PRINTFORML 
+				
+				던전フラグ:(FLAG:現던전):1 = 5
+				던전フラグ:(FLAG:現던전):7 += 1
+				ELSEIF RESULT == 1
+					PRINTL 
+					PRINTW 「그럼 싸움밖에 없다, 큐!」
+					PRINTL 
+				ELSE
+					GOTO INPUT_LOOP_6
+				ENDIF		
+			ENDIF
+		
+		IF 던전フラグ:(FLAG:現던전):1 == 2
+			PRINTL 마수 스내피가 １체 나타났다！
+			CUSTOMDRAWLINE =
+			WAIT
+			FLAG:도주불가フラグ = 1
+			FLAG:회화불능フラグ = 1
+			FLAG:선제기습취소 = 1
+			FLAG:不意打ちフラグ = 1
+			CALL SET_ENEMY,9,900,24,0,1
+			CFLAG:(CHARANUM-1):行動횟수 = 1
+			CSTR:(CHARANUM-1):사고패턴 = 스내피
+			CALL SYNC_STATUS,(CHARANUM-1)
+			CALL HEALTH_CHARA,(CHARANUM-1)
+			
+			CALL BATTLE_START
+			FLAG:도주불가フラグ = 0
+			FLAG:회화불능フラグ = 0
+			FLAG:선제기습취소 = 0
+		ENDIF
+
+		IF 던전フラグ:(FLAG:現던전):1 == 4 || 던전フラグ:(FLAG:現던전):1 == 6
+			FLAG:탈출 = 1
+		ELSEIF 던전フラグ:(FLAG:現던전):1 == 5
+			PRINTW 터미널을 개방해、봉쇄된 VR 호러 하우스에 갈 수 있게 되었다！
+		ELSE
+			PRINTW 터미널을 개방해、봉쇄된 VR 호러 하우스에 갈 수 있게 되었다！
+			던전フラグ:(FLAG:現던전):1 = 3
+		ENDIF
+
+		IF (던전フラグ:(FLAG:現던전):1 == 3 || 던전フラグ:(FLAG:現던전):1 == 5) && 던전フラグ:(FLAG:現던전):0 == 27
+			PRINTL 스내피는 쓰러져 있는 토모코의 세뇌가 풀렸는지 확인 한 후 의뢰자에게 보낼 따름이다。
+			PRINTL 토모코는 얼굴에 아무 표정도 없이 죽은듯이 자고 있다。
+			PRINTL 아직도 어린 티가 남아있는 얼굴이지만、생각보다 잘 갖춰진 괜찮은 모양새였다。
+			PRINTL 본인이 모르는 일이라지만、이 작고 부드러운 입술은 무수한 악마의 추악한 남근을 물고 있었던 것이다。
+			PRINTL 어른이라고 할 수 없는 소녀 체형의 몸에는 거듭되는 광란의 음행에 피부에 생기가 없었고、
+			PRINTL 호홉에 위아래로 오르내리고 있는 임신으로 부풀어 오른 가슴은 뚜렷이 보이는 이빨자국으로 인해 애처로웠다。
+			PRINTL 무참하게 당해 거무스름해진 유두 끝에는 유백색의 물방울이 배어있었다。
+			PRINTL 부풀어 오른 하복부의 중량감으로 볼 때 언제 아이를 낳아도 이상하지 않을 것 같았다。
+			PRINTL 신체 여기저기에 남겨진 푸른 멍자국은 부풀어 올라 있는 배에도 있었고、
+			PRINTL 하복부에는 있어야 할 수풀이 거의 뽑혀버려 남아있는 건 그런 것이 있었다는 흔적 뿐이다。
+			PRINTL 여기에 끌려올 때까지는、소녀는 순진무구한 처녀였다。
+			PRINTL 하지만 지금은 악마들의 추악하고 굵다란 성기에 정신이 파괴될 정도로 농락당한 것도 모자라 임신을 당해도 풀려나지 못하고 희롱당하고 있었다。
+			PRINTL 아귀들이 쏟아낸 대략의 정액은 아직도 앞 뒤의 구멍에서 쿨럭거리며 넘쳐 나오고 있다。
+			PRINTL 이래서는 온갖 방법으로 손을 써도、원래의 생활로는 돌아갈 수 있을 리가 없다。
+			PRINTL 색다른 것을 좋아한다고 해도、이 소녀를 자기 것으로 해버리면 보상은 당연히 받을 수 없다。
+			PRINTL 뭐、보수도 깍일대로 깍여 참새눈물만큼이겠지만…。
+			PRINTL ＞의뢰를 수행합니까？
+			PRINTL [0]Yes [1]No
+			$INPUT_LOOP_5
+			INPUT
+			IF RESULT == 0
+				PRINTW ＞소녀 보호에 성공했으므로 계좌에 ￥5000가 지불됩니다
+				PRINTFORMW ＞%조사처리(CALLNAME:MASTER,"는")% 40의 명성을 얻었다
+				MONEY += 5000
+				FLAG:名声 += 40
+				던전フラグ:(FLAG:現던전):1 = 6
+			ELSEIF RESULT == 1
+				CALL INCREASE_LC,-3
+				CALL INCREASE_LD,-3
+				PRINTW 망가진 성노예 토모코를 손에 넣었다
+				CALL ADD_NEW_COMPANION,4540,1000
+				IF RESULT == 1
+					LOCAL = RESULT:1
+					CFLAG:LOCAL:이벤트加入 = 1
+					TALENT:LOCAL:붕괴 = 1
+					TALENT:LOCAL:음란 = 1
+					TALENT:LOCAL:처녀 = 0
+					TALENT:LOCAL:유아／유아퇴행 = 1
+					ABL:LOCAL:회화타입 = 301
+					;아귀윤간で種付け
+					ABL:LOCAL:Ｃ감각 += 2
+					ABL:LOCAL:Ｖ감각 += 2
+					ABL:LOCAL:Ａ감각 += 2
+					ABL:LOCAL:Ｂ감각 += 2
+					ABL:LOCAL:기교 += 2
+					EXP:LOCAL:자위경험 += 40
+					EXP:LOCAL:Ｖ경험 += 100
+					EXP:LOCAL:키스경험 += 50
+					EXP:LOCAL:Ａ경험 += 50
+					EXP:LOCAL:절정경험 += 100
+					EXP:LOCAL:성교경험 += 150
+					EXP:LOCAL:질사경험 += 100
+					EXP:LOCAL:정액경험 += 200
+					EXP:LOCAL:봉사쾌락경험 += 100
+					EXP:LOCAL:펠라경험 += 100
+					EXP:LOCAL:고통쾌락경험 += 50
+					EXP:LOCAL:Ｖ확장경험 += 75
+					EXP:LOCAL:Ａ확장경험 += 50
+					EXP:LOCAL:피사경험 += 150
+					EXP:LOCAL:이상경험 += 3
+					IF PREGNANCY_ABLE(LOCAL)
+						CALL PREGNANCY_CHECK, LOCAL, 4
+						CALL SET_FATHERINFO, LOCAL, 1093, -1, "아귀"
+						TALENT:LOCAL:임신 = 1
+						;임신によるの乳サイズ増大
+						;메시지を出さないために直接編集
+						TALENT:LOCAL:거유 = 1
+						TALENT:LOCAL:모유체질 = 1
+					ENDIF
+				ENDIF
+					PRINTL
+			ELSE
+				GOTO INPUT_LOOP_5
+			ENDIF
+			IF 던전フラグ:(FLAG:現던전):1 == 5
+				CALL IMPREGNATION_MASTER
+				던전フラグ:(FLAG:現던전):1 = 6
+			ELSE
+			ENDIF
+			FLAG:탈출 = 1
+
+		ELSEIF (던전フラグ:(FLAG:現던전):1 == 3 || 던전フラグ:(FLAG:現던전):1 == 5) && 던전フラグ:(FLAG:現던전):0 > 22
+			PRINTL 스내피는 쓰러져 있는 토모코의 세뇌가 풀렸는지 확인 한 후 의뢰자에게 보낼 따름이다.
+			PRINTL 토모코는 피로 때문인지 죽은 듯이 깊게 자고 있다.
+			PRINTL 아직도 어린 티가 남아있는 얼굴이지만, 생각보다 단정해서 괜찮은 생김새였다.
+			PRINTL 본인은 모르는 일이라지만 이 작고 입술은 몇 번이고 악마의 추악한 남근을 그 부드러운 틈 사이에 끼웠을 것이다.
+			PRINTL 어른이라 할 수 없는 소녀의 몸일지라도 개발을 받아 성적 매력이 흐르고 있다.
+			PRINTL 호홉에 맞춰 위아래로 흔들리는 가슴은 임신으로 인해 부풀어 오른 것인지 끔찍하게 거무스름해진 끝부분에는 유백색의 방울이 맺히고 있었다.
+			PRINTL 부풀어 오른 하복부의 중량감으로 볼 때 언제 아이를 낳아도 이상하지 않을 것 같았다.
+			PRINTL 이런 배로 꿰뚫려졌음에도 좋아했으니까 상당히 세뇌가 강했던 것 같다.
+			PRINTL 젖어서 달라붙은 수풀은 거뭇하게 나있어서 이전의 하얗던 때와는 다른 것 같다.
+			PRINTL 여기에 끌려올 때까지는 소녀는 순진무구한 처녀였다.
+			PRINTL 하지만 지금은 악마의 추악하고 굵은 성기를 입에 문 채 절정에 이르고, 정액을 짜내는 신세가 되어 임신이 되어도 풀려나지 못한 채 희롱당했다.
+			IF 던전フラグ:(FLAG:現던전):0 > 23
+				PRINTL 스내피가 쏟아낸 대량의 정액이 아직도 앞 뒤의 구멍에서 쿨럭거리며 넘쳐 나오고 있다.
+			ELSE
+				PRINTL 스내피가 쏟아낸 대량의 정액이 아직도 질에서부터 쿨럭거리며 넘쳐 나오고 있다.
+			ENDIF
+			PRINTL 이래서는 온갖 방법으로 손을 써도 원래 생활로는 돌아갈 수 있을 리가 없다.
+			PRINTL 색다른 것을 좋아한다고 해도 이 소녀를 자기 것으로 해버리면 보상은 당연히 받을 수 없다.
+			PRINTL 뭐, 보수도 깍일대로 깍여 참새눈물만큼이겠지만….
+			PRINTL ＞의뢰를 수행합니까?
+			PRINTL [0]Yes [1]No
+			$INPUT_LOOP_4
+			INPUT
+			IF RESULT == 0
+				PRINTW ＞소녀 보호에 성공했으므로 계좌에 ￥5000가 지불됩니다
+				PRINTFORMW ＞%조사처리(CALLNAME:MASTER,"는")% 40의 명성을 얻었다
+				CALL INCREASE_LC,2
+				CALL INCREASE_LD,2
+				MONEY += 5000
+				FLAG:名声 += 40
+				던전フラグ:(FLAG:現던전):1 = 6
+			ELSEIF RESULT == 1
+				CALL INCREASE_LC,-3
+				CALL INCREASE_LD,-2
+				PRINTW 성노예 토모코를 손에 넣었다
+				CALL ADD_NEW_COMPANION,4540,1000
+				IF RESULT == 1
+					LOCAL = RESULT:1
+					CFLAG:LOCAL:이벤트加入 = 1
+					TALENT:LOCAL:음란 = 1
+					TALENT:LOCAL:처녀 = 0
+					ABL:LOCAL:회화타입 = 301
+					;스내피が種付け
+					ABL:LOCAL:Ｃ감각 += 2
+					ABL:LOCAL:Ｖ감각 += 1
+					ABL:LOCAL:Ｂ감각 += 1
+					ABL:LOCAL:기교 += 1
+					EXP:LOCAL:Ｖ경험 += 20
+					EXP:LOCAL:키스경험 += 10
+					EXP:LOCAL:자위경험 += 30
+					EXP:LOCAL:절정경험 += 30
+					EXP:LOCAL:성교경험 += 30
+					EXP:LOCAL:질사경험 += 20
+					EXP:LOCAL:정액경험 += 40
+					EXP:LOCAL:봉사쾌락경험 += 20
+					EXP:LOCAL:펠라경험 += 20
+					EXP:LOCAL:고통쾌락경험 += 10
+					EXP:LOCAL:피사경험 += 50
+					EXP:LOCAL:이상경험 += 3
+					EXP:LOCAL:Ｖ확장경험 += 15
+					IF 던전フラグ:(FLAG:現던전):0 > 23
+						ABL:LOCAL:Ａ감각 += 1
+						EXP:LOCAL:Ａ경험 += 10
+						EXP:LOCAL:Ａ확장경험 += 10
+					ENDIF
+					IF PREGNANCY_ABLE(LOCAL)
+						CALL PREGNANCY_CHECK, LOCAL, 4
+						CALL SET_FATHERINFO, LOCAL, 900, -1, "스내피"
+						TALENT:LOCAL:임신 = 1
+						;임신によるの乳サイズ増大
+						;메시지を出さないために直接編集
+						TALENT:LOCAL:거유 = 1
+						TALENT:LOCAL:모유체질 = 1
+					ENDIF
+				ENDIF
+					PRINTL
+			ELSE
+				GOTO INPUT_LOOP_4
+			ENDIF
+			IF 던전フラグ:(FLAG:現던전):1 == 5
+				CALL IMPREGNATION_MASTER
+				던전フラグ:(FLAG:現던전):1 = 6
+			ELSE
+			ENDIF
+			FLAG:탈출 = 1
+
+		ELSEIF (던전フラグ:(FLAG:現던전):1 == 3 || 던전フラグ:(FLAG:現던전):1 == 5) && 던전フラグ:(FLAG:現던전):0 > 21
+			PRINTL 스내피는 쓰러져 있는 토모코의 세뇌가 풀렸는지 확인 한 후 의뢰자에게 보낼 따름이다。
+			PRINTL 토모코는 무방비하게 편안한 숨소리를 내며 잠들어 있다。
+			PRINTL 아직도 어린 티가 남아있는 얼굴이지만、생각보다 잘 갖춰진 괜찮은 모양새였다。
+			PRINTL 본인은 모르는 일이라지만 이 작고 입술은 몇 번이고 악마의 추악한 남근을 그 부드러운 틈 사이에 끼웠을 것이다。
+			PRINTL 어른이라 할 수 없는 소녀의 몸일지라도 개발 당해、성적 매력이 흐르고 있다。
+			PRINTL 호홉에 따라 위아래로 흔들리는 잘 부풀어 오른 그곳은 충분히 남자를 즐겁게 할 수 있을 것이다。
+			PRINTL 젖어서 달라붙은 얇은 수풀로는 숨길 수 없는 비밀스런 틈에는 이슬이 맺혀 흐르고 있다。
+			PRINTL 자위와 애무에 의해 절정을 거듭해 잘 젖고 풀어져 얌전해진 보지는、
+			PRINTL 악마의 추악한 성기에 꿰뚫려 상실의 피눈물을 흘리면서 유린당했다。
+			PRINTL 무참하긴 하지만, 약간은 선정적인 광경이라고도 생각된다。
+			PRINTL 하지만、이 소녀를 자기 것으로 하려면 보상은 당연히 받을 수 없다。
+			PRINTL 어디에나 있을 것 같은 소녀 한 명에게 과연 그 정도의 가치가 있을까？
+			PRINTL ＞의뢰를 수행합니까？
+			PRINTL [0]Yes [1]No
+			$INPUT_LOOP_3
+			INPUT
+			IF RESULT == 0
+				PRINTW ＞소녀 보호에 성공했으므로 계좌에￥15000이 지불되었다
+				PRINTFORMW ＞%조사처리(CALLNAME:MASTER,"는")% 75의 명성을 얻었다
+				CALL INCREASE_LC,3
+				CALL INCREASE_LD,3
+				MONEY += 15000
+				FLAG:名声 += 75
+				던전フラグ:(FLAG:現던전):1 = 6
+			ELSEIF RESULT == 1
+				CALL INCREASE_LC,-4
+				CALL INCREASE_LD,-3
+				PRINTW 토모코를 노예로 데리고 돌아갔다
+				CALL ADD_NEW_COMPANION,4540,500
+				IF RESULT == 1
+					LOCAL = RESULT:1
+					CFLAG:LOCAL:이벤트加入 = 1
+					TALENT:LOCAL:처녀 = 0
+					ABL:LOCAL:회화타입 = 301
+					;스내피が破瓜
+					ABL:LOCAL:Ｃ감각 += 1
+					EXP:LOCAL:자위경험 += 20
+					EXP:LOCAL:Ｖ경험 += 1
+					EXP:LOCAL:키스경험 += 1
+					EXP:LOCAL:절정경험 += 10
+					EXP:LOCAL:성교경험 += 1
+					EXP:LOCAL:정액경험 += 10
+					EXP:LOCAL:봉사쾌락경험 += 5
+					EXP:LOCAL:펠라경험 += 5
+					EXP:LOCAL:피사경험 += 20
+					EXP:LOCAL:이상경험 += 2
+					EXP:LOCAL:Ｖ확장경험 += 1
+				ENDIF
+					PRINTL
+			ELSE
+				GOTO INPUT_LOOP_3
+			ENDIF
+			IF 던전フラグ:(FLAG:現던전):1 == 5
+				CALL IMPREGNATION_MASTER
+				던전フラグ:(FLAG:現던전):1 = 6
+			ELSE
+			ENDIF
+			FLAG:탈출 = 1
+
+		ELSEIF (던전フラグ:(FLAG:現던전):1 == 3 || 던전フラグ:(FLAG:現던전):1 == 5) && 던전フラグ:(FLAG:現던전):0 > 20
+			PRINTL 스내피는 쓰러져 있는 토모코의 세뇌가 풀렸는지 확인 한 후 의뢰자에게 보낼 따름이다。
+			PRINTL 토모코는 무방비하게 편안한 숨소리를 내며 잠들어 있다
+			PRINTL 아직도 어린 티가 남아있는 얼굴이지만、생각보다 잘 갖춰진 괜찮은 모양새였다
+			PRINTL 호홉에 따라 위아래로 흔들리는 잘 부풀어 오른 그곳은 충분히 남자를 즐겁게 할 수 있을 것이다
+			PRINTL 젖어서 달라붙은 얇은 수풀로는 숨길 수 없는 비밀스런 틈에는 이슬이 맺혀 흐르고 있다
+			PRINTL 자위와 애무로 절정을 거듭한 끝에 잘 젖고 풀어져 얌전해진 보지는 분홍색의 내벽을 드러낸 채 유백색의 물방울이 베어나오고 있었다
+			PRINTL 아직 풋풋한 과실이지만、음란한 마음을 불러일으키기에 충분한 광경이라 생각한다
+			PRINTL 하지만、이 소녀를 자기 것으로 하려면 보상은 당연히 받을 수 없다
+			PRINTL 어디에나 있을 것 같은 소녀 한 명에게 과연 그 정도의 가치가 있을까？
+			PRINTL ＞의뢰를 수행합니까？
+			PRINTL [0]Yes [1]No
+			$INPUT_LOOP_2
+			INPUT
+			IF RESULT == 0
+				PRINTW ＞소녀 보호에 성공했으므로 계좌에 ￥25000이 지불되었다
+				PRINTFORMW ＞%조사처리(CALLNAME:MASTER,"는")%115의 명성을 얻었다
+				CALL INCREASE_LC,3
+				CALL INCREASE_LD,3
+				MONEY += 25000
+				FLAG:名声 += 115
+				던전フラグ:(FLAG:現던전):1 = 6
+			ELSEIF RESULT == 1
+				CALL INCREASE_LC,-5
+				CALL INCREASE_LD,-3
+				PRINTW 토모코를 노예로 데리고 돌아갔다
+				CALL ADD_NEW_COMPANION,4540,200
+				IF RESULT == 1
+					LOCAL = RESULT:1
+					CFLAG:LOCAL:이벤트加入 = 1
+					ABL:LOCAL:회화타입 = 301
+					;破瓜寸前
+					ABL:LOCAL:Ｃ감각 += 1
+					EXP:LOCAL:자위경험 += 20
+					EXP:LOCAL:절정경험 += 10
+					EXP:LOCAL:정액경험 += 5
+					EXP:LOCAL:봉사쾌락경험 += 5
+					EXP:LOCAL:펠라경험 += 5
+					EXP:LOCAL:피사경험 += 15
+					EXP:LOCAL:이상경험 += 1
+				ENDIF
+					PRINTL
+			ELSE
+				GOTO INPUT_LOOP_2
+			ENDIF
+			IF 던전フラグ:(FLAG:現던전):1 == 5
+				CALL IMPREGNATION_MASTER
+				던전フラグ:(FLAG:現던전):1 = 6
+			ELSE
+			ENDIF
+			FLAG:탈출 = 1
+
+		ELSEIF (던전フラグ:(FLAG:現던전):1 == 3 || 던전フラグ:(FLAG:現던전):1 == 5) && 던전フラグ:(FLAG:現던전):0 > 8
+			PRINTL 스내피는 쓰러져 있는 토모코의 세뇌가 풀렸는지 확인 한 후 의뢰자에게 보낼 따름이다。
+			PRINTL 조금 전까지 음란한 행동을 했던 토모코는 지금 무방비하게 평온한 숨소리를 내며 잠들어 있다。
+			PRINTL 그 때는 제법 용모가 괜찮다고 생각했지만、잠들어 있는 모습에선 아직 어린 티가 느껴진다。
+			IF 던전フラグ:(FLAG:現던전):0 > 18
+				PRINTL 하지만 본인은 모르는 일이라지만 이 작고 부드러운 입술 사이로 몇 번이고 악마의 추악한 페니스가 입안이 미어터질듯이 들락거렸고、
+				PRINTL 어른이라 하기 어려운 소녀의 몸도 호색인 악마에 의해 충분히 개발되어 버리고 말았다。
+			ELSEIF 던전フラグ:(FLAG:現던전):0 > 16
+				PRINTL 하지만 본인은 모르는 일이라고는 해도 감추고 싶은 곳을 자기 스스로의 손으로 드러내어、
+				PRINTL 아직 경험해 보지 못했던 엑스터시 속으로 강제로 내몰렸다。
+			ELSEIF 던전フラグ:(FLAG:現던전):0 > 14
+				PRINTL 하지만 본인은 모르는 일이라고는 해도 그 몸의 구석구석까지 악마의 혀에 휘감겨、
+				PRINTL 아직 미숙한 뇌에 성감을 무리하게 증가시켰다。
+			ELSEIF 던전フラグ:(FLAG:現던전):0 > 12
+				PRINTL 하지만、본인이 모르는 일이라고는 해도 감추고 싶은 알몸을 다른 사람 앞에 드러내고、
+				PRINTL 민감한 사춘기의 은밀한 일을 스스로 폭로해 버리고 말았다。
+			ELSE
+				PRINTL 하지만、본인은 모르는 일이었다고는 해도 친구와 가족에게마저 덮어두고 싶은 사춘기의 은밀한 일을、
+				PRINTL 자기 입으로 폭로해 버렸다。
+			ENDIF
+			IF 던전フラグ:(FLAG:現던전):0 > 12
+				PRINTL 누운 채 땀으로 빛나고 있는 나신은 날씬했고、군살 하나 없는 몸매였다。
+				PRINTL 여성으로서 본격적으로 신체가 성장하는 것은 앞으로 계속 될지도 모른다。
+				PRINTL 호홉에 따라 위아래로 흔들리는 합리적으로 부푼 가슴도 그렇게 되면 한 층 더 성장하여、
+				PRINTL 충분히 눈을 즐겁게 할 수 있을 것이다。
+				PRINTL 땀과 애액에 젖어 달라붙어 있는 밝은 빛깔의 수풀로는 감출 수 없는 비밀 스런 틈에서는 이슬이 맺혀、
+				PRINTL 자위로 젖어 얌전해진 보지는 분홍색의 내부가 약간 드러나 보였다。
+			ELSE
+				PRINTL 선정적으로 벗겨진 노란 스웨터 구석에는 하얀 피부의 복부와 사랑스러울 것 같은 배꼽이 드러나 있었다。
+				PRINTL 호홉으로 인해 위아래로 흔들리는 부푼 곳은 스웨터 위인데도 적당한 크기라는 걸 알 수 있었다。
+				PRINTL 더욱 순조롭게 자란다면、충분히 눈을 즐겁게 할 때가 올 것이다。
+				PRINTL 질질 끌어 내렸던 청바지 사이로는 꾸밈 없는 청순한 하얀 속옷이 드러나 있었다、
+				PRINTL 땀과 애액으로 젖어 달라붙은 천 너머로 숨켜진 피부와 섬모가 얇게 비쳐보이고 있다。
+			ENDIF
+			PRINTL 아직 풋풋한 과실이지만、음란한 마음을 불러일으키기에 충분한 광경이라 생각하지만…….
+			PRINTL 하지만 이 소녀를 자기 것으로 삼겠다면 보상은 당연히 받을 수 없다
+			PRINTL 어디에나 있을 것 같은 소녀 한 명에게 과연 그럴 만한 가치가 있을까?
+			PRINTL ＞의뢰를 수행합니까？
+			PRINTL [0]Yes [1]No
+			$INPUT_LOOP_1
+			INPUT
+			IF RESULT == 0
+				PRINTW ＞소녀 보호에 성공했으므로 계좌에 ￥25000이 지불되었다
+				PRINTFORMW ＞%조사처리(CALLNAME:MASTER,"는")%115의 명성을 얻었다
+				CALL INCREASE_LC,3
+				CALL INCREASE_LD,3
+				MONEY += 25000
+				FLAG:名声 += 115
+				던전フラグ:(FLAG:現던전):1 = 6
+			ELSEIF RESULT == 1
+				CALL INCREASE_LC,-5
+				CALL INCREASE_LD,-3
+				PRINTW 토모코를 노예로 데리고 돌아갔다
+				CALL ADD_NEW_COMPANION,4540,200
+				IF RESULT == 1
+					LOCAL = RESULT:1
+					CFLAG:LOCAL:이벤트加入 = 1
+					ABL:LOCAL:회화타입 = 301
+					IF 던전フラグ:(FLAG:現던전):0 > 18
+					;토모코의 映像・初フェラ
+						EXP:LOCAL:자위경험 += 20
+						EXP:LOCAL:절정경험 += 3
+						EXP:LOCAL:펠라경험 += 1
+						EXP:LOCAL:피사경험 += 10
+						EXP:LOCAL:이상경험 += 1
+					ELSEIF 던전フラグ:(FLAG:現던전):0 > 16
+					;토모코의 映像・初절정と初くぱぁ
+						EXP:LOCAL:자위경험 += 15
+						EXP:LOCAL:절정경험 += 1
+						EXP:LOCAL:피사경험 += 5
+						EXP:LOCAL:이상경험 += 1
+					ELSEIF 던전フラグ:(FLAG:現던전):0 > 14
+					;토모코의 映像・初커닐링구스
+						EXP:LOCAL:자위경험 += 10
+						EXP:LOCAL:피사경험 += 3
+						EXP:LOCAL:이상경험 += 1
+					ELSEIF 던전フラグ:(FLAG:現던전):0 > 12
+					;토모코의 映像・オナニー実演
+						EXP:LOCAL:자위경험 += 5
+						EXP:LOCAL:이상경험 += 1
+						EXP:LOCAL:피사경험 += 1
+					ELSE
+					;토모코의 회화・オナニー告白
+						EXP:LOCAL:자위경험 += 3
+						EXP:LOCAL:절정경험 += 1
+					ENDIF
+				ENDIF
+					PRINTL
+			ELSE
+				GOTO INPUT_LOOP_1
+			ENDIF
+			IF 던전フラグ:(FLAG:現던전):1 == 5
+				CALL IMPREGNATION_MASTER
+				던전フラグ:(FLAG:現던전):1 = 6
+			ELSE
+			ENDIF
+			FLAG:탈출 = 1
+		ENDIF
+
+	ELSE
+		;任務최대실패・아귀윤간
+		IF 던전フラグ:(FLAG:現던전):0 >= 26
+			PRINTL 실내의 입체 그림은 수중에서 격렬하게 하고 있는 소녀와 악마들의 광연을 비추고 있다……。
+			PRINTL 「아흑！하앗…굉장해、히이익…하앗、으그그읏…!」
+			PRINTL 「핫…이크、가요…자지…가득…악 아앗…!」
+			PRINTL 「괘…괜찮아요…、하지만 모두에게、사랑받으니까、매일、즐거워…!」
+			PRINTL 「모두、함께、놀아요！ 토모코와、놀자！상이야、싸버려어어엇!」
+			;네밋사がいる
+			IF FINDCHARA_B(4510) == 2 || FINDCHARA_B(4511) == 2 || FINDCHARA_B(4512) == 2
+				PRINTFORML 『이런 것이라곤…… 히토미、미안해…」
+				PRINTFORML 네밋사는 토모코의 음란한 모습에서 눈을 돌리고 자신의 파트너를 향해 살짝 중얼거렸다。
+			;마요네がいる
+			ELSEIF FINDCHARA_B(4516) == 2
+				PRINTFORML 『더러운 광경이군요…』
+				PRINTFORML 마요네는 입꼬리를 비틀며 모멸감 섞인 미소를 띄고 있다。
+			ENDIF
+			PRINTL 이미 토모코는 하급 악마들의 성욕 배출구가 되버리고 말았다。
+			PRINTW 여기까지 타락해 버린 소녀를 의뢰자 슬하로 돌려 보내는 것이 의미가 있을까……。
+			던전フラグ:(FLAG:現던전):0 = 27
+			RETURN 1
+
+		;任務大실패・両穴
+		ELSEIF 던전フラグ:(FLAG:現던전):0 >= 23
+			PRINTL 실내의 입체 그림은 물 속에서 격렬하게 하는 소녀와 돌고래의 광경을 비추고 있었다……。
+			PRINTL 「아하악！하악…괴、굉장해… 또、또 연결되었어…!」
+			PRINTL 「아큭…좋아！…고추…、악、우윽！자지…닿아서…흐그윽!」
+			PRINTL 「우윽、사랑하고 있어… 사랑해요！… 그러니까…」
+			PRINTL 「사정해！ 안쪽에、뜨거운、정액이…하히이익 정액이！들어오고 있어!」
+			PRINTL 돌고래의 흉기나 다를 바 없는 음경이 더러운 정액을 토모코의 자궁에 내던지듯이 뿜어내었다。
+			PRINTL 토모코의 미성숙한 질은 당연하게도 다 받아내지 못하고、역류해 흘러나온 더러운 체액이 새하얀 허벅다리를 질퍽질퍽하게 더럽혀 갔다。
+			PRINTL 「아큭…좋아！…고추…、악、우윽！자지…닿아서…흐그윽!」
+			PRINTL 「우응、뒤도… 좋아요…아、아날도…귀여워해줘…우、우윽!」
+			PRINTL 뒤로 내밀어진 토모코의 작고 깨끗한 엉덩이 구멍은 순식간에 들이닥친 거대한 음경에 의해서 사정없이 범해졌다。
+			PRINTL 지금 소녀를 확보하는 것만이라도 하지 않으면 임무실패가 되버린다。
+			PRINTW 구출을 서두르지 않으면……。
+			던전フラグ:(FLAG:現던전):0 += 1
+			RETURN 1
+
+		;任務大실패・初中出し
+		ELSEIF 던전フラグ:(FLAG:現던전):0 >= 22
+			PRINTL 실내의 입체 그림은 물 속에서 격렬하게 하는 소녀와 돌고래의 광경을 비추고 있었다……。
+			PRINTL 「으……키익！……윽……꺄악！…아…아……」
+			PRINTL 흥분할대로 흥분한 돌고래의 피스톤 운동이 최대속도까지 올라가자、부서질 것 같은 고통으로 의식이 혼탁해진 토모코는 벽에 꽉 눌려진 채、
+			PRINTL 너무나 격렬한 욕망에 난폭하게 이리저리 내던져지면서 무력하게 흔들거리며 곧 붕괴되버릴 것 같아 보였다。
+			PRINTL 허용 한계를 넘어버린 미성숙한 토모코의 질에서는 흉악한 페니스가 들어올 때 찢겨진 상처에서 스며나오는 피가 뿌려지고 있었다。
+			PRINTL 그저 신음성만 흘리며 무력하게 흔들리는 토모코를 아래로부터 떠밀듯이 강하게 벽에 꽉 누르더니 돌고래가 움직임을 멈췄다。
+			PRINTL 「…으으읏！！…아앗！！…악！……아…아아……」
+			PRINTL 뜨거운 체액이 뿜어져나와 자궁에 직격하자 가늘게나마 유지하고 있던 의식의 끈을 완전히 놓아 버린 것 같다。
+			PRINTL 돌고래는 토모코가 정신을 잃은 후에도 풀어주지 않고 토모코를 페니스에 꼬치처럼 끼운 채 여운에 잠겨 있었다。
+			PRINTL 질 안에 주입된 대량의 정액과 정도를 넘은 피가 토모코의 허벅다리를 타고 발 밑으로 늘어지듯이 떨어져 내리고 있다。
+			PRINTL 지금 소녀를 확보하는 것만이라도 하지 않으면 임무실패가 되버린다。
+			PRINTW 구출을 서두르지 않으면……。
+			던전フラグ:(FLAG:現던전):0 += 1
+			RETURN 1
+
+		;任務실패・처녀상실
+		ELSEIF 던전フラグ:(FLAG:現던전):0 >= 21
+			PRINTL 실내의 입체회화는 물 속에서 정겹게 있는 소녀와 돌고래의 모습의 비추고 있다……。
+			PRINTL 「응…흐응…하악…키스、하자…우응、버진 좋업기념…？…흐읏…!」
+			PRINTL 「…엣、우응…좋아…해도…。하、하지만 상냥하게 해、응…?」
+			PRINTL 벽에 손을 댄 토모코의 뒤쪽에서 돌고래가 몸을 눌러 간다。
+			PRINTL 「흑…크윽…！…크으윽…끼약…으…하ー앗…하ー앗… 이끼이이얏!」
+			PRINTL 자신이 스스로 펼친 질 입구、그 안쪽에서 흐르는 순결의 증거、누구의 손을 타지 않은 처녀지에 깊이 박히는 돌고래의 굵은 음경、
+			PRINTL 고통으로 비지땀이 송글송글 맺힌 토모코의 표정이 방에 설치되어 있던 몇몇 입체회화들에 비추어졌다.
+			PRINTL 그리고 크고 작은 모든 회화들이 차례차례 같은 영상으로 바뀌어 갔다.
+			PRINTL 거기에 클로즈업된 것은 돌고래의 너무나도 굵은 음경을 한계까지 받아들인 토모코의 질 입구였다.
+			PRINTL 그것은 고리모양으로 있는대로 둥글게 펼쳐진 채 피가 흐르고 있었다.
+			PRINTL 「큭！…하극！…우윽！…으그ー윽！…윽…하악… 하악…하그윽!」
+			PRINTL 토모코의 고통 같은 건 신경쓰지 않는 돌고래의 율동이 시작되자、비통한 신음 소리가 ＢＧＭ 대신 깔리고 돌고래는 기분내키는 대로 피치를 올려갔다。
+			PRINTL 이윽고 회화들은 서서히 어두워져 가 심해와 같이 어떤 것도 보이지 않게 되가고 있다。
+			PRINTL 지금 소녀를 확보하는 것만이라도 하지 않으면 임무실패가 되버린다。
+			PRINTW 구출을 서두르지 않으면……。
+			던전フラグ:(FLAG:現던전):0 += 1
+			RETURN 1
+
+		;토모코의 映像・くぱぁおねだり
+		ELSEIF 던전フラグ:(FLAG:現던전):0 >= 20
+			PRINTL 실내의 입체회화는 물 속에서 정겹게 있는 소녀와 돌고래의 모습의 비추고 있다……。
+			PRINTL 「…아악、아아앗！…우응、우응…!」
+			PRINTL 「…속의 날？…그、그런가…아앗…우응…응！아앗！으～앗!」
+			PRINTL 돌고래의 정액으로 입가를 더럽힌 토모코는 돌고래의 집요한 애무를 받고 있었다。
+			PRINTL 돌고래가 교묘하게 혀를 사용하자 쾌락과 동시에 거짓된 기억이 세겨지고 있다。
+			PRINTL 「하우응！하앗…혀는、기다려！… 또、또 가버려어어어…!」
+			PRINTL 사고가 무디어지는 순간、서서히 토모코의 기억이 돌고래의 거짓말에 물들어 갔다。
+			PRINTL 「…하…하앗…에엣…너무 좋다고…？…우、우응…、정말 좋아하는 남자친구인걸…너무 좋아해…」
+			PRINTL 「에엣,… 오늘은… 졸업식…이라고…？ 아우우！…으～윽！…하앗…하앗…네…」
+			PRINTL 「그럼、토모코의 버진… 받아가요……」
+			PRINTL 거짓 사랑에 지배된 토모코는 다시 이번엔 서 있는 상태에서 스스로 자진해서 비부를 펼쳐보였다。
+			PRINTL 수치심으로 목까지 붉어진 토모코는 그런데도 이번에는 눈을 감지도 않고 행복한 미소를 짓고 있었다。
+			PRINTL 소녀의 정조를 지키려면、이제 남은 시간이 없다。
+			PRINTW 구출을 서두르지 않으면……。
+			던전フラグ:(FLAG:現던전):0 += 1
+			RETURN 1
+
+		;토모코의 映像・初フェラ
+		ELSEIF 던전フラグ:(FLAG:現던전):0 >= 18
+			PRINTL 실내의 입체회화는 물 속에서 정겹게 있는 소녀와 돌고래의 모습의 비추고 있다……
+			PRINTL 「우…와…굉장히… 너무 커……이거、빠는 건、무리야…」
+			PRINTL 「…우읏…응…나도…빨아주는 걸 받았으니…답례…하지 않으면 안되겠네요……」
+			PRINTL 딱딱하게 젖혀진체 돌아간 돌고래의 특이한 모양을 가진 페니스에 얼빠진 누동자의 토모코가 조금 혀를 내밀었다。
+			PRINTL 「굉장히 딱딱해…！ … 남자가 흥분하면、이렇게 되버리는 거구나…토모코에게 흥분한거야…?」
+			PRINTL 돌고래의 용감하게 우똑 솟아 있는 진한 보라색의 페니스에는 곳곳에 딱딱할 것 같은 돌기같은 물것이 있었다。
+			PRINTL 그 나머지 특이한 부분도、상대가 인간이 아닌 것조차、지금의 토모코는 신경이 미치지 않는 것 같다。
+			PRINTL 「…어떻게 하면 괜찮을까나…？…우응…저……저기、이、 이런 느낌일까나？…우응…우읏…응～…」
+			PRINTL 조심스럽게 토모코가 혀를 내밀어 타액에 젖은 돌고래의 페니스 근육에 가져다 댔다。
+			PRINTL 「으음…하아……에엣？…아앗！？…우흑！…음!…흐그윽！……으윽、응으응～…!」
+			PRINTL 토모코의 변변치 않은 봉사에 인내심의 한계를 느꼈는지、돌고래는 토모코의 입술에 억지로 페니스의 끝부분을 꽉 누르고、
+			PRINTL 놀라는 토모코는 거들떠 보지도 않은 채 허리를 몇 번이나 쑥 내밀어、입안에 들어가는 부분만이라도 억지로 밀어넣었다。
+			PRINTL 「흐그그～윽…으그～윽！…응！…으흥…!」
+			PRINTL 토모코는 입 주변에 침을 흘리며、턱이 빠져나가라 허리를 쑥 내미는 돌고래의 욕구에 어떻게든 응하려고 하고 있다。
+			PRINTL 소녀의 정조를 지키려면 이제 시간이 거의 없다
+			PRINTW 구출을 서두르지 않으면……。
+			던전フラグ:(FLAG:現던전):0 += 1
+			RETURN 1
+
+		;토모코의 映像・初절정と初くぱぁ
+		ELSEIF 던전フラグ:(FLAG:現던전):0 >= 16
+			PRINTL 실내의 입체회화는 물 속에서 정겹게 있는 소녀와 돌고래의 모습의 비추고 있다……。
+			PRINTL 「에에엣！거짓말…아、안돼… 그것만큼은！…아、아앗！… 기다려、흐응…!」
+			PRINTL 「하앗…하우…！…알았다…우리들은…어라…？… 만났을 뿐인데… 아앗、아아앙!」
+			PRINTL 고래는 혀를 구사해 쾌락을 계속 안겨 주어 토모코가 정상적인 사고로 돌아올 여지를 주지 않으려고 했다。
+			PRINTL 「하우웃！ 하앗…혀는、기다려！… 와요！ 와버려요오오～～！!」
+			PRINTL 「……아……응…하아ー앗…하아ー앗…하아앗…응…가…가버렸다…？ 나…」
+			PRINTL 숨이 끊어질 듯 끊어질 듯 하는 모습의 토모코에게 돌고래가 무슨 일을 속삭이며 얼굴을 접근시켰다。
+			PRINTL 「응…에、에에엣！？… 음、무리야！… 그런 건、너무 부끄러워…!」
+			PRINTL 「…거、거짓말이 아니야… 좋아하는 건 정말이야…아…우…우우…」
+			PRINTL 「…어쩌지…하아…하아…으응…네、이、이것으로 좋아…？… 하앗…하앗…부끄러워요…」
+			PRINTL 위를 향해 드러누운 토모코는 크게 다리를 벌리고 양손으로 숨기고 싶은 부분들을 전부 드러내었다。
+			PRINTL 토모코는 고개를 돌린 채 귀까지 빨갛게 물들어 눈을 단단히 감고 치욕의 순간이 지나가는 것을 기다리고 있었다。
+			PRINTL 「…그、그래、그렇지…！ …으읏…쭉 좋아했었어… 괜찮아…」
+			PRINTL 얇은 융모와 같은 털의 수풀、그 아래에 커졌다 작아졌다 하는 클리토리스、젖어서 노출된 비밀스런 틈의 안쪽 벽、
+			PRINTL 벌렁거리는 요도구、그리고 아무도 허용치 않았던 질 안에 숨겨진 순결의 증거도 밝은 불빛 아래에 모조리 드러났다。
+			PRINTL 참고 있는 토모코를 조롱이라도 하듯、그것들은 차례차례로 방안의 회화에 비춰지고 있다。
+			PRINTL 소녀의 정조를 지키려면 이제 시간이 거의 없다。
+			PRINTW 구출을 서두르지 않으면……。
+			던전フラグ:(FLAG:現던전):0 += 1
+			RETURN 1
+
+		;토모코의 映像・初커닐링구스
+		ELSEIF 던전フラグ:(FLAG:現던전):0 >= 14
+			PRINTL 실내의 입체회화는 물 속에서 정겹게 있는 소녀와 돌고래의 모습의 비추고 있다……
+			PRINTL 「우、우응…여기는 보지 말아줄래…？…우、우응…어라…?」
+			PRINTL 「우응… 정말 좋아해서 여기까지 보여 준 거니까… 보여주고 싶으니까…」
+			PRINTL 「털이 좀 엷은 걸까나… 역시… 여행 때는 친구들도 이야기해서 부끄러웠다…」
+			PRINTL 「거짓말… 그래？…우읏、그런 방법으로、짙어진다라…응、어른스러워지고 싶어…」
+			PRINTL 「시、심술쟁이…빨아、주세요…히익！？…우윽！…아아앗！…갑작스럽게!」
+			PRINTL 돌고래의 이상하게 긴 혀가 토모코의 다리 사이를 집요하게 빨며 휘젓고 있다。
+			PRINTL 영상에 나오는 주인공의 속마음은 이미 명백해졌다。
+			PRINTW 구출을 서두르지 않으면……。
+			던전フラグ:(FLAG:現던전):0 += 1
+			RETURN 1
+
+		;토모코의 映像・オナニー実演
+		ELSEIF 던전フラグ:(FLAG:現던전):0 >= 12
+			PRINTL 실내의 입체회화는 물 속에서 노는 소녀와 돌고래를 비추고 있다……
+			PRINTL 「언제나는 아니야…가족、부재중일때라던가… 하앗… 잠깐마…안」
+			PRINTL 「우윽…응… 그、그렇네요. 이따금은、하앗…아앗… 몰랐다…」
+			PRINTL 「그런가…가슴이、커진다… 우응、들은 적은 있는데… 비비면… 으응!」
+			PRINTL 「아、안되요… 손가락은… 이런、손가락은、넣으…하아…앙…」
+			PRINTL 「나、아직…우、우응… 좋아하는 사람에게… 하아앗、흥…!」
+			PRINTL 입체 그림 속에서는 돌고래를 상대로 토모코의 독백과 자위가 이어지고 있다。
+			;네밋사がいる
+			IF FINDCHARA_B(4510) == 2 || FINDCHARA_B(4511) == 2 || FINDCHARA_B(4512) == 2
+				PRINTFORML 『역시、 토모코짱인걸！？ 우리들이 알고 있던 그 아이야。빨리 도와줘야 해…！』
+				PRINTFORML 네밋사는 알고 있는 소녀의 음란한 모습에 초조해진 것 같다。
+			ENDIF
+			PRINTL 영상에 나오는 주인공의 속마음은 이미 명백해졌다。
+			PRINTW 구출을 서두르지 않으면……。
+			던전フラグ:(FLAG:現던전):0 += 1
+			RETURN 1
+
+		;토모코의 회화・オナニー告白
+		ELSEIF 던전フラグ:(FLAG:現던전):0 >= 8
+			PRINTL 관내 여기저기에 설치되어 있는 입체 스피커로부터 목소리가 들린다……。
+			PRINTL 「우읏…응…이렇게…」
+			PRINTL 「언제나… 옷 위로… 그것은、이따금… 가끔씩만 하는…에에엣!?」
+			PRINTL 「우윽、그래… 아무에게도 보여주지 않아… 확실히 왠지 둥실둥실한게…응…하아…」
+			PRINTL 「으으응！…소、속옷、더러워지지 않게…으응…화、화장실이라던가… 가끔 목욕탕…」
+			PRINTL 자위를 하고 있는 것일까、꿈 속을 해매는 기분인 것 같은 토모코의 목소리가 요염해지고 있다。
+			PRINTL 구출에 시간을 끌면、소녀의 몸에 나쁜 일이 일어날 가능성이 높다。
+			PRINTW 아무래도 서두르는 것이 좋겠다……。
+			던전フラグ:(FLAG:現던전):0 += 1
+			RETURN 1
+
+		;토모코의 회화・秘密の遊びについて
+		ELSEIF 던전フラグ:(FLAG:現던전):0 >= 6
+			PRINTL 관내 여기저기에 설치되어 있는 입체 스피커로부터 목소리가 들린다……。
+			PRINTL 「이、있어엇…이런저런…잡지라든지…소설이라든지… 그리고 미술책이라든지…」
+			PRINTL 「…우응…이따금…공부에… 지쳤을 때 라든지…」
+			PRINTL 「응、비밀、지켜줘요、약속이야… 후훗」
+			PRINTL 「시、싫어요…、심술궃게 굴지 말아요… 누구에게 알려지면、부、부끄러워서 죽어버릴 거에요…」
+			PRINTL 토모코의 목소리는 당장이라도 기어들어가고 싶은 것 같았지만、도대체 무슨 독백인 것일까？
+			PRINTFORMW 막연한 이야기 같았지만 %NAME:MASTER%의 가슴은 철렁 내려앉았다……。
+			던전フラグ:(FLAG:現던전):0 += 1
+			RETURN 1
+
+		;토모코의 회화・趣味について
+		ELSEIF 던전フラグ:(FLAG:現던전):0 >= 4
+			PRINTL 관내 여기저기에 설치되어 있는 입체 스피커로부터 목소리가 들린다……。
+			PRINTL 「우응、그림을 그리는 걸 정말 좋아해… 공부하는 것보다 즐겁기도 하고」
+			PRINTL 「와아…응응、그리게 해줘！ 아마 대단히 좋은 그림이 될거야…!」
+			PRINTL 「응、약속했다！…아하핫」
+			PRINTFORMW 즐겁게 이야기를 나누는 것 같지만 %NAME:MASTER%의 가슴은 철렁 내려앉았다……。
+			던전フラグ:(FLAG:現던전):0 += 1
+			RETURN 1
+
+		;토모코의 회화・초기
+		ELSEIF 던전フラグ:(FLAG:現던전):0 >= 1
+			PRINTL 관내 여기저기에 설치되어 있는 입체 스피커로부터 목소리가 들린다……。
+			PRINTL 「아하핫、우～응、또 공부에 지쳐서 왔어…!」
+			PRINTL 「아 그렇구나、미안해…또 와서、응,친구、친구야!」
+			PRINTL 「아…오늘은 돌아갈께、또 놀도록 하자…!」
+			PRINTL 토모코는 누구와 이야기하고 있었던 걸까、상대의 목소리가 전혀 들리지 않는다。
+			PRINTFORMW 어째선지 %NAME:MASTER%의 불길한 예감은 강해져만 갔다……。
+			던전フラグ:(FLAG:現던전):0 += 1
+			RETURN 1
+
+		;토모코의 自己紹介
+		ELSEIF 던전フラグ:(FLAG:現던전):0 < 1
+			PRINTL 관내 여기저기에 설치되어 있는 입체 스피커로부터 목소리가 들린다……
+			PRINTL 「와아…안녕하세요…！… 굉장해. 진짜 보고 싶어…!」
+			PRINTL 「아、그렇구나. 미안해…후후. 응、우리들 사이 좋게 될 수 있을 것 같아」
+			PRINTL 「응、기뻐… 이쪽이야말로 잘 부탁해. 나는 토모코라고 해…」
+			PRINTL 의뢰를 받아서 찾고 있는 소녀의 이름이다。
+			PRINTL 아무래도 과거의 기록인 것 같지만 、이것을 흘려보내는 건 누구이며 어떤 의도인 것일까？
+			PRINTFORMW 어쩐지 %조사처리(NAME:MASTER,"는")% 불길한 예감이 들었다……。
+			던전フラグ:(FLAG:現던전):0 += 1
+			RETURN 1
+		ENDIF
+	ENDIF
+ENDIF
+RETURN 0
+
+
+
+
+
+;=======================================================================
+;エンカウント率
+;=======================================================================
+@ENCOUNT_RATE_90
+SELECTCASE FLAG:現M
+	CASE 0
+		FLAG:エンカウント率 = FLAG:未遭遇歩数
+	CASE 1
+		FLAG:エンカウント率 = 10 + FLAG:未遭遇歩数*3
+	CASE 2
+		FLAG:エンカウント率 = 20 + FLAG:未遭遇歩数*2
+	CASE 3
+		FLAG:エンカウント率 = FLAG:未遭遇歩数*2
+	CASE 4
+		FLAG:エンカウント率 = 10 + FLAG:未遭遇歩数*2
+	CASEELSE
+		FLAG:エンカウント率 = 0
+ENDSELECT
+SIF FLAG:未遭遇歩数 < 5
+	FLAG:エンカウント率 = 0
+
+;=======================================================================
+;필요레벨눈安
+;권장LV 雑물고기최저LV 雑물고기最高LV ボスLV 
+;=======================================================================
+@GET_DUNGEON_LV_90
+RETURN 18, 15, 19, 24
+;=======================================================================
+;エンカウント処理
+;=======================================================================
+@CHECK_ENCOUNT_90
+IF RAND:100 < FLAG:エンカウント率
+	CALL ENEMY_TABLE
+	RETURN 1
+ELSE
+	FLAG:未遭遇歩数 += 1
+	RETURN 0
+ENDIF
+;=======================================================================
+;적の종족の종류数
+;=======================================================================
+@CLASS_NUM_90
+RETURN CLASS_NUM_COMMON("中級")
+;=======================================================================
+;적の総数
+;ARGは出現する적の종류です
+;=======================================================================
+@ENEMY_NUM_90, ARG
+RETURN ENEMY_NUM_COMMON("中級", ARG)
+;=======================================================================
+;적の종류
+;=======================================================================
+@ENEMY_90, ARG
+SELECTCASE FLAG:現M
+	CASE 0
+	;１Ｆでの遭遇
+		SELECTCASE RAND:100
+			CASE IS < 25
+				;25%で카시마레이코
+				RETURN 1004, 17
+			CASE IS < 50
+				;25%で실프
+				RETURN 1201, 15
+			CASE IS < 75
+				;25%で니케
+				RETURN 302, 17
+			CASE IS < 100
+				;25%で좀비아미
+				RETURN 1096, 15
+		ENDSELECT
+	CASE 1
+	;２Ｆでの遭遇
+		SELECTCASE RAND:100
+			CASE IS < 25
+				;25%で실프
+				RETURN 1201, 15
+			CASE IS < 50
+				;25%で니케
+				RETURN 302, 17
+			CASE IS < 75
+				;25%で좀비아미
+				RETURN 1096, 15
+			CASE IS < 100
+				;25%で카시마레이코
+				RETURN 1004, 17
+		ENDSELECT
+	CASE 2
+	;숨겨진 폭포での遭遇
+		SELECTCASE RAND:100
+			CASE IS < 25
+				;25%で실프
+				RETURN 1201, 15
+			CASE IS < 50
+				;25%で키요히메
+				RETURN 703, 17
+			CASE IS < 75
+				;25%で잭프로스트
+				RETURN 512, 15
+			CASE IS < 100
+				;25%で랴난시
+				RETURN 403, 18
+		ENDSELECT
+	CASE 3
+	;스트레인지 에리어での遭遇
+		SELECTCASE RAND:100
+			CASE IS < 25
+				;25%で루살카
+				RETURN 503, 18
+			CASE IS < 50
+				;25%で실프
+				RETURN 1201, 15
+			CASE IS < 75
+				;25%で니케
+				RETURN 302, 17
+			CASE IS < 100
+				;25%で놈
+				RETURN 1203, 15
+		ENDSELECT
+	CASE 4
+	;창가의 체스での遭遇
+		SELECTCASE RAND:100
+			CASE IS < 25
+				;25%で실프
+				RETURN 1201, 15
+			CASE IS < 50
+				;25%で니케
+				RETURN 302, 17
+			CASE IS < 75
+				;25%で가기손
+				RETURN 1702, 12
+			CASE IS < 100
+				;25%で오키페테
+				RETURN 903, 19
+		ENDSELECT
+ENDSELECT
+
+
+;=======================================================================
+;宝箱の中身
+;=======================================================================
+@TREASURE_90
+SELECTCASE FLAG:現M
+	CASE 0
+ENDSELECT
+RETURN 1
+
+
+;=======================================================================
+;階段置き場
+;=======================================================================
+@UPSTAIRS_90
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y) /10
+	;IDを示す
+	CASE 1
+			;階層1で、17が入ってるタイル…つまり、IDが1の7（下り階段）に飛ぶ
+			CALL DUNGEON_UPSTAIRS_ID,1,17
+	CASEELSE
+ENDSELECT
+RETURN 1
+
+@DOWNSTAIRS_90
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+	CASE 1
+			;階層0で、16が入ってるタイル、つまり、IDが1の6（昇り階段）に飛ぶ
+			CALL DUNGEON_DOWNSTAIRS_ID,0,16
+	CASEELSE
+ENDSELECT
+RETURN 1
+
+
+
+
+;=================================
+;사고패턴
+;=================================
+@EVENT_BATTLE_ACTEND_DUNGEON90
+SIF POS(9) == -1
+	RETURN 0
+SIF NO:POS(9) != [[キャラ:스내피]]
+	RETURN 0
+IF BASE:POS(9):ＨＰ < MAXBASE:POS(9):ＨＰ/8 && 던전フラグ:(FLAG:現던전):6 == 0
+	PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+	PRINTFORML ┃기、기다렷 큐！ 서모너에게만 특별히 맛있는 걸 거래할게 큐！ ┃
+	PRINTFORML ┃나는 서머너와 친구가 될 수 있어 큐！　　　　　　　　　　　　　　┃
+	PRINTFORML ┃친구에겐 나의 소중한 육변기를 공짜로 사용하게 해 준다 큐　　　┃
+	PRINTFORML ┃싸움은 안 된다 큐. 둘은 사이가 좋은 친구가 될텐데 큐？　　　　　　　　┃
+	PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+	PRINTW 이 거짓말쟁이 돌고래의 제안을 수락해볼까…？
+	CALL INPUT_YN
+	IF RESULT == 0
+		PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+		PRINTFORML ┃계약성립큐！ 둘은 이것으로 형제나 마찬가지다 큐！　　　　　　　　 ┃
+		PRINTFORML ┃서머너를 위해 준비해 둔게 있어서、한번 돌아갔다 또 올게 큐　┃
+		PRINTFORML ┃호러 하우스 행 터미널？　　　　　　　　　　　　　　　　┃
+		PRINTFORML ┃알았다 큐、그것도 열어 둘게 큐　　　　　　　　　　　　　┃
+		PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+		CALL INCREASE_LC,-5
+		CALL INCREASE_LD,-5
+		던전フラグ:(FLAG:現던전):1 = 4
+		PRINTW 터미널을 개방해、봉쇄된 VR 호러 하우스에 갈 수 있게 되었다！
+		FLAG:勝利フラグ = 1
+	ELSE
+		CALL MESSAGE_B(1, "큥！？ 그런가、다시 생각해 큐～～～웅！")
+	ENDIF
+	던전フラグ:(FLAG:現던전):6 = 1
+ELSEIF BASE:PLAYER:ＨＰ <= 0 && TALENT:MASTER:남자 == 0
+	PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+	PRINTFORML ┃헤헷, 이런 상등급 육변기를 얻게 되다니 큐！       ┃
+	IF 던전フラグ:(FLAG:現던전):0 > 24
+	PRINTFORML ┃저번 소녀는 이미 망가진것 같은데 잘 됬어 큐！　　　　  ┃
+	ELSE
+	PRINTFORML ┃저번 소녀와 다르게 튼튼해 보인다 큐！　　　　　　　　　　　┃
+	ENDIF
+	PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+	PRINTW 스내피는 쓰러져서 미동도 하지 않는 %조사처리(NAME:MASTER,"를")% 입체 그림 속으로 끌고 들어갔다……
+	CALL BADENDING_NO44
+ELSEIF CFLAG:POS(9):데미지흡수量 > MAXBASE:POS(9):ＨＰ
+	CFLAG:POS(9):입력行動 = [[스킬:옥쇄파]]
+	CFLAG:POS(9):ターゲット = 19
+	
+	SETCOLOR 0xff0033
+	PRINTFORML ┏>CHARA━━━━━━━━━━┓　┏>ACT━━━━━━━━━━━━━━━━━━┓
+	PRINTFORM ┃[ 9] %CALLNAME:POS(9),21,LEFT%┃　┃
+	CALLFORM SKILL_NAME_{CFLAG:(POS(9)):입력行動},POS(9)
+	PRINTFORML %RESULTS,40,LEFT%┃
+	PRINTFORMW ┗━━━━━━━━━━━━━┛　┗━━━━━━━━━━━━━━━━━━━━┛
+	CALL MESSAGE_B(1, "또、또 먹을 수 없잖아 큐우우우우！！！")
+	RESETCOLOR
+	CALLFORM ACTION_{[[스킬:옥쇄파]]},POS(9),19
+	
+	CALL FIGHT_IT_OUT
+ENDIF
+
+@ENEMY_BATTLE_MESSAGE_K900, ARG
+IF CFLAG:ARG:입력行動 == [[스킬:돌핀킥]]
+	IF CFLAG:ARG:데미지흡수量 < MAXBASE:ARG:ＨＰ/2 && BASE:ARG:ＨＰ > MAXBASE:ARG:ＨＰ/2
+		CALL MESSAGE_B(1, "날 방해하는 거냐 큐！")
+	ELSE
+		CALL MESSAGE_B(1, "이、인간 따위 나에겐 이길 수 없다구 큐！")
+	ENDIF
+ELSEIF CFLAG:ARG:입력行動 == [[스킬:마하・부후라]]
+	IF CFLAG:ARG:데미지흡수量 < MAXBASE:ARG:ＨＰ/4
+		CALL MESSAGE_B(1, "마법은 뭐든지 흡수하지 큐")
+	ELSEIF CFLAG:ARG:데미지흡수量 < MAXBASE:ARG:ＨＰ/3
+		CALL MESSAGE_B(1, "뭐、마법은 뭐든지 흡수해 버리지 큐")
+	ELSE
+		CALL MESSAGE_B(1, "적당히 소용없는 짓 좀 그만하라고 큐！")
+	ENDIF
+ELSEIF CFLAG:ARG:입력行動 == [[스킬:메가톤프레스]]
+	IF CFLAG:ARG:데미지흡수量 < MAXBASE:ARG:ＨＰ/4
+		CALL MESSAGE_B(1, "나에게 마법공격은 통하지 않는다고 말했잖아 큐")
+	ELSEIF CFLAG:ARG:데미지흡수量 < MAXBASE:ARG:ＨＰ/3
+		CALL MESSAGE_B(1, "마법은 통하지 않는다고 말했다고 큐！")
+	ELSE
+		CALL MESSAGE_B(1, "사、사람 말 좀 들어 큐～～～！")
+	ENDIF
+ELSEIF CFLAG:ARG:입력行動 == [[스킬:부후라]] || CFLAG:ARG:입력行動 == [[스킬:섬머솔트]]
+	IF BASE:ARG:ＨＰ < MAXBASE:ARG:ＨＰ/4
+		CALL MESSAGE_B(1, "너、너희들 뇌근육에 이상있냐 큐！")
+	ELSEIF BASE:ARG:ＨＰ < MAXBASE:ARG:ＨＰ/2
+		CALL MESSAGE_B(1, "어、어라？ 뭔가 이상한걸 큐")
+	ELSE
+		CALL MESSAGE_B(1, "물리공격은 골칫거리 큐、무서워 큐～")
+	ENDIF
+ENDIF
+
+;스내피の사고패턴
+@SET_ACTION_스내피,ARG
+IF FLAG:経過ターン数 == 0
+	CALL CHECK_ACTIONABLE,ARG,[[스킬:돌핀킥]]
+	IF RESULT == 1
+		CFLAG:ARG:입력行動 = [[스킬:돌핀킥]]
+		CALL RANDOM_TARGET,ARG,[[스킬:돌핀킥]]
+		RETURN 0
+	ELSE
+		GOTO DECIDE_ACTION
+	ENDIF
+ENDIF
+SIF FLAG:経過ターン数 > 0
+	CFLAG:ARG:行動횟수 = 2
+
+IF CFLAG:ARG:１moreフラグ > 0
+	IF CFLAG:ARG:行動した횟수 == 1
+		CALL CHECK_ACTIONABLE,ARG,[[스킬:돌핀킥]]
+		IF RESULT == 1
+			CFLAG:ARG:입력行動 = [[스킬:돌핀킥]]
+			CALL RANDOM_TARGET,ARG,[[스킬:돌핀킥]]
+		ELSE
+			GOTO DECIDE_ACTION
+		ENDIF
+	ELSE
+			GOTO DECIDE_ACTION
+	ENDIF
+ELSEIF FLAG:経過ターン数 % 4 == 0 && CFLAG:ARG:行動した횟수 == 0
+	IF CFLAG:ARG:行動した횟수 == 1
+		CALL CHECK_ACTIONABLE,ARG,[[스킬:돌핀킥]]
+		IF RESULT == 1
+			CFLAG:ARG:입력行動 = [[스킬:돌핀킥]]
+			CALL RANDOM_TARGET,ARG,[[스킬:돌핀킥]]
+		ELSE
+			GOTO DECIDE_ACTION
+		ENDIF
+	ELSE
+			GOTO DECIDE_ACTION
+	ENDIF
+ELSE
+	$DECIDE_ACTION
+	CALL SEARCH_ACT,ARG
+	IF RESULT == 0
+		CFLAG:ARG:입력行動 = -1
+		CFLAG:ARG:방어フラグ = 1
+		RETURN 0
+	ENDIF
+	LOCAL = RAND:RESULT
+	;스킬番号決定
+	LOCAL:1 = S:(10+LOCAL)
+	$TARGET_LOOP
+	
+	CALL RANDOM_TARGET,ARG,LOCAL:1
+	CALLFORM SKILL_TARGET_{LOCAL:1}
+	;ここで스킬番号を行動内容に代入
+	SIF CFLAG:ARG:ターゲット == -1
+		GOTO DECIDE_ACTION
+	CFLAG:ARG:입력行動 = LOCAL:1
+ENDIF
+
+
+
+;=======================================================================
+;윤간참가악마
+;=======================================================================
+@DUNGEON_RAPE_DEVIL_90
+;랜덤にどの악마が出るか決定
+;RETURN CSV番号 , 人数 , 레벨
+SELECTCASE RAND:2
+	CASE 0
+		RETURN [[キャラ:아귀]] , 3 + RAND:10 , CSVBASE([[キャラ:아귀]] , GETNUM(BASE , "LV") , 0) + RAND:3
+	CASE 1
+		RETURN [[キャラ:좀비아미]] , 3 + RAND:10 , CSVBASE([[キャラ:좀비아미]] , GETNUM(BASE , "LV") , 0) + RAND:3
+ENDSELECT
+
+
+
+
+;=======================================================================
+;게임오버
+;=======================================================================
+;스내피와 전투 패배시 발생하는 앤딩
+@BADENDING_NO44
+	PRINTW ………… 
+	PRINTW ……… 
+	PRINTW …… 
+	PRINTW … 
+	PRINTFORMW 짙은 푸른 바다 속 입체그림에는 두명의 여자가 윤간당하는 모습이 비춰지고 있었다.
+	PRINTFORMW 처음 잡혀 들어와서 이미 시달렸었던 토모코는 이미 정신이 붕괴당하여
+	PRINTFORMW 인형과 같이 아무런 반응도 없었으나 육체는 정액을 탐하듯이 자궁이 내려와있었고,
+	PRINTFORMW 질내사정을 하자 질벽을 조이며 한 방울도 놓치지 않고 자궁에 빨아들였다.
+	PRINTFORM 그런 토모코와는 반대로 %조사처리(NAME:MASTER,"는")% 아직도 
+		IF TALENT:MASTER:프라이드높음 || TALENT:MASTER:반항적 || TALENT:MASTER:꿋꿋함 || TALENT:MASTER:저항
+			PRINTFORM 저항하며 
+		ELSEIF TALENT:MASTER:남성혐오
+			PRINTFORM 남성에게 혐호감을 드러내며 
+		ELSEIF TALENT:MASTER:연모 || TALENT:MASTER:친애
+			PRINTFORM 좋아하는 사람이 있다고 소리치며 
+		ELSEIF TALENT:MASTER:겁쟁이 || TALENT:MASTER:억압
+			PRINTFORM 부들부들 떨며 
+		ELSEIF TALENT:MASTER:얌전함 || TALENT:MASTER:부끄럼쟁이
+			PRINTFORM 부끄러워하며 
+		ENDIF
+	PRINTFORMW 악마들에게 박히고 있었다.
+	PRINTFORMW 이미 패배한지 몇년이나 지났지만, 주기적으로 먹이는 기억 소거약 덕분에 아직까지 정신을 유지하고 있었다.
+	PRINTFORMW 그래서 조직의 사람들이 %조사처리(NAME:MASTER,"를")% 구하기는 커녕 몇번이나 육변기로 사용했다는 기억이나 
+	PRINTFORMW %조사처리(NAME:MASTER,"가")% 낳은 아이가 와서 창녀 취급하며 박아댔다는 것도 기억하지 못한 채, 처음과 같은 반응을 보여주고 있었다.
+	PRINTFORMW %NAME:MASTER%의 세이프 하우스는 다른 조직원이 쓰고있고, 동료는 흩어졌다는 것도 알지 못하는 %조사처리(NAME:MASTER,"는")%
+	PRINTFORMW 오늘도 도망치겠다는 계획을 세우며 절정했다.
+	PRINTFORMW 물론 수십번 시도했던 도주 계획은 이미 실패했다는 사실도 잊어버린채……
+	PRINTW 
+	PRINTW 　　　　　　　　――  Bad Ending No.044 ( 스내피 육변기 END -소녀들은 정액의 바다에서 잠든다- )
+	CALL GLOBAL_BADEND_SET(44)
+	CALL GAME_OVER
+
+
+;스내피의 유혹에 넘어가는 앤딩
+@BADENDING_NO45
+	PRINTW ………… 
+	PRINTW ……… 
+	PRINTW …… 
+	PRINTW … 
+		IF 던전フラグ:(FLAG:現던전):0 == 27
+			PRINTFORMW 정신이 망가질 정도로 악마들에게 시달린 토모코는 몇 년동안의 재활치료를 거친 이후, 다시 VR 미술관에 돌아왔다.
+			PRINTFORMW 입구에 들어가자마자 보이는 돌고래 반마인을 보고 분노하며 한 마리도 남김 없이 척살하며 앞으로 나아갔다.
+			PRINTFORMW 반마인의 시체를 발로 차며, 이렇게 많은 반마인이 태어나려면 얼마나 많은 피해자가 있었을지 생각하며 위층으로 올라갔다.
+			PRINTFORMW 이윽고 미술관 중앙에 있는 입체 그림 앞에 도달하여 "한 명의 피해자"를 보고 그녀는 손에 있는 무기를 떨어트렸다.
+		ELSEIF 던전フラグ:(FLAG:現던전):0 > 22
+			PRINTFORMW 스내피에게 시달린 끝에 임신까지 해버린 토모코는 복수를 꿈꾸며 팬텀 소사이어티로 들어갔다.
+			PRINTFORMW 몇 년의 시간이 지나 어느 정도 인정을 받기 시작했을 때 VR 미술관에 관련된 의뢰가 하나 들어왔다.
+			PRINTFORMW VR 미술관에서 생겨나는 반마인의 수가 심상치 않으니 확인해주라는 의뢰였고, 토모코는 기회를 놓치지 않고 받아들였다.
+			PRINTFORMW 의뢰의 내용처럼 미술관 안의 반마인의 수는 정상적이지 않았고, 무슨 이유인지 어느정도 눈치 챈 토모코는 최대한 빨리 안쪽으로 나아갔다.
+			PRINTFORMW 하지만 중앙에 도착하여 입체 그림을 본 토모코는 스내피에게 허리를 흔드는 여인을 보며 얼어붙었다.
+		ELSEIF 던전フラグ:(FLAG:現던전):0 > 21
+			PRINTFORMW 스내피에게 순결을 뺏겨버렸던 토모코는 대학교 합격 후, 다시 한 번 VR 미술관으로 향했다.
+			PRINTFORMW 입구에 들어가자마자 잊어버릴 수 없는 진한 정액 냄새에 놀라며 미술관 중앙으로 다가갔고,
+			PRINTFORMW 입체 그림 안에 있는 사람을 보고 경악했다.
+		ELSEIF 던전フラグ:(FLAG:現던전):0 > 8
+			PRINTFORMW 순결을 뺐기기 전에 구해진 토모코는 대학교 합격 후, 다시 한 번 VR 미술관으로 향했다.
+			PRINTFORMW 입구에 들어가자마자 어디선가 맡아본 진한 밤꽃 향기에 반신반의하며 미술관 중앙으로 다가갔고,
+			PRINTFORMW 입체 그림 안에 있는 사람을 보고 경악했다.
+		ELSE
+			PRINTFORMW 스내피의 마수에서 구해진 토모코는 대학교 합격 후, 다시 한 번 VR 미술관으로 향했다.
+			PRINTFORMW 입구에 들어가자마자 풍기는 진한 밤꽃 향기에 고개를 갸웃거리며 미술관 중앙으로 다가갔고,
+			PRINTFORMW 입체 그림 안에 있는 사람을 보고 경악했다.
+		ENDIF
+	PRINTFORMW 자신을 구해줬던 %조사처리(NAME:MASTER,"가")% 헐떡이며 흉기나 다를 바 없는 음경을 받아들이고 있었다.
+		IF RAND:2 == 0
+			PRINTFORM 정액으로 가득 차 있는 배는 마치 임신한 듯 
+		ELSE
+			PRINTFORM 임신한 것을 나타내는 커다란 배는 만삭으로 
+		ENDIF
+	PRINTFORMW 부풀어 올라 있었지만 스내피는 아랑곳 하지 않고 계속 박아넣었다.
+	PRINTFORMW %조사처리(NAME:MASTER,"는")% 음경을 조금이라도 더 느끼려는 듯이 스내피의 움직임에 맞춰 허리를 움직였다.
+	PRINTFORMW 흉악한 음경의 크기가 조금 더 커지자, 그게 사정의 징조란걸 알고 있던 %조사처리(NAME:MASTER,"는")% 다리로 스내피의 허리를 옭아맸다.
+	PRINTFORMW 뜨거운 정액이 자궁을 채워가자, %조사처리(NAME:MASTER,"는")% 암컷의 표정으로 절정했다.
+		IF 던전フラグ:(FLAG:現던전):0 == 27
+			PRINTFORMW 이미 욕망에 먹혀 도와줄 수 없는 상황이란 것을 알게 된 토모코는 고개를 떨구고 뒤돌아섰다.
+		ELSEIF 던전フラグ:(FLAG:現던전):0 > 22
+			PRINTFORMW 자신을 구해줬던 은인의 변한 모습을 보고 토모코는 고개를 떨구고 뒤돌아섰다.
+		ELSEIF 던전フラグ:(FLAG:現던전):0 > 21
+			PRINTFORMW %NAME:MASTER%의 얼굴에 자신의 얼굴이 겹쳐보이자, 토모코의 비부에서 애액이 흘러넘쳤다.
+			PRINTFORMW 몸이 뜨거워 지는 것을 느낀 토모코는 위험하다는 생각에 도망쳤다.
+		ELSEIF 던전フラグ:(FLAG:現던전):0 > 8
+			PRINTFORMW 자신도 저렇게 변해버렸을 수 있다는 생각에 토모코의 비부에 습기가 올라왔다.
+			PRINTFORMW 몸이 뜨거워 지는 것을 느낀 토모코는 위험하다는 생각에 도망쳤다.
+		ELSE
+			PRINTFORMW 그 모습을 보고 놀란 토모코는 뒤도 돌아보지 않고 도망쳤다.
+		ENDIF
+	PRINTFORMW 이후 진실을 알고 있는 토모코는 입을 다물었고, 덕분에 %조사처리(NAME:MASTER,"는")% 영원히 스내피와 지내게 되었다……
+	PRINTW 
+	PRINTW 　　　　　　　　――  Bad Ending No.045 ( 스내피 육변기 END -그러나 여성은 스내피와 춤춘다- )
+	CALL GLOBAL_BADEND_SET(45)
+	CALL GAME_OVER
+
+	
+
+;--------------------------------------------------------------------------------------------------
+;@반복 구문 작성 - 비부 설명
+;--------------------------------------------------------------------------------------------------
+
+@HOLE_DSC_MASTER
+
+IF STAIN:PLAYER:3 & 4 && PALAM:PLAYER:윤활 >= PALAMLV:2
+	PRINTFORM 애액과 정액이 뒤섞여 흘러나오는 
+ELSEIF STAIN:PLAYER:3 & 4
+	PRINTFORM 다른 악마의 정액이 흘러나오는 
+ELSEIF PALAM:PLAYER:윤활 >= PALAMLV:2
+	PRINTFORM 벌써 바닥을 적실 정도로 애액을 흘리는 
+ELSEIF TALENT:MASTER:음모없음
+	PRINTFORM 아이같이 깨끗한 
+ENDIF
+
+
+
+;--------------------------------------------------------------------------------------------------
+;@반복 구문 작성 - 마스터 임신
+;--------------------------------------------------------------------------------------------------
+
+@IMPREGNATION_MASTER
+
+IF PREGNANCY_ABLE(MASTER) && RAND:100 < 10
+	PRINTFORML 
+	PRINTFORMW ………………
+	PRINTFORMW …………
+	PRINTFORMW ……
+	PRINTFORML 
+	PRINTFORML VR 미술관에서 돌아온 이후에 자신이 임신했다는 것을 알게 된 %조사처리(CALLNAME:MASTER,"는")%
+		IF TALENT:MASTER:4 || TALENT:MASTER:7
+			IF 던전フラグ:(FLAG:現던전):7 == 1
+				PRINTFORM 단 한 번에 
+			ELSE
+				PRINTFORM 자신을 
+			ENDIF
+			PRINTFORMW 임신시킨 스내피의 진한 정액을 떠올리며 침을 삼켰다.
+		ELSE
+			PRINTFORMW 얼굴이 새파랗게 질렸다.
+		ENDIF
+		CALL PREGNANCY_CHECK, MASTER, 4
+	CALL SET_FATHERINFO, MASTER, 900, 0, "스내피"
+	CALL CHANGE_N_STATUS, MASTER
+	TALENT:MASTER:임신 = 1
+ELSEIF PREGNANCY_ABLE(MASTER) && (CFLAG:MASTER:위험일 || CFLAG:MASTER:배란유발제) && RAND:100 < 50
+	PRINTFORML 
+	PRINTFORMW ………………
+	PRINTFORMW …………
+	PRINTFORMW ……
+	PRINTFORML
+		IF TALENT:MASTER:4 || TALENT:MASTER:7
+			PRINTFORML %조사처리(CALLNAME:MASTER,"는")% 이미 자신이 임신했다는 것을 본능적으로 알고 있었지만
+			PRINTFORMW 언제 스내피를 찾아갈 고민만 하고 있었다.
+		ELSE
+			PRINTFORM 뒤늦게 
+				IF CFLAG:MASTER:위험일
+					PRINTFORM 오늘이 위험일인 
+				ELSEIF CFLAG:MASTER:배란유발제
+					PRINTFORM 오늘 베란제를 마신 
+				ENDIF
+			PRINTFORML 것을 기억해낸 %조사처리(CALLNAME:MASTER,"는")%
+			PRINTFORMW 얼굴이 새파랗게 질렸다.
+		ENDIF
+	CALL PREGNANCY_CHECK, MASTER, 4
+	CALL SET_FATHERINFO, MASTER, 900, 0, "스내피"
+	CALL CHANGE_N_STATUS, MASTER
+	TALENT:MASTER:임신 = 1
+ELSEIF PREGNANCY_ABLE(MASTER) && CFLAG:MASTER:위험일 && CFLAG:MASTER:배란유발제 && RAND:100 < 70
+	PRINTFORML 
+	PRINTFORMW ………………
+	PRINTFORMW …………
+	PRINTFORMW ……
+	PRINTFORML 
+		IF TALENT:MASTER:4 || TALENT:MASTER:7
+			PRINTFORML %조사처리(CALLNAME:MASTER,"는")% 이미 자신이 임신했다는 것을 본능적으로 알고 있었지만
+			PRINTFORMW 언제 스내피를 찾아갈 고민만 하고 있었다.
+		ELSE
+			PRINTFORML 뒤늦게 오늘 위험일인 동시에 배란제를 먹었다는 것을 기억해낸 %조사처리(CALLNAME:MASTER,"는")%
+			PRINTFORMW 얼굴이 새파랗게 질렸다.
+		ENDIF 
+	CALL PREGNANCY_CHECK, MASTER, 4
+	CALL SET_FATHERINFO, MASTER, 900, 0, "스내피"
+	CALL CHANGE_N_STATUS, MASTER
+	TALENT:MASTER:임신 = 1
+ELSE
+ENDIF
+
+
+
+;--------------------------------------------------------------------------------------------------
+;@반복 구문 작성 - 마스터 혼자
+;--------------------------------------------------------------------------------------------------
+
+@ALONE_MASTER
+
+FOR LOCAL, 1, 7
+;空き포지션は勘定外
+SIF POS(LOCAL) < 0
+	CONTINUE
+;主人は勘定外
+SIF POS(LOCAL) == MASTER
+	CONTINUE
+;人数カウント
+LOCAL:1++
+NEXT

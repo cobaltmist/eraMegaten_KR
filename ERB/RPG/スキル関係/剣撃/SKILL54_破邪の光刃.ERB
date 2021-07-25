@@ -1,0 +1,283 @@
+﻿;통상공격
+;스킬のテン플레이트になっています
+
+;스킬名
+@SKILL_NAME_54,ARG
+RESULTS = 파사의 광인
+
+;　명중
+@SKILL_HITRATE_54, ARG
+RETURN 100
+
+;　위력
+@SKILL_POWER_54, ARG
+RETURN 190
+
+;　최저공격횟수
+@SKILL_MINATTACKNUMBER_54,ARG
+SIF FLAG:拡散フラグ == 1
+	RETURN 1
+RETURN 2
+
+;　최대공격횟수
+@SKILL_MAXATTACKNUMBER_54,ARG
+SIF FLAG:拡散フラグ == 1
+	RETURN 1
+RETURN 7
+
+;一体辺りの최대ＨＩＴ数
+@SKILL_MAXATK_PER_54,ARG
+CALL 相性소질체크, ARG, GET_TYPE_NUM("검격"), 1, 1
+SIF RESULT
+	RETURN 3
+RETURN 2
+
+;　ＨＰ2を支払うかＭＰ3を支払うか
+@SKILL_COSTTYPE_54, ARG
+RETURN 3
+;소비なし＝1
+
+;　コストの量
+@SKILL_COST_54,ARG
+RETURN 45
+
+;　相性
+@SKILL_TYPE_54,ARG
+RETURN 0
+;검격
+
+;　1EXTRAか2MAGICか
+@SKILL_DECIDE_TYPE_54, ARG
+RETURN 1
+;どちらでもない
+
+;　1물리데미지で計算するか2마법데미지で計算するか
+@SKILL_DAMAGETYPE_54, ARG
+RETURN 1
+
+
+;　대상が1적か2아군か3場전체か4特殊か
+@SKILL_TARGET_54
+RETURN 1
+
+;　사거리
+@SKILL_RANGE_54,ARG
+RETURN 1
+
+;　범위　11명　2１열　3전체　4　적아군전체
+@SKILL_SPHERE_54,ARG
+RETURN 2
+
+;　 効果の타입　1공격、2회복、3상태변화、4特殊、5상태회복
+@SKILL_EFECT_54
+RETURN 1
+
+;　 特殊処理の有無、及び処理内容
+@SKILL_SPECIALEFECT_54,ARG
+;ARG = 1だった場合は処理の有無を返します
+SIF ARG == 1
+	RETURN 0
+;以下に特殊な処理を記述します
+
+;계승타입
+@SKILL_SUCCESSION_TYPE_54
+RETURN 0
+;검격
+
+;속도보정
+@SKILL_SPEED_54, ARG = -1
+RETURN 0
+
+;　구상の표시とその타입
+@SKILL_MESSAGE_54,ARG
+
+
+;전투時以外に사용できるか
+@SKILL_ACTIONABLE_FIELD_54
+RETURN 0
+
+;스킬변화？用랭크
+@SKILL_RANK_54
+RETURN 14
+
+
+;テン플레이트用、추가효과シリーズ
+;추가효과스테이터스
+@SKILL_ADDTIONAL_STATE_54,ARG
+RETURN 0
+
+;추가효과상성
+@SKILL_ADDTIONAL_TYPE_54,ARG
+RETURN 0
+
+;추가효과기본부여확률
+@SKILL_ADDTIONAL_BASE_RATE_54,ARG
+RETURN 0
+
+;추가효과부여확률上限
+@SKILL_ADDTIONAL_MAX_RATE_54,ARG
+RETURN 0
+
+;====================================================
+;스킬及び行動の実行
+;====================================================
+@ACTION_54,ARG,ARG:1
+#LOCALSIZE 17
+#DIM 대상リスト , 16
+#DIM 공격済み횟수 , 17
+#DIM 최대1명공격횟수 , 17
+#DIM 대상人数
+#DIM ループ , 2
+VARSET 공격済み횟수 , 0
+
+FLAG:拡散フラグ = 0
+LOCAL:5 = 54
+
+IF ARG:1 == 17
+	LOCAL:7 = 1
+	LOCAL:8 = 4
+ELSEIF ARG:1 == 18
+	LOCAL:7 = 4
+	LOCAL:8 = 7
+ELSEIF ARG:1 == 19
+	LOCAL:7 = 1
+	LOCAL:8 = 7
+ELSEIF ARG:1 == 20
+	LOCAL:7 = 7
+	LOCAL:8 = 12
+ELSEIF ARG:1 == 21
+	LOCAL:7 = 12
+	LOCAL:8 = 17
+ELSEIF ARG:1 == 22
+	LOCAL:7 = 7
+	LOCAL:8 = 17
+ENDIF
+
+;各々の최대1명공격횟수を설정
+VARSET 최대1명공격횟수, -1
+FOR ループ, LOCAL:7, LOCAL:8
+	SIF POS(ループ) == -1
+		CONTINUE
+	SIF GET_STATE(CFLAG:POS(ループ):ステート) == "DYING"
+		CONTINUE
+	
+	TRYCCALLFORM SKILL_MAXATK_PER_{LOCAL:5},ARG
+		최대1명공격횟수:ループ = RESULT
+		;스킬に최저횟수の설정がある場合、최대횟수の調整を行う
+		TRYCCALLFORM SKILL_MINATK_PER_{LOCAL:5},ARG
+			최대1명공격횟수:ループ = RAND(RESULT, 최대1명공격횟수:ループ+1)
+		CATCH
+		ENDCATCH
+	CATCH
+		CALLFORM SKILL_MAXATTACKNUMBER_{LOCAL:5},ARG
+		최대1명공격횟수:ループ = RESULT
+	ENDCATCH
+	
+NEXT
+
+;최대値が-1なら、공격が当たる조건を満たしたキャラが0なので関数を抜ける
+SIF MAXARRAY(최대1명공격횟수) == -1
+	RETURN 0
+;최대値が0なら、대상全員が0回になってしまったので1回を誰かに与える
+WHILE !MAXARRAY(최대1명공격횟수)
+	ループ = RAND(LOCAL:7, LOCAL:8)
+	SIF POS(ループ) == -1
+		CONTINUE
+	SIF GET_STATE(CFLAG:POS(ループ):ステート) == "DYING"
+		CONTINUE
+	최대1명공격횟수:ループ = 1
+WEND
+
+;공격횟수산출
+CALLFORM SKILL_MAXATTACKNUMBER_{LOCAL:5},ARG
+LOCAL = RESULT + 1
+CALLFORM SKILL_MINATTACKNUMBER_{LOCAL:5},ARG
+LOCAL -= RESULT
+LOCAL:1 = RESULT + RAND:LOCAL
+;LOCAL:1 공격횟수
+
+
+FLAG:拡散フラグ = 1
+LOCAL = 0
+$대상リスト作成
+VARSET 대상リスト , 0
+대상人数 = 0
+FOR ループ , LOCAL:7 , LOCAL:8
+	SIF POS(ループ) == -1
+		CONTINUE
+	SIF GET_STATE(CFLAG:POS(ループ):ステート) == "DYING"
+		CONTINUE
+	SIF 공격済み횟수:ループ >= 최대1명공격횟수:ループ
+		CONTINUE
+	대상リスト:대상人数 = ループ
+	대상人数 ++
+NEXT
+IF 대상人数 == 0
+	FLAG:拡散フラグ = 0
+	RETURN 0
+ENDIF
+SIF LOCAL
+	GOTO IN_FOR
+	
+
+FOR LOCAL,0,LOCAL:1
+
+	$IN_FOR
+	LOCAL:3 = 대상リスト:(RAND:대상人数)
+	LOCAL:4 = POS(LOCAL:3)
+	LOCALS = 포지션{LOCAL:3}
+	SIF FLAG:LOCALS < 0
+		GOTO 대상リスト作成
+	SIF GET_STATE(CFLAG:(FLAG:LOCALS):ステート) == "DYING"
+		GOTO 대상リスト作成
+	SIF 공격済み횟수:(CPOS(FLAG:LOCALS)) >= 최대1명공격횟수:CPOS(FLAG:LOCALS)
+		GOTO 대상リスト作成
+	공격済み횟수:(CPOS(FLAG:LOCALS)) ++
+	
+	LOCAL:6 = BASE:(LOCAL:4):ＨＰ
+	CALL ATTACK_SINGLE,ARG,(LOCAL:4),54,1
+	IF LOCAL:4 > 0 && LOCAL:6 > BASE:(LOCAL:4):ＨＰ && GET_STATE(CFLAG:(LOCAL:4):ステート) != "DYING"
+		IF RAND:5 == 0
+			CFLAG:(LOCAL:4):공격강화 = MAX(-16, CFLAG:(LOCAL:4):공격강화 - 4)
+			PRINTFORMW 　　TARGET:[{LOCAL:3,2}] %CALLNAME:(LOCAL:4),20,LEFT%　>>>>>>　공격력이 내려갔다!
+		ELSEIF RAND:4 == 0
+			CFLAG:(LOCAL:4):마법효과강화 = MAX(-16, CFLAG:(LOCAL:4):마법효과강화 - 4)
+			PRINTFORMW 　　TARGET:[{LOCAL:3,2}] %CALLNAME:(LOCAL:4),20,LEFT%　>>>>>>　마법효과가 내려갔다!
+		ELSEIF RAND:3 == 0
+			CFLAG:(LOCAL:4):마법위력강화 = MAX(-16, CFLAG:(LOCAL:4):마법위력강화 - 4)
+			PRINTFORMW 　　TARGET:[{LOCAL:3,2}] %CALLNAME:(LOCAL:4),20,LEFT%　>>>>>>　마법위력이 내려갔다!
+		ELSEIF RAND:2 == 0
+			CFLAG:(LOCAL:4):방어강화 = MAX(-16, CFLAG:(LOCAL:4):방어강화 - 4)
+			PRINTFORMW 　　TARGET:[{LOCAL:3,2}] %CALLNAME:(LOCAL:4),20,LEFT%　>>>>>>　방어력력이 내려갔다!
+		ELSE
+			CFLAG:(LOCAL:4):명중강화 = MAX(-16, CFLAG:(LOCAL:4):명중강화 - 4)
+			CFLAG:(LOCAL:4):회피강화 = MAX(-16, CFLAG:(LOCAL:4):회피강화 - 4)
+			PRINTFORMW 　　TARGET:[{LOCAL:3,2}] %CALLNAME:(LOCAL:4),20,LEFT%　>>>>>>　명중률・회피율이 내려갔다!
+		ENDIF
+	ENDIF
+NEXT
+
+FLAG:拡散フラグ = 0
+
+;====================================================
+;実行内容ここまで
+;====================================================
+
+;　 설명文の표시
+@SKILL_EXPLAIN_54
+PRINTL [전열] 적 전열에 2～7회(1인 최대 2회、검격소질시 3회)
+PRINTL 검격속성 중 물리데미지. HIT한 적의 능력을 무작위로 감소시킨다.
+
+;継承に필요한部位
+@継承部位_54,ARG
+SIF TALENT:ARG:무기
+	RETURN 1
+RETURN 0
+;무기
+
+
+;사용조건
+@SKILL_SPECIAL_ACTIONABLE_54,ARG
+RETURN 1
+;とくにない
+

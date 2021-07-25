@@ -1,0 +1,147 @@
+﻿;하이・애널라이즈(Hi-DAS流用)
+
+;스킬名
+@SKILL_NAME_531, ARG
+RESULTS = 하이・애널라이즈
+
+;　명중
+@SKILL_HITRATE_531, ARG
+RETURN 0
+
+;　위력
+@SKILL_POWER_531, ARG
+RETURN 0
+
+;　최저공격횟수
+@SKILL_MINATTACKNUMBER_531, ARG
+RETURN 0
+
+;　최대공격횟수
+@SKILL_MAXATTACKNUMBER_531, ARG
+RETURN 0
+
+;　ＨＰ2を支払うかＭＰ3を支払うか
+@SKILL_COSTTYPE_531, ARG
+RETURN 3
+;소비なし＝1
+
+;　コストの量
+@SKILL_COST_531, ARG
+RETURN 16
+
+;　相性
+@SKILL_TYPE_531, ARG
+RETURN GET_TYPE_NUM("만능")
+;相性なし
+
+;　1EXTRAか2MAGICか
+@SKILL_DECIDE_TYPE_531, ARG
+RETURN 2
+;MAGIC
+
+;　1物理데미지で計算するか2魔法데미지で計算するか
+@SKILL_DAMAGETYPE_531, ARG
+RETURN 0
+
+
+;　대상が1적か2아군か3場전체か4特殊か
+@SKILL_TARGET_531
+RETURN 1
+
+;　사거리
+@SKILL_RANGE_531, ARG
+RETURN 3
+
+;　範囲　11체　21열　3전체　4　적아군전체
+@SKILL_SPHERE_531, ARG
+RETURN 1
+
+;　 効果の타입　1공격、2회복、3상태変化、4特殊、5상태회복
+@SKILL_EFECT_531
+RETURN 4
+
+;계승타입
+@SKILL_SUCCESSION_TYPE_531
+RETURN 5
+
+@継承不能_531
+RETURN 1
+;지원
+
+;속도보정
+@SKILL_SPEED_531, ARG = -1
+RETURN 0
+
+; 구상の표시とその타입
+@SKILL_MESSAGE_531, ARG
+
+;전투時以外に사용できるか
+@SKILL_ACTIONABLE_FIELD_531
+RETURN 0
+
+;스킬変化？用랭크
+@SKILL_RANK_531
+RETURN 0
+;変化不可
+
+;====================================================
+;스킬及び行動の実行
+;====================================================
+@ACTION_531, ARG, ARG:1
+;ARG:0…実行者のCHARA Num　ARG:1…대상の포지션Num
+;（実行者のLv+(지혜+운)*2-대상の레벨、최대95최저10）％の판정に성공したら解析度が75、その時の出눈が운以下なら150上がる
+; 실패しても15上がる。Hi-DASの効果を1.5倍、최저성공率2倍。解析度が10%未満であればさらに効果アップ。ボスには効果반감。
+; ただし安くはないMPコスト有り
+LOCAL = POS(ARG:1)
+LOCAL:2 = RAND:100
+PRINT 　Analyzing
+LOCAL:3 = LIMIT((BASE:ARG:LV + (BASE:ARG:지혜 + BASE:ARG:운) * 2 - BASE:LOCAL:LV), 10, 95)
+PRINTFORM ({LOCAL:3}％).....
+IF LOCAL:2 < LOCAL:3
+	IF LOCAL:2 < BASE:ARG:운
+		LOCAL:4 = FLAG:(20000+NO:LOCAL) < 100 ? 200 # 150
+		PRINT Critical !!
+	ELSE
+		LOCAL:4 = FLAG:(20000+NO:LOCAL) < 100 ? 100 # 75
+		PRINT Success.
+	ENDIF
+ELSE
+	LOCAL:4 = FLAG:(20000+NO:LOCAL) < 100 ? 30 # 15
+	PRINT Partial.
+ENDIF
+;ボスの場合は解析度上昇量が반감する、민속학持ちだとならない
+SIF CFLAG:LOCAL:ボスフラグ && !(HAVE_SKILL(ARG,[[스킬:민속학]]))
+	LOCAL:4 /= 2
+
+PRINTL
+PRINTFORM 　%CALLNAME:(LOCAL)% 
+
+CALL INCREASE_ANALYZE, (NO:LOCAL), LOCAL:4
+
+;アンノウンフラグが해제される
+IF CFLAG:LOCAL:アンノウンフラグ == 1
+	CFLAG:LOCAL:アンノウンフラグ = 0
+	IF NAME:LOCAL == "？？？？"
+		NAME:LOCAL = %CSVNAME(NO:LOCAL,0)%
+		CALLNAME:LOCAL = %CSVCALLNAME(NO:LOCAL,0)%
+	ENDIF
+	PRINTFORM ＝＞　%CALLNAME:(LOCAL)% 
+ENDIF
+
+PRINTFORML Analyzed \@FLAG:(20000+NO:LOCAL) >= 1000 ? COMPLETE! # {FLAG:(20000+NO:LOCAL)/10}％ \@
+
+
+
+;====================================================
+;実行内容ここまで
+;====================================================
+
+;　 説明文の표시
+@SKILL_EXPLAIN_531
+PRINTL [특수] 적 1체를 상세하게 해석한다.
+
+;사용조건
+@SKILL_SPECIAL_ACTIONABLE_531, ARG
+RETURN 1
+;とくにない
+

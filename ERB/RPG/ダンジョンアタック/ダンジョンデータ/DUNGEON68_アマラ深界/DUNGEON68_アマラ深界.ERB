@@ -1,0 +1,2169 @@
+﻿;=======================================================================
+;아마라심계(진・여신전생３　ノクターンマニアクス)
+;던전ナンバー68
+;	002		2017/09/19		kuma					第三カルパのY軸第0段に進入した際のエ라を수정
+;	003		2017/09/25		kuma					スレで指摘されたズレを수정　第三カルパ2FのNPCを하세베撃破後は표시しない様に수정
+;=======================================================================
+;던전フラグ:68:00=던전OP이벤트(未定、保留)
+;던전フラグ:68:01=아마라심계クリアフラグ
+;
+;
+;
+;던전フラグ:68:20=第一カルパのメノ라해방(入り입穴は別)
+;던전フラグ:68:21=第二カルパのメノ라해방
+;던전フラグ:68:22=第三カルパのメノ라해방
+;던전フラグ:68:23=第四カルパのメノ라해방
+;던전フラグ:68:24=第五カルパのメノ라해방
+;던전フラグ:68:25=第一カルパ最初の覗き穴、兼アマラ出入り허가
+;던전フラグ:68:26=第一カルパ最後の覗き穴(次階層入り입해방も兼ねる)
+;던전フラグ:68:27=第二カルパ最後の覗き穴
+;던전フラグ:68:28=第三カルパ最後の覗き穴
+;던전フラグ:68:29=第四カルパ最後の覗き穴
+;던전フラグ:68:30=第五カルパ最後、舞台に乗り込んだ
+;
+;던전フラグ:68:40=四騎士登場の紹介枠、だけ確保
+;던전フラグ:68:41=１００万くれる人
+;던전フラグ:68:42=第三層３Fスイッチ、ビット
+;던전フラグ:68:43=하세베
+;던전フラグ:68:44=M様警告
+;던전フラグ:68:45=초기픽시이벤트
+;던전フラグ:68:46=マ스타侵され이벤트
+;
+;던전フラグ:68:50=蝿王様撃破
+;던전フラグ:68:51=M様撃破
+;
+;던전フラグ:68:55=ラスト前그레이트챠크라
+;
+;던전フラグ:68:70=宝0
+;던전フラグ:68:71=宝1
+;던전フラグ:68:72=宝2
+;　　　　　～
+;던전フラグ:68:99=宝29
+;=======================================================================
+;攻略조건
+;=======================================================================
+@PREREQUISITE_DUNGEON_68
+;인수라이벤트起こした
+SIF 이벤트フラグ:38:0
+	RETURN 1
+RETURN 0
+
+;=======================================================================
+;던전名
+;=======================================================================
+@GET_DUNGEON_NAME_68
+RESULTS = 아마라심계
+
+;=======================================================================
+;フ로어名표시
+;=======================================================================
+@FLOORNAME_68
+SELECTCASE FLAG:現M
+	CASE 0
+		PRINTL   아마라심계
+	CASE 1,2,3
+		PRINTL   제 1 칼파
+	CASE 4,5,6,7,8,9
+		PRINTL   제 2 칼파
+	CASE 10,11,12,13,14
+		PRINTL   제 3 칼파
+	CASE 15,16,17,18,19,20
+		PRINTL   제 4 칼파
+	CASE 21,22,23,24
+		PRINTL   제 5 칼파
+	CASEELSE
+		PRINTL
+ENDSELECT
+
+;=======================================================================
+;特殊タイル표시
+;=======================================================================
+;@TILE_MARK_ID_68_1_9
+;RESULTS = Ｅ
+
+;=======================================================================
+;스타ト地点입력
+;=======================================================================
+@START_DUNGEON_68,ARG
+FLAG:現M = 0
+FLAG:現X = 10
+FLAG:現Y = 20
+
+;=======================================================================
+;스타ト直後이벤트
+;=======================================================================
+@EVENT_DUNGEON_START_68
+FLAG:회화불능フラグ = 1
+RETURN 0
+
+@EVENT_DUNGEON_END_68
+FLAG:회화불능フラグ = 0
+RETURN 0
+
+;=======================================================================
+;指定したマスに進入가능か
+;=======================================================================
+@CAN_ENTER_68,ARG,ARG:1
+SELECTCASE DA:ARG:(ARG:1)
+	CASE 32
+		CALL DUNGEON_DOOR,DA:ARG:(ARG:1) / 10
+		RETURN 1
+	;a(힘+인내력の扉、「당신」の힘+인내력33이상)
+	CASE 502
+		CALL MESSAGE_WINDOW_D, "“문”", "여기를 지나가려 하는 자는 누구인가！"
+		CALL MESSAGE_WINDOW_D, "“문”", "너는……"
+		IF (MAXBASE:MASTER:힘 + MAXBASE:MASTER:인내력) < 33
+			CALL MESSAGE_WINDOW_D, "“문”", "너는……힘이 약하다！/ 힘이 없는 자는 지나갈 수 없어！"
+			IF FLAG:DEBUG
+				PRINTW ＞그러나 이해할 수 없는 힘으로 문이 열렸다(DEBUG)
+				CALL DUNGEON_DOOR, DA:ARG:(ARG:1) / 10
+				RETURN 1
+			ENDIF
+			RETURN 0
+		ENDIF
+		CALL MESSAGE_WINDOW_D, "“문”", "너는……튼튼하구나 / 지나가도 좋다"
+		RETURN 1
+	;b(지혜+마력の扉、「당신」の지혜+마력33이상、脳筋には難しいかも)
+	CASE 512
+		CALL MESSAGE_WINDOW_D, "“문”", "여기를 지나가려 하는 자는 누구인가！"
+		CALL MESSAGE_WINDOW_D, "“문”", "너는……"
+		IF (MAXBASE:MASTER:마력 + MAXBASE:MASTER:지혜) < 33
+			CALL MESSAGE_WINDOW_D, "“문”", "너는……어리석구나！/ 어리석은 자는 지나갈 수 없어！"
+			IF FLAG:DEBUG
+				PRINTW ＞그러나 이해할 수 없는 힘으로 문이 열렸다(DEBUG)
+				CALL DUNGEON_DOOR, DA:ARG:(ARG:1) / 10
+				RETURN 1
+			ENDIF
+			RETURN 0
+		ENDIF
+		CALL MESSAGE_WINDOW_D, "“문”", "너는……총명하구나 / 지나가도 좋다"
+		RETURN 1
+	;c(운の扉、「당신」の운22이상、서머너なら楽勝)
+	CASE 522
+		CALL MESSAGE_WINDOW_D, "“문”", "여기를 지나가려 하는 자는 누구인가！"
+		CALL MESSAGE_WINDOW_D, "“문”", "너는……"
+		IF (MAXBASE:MASTER:운) < 22
+			CALL MESSAGE_WINDOW_D, "“문”", "너는……운이 없구나！/ 운이 모자란 자는 지나갈 수 없어！"
+			IF FLAG:DEBUG
+				PRINTW ＞그러나 이해할 수 없는 힘으로 문이 열렸다(DEBUG)
+				CALL DUNGEON_DOOR, DA:ARG:(ARG:1) / 10
+				RETURN 1
+			ENDIF
+			RETURN 0
+		ENDIF
+		CALL MESSAGE_WINDOW_D, "“문”", "너는……운이 좋구나 / 지나가도 좋다"
+		RETURN 1
+	;d(Lightの扉、「당신」がLightである)
+	CASE 532
+		CALL MESSAGE_WINDOW_D, "“문”", "여기를 지나가려 하는 자는 누구인가！"
+		CALL MESSAGE_WINDOW_D, "“문”", "너는……"
+		IF (ABL:MASTER:속성LD) >= 2
+			CALL MESSAGE_WINDOW_D, "“문”", "너는……어둠에 속한 자로구나！/ 어둠에 속한 자는 지나갈 수 없어！"
+			IF FLAG:DEBUG
+				PRINTW ＞그러나 이해할 수 없는 힘으로 문이 열렸다(DEBUG)
+				CALL DUNGEON_DOOR, DA:ARG:(ARG:1) / 10
+				RETURN 1
+			ENDIF
+			RETURN 0
+		ENDIF
+		CALL MESSAGE_WINDOW_D, "“문”", "너는……선한 자로구나 / 지나가도 좋다"
+		RETURN 1
+	;e(Darkの扉、「당신」がDarkである)
+	CASE 542
+		CALL MESSAGE_WINDOW_D, "“문”", "여기를 지나가려 하는 자는 누구인가！"
+		CALL MESSAGE_WINDOW_D, "“문”", "너는……"
+		IF (ABL:MASTER:속성LD) <= 2
+			CALL MESSAGE_WINDOW_D, "“문”", "너는……선한 자로구나！/ 선한 자는 지나갈 수 없어！"
+			IF FLAG:DEBUG
+				PRINTW ＞그러나 이해할 수 없는 힘으로 문이 열렸다(DEBUG)
+				CALL DUNGEON_DOOR, DA:ARG:(ARG:1) / 10
+				RETURN 1
+			ENDIF
+			RETURN 0
+		ENDIF
+		CALL MESSAGE_WINDOW_D, "“문”", "너는……어둠에 속한 자로구나 / 지나가도 좋다"
+		RETURN 1
+	;f(蝿王前の扉、트럼페터撃破)
+	CASE 552
+		CALL MESSAGE_WINDOW_D, "“문”", "여기를 지나가려 하는 자는 누구인가！"
+		CALL MESSAGE_WINDOW_D, "“문”", "너는……"
+		IF ITEM:356 < 1
+			CALL MESSAGE_WINDOW_D, "“문”", "너는……아직 모든 죽음을 물리치지 않았구나 / 죽음을 극복한 뒤에 오도록 해라"
+			IF FLAG:DEBUG
+				PRINTW ＞그러나 이해할 수 없는 힘으로 문이 열렸다(DEBUG)
+				CALL DUNGEON_DOOR, DA:ARG:(ARG:1) / 10
+				RETURN 1
+			ENDIF
+			RETURN 0
+		ENDIF
+		CALL MESSAGE_WINDOW_D, "“문”", "너는……죽음을 이긴 자인가 / 지나가도 좋다"
+		RETURN 1
+	;∧
+	CASE 902, 912
+		CALL ONE_WAY(902, 912, 922, 932, 942, 952, 962, 972)
+		IF FLAG:現Y < ARG:1
+			PRINTW ＞문이 열리지 않는다
+			RETURN 0
+		ENDIF
+		FLAG:現Y -= 2
+		CALL ONE_WAY(902, 912, 922, 932, 942, 952, 962, 972)
+		FLAG:現Y += 2
+	;＞
+	CASE 922, 932
+		CALL ONE_WAY(902, 912, 922, 932, 942, 952, 962, 972)
+		IF FLAG:現X > ARG
+			PRINTW ＞문이 열리지 않는다
+			RETURN 0
+		ENDIF
+		FLAG:現X += 2
+		CALL ONE_WAY(902, 912, 922, 932, 942, 952, 962, 972)
+		FLAG:現X -= 2
+	;∨
+	CASE 942, 952
+		CALL ONE_WAY(902, 912, 922, 932, 942, 952, 962, 972)
+		IF FLAG:現Y > ARG:1
+			PRINTW ＞문이 열리지 않는다
+			RETURN 0
+		ENDIF
+		FLAG:現Y += 2
+		CALL ONE_WAY(902, 912, 922, 932, 942, 952, 962, 972)
+		FLAG:現Y -= 2
+	;＜
+	CASE 962, 972
+		CALL ONE_WAY(902, 912, 922, 932, 942, 952, 962, 972)
+		IF FLAG:現X < ARG
+			PRINTW ＞문이 열리지 않는다
+			RETURN 0
+		ENDIF
+		FLAG:現X -= 2
+		CALL ONE_WAY(902, 912, 922, 932, 942, 952, 962, 972)
+		FLAG:現X += 2
+	CASE 892
+		;월륜의메노라　の문
+		PRINTW ＞잠겨져있는 은빛의 문이다
+		IF ITEM:357
+			PRINTW ＞월륜의 열쇠를 사용했다
+			CALL DUNGEON_DOOR, DA:ARG:(ARG:1) / 10
+			RETURN 1
+		ELSEIF FLAG:DEBUG
+			PRINTW ＞이해할 수 없는 힘으로 문이 열렸다(DEBUG)
+			CALL DUNGEON_DOOR, DA:ARG:(ARG:1) / 10
+			RETURN 1
+		ELSE
+			PRINTW ＞문이 열리지 않는다
+		ENDIF
+		RETURN 0
+	CASE 882
+		;빛나는별의메노라　の문
+		PRINTW ＞잠겨져있는 금빛의 문이다
+		IF ITEM:358
+			PRINTW ＞금성의 열쇠를 사용했다
+			CALL DUNGEON_DOOR, DA:ARG:(ARG:1) / 10
+			RETURN 1
+		ELSEIF FLAG:DEBUG
+			PRINTW ＞이해할 수 없는 힘으로 문이 열렸다(DEBUG)
+			CALL DUNGEON_DOOR, DA:ARG:(ARG:1) / 10
+			RETURN 1
+		ELSE
+			PRINTW ＞문이 열리지 않는다
+		ENDIF
+		RETURN 0
+	CASE 992
+		PRINTW ＞문이 열리지 않는다
+		RETURN 0
+	CASEELSE
+		;2以外の扉はドア이벤트へ
+		IF DA:ARG:(ARG:1) % 10 == 2 && DA:ARG:(ARG:1) > 2
+			CALL DOOR_65, DA:ARG:(ARG:1) / 10
+			RETURN RESULT
+		ENDIF
+ENDSELECT
+
+CALL CAN_ENTER,ARG,ARG:1
+RETURN RESULT
+
+;=======================================================================
+;フ로어데이터
+;=======================================================================
+@MAKE_FLOOR_68
+SELECTCASE FLAG:現M
+	CASE 0
+	;아마라심계 入り입
+		FLAG:최대X = 22
+		FLAG:최대Y = 22
+;                                0123456789012345678901
+		CALL MAKE_FLOOR_LINE, 0,"                      "
+		CALL MAKE_FLOOR_LINE, 1,"          4           "
+		CALL MAKE_FLOOR_LINE, 2,"        41114         "
+		CALL MAKE_FLOOR_LINE, 3,"         111          "
+		CALL MAKE_FLOOR_LINE, 4,"        41114         "
+		CALL MAKE_FLOOR_LINE, 5,"         111          "
+		CALL MAKE_FLOOR_LINE, 6,"          1           "
+		CALL MAKE_FLOOR_LINE, 7,"          V           "
+		CALL MAKE_FLOOR_LINE, 8,"          1           "
+		CALL MAKE_FLOOR_LINE, 9,"        11111         "
+		CALL MAKE_FLOOR_LINE,10,"       11   11        "
+		CALL MAKE_FLOOR_LINE,11,"      11     11       "
+		CALL MAKE_FLOOR_LINE,12,"      11  4  11       "
+		CALL MAKE_FLOOR_LINE,13,"      11  1  11       "
+		CALL MAKE_FLOOR_LINE,14,"       11 1 11        "
+		CALL MAKE_FLOOR_LINE,15,"        11111         "
+		CALL MAKE_FLOOR_LINE,16,"         111          "
+		CALL MAKE_FLOOR_LINE,17,"          1           "
+		CALL MAKE_FLOOR_LINE,18,"          1           "
+		CALL MAKE_FLOOR_LINE,19,"          2           "
+		CALL MAKE_FLOOR_LINE,20,"          T           "
+		CALL MAKE_FLOOR_LINE,21,"                      "
+;                                0123456789012345678901
+
+		;覗き穴이벤트で承諾後に扉出現
+		SIF 던전フラグ:68:25 > 1
+			DA:10:7 = 2
+		;覗き穴
+		DA:10:12 = 4
+		;기초의메노라持たない場合、入り입に마타도르様
+		SIF !(ITEM:기초의메노라) && ITEM:왕국의메노라
+			DA:10:5 = 14
+		;カルパ１入り입
+		DA:8:4 = 24
+		;カルパ２入り입
+		DA:8:2 = 34
+		;カルパ３入り입
+		DA:10:1 = 44
+		;カルパ４入り입
+		DA:12:2 = 54
+		;カルパ５入り입
+		DA:12:4 = 64
+
+	CASE 1
+	;第一カルパ1F
+		FLAG:최대X = 27
+		FLAG:최대Y = 26
+;                                012345678901234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"                           "
+		CALL MAKE_FLOOR_LINE, 1," 111111            11111   "
+		CALL MAKE_FLOOR_LINE, 2," 1    1            1   1   "
+		CALL MAKE_FLOOR_LINE, 3," 11 11111111111211 117 1   "
+		CALL MAKE_FLOOR_LINE, 4,"     2     1           1   "
+		CALL MAKE_FLOOR_LINE, 5,"     1  7  1       11111   "
+		CALL MAKE_FLOOR_LINE, 6,"     1111  1         1     "
+		CALL MAKE_FLOOR_LINE, 7,"           2         2     "
+		CALL MAKE_FLOOR_LINE, 8,"           1        11     "
+		CALL MAKE_FLOOR_LINE, 9,"        1111111    11111   "
+		CALL MAKE_FLOOR_LINE,10,"       111111111   1 1 1   "
+		CALL MAKE_FLOOR_LINE,11,"      11       11  1 2 121 "
+		CALL MAKE_FLOOR_LINE,12,"      11 1 7 1 11  1 1 1   "
+		CALL MAKE_FLOOR_LINE,13," 7112111 1 1 1 11121   117 "
+		CALL MAKE_FLOOR_LINE,14,"      11 2 2 2 11  1 1 1   "
+		CALL MAKE_FLOOR_LINE,15,"       111111111   1 2 121 "
+		CALL MAKE_FLOOR_LINE,16,"        11 1 11    11111   "
+		CALL MAKE_FLOOR_LINE,17,"         11111      1111   "
+		CALL MAKE_FLOOR_LINE,18,"           1         +     "
+		CALL MAKE_FLOOR_LINE,19,"                    111    "
+		CALL MAKE_FLOOR_LINE,20,"          111      11111   "
+		CALL MAKE_FLOOR_LINE,21,"          141      11111   "
+		CALL MAKE_FLOOR_LINE,22,"          111      11111   "
+		CALL MAKE_FLOOR_LINE,23,"           S        111    "
+		CALL MAKE_FLOOR_LINE,24,"                           "
+		CALL MAKE_FLOOR_LINE,25,"                           "
+;                                012345678901234567890123456
+		;メノ라해방で扉作るるる
+		SIF 던전フラグ:68:20
+			DA:11:19 = 2
+		;カルパ１メノ라해방
+		DA:11:21 = 144
+
+		;思念体　カマラ、마인サーチ
+		DA:25:15 = 294
+
+		;宝箱の設置_0
+		CALL SET_TILE, 2, 3,던전フラグ:(FLAG:現던전):70,0,3
+		;宝箱の設置_1
+		CALL SET_TILE,17, 3,던전フラグ:(FLAG:現던전):71,0,13
+
+	CASE 2
+	;第一カルパ2F
+		FLAG:최대X = 27
+		FLAG:최대Y = 26
+;                                012345678901234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"                           "
+		CALL MAKE_FLOOR_LINE, 1,"    111                    "
+		CALL MAKE_FLOOR_LINE, 2,"   11111                   "
+		CALL MAKE_FLOOR_LINE, 3,"    111            116     "
+		CALL MAKE_FLOOR_LINE, 4,"     +             1       "
+		CALL MAKE_FLOOR_LINE, 5," 11211  6          1       "
+		CALL MAKE_FLOOR_LINE, 6,"    11111        7 1       "
+		CALL MAKE_FLOOR_LINE, 7,"                 1 1       "
+		CALL MAKE_FLOOR_LINE, 8,"       1         2 2       "
+		CALL MAKE_FLOOR_LINE, 9,"       2       11111P1     "
+		CALL MAKE_FLOOR_LINE,10,"  1111111     11P11P1P1    "
+		CALL MAKE_FLOOR_LINE,11,"  1  1           PP11P1    "
+		CALL MAKE_FLOOR_LINE,12,"  1  1 111 6 111 11PP11    "
+		CALL MAKE_FLOOR_LINE,13," 61 11+111 1 11121111P1216 "
+		CALL MAKE_FLOOR_LINE,14,"  1  1 111 1 111 1P1P11 1  "
+		CALL MAKE_FLOOR_LINE,15,"  1  1     1     P11P1P 1  "
+		CALL MAKE_FLOOR_LINE,16,"  1111111  1  11111P111 7  "
+		CALL MAKE_FLOOR_LINE,17,"           2   P11P111     "
+		CALL MAKE_FLOOR_LINE,18,"           1     2 2       "
+		CALL MAKE_FLOOR_LINE,19,"           1     1 1       "
+		CALL MAKE_FLOOR_LINE,20,"           1     7 7       "
+		CALL MAKE_FLOOR_LINE,21,"           7               "
+		CALL MAKE_FLOOR_LINE,22,"                           "
+		CALL MAKE_FLOOR_LINE,23,"                           "
+		CALL MAKE_FLOOR_LINE,24,"                           "
+		CALL MAKE_FLOOR_LINE,25,"                           "
+;                                012345678901234567890123456
+		;영원의메노라持たない場合、落とし穴ルーム抜けた奥にだいそうじょう様
+		SIF !(ITEM:영원의메노라) && ITEM:왕국의메노라
+			DA:13:13 = 114
+		;존엄의메노라持たない場合、西側の一隅に헬즈엔젤
+		SIF !(ITEM:존엄의메노라) && ITEM:왕국의메노라
+			DA:7:16 = 124
+
+		;宝箱の設置_2
+		CALL SET_TILE,13,14,던전フラグ:(FLAG:現던전):72,0,23
+		;宝箱の設置_3
+		CALL SET_TILE, 9,12,던전フラグ:(FLAG:現던전):73,0,33
+	CASE 3
+	;第一カルパ3F
+		FLAG:최대X = 27
+		FLAG:최대Y = 26
+;                                012345678901234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"                           "
+		CALL MAKE_FLOOR_LINE, 1,"                           "
+		CALL MAKE_FLOOR_LINE, 2,"                           "
+		CALL MAKE_FLOOR_LINE, 3,"    4                      "
+		CALL MAKE_FLOOR_LINE, 4,"    1                      "
+		CALL MAKE_FLOOR_LINE, 5,"    1                      "
+		CALL MAKE_FLOOR_LINE, 6,"    1            6         "
+		CALL MAKE_FLOOR_LINE, 7,"    V            1         "
+		CALL MAKE_FLOOR_LINE, 8,"    1            2         "
+		CALL MAKE_FLOOR_LINE, 9,"   111         111 111     "
+		CALL MAKE_FLOOR_LINE,10,"  11111       111  1111    "
+		CALL MAKE_FLOOR_LINE,11," 1111111      11 11  11    "
+		CALL MAKE_FLOOR_LINE,12," 11   11      1 11 11 1    "
+		CALL MAKE_FLOOR_LINE,13," 11 4 11      1  1 1 1211  "
+		CALL MAKE_FLOOR_LINE,14,"  11111       1112111 1 1  "
+		CALL MAKE_FLOOR_LINE,15,"   111        1  1 11 1 1  "
+		CALL MAKE_FLOOR_LINE,16,"    1         11 1 1 11 6  "
+		CALL MAKE_FLOOR_LINE,17,"    2          1121211     "
+		CALL MAKE_FLOOR_LINE,18,"    1            1 1       "
+		CALL MAKE_FLOOR_LINE,19,"    11111111     1 1       "
+		CALL MAKE_FLOOR_LINE,20,"           1     6 6       "
+		CALL MAKE_FLOOR_LINE,21,"           6               "
+		CALL MAKE_FLOOR_LINE,22,"                           "
+		CALL MAKE_FLOOR_LINE,23,"                           "
+		CALL MAKE_FLOOR_LINE,24,"                           "
+		CALL MAKE_FLOOR_LINE,25,"                           "
+;                                012345678901234567890123456
+		;覗き穴이벤트その２
+		DA:4:13 = 74
+		;覗き穴이벤트その２で承諾後に扉出現
+		SIF 던전フラグ:68:26
+			DA:4:7 = 2
+		;カルパ２入り입、入り입のと共用、面倒だし。
+		DA:4:3 = 34
+		;宝箱の設置_4
+		CALL SET_TILE,21, 9,던전フラグ:(FLAG:現던전):74,0,43
+
+
+	CASE 4
+	;第二カルパ1F
+		FLAG:최대X = 27
+		FLAG:최대Y = 26
+;                                012345678901234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"                           "
+		CALL MAKE_FLOOR_LINE, 1,"                           "
+		CALL MAKE_FLOOR_LINE, 2,"                           "
+		CALL MAKE_FLOOR_LINE, 3,"                           "
+		CALL MAKE_FLOOR_LINE, 4,"                           "
+		CALL MAKE_FLOOR_LINE, 5,"                           "
+		CALL MAKE_FLOOR_LINE, 6,"                           "
+		CALL MAKE_FLOOR_LINE, 7,"                           "
+		CALL MAKE_FLOOR_LINE, 8,"                           "
+		CALL MAKE_FLOOR_LINE, 9,"             P             "
+		CALL MAKE_FLOOR_LINE,10,"             1             "
+		CALL MAKE_FLOOR_LINE,11,"             1     111117  "
+		CALL MAKE_FLOOR_LINE,12,"            111<1111       "
+		CALL MAKE_FLOOR_LINE,13,"             1             "
+		CALL MAKE_FLOOR_LINE,14,"             1             "
+		CALL MAKE_FLOOR_LINE,15,"             1             "
+		CALL MAKE_FLOOR_LINE,16,"             1             "
+		CALL MAKE_FLOOR_LINE,17,"                           "
+		CALL MAKE_FLOOR_LINE,18,"            111            "
+		CALL MAKE_FLOOR_LINE,19,"            111            "
+		CALL MAKE_FLOOR_LINE,20,"            111            "
+		CALL MAKE_FLOOR_LINE,21,"             1             "
+		CALL MAKE_FLOOR_LINE,22,"             1             "
+		CALL MAKE_FLOOR_LINE,23,"             S             "
+		CALL MAKE_FLOOR_LINE,24,"                           "
+		CALL MAKE_FLOOR_LINE,25,"                           "
+;                                012345678901234567890123456
+		;メノ라해방で扉作るるる
+		SIF 던전フラグ:68:21
+			DA:13:17 = 2
+		;カルパ２メノ라해방
+		DA:13:19 = 154
+
+	CASE 5
+	;第二カルパ2F
+		FLAG:최대X = 27
+		FLAG:최대Y = 26
+;                                012345678901234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"                           "
+		CALL MAKE_FLOOR_LINE, 1," 1111111 11     11211>111  "
+		CALL MAKE_FLOOR_LINE, 2,"  2 1  1211     1  1  2 11 "
+		CALL MAKE_FLOOR_LINE, 3,"  * 2  2        1 11111  1 "
+		CALL MAKE_FLOOR_LINE, 4,"    1 11211111111 V      1 "
+		CALL MAKE_FLOOR_LINE, 5," 1  1     2    1  1 1 1121 "
+		CALL MAKE_FLOOR_LINE, 6," 11 11111 P    P  121    1 "
+		CALL MAKE_FLOOR_LINE, 7," 1121   1         1 111211 "
+		CALL MAKE_FLOOR_LINE, 8,"    2 1 1 1       1   2  1 "
+		CALL MAKE_FLOOR_LINE, 9,"    1 1 2 1  1   1111 1  1 "
+		CALL MAKE_FLOOR_LINE,10,"    1 11111  1        1    "
+		CALL MAKE_FLOOR_LINE,11,"    1        111111111116  "
+		CALL MAKE_FLOOR_LINE,12,"    1        1        1    "
+		CALL MAKE_FLOOR_LINE,13," 7111        1        1    "
+		CALL MAKE_FLOOR_LINE,14,"    1                 1    "
+		CALL MAKE_FLOOR_LINE,15,"    1                 1    "
+		CALL MAKE_FLOOR_LINE,16,"    1 11111    11111  1  1 "
+		CALL MAKE_FLOOR_LINE,17,"    2 1 1 1    1   1  +  2 "
+		CALL MAKE_FLOOR_LINE,18," 1 11   1        1212111 1 "
+		CALL MAKE_FLOOR_LINE,19," 121111 1 P    P     1 1 1 "
+		CALL MAKE_FLOOR_LINE,20,"    2 2 2 1    1 11111 2 1 "
+		CALL MAKE_FLOOR_LINE,21," 1111 111 1    1       1 1 "
+		CALL MAKE_FLOOR_LINE,22," 1111 111 1111111111111111 "
+		CALL MAKE_FLOOR_LINE,23,"  2 1     1            11  "
+		CALL MAKE_FLOOR_LINE,24,"  1 1111111     11111211   "
+		CALL MAKE_FLOOR_LINE,25,"                           "
+;                                012345678901234567890123456
+		;カルパ２、呪い警告する子ども
+		DA:2:1 = 194
+		;가이아思念体a
+		DA:20:5  = 224
+		;メシア思念体a
+		DA:16:24 = 244
+		;メシア思念体b
+		DA:2:21  = 254
+		;DARK思念体b
+		DA:1:7   = 274
+
+		;宝箱の設置_5
+		CALL SET_TILE,20, 9,던전フラグ:(FLAG:現던전):75,0,53
+		;宝箱の設置_6
+		CALL SET_TILE, 2,24,던전フラグ:(FLAG:現던전):76,0,63
+
+	CASE 6
+	;第二カルパ3F
+		FLAG:최대X = 27
+		FLAG:최대Y = 26
+;                                012345678901234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"                           "
+		CALL MAKE_FLOOR_LINE, 1,"                           "
+		CALL MAKE_FLOOR_LINE, 2,"      111111111 1111111    "
+		CALL MAKE_FLOOR_LINE, 3,"     11    1111 V     1    "
+		CALL MAKE_FLOOR_LINE, 4,"     1   1  11  1     1    "
+		CALL MAKE_FLOOR_LINE, 5,"     1  111 11 111    1117 "
+		CALL MAKE_FLOOR_LINE, 6,"     1  111 11 111         "
+		CALL MAKE_FLOOR_LINE, 7,"     1  111 11 111         "
+		CALL MAKE_FLOOR_LINE, 8,"     1   V  11  V          "
+		CALL MAKE_FLOOR_LINE, 9,"     1111111111111         "
+		CALL MAKE_FLOOR_LINE,10,"   1<11111111111111        "
+		CALL MAKE_FLOOR_LINE,11,"   1  1111111111111P       "
+		CALL MAKE_FLOOR_LINE,12,"   1    11111111111        "
+		CALL MAKE_FLOOR_LINE,13," 611   11111111111         "
+		CALL MAKE_FLOOR_LINE,14,"      P1111111111111       "
+		CALL MAKE_FLOOR_LINE,15,"       11111111111111      "
+		CALL MAKE_FLOOR_LINE,16,"        1111111111111      "
+		CALL MAKE_FLOOR_LINE,17,"         A  11  A   1      "
+		CALL MAKE_FLOOR_LINE,18,"        111 11 111  1      "
+		CALL MAKE_FLOOR_LINE,19," 111111=111 11 111  1      "
+		CALL MAKE_FLOOR_LINE,20,"   A    111 11 111  1      "
+		CALL MAKE_FLOOR_LINE,21," 711     1  11  1   1      "
+		CALL MAKE_FLOOR_LINE,22,"      11   1111 +  11      "
+		CALL MAKE_FLOOR_LINE,23,"       11111111 1  1       "
+		CALL MAKE_FLOOR_LINE,24,"                P          "
+		CALL MAKE_FLOOR_LINE,25,"                           "
+;                                012345678901234567890123456
+		;カルパ２、눈に見えるものがなんちゃら
+		DA:9:21 = 214
+		;가이아思念体b
+		DA:16:6  = 234
+		;メシア思念体c
+		DA:16:19  = 264
+		;DARK思念体a
+		DA:9:6  = 284
+
+		;宝箱の設置_7
+		CALL SET_TILE, 9, 4,던전フラグ:(FLAG:現던전):77,0,73
+		;宝箱の設置_8
+		CALL SET_TILE, 5,22,던전フラグ:(FLAG:現던전):78,0,83
+	CASE 7
+	;第二カルパ4F
+		FLAG:최대X = 27
+		FLAG:최대Y = 26
+;                                012345678901234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"                           "
+		CALL MAKE_FLOOR_LINE, 1,"        111   11111        "
+		CALL MAKE_FLOOR_LINE, 2,"        111   11111        "
+		CALL MAKE_FLOOR_LINE, 3,"         +      +          "
+		CALL MAKE_FLOOR_LINE, 4,"       1111111111111111    "
+		CALL MAKE_FLOOR_LINE, 5,"           2  2       1116 "
+		CALL MAKE_FLOOR_LINE, 6,"      DDDDDH DHDDDDD       "
+		CALL MAKE_FLOOR_LINE, 7,"      D   D  D D           "
+		CALL MAKE_FLOOR_LINE, 8,"       DD D  D D DDD       "
+		CALL MAKE_FLOOR_LINE, 9,"       D  DD D DDD D       "
+		CALL MAKE_FLOOR_LINE,10,"      DDD  D D D D D       "
+		CALL MAKE_FLOOR_LINE,11,"    12H DDDD D   D H211    "
+		CALL MAKE_FLOOR_LINE,12," 11 1    D   D  DD D  1    "
+		CALL MAKE_FLOOR_LINE,13," 11 1 D DDDDD DDD     1    "
+		CALL MAKE_FLOOR_LINE,14," 11+1 H D   D   DD H  1217 "
+		CALL MAKE_FLOOR_LINE,15," 11 1 D DDD D DD D D  1    "
+		CALL MAKE_FLOOR_LINE,16," 11 1 D D D DDD  D D       "
+		CALL MAKE_FLOOR_LINE,17,"    1 D DDD D DDDDDD       "
+		CALL MAKE_FLOOR_LINE,18,"    1 D  D  DD  D  D       "
+		CALL MAKE_FLOOR_LINE,19,"    1 DDDDDH DH DD D       "
+		CALL MAKE_FLOOR_LINE,20,"    1      2               "
+		CALL MAKE_FLOOR_LINE,21," 6111    11111             "
+		CALL MAKE_FLOOR_LINE,22,"    A                      "
+		CALL MAKE_FLOOR_LINE,23,"    1111111111111          "
+		CALL MAKE_FLOOR_LINE,24,"            7   1          "
+		CALL MAKE_FLOOR_LINE,25,"                           "
+;                                012345678901234567890123456
+
+		;宝箱の設置_9
+		CALL SET_TILE,13,12,던전フラグ:(FLAG:現던전):79,0,93
+
+	CASE 8
+	;第二カルパ5F
+		FLAG:최대X = 27
+		FLAG:최대Y = 26
+;                                012345678901234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"                           "
+		CALL MAKE_FLOOR_LINE, 1,"                           "
+		CALL MAKE_FLOOR_LINE, 2,"                           "
+		CALL MAKE_FLOOR_LINE, 3,"    4                      "
+		CALL MAKE_FLOOR_LINE, 4,"    1                      "
+		CALL MAKE_FLOOR_LINE, 5,"    1                      "
+		CALL MAKE_FLOOR_LINE, 6,"    1                      "
+		CALL MAKE_FLOOR_LINE, 7,"    1                      "
+		CALL MAKE_FLOOR_LINE, 8,"    1                      "
+		CALL MAKE_FLOOR_LINE, 9,"    1                      "
+		CALL MAKE_FLOOR_LINE,10,"    V                      "
+		CALL MAKE_FLOOR_LINE,11,"   111                     "
+		CALL MAKE_FLOOR_LINE,12,"  11111                    "
+		CALL MAKE_FLOOR_LINE,13," 1111111             11    "
+		CALL MAKE_FLOOR_LINE,14," 11   11           1111116 "
+		CALL MAKE_FLOOR_LINE,15," 11 4 11             11    "
+		CALL MAKE_FLOOR_LINE,16,"  11111                    "
+		CALL MAKE_FLOOR_LINE,17,"   111                     "
+		CALL MAKE_FLOOR_LINE,18,"    2                      "
+		CALL MAKE_FLOOR_LINE,19,"    1                      "
+		CALL MAKE_FLOOR_LINE,20,"    1                      "
+		CALL MAKE_FLOOR_LINE,21,"    1                      "
+		CALL MAKE_FLOOR_LINE,22,"    1                      "
+		CALL MAKE_FLOOR_LINE,23,"    111111111              "
+		CALL MAKE_FLOOR_LINE,24,"            6              "
+		CALL MAKE_FLOOR_LINE,25,"                           "
+;                                012345678901234567890123456
+		;覗き穴이벤트その３
+		DA:4:15 = 84
+		;覗き穴이벤트その３で承諾後に扉出現
+		SIF 던전フラグ:68:27
+			DA:4:10 = 2
+		;カルパ３入り입、入り입のと共用、面倒だし。
+		DA:4:3 = 44
+		;宝箱の設置_月輪のカギ_10
+		CALL SET_TILE,19,14,던전フラグ:(FLAG:現던전):80,0,103
+
+	CASE 9
+	;第二カルパ、呪いの間
+		FLAG:최대X = 20
+		FLAG:최대Y = 20
+;                                01234567890123456789
+		CALL MAKE_FLOOR_LINE, 0,"                    "
+		CALL MAKE_FLOOR_LINE, 1,"  CCCCCCCC<CC       "
+		CALL MAKE_FLOOR_LINE, 2,"  C         CCCCCCC "
+		CALL MAKE_FLOOR_LINE, 3,"  C CCCCCCC       C "
+		CALL MAKE_FLOOR_LINE, 4,"  C C     CCCCCCC A "
+		CALL MAKE_FLOOR_LINE, 5,"  C C CCC       C C "
+		CALL MAKE_FLOOR_LINE, 6," CC C C CCCCCCC C C "
+		CALL MAKE_FLOOR_LINE, 7," C  C C       C C C "
+		CALL MAKE_FLOOR_LINE, 8," C CC C 1111  A V C "
+		CALL MAKE_FLOOR_LINE, 9," C C  C 1111  C C C "
+		CALL MAKE_FLOOR_LINE,10," C C CC<1111 CC C C "
+		CALL MAKE_FLOOR_LINE,11," C C C  1111 C  C C "
+		CALL MAKE_FLOOR_LINE,12," C C CC    2 C CC C "
+		CALL MAKE_FLOOR_LINE,13," C C  CCC  C C C  C "
+		CALL MAKE_FLOOR_LINE,14," C C  V C>CC CCC CC "
+		CALL MAKE_FLOOR_LINE,15," C CCCC      V   C  "
+		CALL MAKE_FLOOR_LINE,16," C    CCC 12CC   C  "
+		CALL MAKE_FLOOR_LINE,17," CCCC   C>1  CCC C  "
+		CALL MAKE_FLOOR_LINE,18,"    CCCCC ^    C>C  "
+		CALL MAKE_FLOOR_LINE,19,"                    "
+;                                01234567890123456789
+
+		;カルパ２、呪いの間の奥の이프리트さん
+		SIF 던전フラグ:68:41 < 2
+			DA:9:9 = 204
+	CASE 10
+	;第三カルパ1F
+		FLAG:최대X = 27
+		FLAG:최대Y = 27
+;                                012345678901234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"                           "
+		CALL MAKE_FLOOR_LINE, 1,"      1211117 1 1  111     "
+		CALL MAKE_FLOOR_LINE, 2,"      1   1   1 1 11111    "
+		CALL MAKE_FLOOR_LINE, 3,"        1>1 7 A 1+11111    "
+		CALL MAKE_FLOOR_LINE, 4,"      111   1 1 1 11111    "
+		CALL MAKE_FLOOR_LINE, 5,"      V 1   A 1    111     "
+		CALL MAKE_FLOOR_LINE, 6,"     11 1<1<1>1>11         "
+		CALL MAKE_FLOOR_LINE, 7,"            c              "
+		CALL MAKE_FLOOR_LINE, 8," 11 1<1 1 111111  1<1 1  1 "
+		CALL MAKE_FLOOR_LINE, 9," 11 V 1 1 1    1  1 1 1  2 "
+		CALL MAKE_FLOOR_LINE,10," 11 1<111 1 11211 1>1<1<11 "
+		CALL MAKE_FLOOR_LINE,11," 2  V A   1     1   V 1  1 "
+		CALL MAKE_FLOOR_LINE,12," 1  1<1<1b11<17 1a1>1>17 1 "
+		CALL MAKE_FLOOR_LINE,13," 1  1      1    1   A V  A "
+		CALL MAKE_FLOOR_LINE,14," 1  1 711 11 1121   1 1111 "
+		CALL MAKE_FLOOR_LINE,15," 1  V   1 1     1   1  1 1 "
+		CALL MAKE_FLOOR_LINE,16," 1 71>111 1211 11 1 17 V 2 "
+		CALL MAKE_FLOOR_LINE,17," 1  1   1 1    1  1 1  1 1 "
+		CALL MAKE_FLOOR_LINE,18," 1111>111 111111  121111 1 "
+		CALL MAKE_FLOOR_LINE,19,"       +                   "
+		CALL MAKE_FLOOR_LINE,20,"      111    1             "
+		CALL MAKE_FLOOR_LINE,21,"     11111  111            "
+		CALL MAKE_FLOOR_LINE,22,"      111   111            "
+		CALL MAKE_FLOOR_LINE,23,"            111            "
+		CALL MAKE_FLOOR_LINE,24,"             1             "
+		CALL MAKE_FLOOR_LINE,25,"             S             "
+		CALL MAKE_FLOOR_LINE,26,"                           "
+;                                012345678901234567890123456
+		;四騎士登場
+		SIF 던전フラグ:68:40 < 2
+			DA:13:23 = 134
+		;メノ라해방で扉作るるる
+		SIF 던전フラグ:68:22
+			DA:13:19 = 2
+		;カルパ３メノ라해방
+		DA:13:22 = 164
+			;w1
+			DA:16:1 = 544
+			;w北입
+			DA:5:6 = 554
+			DA:17:6 = 554
+			DA:14:1 = 554
+			;w東입
+			DA:25:18 = 564
+			DA:18:16 = 564
+		;宝箱の設置_宝_11
+		CALL SET_TILE,18,17,던전フラグ:68:81,0,113
+		;宝箱の設置_宝_12
+		CALL SET_TILE,8,8,던전フラグ:68:82,0,123
+		;宝箱の設置_宝_13
+		CALL SET_TILE,18,9,던전フラグ:68:83,0,133
+	CASE 11
+	;第三カルパ2F
+		FLAG:최대X = 27
+		FLAG:최대Y = 27
+;								 012345678901234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"                           "
+		CALL MAKE_FLOOR_LINE, 1,"          1<6>1            "
+		CALL MAKE_FLOOR_LINE, 2,"        111   111          "
+		CALL MAKE_FLOOR_LINE, 3,"        1   6   1          "
+		CALL MAKE_FLOOR_LINE, 4,"        1  111>11          "
+		CALL MAKE_FLOOR_LINE, 5,"        1  V    1          "
+		CALL MAKE_FLOOR_LINE, 6,"        1  111  1          "
+		CALL MAKE_FLOOR_LINE, 7,"        1    V  1          "
+		CALL MAKE_FLOOR_LINE, 8,"        111111111          "
+		CALL MAKE_FLOOR_LINE, 9,"           V               "
+		CALL MAKE_FLOOR_LINE,10,"        111111111          "
+		CALL MAKE_FLOOR_LINE,11,"        11111   1          "
+		CALL MAKE_FLOOR_LINE,12," 111111>1111126 1<111116   "
+		CALL MAKE_FLOOR_LINE,13," 1      1   1   1          "
+		CALL MAKE_FLOOR_LINE,14," 111116 1 7 11111 111      "
+		CALL MAKE_FLOOR_LINE,15,"        1 2 11111   1      "
+		CALL MAKE_FLOOR_LINE,16,"   6111>111111111<1116     "
+		CALL MAKE_FLOOR_LINE,17,"      e 111111111 d        "
+		CALL MAKE_FLOOR_LINE,18,"    111 111111111 111      "
+		CALL MAKE_FLOOR_LINE,19,"    111      1    111      "
+		CALL MAKE_FLOOR_LINE,20,"    111      -    111      "
+		CALL MAKE_FLOOR_LINE,21,"             1             "
+		CALL MAKE_FLOOR_LINE,22,"             1             "
+		CALL MAKE_FLOOR_LINE,23,"             1             "
+		CALL MAKE_FLOOR_LINE,24,"             1             "
+		CALL MAKE_FLOOR_LINE,25,"             1             "
+		CALL MAKE_FLOOR_LINE,26,"                           "
+;                                012345678901234567890123456
+		;미의메노라持たない場合、Light部屋近くに마더해롯
+		SIF !(ITEM:미의메노라) && ITEM:왕국의메노라
+			DA:19:14 = 394
+		;하세베の천사
+		SIF 던전フラグ:68:43 != 1
+			DA:15:16 = 304
+		;하세베の타천사
+		SIF 던전フラグ:68:43 != 1
+			DA:10:11 = 314
+		;하세베警告
+		SIF 던전フラグ:68:43 != 1
+			DA:10:16 = 324
+		;宝箱の設置_宝_14
+		CALL SET_TILE,12,6,던전フラグ:68:84,0,143
+		;宝箱の設置_宝_15
+		CALL SET_TILE,5,19,던전フラグ:68:85,0,153
+		;宝箱の設置_宝_16
+		CALL SET_TILE,18,20,던전フラグ:68:86,0,163
+	CASE 12
+	;第三カルパ3F
+		FLAG:최대X = 27
+		FLAG:최대Y = 26
+;                                012345678901234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"                           "
+		CALL MAKE_FLOOR_LINE, 1,"                           "
+		CALL MAKE_FLOOR_LINE, 2,"                           "
+		CALL MAKE_FLOOR_LINE, 3,"                           "
+		CALL MAKE_FLOOR_LINE, 4,"                           "
+		CALL MAKE_FLOOR_LINE, 5,"                           "
+		CALL MAKE_FLOOR_LINE, 6,"                           "
+		CALL MAKE_FLOOR_LINE, 7,"                           "
+		CALL MAKE_FLOOR_LINE, 8,"                           "
+		CALL MAKE_FLOOR_LINE, 9,"          111111111        "
+		CALL MAKE_FLOOR_LINE,10,"          1       2        "
+		CALL MAKE_FLOOR_LINE,11,"          1 11111111111111 "
+		CALL MAKE_FLOOR_LINE,12,"          1 1     2      1 "
+		CALL MAKE_FLOOR_LINE,13,"          1 1 1111111    1 "
+		CALL MAKE_FLOOR_LINE,14,"          6 1 1111111211 1 "
+		CALL MAKE_FLOOR_LINE,15,"            1 1111  1    1 "
+		CALL MAKE_FLOOR_LINE,16,"            1 1 1 11 1 1 1 "
+		CALL MAKE_FLOOR_LINE,17,"            1    1  1111 1 "
+		CALL MAKE_FLOOR_LINE,18,"            1 1121111111 1 "
+		CALL MAKE_FLOOR_LINE,19,"            1    1111111 1 "
+		CALL MAKE_FLOOR_LINE,20,"            1      2     1 "
+		CALL MAKE_FLOOR_LINE,21,"            11111111111111 "
+		CALL MAKE_FLOOR_LINE,22,"                     1     "
+		CALL MAKE_FLOOR_LINE,23,"                           "
+		CALL MAKE_FLOOR_LINE,24,"                 71111     "
+		CALL MAKE_FLOOR_LINE,25,"                           "
+;                                012345678901234567890123456
+		;スイッチその１
+		SIF 던전フラグ:68:42 % 2 == 0
+			DA:14:18 = 334
+		;スイッチその２
+		SIF (던전フラグ:68:42 % 4) / 2 == 0
+			DA:23:14 = 344
+		;スイッチと扉
+		SIF 던전フラグ:68:42 >= 3
+			DA:21:23 = 2
+	CASE 13
+	;第三カルパ4F
+		FLAG:최대X = 27
+		FLAG:최대Y = 26
+;                                012345678901234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"                           "
+		CALL MAKE_FLOOR_LINE, 1,"                           "
+		CALL MAKE_FLOOR_LINE, 2,"            111            "
+		CALL MAKE_FLOOR_LINE, 3,"            111            "
+		CALL MAKE_FLOOR_LINE, 4,"            111            "
+		CALL MAKE_FLOOR_LINE, 5,"             2             "
+		CALL MAKE_FLOOR_LINE, 6,"          DDDDD D          "
+		CALL MAKE_FLOOR_LINE, 7,"          D  D  D          "
+		CALL MAKE_FLOOR_LINE, 8,"          D     D          "
+		CALL MAKE_FLOOR_LINE, 9,"          DDDDD D          "
+		CALL MAKE_FLOOR_LINE,10,"          D  D  D          "
+		CALL MAKE_FLOOR_LINE,11," 111      D  D  D          "
+		CALL MAKE_FLOOR_LINE,12," 111      D DDDDD          "
+		CALL MAKE_FLOOR_LINE,13," 111         2             "
+		CALL MAKE_FLOOR_LINE,14,"  2     11111111111        "
+		CALL MAKE_FLOOR_LINE,15,"  C CDC 1         1 HDH H  "
+		CALL MAKE_FLOOR_LINE,16,"  D D D 1         1 D   D  "
+		CALL MAKE_FLOOR_LINE,17,"  CDC C21    7    12HDHDH  "
+		CALL MAKE_FLOOR_LINE,18,"  D D   1   111   1 D   D  "
+		CALL MAKE_FLOOR_LINE,19,"  C CDC 1         1 H HDH  "
+		CALL MAKE_FLOOR_LINE,20,"        1    1    1   2    "
+		CALL MAKE_FLOOR_LINE,21,"        11111111111  111   "
+		CALL MAKE_FLOOR_LINE,22,"             1       111   "
+		CALL MAKE_FLOOR_LINE,23,"             1       111   "
+		CALL MAKE_FLOOR_LINE,24,"             11116         "
+		CALL MAKE_FLOOR_LINE,25,"                           "
+;                                012345678901234567890123456
+		;スイッチその３
+		SIF (던전フラグ:68:42 % 8) / 4 == 0
+			DA:13:3 = 354
+		;スイッチその４
+		SIF (던전フラグ:68:42 % 16) / 8 == 0
+			DA:22:22 = 364
+		;スイッチその５
+		SIF 던전フラグ:68:42 / 16 == 0
+			DA:2:12 = 374
+		;スイッチと扉
+		SIF 던전フラグ:68:42 >= 28
+			DA:13:19 = 2
+	CASE 14
+	;第三カルパ5F
+		FLAG:최대X = 27
+		FLAG:최대Y = 26
+;                                012345678901234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"                           "
+		CALL MAKE_FLOOR_LINE, 1,"             4             "
+		CALL MAKE_FLOOR_LINE, 2,"             1             "
+		CALL MAKE_FLOOR_LINE, 3,"             1             "
+		CALL MAKE_FLOOR_LINE, 4,"             1             "
+		CALL MAKE_FLOOR_LINE, 5,"                           "
+		CALL MAKE_FLOOR_LINE, 6,"             1             "
+		CALL MAKE_FLOOR_LINE, 7,"            111            "
+		CALL MAKE_FLOOR_LINE, 8,"           11111           "
+		CALL MAKE_FLOOR_LINE, 9,"          11   11          "
+		CALL MAKE_FLOOR_LINE,10,"          11 4 11          "
+		CALL MAKE_FLOOR_LINE,11,"          1111111          "
+		CALL MAKE_FLOOR_LINE,12,"           11111           "
+		CALL MAKE_FLOOR_LINE,13,"       111   2   111       "
+		CALL MAKE_FLOOR_LINE,14,"         1   1   1         "
+		CALL MAKE_FLOOR_LINE,15,"        11112121111        "
+		CALL MAKE_FLOOR_LINE,16,"        1         1        "
+		CALL MAKE_FLOOR_LINE,17,"        1111 6 1111        "
+		CALL MAKE_FLOOR_LINE,18,"          1  1  1          "
+		CALL MAKE_FLOOR_LINE,19,"        1111 1 1111        "
+		CALL MAKE_FLOOR_LINE,20,"        1    2    1        "
+		CALL MAKE_FLOOR_LINE,21,"        11111111111        "
+		CALL MAKE_FLOOR_LINE,22,"           1   1           "
+		CALL MAKE_FLOOR_LINE,23,"         111   111         "
+		CALL MAKE_FLOOR_LINE,24,"                           "
+		CALL MAKE_FLOOR_LINE,25,"                           "
+;                                012345678901234567890123456
+		;하세베
+		SIF 던전フラグ:68:43 < 1
+			DA:13:14 = 384
+		;覗き穴４つ눈（三層ラスト）
+		DA:13:10 = 94
+		;覗き穴で扉해방
+		SIF 던전フラグ:68:28
+			DA:13:5 = 2
+		;四層カルパへの入り입
+		DA:13:1 = 54
+	CASE 15
+	;第四カルパ1F
+		FLAG:최대X = 27
+		FLAG:최대Y = 26
+;                                012345678901234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"              1            "
+		CALL MAKE_FLOOR_LINE, 1,"              1            "
+		CALL MAKE_FLOOR_LINE, 2,"        1111111111111      "
+		CALL MAKE_FLOOR_LINE, 3,"           1111111    111  "
+		CALL MAKE_FLOOR_LINE, 4,"             111      111  "
+		CALL MAKE_FLOOR_LINE, 5,"             111      111  "
+		CALL MAKE_FLOOR_LINE, 6,"              2        2   "
+		CALL MAKE_FLOOR_LINE, 7,"              111 1111111  "
+		CALL MAKE_FLOOR_LINE, 8,"                1 1        "
+		CALL MAKE_FLOOR_LINE, 9,"          11111 111 111111 "
+		CALL MAKE_FLOOR_LINE,10,"              1   1 1      "
+		CALL MAKE_FLOOR_LINE,11,"        111   111111111111 "
+		CALL MAKE_FLOOR_LINE,12,"       11111         1   1 "
+		CALL MAKE_FLOOR_LINE,13," 1      111  1   1   1   1 "
+		CALL MAKE_FLOOR_LINE,14," 2       +   2   2   2   1 "
+		CALL MAKE_FLOOR_LINE,15," CC=CCC=CCC=CCC=CCC CCC  1 "
+		CALL MAKE_FLOOR_LINE,16," CC=CCC=CCC=CCC=CCC2CCC    "
+		CALL MAKE_FLOOR_LINE,17," CC=CCC=CCC=CCC=CCC CCC    "
+		CALL MAKE_FLOOR_LINE,18,"     2   2           2     "
+		CALL MAKE_FLOOR_LINE,19,"     1   1   1111    11111 "
+		CALL MAKE_FLOOR_LINE,20,"                1        1 "
+		CALL MAKE_FLOOR_LINE,21,"            111 111 111  1 "
+		CALL MAKE_FLOOR_LINE,22,"            111   1 1 1  1 "
+		CALL MAKE_FLOOR_LINE,23,"            111   111 1111 "
+		CALL MAKE_FLOOR_LINE,24,"             1             "
+		CALL MAKE_FLOOR_LINE,25,"             S             "
+;                                012345678901234567890123456
+		;M様の警告、Lightに寄れる
+		SIF !(던전フラグ:68:44)
+			DA:13:23 = 464
+		;12mの永遠
+		DA:14:0 = 424
+		;12mの永遠の警告
+		DA:12:3 = 434
+		;メノ라해방で扉作るるるる
+		SIF 던전フラグ:68:23
+			DA:13:20 = 2
+		;カルパ４メノ라해방
+		DA:13:22 = 174
+		;宝箱の設置_宝_17
+		CALL SET_TILE,17,13,던전フラグ:68:87,0,173
+		;宝箱の設置_宝_18
+		CALL SET_TILE,5,19,던전フラグ:68:88,0,183
+		;宝箱の設置_宝_19
+		CALL SET_TILE,1,13,던전フラグ:68:89,0,193
+
+	CASE 16
+	;第四カルパ、冥府の道(1/8、3/8、5/8、7/8)
+		FLAG:최대X = 20
+		FLAG:최대Y = 14
+;                                01234567890123456789
+		CALL MAKE_FLOOR_LINE, 0,"        1           "
+		CALL MAKE_FLOOR_LINE, 1,"       111     111  "
+		CALL MAKE_FLOOR_LINE, 2,"       111    11111 "
+		CALL MAKE_FLOOR_LINE, 3,"       111  1+11111 "
+		CALL MAKE_FLOOR_LINE, 4,"       111  1 11111 "
+		CALL MAKE_FLOOR_LINE, 5,"       111211  111  "
+		CALL MAKE_FLOOR_LINE, 6,"       111          "
+		CALL MAKE_FLOOR_LINE, 7,"       111          "
+		CALL MAKE_FLOOR_LINE, 8,"       111          "
+		CALL MAKE_FLOOR_LINE, 9,"       111          "
+		CALL MAKE_FLOOR_LINE,10,"       111          "
+		CALL MAKE_FLOOR_LINE,11,"       111          "
+		CALL MAKE_FLOOR_LINE,12,"       111          "
+		CALL MAKE_FLOOR_LINE,13,"                    "
+;                                01234567890123456789
+		;신위의메노라持たない場合、１２ｍの脇道に트럼페터
+		SIF !(ITEM:신위의메노라) && ITEM:왕국의메노라
+			DA:12:4 = 404
+		;12mの永遠、進み
+		DA:8:0 = 454
+	CASE 17
+	;第四カルパ、冥府の回廊(2/8、6/8)
+		FLAG:최대X = 22
+		FLAG:최대Y = 23
+;                                0123456789012345678901
+		CALL MAKE_FLOOR_LINE, 0,"                   1  "
+		CALL MAKE_FLOOR_LINE, 1,"                  111 "
+		CALL MAKE_FLOOR_LINE, 2,"  111 111 111 111 111 "
+		CALL MAKE_FLOOR_LINE, 3,"  111>111>111>111>111 "
+		CALL MAKE_FLOOR_LINE, 4,"  111 111 111 111 111 "
+		CALL MAKE_FLOOR_LINE, 5,"   A   A       A   A  "
+		CALL MAKE_FLOOR_LINE, 6,"  111 111  1  111 111 "
+		CALL MAKE_FLOOR_LINE, 7,"  111>111 111>111 111 "
+		CALL MAKE_FLOOR_LINE, 8,"  111 111 111 111 111 "
+		CALL MAKE_FLOOR_LINE, 9,"   A   A   A   A   A  "
+		CALL MAKE_FLOOR_LINE,10,"  111 111 111 111 111 "
+		CALL MAKE_FLOOR_LINE,11,"  111 111>111>111>111 "
+		CALL MAKE_FLOOR_LINE,12,"  111 111 111 111 111 "
+		CALL MAKE_FLOOR_LINE,13,"   A   A       A   A  "
+		CALL MAKE_FLOOR_LINE,14,"  111 111 111 111 111 "
+		CALL MAKE_FLOOR_LINE,15,"  111>111>111>111>111 "
+		CALL MAKE_FLOOR_LINE,16,"  111 111 111 111 111 "
+		CALL MAKE_FLOOR_LINE,17,"   A   A   A       A  "
+		CALL MAKE_FLOOR_LINE,18,"  111 111 111 111 111 "
+		CALL MAKE_FLOOR_LINE,19,"  111>111>111>111>111 "
+		CALL MAKE_FLOOR_LINE,20,"  111 111 111 111 111 "
+		CALL MAKE_FLOOR_LINE,21,"  111                 "
+		CALL MAKE_FLOOR_LINE,22,"                      "
+;                                0123456789012345678901
+		;12mの永遠、進み
+		DA:11:6 = 454
+		;回廊の、入り입戻り
+		DA:19:0 = 474
+	CASE 18
+	;第四カルパ、冥府の宝物庫(半月、만월)
+		FLAG:최대X = 27
+		FLAG:최대Y = 26
+;                                012345678901234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"             1             "
+		CALL MAKE_FLOOR_LINE, 1,"             1             "
+		CALL MAKE_FLOOR_LINE, 2,"   111111111>1<111111111   "
+		CALL MAKE_FLOOR_LINE, 3,"   1         A         1   "
+		CALL MAKE_FLOOR_LINE, 4,"   1    1111>1<1111    1   "
+		CALL MAKE_FLOOR_LINE, 5,"   1    111  1  111    1   "
+		CALL MAKE_FLOOR_LINE, 6,"   1    111  1  111    1   "
+		CALL MAKE_FLOOR_LINE, 7,"   1    1 A  2  A 1    1   "
+		CALL MAKE_FLOOR_LINE, 8,"   1    1 1  1  1 1    1   "
+		CALL MAKE_FLOOR_LINE, 9,"   1    1 1  1  1 1    1   "
+		CALL MAKE_FLOOR_LINE,10,"   1    1 1  1  1 1    1   "
+		CALL MAKE_FLOOR_LINE,11,"   1    1 1  1  1 1    1   "
+		CALL MAKE_FLOOR_LINE,12,"   1    1 1  -  1 1    1   "
+		CALL MAKE_FLOOR_LINE,13,"   A    A 1<111>1 A    A   "
+		CALL MAKE_FLOOR_LINE,14,"   1    1   111   1    1   "
+		CALL MAKE_FLOOR_LINE,15,"   1    1         1    1   "
+		CALL MAKE_FLOOR_LINE,16,"  1111<111<11111>111>1111  "
+		CALL MAKE_FLOOR_LINE,17,"   1    1   111   1    1   "
+		CALL MAKE_FLOOR_LINE,18,"   1    1    1    1    1   "
+		CALL MAKE_FLOOR_LINE,19,"   V    V    2    V    V   "
+		CALL MAKE_FLOOR_LINE,20,"   1    1    1    1    1   "
+		CALL MAKE_FLOOR_LINE,21,"   1    1    1    1    1   "
+		CALL MAKE_FLOOR_LINE,22,"             1             "
+		CALL MAKE_FLOOR_LINE,23,"             1             "
+		CALL MAKE_FLOOR_LINE,24,"             1             "
+		CALL MAKE_FLOOR_LINE,25,"                           "
+;                                012345678901234567890123456
+		;12mの永遠、進み
+		DA:13:0 = 454
+		;出입ワープ
+		DA:3:21 = 484
+		DA:8:21 = 484
+		DA:18:21 = 484
+		DA:23:21 = 484
+		;宝箱の設置_宝_20
+		CALL SET_TILE,3,16,던전フラグ:68:90,0,203
+		;宝箱の設置_宝_21
+		CALL SET_TILE,8,16,던전フラグ:68:91,0,201
+		;宝箱の設置_宝_22
+		CALL SET_TILE,18,16,던전フラグ:68:92,0,223
+		;宝箱の設置_宝_23
+		CALL SET_TILE,23,16,던전フラグ:68:93,0,233
+		;宝箱の設置_宝_24
+		CALL SET_TILE,13,14,던전フラグ:68:94,0,243
+	CASE 19
+	;第四カルパ、冥府の広間(新月)、蝿王様
+		FLAG:최대X = 27
+		FLAG:최대Y = 26
+;                                012345678901234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"               1           "
+		CALL MAKE_FLOOR_LINE, 1,"       111     1           "
+		CALL MAKE_FLOOR_LINE, 2,"      11111    C           "
+		CALL MAKE_FLOOR_LINE, 3,"      11111   C1           "
+		CALL MAKE_FLOOR_LINE, 4,"      11111  1C            "
+		CALL MAKE_FLOOR_LINE, 5,"       111   1             "
+		CALL MAKE_FLOOR_LINE, 6,"        1   C1             "
+		CALL MAKE_FLOOR_LINE, 7,"       C1C 11              "
+		CALL MAKE_FLOOR_LINE, 8,"        f  1               "
+		CALL MAKE_FLOOR_LINE, 9,"       C1C C               "
+		CALL MAKE_FLOOR_LINE,10,"       1C1>1<C             "
+		CALL MAKE_FLOOR_LINE,11,"       C1C   CC            "
+		CALL MAKE_FLOOR_LINE,12,"        A     C            "
+		CALL MAKE_FLOOR_LINE,13,"  CC  C C   C C            "
+		CALL MAKE_FLOOR_LINE,14,"  CC  CCC   CCC            "
+		CALL MAKE_FLOOR_LINE,15,"  CC CCCCC CC              "
+		CALL MAKE_FLOOR_LINE,16,"  CCCC  CCCC               "
+		CALL MAKE_FLOOR_LINE,17," CCC      CCC              "
+		CALL MAKE_FLOOR_LINE,18," CCCCCC CC CC              "
+		CALL MAKE_FLOOR_LINE,19,"   CC CCCCCCC>CCC          "
+		CALL MAKE_FLOOR_LINE,20,"   C  CCC CC    C          "
+		CALL MAKE_FLOOR_LINE,21,"   2  CCC  A CCCC          "
+		CALL MAKE_FLOOR_LINE,22,"   1   C   CCC             "
+		CALL MAKE_FLOOR_LINE,23,"   1   CCC                 "
+		CALL MAKE_FLOOR_LINE,24,"   1                       "
+		CALL MAKE_FLOOR_LINE,25,"                           "
+;                                012345678901234567890123456
+		;12mの永遠、進み
+		DA:15:0 = 454
+		;蝿王様
+		IF !(던전フラグ:68:50) && !(FLAG:ルート確定)
+			DA:8:6 = 414
+			DA:8:3 = 414
+		ENDIF
+	CASE 20
+	;第四カルパ奥
+		FLAG:최대X = 27
+		FLAG:최대Y = 26
+;                                012345678901234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"                           "
+		CALL MAKE_FLOOR_LINE, 1,"             4             "
+		CALL MAKE_FLOOR_LINE, 2,"             1             "
+		CALL MAKE_FLOOR_LINE, 3,"             1             "
+		CALL MAKE_FLOOR_LINE, 4,"             1             "
+		CALL MAKE_FLOOR_LINE, 5,"                           "
+		CALL MAKE_FLOOR_LINE, 6,"             1             "
+		CALL MAKE_FLOOR_LINE, 7,"            111            "
+		CALL MAKE_FLOOR_LINE, 8,"           11111           "
+		CALL MAKE_FLOOR_LINE, 9,"          11   11          "
+		CALL MAKE_FLOOR_LINE,10,"          11 4 11          "
+		CALL MAKE_FLOOR_LINE,11,"          1111111          "
+		CALL MAKE_FLOOR_LINE,12,"           11111           "
+		CALL MAKE_FLOOR_LINE,13,"             1             "
+		CALL MAKE_FLOOR_LINE,14,"             2             "
+		CALL MAKE_FLOOR_LINE,15,"             1             "
+		CALL MAKE_FLOOR_LINE,16,"             1             "
+		CALL MAKE_FLOOR_LINE,17,"             -             "
+		CALL MAKE_FLOOR_LINE,18,"             1             "
+		CALL MAKE_FLOOR_LINE,19,"             C             "
+		CALL MAKE_FLOOR_LINE,20,"         CC1C1C11C         "
+		CALL MAKE_FLOOR_LINE,21,"             1             "
+		CALL MAKE_FLOOR_LINE,22,"            111            "
+		CALL MAKE_FLOOR_LINE,23,"            1CC            "
+		CALL MAKE_FLOOR_LINE,24,"             1             "
+		CALL MAKE_FLOOR_LINE,25,"             1             "
+;                                012345678901234567890123456
+		;12mの帰り
+		DA:13:25 = 444
+		;12mの新月について
+		DA:12:22 = 494
+		;覗き穴５つ눈（四層ラスト）
+		DA:13:10 = 104
+		;覗き穴で扉해방
+		SIF 던전フラグ:68:29 == 2
+			DA:13:5 = 2
+		;五層カルパへの入り입
+		DA:13:1 = 64
+	CASE 21
+	;第五カルパ1F
+		FLAG:최대X = 27
+		FLAG:최대Y = 26
+;                                012345678901234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"                           "
+		CALL MAKE_FLOOR_LINE, 1,"             1             "
+		CALL MAKE_FLOOR_LINE, 2,"            111            "
+		CALL MAKE_FLOOR_LINE, 3,"    11<1111>111<111111     "
+		CALL MAKE_FLOOR_LINE, 4,"    1   1   111      1     "
+		CALL MAKE_FLOOR_LINE, 5,"    1   1    1       1     "
+		CALL MAKE_FLOOR_LINE, 6,"    11111    V       11111 "
+		CALL MAKE_FLOOR_LINE, 7,"    1   1   111      1 A 1 "
+		CALL MAKE_FLOOR_LINE, 8,"    A   V  11111  7111 1 1 "
+		CALL MAKE_FLOOR_LINE, 9,"    1   1  1   1       1   "
+		CALL MAKE_FLOOR_LINE,10,"    11111121   1>1111111   "
+		CALL MAKE_FLOOR_LINE,11,"    1      1   1  1    1   "
+		CALL MAKE_FLOOR_LINE,12,"    1 117  11111  A    V   "
+		CALL MAKE_FLOOR_LINE,13," 1  V 1     111   111111   "
+		CALL MAKE_FLOOR_LINE,14," 111111      A    1    1   "
+		CALL MAKE_FLOOR_LINE,15,"      1     111   1    1   "
+		CALL MAKE_FLOOR_LINE,16,"      11111>111<11111>11   "
+		CALL MAKE_FLOOR_LINE,17,"            111            "
+		CALL MAKE_FLOOR_LINE,18,"             1             "
+		CALL MAKE_FLOOR_LINE,19,"                           "
+		CALL MAKE_FLOOR_LINE,20,"            111            "
+		CALL MAKE_FLOOR_LINE,21,"            111            "
+		CALL MAKE_FLOOR_LINE,22,"            111            "
+		CALL MAKE_FLOOR_LINE,23,"             1             "
+		CALL MAKE_FLOOR_LINE,24,"             S             "
+		CALL MAKE_FLOOR_LINE,25,"                           "
+;                                012345678901234567890123456
+		;メノ라해방で扉作るるるる
+		SIF 던전フラグ:68:24
+			DA:13:19 = 2
+		;カルパ５メノ라해방
+		DA:13:21= 184
+		;宝箱の設置_宝_25
+		CALL SET_TILE,13,1,던전フラグ:68:95,0,253
+		;宝箱の設置_宝_26
+		CALL SET_TILE,1,13,던전フラグ:68:96,0,263
+		;宝箱の設置_宝_27
+		CALL SET_TILE,25,8,던전フラグ:68:97,0,273
+	CASE 22
+	;第五カルパ2F
+		FLAG:최대X = 27
+		FLAG:최대Y = 26
+;                                012345678901234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"                           "
+		CALL MAKE_FLOOR_LINE, 1,"                           "
+		CALL MAKE_FLOOR_LINE, 2,"            111            "
+		CALL MAKE_FLOOR_LINE, 3,"           11111           "
+		CALL MAKE_FLOOR_LINE, 4,"           11111           "
+		CALL MAKE_FLOOR_LINE, 5,"           11111           "
+		CALL MAKE_FLOOR_LINE, 6,"            111            "
+		CALL MAKE_FLOOR_LINE, 7,"             +             "
+		CALL MAKE_FLOOR_LINE, 8,"     1111  1 111  6111     "
+		CALL MAKE_FLOOR_LINE, 9,"     1     1   1     1     "
+		CALL MAKE_FLOOR_LINE,10,"     1111121   1211111     "
+		CALL MAKE_FLOOR_LINE,11,"     1     1   1     1     "
+		CALL MAKE_FLOOR_LINE,12,"     1116  111 1  1111     "
+		CALL MAKE_FLOOR_LINE,13,"             2             "
+		CALL MAKE_FLOOR_LINE,14,"             1             "
+		CALL MAKE_FLOOR_LINE,15,"             1             "
+		CALL MAKE_FLOOR_LINE,16,"        111111             "
+		CALL MAKE_FLOOR_LINE,17,"        1                  "
+		CALL MAKE_FLOOR_LINE,18,"        1                  "
+		CALL MAKE_FLOOR_LINE,19,"        1                  "
+		CALL MAKE_FLOOR_LINE,20,"        1                  "
+		CALL MAKE_FLOOR_LINE,21,"        7                  "
+		CALL MAKE_FLOOR_LINE,22,"                           "
+		CALL MAKE_FLOOR_LINE,23,"                           "
+		CALL MAKE_FLOOR_LINE,24,"                           "
+		CALL MAKE_FLOOR_LINE,25,"                           "
+;                                        012345678901234567890123456
+	CASE 23
+	;第五カルパ3F
+		FLAG:최대X = 27
+		FLAG:최대Y = 26
+;                                012345678901234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"                           "
+		CALL MAKE_FLOOR_LINE, 1,"                           "
+		CALL MAKE_FLOOR_LINE, 2,"                           "
+		CALL MAKE_FLOOR_LINE, 3,"                           "
+		CALL MAKE_FLOOR_LINE, 4,"               111         "
+		CALL MAKE_FLOOR_LINE, 5,"               111 7       "
+		CALL MAKE_FLOOR_LINE, 6,"           1   111 1       "
+		CALL MAKE_FLOOR_LINE, 7,"           2    d  2       "
+		CALL MAKE_FLOOR_LINE, 8,"          11111b1111       "
+		CALL MAKE_FLOOR_LINE, 9,"    1<111<1  2  1111       "
+		CALL MAKE_FLOOR_LINE,10,"    1  A  c 111   2        "
+		CALL MAKE_FLOOR_LINE,11,"    V  1  1 111  11111a1   "
+		CALL MAKE_FLOOR_LINE,12,"    11>1<11 111  1  A  1   "
+		CALL MAKE_FLOOR_LINE,13,"    V  A  A      V  1  V   "
+		CALL MAKE_FLOOR_LINE,14,"    1  1  1  111 11>1<11   "
+		CALL MAKE_FLOOR_LINE,15,"    11>1111  111 A  A  1   "
+		CALL MAKE_FLOOR_LINE,16,"         2   111 1  1  V   "
+		CALL MAKE_FLOOR_LINE,17,"        1111  2  1111<11   "
+		CALL MAKE_FLOOR_LINE,18,"        1111a11111         "
+		CALL MAKE_FLOOR_LINE,19,"        2  e               "
+		CALL MAKE_FLOOR_LINE,20,"        1 111              "
+		CALL MAKE_FLOOR_LINE,21,"        6 111              "
+		CALL MAKE_FLOOR_LINE,22,"          111              "
+		CALL MAKE_FLOOR_LINE,23,"                           "
+		CALL MAKE_FLOOR_LINE,24,"                           "
+		CALL MAKE_FLOOR_LINE,25,"                           "
+;                                012345678901234567890123456
+		;宝箱の設置_宝_28
+		CALL SET_TILE,11,21,던전フラグ:68:98,0,283
+		;宝箱の設置_宝_29
+		CALL SET_TILE,16,5,던전フラグ:68:99,0,293
+
+		;초기픽시이벤트
+		SIF 던전フラグ:68:45 == 0
+			DA:13:11=504
+		;マ스타犯し이벤트
+		SIF 던전フラグ:68:46 == 0
+			DA:14:15=514
+
+	CASE 24
+	;第五カルパ4F
+		FLAG:최대X = 27
+		FLAG:최대Y = 26
+;                                012345678901234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"                           "
+		CALL MAKE_FLOOR_LINE, 1,"                           "
+		CALL MAKE_FLOOR_LINE, 2,"                           "
+		CALL MAKE_FLOOR_LINE, 3,"                           "
+		CALL MAKE_FLOOR_LINE, 4,"                           "
+		CALL MAKE_FLOOR_LINE, 5,"                   6       "
+		CALL MAKE_FLOOR_LINE, 6,"                   1       "
+		CALL MAKE_FLOOR_LINE, 7,"                   1       "
+		CALL MAKE_FLOOR_LINE, 8,"                   1       "
+		CALL MAKE_FLOOR_LINE, 9,"           11111   1       "
+		CALL MAKE_FLOOR_LINE,10,"          1111111  1       "
+		CALL MAKE_FLOOR_LINE,11,"         111111111 1       "
+		CALL MAKE_FLOOR_LINE,12,"         111111111 1       "
+		CALL MAKE_FLOOR_LINE,13,"         111111111 1       "
+		CALL MAKE_FLOOR_LINE,14,"         111111111 1       "
+		CALL MAKE_FLOOR_LINE,15,"         111111111 1       "
+		CALL MAKE_FLOOR_LINE,16,"          1111111  1       "
+		CALL MAKE_FLOOR_LINE,17,"           11111   1       "
+		CALL MAKE_FLOOR_LINE,18,"             1     1       "
+		CALL MAKE_FLOOR_LINE,19,"             -     1       "
+		CALL MAKE_FLOOR_LINE,20,"             1     1       "
+		CALL MAKE_FLOOR_LINE,21,"          1111111111       "
+		CALL MAKE_FLOOR_LINE,22,"             1             "
+		CALL MAKE_FLOOR_LINE,23,"             1             "
+		CALL MAKE_FLOOR_LINE,24,"             S             "
+		CALL MAKE_FLOOR_LINE,25,"                           "
+;                                012345678901234567890123456
+		;메타트론さまー
+		SIF 던전フラグ:68:51 == 0 && DAY <= 50 && FLAG:5 != 9
+			DA:13:17=524
+		;と、穴
+		SIF DAY <= 50 && FLAG:5 != 9
+			DA:13:13=534
+		;宝箱の設置_宝_30
+		CALL SET_TILE,10,21,던전フラグ:68:55,0,303
+
+	CASEELSE
+
+ENDSELECT
+
+;=======================================================================
+;タイル定義
+;=======================================================================
+@DEFINE_TILES_68, ARGS, ARG, ARG:1
+#LOCALSIZE 1
+
+;능력の扉
+SIF ARGS == "a"
+	RETURN 502
+SIF ARGS == "b"
+	RETURN 512
+SIF ARGS == "c"
+	RETURN 522
+SIF ARGS == "d"
+	RETURN 532
+SIF ARGS == "e"
+	RETURN 542
+SIF ARGS == "f"
+	RETURN 552
+;一方通行
+SIF ARGS == "A"
+	RETURN 912
+SIF ARGS == ">"
+	RETURN 932
+SIF ARGS == "V"
+	RETURN 952
+SIF ARGS == "<"
+	RETURN 972
+;落とし穴
+SIF ARGS == "P"
+	RETURN 15
+;HP罠
+SIF ARGS == "H"
+	RETURN 25
+;ターミナル
+SIF ARGS == "T"
+	RETURN 9
+;サブターミナル
+SIF ARGS == "S"
+	RETURN 19
+;呪いの間、蝿王様倒してたら普通のタイルに
+IF ARGS == "C"
+	IF 던전フラグ:68:50 > 0
+		RETURN 1
+	ELSE
+		RETURN 45
+	ENDIF
+ENDIF
+;第二カルパ、呪いの間登り
+SIF ARGS == "^"
+	RETURN 1006
+;第二カルパ、呪いの間下り
+SIF ARGS == "*"
+	RETURN 1007
+;「月輪のカギ」の扉
+SIF ARGS == "+"
+	RETURN 892
+;「明쇼우のカギ」の扉
+SIF ARGS == "-"
+	RETURN 882
+;토오루明扉
+SIF ARGS == "="
+	RETURN 32
+RETURN 0
+
+;=======================================
+;罠
+;=======================================
+@TILE_MARK_COMMON_68_5, ARG, ARG:1, ARG:2
+SELECTCASE ARG / 10
+	;落とし穴(P)
+	CASE 1
+		RESULTS = \@GET_FLOOR_ANALYZE_T(ARG:1, ARG:2) == 2 ?　#□\@
+	;HPトラップ床(H)
+	CASE 2
+		RESULTS = \@GET_FLOOR_ANALYZE_T(ARG:1, ARG:2) == 2 ?덫#□\@
+;	;토오루明扉(=)
+;	CASE 3
+;		RESULTS = \@GET_FLOOR_ANALYZE_T(ARG:1, ARG:2) == 2 ?문#■\@
+	;呪い床(C)
+	CASE 4
+		RESULTS = \@GET_FLOOR_ANALYZE_T(ARG:1, ARG:2) == 2 ?저#저\@
+	;呪い床(C)
+	CASEELSE
+		RESULTS = \@GET_FLOOR_ANALYZE_T(ARG:1, ARG:2) == 2 ?저#저\@
+ENDSELECT
+@TILE_MARK_COMMON_68_9, ARG, ARG:1, ARG:2
+SELECTCASE ARG / 10
+	;ターミナル(T)
+	CASE 0
+		RESULTS = \@GET_FLOOR_ANALYZE_T(ARG:1, ARG:2) == 2 ?Ｔ#Ｔ\@
+	;サブターミナル床(t)
+	CASE 1
+		RESULTS = \@GET_FLOOR_ANALYZE_T(ARG:1, ARG:2) == 2 ?ｓ#ｓ\@
+ENDSELECT
+@TILE_MARK_COMMON_68_2, ARG, ARG:1, ARG:2
+SELECTCASE ARG / 10
+	;隠し扉(T)
+	CASE 3
+		RESULTS = \@GET_FLOOR_ANALYZE_T(ARG:1, ARG:2) == 2 ?문#■\@
+	;조건扉(*)
+	CASE 50,51,52,53,54,55,88,89
+		RESULTS = \@GET_FLOOR_ANALYZE_T(ARG:1, ARG:2) == 2 ?※#※\@
+	;それ以外
+	CASEELSE
+		RESULTS = \@GET_FLOOR_ANALYZE_T(ARG:1, ARG:2) == 2 ?문#문\@
+ENDSELECT
+
+@TRAP_68
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+	;落とし穴(P)
+	CASE 1
+		PRINTW ＞이런　떨어지는 구멍이다！！
+		FLAG:現M += 1
+		CALL MAKE_FLOOR, FLAG:現던전
+		CALL AUTOMAP
+	;HP데미지(H)
+	CASE 2
+		CALL DUNGEON_TRAP_HP, 10 + RAND:11
+	CASE 4
+		FOR LOCAL,1,7
+			SIF POS(LOCAL) > -1 && GET_STATE(CFLAG:(POS(LOCAL)):ステート) != "DYING"
+				TIMES BASE:(POS(LOCAL)):ＭＡＧ,0.975
+		NEXT
+ENDSELECT
+RETURN 1
+
+;=======================================================================
+;[5]조사　実行時の이벤트
+;=======================================================================
+@EVENT_CHECK_DUNGEON_68
+
+
+;==========
+;出입の処理
+;==========
+IF DA:(FLAG:現X):(FLAG:現Y) == 8
+	CALL DUNGEON_EXIT
+	RETURN 1
+;========
+;宝の処理
+;========
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 3
+	IF DA:(FLAG:現X):(FLAG:現Y) / 10 == 97
+		CALL GET_TREASURE,357,1,FLAG:現던전,99
+		RETURN RESULT
+	ELSE
+		CALL TREASURE_68
+		RETURN RESULT
+	ENDIF
+;=======
+;罠
+;=======
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 5
+	PRINTFORMW ＞罠がある
+	RETURN 1
+;=======
+;階段
+;=======
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 6
+	CALL DUNGEON_UPSTAIRS,FLAG:現M-1,FLAG:現X,FLAG:現Y
+	RETURN 1
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 1006
+	CALL DUNGEON_UPSTAIRS,5,2,1
+	RETURN 1
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 7
+	CALL DUNGEON_DOWNSTAIRS,FLAG:現M+1,FLAG:現X,FLAG:現Y
+	RETURN 1
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 1007
+	CALL DUNGEON_DOWNSTAIRS,9,10,17
+	RETURN 1
+;========================
+;ターミナル
+;========================
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 9
+
+	IF DA:(FLAG:現X):(FLAG:現Y) / 10 == 0
+		CALL DUNGEON_TERMINAL
+	ELSEIF DA:(FLAG:現X):(FLAG:現Y) / 10 == 1
+		CALL MESSAGE_WINDOW_D, "", "＞Ｓ터미널이 있다 /＞어떻게 합니까？"
+		LOCALS = [0] 이용하지 않는다 / [1] 세이브 / [9] 터미널로 돌아간다 / [100] 자신의 방으로 돌아간다
+		CALL INPUT_SELECT_D,LOCALS
+		IF RESULT == 100
+			FLAG:탈출 = 1
+			RETURN 1
+		ELSEIF RESULT == 9
+			CALL DUNGEON_WORP,0,10,18
+			RETURN 1
+		ELSEIF RESULT == 1
+			CALL TITLE_SAVEGAME
+			RETURN 1
+		ELSE
+			RETURN 1
+		ENDIF
+	ENDIF
+	RETURN 0
+;=======
+;이벤트
+;=======
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 4
+	CALL EVENTS_AMARA_68
+	RETURN 1
+ENDIF
+RETURN 1
+
+;=======================================================================
+;タイル進入時の이벤트
+;=======================================================================
+@EVENT_ENTER_DUNGEON_68,ARG
+;ARG = 進入時の向き　0の場合ワープなど
+;==========
+;出입の処理
+;==========
+IF DA:(FLAG:現X):(FLAG:現Y) == 8
+	CALL DUNGEON_EXIT
+	RETURN 1
+;========
+;宝の処理
+;========
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 3
+	CALL TREASURE_68
+	RETURN RESULT
+;=======
+;罠
+;=======
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 5
+	CALL TRAP_68
+	RETURN RESULT
+;=======
+;階段
+;=======
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 6
+	CALL DUNGEON_UPSTAIRS,FLAG:現M-1,FLAG:現X,FLAG:現Y
+	RETURN 1
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 1006
+	CALL DUNGEON_UPSTAIRS,5,2,1
+	RETURN 1
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 7
+	CALL DUNGEON_DOWNSTAIRS,FLAG:現M+1,FLAG:現X,FLAG:現Y
+	RETURN 1
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 1007
+	CALL DUNGEON_DOWNSTAIRS,9,10,17
+	RETURN 1
+;==========
+;扉の処理
+;==========
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 32
+	CALL DUNGEON_DOOR,ARG
+	RETURN 0
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 2
+	CALL DUNGEON_DOOR,ARG
+	RETURN 0
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 502
+	CALL DUNGEON_DOOR,ARG
+	RETURN 0
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 512
+	CALL DUNGEON_DOOR,ARG
+	RETURN 0
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 522
+	CALL DUNGEON_DOOR,ARG
+	RETURN 0
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 532
+	CALL DUNGEON_DOOR,ARG
+	RETURN 0
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 542
+	CALL DUNGEON_DOOR,ARG
+	RETURN 0
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 552
+	CALL DUNGEON_DOOR,ARG
+	RETURN 0
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 892
+	;월륜의열쇠　の扉
+	IF ITEM:월륜의열쇠
+		CALL DUNGEON_DOOR,ARG
+	ENDIF
+	RETURN 0
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 882
+	;빛나는별의열쇠　の扉
+	IF ITEM:빛나는별의열쇠
+		CALL DUNGEON_DOOR,ARG
+	ENDIF
+	RETURN 0
+;========================
+;ターミナル
+;========================
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 9
+
+	IF DA:(FLAG:現X):(FLAG:現Y) / 10 == 0
+		CALL DUNGEON_TERMINAL
+	ELSEIF DA:(FLAG:現X):(FLAG:現Y) / 10 == 1
+		CALL MESSAGE_WINDOW_D, "", "＞Ｓ터미널이 있다 /＞어떻게 합니까？"
+		LOCALS = [0] 이용하지 않는다 / [1] 세이브 / [9] 터미널로 돌아간다 / [100] 자신의 방으로 돌아간다
+		CALL INPUT_SELECT_D,LOCALS
+		IF RESULT == 100
+			FLAG:탈출 = 1
+			RETURN 1
+		ELSEIF RESULT == 9
+			CALL DUNGEON_WORP,0,10,18
+			RETURN 1
+		ELSEIF RESULT == 1
+			CALL TITLE_SAVEGAME
+			RETURN 1
+		ELSE
+			RETURN 1
+		ENDIF
+	ENDIF
+	RETURN 0
+
+;========================
+;一方通行
+;========================
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 912
+	FLAG:現Y-=1
+	RETURN 1
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 932
+	FLAG:現X+=1
+	RETURN 1
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 952
+	FLAG:現Y+=1
+	RETURN 1
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 972
+	FLAG:現X-=1
+	RETURN 1
+;========================
+;이벤트
+;========================
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 4
+	CALL EVENTS_AMARA_68
+	RETURN 1
+ENDIF
+
+RETURN 0
+
+
+
+
+;=======================================================================
+;エンカウント率
+;=======================================================================
+@ENCOUNT_RATE_68
+
+IF DA:(FLAG:現X):(FLAG:現Y) == 35
+	FLAG:エンカウント率 = FLAG:未遭遇歩数*(RAND:2 + 3)
+	FLAG:MAG소비율 = 120
+ELSEIF FLAG:現M == 0
+	FLAG:未遭遇歩数 = 0
+	FLAG:エンカウント率 = 0
+	FLAG:MAG소비율 = 0
+ELSE
+	FLAG:エンカウント率 = FLAG:未遭遇歩数*(RAND:2 + 2)
+	FLAG:MAG소비율 = 100
+ENDIF
+
+SIF FLAG:未遭遇歩数 < 6
+	FLAG:エンカウント率 = 0
+
+;=======================================================================
+;필요레벨눈安
+;권장LV 雑물고기최저LV 雑물고기最高LV ボスLV 
+;=======================================================================
+@GET_DUNGEON_LV_68
+RETURN 20, 20, 60, 90
+;=======================================================================
+;エンカウント処理
+;=======================================================================
+@CHECK_ENCOUNT_68
+IF RAND:100 < FLAG:エンカウント率
+	CALL ENEMY_TABLE
+	RETURN 1
+ELSE
+	FLAG:未遭遇歩数 += 1
+	RETURN 0
+ENDIF
+;=======================================================================
+;적の종족の종류数
+;=======================================================================
+@CLASS_NUM_68
+RETURN CLASS_NUM_COMMON("中級")
+;=======================================================================
+;적の総数
+;=======================================================================
+@ENEMY_NUM_68, ARG
+RETURN ENEMY_NUM_COMMON("中級", ARG)
+
+;=======================================================================
+;적스테이터스설정(呪い部屋用とか)
+;=======================================================================
+@SET_ENEMY_STATUS_68,ARG
+ABL:(CHARANUM-1):회화타입 = 331
+IF FLAG:現M == 9
+	MAXBASE:ARG:LV -= 25
+	BASE:ARG:LV -= 25
+	CALL SYNC_STATUS,ARG
+	CALL HEALTH_CHARA,ARG
+ELSEIF FLAG:現M >= 21 && FLAG:現M <= 25
+	MAXBASE:ARG:LV -= 5
+	BASE:ARG:LV -= 5
+	CALL SYNC_STATUS,ARG
+	CALL HEALTH_CHARA,ARG
+ENDIF
+;=======================================================================
+;적の종류
+;=======================================================================
+@ENEMY_68, ARG
+IF FLAG:現M == 1
+	SELECTCASE RAND:100
+		CASE IS < 20
+			LOCAL   = [[キャラ:오니]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+5
+		CASE IS < 35
+			LOCAL   = [[キャラ:모무노후]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+5
+		CASE IS < 55
+			LOCAL   = [[キャラ:네코마타]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+5
+		CASE IS < 75
+			LOCAL   = [[キャラ:코파텐구]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+5
+		CASE IS < 97
+			LOCAL   = [[キャラ:누에]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+5
+		CASEELSE
+			LOCAL   = [[キャラ:디스]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+5
+	ENDSELECT
+	RETURN LOCAL,LOCAL:1
+ELSEIF FLAG:現M == 2
+	SELECTCASE RAND:100
+		CASE IS < 8
+			LOCAL   = [[キャラ:화백]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+5
+		CASE IS < 15
+			LOCAL   = [[キャラ:리림]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+5
+		CASE IS < 30
+			LOCAL   = [[キャラ:잭랜턴]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+5
+		CASE IS < 45
+			LOCAL   = [[キャラ:살라만더]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+5
+		CASE IS < 65
+			LOCAL   = [[キャラ:오니]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+5
+		CASE IS < 75
+			LOCAL   = [[キャラ:인큐버스]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+5
+		CASE IS < 85
+			LOCAL   = [[キャラ:카라스텐구]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+5
+		CASE IS < 93
+			LOCAL   = [[キャラ:누에]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+5
+		CASE IS < 97
+			LOCAL   = [[キャラ:모무노후]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+5
+		CASEELSE
+			LOCAL   = [[キャラ:사티]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+3
+	ENDSELECT
+	RETURN LOCAL,LOCAL:1
+ELSEIF FLAG:現M == 3
+	SELECTCASE RAND:100
+		CASE IS < 20
+			LOCAL   = [[キャラ:포르네우스]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+5
+		CASE IS < 45
+			LOCAL   = [[キャラ:드베르가]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+5
+		CASE IS < 58
+			LOCAL   = [[キャラ:나가]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+5
+		CASE IS < 65
+			LOCAL   = [[キャラ:엘리고르]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+5
+		CASE IS < 80
+			LOCAL   = [[キャラ:바질리스크]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+5
+		CASE IS < 92
+			LOCAL   = [[キャラ:디스]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+2
+		CASEELSE
+			LOCAL   = [[キャラ:아라하바키]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+12
+	ENDSELECT
+	RETURN LOCAL,LOCAL:1
+ELSEIF FLAG:現M >= 4 && FLAG:現M <= 5
+	;アマラ二層
+	SELECTCASE RAND:100
+		CASE IS < 15
+			LOCAL   = [[キャラ:슬라임]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+8
+		CASE IS < 35
+			LOCAL   = [[キャラ:마카브르]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+8
+		CASE IS < 50
+			LOCAL   = [[キャラ:피샤차]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+8
+		CASE IS < 60
+			LOCAL   = [[キャラ:레기온]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+5
+		CASE IS < 75
+			LOCAL   = [[キャラ:오시치]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+8
+		CASE IS < 85
+			LOCAL   = [[キャラ:뎁스]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+8
+		CASE IS < 90
+			LOCAL   = [[キャラ:야카]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+5
+		CASE IS < 95
+			LOCAL   = [[キャラ:색정인연령]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+8
+		CASEELSE
+			LOCAL   = [[キャラ:섀도우]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+1
+	ENDSELECT
+	RETURN LOCAL,LOCAL:1
+ELSEIF FLAG:現M == 6
+	SELECTCASE RAND:100
+		CASE IS < 20
+			LOCAL   = [[キャラ:모무노후]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+8
+		CASE IS < 40
+			LOCAL   = [[キャラ:오니]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+8
+		CASE IS < 55
+			LOCAL   = [[キャラ:요모츠시코메]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+8
+		CASE IS < 65
+			LOCAL   = [[キャラ:가샤도쿠로]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+8
+		;시키오지が合体조건ついてたので代わりに・・・
+		CASEELSE
+			LOCAL   = [[キャラ:기리메카라]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+2
+	ENDSELECT
+	RETURN LOCAL,LOCAL:1
+ELSEIF FLAG:現M >= 7 && FLAG:現M <= 8
+	SELECTCASE RAND:100
+		CASE IS < 20
+			LOCAL   = [[キャラ:모스맨]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+8
+		CASE IS < 35
+			LOCAL   = [[キャラ:춍춍]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+8
+		CASE IS < 48
+			LOCAL   = [[キャラ:백호]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+8
+		CASE IS < 55
+			LOCAL   = [[キャラ:모리안]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)-2
+		CASE IS < 65
+			LOCAL   = [[キャラ:그르르]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+8
+		CASE IS < 86
+			LOCAL   = [[キャラ:카마조츠]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+8
+		CASE IS < 97
+			LOCAL   = [[キャラ:스튐팔리데스]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+8
+		CASEELSE
+			LOCAL   = [[キャラ:흐레스벨그]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)-13
+	ENDSELECT
+	RETURN LOCAL,LOCAL:1
+ELSEIF FLAG:現M == 9
+	;呪い
+	SELECTCASE RAND:100
+		CASE IS < 21
+			LOCAL   = [[キャラ:뉵스]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+20
+		CASE IS < 42
+			LOCAL   = [[キャラ:플라로우스]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+2
+		CASE IS < 63
+			LOCAL   = [[キャラ:케르눈노스]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+16
+		CASE IS < 74
+			LOCAL   = [[キャラ:펜리르]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+1
+		CASEELSE
+			LOCAL   = [[キャラ:다곤]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+13
+	ENDSELECT
+	RETURN LOCAL,LOCAL:1
+ELSEIF FLAG:現M >= 10 && FLAG:現M <= 11
+	;アマラ３層
+	SELECTCASE RAND:100
+		CASE IS < 20
+			LOCAL   = [[キャラ:엘리고르]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+10
+		CASE IS < 35
+			LOCAL   = [[キャラ:나가・라쟈]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+10
+		CASE IS < 55
+			LOCAL   = [[キャラ:서큐버스]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+10
+		CASE IS < 70
+			;트롤代わり
+			LOCAL   = [[キャラ:티탄]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+10
+		CASE IS < 80
+			LOCAL   = [[キャラ:탐・린]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+20
+		CASE IS < 97
+			LOCAL   = [[キャラ:버쳐]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+8
+		CASEELSE
+			LOCAL   = [[キャラ:오베론]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+10
+	ENDSELECT
+	RETURN LOCAL,LOCAL:1
+ELSEIF FLAG:現M >= 12 && FLAG:現M <= 14
+	;하세베階
+	SELECTCASE RAND:100
+		CASE IS < 20
+			LOCAL   = [[キャラ:엘리고르]]
+			LOCAL:1 = 55
+		CASE IS < 35
+			LOCAL   = [[キャラ:데카라비아]]
+			LOCAL:1 = 55
+		CASE IS < 50
+			LOCAL   = [[キャラ:오세]]
+			LOCAL:1 = 55
+		CASE IS < 70
+			LOCAL   = [[キャラ:아크엔젤]]
+			LOCAL:1 = 55
+		CASE IS < 85
+			LOCAL   = [[キャラ:파워]]
+			LOCAL:1 = 55
+		CASEELSE
+			LOCAL   = [[キャラ:버쳐]]
+			LOCAL:1 = 55
+	ENDSELECT
+	RETURN LOCAL,LOCAL:1
+ELSEIF FLAG:現M >= 15 && FLAG:現M <= 18
+	;アマラ４層
+	SELECTCASE RAND:100
+		CASE IS < 20
+			LOCAL   = [[キャラ:다키니]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+12
+		CASE IS < 35
+			LOCAL   = [[キャラ:케르눈노스]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+8
+		CASE IS < 50
+			LOCAL   = [[キャラ:키메라]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+7
+		CASE IS < 70
+			LOCAL   = [[キャラ:케찰코아틀]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+6
+		CASE IS < 85
+			LOCAL   = [[キャラ:데카라비아]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+12
+		CASEELSE
+			LOCAL   = [[キャラ:기리메카라]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+10
+	ENDSELECT
+	RETURN LOCAL,LOCAL:1
+ELSEIF FLAG:現M >= 19 && FLAG:現M <= 20
+	;アマラ４層奥と呪いの間とか
+	SELECTCASE RAND:100
+		CASE IS < 20
+			LOCAL   = [[キャラ:뉵스]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+20
+		CASE IS < 40
+			LOCAL   = [[キャラ:플라로우스]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+2
+		CASE IS < 55
+			LOCAL   = [[キャラ:케르눈노스]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+16
+		CASE IS < 65
+			LOCAL   = [[キャラ:펜리르]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)
+		CASEELSE
+			LOCAL   = [[キャラ:다곤]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+13
+	ENDSELECT
+	RETURN LOCAL,LOCAL:1
+ELSEIF FLAG:現M >= 21 && FLAG:現M <= 25
+	;アマラ５層
+	SELECTCASE RAND:100
+		CASE IS < 20
+			LOCAL   = [[キャラ:칼리]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)-5
+		CASE IS < 40
+			LOCAL   = [[キャラ:스카아하]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+22
+		CASE IS < 55
+			LOCAL   = [[キャラ:퀸메이브]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+11
+		CASE IS < 65
+			LOCAL   = [[キャラ:펜리르]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+1
+		CASE IS < 75
+			LOCAL   = [[キャラ:가루다]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+2
+		CASE IS < 90
+			LOCAL   = [[キャラ:무르무르]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+9
+		CASEELSE
+			LOCAL   = [[キャラ:오딘]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+3
+	ENDSELECT
+	RETURN LOCAL,LOCAL:1
+ELSE
+	SELECTCASE RAND:100
+		CASE IS < 20
+			LOCAL   = [[キャラ:모스맨]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+8
+		CASE IS < 35
+			LOCAL   = [[キャラ:춍춍]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+8
+		CASE IS < 48
+			LOCAL   = [[キャラ:백호]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+8
+		CASE IS < 55
+			LOCAL   = [[キャラ:모리안]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)-2
+		CASE IS < 65
+			LOCAL   = [[キャラ:그르르]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+8
+		CASE IS < 86
+			LOCAL   = [[キャラ:카마조츠]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+8
+		CASE IS < 97
+			LOCAL   = [[キャラ:스튐팔리데스]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)+8
+		CASEELSE
+			LOCAL   = [[キャラ:흐레스벨그]]
+			LOCAL:1 = CSVBASE(LOCAL,GETNUM(BASE,"LV"),0)-13
+	ENDSELECT
+	RETURN LOCAL,LOCAL:1
+ENDIF
+;=======================================================================
+;宝箱中身
+;=======================================================================
+@TREASURE_68
+
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+			CASE 0
+				CALL GET_TREASURE,[[아이템:보옥]],2,FLAG:現던전,70
+			CASE 1
+				CALL GET_TREASURE,[[아이템:챠크라드롭]],1,FLAG:現던전,71
+			CASE 2
+				CALL GET_TREASURE,[[아이템:운의향]],1,FLAG:現던전,72
+			CASE 3
+				CALL GET_TREASURE,[[아이템:물반경]],1,FLAG:現던전,73
+			CASE 4
+				CALL GET_TREASURE,[[아이템:챠크라포트]],1,FLAG:現던전,74
+			CASE 5
+				CALL GET_TREASURE,[[아이템:은의마니샤]],1,FLAG:現던전,75
+			CASE 6
+				CALL GET_TREASURE,[[아이템:마반경]],1,FLAG:現던전,76
+			CASE 7
+				CALL GET_TREASURE,[[아이템:속도의향]],1,FLAG:現던전,77
+			CASE 8
+				CALL GET_TREASURE,[[아이템:디스가이즈굿즈]],1,FLAG:現던전,78
+			CASE 9
+				CALL GET_TREASURE,[[아이템:챠크라포트]],1,FLAG:現던전,79
+			CASE 10
+				;月輪のカギ
+				CALL GET_TREASURE,357,1,FLAG:現던전,80
+			CASE 11
+				CALL GET_TREASURE,[[아이템:마력의향]],1,FLAG:現던전,81
+			CASE 12
+				CALL GET_TREASURE,[[아이템:힘의향]],1,FLAG:現던전,82
+			CASE 13
+				CALL GET_TREASURE,[[아이템:지혜의향]],1,FLAG:現던전,83
+			CASE 14
+				CALL GET_TREASURE,[[아이템:그레이트챠크라]],1,FLAG:現던전,84
+			CASE 15
+				CALL GET_TREASURE,[[아이템:악행의돌]],1,FLAG:現던전,85
+			CASE 16
+				CALL GET_TREASURE,[[아이템:선행의돌]],1,FLAG:現던전,86
+				PRINTFORML {던전フラグ:68:86}
+			CASE 17
+				CALL GET_TREASURE_TRAP, "PALYZE", 100, GET_TYPE_NUM("신경"), FLAG:現던전, 87
+			CASE 18
+				CALL GET_TREASURE_MONEY,0,25000,FLAG:現던전,88
+			CASE 19
+				CALL GET_TREASURE_MONEY,0,25000,FLAG:現던전,89
+			CASE 20
+				CALL GET_TREASURE,[[아이템:챠크라포트]],1,FLAG:現던전,90
+			CASE 21
+				CALL GET_TREASURE,[[아이템:챠크라드롭]],2,FLAG:現던전,91
+			CASE 22
+				CALL GET_TREASURE,[[아이템:보옥]],2,FLAG:現던전,92
+			CASE 23
+				CALL GET_TREASURE,[[아이템:보옥륜]],1,FLAG:現던전,93
+			CASE 24
+				CALL GET_TREASURE_MONEY,0,100001,FLAG:現던전,94
+			CASE 25
+				CALL GET_TREASURE,[[아이템:반혼향]],1,FLAG:現던전,95
+			CASE 26
+				CALL GET_TREASURE,[[아이템:챠크라드롭]],1,FLAG:現던전,96
+			CASE 27
+				CALL GET_TREASURE,[[아이템:보옥륜]],1,FLAG:現던전,97
+			CASE 28
+				CALL GET_TREASURE,[[아이템:혼돈의돌]],1,FLAG:現던전,98
+			CASE 29
+				CALL GET_TREASURE,[[아이템:질서의돌]],1,FLAG:現던전,99
+			CASE 30
+				CALL GET_TREASURE,[[아이템:그레이트챠크라]],1,FLAG:現던전,55
+ENDSELECT
+RETURN 1
+;=======================================================================
+;=======================================================================
+;윤간참가악마
+;=======================================================================
+@DUNGEON_RAPE_DEVIL_68
+;랜덤にどの악마が出るか決定
+;RETURN CSV번호 , 人数 , 레벨
+SELECTCASE RAND:3
+	CASE 0
+		RETURN [[キャラ:오니]],3+RAND:10,CSVBASE([[キャラ:오니]],GETNUM(BASE,"LV"),0)+RAND:3
+	CASE 1
+		RETURN [[キャラ:모무노후]],3+RAND:10,CSVBASE([[キャラ:모무노후]],GETNUM(BASE,"LV"),0)+RAND:3
+	CASE 2
+		RETURN [[キャラ:야카]],3+RAND:10,CSVBASE([[キャラ:야카]],GETNUM(BASE,"LV"),0)+RAND:3
+	CASEELSE
+		RETURN [[キャラ:오니]],3+RAND:10,CSVBASE([[キャラ:오니]],GETNUM(BASE,"LV"),0)+RAND:3
+ENDSELECT
+

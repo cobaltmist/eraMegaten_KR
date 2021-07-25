@@ -1,0 +1,609 @@
+﻿;-----------------------------------------------------------------
+;@SHOPCOMABLE_701
+;旧당신新規加入時のキャラ固有번호の問題を수정用SHOP메뉴(701)
+;　引数、戻り値は特になし
+;-----------------------------------------------------------------
+@SHOPCOMABLE_701
+	[IF_DEBUG]
+		RESULTS = 구아나타 가입문제수정
+		RETURN 1
+	[ENDIF]
+	IF FLAG:DEBUG
+		RESULTS = 구아나타 가입문제수정
+		RETURN 1
+	ENDIF
+	RETURN -1
+
+;-----------------------------------------------------------------
+;@SHOPCOMABLE_701, @SHOP_COM_701
+;旧당신新規加入時のキャラ固有번호の問題を수정用SHOP메뉴(701)の実行部
+;　引数、戻り値は特になし
+;　LOCAL:0 = 대상キャラNo.(FORで指定)
+;　LOCAL:1 = 関数内一時処理用1
+;　LOCAL:2 = 関数内一時処理用2
+;　LOCAL:3 = 実行결과판정用
+;-----------------------------------------------------------------
+@SHOP_COM_701
+	;취득스킬확인用デバック君
+	;FOR LOCAL, 1 , CHARANUM
+	;	IF NO:LOCAL == 4998
+	;		PRINTL
+	;		DRAWLINE
+	;		PRINTL 취득する스킬は以下の通りです。
+	;		DRAWLINE
+	;		;초기스킬
+	;		FOR LOCAL:1 ,1,8
+	;			LOCALS = 스킬{(LOCAL:1)}
+	;			SIF ABL:LOCAL:LOCALS == 0
+	;				BREAK
+	;			CALLFORM SKILL_NAME_{ABL:LOCAL:LOCALS}
+	;			PRINTFORMLC %RESULTS% (초기)
+	;		NEXT
+	;		PRINTL
+	;		;습득스킬
+	;		FOR (LOCAL:1),1,21
+	;			LOCALS = 습득스킬{(LOCAL:1)}
+	;			LOCALS:1 = 습득LV{(LOCAL:1)}
+	;			SIF ABL:LOCAL:LOCALS == 0
+	;				BREAK
+	;			CALLFORM SKILL_NAME_{ABL:LOCAL:LOCALS}
+	;			PRINTFORMLC %RESULTS%(LV{ABL:LOCAL:(LOCALS:1)})
+	;			SIF (LOCAL:1) % 4 == 0
+	;				PRINTL
+	;		NEXT
+	;		PRINTL
+	;	ENDIF
+	;NEXT
+
+	PRINTL 본 메뉴는 구 아나타에 해당하는 캐릭터의 고유 번호와 스킬을 수정합니다。
+	PRINTL 해당하는 캐릭터가 복수인 경우, 그 숫자만큼 실시가 필요합니다。
+	PRINTL (※해당 캐릭터가 없는 경우는「수정 대상이 되는 캐릭터가 존재하지 않습니다。」가 됩니다)
+	PRINTL 또、고유 번호의 수정은 재가입시키는 형태로 실시하기 때문에、가입 가능 인원(200명)보다 적은 상태로 해주세요。
+	PRINTW 수정을 실행 하시겠습니까?
+	CALL INPUT_YN,"Yes","NO"
+	IF RESULT == 0
+		LOCAL:3 = 0
+		FOR LOCAL, 1 , CHARANUM
+			IF CFLAG:LOCAL:キャラ固有の번호 == 0 || NO:LOCAL == 4999
+				LOCAL:3 = 1
+				CALL ADD_NEW_COMPANION, 4998, 500
+				IF RESULT == 1
+					LOCAL:2 = CFLAG:(RESULT:1):キャラ固有の번호
+					COPYCHARA LOCAL, (RESULT:1)
+					CFLAG:(RESULT:1):キャラ固有の번호 = LOCAL:2
+					NO:(RESULT:1) = 4998
+					CALL キャラ삭제, LOCAL
+					LOCAL:3 = 2
+					LOCAL:4 = (RESULT:1)
+					GOTO FIX_ADD_MASTER_END
+				ENDIF
+			ENDIF
+			
+			IF NO:LOCAL == 4998
+				;서머너당신の場合
+				IF CFLAG:LOCAL:당신の専攻分野  == 1
+					FOR LOCAL:1, 0, 64
+						SIF GETBIT(FLAG:主人획득스킬, (LOCAL:1)) && MASTER_SKILL(LOCAL:1) >= 0
+							CALL LEARN_SKILL, LOCAL, MASTER_SKILL(LOCAL:1)
+					NEXT
+
+				;페르소나구사자당신の場合
+				ELSEIF CFLAG:LOCAL:당신の専攻分野  == 2
+					;新페르소나処理
+					IF BATTLE_SETTING_IS_PERSONA_NEW_FUNCTION()
+					
+					;旧페르소나処理
+					ELSE
+						CFLAG:LOCAL:초기페르소나ナンバー = 0
+						CALL SYNC_STATUS, LOCAL
+						LOCAL:1 = CFLAG:LOCAL:초기페르소나ナンバー
+						SELECTCASE ABL:LOCAL:초기페르소나
+							CASE [[キャラ:사라스바티]]
+								DITEMTYPE:(LOCAL:1):페르소나("LV")   = 15
+								DITEMTYPE:(LOCAL:1):페르소나("힘")   = 1
+								DITEMTYPE:(LOCAL:1):페르소나("지혜") = 12
+								DITEMTYPE:(LOCAL:1):페르소나("마력") = 11
+								DITEMTYPE:(LOCAL:1):페르소나("인내력") = 4
+								DITEMTYPE:(LOCAL:1):페르소나("속도") = 7
+								DITEMTYPE:(LOCAL:1):페르소나("운")   = 5
+								DITEMTYPE:(LOCAL:1):페르소나("스킬1") = [[스킬:디아]]
+								DITEMTYPE:(LOCAL:1):페르소나("스킬2") = [[스킬:몽견침]]
+								DITEMTYPE:(LOCAL:1):페르소나("스킬3") = [[스킬:마카・카쟈]]
+								DITEMTYPE:(LOCAL:1):페르소나("스킬4") = [[스킬:사바트마]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬1")  = [[스킬:자애의기도]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV1")      = 16
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬2")  = [[스킬:토라에스트]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV2")      = 18
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬3")  = [[스킬:디아라마]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV3")      = 19
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬4")  = [[스킬:리캄]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV4")      = 22
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬5")  = [[스킬:중력의벽]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV5")      = 24
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬6")  = [[스킬:메・디아라마]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV6")      = 26
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬7")  = [[스킬:데・카쟈]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV7")      = 32
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬8")  = [[스킬:디아라한]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV8")      = 38
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬9")  = [[스킬:메・디아라한]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV9")      = 42
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬10") = [[스킬:사마리캄]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV10")     = 50
+							CASE [[キャラ:스카아하]]
+								DITEMTYPE:(LOCAL:1):페르소나("LV")   = 15
+								DITEMTYPE:(LOCAL:1):페르소나("힘")   = 12
+								DITEMTYPE:(LOCAL:1):페르소나("지혜") = 4
+								DITEMTYPE:(LOCAL:1):페르소나("마력") = 5
+								DITEMTYPE:(LOCAL:1):페르소나("인내력") = 10
+								DITEMTYPE:(LOCAL:1):페르소나("속도") = 6
+								DITEMTYPE:(LOCAL:1):페르소나("운")   = 3
+								DITEMTYPE:(LOCAL:1):페르소나("스킬1") = [[스킬:라쿤・다]]
+								DITEMTYPE:(LOCAL:1):페르소나("스킬2") = [[스킬:잔]]
+								DITEMTYPE:(LOCAL:1):페르소나("스킬3") = [[스킬:클로즈디]]
+								DITEMTYPE:(LOCAL:1):페르소나("스킬4") = [[스킬:사바트마]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬1")  = [[스킬:일할의활천]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV1")      = 7
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬2")  = [[스킬:잔마]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV2")      = 15
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬3")  = [[스킬:코칭]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV3")      = 18
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬4")  = [[스킬:어드바이스]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV4")      = 24
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬5")  = [[스킬:마하・잔마]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV5")      = 30
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬6")  = [[스킬:황천의회심]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV6")      = 36
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬7")  = [[스킬:메・디아라마]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV7")      = 38
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬8")  = [[스킬:포효]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV8")      = 44
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬9")  = [[스킬:컨센트레이트]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV9")      = 47
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬10") = [[스킬:찰나장대비쏘기]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV10")     = 50
+							CASE [[キャラ:키쿠리히메]]
+								DITEMTYPE:(LOCAL:1):페르소나("LV")   = 15
+								DITEMTYPE:(LOCAL:1):페르소나("힘")   = 4
+								DITEMTYPE:(LOCAL:1):페르소나("지혜") = 9
+								DITEMTYPE:(LOCAL:1):페르소나("마력") = 9
+								DITEMTYPE:(LOCAL:1):페르소나("인내력") = 5
+								DITEMTYPE:(LOCAL:1):페르소나("속도") = 6
+								DITEMTYPE:(LOCAL:1):페르소나("운")   = 7
+								DITEMTYPE:(LOCAL:1):페르소나("스킬1") = [[스킬:무도]]
+								DITEMTYPE:(LOCAL:1):페르소나("스킬2") = [[스킬:디아]]
+								DITEMTYPE:(LOCAL:1):페르소나("스킬3") = [[스킬:리캄]]
+								DITEMTYPE:(LOCAL:1):페르소나("스킬4") = [[스킬:사바트마]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬1")  = [[스킬:포즈무디]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV1")      = 16
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬2")  = [[스킬:부후]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV2")      = 18
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬3")  = [[스킬:마하무도]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV3")      = 20
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬4")  = [[스킬:마하・부후]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV4")      = 22
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬5")  = [[스킬:섹시댄스]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV5")      = 24
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬6")  = [[스킬:메・디아라마]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV6")      = 30
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬7")  = [[스킬:무도온]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV7")      = 34
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬8")  = [[스킬:디아라한]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV8")      = 36
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬9")  = [[스킬:어둠의심판]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV9")      = 40
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬10") = [[스킬:사마리캄]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV10")     = 50
+							CASE [[キャラ:엔젤]]
+								DITEMTYPE:(LOCAL:1):페르소나("LV")   = 15
+								DITEMTYPE:(LOCAL:1):페르소나("힘")   = 5
+								DITEMTYPE:(LOCAL:1):페르소나("지혜") = 8
+								DITEMTYPE:(LOCAL:1):페르소나("마력") = 8
+								DITEMTYPE:(LOCAL:1):페르소나("인내력") = 5
+								DITEMTYPE:(LOCAL:1):페르소나("속도") = 7
+								DITEMTYPE:(LOCAL:1):페르소나("운")   = 7
+								DITEMTYPE:(LOCAL:1):페르소나("스킬1") = [[스킬:디아]]
+								DITEMTYPE:(LOCAL:1):페르소나("스킬2") = [[스킬:한마]]
+								DITEMTYPE:(LOCAL:1):페르소나("스킬3") = [[스킬:갈]]
+								DITEMTYPE:(LOCAL:1):페르소나("스킬4") = [[스킬:사바트마]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬1")  = [[스킬:메・디아]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV1")      = 16
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬2")  = [[스킬:갈라]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV2")      = 18
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬3")  = [[스킬:디아라마]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV3")      = 20
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬4")  = [[스킬:마한마]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV4")      = 24
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬5")  = [[스킬:빛의심판]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV5")      = 30
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬6")  = [[스킬:엔젤애로]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV6")      = 17
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬7")  = [[스킬:메・디아라마]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV7")      = 35
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬8")  = [[스킬:하마온]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV8")      = 36
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬9")  = [[스킬:리캄]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV9")      = 40
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬10") = [[스킬:티없는위광]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV10")     = 50
+							CASE [[キャラ:잭프로스트]]
+								DITEMTYPE:(LOCAL:1):페르소나("LV")   = 15
+								DITEMTYPE:(LOCAL:1):페르소나("힘")   = 6
+								DITEMTYPE:(LOCAL:1):페르소나("지혜") = 6
+								DITEMTYPE:(LOCAL:1):페르소나("마력") = 8
+								DITEMTYPE:(LOCAL:1):페르소나("인내력") = 6
+								DITEMTYPE:(LOCAL:1):페르소나("속도") = 8
+								DITEMTYPE:(LOCAL:1):페르소나("운")   = 9
+								DITEMTYPE:(LOCAL:1):페르소나("스킬1") = [[스킬:디아]]
+								DITEMTYPE:(LOCAL:1):페르소나("스킬2") = [[스킬:부후]]
+								DITEMTYPE:(LOCAL:1):페르소나("스킬3") = [[스킬:파트라]]
+								DITEMTYPE:(LOCAL:1):페르소나("스킬4") = [[스킬:사바트마]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬1")  = [[스킬:부후라]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV1")      = 16
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬2")  = [[스킬:아이스브레스]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV2")      = 20
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬3")  = [[스킬:소닉펀치]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV3")      = 22
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬4")  = [[스킬:고양의노래]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV4")      = 24
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬5")  = [[스킬:아토믹・부후라]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV5")      = 24
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬6")  = [[스킬:스쿠・카쟈]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV6")      = 30
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬7")  = [[스킬:부후다인]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV7")      = 32
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬8")  = [[스킬:디아라한]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV8")      = 40
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬9")  = [[스킬:타루・카쟈]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV9")      = 48
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬10") = [[스킬:마하・부후다인]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV10")     = 50
+							CASE [[キャラ:모코이]]
+								DITEMTYPE:(LOCAL:1):페르소나("LV")   = 15
+								DITEMTYPE:(LOCAL:1):페르소나("힘")   = 8
+								DITEMTYPE:(LOCAL:1):페르소나("지혜") = 6
+								DITEMTYPE:(LOCAL:1):페르소나("마력") = 6
+								DITEMTYPE:(LOCAL:1):페르소나("인내력") = 7
+								DITEMTYPE:(LOCAL:1):페르소나("속도") = 6
+								DITEMTYPE:(LOCAL:1):페르소나("운")   = 7
+								DITEMTYPE:(LOCAL:1):페르소나("스킬1") = [[스킬:지오]]
+								DITEMTYPE:(LOCAL:1):페르소나("스킬2") = [[스킬:포즈무디]]
+								DITEMTYPE:(LOCAL:1):페르소나("스킬3") = [[스킬:숏잽]]
+								DITEMTYPE:(LOCAL:1):페르소나("스킬4") = [[스킬:사바트마]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬1")  = [[스킬:데・카쟈]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV1")      = 16
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬2")  = [[스킬:마린카린]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV2")      = 17
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬3")  = [[스킬:스쿠・카쟈]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV3")      = 18
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬4")  = [[스킬:지온가]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV4")      = 20
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬5")  = [[스킬:소닉펀치]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV5")      = 22
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬6")  = [[스킬:무거운공기]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV6")      = 28
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬7")  = [[스킬:스쿠카쟈오토]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV7")      = 34
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬8")  = [[스킬:모코이부메랑]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV8")      = 38
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬9")  = [[스킬:마카・카쟈]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV9")      = 42
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬10") = [[스킬:트라프리]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV10")     = 50
+							CASE [[キャラ:모・쇼보]]
+								DITEMTYPE:(LOCAL:1):페르소나("LV")   = 15
+								DITEMTYPE:(LOCAL:1):페르소나("힘")   = 5
+								DITEMTYPE:(LOCAL:1):페르소나("지혜") = 5
+								DITEMTYPE:(LOCAL:1):페르소나("마력") = 7
+								DITEMTYPE:(LOCAL:1):페르소나("인내력") = 5
+								DITEMTYPE:(LOCAL:1):페르소나("속도") = 14
+								DITEMTYPE:(LOCAL:1):페르소나("운")   = 4
+								DITEMTYPE:(LOCAL:1):페르소나("스킬1") = [[스킬:디아]]
+								DITEMTYPE:(LOCAL:1):페르소나("스킬2") = [[스킬:자폭]]
+								DITEMTYPE:(LOCAL:1):페르소나("스킬3") = [[스킬:잔]]
+								DITEMTYPE:(LOCAL:1):페르소나("스킬4") = [[스킬:사바트마]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬1")  = [[스킬:할퀴기]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV1")      = 16
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬2")  = [[스킬:옥쇄파]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV2")      = 17
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬3")  = [[스킬:디아라마]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV3")      = 18
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬4")  = [[스킬:날개짓]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV4")      = 20
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬5")  = [[스킬:마하・잔]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV5")      = 21
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬6")  = [[스킬:마하・잔마]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV6")      = 26
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬7")  = [[스킬:디아라한]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV7")      = 34
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬8")  = [[스킬:잔다인]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV8")      = 38
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬9")  = [[스킬:충격의벽]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV9")      = 46
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬10") = [[스킬:마하・잔다인]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV10")     = 50
+							CASE [[キャラ:좀비쨩]]
+								DITEMTYPE:(LOCAL:1):페르소나("LV")   = 15
+								DITEMTYPE:(LOCAL:1):페르소나("힘")   = 15
+								DITEMTYPE:(LOCAL:1):페르소나("지혜") = 2
+								DITEMTYPE:(LOCAL:1):페르소나("마력") = 2
+								DITEMTYPE:(LOCAL:1):페르소나("인내력") = 15
+								DITEMTYPE:(LOCAL:1):페르소나("속도") = 2
+								DITEMTYPE:(LOCAL:1):페르소나("운")   = 4
+								DITEMTYPE:(LOCAL:1):페르소나("스킬1") = [[스킬:할퀴기]]
+								DITEMTYPE:(LOCAL:1):페르소나("스킬2") = [[스킬:치유촉진(소)]]
+								DITEMTYPE:(LOCAL:1):페르소나("스킬3") = [[스킬:이악물기]]
+								DITEMTYPE:(LOCAL:1):페르소나("스킬4") = [[스킬:사바트마]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬1")  = [[스킬:독할퀴기]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV1")      = 16
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬2")  = [[스킬:일할의활천]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV2")      = 20
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬3")  = [[스킬:마구날뛰기]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV3")      = 21
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬4")  = [[스킬:섹시댄스]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV4")      = 24
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬5")  = [[스킬:치유촉진(중)]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV5")      = 25
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬6")  = [[스킬:브레인쉐이크]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV6")      = 28
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬7")  = [[스킬:삼할의활천]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV7")      = 30
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬8")  = [[스킬:악셀클로]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV8")      = 36
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬9")  = [[스킬:치유촉진(대)]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV9")      = 40
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬10") = [[스킬:불굴의투지]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV10")     = 50
+							CASE [[キャラ:리림]]
+								DITEMTYPE:(LOCAL:1):페르소나("LV")   = 15
+								DITEMTYPE:(LOCAL:1):페르소나("힘")   = 3
+								DITEMTYPE:(LOCAL:1):페르소나("지혜") = 7
+								DITEMTYPE:(LOCAL:1):페르소나("마력") = 9
+								DITEMTYPE:(LOCAL:1):페르소나("인내력") = 5
+								DITEMTYPE:(LOCAL:1):페르소나("속도") = 8
+								DITEMTYPE:(LOCAL:1):페르소나("운")   = 8
+								DITEMTYPE:(LOCAL:1):페르소나("스킬1") = [[스킬:라쿤・다]]
+								DITEMTYPE:(LOCAL:1):페르소나("스킬2") = [[스킬:마린카린]]
+								DITEMTYPE:(LOCAL:1):페르소나("스킬3") = [[스킬:지오]]
+								DITEMTYPE:(LOCAL:1):페르소나("스킬4") = [[스킬:사바트마]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬1")  = [[스킬:타룬・다]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV1")      = 16
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬2")  = [[스킬:마하・지오]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV2")      = 17
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬3")  = [[스킬:스쿤・다]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV3")      = 20
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬4")  = [[스킬:지온가]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV4")      = 22
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬5")  = [[스킬:섹시댄스]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV5")      = 24
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬6")  = [[스킬:마하・지온가]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV6")      = 28
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬7")  = [[스킬:텐타라후]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV7")      = 30
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬8")  = [[스킬:마하무도]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV8")      = 36
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬9")  = [[스킬:지오다인]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV9")      = 40
+								DITEMTYPE:(LOCAL:1):페르소나("습득스킬10") = [[스킬:파이널누드]]
+								DITEMTYPE:(LOCAL:1):페르소나("습득LV10")     = 50
+							CASEELSE
+								IF CFLAG:LOCAL:초기페르소나ナンバー == 0
+									CFLAG:LOCAL:초기페르소나ナンバー = 50
+									WHILE 1
+										SIF !DITEMTYPE:(CFLAG:LOCAL:초기페르소나ナンバー):페르소나("장비상태")
+											BREAK
+										CFLAG:LOCAL:초기페르소나ナンバー++
+									WEND
+								ENDIF
+								FOR LOCAL:1, 0, 100
+									DITEMTYPE:(CFLAG:LOCAL:초기페르소나ナンバー):(LOCAL:1) = DITEMTYPE:RESULT:(LOCAL:1)
+								NEXT
+								DITEMTYPE:(CFLAG:LOCAL:초기페르소나ナンバー):페르소나("장비상태") = 3
+								DITEMTYPE:(CFLAG:LOCAL:초기페르소나ナンバー):페르소나("페르소나소지자") = CFLAG:LOCAL:キャラ固有の번호
+								ABL:LOCAL:초기페르소나 = DITEMTYPE:(CFLAG:LOCAL:초기페르소나ナンバー):페르소나("NO")
+						ENDSELECT
+					ENDIF
+
+				;이능자당신の場合
+				ELSEIF CFLAG:LOCAL:당신の専攻分野  == 3
+					;취득스킬
+					FOR LOCAL,0,10
+						LOCALS   = 습득스킬{(LOCAL:2)*2+1}
+						LOCALS:1 = 습득스킬{(LOCAL:2)*2+2}
+						LOCALS:2 = 습득LV{(LOCAL:2)*2+1}
+						LOCALS:3 = 습득LV{(LOCAL:2)*2+2}
+						ABL:LOCAL:LOCALS     = CSVABL(CFLAG:LOCAL:3031,GETNUM(ABL,LOCALS),0)
+						ABL:LOCAL:(LOCALS:2) = CSVABL(CFLAG:LOCAL:3031,GETNUM(ABL,LOCALS:2),0)
+						ABL:LOCAL:(LOCALS:1) = CSVABL(CFLAG:LOCAL:3032,GETNUM(ABL,LOCALS),0)
+						ABL:LOCAL:(LOCALS:3) = CSVABL(CFLAG:LOCAL:3032,GETNUM(ABL,LOCALS:2),0)
+					NEXT
+
+				;観光客당신の場合
+				ELSEIF CFLAG:LOCAL:당신の専攻分野  == 4
+					;스킬취득なしのため処理なし
+
+				;식노당신の場合
+				ELSEIF CFLAG:LOCAL:당신の専攻分野  == 5
+					SELECTCASE CFLAG:LOCAL:초기링크악마
+						CASE 3808
+							TALENT:LOCAL:전격 = 1
+							ABL:LOCAL:초기변신악마습득스킬1 = [[스킬:테트라쟈]]
+							ABL:LOCAL:초기변신악마습득LV1     = 14
+							ABL:LOCAL:초기변신악마습득스킬2 = [[스킬:바이코우하]]
+							ABL:LOCAL:초기변신악마습득LV2     = 28
+							ABL:LOCAL:초기변신악마습득스킬3 = [[스킬:마하・지오다인]]
+							ABL:LOCAL:초기변신악마습득LV3     = 42
+							ABL:LOCAL:초기변신악마습득스킬4 = [[스킬:메기도라온]]
+							ABL:LOCAL:초기변신악마습득LV4     = 56
+							ABL:LOCAL:초기변신악마습득스킬5 = [[스킬:천벌]]
+							ABL:LOCAL:초기변신악마습득LV5     = 70
+							CDFLAG:LOCAL:만트라:1  = 10000
+							CDFLAG:LOCAL:만트라:16 = 10000
+						CASE 3809
+							TALENT:LOCAL:지원 = 1
+							ABL:LOCAL:초기변신악마습득스킬1 = [[스킬:기공(소)]]
+							ABL:LOCAL:초기변신악마습득LV1     = 14
+							ABL:LOCAL:초기변신악마습득스킬2 = [[스킬:데・카쟈]]
+							ABL:LOCAL:초기변신악마습득LV2     = 28
+							ABL:LOCAL:초기변신악마습득스킬3 = [[스킬:디아라한]]
+							ABL:LOCAL:초기변신악마습득LV3     = 42
+							ABL:LOCAL:초기변신악마습득스킬4 = [[스킬:파워브레스]]
+							ABL:LOCAL:초기변신악마습득LV4     = 56
+							ABL:LOCAL:초기변신악마습득스킬5 = [[스킬:암리타]]
+							ABL:LOCAL:초기변신악마습득LV5     = 70
+							CDFLAG:LOCAL:만트라:1 = 10000
+							CDFLAG:LOCAL:만트라:5 = 10000
+						CASE 3810
+							TALENT:LOCAL:타격 = 1
+							ABL:LOCAL:초기변신악마습득스킬1 = [[스킬:일할의활천]]
+							ABL:LOCAL:초기변신악마습득LV1     = 14
+							ABL:LOCAL:초기변신악마습득스킬2 = [[스킬:유혹]]
+							ABL:LOCAL:초기변신악마습득LV2     = 28
+							ABL:LOCAL:초기변신악마습득스킬3 = [[스킬:찰나장대비쏘기]]
+							ABL:LOCAL:초기변신악마습득LV3     = 42
+							ABL:LOCAL:초기변신악마습득스킬4 = [[스킬:절묘타]]
+							ABL:LOCAL:초기변신악마습득LV4     = 56
+							ABL:LOCAL:초기변신악마습득스킬5 = [[스킬:명계의문]]
+							ABL:LOCAL:초기변신악마습득LV5     = 70
+							CDFLAG:LOCAL:만트라:1 = 10000
+							CDFLAG:LOCAL:만트라:2 = 10000
+						CASE 3811
+							TALENT:LOCAL:정신 = 1
+							ABL:LOCAL:초기변신악마습득스킬1 = [[스킬:자애의기도]]
+							ABL:LOCAL:초기변신악마습득LV1     = 14
+							ABL:LOCAL:초기변신악마습득스킬2 = [[스킬:데・쿤다]]
+							ABL:LOCAL:초기변신악마습득LV2     = 28
+							ABL:LOCAL:초기변신악마습득스킬3 = [[스킬:사마리캄]]
+							ABL:LOCAL:초기변신악마습득LV3     = 42
+							ABL:LOCAL:초기변신악마습득스킬4 = [[스킬:파이널누드]]
+							ABL:LOCAL:초기변신악마습득LV4     = 56
+							ABL:LOCAL:초기변신악마습득스킬5 = [[스킬:암리타]]
+							ABL:LOCAL:초기변신악마습득LV5     = 70
+							CDFLAG:LOCAL:만트라:1 = 10000
+							CDFLAG:LOCAL:만트라:5 = 10000
+						CASE 3812
+							TALENT:LOCAL:검격 = 1
+							ABL:LOCAL:초기변신악마습득스킬1 = [[스킬:어드바이스]]
+							ABL:LOCAL:초기변신악마습득LV1     = 14
+							ABL:LOCAL:초기변신악마습득스킬2 = [[스킬:베어내기]]
+							ABL:LOCAL:초기변신악마습득LV2     = 28
+							ABL:LOCAL:초기변신악마습득스킬3 = [[스킬:테트라칸]]
+							ABL:LOCAL:초기변신악마습득LV3     = 42
+							ABL:LOCAL:초기변신악마습득스킬4 = [[스킬:허공참파]]
+							ABL:LOCAL:초기변신악마습득LV4     = 56
+							ABL:LOCAL:초기변신악마습득스킬5 = [[스킬:불굴의투지]]
+							ABL:LOCAL:초기변신악마습득LV5     = 70
+							CDFLAG:LOCAL:만트라:1 = 10000
+							CDFLAG:LOCAL:만트라:2 = 10000
+						CASE 3813
+							TALENT:LOCAL:주살 = 1
+							ABL:LOCAL:초기변신악마습득스킬1 = [[스킬:일할의마맥]]
+							ABL:LOCAL:초기변신악마습득LV1     = 14
+							ABL:LOCAL:초기변신악마습득스킬2 = [[스킬:유혹]]
+							ABL:LOCAL:초기변신악마습득LV2     = 28
+							ABL:LOCAL:초기변신악마습득스킬3 = [[스킬:아라크노와이어]]
+							ABL:LOCAL:초기변신악마습득LV3     = 42
+							ABL:LOCAL:초기변신악마습득스킬4 = [[스킬:어둠의심판]]
+							ABL:LOCAL:초기변신악마습득LV4     = 56
+							ABL:LOCAL:초기변신악마습득스킬5 = [[스킬:천년의저주]]
+							ABL:LOCAL:초기변신악마습득LV5     = 70
+							CDFLAG:LOCAL:만트라:1  = 10000
+							CDFLAG:LOCAL:만트라:56 = 10000
+						ENDSELECT
+
+				;달인당신の場合
+				ELSEIF CFLAG:LOCAL:당신の専攻分野 == 6
+					;취득스킬
+					FOR LOCAL:2,0,10
+						LOCALS   = 습득스킬{(LOCAL:2)*2+1}
+						LOCALS:1 = 습득스킬{(LOCAL:2)*2+2}
+						LOCALS:2 = 습득LV{(LOCAL:2)*2+1}
+						LOCALS:3 = 습득LV{(LOCAL:2)*2+2}
+						ABL:LOCAL:LOCALS     = CSVABL(CFLAG:LOCAL:3031,GETNUM(ABL,LOCALS),0)
+						ABL:LOCAL:(LOCALS:2) = CSVABL(CFLAG:LOCAL:3031,GETNUM(ABL,LOCALS:2),0)
+						ABL:LOCAL:(LOCALS:1) = CSVABL(CFLAG:LOCAL:3032,GETNUM(ABL,LOCALS),0)
+						ABL:LOCAL:(LOCALS:3) = CSVABL(CFLAG:LOCAL:3032,GETNUM(ABL,LOCALS:2),0)
+					NEXT
+					;추가스킬
+					SELECTCASE CFLAG:LOCAL:3032
+						CASE 4751 TO 4752
+							ABL:LOCAL:습득스킬17 = [[스킬:기합]]
+							ABL:LOCAL:습득LV17 = 20
+							ABL:LOCAL:습득스킬19 = [[스킬:삼할의마맥]]
+							ABL:LOCAL:습득LV19 = 30
+							TALENT:LOCAL:석세서 = 1
+						CASE 4753
+							ABL:LOCAL:습득스킬17 = [[스킬:기합]]
+							ABL:LOCAL:습득LV17 = 20
+							ABL:LOCAL:습득스킬19 = [[스킬:삼할의마맥]]
+							ABL:LOCAL:습득LV19 = 30
+							TALENT:LOCAL:건슬링거 = 1
+						CASEELSE
+							ABL:LOCAL:습득스킬17 = [[스킬:삼할의마맥]]
+							ABL:LOCAL:습득LV17 = 20
+							ABL:LOCAL:습득스킬19 = [[스킬:컨센트레이트]]
+							ABL:LOCAL:습득LV19 = 30
+							TALENT:LOCAL:석세서 = 1
+					ENDSELECT
+
+				;악마狩人당신の場合
+				ELSEIF CFLAG:LOCAL:당신の専攻分野 == 7
+					ABL:LOCAL:습득스킬1 = 2955
+					ABL:LOCAL:습득LV1     = 7
+					ABL:LOCAL:습득스킬2 = 2418
+					ABL:LOCAL:습득LV2     = 13
+					ABL:LOCAL:습득스킬3 = 2952
+					ABL:LOCAL:습득LV3     = 17
+					ABL:LOCAL:습득스킬4 = 129
+					ABL:LOCAL:습득LV4     = 27
+					ABL:LOCAL:습득스킬5 = 2953
+					ABL:LOCAL:습득LV5     = 33
+					ABL:LOCAL:습득스킬6 = 2954
+					ABL:LOCAL:습득LV6     = 37
+					ABL:LOCAL:습득스킬7 = 2956
+					ABL:LOCAL:습득LV7     = 45
+					ITEM:칼리번 += 1
+
+				;악마인당신の場合
+				ELSEIF CFLAG:LOCAL:당신の専攻分野 == 8
+					ABL:LOCAL:습득스킬1 = 514
+					ABL:LOCAL:습득LV1     = 7
+					ABL:LOCAL:습득스킬2 = 237
+					ABL:LOCAL:습득LV2     = 13
+					ABL:LOCAL:습득스킬3 = 511
+					ABL:LOCAL:습득LV3     = 17
+					ABL:LOCAL:습득스킬4 = 2406
+					ABL:LOCAL:습득LV4     = 27
+					ABL:LOCAL:습득스킬5 = 229
+					ABL:LOCAL:습득LV5     = 33
+					ABL:LOCAL:습득스킬6 = 2425
+					ABL:LOCAL:습득LV6     = 38
+					ABL:LOCAL:습득스킬7 = 741
+					ABL:LOCAL:습득LV7     = 45
+					ABL:LOCAL:습득스킬8 = 2062
+					ABL:LOCAL:습득LV8     = 50
+
+				;たけし당신の場合
+				ELSEIF CFLAG:LOCAL:당신の専攻分野 == 9
+					;스킬취득なしのため処理なし
+
+				ENDIF
+				LOCAL:3 = 3
+			ENDIF
+		NEXT
+
+		$FIX_ADD_MASTER_END
+		IF LOCAL:3 == 0
+			PRINTW 수정 대상이 되는 캐릭터는 존재하지 않습니다.
+		ELSEIF LOCAL:3 == 1
+			PRINTL 수정 대상이 되는 캐릭터가 존재하지만 다시 가입 할 수 없습니다.
+			PRINTW 캐릭터 수를 조정 한 후 다시 실행하십시오.
+		ELSEIF LOCAL:3 == 2
+			PRINTFORMW 구 아나타에 해당하는 캐릭터의 고유 번호를 수정했습니다。
+		ELSEIF LOCAL:3 == 3
+			PRINTFORMW 구 아나타에 해당하는 모든 캐릭터의 취득 스킬을 수정했습니다。
+		ENDIF
+	ENDIF
+;	FOR LOCAL, 0 , CHARANUM
+;		PRINTFORML %NAME:LOCAL%　{CFLAG:LOCAL:キャラ固有の번호}
+;	NEXT

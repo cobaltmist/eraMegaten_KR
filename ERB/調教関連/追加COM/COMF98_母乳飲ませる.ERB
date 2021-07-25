@@ -1,0 +1,173 @@
+﻿
+@CHECK_COM_ABLE98
+
+;모유먹인다
+;모유체질じゃなきゃダメ
+SIF TALENT:PLAYER:149 == 0
+	RETURN 0
+;元の모유마시기にならって一応함락した相손限定。別にそうする필요はないかもしれない
+SIF TALENT:3 == 0 && TALENT:4 == 0 && TALENT:5 == 0 && TALENT:6 == 0 && TALENT:7 == 0 && TALENT:8 == 0
+	RETURN 0
+
+;男の場合は、上半身겉옷か全身겉옷をつけているとダメ
+SIF (TEQUIP:PLAYER:5 || TEQUIP:PLAYER:6) && IS_MALE(PLAYER)
+	RETURN 0
+
+SIF !USE_MOUTH(TARGET)
+	RETURN 0
+
+SIF !USE_NIPLE(PLAYER)
+	RETURN 0
+
+
+;밧줄사용중は
+SIF TEQUIP:19
+	RETURN 0
+
+;촉수조교中はダメ
+SIF TEQUIP:25
+	RETURN 0
+RETURN 1
+
+
+@ACT_COM98
+;모유먹인다
+
+
+PRINTL 모유먹인다
+TSTR:0 = 모유먹인다
+
+;조교者→조교대상
+TFLAG:28 = 2
+;-------------------------------------------------
+;ソース추가処理
+;-------------------------------------------------
+;소비체력、기력
+DOWNBASE:TARGET:체력 += 25
+DOWNBASE:TARGET:기력 += 90
+
+SOURCE:TARGET:정애 = 500
+SOURCE:TARGET:달성 = 500
+SOURCE:TARGET:복종 = 1000
+SOURCE:TARGET:굴종 = 900
+SOURCE:TARGET:일탈 = 50
+SOURCE:TARGET:반감 = 50
+
+;조교대상の기교が高ければ조교者に쾌Ｂ
+SIF ABL:기교 >= 3
+SOURCE:PLAYER:3 = 150
+
+;-------------------------------------------------
+;불결の処理
+;-------------------------------------------------
+;奴隷の입⇔조교者のＢの불결が移動
+CALL MOVE_STAIN("입", TARGET, "가슴", PLAYER)
+;-------------------------------------------------
+;吸精処理
+;-------------------------------------------------
+IF CFLAG:PLAYER:ＭＡＧ非被흡수 == 0
+	LOCAL = (RAND:5+1) * BASE:LV
+	CALL DRAIN_MAG,PLAYER,LOCAL,TARGET
+ELSEIF CFLAG:TARGET:ＭＡＧ非被흡수 == 0
+	LOCAL = (RAND:5+1) * BASE:LV
+	CALL DRAIN_MAG,TARGET,LOCAL,PLAYER
+ENDIF
+;-------------------------------------------------
+;경험の処理
+;-------------------------------------------------
+A = 3
+IF IS_LESBIAN(TARGET,PLAYER)
+	CALL ADDS_EXP("레즈경험", A, TARGET)
+	CALL ADDS_EXP("레즈경험", A, PLAYER)
+ELSEIF IS_GAY(TARGET,PLAYER)
+	CALL ADDS_EXP("ＢＬ경험", A, TARGET)
+	CALL ADDS_EXP("ＢＬ경험", A, PLAYER)
+ENDIF
+;애정경험
+IF (TALENT:3 == 1 || TALENT:6 == 1) && ASSIPLAY == 0
+	CALL ADDS_EXP("애정경험", 1, TARGET)
+	CALL ADDS_EXP("애정경험", 1, MASTER)
+ENDIF
+CALL ADDS_EXP("봉사쾌락경험", 1, PLAYER)
+
+;의존도ベクトル
+TFLAG:33 = 4
+
+;의존도보정値(主人かつ연모で1、친애で2）
+IF TALENT:3 && ASSIPLAY == 0
+	TFLAG:30 += 2
+ELSEIF TALENT:6 && ASSIPLAY == 0
+	TFLAG:30 += 4
+ENDIF
+
+RETURN 1
+
+
+@MESSAGE_COM98
+IF TEQUIP:주도권
+	PRINTFORM %타겟은()% %CALLNAME:PLAYER%의 
+	IF TEQUIP:PLAYER:옷 > 0
+			CALL CLOTHES_NAME,1,PLAYER
+			PRINT 의 열린 가슴팍으로 보이는、
+		ELSEIF TEQUIP:PLAYER:전신복 > 0
+			CALL CLOTHES_NAME,3,PLAYER
+			PRINT 의 열린 가슴팍으로 보이는、
+			ELSEIF TEQUIP:PLAYER:겉옷 > 0
+				CALL CLOTHES_NAME,10,PLAYER
+				PRINT 의 열린 가슴팍으로 보이는、
+			ENDIF
+		;유아체형＋빈유、절벽
+		IF (TALENT:PLAYER:100 && TALENT:PLAYER:109) || TALENT:PLAYER:110
+			PRINT 약간 부푼 것이 느껴지는 정도의 
+		;빈유
+		ELSEIF TALENT:PLAYER:109
+			PRINT 다소 작은 
+		;거유
+		ELSEIF TALENT:PLAYER:111
+			PRINT 손에서 흘러넘칠것 같은 
+		;폭유
+		ELSEIF TALENT:PLAYER:112 || TALENT:PLAYER:魔乳
+			PRINT 손 안에 다 못넣을 정도로 큰 
+		ENDIF
+		;연모か친애で조수조교系ではない
+		IF (TALENT:3 || TALENT:6) && ASSIPLAY == 0
+			PRINTW 가슴 끝을 빨아올려、맛을 보듯이 모유를 마시고있다…
+		ELSE
+			PRINTW 가슴 끝을 빨아올려 모유를 마신다……
+		ENDIF
+;それ以外
+ELSE
+		PRINTFORM %조사처리(CALLNAME:PLAYER,"는")% 
+		IF TEQUIP:PLAYER:옷 > 0
+			CALL CLOTHES_NAME,1,PLAYER
+			PRINT 의 열린 가슴팍으로 보이는、
+		ELSEIF TEQUIP:PLAYER:전신복 > 0
+			CALL CLOTHES_NAME,3,PLAYER
+			PRINT 의 열린 가슴팍으로 보이는、
+			ELSEIF TEQUIP:PLAYER:겉옷 > 0
+				CALL CLOTHES_NAME,10,PLAYER
+				PRINT 의 열린 가슴팍으로 보이는、
+			ENDIF
+		;유아체형＋빈유、절벽
+		IF (TALENT:PLAYER:100 && TALENT:PLAYER:109) || TALENT:PLAYER:110
+			PRINT 약간 부푼 것이 느껴지는 정도의 
+		;빈유
+		ELSEIF TALENT:PLAYER:109
+			PRINT 다소 작은 
+		;거유
+		ELSEIF TALENT:PLAYER:111
+			PRINT 손에서 흘러넘칠것 같은 
+		;폭유
+		ELSEIF TALENT:PLAYER:112 || TALENT:PLAYER:魔乳
+			PRINT 손 안에 다 못넣을 정도로 큰 
+		ENDIF
+		PRINTFORMW 가슴 끝을 %CALLNAME:TARGET%에게 내밀고、모유를 먹였다……
+ENDIF
+
+;===================================================
+;조교타입
+;===================================================
+@COMTYPE_98
+RETURN COMTYPE("조교자봉사계")
+
+

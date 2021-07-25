@@ -1,0 +1,593 @@
+﻿@REVERSE_LOOKUP_DEVIL, ARG = 3
+PRINTL 어느 종족의 악마를 역검색합니까？
+FOR LOCAL,1,19
+	PRINTFORMLC [{LOCAL,2}] %STR:LOCAL,6,LEFT%
+NEXT
+;PRINTFORMLC [{18,2}] %STR:18,6,LEFT%
+
+PRINTL 
+DRAWLINE
+PRINTFORML [100] \@(FLAG:악마逆引き설정) ? 　 # ＞ \@ 성전환 후의 소재를 포함한다
+PRINTFORML [200] \@(FLAG:악마逆引き설정) ? ＞ # 　 \@ 성전환 후의 소재를 포함하지 않는다
+PRINTFORML [300] 　 소재의 레벨 범위를 지정 \@(LOCAL:20 || LOCAL:21) ? 현재：（ # \@\@(LOCAL:20) ? Lv{LOCAL:20} # \@ \@(LOCAL:20 || LOCAL:21) ? ～ # \@ \@(LOCAL:21) ? Lv{LOCAL:21} # \@\@(LOCAL:20 || LOCAL:21) ? ） # \@
+PRINTL [0] 돌아간다
+$INPUT_LOOP
+INPUT
+IF RESULT == 0
+	RETURN 0
+ELSEIF RESULT == 100
+	FLAG:악마逆引き설정 = 0
+	RESTART
+ELSEIF RESULT == 200
+	FLAG:악마逆引き설정 = 1
+	RESTART
+ELSEIF RESULT == 300
+	$SET_LEVEL
+	PRINTFORML [100] 하한 레벨을 지정 （현재：\@(LOCAL:20) ? Lv{LOCAL:20} # 지정안함\@)
+	PRINTFORML [200] 상한 레벨을 지정 （현재：\@(LOCAL:21) ? Lv{LOCAL:21} # 지정안함\@)
+	PRINTL [0] 돌아간다
+	$INPUT_LOOP4
+	INPUT
+	LOCAL = RESULT
+	IF LOCAL == 0
+		RESTART
+	ELSEIF LOCAL == 100
+		PRINTL 하한 레벨을 입력해주세요(0을 입력하면 취소)
+	ELSEIF LOCAL == 200
+		PRINTL 상한 레벨을 입력해주세요(0을 입력하면 취소)
+	ELSE
+		GOTO INPUT_LOOP4
+	ENDIF
+	$INPUT_LOOP5
+	INPUT
+	SIF RESULT < 1
+		RESULT = 0
+	SIF RESULT > 999
+		RESULT = 999
+	IF LOCAL == 100
+		LOCAL:20 = RESULT
+	ELSE
+		LOCAL:21 = RESULT
+	ENDIF
+	GOTO SET_LEVEL
+ENDIF
+
+CALL MAKE_RLD_LIST, RESULT, 0, 0, 1
+
+IF RESULT == 0
+	PRINTW 해당되는 악마는 등록되지 않았습니다
+	GOTO INPUT_LOOP
+ENDIF
+
+;件数保存
+LOCAL:1 = RESULT
+
+CALL PRINT_RLD_LIST
+
+PRINTL 어느 악마를 역검색합니까？
+PRINTL [0] 돌아간다
+$INPUT_LOOP2
+INPUT
+IF RESULT == 0
+	RESTART
+;입력체크
+ELSEIF RESULT < 0 || RESULT > LOCAL:1
+	GOTO INPUT_LOOP2
+ENDIF
+
+;목적の악마番号
+LOCAL:2 = E:(RESULT-1)
+
+;性別を保存
+LOCAL:3 = CSVTALENT(LOCAL:2,GETNUM(TALENT,"남자"),0)
+
+;종족を保存
+LOCAL:4 = CSVABL(LOCAL:2,GETNUM(ABL,"종족"),0)
+
+IF LOCAL:4 == 13
+	CALL PRINT_RLD_ELEMENT, LOCAL:2, ARG
+	RESTART
+ENDIF
+
+;合体結果の検索用リストを作成
+CALL MAKE_RACE_LIST,LOCAL:4,LOCAL:3
+
+;検索用종족
+SELECTCASE LOCAL:4
+	CASE 15
+		LOCAL:6 = 1
+	CASE 16
+		LOCAL:6 = 2
+	CASE 17
+		LOCAL:6 = 3
+	CASE 18
+		LOCAL:6 = 4
+	CASEELSE
+		LOCAL:6 = LOCAL:4
+ENDSELECT
+
+;組み合わせ数カウンター
+LOCAL:9 = 0
+
+;종족組み合わせを検索
+FOR LOCAL,1,19
+	;정령合体は除外
+	SIF LOCAL == 13
+		LOCAL++
+	;ひとつめのリスト作成フラグ
+	LOCAL:11 = 0
+	FOR LOCAL:5,LOCAL,19
+		;정령合体は除外
+		SIF LOCAL:5 == 13
+			LOCAL:5++
+		;ふたつめのリスト作成フラグ
+		LOCAL:12 = 0
+		IF ARG == 2
+			;合体結果の종족を検索
+			CALL SEARCH_RACE,LOCAL,LOCAL:5
+			IF RESULT == LOCAL:6
+				;ひとつめの종족リストを作成
+				IF LOCAL:11 != 1
+					IF FLAG:악마逆引き설정
+						IF LOCAL:3
+							;男性악마のみ
+							CALL MAKE_RLD_LIST, LOCAL, 0, 1, 0, LOCAL:20, LOCAL:21
+						ELSE
+							;女性악마のみ
+							CALL MAKE_RLD_LIST, LOCAL, 0, 2, 0, LOCAL:20, LOCAL:21
+						ENDIF
+					ELSE
+						;制限なし
+						CALL MAKE_RLD_LIST, LOCAL, 0, 0, 0, LOCAL:20, LOCAL:21
+					ENDIF
+					LOCAL:11 = 1
+				ENDIF
+				;ふたつめの종족リストを作成
+				IF FLAG:악마逆引き설정
+					IF LOCAL:3
+						;男性악마のみ
+						CALL MAKE_RLD_LIST, LOCAL:5, 1, 1, 0, LOCAL:20, LOCAL:21
+					ELSE
+						;女性악마のみ
+						CALL MAKE_RLD_LIST, LOCAL:5, 1, 2, 0, LOCAL:20, LOCAL:21
+					ENDIF
+				ELSE
+					;制限なし
+					CALL MAKE_RLD_LIST, LOCAL:5, 1, 0, 0, LOCAL:20, LOCAL:21
+				ENDIF
+				;とりあえず総当り(だっせー
+				FOR LOCAL:7,0,5000
+					SIF E:(LOCAL:7) == -1
+						BREAK
+					FOR LOCAL:8,0,5000
+						SIF F:(LOCAL:8) == -1
+							BREAK
+						;合体結果
+						CALL OUTPUT_DEVIL,(CSVBASE(E:(LOCAL:7),GETNUM(BASE,"LV"),0) + CSVBASE(F:(LOCAL:8),GETNUM(BASE,"LV"),0))/2,FUSION_PLUS_LV(2)
+
+						IF RESULT == LOCAL:2
+							;該当ありの組み合わせと判明
+							H:(LOCAL:9) = LOCAL
+							I:(LOCAL:9) = LOCAL:5
+							LOCAL:7 = 5000
+							LOCAL:8 = 5000
+							LOCAL:9++
+						ENDIF
+					NEXT
+				NEXT
+			ENDIF
+		ELSE
+			FOR LOCAL:13,LOCAL:5,19
+				;정령合体は除外
+				SIF LOCAL:13 == 13
+					LOCAL:13++
+				;合体結果の종족を検索
+				CALL SEARCH_RACE,LOCAL,LOCAL:5
+				SIF RESULT == 13
+					RESULT = LOCAL
+				CALL SEARCH_RACE, MIN(RESULT, LOCAL:13), MAX(RESULT, LOCAL:13)
+
+				IF RESULT == LOCAL:6
+					;ひとつめの종족リストを作成
+					IF LOCAL:11 != 1
+						IF FLAG:악마逆引き설정
+							IF LOCAL:3
+								;男性악마のみ
+								CALL MAKE_RLD_LIST, LOCAL, 0, 1, 0, LOCAL:20, LOCAL:21
+							ELSE
+								;女性악마のみ
+								CALL MAKE_RLD_LIST, LOCAL, 0, 2, 0, LOCAL:20, LOCAL:21
+							ENDIF
+						ELSE
+							;制限なし
+							CALL MAKE_RLD_LIST, LOCAL, 0, 0, 0, LOCAL:20, LOCAL:21
+						ENDIF
+						LOCAL:11 = 1
+					ENDIF
+					;ふたつめの종족リストを作成
+					IF LOCAL:12 != 1
+						IF FLAG:악마逆引き설정
+							IF LOCAL:3
+								;男性악마のみ
+								CALL MAKE_RLD_LIST, LOCAL:5, 1, 1, 0, LOCAL:20, LOCAL:21
+							ELSE
+								;女性악마のみ
+								CALL MAKE_RLD_LIST, LOCAL:5, 1, 2, 0, LOCAL:20, LOCAL:21
+							ENDIF
+						ELSE
+							;制限なし
+							CALL MAKE_RLD_LIST, LOCAL:5, 1, 0, 0, LOCAL:20, LOCAL:21
+						ENDIF
+						LOCAL:12 = 1
+					ENDIF
+					;みっつめの종족リストを作成
+					IF FLAG:악마逆引き설정
+						IF LOCAL:3
+							;男性악마のみ
+							CALL MAKE_RLD_LIST, LOCAL:13, 2, 1, 0, LOCAL:20, LOCAL:21
+						ELSE
+							;女性악마のみ
+							CALL MAKE_RLD_LIST, LOCAL:13, 2, 2, 0, LOCAL:20, LOCAL:21
+						ENDIF
+					ELSE
+						;制限なし
+						CALL MAKE_RLD_LIST, LOCAL:13, 2, 0, 0, LOCAL:20, LOCAL:21
+					ENDIF
+
+					;とりあえず総当り(だっせー
+					FOR LOCAL:7,0,5000
+						SIF E:(LOCAL:7) == -1
+							BREAK
+						FOR LOCAL:8,((LOCAL != LOCAL:5) ? 0 # LOCAL:7 + 1),5000
+							SIF F:(LOCAL:8) == -1
+								BREAK
+							FOR LOCAL:14,((LOCAL:5 != LOCAL:13) ? 0 # LOCAL:8 + 1),5000
+								SIF G:(LOCAL:14) == -1
+									BREAK
+								;合体結果
+								IF E:(LOCAL:7) != F:(LOCAL:8) && E:(LOCAL:7) != G:(LOCAL:14) && F:(LOCAL:8) != G:(LOCAL:14)
+									CALL OUTPUT_DEVIL,(CSVBASE(E:(LOCAL:7),GETNUM(BASE,"LV"),0) + CSVBASE(F:(LOCAL:8),GETNUM(BASE,"LV"),0) + CSVBASE(G:(LOCAL:14),GETNUM(BASE,"LV"),0))/3,FUSION_PLUS_LV(3)
+
+									IF RESULT == LOCAL:2
+										;該当ありの組み合わせと判明
+										H:(LOCAL:9) = LOCAL
+										I:(LOCAL:9) = LOCAL:5
+										J:(LOCAL:9) = LOCAL:13
+										LOCAL:7 = 5000
+										LOCAL:8 = 5000
+										LOCAL:14 = 5000
+										LOCAL:9++
+									ENDIF
+								ENDIF
+							NEXT
+						NEXT
+					NEXT
+				ENDIF
+			NEXT
+		ENDIF
+	NEXT
+NEXT
+
+IF ARG == 2
+	;정령合体検索
+	CALL LOOKUP_ELEMENT_FUSION, LOCAL:2, LOCAL:20, LOCAL:21
+	IF RESULT > 0
+		H:(LOCAL:9) = LOCAL:4
+		I:(LOCAL:9) = 13
+		LOCAL:9++
+	ENDIF
+ENDIF
+
+IF LOCAL:9 == 0
+	PRINTW 該当する合体結果は見つかりませんでした
+	RESTART
+ENDIF
+
+$RESEARCH
+PRINTL どの組み合わせで検索しますか？
+FOR LOCAL,0,LOCAL:9
+	PRINTFORM [{LOCAL+1,2,RIGHT}] %STR:(H:LOCAL),6,LEFT%× %STR:(I:LOCAL),6,LEFT%
+	IF ARG == 2
+		PRINTL
+	ELSE
+		PRINTFORML × %STR:(J:LOCAL),6,LEFT%
+	ENDIF
+NEXT
+DRAWLINE
+PRINTL [0] 돌아간다
+$INPUT_LOOP3
+INPUT
+IF RESULT == 0
+	RESTART
+ELSEIF RESULT > LOCAL:9
+	GOTO INPUT_LOOP3
+ENDIF
+LOCAL = RESULT - 1
+
+;ひとつめの종족リストを作成
+IF FLAG:악마逆引き설정
+	IF LOCAL:3
+		;男性악마のみ
+		CALL MAKE_RLD_LIST, H:LOCAL, 0, 1, 0, LOCAL:20, LOCAL:21
+	ELSE
+		;女性악마のみ
+		CALL MAKE_RLD_LIST, H:LOCAL, 0, 2, 0, LOCAL:20, LOCAL:21
+	ENDIF
+ELSE
+	;制限なし
+	CALL MAKE_RLD_LIST, H:LOCAL, 0, 0, 0, LOCAL:20, LOCAL:21
+ENDIF
+;ふたつめの종족リストを作成
+IF FLAG:악마逆引き설정
+	IF LOCAL:3
+		;男性악마のみ
+		CALL MAKE_RLD_LIST, I:LOCAL, 1, 1, 0, LOCAL:20, LOCAL:21
+	ELSE
+		;女性악마のみ
+		CALL MAKE_RLD_LIST, I:LOCAL, 1, 2, 0, LOCAL:20, LOCAL:21
+	ENDIF
+ELSE
+	;制限なし
+	CALL MAKE_RLD_LIST, I:LOCAL, 1, 0, 0, LOCAL:20, LOCAL:21
+ENDIF
+
+LOCAL:11 = H:LOCAL
+LOCAL:12 = I:LOCAL
+
+IF ARG == 3
+	;みっつめの종족リストを作成
+	IF FLAG:악마逆引き설정
+		IF LOCAL:3
+			;男性악마のみ
+			CALL MAKE_RLD_LIST, J:LOCAL, 2, 1, 0, LOCAL:20, LOCAL:21
+		ELSE
+			;女性악마のみ
+			CALL MAKE_RLD_LIST, J:LOCAL, 2, 2, 0, LOCAL:20, LOCAL:21
+		ENDIF
+	ELSE
+		;制限なし
+		CALL MAKE_RLD_LIST, J:LOCAL, 2, 0, 0, LOCAL:20, LOCAL:21
+	ENDIF
+	LOCAL:13 = J:LOCAL
+ENDIF
+
+FOR LOCAL,0,5000
+	SIF E:LOCAL == -1
+		BREAK
+	FOR LOCAL:1,((LOCAL:11 != LOCAL:12) ? 0 # LOCAL + 1),5000
+		SIF F:(LOCAL:1) == -1
+			BREAK
+		IF ARG == 2
+			IF LOCAL:12 == 13
+				CALL RESULT_ELEMENT_FUSION,E:LOCAL,F:(LOCAL:1)
+			ELSE
+				CALL OUTPUT_DEVIL,(CSVBASE(E:LOCAL,GETNUM(BASE,"LV"),0) + CSVBASE(F:(LOCAL:1),GETNUM(BASE,"LV"),0))/2,FUSION_PLUS_LV(2)
+			ENDIF
+
+			IF RESULT == LOCAL:2
+				LOCALS = \@ CSVCSTR(E:LOCAL,GETNUM(CSTR,"종족명"),0) != "" ? %CSVCSTR(E:LOCAL,GETNUM(CSTR,"종족명"),0)% # %STR:(CSVABL(E:LOCAL,GETNUM(ABL,"종족"),0))% \@
+				LOCALS:1 = \@ CSVCSTR(F:(LOCAL:1),GETNUM(CSTR,"종족명"),0) != "" ? %CSVCSTR(F:(LOCAL:1),GETNUM(CSTR,"종족명"),0)% # %STR:(CSVABL(F:(LOCAL:1),GETNUM(ABL,"종족"),0))% \@
+
+				PRINTFORM %LOCALS,6,LEFT%%CSVNAME(E:LOCAL,0),16,LEFT% Lv{CSVBASE(E:LOCAL,GETNUM(BASE,"LV"),0),3,RIGHT} × 
+				PRINTFORML %LOCALS:1,6,LEFT%%CSVNAME(F:(LOCAL:1),0),16,LEFT% Lv{CSVBASE(F:(LOCAL:1),GETNUM(BASE,"LV"),0),3,RIGHT}
+			ENDIF
+		ELSE
+			FOR LOCAL:7,((LOCAL:12 != LOCAL:13) ? 0 # LOCAL:1 + 1),5000
+				SIF G:(LOCAL:7) == -1
+					BREAK
+				IF E:LOCAL != F:(LOCAL:1) && E:LOCAL != G:(LOCAL:7) && F:(LOCAL:1) != G:(LOCAL:7)
+					CALL OUTPUT_DEVIL,(CSVBASE(E:LOCAL,GETNUM(BASE,"LV"),0) + CSVBASE(F:(LOCAL:1),GETNUM(BASE,"LV"),0) + CSVBASE(G:(LOCAL:7),GETNUM(BASE,"LV"),0))/3,FUSION_PLUS_LV(3)
+
+					IF RESULT == LOCAL:2
+						LOCALS = \@ CSVCSTR(E:LOCAL,GETNUM(CSTR,"종족명"),0) != "" ? %CSVCSTR(E:LOCAL,GETNUM(CSTR,"종족명"),0)% # %STR:(CSVABL(E:LOCAL,GETNUM(ABL,"종족"),0))% \@
+						LOCALS:1 = \@ CSVCSTR(F:(LOCAL:1),GETNUM(CSTR,"종족명"),0) != "" ? %CSVCSTR(F:(LOCAL:1),GETNUM(CSTR,"종족명"),0)% # %STR:(CSVABL(F:(LOCAL:1),GETNUM(ABL,"종족"),0))% \@
+						LOCALS:2 = \@ CSVCSTR(G:(LOCAL:7),GETNUM(CSTR,"종족명"),0) != "" ? %CSVCSTR(G:(LOCAL:7),GETNUM(CSTR,"종족명"),0)% # %STR:(CSVABL(G:(LOCAL:7),GETNUM(ABL,"종족"),0))% \@
+
+						PRINTFORM %LOCALS,6,LEFT%%CSVNAME(E:LOCAL,0),16,LEFT% Lv{CSVBASE(E:LOCAL,GETNUM(BASE,"LV"),0),3,RIGHT} × 
+						PRINTFORM %LOCALS:1,6,LEFT%%CSVNAME(F:(LOCAL:1),0),16,LEFT% Lv{CSVBASE(F:(LOCAL:1),GETNUM(BASE,"LV"),0),3,RIGHT} × 
+						PRINTFORML %LOCALS:2,6,LEFT%%CSVNAME(G:(LOCAL:7),0),16,LEFT% Lv{CSVBASE(G:(LOCAL:7),GETNUM(BASE,"LV"),0),3,RIGHT}
+					ENDIF
+				ENDIF
+			NEXT
+		ENDIF
+	NEXT
+NEXT
+
+DRAWLINE
+PRINTL 以上の組み合わせが見つかりました
+SIF FLAG:악마逆引き설정 == 0
+	PRINTL ※ 注意！　목적の악마と性別が異なる소재は、性転換後に사용してください
+WAIT
+DRAWLINE
+GOTO RESEARCH
+
+;종족別악마リスト作成
+;ARG = 종족番号
+;ARG:1 = 0
+;　Eにリストを作成
+;ARG:1 = 1
+;　Fにリストを作成
+;ARG:1 = 2
+;　Gにリストを作成
+;ARG:2 = 0
+;　性別は問わない
+;ARG:2 = 1
+;　男性악마のみ
+;ARG:2 = 2
+;　女性악마のみ
+;ARG:3 = 0
+;　特殊合体のみの악마を除外しない
+;ARG:3 = 1
+;　特殊合体のみの악마を除外する
+;ARG:4 下限레벨
+;ARG:5 上限레벨
+@MAKE_RLD_LIST, ARG, ARG:1, ARG:2, ARG:3, ARG:4 = 0, ARG:5 = 0
+IF ARG:1 == 0
+	VARSET E, -1
+ELSEIF ARG:1 == 1
+	VARSET F, -1
+ELSEIF ARG:1 == 2
+	VARSET G, -1
+ELSE
+	RETURN -1
+ENDIF
+
+;ヒット件数
+LOCAL:2 = 0
+
+FOR LOCAL,1,5001
+	IF EXISTCSV(LOCAL,0) && CSVABL(LOCAL,GETNUM(ABL,"종족"),0) == ARG
+		CALL CHECK_FUSION_ABLE,LOCAL
+		SIF RESULT == 0
+			CONTINUE
+		SIF ARG:2 == 1 && CSVTALENT(LOCAL,GETNUM(TALENT,"남자"),0) != 1
+			CONTINUE
+		SIF ARG:2 == 2 && CSVTALENT(LOCAL,GETNUM(TALENT,"남자"),0) != 0
+			CONTINUE
+		SIF ARG:3 == 1 && CSVCFLAG(LOCAL,(GETNUM(CFLAG,"特殊合体のみ")),0) == 1
+			CONTINUE
+		IF ARG:4 > 0
+			SIF CSVBASE(LOCAL,GETNUM(BASE,"LV"),0) < ARG:4
+				CONTINUE
+		ENDIF
+		IF ARG:5 > 0
+			SIF CSVBASE(LOCAL,GETNUM(BASE,"LV"),0) > ARG:5
+				CONTINUE
+		ENDIF
+		LOCAL:2++
+		FOR LOCAL:10,0,(LOCAL:2)
+			IF ARG:1 == 0
+				IF E:(LOCAL:10) == -1
+					E:(LOCAL:10) = LOCAL
+				ELSEIF CSVBASE(LOCAL,GETNUM(BASE,"LV"),0) <= CSVBASE(E:(LOCAL:10),GETNUM(BASE,"LV"),0)
+					CONTINUE
+				ELSE 
+					FOR LOCAL:20,(LOCAL:2+1),LOCAL:10,-1
+						SIF E:(LOCAL:20-1) > -1
+							E:(LOCAL:20) = E:(LOCAL:20-1)
+					NEXT
+					E:(LOCAL:10) = LOCAL
+					BREAK
+				ENDIF
+			ELSEIF ARG:1 == 1
+				IF F:(LOCAL:10) == -1
+					F:(LOCAL:10) = LOCAL
+				ELSEIF CSVBASE(LOCAL,GETNUM(BASE,"LV"),0) <= CSVBASE(F:(LOCAL:10),GETNUM(BASE,"LV"),0)
+					CONTINUE
+				ELSE 
+					FOR LOCAL:20,(LOCAL:2+1),LOCAL:10,-1
+						SIF F:(LOCAL:20-1) > -1
+							F:(LOCAL:20) = F:(LOCAL:20-1)
+					NEXT
+					F:(LOCAL:10) = LOCAL
+					BREAK
+				ENDIF
+			ELSE
+				IF G:(LOCAL:10) == -1
+					G:(LOCAL:10) = LOCAL
+				ELSEIF CSVBASE(LOCAL,GETNUM(BASE,"LV"),0) <= CSVBASE(G:(LOCAL:10),GETNUM(BASE,"LV"),0)
+					CONTINUE
+				ELSE 
+					FOR LOCAL:20,(LOCAL:2+1),LOCAL:10,-1
+						SIF G:(LOCAL:20-1) > -1
+							G:(LOCAL:20) = G:(LOCAL:20-1)
+					NEXT
+					G:(LOCAL:10) = LOCAL
+					BREAK
+				ENDIF
+			ENDIF
+		NEXT
+	ENDIF
+NEXT
+
+RETURN LOCAL:2
+
+;合体可能체크
+@CHECK_FUSION_ABLE,ARG
+SIF CSVCFLAG(ARG,(GETNUM(CFLAG,"合体조건有り")),0) == 1 && FLAG:(10000+ARG) == 0
+	RETURN 0
+;アナライズ 0％の악마は検索出来ない
+SIF FLAG:(20000 + ARG) == 0
+	RETURN 0
+RETURN 1
+
+@PRINT_RLD_LIST
+;配列Eの中身を표시
+IF E:0 < 0
+	PRINTW 해당되는 악마는 등록되어있지 않습니다
+	RETURN 0
+ENDIF
+
+DRAWLINE
+PRINTFORML □%STR:(CSVABL(E:0,GETNUM(ABL,"종족"),0))%
+DRAWLINE
+
+FOR LOCAL,0,5000
+	SIF E:LOCAL < 0
+		BREAK
+	LOCAL:2 = FLAG:(20000 + E:LOCAL) / 10
+	LOCAL:3 = CSVBASE(E:LOCAL,GETNUM(BASE,"LV"),0)
+	PRINTFORM [{LOCAL+1,3}] %CSVNAME(E:LOCAL,0),20,LEFT% Lv{LOCAL:3,3}  {LOCAL:2,3}％ 
+	IF CSVTALENT(E:LOCAL, GETNUM(TALENT, "남자"))
+		PRINTS \@ CSVTALENT(E:LOCAL, GETNUM(TALENT, "오토코노코")) ? ？　 # ♂　 \@
+	ELSE
+		PRINTS \@ CSVTALENT(E:LOCAL, GETNUM(TALENT, "후타나리")) ? 双　 # ♀　 \@
+	ENDIF
+NEXT
+SIF !LINEISEMPTY()
+	PRINTL
+DRAWLINE
+
+@PRINT_RLD_ELEMENT, ARG, ARG:1
+IF ARG:1 == 2
+	SELECTCASE ARG
+		CASE 1201,1203
+			;실프、놈
+			PRINTL [ 1]마왕　× 마왕
+			PRINTL [ 2]천사　× 천사
+			PRINTL [ 3]요정　× 요정
+			PRINTL [ 4]마수　× 마수
+			PRINTL [ 5]요조　× 요조
+			PRINTL [ 6]외도　× 외도
+		CASE 1202,1204
+			;운디네、살라만더
+			PRINTL [ 1]지모신× 지모신
+			PRINTL [ 2]여신　× 여신
+			PRINTL [ 3]요마　× 요마
+			PRINTL [ 4]요귀　× 요귀
+			PRINTL [ 5]용왕　× 용왕
+			PRINTL [ 6]귀신　× 귀신
+			PRINTL [ 7]마신　× 마신
+		CASEELSE
+			PRINTW 해당되는 합체결과는 발견되지 않았습니다
+			RETURN 0
+	ENDSELECT
+ENDIF
+DRAWLINE
+PRINTL 이상의 편성이 검색되었습니다
+SIF FLAG:악마逆引き설정 == 0
+	PRINTL ※ 주의！　목적한 악마와 성별이 다른 소재는 성전환 후에 사용해 주세요
+WAIT
+
+@LOOKUP_ELEMENT_FUSION, ARG, ARG:1, ARG:2
+;引数：악마番号
+;戻り値：정령合体で목적の악마が作れるかどうか(0=作成不可 1=作成可能
+;목적の악마の종족リストを作成
+CALL MAKE_RLD_LIST, CSVABL(ARG,GETNUM(ABL,"종족"),0), 0, 0, 0, ARG:1, ARG:2
+;정령リストを作成
+CALL MAKE_RLD_LIST, 13, 1, 0, 0, ARG:1, ARG:2
+FOR LOCAL,0,5000
+	SIF F:LOCAL < 0
+		RETURN 0
+	FOR LOCAL:1,0,5000
+		SIF E:(LOCAL:1) < 0
+			BREAK
+		CALL RESULT_ELEMENT_FUSION,E:(LOCAL:1),F:LOCAL
+		IF RESULT == ARG
+			RETURN 1
+		ELSE
+			CONTINUE
+		ENDIF
+	NEXT
+NEXT
+

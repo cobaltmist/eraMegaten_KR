@@ -1,0 +1,207 @@
+﻿;-------------------------------------------------
+;유두캡쓴다
+;道具사용コマンド、레벨2
+;촉수유두자극시킨다
+;-------------------------------------------------
+@CHECK_COM_ABLE55
+
+;유두캡実行판정
+;촉수조교中はダメ
+SIF TEQUIP:25
+	RETURN 0
+
+;해제はいつでも가능
+SIF TEQUIP:PLAYER:16
+	RETURN 1
+;아이템を持っているか、아이템なし설정でないとダメ
+SIF !EXIST_ITEM(10)
+	RETURN 0
+
+SIF !USE_NIPLE(PLAYER)
+	RETURN 0
+
+;샤워中はダメ
+SIF TEQUIP:32
+	RETURN 0
+RETURN 1
+
+@CHECK_COM_ABLE173
+
+;촉수유두자극
+SIF TEQUIP:25 == 0
+	RETURN 0
+
+;촉수착유中は
+SIF TEQUIP:PLAYER:17
+	RETURN 0
+RETURN 1
+
+@ACT_COM55
+IF TEQUIP:25
+	PRINTL 촉수유두자극시킨다
+	TSTR:0 = 촉수유두자극시킨다
+	SELECTCOM = 173
+ELSE
+	PRINTL 유두캡쓴다
+	TSTR:0 = 유두캡쓴다
+ENDIF
+;CALL KOJO_MESSAGE_COM
+
+;着脱の処理
+IF TEQUIP:PLAYER:16 == 0
+	TEQUIP:PLAYER:16 = 1
+ELSE
+	TEQUIP:PLAYER:16 = 0
+ENDIF
+
+;-------------------------------------------------
+;ソース추가処理
+;-------------------------------------------------
+;소비체력、기력
+LOSEBASE:0 += 10
+LOSEBASE:1 += 10
+
+SOURCE:4 = 10
+SOURCE:13 = 10
+SOURCE:17 = 10
+
+SOURCE:PLAYER:도구쾌Ｂ = 200
+
+
+;-------------------------------------------------
+;불결の処理
+;-------------------------------------------------
+;촉수유두자극なら、촉수体液が가슴に付く
+SIF TEQUIP:25
+	CALL SET_STAIN("가슴", "점액", PLAYER)
+
+;-------------------------------------------------
+;경험の処理
+;-------------------------------------------------
+A = 1
+IF IS_LESBIAN(TARGET,PLAYER)
+;	PRINTFORML %EXPNAME:40%+{A}
+;	PRINTFORML %EXPNAME:40%(조교자)+{A}
+;	EXP:40 += A
+;	EXP:PLAYER:40 += A
+	CALL ADDS_EXP("레즈경험", A, TARGET)
+	CALL ADDS_EXP("레즈경험", A, PLAYER)
+ELSEIF IS_GAY(TARGET,PLAYER)
+;	PRINTFORML %EXPNAME:41%+{A}
+;	PRINTFORML %EXPNAME:41%(조교자)+{A}
+;	EXP:41 += A
+;	EXP:PLAYER:41 += A
+	CALL ADDS_EXP("ＢＬ경험", A, TARGET)
+	CALL ADDS_EXP("ＢＬ경험", A, PLAYER)
+	
+	
+ENDIF
+
+;촉수소환時、촉수경험の리셋をする
+;SIF TEQUIP:25 == 1
+;	T = 0
+
+;의존도ベクトル
+TFLAG:33 = 0
+
+
+RETURN 1
+
+
+;-------------------------------------------------
+;装着継続の処理
+;-------------------------------------------------
+@EQUIP_COM55
+;유두캡장비中
+IF TEQUIP:25
+	PRINTL ＜촉수유두자극중(조교자)＞
+ELSE
+	PRINTL ＜유두캡장착중(조교자)＞
+ENDIF
+
+;-------------------------------------------------
+;ソース추가処理
+;-------------------------------------------------
+SOURCE:PLAYER:도구쾌Ｂ += 100
+
+RETURN 1
+
+;-------------------------------------------------
+;경험の処理
+;-------------------------------------------------
+;촉수경험加算
+SIF TEQUIP:25 == 1
+	CALL ADDS_EXP("촉수경험", 1, PLAYER)
+;	T += 1
+
+
+;-------------------------------------------------
+;조교時テ키스ト
+;-------------------------------------------------
+;55,유두캡쓴다
+;-------------------------------------------------
+@MESSAGE_COM55
+;装着時
+IF TEQUIP:PLAYER:16
+	PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% 유두에 클립로터를 붙였다
+;해제時
+ELSE
+	PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% 클립로터를 떼어냈다
+ENDIF
+
+;-------------------------------------------------
+;173,촉수유두자극시킨다
+;-------------------------------------------------
+@MESSAGE_COM173
+;装着時
+IF TEQUIP:PLAYER:16
+	PRINTFORM 꿈틀거리는 가는 촉수가 
+	IF TEQUIP:PLAYER:유방노출 != -1 || (TEQUIP:PLAYER:유방노출 == -1 && TEQUIP:PLAYER:속옷（상） == 520)
+		IF TEQUIP:PLAYER:옷 > 0
+			CALL CLOTHES_NAME,1,PLAYER
+			PRINT 의 옷감너머로 
+		ELSEIF TEQUIP:PLAYER:전신복 > 0
+			CALL CLOTHES_NAME,3,PLAYER
+			PRINT 의 옷감너머로 
+		ELSEIF TEQUIP:PLAYER:속옷（상） > 0
+			CALL CLOTHES_NAME,5,PLAYER
+			PRINTFORM \@ TEQUIP:PLAYER:속옷（상） == 520 ? 를 괴롭히면서  # 의 위로 \@
+		ELSEIF TEQUIP:PLAYER:그외 > 0
+			CALL CLOTHES_NAME,10,PLAYER
+			PRINT 의 안쪽에 비집고 들어가 
+		ENDIF
+	ELSE
+		IF TEQUIP:PLAYER:옷 > 0
+			CALL CLOTHES_NAME,1,PLAYER
+			PRINT 의 가슴팍에서 새어나온、
+		ELSEIF TEQUIP:PLAYER:전신복 > 0
+			CALL CLOTHES_NAME,3,PLAYER
+			PRINT 의 가슴팍에서 새어나온、
+		ENDIF
+	ENDIF
+	PRINTFORM %CALLNAME:PLAYER%의 
+	;유아체형＋빈유、절벽
+	IF (TALENT:PLAYER:100 && TALENT:PLAYER:109) || TALENT:PLAYER:110
+		PRINT 간신히 부푼곳이 느껴지는 정도의 
+	;빈유
+	ELSEIF TALENT:PLAYER:109
+		PRINT 조그마한 
+	;거유
+	ELSEIF TALENT:PLAYER:111
+		PRINT 손에서 흘러내릴 정도의 
+	;폭유
+	ELSEIF TALENT:PLAYER:112
+		PRINT 손에 다 들 수 없을 정도로 큰 
+	ENDIF
+	PRINTFORMW 가슴 끝의 돌기를 \@ TEQUIP:PLAYER:속옷（상） == 520 ? 괴롭혔다 # 집어들었다\@……
+;해제時
+ELSE
+	PRINTFORMW 촉수는 %CALLNAME:PLAYER%의 유두에서 떨어졌다
+ENDIF
+
+;===================================================
+;조교타입
+;===================================================
+@COMTYPE_55
+RETURN COMTYPE("대조교자도구계")
+

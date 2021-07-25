@@ -1,0 +1,277 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;	Edit	Date			Author					Reason
+;	001		20XX/XX/XX								新規作成
+;	002		2021/02/22		亜人いいよね			悪魔専用強化スキルの追加
+
+@RAG_SKILL_CARD
+#LOCALSIZE 14
+#LOCALSSIZE 13
+#DIM LCOUNT
+
+GETBGCOLOR
+C = RESULT
+
+VARSET DB
+
+LCOUNT = 0
+IF GETBIT(FLAG:EXTRA이벤트설정, 0) == 1
+	PRINTL 어느 쪽을 고릅니까？
+	PRINTL [ 1] 통상
+	PRINTL [ 2] EXTRA
+	INPUT
+	SIF RESULT == 2
+		LCOUNT = 1
+ENDIF
+$SKILL_CARD_EXCHANGE
+
+PRINTL 라그：
+PRINTL 「그럼 원하는 걸 골라봐」
+PRINTL
+IF LCOUNT == 1
+    CALL RAG_SKILL_CARD_EXCHANGE_표시(1,[[아이템:스킬카드【풍파・카마이타치】]], "아메지스트", 5, "토파즈", 5,"오닉스", 5)
+    CALL RAG_SKILL_CARD_EXCHANGE_표시(2,[[아이템:스킬카드【가재가르기】]], "에메랄드", 7, "가넷", 7)
+	;EDIT 002 MOD START -----------------------------------
+    IF EXTRA強化(11)
+        CALL RAG_SKILL_CARD_EXCHANGE_표시(3,[[아이템:스킬카드【내추럴본】]], "가넷", 4, "아메지스트", 4,"아쿠아마린", 2)
+        CALL RAG_SKILL_CARD_EXCHANGE_표시(4,[[아이템:스킬카드【오토퍼지】]], "오팔", 4, "에메랄드", 4,"토파즈", 2)
+    ENDIF
+;EDIT 002 MOD END -------------------------------------
+ELSE
+    CALL RAG_SKILL_CARD_EXCHANGE_표시(100,[[아이템:스킬카드【육체의악마】]], "루비", 10, "사파이어", 10,"오닉스", 10)
+    CALL RAG_SKILL_CARD_EXCHANGE_표시(101,[[아이템:스킬카드【파사의광인】]], "다이아몬드", 10, "진주", 10, "아메지스트", 10)
+    CALL RAG_SKILL_CARD_EXCHANGE_표시(102,[[아이템:스킬카드【갑옷관통】]], "토파즈", 7, "에메랄드", 7)
+    CALL RAG_SKILL_CARD_EXCHANGE_표시(103,[[아이템:스킬카드【관통의일격】]], "터키석", 7, "아메지스트", 7)
+    CALL RAG_SKILL_CARD_EXCHANGE_표시(104,[[아이템:스킬카드【수해의실】]], "아쿠아마린", 7, "오팔", 7,"토파즈", 7)
+    CALL RAG_SKILL_CARD_EXCHANGE_표시(105,[[아이템:스킬카드【스카프런지】]], "오닉스", 7, "가넷", 7,"터키석", 7)
+    CALL RAG_SKILL_CARD_EXCHANGE_표시(106,[[아이템:스킬카드【백발백중】]], "오팔", 2, "토파즈", 2,"아쿠아마린", 2)
+    CALL RAG_SKILL_CARD_EXCHANGE_표시(107,[[아이템:스킬카드【천발천중】]], "오닉스", 7, "터키석", 7,"사파이어", 7)
+    CALL RAG_SKILL_CARD_EXCHANGE_표시(108,[[아이템:스킬카드【간파】]], "에메랄드", 2, "오팔", 2,"가넷", 2)
+ENDIF
+    PRINTL
+    PRINTFORM [999] 돌아간다　
+    PRINTFORML [1000] 가게를 나간다
+    INPUT
+IF RESULT < 999 && DB:RESULT:0 > 0
+	VARSET LOCAL
+	VARSET LOCALS
+	FOR LOCAL, 1, 13 
+		SIF DB:RESULT:LOCAL == 0
+			BREAK
+		LOCAL:LOCAL  = DB:RESULT:LOCAL / 100000
+		A = DB:RESULT:LOCAL % 100000
+		LOCALS:LOCAL = %ITEMNAME:A%
+	NEXT
+	LOCAL = DB:RESULT:0
+	CALL RAG_SKILL_CARD_EXCHANGE(LOCAL, LOCALS:1, LOCAL:1, LOCALS:2, LOCAL:2, LOCALS:3, LOCAL:3, LOCALS:4, LOCAL:4, LOCALS:5, LOCAL:5, LOCALS:6, LOCAL:6, LOCALS:7, LOCAL:7, LOCALS:8, LOCAL:8, LOCALS:9, LOCAL:9, LOCALS:10, LOCAL:10, LOCALS:11, LOCAL:11, LOCALS:12, LOCAL:12)
+ENDIF
+    SELECTCASE RESULT
+    	CASE 999
+    		RETURN -1
+    	CASE 1000
+    		RETURN 0
+    ENDSELECT
+
+GOTO SKILL_CARD_EXCHANGE
+
+@RAG_SKILL_CARD_EXCHANGE(ARG, ARGS:1, ARG:1, ARGS:2 = "", ARG:2 = 0, ARGS:3 = "", ARG:3 = 0, ARGS:4 = "", ARG:4 = 0, ARGS:5 = "", ARG:5 = 0, ARGS:6 = "", ARG:6 = 0, ARGS:7 = "", ARG:7 = 0, ARGS:8 = "", ARG:8 = 0, ARGS:9 = "", ARG:9 = 0, ARGS:10 = "", ARG:10 = 0, ARGS:11 = "", ARG:11 = 0, ARGS:12 = "", ARG:12 = 0)
+
+#DIM 宝石종류, 13
+#DIM 宝石필요数, 13
+#DIM 宝石소지数, 13
+#DIM 技番号, 1
+
+VARSET 宝石종류,0
+VARSET 宝石필요数,0
+VARSET 宝石소지数,0
+
+技番号 = ARG - 10000
+
+CALLFORM SKILL_NAME_{技番号},-1
+PRINTFORML %RESULTS%
+
+CALLFORM SKILL_DECIDE_TYPE_{技番号}
+IF RESULT == 1
+	PRINT EXTRA   
+ELSEIF RESULT == 2
+	PRINT MAGIC   
+ELSE
+	PRINT PASSIVE 
+ENDIF
+IF RESULT == 2 || RESULT == 1
+	CALLFORM SKILL_POWER_{技番号},-1
+	PRINTFORM 위력：{RESULT,6,LEFT}
+	
+	CALLFORM SKILL_HITRATE_{技番号},-1
+	PRINTFORML 명중：{RESULT,6,LEFT}
+	
+	CALLFORM SKILL_TYPE_{技番号},-1
+	PRINTFORM %GET_TYPE(RESULT),8,LEFT%
+	
+	CALLFORM SKILL_COST_{技番号},-1
+	PRINTFORM 소비：{RESULT,6,LEFT}
+	
+	CALLFORM SKILL_DAMAGETYPE_{技番号}
+	PRINT TYPE：
+	IF RESULT == 1
+		PRINTL 물리（힘）
+	ELSEIF RESULT == 2
+		PRINTL 마법（마력）
+	ELSE
+		PRINTL なし
+	ENDIF
+ELSE
+	PRINTL 
+ENDIF
+CALLFORM SKILL_EXPLAIN_{技番号}
+PRINTW
+
+CALL CHECK_ITEMMAX , ARG
+IF RESULT == 1
+		PRINTL 라그：
+		PRINTW 「소지 상한수를 넘겼어」
+		RETURN 0
+ENDIF
+
+FOR LOCAL:2, 1, 13
+	LOCAL:1 = 0
+	FOR LOCAL, 1, 13
+		SIF ARGS:LOCAL == ""
+			CONTINUE
+		RESULT = GETNUM(ITEM,ARGS:LOCAL)
+		IF LOCAL:1 < RESULT
+			LOCAL:1 = RESULT
+			LOCAL:3 = LOCAL
+		ENDIF
+	NEXT
+	SIF LOCAL:1 == 0
+		BREAK
+	IF LOCAL:1 > 0
+		IF LOCAL:1 == 宝石종류:(LOCAL:2-1)
+			LOCAL:2 --
+			宝石필요数:(LOCAL:2) += ARG:(LOCAL:3)
+			宝石소지数:(LOCAL:2) += ITEM:(ARGS:(LOCAL:3))
+		ELSE
+			宝石종류:(LOCAL:2) = LOCAL:1
+			宝石필요数:(LOCAL:2) = ARG:(LOCAL:3)
+			宝石소지数:(LOCAL:2) = ITEM:(ARGS:(LOCAL:3))
+		ENDIF
+		ARGS:(LOCAL:3) = ""
+	ENDIF
+NEXT
+LOCAL:1 = 99
+FOR LOCAL, 1, 13
+	SIF 宝石종류:LOCAL == 0
+		BREAK
+	IF 宝石소지数:LOCAL < 宝石필요数:LOCAL
+		PRINTL 라그：
+		PRINTW 「보석이 부족하네에」
+		RETURN 0
+	ENDIF
+	SIF LOCAL:1 > (宝石소지数:LOCAL / 宝石필요数:LOCAL)
+		LOCAL:1 = 宝石소지数:LOCAL / 宝石필요数:LOCAL
+NEXT
+
+PRINTL 라그：
+PRINTFORML 「%ITEMNAME:ARG%와 교환할게, 괜찮지？」
+FOR LOCAL, 1, 13
+	SIF 宝石종류:LOCAL == 0
+		BREAK
+	PRINTFORML %ITEMNAME:(宝石종류:LOCAL),18,LEFT%　소지수:{宝石소지数:LOCAL,2} → {(宝石소지数:LOCAL-宝石필요数:LOCAL),2}
+NEXT
+CALL INPUT_YN("예", "아니오")
+SIF RESULT == 1
+	RETURN 0
+	
+	PRINTFORMW ＞%ITEMNAME:ARG%를 손에 넣었다
+	ITEM:ARG += 1
+	FOR LOCAL, 1, 13
+		SIF 宝石종류:LOCAL == 0
+			BREAK
+		ITEM:(宝石종류:LOCAL) -= 宝石필요数:LOCAL
+	NEXT
+
+
+@RAG_SKILL_CARD_EXCHANGE_표시(ARG:13, ARG, ARGS:1, ARG:1, ARGS:2 = "", ARG:2 = 0, ARGS:3 = "", ARG:3 = 0, ARGS:4 = "", ARG:4 = 0, ARGS:5 = "", ARG:5 = 0, ARGS:6 = "", ARG:6 = 0, ARGS:7 = "", ARG:7 = 0, ARGS:8 = "", ARG:8 = 0, ARGS:9 = "", ARG:9 = 0, ARGS:10 = "", ARG:10 = 0, ARGS:11 = "", ARG:11 = 0, ARGS:12 = "", ARG:12 = 0)
+
+#DIM 宝石종류, 13
+#DIM 宝石필요数, 13
+#DIM 宝石소지数, 13
+#DIM LCOUNT
+
+VARSET 宝石종류,0
+VARSET 宝石필요数,0
+VARSET 宝石소지数,0
+LCOUNT = 0
+
+;LOCAL = [[キャラ:%ARGS:0%]]
+
+;PRINTFORM [{ARG:13,3}]
+CALL SET_PICTURE , , , "소거"
+CALL SET_PICTURE , @"[{ARG:13,3}]" , 0 , , LCOUNT
+LCOUNT += 5
+
+;PRINTFORM %ITEMNAME:ARG,34,LEFT%
+CALL SET_PICTURE , @"%ITEMNAME:ARG,34,LEFT%" , 0 , , LCOUNT
+LCOUNT += 34
+DB:(ARG:13):0 = ARG
+
+;PRINTFORM 소지수:{ITEM:ARG,3}　
+CALL SET_PICTURE , @"소지수:{ITEM:ARG,3}　" , 0 , , LCOUNT
+LCOUNT += 12
+
+FOR LOCAL:2, 1, 13
+	LOCAL:1 = 0
+	FOR LOCAL, 1, 13
+		SIF ARGS:LOCAL == ""
+			CONTINUE
+		RESULT = GETNUM(ITEM,ARGS:LOCAL)
+		IF LOCAL:1 < RESULT
+			LOCAL:1 = RESULT
+			LOCAL:3 = LOCAL
+		ENDIF
+	NEXT
+	SIF LOCAL:1 == 0
+		BREAK
+	IF LOCAL:1 > 0
+		IF LOCAL:1 == 宝石종류:(LOCAL:2-1)
+			LOCAL:2 --
+			宝石필요数:(LOCAL:2) += ARG:(LOCAL:3)
+			宝石소지数:(LOCAL:2) += ITEM:(ARGS:(LOCAL:3))
+		ELSE
+			宝石종류:(LOCAL:2) = LOCAL:1
+			宝石필요数:(LOCAL:2) = ARG:(LOCAL:3)
+			宝石소지数:(LOCAL:2) = ITEM:(ARGS:(LOCAL:3))
+		ENDIF
+		ARGS:(LOCAL:3) = ""
+	ENDIF
+NEXT
+;PRINTFORM 필요한보석:
+CALL SET_PICTURE , "필요한보석:" , 0 , , LCOUNT
+LCOUNT += 11
+LOCAL:3 = LCOUNT
+LOCAL:4 = 0
+FOR LOCAL, 1, 13
+	SIF 宝石종류:LOCAL == 0
+		BREAK
+	IF LOCAL > 3 && LOCAL % 3 == 1
+		LOCAL:4 ++
+		LOCAL:3 = LCOUNT
+		CALL SET_PICTURE , @"_[{ARG:13,3}],{C}_" , LOCAL:4 , , LOCAL:3 - 6
+	ENDIF
+	IF 宝石소지数:LOCAL >= 宝石필요数:LOCAL
+		;SETCOLOR COLOR("하늘색")
+		LOCAL:1 = COLOR("하늘색")
+	ELSE
+		;SETCOLOR COLOR("붉은색")
+		LOCAL:1 = COLOR("붉은색")
+	ENDIF
+	;PRINTFORM %ITEMNAME:(宝石종류:LOCAL),18,LEFT%　({宝石소지数:LOCAL,2}/{宝石필요数:LOCAL,2})
+	CALL SET_PICTURE , @"_%ITEMNAME:(宝石종류:LOCAL),14,LEFT%({宝石소지数:LOCAL,3}/{宝石필요数:LOCAL,3}) ,{LOCAL:1}_" , LOCAL:4 , , LOCAL:3
+	LOCAL:3 += 24
+	
+	;RESETCOLOR
+	DB:(ARG:13):LOCAL = 宝石종류:LOCAL
+	DB:(ARG:13):LOCAL += 宝石필요数:LOCAL * 100000
+NEXT
+CALL SET_PICTURE ,  , 0 , "표시" , 1 + LOCAL:4
+;PRINTFORML

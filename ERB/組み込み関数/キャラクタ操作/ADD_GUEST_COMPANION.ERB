@@ -1,0 +1,78 @@
+﻿;-------------------------------------------------
+;@ADD_GUEST_COMPANION(ARG, ARG:1, ARG:2)
+;ゲストキャラを参戦させる関数
+;ARGのキャラをARG:1の충성도で
+;パーティに空白があればその場所
+;なければ악마を押しのけて入ってくる
+;RESULTに実際にいれた포지션（いれてないなら0）
+;RESULT:1に押しのけたキャラのキャラ번호（おしのけてないなら-1）
+;RESULT:2が1の場合は新しくキャラ추가、0の場合は인계된 캐릭터を復活
+;を入れて返す
+;ARG:2をONにした場合は후열から판정するので、후열向けキャラの場合はどうぞ
+
+;MASTERを除外するように수정
+;-------------------------------------------------
+@ADD_GUEST_COMPANION(ARG, ARG:1, ARG:2)
+#LOCALSIZE 4
+LOCAL:1 = -1
+LOCAL:2 = -1
+IF ARG:2
+	FOR LOCAL, 6, 0, -1
+		LOCALS = 포지션{LOCAL} 
+		IF FLAG:LOCALS < 0
+			LOCAL:1 = LOCAL
+			BREAK
+		ENDIF
+	NEXT
+	IF LOCAL:1 == -1
+		FOR LOCAL, 6, 0, -1
+			LOCALS = 포지션{LOCAL} 
+			IF (ABL:(FLAG:LOCALS):종족 || NO:(FLAG:LOCALS) == [[キャラ:메어리]] ) && (FLAG:LOCALS) != MASTER
+				LOCAL:1 = LOCAL
+				;LOCAL:2にどかすキャラを入れる
+				LOCAL:2 = POS(LOCAL)
+				;포지션から外す
+				CALL REMOVE_POSITION(LOCAL)
+				BREAK
+			ENDIF
+		NEXT
+	ENDIF
+ELSE
+	FOR LOCAL, 1, 7
+		LOCALS = 포지션{LOCAL} 
+		IF FLAG:LOCALS < 0
+			LOCAL:1 = LOCAL
+			BREAK
+		ENDIF
+	NEXT
+	IF LOCAL:1 == -1
+		FOR LOCAL, 1, 7
+			LOCALS = 포지션{LOCAL} 
+			IF (ABL:(FLAG:LOCALS):종족 || NO:(FLAG:LOCALS) == [[キャラ:메어리]] ) && (FLAG:LOCALS) != MASTER
+				LOCAL:1 = LOCAL
+				;LOCAL:2にどかすキャラを入れる
+				LOCAL:2 = POS(LOCAL)
+				;포지션から外す
+				CALL REMOVE_POSITION(LOCAL)
+				BREAK
+			ENDIF
+		NEXT
+	ENDIF
+ENDIF
+IF LOCAL:1 >= 0
+	;キャラを加入させる
+	IF GETCHARA(ARG) >= 0
+		CFLAG:GETCHARA(ARG):この場に居ないフラグ = 0
+		CFLAG:GETCHARA(ARG):ゲスト加入フラグ = 1
+		CALL INSERT_POSITION, LOCAL:1, GETCHARA(ARG)
+		LOCAL:3 = 0
+	ELSE
+		CALL ADD_NEW_COMPANION, ARG , ARG:1
+		CFLAG:RESULT:ゲスト加入フラグ = 1
+		CALL INSERT_POSITION, LOCAL:1, RESULT:1
+		LOCAL:3 = 1
+	ENDIF
+	;いれた포지션をかえす
+	RETURN LOCAL:1, LOCAL:2, LOCAL:3
+ENDIF
+RETURN 0

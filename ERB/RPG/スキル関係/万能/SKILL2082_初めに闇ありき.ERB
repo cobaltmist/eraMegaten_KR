@@ -1,0 +1,178 @@
+﻿
+;스킬名
+@SKILL_NAME_2082,ARG
+RESULTS = 태초에 숨은 악
+
+;　명중
+@SKILL_HITRATE_2082, ARG
+RETURN 115
+
+;　위력
+@SKILL_POWER_2082, ARG
+RETURN 100
+
+;　최저공격횟수
+@SKILL_MINATTACKNUMBER_2082,ARG
+RETURN 1
+;　최대공격횟수
+@SKILL_MAXATTACKNUMBER_2082,ARG
+RETURN 1
+
+;　ＨＰ2を支払うかＭＰ3を支払うか
+@SKILL_COSTTYPE_2082, ARG
+RETURN 3
+;소비なし＝1
+
+;　コストの量
+@SKILL_COST_2082,ARG
+RETURN 100
+
+;　相性
+@SKILL_TYPE_2082,ARG
+RETURN 17
+;만능
+
+;　1EXTRAか2MAGICか
+@SKILL_DECIDE_TYPE_2082, ARG
+RETURN 1
+;마법
+
+;　1물리데미지で計算するか2마법데미지で計算するか
+@SKILL_DAMAGETYPE_2082, ARG
+RETURN 2
+
+
+;　대상が1적か2아군か3場전체か4特殊か
+@SKILL_TARGET_2082
+RETURN 1
+
+;　사거리
+@SKILL_RANGE_2082,ARG
+RETURN 3
+
+;　범위　11명　2１열　3전체　4　적아군전체
+@SKILL_SPHERE_2082,ARG
+RETURN 3
+
+;　 効果の타입　1공격、2회복、3상태변화、4特殊、5상태회복
+@SKILL_EFECT_2082
+RETURN 1
+
+;　 特殊処理の有無、及び処理内容
+@SKILL_SPECIALEFECT_2082,ARG
+;ARG = 1だった場合は処理の有無を返します
+SIF ARG == 1
+	RETURN 0
+;以下に特殊な処理を記述します
+
+;계승타입
+@SKILL_SUCCESSION_TYPE_2082
+RETURN GET_SUCCESSION_NUM("만능")
+
+@継承不能_2082
+RETURN 1
+;特殊
+
+
+;속도보정
+@SKILL_SPEED_2082, ARG = -1
+RETURN 0
+
+;　구상の표시とその타입
+@SKILL_MESSAGE_2082,ARG
+
+;전투時以外に사용できるか
+@SKILL_ACTIONABLE_FIELD_2082
+RETURN 0
+
+;스킬변화？用랭크
+@SKILL_RANK_2082
+RETURN 10
+
+;テン플레이트用、추가효과シリーズ
+;추가효과스테이터스
+@SKILL_ADDTIONAL_STATE_2082,ARG
+SIF RAND:3
+	RETURN GET_STATE_NUM("CLOSE")
+SIF RAND:2
+	RETURN GET_STATE_NUM("PALYZE")
+RETURN GET_STATE_NUM("POISON")
+
+;추가효과상성
+@SKILL_ADDTIONAL_TYPE_2082,ARG
+RETURN 9
+
+;추가효과기본부여확률
+@SKILL_ADDTIONAL_BASE_RATE_2082,ARG
+RETURN 10
+
+;추가효과부여확률上限
+@SKILL_ADDTIONAL_MAX_RATE_2082,ARG
+RETURN 40
+;====================================================
+;스킬及び行動の実行
+;====================================================
+@ACTION_2082,ARG,ARG:1
+IF CFLAG:(ARG):PTフラグ == 0
+	LOCAL:7 = 1
+	LOCAL:8 = 7
+ELSE
+	LOCAL:7 = 7
+	LOCAL:8 = 17
+ENDIF
+
+FOR LOCAL, LOCAL:7, LOCAL:8
+	LOCALS = 포지션{LOCAL}
+	SIF FLAG:LOCALS < 0 || FLAG:LOCALS == ARG || CFLAG:(FLAG:LOCALS):ボスフラグ
+		CONTINUE
+	SIF GET_STATE(CFLAG:(FLAG:LOCALS):ステート) == "DYING"
+		CONTINUE
+	CALLFORM JUDG_HIT_2,ARG,FLAG:LOCALS,100
+	IF RESULT == 1
+		;명중した
+		IF RAND:10 < 1
+			;８３％（６分の５）ダメ、流石に90%ダメは酷いよね
+			PRINTFORM 　　TARGET:[{CPOS(FLAG:LOCALS),2}] %CALLNAME:(FLAG:LOCALS),20,LEFT%　>>>>>>　
+			PRINTFORML {(BASE:(FLAG:LOCALS):ＨＰ)*5 / 6}데미지
+			CALL VAR_HP, FLAG:LOCALS, -((BASE:(FLAG:LOCALS):ＨＰ) / 10),0
+		ELSEIF RAND:9 < 4
+			;７５％ダメ
+			PRINTFORM 　　TARGET:[{CPOS(FLAG:LOCALS),2}] %CALLNAME:(FLAG:LOCALS),20,LEFT%　>>>>>>　
+			PRINTFORML {(BASE:(FLAG:LOCALS):ＨＰ)*3 / 4}데미지
+			CALL VAR_HP, FLAG:LOCALS, -((BASE:(FLAG:LOCALS):ＨＰ)*3 / 4),0
+		ELSEIF RAND:5 < 2
+			;５０％ダメ
+			PRINTFORM 　　TARGET:[{CPOS(FLAG:LOCALS),2}] %CALLNAME:(FLAG:LOCALS),20,LEFT%　>>>>>>　
+			PRINTFORML {(BASE:(FLAG:LOCALS):ＨＰ) / 2}데미지
+			CALL VAR_HP, FLAG:LOCALS, -((BASE:(FLAG:LOCALS):ＨＰ) / 2),0
+		ELSE
+			CALL SINGLE_BADSTATE,ARG,FLAG:LOCALS,2082
+		ENDIF
+	ELSE
+		;外したらデカジャ効果
+		PRINTFORML 　　TARGET:[{CPOS(FLAG:LOCALS),2}] %CALLNAME:(FLAG:LOCALS),20,LEFT%　>>>>>>　Miss
+		FOR LOCAL:1,0,6
+			CFLAG:(FLAG:LOCALS):(GET_BATTLESTATUS(LOCAL:1) + "강화") = MIN(0, CFLAG:(FLAG:LOCALS):(GET_BATTLESTATUS(LOCAL:1) + "강화"))
+		NEXT
+		PRINTFORML 강화된 능력이 돌아왔다！
+	ENDIF
+NEXT
+
+
+
+;====================================================
+;実行内容ここまで
+;====================================================
+
+;　 설명文の표시
+@SKILL_EXPLAIN_2082
+PRINTL [후열] 적 전체에 만능속성 소 마법데미지. 명중률이 조금 높다. HIT시 무작위 효과. (낮은 확률로 무작위 상태이상)
+
+;継承に필요한部位
+@継承部位_2082,ARG
+RETURN 1
+
+;사용조건
+@SKILL_SPECIAL_ACTIONABLE_2082,ARG
+RETURN 1
+;とくにない

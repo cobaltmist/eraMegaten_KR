@@ -1,0 +1,124 @@
+﻿;-------------------------------------------------
+;애무
+;애무계コマンド　레벨2
+;-------------------------------------------------
+@ACT_COM0
+
+PRINTL 애무
+TSTR:0 = 애무
+;CALL KOJO_MESSAGE_COM
+
+;조교者→조교대상
+TFLAG:28 = 2
+
+;-------------------------------------------------
+;ソース추가処理
+;-------------------------------------------------
+;소비체력、기력
+DOWNBASE:TARGET:체력 += 5
+DOWNBASE:TARGET:기력 += 50
+
+SOURCE:TARGET:쾌Ｃ = 80
+SOURCE:TARGET:쾌Ｂ = 80
+SOURCE:TARGET:정애 = 50
+SOURCE:TARGET:성행위 = 60
+SOURCE:TARGET:노출 = 20
+SOURCE:TARGET:불결 = 30
+SOURCE:TARGET:일탈 = 20
+SOURCE:TARGET:반감 = 20
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;억압、저항持ちには、억울ソース추가
+SIF TALENT:32 || TALENT:34
+	SOURCE:TARGET:울굴 += 20
+
+;舌を使う조교では、조교者の혀놀림によって、쾌感のソース증가
+;IF TALENT:PLAYER:52
+;	TIMES SOURCE:TARGET:쾌Ｃ , 1.50
+;	TIMES SOURCE:TARGET:쾌Ｂ , 1.50
+;	TIMES SOURCE:TARGET:정애 , 1.50
+;ENDIF
+;고양이혀は減少
+;IF TALENT:PLAYER:54
+;	TIMES SOURCE:TARGET:쾌Ｃ , 0.75
+;	TIMES SOURCE:TARGET:쾌Ｂ , 0.75
+;	TIMES SOURCE:TARGET:정애 , 0.75
+;ENDIF
+
+;-------------------------------------------------
+;불결の処理
+;-------------------------------------------------
+;IF (STAIN:TARGET:0 >= 2 && (STAIN:TARGET:0 != 16 && STAIN:TARGET:0 != 17) && ASSIPLAY == 0 && TALENT:MASTER:64 == 0) || TEQUIP:20
+IF !PLAY_KISS(PLAYER, TARGET)
+;奴隷の입の불결があるとき키스はない（애액と모유よごれはＯＫ、불결무시か조수조교時は問題なし）
+;볼재갈사용중もなし
+	SOURCE:TARGET:불결 = 0
+;	SOURCE:TARGET:쾌Ｃ /= 2
+	SOURCE:TARGET:정애 /= 4
+	SOURCE:TARGET:액체 /= 2
+ELSE
+	;악취둔감
+	SIF TALENT:61
+		SOURCE:TARGET:불결 /= 4
+	;악취민감
+	SIF TALENT:62
+		SOURCE:TARGET:불결 *= 3
+	;自尊心
+	SIF TALENT:15
+		SOURCE:TARGET:불결 *= 2
+	IF STAIN:PLAYER:0
+	;主人の입の불결があると불결150%
+		SOURCE:TARGET:불결 *= 3
+		SOURCE:TARGET:불결 /= 2
+	ENDIF
+	SIF TALENT:PLAYER:혀놀림
+		TIMES SOURCE:TARGET:정애 , 1.50
+	SIF TALENT:PLAYER:고양이혀
+		TIMES SOURCE:TARGET:정애 , 0.75
+	;奴隷の입⇔조교者の입の불결が移動
+	CALL MOVE_STAIN("입", TARGET, "입", PLAYER)
+ENDIF
+CALL MOVE_STAIN("가슴", TARGET, "손", PLAYER)
+
+;-------------------------------------------------
+;吸精処理
+;-------------------------------------------------
+IF CFLAG:PLAYER:ＭＡＧ非被흡수 == 0
+	LOCAL = (RAND:3+1) * BASE:LV
+	CALL DRAIN_MAG,PLAYER,LOCAL,TARGET
+ELSEIF CFLAG:TARGET:ＭＡＧ非被흡수 == 0
+	LOCAL = (RAND:3+1) * BASE:LV
+	CALL DRAIN_MAG,TARGET,LOCAL,PLAYER
+ENDIF
+
+
+;-------------------------------------------------
+;경험の処理
+;-------------------------------------------------
+A = 5
+IF IS_LESBIAN(TARGET,PLAYER)
+	CALL ADDS_EXP("레즈경험", A, TARGET)
+	CALL ADDS_EXP("레즈경험", A, PLAYER)
+ELSEIF IS_GAY(TARGET,PLAYER)
+	CALL ADDS_EXP("ＢＬ경험", A, TARGET)
+	CALL ADDS_EXP("ＢＬ경험", A, PLAYER)
+ENDIF
+
+;조교者が고양이혀持ちの場合は、조교者に가학쾌락경험を추가
+IF TALENT:PLAYER:54
+	CALL ADDS_EXP("가학쾌락경험", 1, PLAYER)
+ENDIF
+
+;의존도ベクトル
+TFLAG:33 = 2
+
+RETURN 1
+
+;===================================================
+;조교타입
+;===================================================
+@COMTYPE_0
+RETURN COMTYPE("애무계")
+

@@ -1,0 +1,7901 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:EVENT_K4507_유즈_1_ALL.ERB
+;	Facility	:유즈구상
+;
+;	Licence		:ライセンスフリー。
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		2011/01/25		風見ひなた				新規作成
+;	002		2011/01/30		風見ひなた				조교開始二度눈や反応を加筆
+;	003		2011/02/05		風見ひなた				정액に対する反応を少し加筆
+;	004		2011/10/10		(´・ω・｀)			바이브他少量の加筆
+;	005		2013/03/12		黒天					구상セレクト処理をセレクト구상설명関数に변경
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+
+;堕ちるまでは一人称視点で전개。やや寝取られ風味でReverseな感じ。
+;연모→ラブラブ　음란→ご主人様중독発症。ご主人様の臭いを嗅ぐためなら何でもします　예속→現状何も考えてない
+;改変・再配布はご自由にどうぞ。
+;-------------------------------------------------
+
+;-------------------------------------------------
+;eratohoA及びeratohoA系列専用구상テン플레이트
+;X1とX2をキャラ번호に置換し、Y1を조수のキャラ번호に置換してください
+;ただし、キャラ번호が一桁のキャラの場合、X1,Y1は1、X2は01のように変えてください
+;そしてコマンド内の適当な조건の下のPRINTFORMWの後ろに半角スペースを置いてセリフを추가してください
+;구상を추가しないコマンドは無記入でも構いませんが、CFLAG:XXXの머리に『;』をつけてコメントアウトすると尚良いでしょう
+;エ키스トラ構文など、コメントアウトされている構文を使う際には、『;』を外してコメントアウトを해제する필요があります
+;最後にread meにも눈を通しておくことをお勧めします
+;-------------------------------------------------
+;--------------------------------------------------
+;구상セレクト기능：구상설명
+;--------------------------------------------------
+;この関数のコメントアウトを外すと、구상の選択時に選択肢として候補にあがります
+;既に구상のあるキャラや회화타입の別版の구상を作成する時に이용してください
+;その際、この関数を含めたこのファイル内の関数名すべてに_任意の1-49(汎用구상なら1-9)の数字を加えてください
+;例： EVENTTRAIN_K4507 → EVENTTRAIN_K4507_12
+;--------------------------------------------------
+@セレクト구상설명_K4507_1,ARG = 0
+SIF ARG == 1
+	RETURN 0
+;구상名
+PRINTFORML %NAME%개인구상(매니악한 묘사 있음)
+;구상설명文
+PRINTFORML    이 전용 대사에는 몹시 매니악한 묘사가 포함되었습니다。
+PRINTFORML    함락 전가지는 1인칭 시점으로 전개. 약간 네토라레 느낌이 섞인 Reverse 풍.
+PRINTFORML    연모→러브러브
+PRINTFORML    음란→주인님 중독 발병. 주인님의 냄새를 맡기 위해서는 뭐든 하겠습니다
+PRINTFORML    예속→현재는 아무것도 생각하지 않았다
+
+;--------------------------------------------------
+;EVENTTRAIN関係（X1をキャラ번호に置換）
+;조교開始時のセリフ CFLAG 201～219を사용
+;--------------------------------------------------
+@EVENTTRAIN_K4507_1
+;--------------------------------------------------
+;エ키스トラモード構文　CFLAG:220を사용
+;はいを選択した時に初조교時に구상설정用の소질に변경できます
+;下記に처녀化する場合の構文を샘플として載せておきます
+;--------------------------------------------------
+;IF CFLAG:220 == 0
+;	PRINTFORML 처녀モードに移行しますか？
+;	PRINTL [0] はい
+;	PRINTL [1] いいえ
+;	$INPUT_LOOP
+;	INPUT
+;	IF RESULT == 0
+;		PRINTFORMW ―처녀モードに소질、능력を변경します―
+;		TALENT:TARGET:0 = 1
+;		ABL:TARGET:4 = 0
+;		EXP:TARGET:0 = 0
+;	ELSEIF RESULT == 1
+;		PRINTFORMW ―통상モードで조교を開始します―
+;	ELSE
+;		GOTO INPUT_LOOP
+;	ENDIF
+;	CFLAG:220 = 1
+;ENDIF
+;--------------------------------------------------
+;特定キャラが조수、主人時に特殊キャラ구상を呼び出す(Y1を特定キャラ、4507_1を奴隷のキャラ번호に置換）
+;--------------------------------------------------
+;IF NO:MASTER == Y1
+;	CALL EVENTTRAIN_PY1_K4507_1
+;	RETURN 0
+;ENDIF
+;IF ASSI > 0 && ASSIPLAY
+;	IF NO:ASSI == Y1
+;		CALL EVENTTRAIN_PY1_K4507_1
+;		RETURN 0
+;	ENDIF
+;ENDIF
+;--------------------------------------------------
+;簡易조수구상の発動時に初조교時구상をスキップ（Y1を조수のキャラ번호にする）
+;複数人いる際には、SIF NO:ASSI == Y1 || NO:ASSI == Z1と추가していく
+;--------------------------------------------------
+;IF CFLAG:201 == 0 && ASSI > 0
+;	SIF NO:ASSI == Y1
+;		CFLAG:201 =1
+;ENDIF
+;-------------------------------------------------
+;조교開始時（一回のみ） CFLAG201
+;-------------------------------------------------
+DRAWLINE
+;初조교時
+IF CFLAG:201 == 0 && TALENT:연모 == 0
+
+PRINTFORMW ―전용 대사로 조교를 시작합니다―
+PRINTFORMW 
+PRINTFORMW %조사처리(CALLNAME,"는")% [악취민감]을 얻었다。
+TALENT:TARGET:악취민감 = 1
+
+	IF CFLAG:전투참가불가능 == -1
+		DRAWLINE
+		PRINTFORMW 그 방을 찾아간 %조사처리(CALLNAME,"는")%、너무나도 살풍경한 경관에 말을 잃었다。
+		PRINTFORMW 「뭡니까、이 방？　콘크리트가 그대로 드러나 있고、침대는 바닥에 고정되어 있고……」
+		PRINTFORMW %조사처리(CALLNAME:MASTER,"는")% 그런 %CALLNAME%의 의문을 흘려버리듯이 그녀의 등 뒤로 돌아、문을 잠근다。
+		PRINTFORMW 그리고 곤혹스러워하는 %CALLNAME%의 손을 잡고、갑작스레 침대에 밀어 넘어뜨려왔다。
+		PRINTFORMW 「……노、노예!?　%조사처리(CSTR:一人称,"를")% 조교한다니……싫어、무슨 말이죳!?」
+		PRINTFORMW %조사처리(CALLNAME,"가")% 반문하자、%조사처리(CALLNAME:MASTER,"는")% 이제까지 그녀 앞에서는 결코 보이지 않았던 사악한 미소를 띄운다。
+		PRINTFORMW 「그、그런……」
+		PRINTFORMW 「이런 일이라면 따라 오지 않았어！」
+		PRINTFORMW 「싫엇、살려줘！　아츠로우！　――！」
+		PRINTFORMW 함께 따라온 소년과、아련히 연정을 품은 소꿉친구의 이름을 부르는 %CALLNAME%。
+		PRINTFORMW 
+		PRINTFORMW 하지만、그 목소리가 그들의 귀에 닿는 일은 없었다……。
+		PRINTFORMW 
+		DRAWLINE
+		PRINTFORMW ※%조사처리(NAME:TARGET,"는")% %NAME:MASTER%에게 신뢰를 잃어、전투에 참가하지 않게 되었습니다※
+		SIF CFLAG:포지션 > 0
+			CALL REMOVE_POSITION,CFLAG:포지션
+		CFLAG:전투참가불가능 = 1
+	ELSE
+		DRAWLINE
+		PRINTFORMW 노예로서 잡혀버린 %CALLNAME%의 앞에、마침내 %조사처리(CALLNAME:MASTER,"가")% 찾아왔다。
+		PRINTFORMW 「드디어 %CSTR:一人称%의 앞에 모습을 드러냈군요…… 이런 살풍경한 방에 사람을 잡아두고、어떻게 할 생각이야」
+		PRINTFORMW 「조、조교!?　멍청한 소리 하지 마세요！　이상한 게임을 너무 한 거 아냐？」
+		PRINTFORMW 「인간이 조금 음란한 일 당한 정도로 대충대충 『주인님～』라는 둥 말하거나 할 리 없잖아!?」
+		PRINTFORMW 「잠꼬대하지 말고、얼른 여기에서 내보내줫！」
+		PRINTFORMW 마음 속의 두려움을 알아차리지 못하도록 짐짓 거친 말투로 대드는 %CALLNAME%지만、%조사처리(CALLNAME:MASTER,"는")% 그런 그녀의 허세를 간파했다는 듯이 비웃고 있다。
+		PRINTFORMW 전문적인 조교사에 의한 조교의 맛을 가르쳐 주지라 고하는 %CALLNAME:MASTER%로부터 도망치듯이、%CALLNAME%의 다리는 자기도 모르게 뒤로 물러서 있다。
+		PRINTFORMW 「시、싫어……오지 마……！」
+		PRINTFORMW 「싫엇、살려줫！　――！」
+		PRINTFORMW 아련히 연정을 품은 소꿉친구의 이름을 부르는 %CALLNAME%。
+		PRINTFORMW 
+		PRINTFORMW 하지만、그 목소리가 그의 귀에 닿는 일은 없었다……。
+	ENDIF
+	CFLAG:201 = 1
+	RETURN 0
+;굴복각인Lv1
+ELSEIF CFLAG:201 < 2 && MARK:2 == 1
+	PRINTFORMW 「바보같은 짓은 그만둬、여기에서 내보내줘」
+	PRINTFORMW 「%조사처리(CSTR:一人称,"는")% 절대로 %CSTR:二人称%따위에게 굴복하지 않으니까！」
+	PRINTFORMW 목소리를 떨면서 필사적으로 주장하는 %CALLNAME%지만、%조사처리(CALLNAME:MASTER,"는")% 그 반응을 즐기듯이 비웃고 있다……。
+	CFLAG:201 = 2
+	RETURN 0
+;굴복각인Lv2
+ELSEIF CFLAG:201 < 3 && MARK:2 == 2
+	PRINTFORMW 「……흑……」
+	PRINTFORMW %조사처리(CALLNAME,"는")% 구속된 방 안에서 오열했다。
+	PRINTFORMW %CALLNAME:MASTER%에 의한 조교는 차츰차츰 과격함을 늘리고 있다。
+	PRINTFORMW 그것도 두렵지만、뭣보다도 두려운 것은 점점 자신의 몸이 조교에 순응하기 시작하고 있는 것이다。
+	PRINTFORMW 문득 정신을 차리면 유두나 사타구니가 욱신거려、모르는 새에 손가락으로 어루만져 자신을 달래고 있는 일마저 있다……。
+	PRINTFORMW 「%CSTR:一人称%、어떻게 되어버린 건지……」
+	PRINTFORMW 그런 그녀의 당혹감을 조소하듯이、오늘도 %조사처리(CALLNAME:MASTER,"가")% 모습을 드러낸다。
+	PRINTFORMW 「와、왔군요……！」
+	PRINTFORMW 「아무리 조교하더라도 소용 없으니까！　얼른 %조사처리(CSTR:一人称,"를")% 해방햇！」
+	CFLAG:201 = 3
+	RETURN 0
+;굴복각인Lv3
+ELSEIF CFLAG:201 < 4 && MARK:2 == 3 && (TALENT:3 == 0 && TALENT:4 == 0 && TALENT:5 == 0 && TALENT:6 == 0 && TALENT:7 == 0 && TALENT:8 == 0)
+	PRINTFORMW 「……」
+	PRINTFORMW %조사처리(CALLNAME,"는")% 최후의 도박을 하기로 했다。문 가까이에 서서、방에 놓여있던 몇 안되는 가구 가운데 하나、파이프 의자를 준비한다。
+	PRINTFORMW %조사처리(CALLNAME:MASTER,"가")% 이 방을 찾아오면、곧바로 파이프 의자를 던지는 거다。
+	PRINTFORMW 물론 무력한 %CALLNAME%의 힘으로 %조사처리(CALLNAME:MASTER,"를")% 쓰러뜨릴 수 있다고 생각하지 않지만、그래도 약간의 틈은 만들 수 있을 터。
+	PRINTFORMW 움찔해 있는 동안에 곁을 빠져 나가、엘리베이터로 단숨에 달아난다。건물 밖으로 나가 큰소리로 구조를 요청하면、누군가가 구해줄 것이다……。
+	PRINTFORMW 
+	PRINTFORMW 뚜벅、뚜벅……。
+	PRINTFORMW 
+	PRINTFORMW 그 발소리가 들려 왔다。
+	PRINTFORMW 조교하기 전에 꼭 들려온 그 소리다。
+	PRINTFORMW ――진짜로 하는 거야？――
+	PRINTFORMW %CALLNAME%의 안에서、다른 %조사처리(CALLNAME,"가")% 묻는다。
+	PRINTFORMW 확실히 그 사람은 두렵다。아마 제실력을 내면、%CALLNAME%따위 순식간에 비틀어 죽여 버리겠지。
+	PRINTFORMW 허나、그것 이상으로 두려운 것은 %CALLNAME:MASTER%에게 서서히 다른 무언가로 바뀌어 가고 있는 %CALLNAME% 자신이다。
+	PRINTFORMW 이대로 조교를 계속 받으면、어느새 기다릴 틈도 없이、자신이 완전히 굴복해 버린다。
+	PRINTFORMW 이렇게 해서 저항하려 하는 자신의 의지가 사라진 끝에、%조사처리(CALLNAME:MASTER,"가")% 주는 쾌락이라는 이름의 먹이에 한심하게 꼬리를 흔드는 암캐로 변해 버리겠지。
+	PRINTFORMW 아니、벌써 반 이상은 그렇게 되었다。
+	PRINTFORMW （――――――。기다려줘）
+	PRINTFORMW 연심을 품은 소꿉친구에게、가슴 속에서 말을 건다。
+	PRINTFORMW 이곳에 갇히고 아직 그렇게까지 시간은 흐르지 않았을 터인데、이미 그 얼굴은 거의 %CALLNAME%의 안에서 사라져 가고 있다……。
+	PRINTFORMW 문이 열린다。
+	PRINTFORMW 일상으로 귀환할 최후의 찬스를 찾아、%조사처리(CALLNAME,"는")% 남김없이 용기를 쥐어짜내서 의자를 내리쳤다。
+	PRINTFORMW 
+	PRINTFORMW 깨끗하게、의자는 빗나갔다。
+	PRINTFORMW 흡사 %조사처리(CALLNAME,"가")% 최후의 저항을 해올 것을 예측하고 있었던 것처럼、%조사처리(CALLNAME:MASTER,"는")% 멋지게 의자를 피해 %조사처리(CALLNAME,"를")% 바닥에 넘어뜨려 깔고 눌렀다。
+	PRINTFORMW 「어、어째서……？　어째서 알고 있던 거야？」
+	PRINTFORMW 난감하게 묻는 %CALLNAME%에게、%조사처리(CALLNAME:MASTER,"는")% 벽의 틈새를 가리켰다。
+	PRINTFORMW 어째서 눈치채지 못한 것인지。콘크리트가 노출되어 있는 벽의 틈새에는、소형 카메라가 설치되어 있는 것이다。
+	PRINTFORMW 「그……그런……」
+	PRINTFORMW 보여지 있던 거다。보여진 연후에、조소받았다。
+	PRINTFORMW %CALLNAME%의 있는 힘을 다한 저항도、얼마 안되는 용기도、필사적으로 파이프 의자를 치켜들어서 장시간 기다리고 있을 때도……。
+	PRINTFORMW 그것뿐만이 아니다。%조사처리(CALLNAME,"가")% 민감해진 몸을 난처해하여、밤마다 자위에 빠져 있던 모습도 꼼꼼히 보여졌다。
+	PRINTFORMW %조사처리(CALLNAME:MASTER,"가")% 귓전으로 속삭이자、%조사처리(CALLNAME,"는")% 수치에 몸부림쳤다。
+	PRINTFORMW 그런 %CALLNAME%의 사타구니에 %조사처리(CALLNAME:MASTER,"는")% 손가락을 뻗어、그 손가락 끝을 보인다。
+	PRINTFORMW 손가락 끝은 벌써 %CALLNAME%의 사타구니에서 새어나온 애액에 의해 끈적거리며 야릇하게 빛나고 있다。
+	PRINTFORMW 그것은 자신의 꼴불견을 보여졌다는 것에 흥분해、%CALLNAME:MASTER%에게 구속되어 있는 아픔에 무심코 그만 젖어버렸다는、구원할 수 없는 욕망의 증표。
+	PRINTFORMW 자신의 본선을 생생히 보게 된、 %조사처리(CALLNAME,"는")% 눈물을 흘리면서 소리없이 웃었다。
+	PRINTFORMW 
+	PRINTFORMW （아아、그랬구나……）
+	PRINTFORMW （미안해、――。）
+	PRINTFORMW （%CSTR:一人称%、이제 돌아갈 수 없어……）
+	CFLAG:201 = 4
+	RETURN 0
+;함락
+ELSEIF CFLAG:201 < 5 && (TALENT:3 || TALENT:4 || TALENT:5)
+	;연모
+	IF TALENT:3
+		IF CFLAG:未조교함락 == 1
+			;조교せずに연모をつけた場合の分岐
+			PRINTFORMW %조사처리(CALLNAME:MASTER,"가")% 방에 들어 오자、%조사처리(CALLNAME,"는")% 뺨에 홍조를 띄웠다。
+			PRINTFORMW 「이、있잖아……」
+			PRINTFORMW 「%CSTR:二人称%에게 말하고 싶은 게 있어」
+			PRINTFORMW 「%CSTR:一人称%、%조사처리(CSTR:二人称,"가")% 분발하는 모습을 보는 동안에……」
+			PRINTFORMW 「%조사처리(CSTR:二人称,"를")% 좋아하게 되어버린 것 같아」
+			PRINTFORMW 「나 말고도 %조사처리(CSTR:二人称,"를")% 보고있는 아이가 잔뜩 있다는 건 알고 있어」
+			PRINTFORMW 「그래서、%CSTR:一人称%만을 선택하길 바란다고 말하는 건 할 수 없어」
+			PRINTFORMW 「그렇지만、%조사처리(CSTR:二人称,"를")% 멀리서 바라보기만 하는 건 참을 수 없어」
+			PRINTFORMW 「부탁해。걸프렌드 중 하나라도 좋으니까、%CSTR:一人称%의 곁에 있게 해줘……」
+			PRINTFORMW %조사처리(CALLNAME:MASTER,"가")% 입술을 가까이 하자、%조사처리(CALLNAME,"는")% 눈을 감고 스스로 입술을 바쳤다。
+			PRINTFORMW 똑、하고 %CALLNAME%의 눈동자로부터 눈물이 흘러내린다。
+			PRINTFORMW （미안해、――。%CSTR:一人称%、이제부터는 주인님의 연인이 돼요）
+			PRINTFORMW （……안녕）
+			PRINTFORMW %CALLNAME% 안에서、동경하고 있던 소꿉친구의 모습이 고요하게 흔적도 없이 사라져 갔다……。
+			PRINTFORMW 
+			CSTR:二人称 = 주인님
+			PRINTFORMW ※%조사처리(CALLNAME,"는")% %조사처리(CALLNAME:MASTER,"를")% 주인님이라고 인정해、호칭이 변화했습니다。
+		ELSE
+			PRINTFORMW 방에 들어 온 %조사처리(CALLNAME:MASTER,"를")% 보자마자、%CALLNAME%의 가슴이 크게 울린다。
+			PRINTFORMW （어……얼레。 이상해、이런 거……）
+			PRINTFORMW （%CSTR:一人称%、 이 사람에게 그토록 심한 일을 당했는데……）
+			PRINTFORMW （어째서 이 사람이 이렇게 빛나 보이는 거야？ 굉장히 나쁜 사람인 거야）
+			IF TALENT:MASTER:남자 == 1
+				PRINTFORMW （%조사처리(CSTR:一人称,"를")% 이런 곳에 감금해、강제로 음란한 일만 잔뜩해……）
+			ELSE
+				PRINTFORMW （게다가 %조사처리(CSTR:一人称,"와")% 같은 여자라는 건데……）
+			ENDIF
+			PRINTFORMW 자신의 기분에 당황해 멍하니 서있는 %CALLNAME%의 머리를、%CALLNAME:MASTER%의 손이 살그머니 쓰다듬는다。
+			PRINTFORMW 그것만으로 %CALLNAME%의 가슴은 따끈따끈하게 따뜻해져、행복한 기분이 펼쳐졌다。
+			PRINTFORMW 「%CSTR:一人称%……%조사처리(CSTR:二人称,"를")%、좋아할 지도……」
+			PRINTFORMW 그렇게 입 밖에 내는 순간、%CALLNAME%의 마음에 확신이라 부를 수 있는 섬광이 달린다。
+			PRINTFORMW 「그렇구나……%CSTR:一人称%、%CSTR:二人称%……으응、주인님을 좋아하게 되어버렸어……」
+			PRINTFORMW 「겨우 알았어」
+			PRINTFORMW 「그 조교는 전부、주인님 나름의 애정표현이었던 거군요」
+			PRINTFORMW 「이제부터는 %CSTR:一人称%、주인님의 애정을 솔직하게 받아들일게요……」
+			PRINTFORMW 
+			PRINTFORMW %CALLNAME%의 어딘지 초점이 흐려진、하지만 행복한 미소를 보며、조교는 잘되었다고 %조사처리(CALLNAME:MASTER,"는")% 회심의 미소를 지었다……。
+			PRINTFORMW 
+			CSTR:二人称 = 주인님
+			PRINTFORMW ※%조사처리(CALLNAME,"는")% %조사처리(CALLNAME:MASTER,"를")% 주인님이라고 인정해、호칭이 변화했습니다。
+		ENDIF
+	;음란
+	ELSEIF TALENT:4
+		PRINTFORMW （%CSTR:一人称%、이제 안돼……）
+		PRINTFORMW %CALLNAME:MASTER%에의 반격이 실패로 끝나고 나서、얼마만큼의 시간이 흘렀을까。
+		PRINTFORMW 어둠 속에서 %CALLNAME%의 욱심거림은 한계에 가까워져 있었다。
+		PRINTFORMW 침대에 사지가 밧줄로 고정되어、유두와 다리에는 로터가 테이프로 붙어 있고。
+		PRINTFORMW 눈은 아이마스크로 가려져、모든 자유를 빼앗긴 채로 쾌락만이 주어져、%조사처리(CALLNAME,"는")% 정기적으로 습격해오는 로터의 자극에 계속 몸부림쳤다。
+		PRINTFORMW 그로부터 얼마만큼의 시간이 흘렀는지 모른다。
+		PRINTFORMW 단지 일방적으로 주어진 계속되는 쾌감과、그리고 %CALLNAME% 자신의 체취가 지금 그녀가 느끼는 전부였다。
+		PRINTFORMW ……언제부터일까、냄새에 관해서 자신이 특별히 민감한 체질이라 눈치챈 것은。
+		PRINTFORMW 적어도、여기에 따라왔을 때까지 눈치채는 일은 없었다。아니、조교를 받는 일이 없었다면、지금도 눈치채지 못했을 것이지。
+		PRINTFORMW 지금의 그녀는 자신의 체취가 신경쓰여 어쩔 수 없다。쾌감에 계속 노출되어、겨드랑이에서、사타구니에서、유두에서、온갖 땀샘에서 배어나오는 땀과 애액이 섞인 음란한 냄새。
+		PRINTFORMW 그것이 어둠 속에서 그녀의 후각을 자극해、수치와 함께 어쩔 도리가 없는 흥분이 되어 버리는 거다。
+		PRINTFORMW 
+		PRINTFORMW 뚜벅、꾸벅、하고 소리가 울려 퍼진다。 발소리다。
+		PRINTFORMW 몇번이나 들어서、이젠 잊을 수가 없다。 이 장소의 주인、%CALLNAME:MASTER%의 발소리다。
+		PRINTFORMW 「머……멈춰어……이젠……히러어……」
+		PRINTFORMW 힘없이 내뱉은 간청의 목소리는、스스로도 한심해서 웃어버릴 만큼 뒤집힌 소리가 되었다。
+		PRINTFORMW 이러한 것을 뭐라 부르는 걸까、이미 여기에 있는 새에 기억해 버렸다。맛간 소리、다。
+		PRINTFORMW %조사처리(CALLNAME:MASTER,"가")% 살포시 아이마스크를 떼어낸다。%CALLNAME%에게 있어서 오랜만에 느끼는 백색등의 빛이、눈을 태울 만큼의 아픔을 느끼게 한다。
+		PRINTFORMW 이제 슬슬 알았나、하고 %조사처리(CALLNAME:MASTER,"가")% 물었다。
+		PRINTFORMW 「므……？ 므어……를？」
+		PRINTFORMW 아니、되물을 것까진 없었다。지금이라면 %CALLNAME%도 %CALLNAME:MASTER%의 생각을 알 수 있다。
+		PRINTFORMW 자신이 어떤 여자인 건가。그리고 이 고통을 정말로 멈추길 바라는 건가 아닌가。
+		PRINTFORMW ……솔직히 말해서 잘 견뎠다고 생각한다。 이 이상은 어떤 인간도 견딜 리 없다。일방적으로 주어지는 쾌락은、때때로 고통보다도 정확하게 인간을 지배한다。
+		PRINTFORMW 허나、그럼에도。그럼에도 불구하고、%조사처리(CALLNAME,"는")%……。
+		PRINTFORMW 「시……싫어。이제 이런 건 싫어」
+		PRINTFORMW 말할 수 있었다。 최후의 최후에 남은 인간의 존엄을、지켜냈다。
+		PRINTFORMW 그러자、 %조사처리(CALLNAME:MASTER,"는")% 큭큭 웃으면서、손뼉을 쳤다。
+		PRINTFORMW 굉장한 자라고。그런 씩씩한 여자아이에겐 포상을 주지 않으면 안돼。
+		PRINTFORMW 그리하여、%조사처리(CALLNAME:MASTER,"는")% 천조각을 %CALLNAME%의 코 끝에 댄다。
+		PRINTFORMW 「……므어……므어야……히거……？」
+		PRINTFORMW 주르륵。
+		PRINTFORMW 입가에서 대량의 타액이 흘러내리는 것을 깨닫고、%조사처리(CALLNAME,"는")% 곤혹스러워 했다。 머리는 아직、그것이 무엇인지 이해하지 못하고 있다。
+		PRINTFORMW 그런 %CALLNAME%의 반응을 보면서、%조사처리(CALLNAME:MASTER,"는")% 유쾌한 듯이 그녀의 귓전에 속삭인다。
+		PRINTFORMW %조사처리(CALLNAME:MASTER,"가")% 오늘 아침까지 입고 있던 속옷이다、라고。
+		PRINTFORMW 
+		PRINTFORMW 바로 그 순간 농후한 냄새가 코 끝에서 비강을 통해 뇌에 닿아、비등한다고 생각될 정도의 플래시백(flashback)이 %조사처리(CALLNAME,"를")% 덮쳤다。
+		PRINTFORMW 동시에 유두와 사타구니에 붙어있던 로터가 강도 최대로 진동을 개시해、%CALLNAME%의 성감을 강제로 최고조에 끌어올린다。
+		PRINTFORMW 코끝에 밀어붙여진 강렬한 냄새에 취해、%조사처리(CALLNAME,"는")% 입가에서 대량의 침을 실금하면서 흰자위를 드러낼 정도의 절정을 맛봤다。
+		PRINTFORMW 「뭐야、대체 무슨 일이 일어나는 거야」
+		PRINTFORMW 그렇게 말할 셈이었지만、코가 멋대로 얼굴에 밀어붙여진 속옷의 냄새를 격하게 흡인해 버려、입 밖에 낼 수 있었는지 어떘는지 알 수 없다。
+		PRINTFORMW 그런 %CALLNAME%에게 %조사처리(CALLNAME:MASTER,"는")% 말했다。
+		PRINTFORMW 
+		PRINTFORMW 너는 냄새에 너무 민감한 거라고。
+		PRINTFORMW 주인인 %CALLNAME:MASTER%로부터 주어진 쾌락과 그 체취에 순응한 결과、 %CALLNAME:MASTER%의 체취를 맡는 것만으로 흥분하는 체질이 되어버린 거라고。
+		PRINTFORMW 거짓말이라고 말하려 해도、코 끝에 눌려 있는 속옷의 냄새를 멋대로 가슴 가득히 흡인하고 있는 자신을 드러내 보이면、부정따위 할 수 없다。
+		PRINTFORMW （아아……그렇구나……）
+		PRINTFORMW （%CSTR:一人称%란、이런 최저의……）
+		PRINTFORMW （돼지 씨였었다아……♡）
+		PRINTFORMW 
+		PRINTFORMW 자신이 어떤 자인지를 받아들여 버린 %CALLNAME%의 마음은、뚝하고 소리를 내며 꺾였다。
+		PRINTFORMW 뒤는 쾌락에 흘러갈 뿐……。
+		PRINTFORMW 
+		PRINTFORMW 광조가 지나가 버린 후、거기에는 %CALLNAME:MASTER%에게 직접 육봉을 코 끝에 밀어붙여져、킁킁 하고 콧방울을 울리면서 주인의 모습을 응시하는 %CALLNAME%의 모습이 있었다。
+		PRINTFORMW 「주인니임、지금까지 저항해서 대단히 죄송합니다」
+		PRINTFORMW 「유즈는 주인님의 냄새를 맡지 않으면 이제 살아갈 수 없습니다。완전히 주인님 중독이 되어 버렸습니다♪」
+		PRINTFORMW 「주인님의 냄새를 맡기 위해서라면 무엇이든 하겠습니다。그러니까、앞으로도 %조사처리(CSTR:一人称,"를")% 길러주세요……♡」
+		PRINTFORMW 
+		CSTR:二人称 = 주인님
+		PRINTFORMW ※%조사처리(CALLNAME,"는")% %조사처리(CALLNAME:MASTER,"를")% 주인님이라고 인정해、호칭이 변화했습니다。
+	;복종
+	ELSEIF TALENT:5
+		PRINTFORMW 
+	ENDIF
+	CFLAG:201 = 5
+	RETURN 0
+ENDIF
+;-------------------------------------------------
+;簡易조수구상（Y1を조수のキャラ번호に置換、X1をキャラ번호に변경する) CFLAG203
+;掛け合いをするキャラを増やす場合は、構文をコピー＆ペーストをして、CFLAGの数を204、205と増やす
+;-------------------------------------------------
+;조수の有無を체크（いない場合は二回눈以降へ飛ぶ）
+IF ASSI < 0 
+	CALL EVENTTRAIN_SECOND_K4507_1
+;조수　아츠로우
+ELSEIF NO:ASSI == 4566
+	;初めて
+	IF CFLAG:203 == 0
+		;함락済み＋함락時初구상が発生済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && CFLAG:201 >= 5
+			PRINTFORMW 
+		;それ以外
+		ELSE
+			PRINTFORMW 
+		ENDIF
+		CFLAG:203 = 1
+	;二回눈以降
+	ELSEIF CFLAG:203 < 2 || FLAG:7 ==2
+		;함락済み
+		IF TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8
+			PRINTFORMW 
+		;それ以外
+		ELSE
+			PRINTFORMW 
+		ENDIF
+		CFLAG:203 = 2
+	ENDIF
+;구상のある조수が居ない場合は、통상の二回눈以降の구상へ飛ぶ
+ELSE
+	CALL EVENTTRAIN_SECOND_K4507_1
+ENDIF
+
+;-------------------------------------------------
+;조교開始時（2回눈以降、X1をキャラ번호に변경する）
+;-------------------------------------------------
+@EVENTTRAIN_SECOND_K4507_1
+;반발각인Lv3
+IF MARK:3 == 3 && (CFLAG:202 < 4 || FLAG:7 == 2)
+	PRINTFORMW 「…………」
+	PRINTFORMW %조사처리(CALLNAME,"는")% %CALLNAME:MASTER%의 얼굴을 직시하지 않도록、눈을 돌렸다。
+	CFLAG:202 = 4
+;굴복각인Lv0
+ELSEIF MARK:2 == 0 && (CFLAG:202 < 1 || FLAG:7 == 2)
+	IF RAND:2 == 0
+		PRINTFORMW 「빨리 집으로 돌려 보내줘！」
+	ELSE
+		PRINTFORML 「꺄아아아아앗！」
+		PRINTFORMW 「여、여기 오지 맛！」
+	ENDIF
+	CFLAG:202 = 1
+;굴복각인Lv1
+ELSEIF MARK:2 == 1 && (CFLAG:202 < 2 || FLAG:7 == 2)
+	PRINTFORMW （무、무섭지 않아……무섭지 않아……！）
+	PRINTFORMW 「언제까지 이런 일 계속할 거야！」
+	CFLAG:202 = 2
+;굴복각인Lv2
+ELSEIF MARK:2 == 2 && (CFLAG:202 < 3 || FLAG:7 == 2)
+	PRINTFORMW （싫다……。%CSTR:一人称%……）
+	PRINTFORMW （그 사람의 발소리 들으면、두근두근 해버린다……）
+	PRINTFORMW 끼이……。
+	PRINTFORMW 「뭐、뭐야！　징그럽게 웃고……！」
+	CFLAG:202 = 3
+;굴복각인Lv3＋함락소질無し
+ELSEIF MARK:2 == 3 && (TALENT:3 == 0 && TALENT:4 == 0 && TALENT:5 == 0 && TALENT:6 == 0 && TALENT:7 == 0 && TALENT:8 == 0) && (CFLAG:202 < 4 || FLAG:7 == 2)
+	IF RAND:2 == 0
+		PRINTFORML （이제……거스를 수 없어……）
+		PRINTFORMW %조사처리(CALLNAME:MASTER,"가")% 방에 들어오자、%조사처리(CALLNAME,"는")% 무의식 중에 일어서、주인을 맞이했다……。
+	ELSE
+		PRINTFORMW （%CSTR:一人称%、어떻게 되는 거야……무서워……）
+	ENDIF
+	CFLAG:202 = 4
+;함락済み
+ELSEIF CFLAG:202 < 5 || FLAG:7 == 2
+	;연모、친애
+	IF TALENT:3 || TALENT:6
+		;랜덤で구상が변화する（使わない場合はすべて同じにすればよい）
+		K:1 = RAND:3
+		IF K:1 == 0
+			PRINTFORMW %조사처리(CALLNAME:MASTER,"가")% 방에 들어 오자、%조사처리(CALLNAME,"는")% 기쁜 듯이 미소를 띄웠다。
+			PRINTFORMW 「%CSTR:二人称%、어서 오세요」
+			PRINTFORMW 「에헤헤……♪」
+		ELSEIF K:1 == 1
+			PRINTFORMW 「%CSTR:二人称%♪」
+			PRINTFORMW %조사처리(CALLNAME,"는")% 느닷없이 %CALLNAME:MASTER%에게 안겨 왔다。
+			PRINTFORMW 커다란 쌍구가 등 뒤에서 휘어지는 감촉이 느껴진다……。
+		ELSE
+			PRINTFORMW 「오늘은 뭘 할까」
+			PRINTFORMW 「물론……야한 거겠죠？」
+		ENDIF
+	;음란、창부
+	ELSEIF TALENT:4 || TALENT:7
+		;랜덤で구상が변화する（使わない場合はすべて同じにすればよい）
+		K:1 = RAND:3
+		IF K:1 == 0
+			PRINTFORMW 「%CSTR:二人称%……♪」
+			PRINTFORMW %조사처리(CALLNAME:MASTER,"가")% 방에 들어온 것만으로、벌써 %조사처리(CALLNAME,"는")% 발정하기 시작했다。
+			PRINTFORMW 턱을 들어올려 입술을 빼앗자、%조사처리(CALLNAME,"는")% 읏 하고 흠칫하며 시선을 향해 왔다……。
+		ELSEIF K:1 == 1
+			PRINTFORMW 「%CSTR:二人称%의 냄새가 느껴진다……♪」
+			PRINTFORMW %조사처리(CALLNAME,"는")% %CALLNAME:MASTER%에게 안기듯이 기대어、그 가슴께의 냄새를 맡고 있다。
+			PRINTFORMW 이미 눈동자는 넋을 잃고、입가는 헤벌어진 채로 있다……。
+			PRINTFORMW 마약중독자같다、라고 %조사처리(CALLNAME:MASTER,"가")% 놀리자、%조사처리(CALLNAME,"는")% 그래 라고 고개를 끄덕인다。
+			PRINTFORMW 「%CSTR:一人称%、이제 %CSTR:二人称% 중독이야。%조사처리(CSTR:二人称,"가")% 없으면 살아갈 수 없는 거야」
+			PRINTFORMW 「그러니까 오늘도 잔뜩 귀여워해 줘、%CSTR:二人称%♪」
+		ELSE
+			PRINTFORMW %조사처리(CALLNAME:MASTER,"가")% 방에 들어오자、%조사처리(CALLNAME,"는")% 튕기듯이 손을 뒤로 숨겼다。
+			PRINTFORMW 뭐 하고 있었던 건가 라고 추궁하자、%조사처리(CALLNAME,"는")% 쭈뼛거리며 천조각을 꺼낸다。
+			PRINTFORMW ……오늘 아침 탈의실에 벗어 던졌던、%CALLNAME:MASTER%의 속옷이다。
+			PRINTFORMW 아무래도 %조사처리(CALLNAME,"는")% %CALLNAME:MASTER%의 속옷을 얼굴에 대고、자위에 열중하고 있던 모양이다。
+			PRINTFORMW 잔뜩 벌을 주마 라고 말하자、%조사처리(CALLNAME,"는")% 새빨갛게 되면서 허벅지를 열어、
+			PRINTFORMW 이미 엉망진창으로 젖어 있는 스커트의 안을 드러냈다。
+			PRINTFORMW 「예……%CSTR:二人称%의 속옷을 훔쳐 자위해버린 나쁜 아이에게、잔뜩 벌을 주세요……♪」
+		ENDIF
+	;복종、예속
+	ELSEIF TALENT:5 || TALENT:8
+		;랜덤で구상が변화する（使わない場合はすべて同じにすればよい）
+		K:1 = RAND:3
+		IF K:1 == 0
+			PRINTFORML （아직 죽고 싶지 않으니까……살기 위해、무엇이든 하는 거니까……）
+			PRINTFORMW 「……%CSTR:二人称%……」
+		ELSEIF K:1 == 1
+			PRINTFORMW 
+		ELSE
+			PRINTFORMW 
+		ENDIF
+	ENDIF
+	CFLAG:202 = 5
+ENDIF
+RETURN 0
+
+;-------------------------------------------------
+;EVENTEND関係（X1をキャラ번호に置換）
+;조교종료시のセリフ
+;-------------------------------------------------
+@EVENTEND_4507_1
+;--------------------------------------------------
+;特定キャラが조수、主人時に特殊キャラ구상を呼び出す(Y1を特定キャラ、X1を奴隷のキャラ번호に置換）
+;--------------------------------------------------
+;IF NO:MASTER == Y1
+;	CALL EVENTEND_PY1_K4507_1
+;	RETURN 0
+;ENDIF
+;IF ASSI > 0 && ASSIPLAY
+;	SIF NO:ASSI == Y1
+;	CALL EVENTEND_PY1_K4507_1
+;	RETURN 0
+;ENDIF
+;--------------------------------------------------
+;조교종료시のセリフ
+;--------------------------------------------------
+DRAWLINE
+;반발각인Lv3
+IF MARK:3 == 3 && (CFLAG:217 < 1 || FLAG:7 == 2)
+	PRINTFORMW 「もう来なくていいよ！」
+	CFLAG:217 = 1
+;굴복각인Lv1以下
+ELSEIF MARK:2 <= 1 && (CFLAG:219 < 1 || FLAG:7 == 2)
+	IF RAND:3 == 0
+		PRINTFORMW 「흑……왜 이런 일에……」
+	ELSEIF RAND:2 == 0
+		PRINTFORMW （으윽……왜 %CSTR:二人称%인 거야……%CSTR:二人称%、아무것도 나쁜 짓따위 하지 않았는데……）
+	ELSE
+		PRINTFORMW 「으윽……흑……이제 싫어어……집에 돌아가고 싶어……」
+	ENDIF
+	CFLAG:219 = 1
+;굴복각인Lv2
+ELSEIF MARK:2 == 2
+	PRINTFORMW 「여기서 나가면 반드시 신고할 테니까……」
+	CFLAG:219 = 2
+;굴복각인Lv3＋함락소질無し
+ELSEIF MARK:2 == 3 && (TALENT:3 == 0 && TALENT:4 == 0 && TALENT:5 == 0 && TALENT:6 == 0 && TALENT:7 == 0 && TALENT:8 == 0)
+	IF RAND:2 == 0
+		PRINTFORML （……지쳤어……이제、한계야……）
+		PRINTFORMW %조사처리(CALLNAME,"는")% 기진맥진한 것처럼、침대에 쓰러졌다。
+	ELSE
+		PRINTFORMW 「집에 어찌어찌 돌아간다 해도、어차피……」
+	ENDIF
+	CFLAG:219 = 3
+;함락済み＋체력500미만
+ELSEIF BASE:0 < 500 && (CFLAG:218 < 1 || FLAG:7 == 2)
+	;연모、친애
+	IF TALENT:3 || TALENT:6
+		IF RAND:2 == 0
+			PRINTFORMW 「하아、하아……」
+			PRINTFORMW 「이제 기진맥진……♪」
+		ELSE
+			PRINTFORMW 「오늘도 잔뜩 사랑해줘서 고마워、%CSTR:二人称%……」
+		ENDIF
+	;음란、창부
+	ELSEIF TALENT:4 || TALENT:7
+		IF RAND:2 == 0
+			PRINTFORMW %조사처리(CALLNAME,"는")% 체력의 한게까지 범해졌으면서도、%CALLNAME:MASTER%에게 어리광부리듯이 몸을 비볐다……。
+		ELSE
+			PRINTFORMW 「%CSTR:二人称%∼……♪」
+			PRINTFORMW %조사처리(CALLNAME,"는")% 땀투성이가 된 %CALLNAME:MASTER%의 가슴께에 얼굴을 기대어、킁킁 하고 냄새를 들이마셨다。
+			PRINTFORMW 「아하……야한 걸 한 뒤는 냄새가 진해서 정말 좋아……♡」
+		ENDIF
+	;복종、예속
+	ELSEIF TALENT:5 || TALENT:8
+		IF RAND:2 == 0
+			PRINTFORML （……살아 있어……%CSTR:一人称%、아직……살아 있어……）
+			PRINTFORML （하지만、살아있을 가치따위……지금의 %CSTR:一人称%에게 있는 걸까……）
+			PRINTFORMW %조사처리(CALLNAME,"는")% 차가운 바닥에 쓰러진 채로、멀어져 가는 %CALLNAME:MASTER%의 발자국 소리를 넋나간 얼굴로 듣고 있었다……。
+		ELSE
+			PRINTFORMW 
+		ENDIF
+	ENDIF
+	CFLAG:218 = 1
+;함락済み
+ELSEIF CFLAG:219 < 4 || FLAG:7 == 2
+	;연모、친애
+	IF TALENT:3 || TALENT:6
+		IF RAND:2 == 0
+			PRINTFORMW 「오늘은 벌써 끝내는 거야？」
+			PRINTFORMW 「또 와줘……」
+			PRINTFORMW %조사처리(CALLNAME,"는")% %CALLNAME:MASTER%에게 가볍게 입맞춤했다。
+		ELSE
+			PRINTFORMW 「이제 야한 일은 끝？」
+			PRINTFORMW 「자、얘기라도 해요♪」
+		ENDIF
+	;음란、창부
+	ELSEIF TALENT:4 || TALENT:7
+		IF RAND:2 == 0
+			PRINTFORMW 방에 남겨진 %조사처리(CALLNAME,"는")%、 침대에 배어든 %CALLNAME:MASTER%의 남은 체취를 맡으면서 자위에 열중했다……。
+		ELSE
+			PRINTFORMW 예상외로 조교가 빨리 끝나 버려、%조사처리(CALLNAME,"는")% 조금 불만스러웠다。
+			PRINTFORMW 하지만 선물로 입고 온 속옷을 건네주자、%조사처리(CALLNAME,"는")% 팟 하고 얼굴을 빛냈다。
+			;PRINTFORMW 「역시～、주인님은 말이 통햇！」
+			PRINTFORMW 「고마워、%CSTR:二人称%∼♪」
+		ENDIF
+	;복종、예속
+	ELSEIF TALENT:5 || TALENT:8
+		IF RAND:2 == 0
+			PRINTFORMW 
+		ELSE
+			PRINTFORMW 
+			PRINTFORMW 
+		ENDIF
+	ENDIF
+	CFLAG:219 = 4
+ENDIF
+RETURN 0
+
+;--------------------------------------------------
+;@KOJO_MESSAGE_COM関係（X1をキャラ번호に置換）
+;コマンド実行時に출력されます
+;--------------------------------------------------
+@KOJO_MESSAGE_COM_K4507_1
+;조수が조교した時に구상をスキップする（好みに応じて使う、行머리の;を消すとスキップするようになる）
+;SIF ASSI > 0 && ASSIPLAY
+;	RETURN 0
+;볼재갈着用時には地の文を표시して구상をスキップする
+IF TEQUIP:20 &&  SELECTCOM != 107
+	CALL TRAIN_MESSAGE
+	RETURN 0
+ENDIF
+;--------------------------------------------------
+;特定キャラが조수、主人時に特殊キャラ구상を呼び出す(Y1を特定キャラ、X1を奴隷のキャラ번호に置換）
+;--------------------------------------------------
+;IF NO:MASTER == Y1
+;	CALL KOJO_MESSAGE_COM_PY1_K4507_1
+;	RETURN 0
+;ENDIF
+;IF ASSI > 0 && ASSIPLAY
+;	IF NO:ASSI == Y1
+;		CALL KOJO_MESSAGE_COM_PY1_K4507_1
+;		RETURN 0
+;	ENDIF
+;ENDIF
+;-------------------------------------------------
+;コマンド実行時のセリフ CFLAG 300～500
+;-------------------------------------------------
+;=================================================
+;애무계コマンド
+;=================================================
+;-------------------------------------------------
+;0,애무
+;-------------------------------------------------
+SELECTCASE SELECTCOM
+	CASE 0
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:300 == 0
+			PRINTFORMW 「싷엇、그만둿！　……기、기분 나빠、만져지고 싶지 않다니깟！」
+			CFLAG:300 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:300 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:300 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:300 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:300 = 3
+			;それ以外
+			ELSEIF CFLAG:300 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:300 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;1,커닐링구스
+;-------------------------------------------------
+	CASE 1
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:301 == 0
+			PRINTFORMW 
+			CFLAG:301 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:301 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:301 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:301 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:301 = 3
+			;それ以外
+			ELSEIF CFLAG:301 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:301 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;2,펠라한다
+;-------------------------------------------------
+	CASE 2
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:302 == 0
+			PRINTFORMW 
+			CFLAG:302 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:302 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:302 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:302 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:302 = 3
+			;それ以外
+			ELSEIF CFLAG:302 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:302 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;3,손가락삽입
+;-------------------------------------------------
+	CASE 3
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:303 == 0
+			PRINTFORMW 
+			CFLAG:303 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:303 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:303 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:303 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:303 = 3
+			;それ以外
+			ELSEIF CFLAG:303 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:303 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;4,애널핥기
+;-------------------------------------------------
+	CASE 4
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:304 == 0
+			PRINTFORMW 
+			CFLAG:304 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:304 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:304 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:304 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:304 = 3
+			;それ以外
+			ELSEIF CFLAG:304 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:304 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;5,애널애무
+;-------------------------------------------------
+	CASE 5
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:305 == 0
+			PRINTFORMW 
+			CFLAG:305 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:305 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:305 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:305 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:305 = 3
+			;それ以外
+			ELSEIF CFLAG:305 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:305 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;6,가슴주무르기
+;-------------------------------------------------
+	CASE 6
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:306 == 0
+			PRINTFORMW 
+			CFLAG:306 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:306 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 「읏……아……그、그렇게……가슴、좋아해？」
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:306 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:306 < 3 || FLAG:7 == 2)
+				IF RAND:2 == 0
+					PRINTFORMW 「으응…읏…왠지、가슴만 만지잖아…！」
+				ELSE
+					PRINTFORMW 「읏……아……그、그렇게……이 정도의 가슴、좋아해？」
+				ENDIF
+				CFLAG:306 = 3
+			;それ以外
+			ELSEIF CFLAG:306 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:306 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;7,유두자극
+;-------------------------------------------------
+	CASE 7
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:307 == 0
+			PRINTFORMW 
+			CFLAG:307 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:307 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					IF TEQUIP:18 && TEQUIP:19 && TEQUIP:41 && TEQUIP:속옷（상） == 520
+						PRINTFORMW 힘에 버거울 정도의 질량을 가진 %CALLNAME%의 풍만한 양 가슴의 끝부분에 붙여진 금속제의 피어스。
+						PRINTFORMW 몸을 딱딱하게 해 자세를 취한 %CALLNAME%에 대해、%조사처리(CALLNAME:MASTER,"는")% 삼각목마에 올라탄 소녀에게 이제부터 뭘 할지 생각했냐고 물어보았다。
+						PRINTFORMW 「저……모르겠습니다」
+						PRINTFORMW 「꺄악！！」
+						PRINTFORMW 조심스럽게 대답한 %조사처리(CALLNAME,"는")% 가슴의 끝부분에서 둔탁한 아픔을 느껴 얼굴을 찡그렸다。
+						PRINTFORMW 눈이 가려진 %CALLNAME%로는 확실히 아는 일은 할 수 없지만、소녀의 양 가슴의 유두 피어스에는 %CALLNAME:PLAYER%의 손에 의해 무거운 추가 달려졌다。
+						PRINTFORMW 「싫어어어어어！！」
+						PRINTFORMW 유두가 잡아 뜯겨지는 것같은 착각을 느낀 %조사처리(CALLNAME,"는")% 몸을 뒤흔들어 보지만 아픔에서 벗어나는 일은 할 수 없다。
+						PRINTFORMW 「부탁드립니다、용서해 주세요…주인니이이이임！！」
+						PRINTFORMW 비며을 지르는 %조사처리(CALLNAME,"를")% 무시해、혹독한 고문의 고통은 %조사처리(CALLNAME:MASTER,"가")% 싫증날 때까지 쭉 계속되었다……
+					ELSE
+						PRINTFORMW 
+					ENDIF
+				ENDIF
+				CFLAG:307 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:307 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:307 = 3
+			;それ以外
+			ELSEIF CFLAG:307 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:307 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;8,가슴애무
+;-------------------------------------------------
+	CASE 8
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:308 == 0
+			PRINTFORMW 
+			CFLAG:308 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:308 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:308 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:308 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:308 = 3
+			;それ以外
+			ELSEIF CFLAG:308 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:308 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;9,조개젖히기
+;-------------------------------------------------
+	CASE 9
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:309 == 0
+			PRINTFORMW 
+			CFLAG:309 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:309 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 「에헷♡」
+					PRINTFORMW 「하아…하아…안에서 자꾸자꾸 흘러넘쳐 버린다아」
+					PRINTFORMW 「저기…빨리 자지 줘어♡」
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 「에헷♡」
+					PRINTFORMW 「하아…하아…안에서 자꾸자꾸 흘러넘쳐 버린다아」
+					PRINTFORMW 「저기…빨리 자지 줘어♡」
+					PRINTFORMW 「길들이는 거야？…」
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:309 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:309 < 3 || FLAG:7 == 2)
+				PRINTFORMW 「이런 걸 하게 할 거라면……차라리 단숨에……하는 게 좋잖아……」
+				CFLAG:309 = 3
+			;それ以外
+			ELSEIF CFLAG:309 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:309 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;10,가슴자위
+;-------------------------------------------------
+	CASE 10
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:310 == 0
+			PRINTFORMW 
+			CFLAG:310 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:310 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:310 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:310 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:310 = 3
+			;それ以外
+			ELSEIF CFLAG:310 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:310 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;11,자위
+;-------------------------------------------------
+	CASE 11
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:311 == 0
+			;함락済み
+			IF TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8
+				PRINTFORMW 
+			;それ以外
+			ELSE
+				PRINTFORML 「자、자위…！？　바……바보 아냐、바보 아냐、바보 아냐…！？」
+				PRINTFORML 「어어、어째서 %조사처리(CSTR:一人称,"가")%、그런 걸 하지 않으면 안되는 거야…！」
+				PRINTFORML 얼굴을 빨갛게 하면서 %CALLNAME:MASTER%에게 대드는 %CALLNAME%의 모습에서 볼 때、어느 정도 자위를 경험하고 있다는 것은 명백하다。
+				PRINTFORML 「앗、잠깐 놔줘…！　하지 않는다니까…！　시、싫어어엇！」
+				PRINTFORMW %조사처리(CALLNAME:MASTER,"는")% %조사처리(CALLNAME,"를")% 등 뒤에서 껴안아、붙잡은 그 손을 억지로 그녀 자신의 비부로 바싹 대게 했다……
+			ENDIF
+			CFLAG:311 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:311 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 「에헤헤…음란한 %CSTR:一人称%의 변태 절정 봐 주세요」
+					PRINTFORMW 「후아…%CSTR:一人称%의 거기에서 보짓물 흘러 넘쳐 버린다♡」
+					PRINTFORMW 「매일…보지에 이물을 찔러넣어 빙글빙글하니까 뭔가 허전한 거야…」
+					PRINTFORMW 「저기…%CSTR:二人称%의 굵고 딱딱한 걸로 벌 줘어…자지 원해애…」
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 「에헤헤…음란한 %CSTR:一人称%의 변태 절정 봐 주세요」
+					PRINTFORMW 「후아…%CSTR:一人称%의 거기에서 보짓물 흘러 넘쳐 버린다♡」
+					PRINTFORMW 「매일…보지에 이물을 찔러넣어 빙글빙글하니까 뭔가 허전한 거야…」
+					PRINTFORMW 「저기…%CSTR:二人称%의 굵고 딱딱한 걸로 벌 줘어…자지 원해애…」
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:311 = 4
+			;순종Lv3이상
+			ELSEIF ABL:0 >= 3 && (CFLAG:311 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:311 = 3
+			;それ以外
+			ELSEIF CFLAG:311 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:311 = 2
+			ENDIF
+		ENDIF
+
+
+;=================================================
+;コミュ니케ション系コマンド
+;=================================================
+;-------------------------------------------------
+;20,키스한다
+;-------------------------------------------------
+	CASE 20
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:312 == 0
+			PRINTFORMW 
+			CFLAG:312 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:312 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORML 「해도 좋냐니、듣지 않으면 몰라…？」
+					PRINTFORMW 「정마알、항상 억지로 하고 있던 주제에！　앗……으응……」
+					PRINTFORMW 라고 말해도、턱을 들어올려 입술을 빼앗자、%CALLNAME%의 표정은 순식간에 바뀌었다……。
+					PRINTFORMW 「%CSTR:二人称%……♪ 너무 좋아아♡」
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:312 = 4
+			;순종Lv3이상
+			ELSEIF ABL:0 >= 3 && (CFLAG:312 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:312 = 3
+			;それ以外
+			ELSEIF CFLAG:312 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:312 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;21,아무것도안한다
+;-------------------------------------------------
+	CASE 21
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:313 == 0
+			PRINTFORMW 
+			CFLAG:313 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:313 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORML 「……자、잠까안……저기、일부러 심술부리는 거 아냐…？」
+					PRINTFORMW 「%CSTR:一人称%에게도……음란한 소망 쯤、있는 거니까……」
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:313 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:313 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:313 = 3
+			;それ以外
+			ELSEIF CFLAG:313 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:313 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;22,회화　연모、친애のみ
+;-------------------------------------------------
+	CASE 22
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:314 == 0
+			PRINTFORMW 
+			CFLAG:314 = 1
+		;二回눈以降
+		ELSEIF CFLAG:314 < 2 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:314 = 2
+		ENDIF
+
+;-------------------------------------------------
+;23,프레젠트　연모、친애のみ
+;-------------------------------------------------
+	CASE 23
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:315 == 0
+			PRINTFORMW 
+			CFLAG:315 = 1
+		;二回눈以降
+		ELSEIF CFLAG:315 < 2 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:315 = 2
+		ENDIF
+
+;-------------------------------------------------
+;24,스킨쉽　연모、친애のみ
+;-------------------------------------------------
+	CASE 24
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:316 == 0
+			PRINTFORMW 
+			CFLAG:316 = 1
+		;二回눈以降
+		ELSEIF CFLAG:316 < 2 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:316 = 2
+		ENDIF
+
+;-------------------------------------------------
+;25,느긋하게있는다　연모、친애のみ
+;-------------------------------------------------
+	CASE 25
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:317 == 0
+			PRINTFORMW 
+			CFLAG:317 = 1
+		;二回눈以降
+		ELSEIF CFLAG:317 < 2 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:317 = 2
+		ENDIF
+
+;-------------------------------------------------
+;26,가사　연모、친애のみ
+;-------------------------------------------------
+	CASE 26
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:318 == 0
+			PRINTFORMW 
+			CFLAG:318 = 1
+		;二回눈以降
+		ELSEIF CFLAG:318 < 2 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:318 = 2
+		ENDIF
+
+;-------------------------------------------------
+;27,노래연습　연모、친애のみ
+;-------------------------------------------------
+	CASE 27
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:319 == 0
+			PRINTFORMW 
+			CFLAG:319 = 1
+		;二回눈以降
+		ELSEIF CFLAG:319 < 2 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:319 = 2
+		ENDIF
+
+;-------------------------------------------------
+;28,매도
+;-------------------------------------------------
+	CASE 28
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:320 == 0
+			PRINTFORMW 
+			CFLAG:320 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:320 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:320 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:320 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:320 = 3
+			;それ以外
+			ELSEIF CFLAG:320 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:320 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;29,비디오감상　함락済みのみ
+;-------------------------------------------------
+	CASE 29
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:321 == 0
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+		CFLAG:321 = 1
+		;二回눈以降
+		ELSEIF CFLAG:321 < 2 || FLAG:7 == 2
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+		CFLAG:321 = 2
+		ENDIF
+
+
+;=================================================
+;道具사용コマンド
+;=================================================
+;40,로터
+;-------------------------------------------------
+	CASE 40
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:322 == 0
+			PRINTFORMW 
+			CFLAG:322 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:322 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:322 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:322 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:322 = 3
+			;それ以外
+			ELSEIF CFLAG:322 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:322 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;41,전기맛사지기
+;-------------------------------------------------
+	CASE 41
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:323 == 0
+			PRINTFORMW 
+			CFLAG:323 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:323 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:323 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:323 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:323 = 3
+			;それ以外
+			ELSEIF CFLAG:323 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:323 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;42,클리캡
+;-------------------------------------------------
+	CASE 42
+		IF TEQUIP:11 == 1
+			CALL TRAIN_MESSAGE
+			;初めて
+			IF CFLAG:324 == 0
+				PRINTFORMW 
+				CFLAG:324 = 1
+			;二回눈以降
+			ELSE
+				;함락済み
+				IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:324 < 4 || FLAG:7 == 2)
+					;연모、친애
+					IF TALENT:3 || TALENT:6
+						PRINTFORMW 
+					;음란、창부
+					ELSEIF TALENT:4 || TALENT:7
+						PRINTFORMW 
+					;복종、예속
+					ELSEIF TALENT:5 || TALENT:8
+						PRINTFORMW 
+					ENDIF
+					CFLAG:324 = 4
+				;굴복각인Lv3
+				ELSEIF MARK:2 == 3 && (CFLAG:324 < 3 || FLAG:7 == 2)
+					PRINTFORMW 
+					CFLAG:324 = 3
+				;それ以外
+				ELSEIF CFLAG:324 < 2 || FLAG:7 == 2
+					PRINTFORMW 
+					CFLAG:324 = 2
+				ENDIF
+			ENDIF
+		ELSE
+			IF CFLAG:324 == 1 || FLAG:7 == 2
+				CALL TRAIN_MESSAGE
+				PRINTFORMW 
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;43,오나홀
+;-------------------------------------------------
+	CASE 43
+		IF TEQUIP:12 == 1
+			CALL TRAIN_MESSAGE
+			;初めて
+			IF CFLAG:325 == 0
+				PRINTFORMW 
+				CFLAG:325 = 1
+			;二回눈以降
+			ELSE
+				;함락済み
+				IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:325 < 4 || FLAG:7 == 2)
+					;연모、친애
+					IF TALENT:3 || TALENT:6
+						PRINTFORMW 
+					;음란、창부
+					ELSEIF TALENT:4 || TALENT:7
+						PRINTFORMW 
+					;복종、예속
+					ELSEIF TALENT:5 || TALENT:8
+						PRINTFORMW 
+					ENDIF
+					CFLAG:325 = 4
+				;굴복각인Lv3
+				ELSEIF MARK:2 == 3 && (CFLAG:325 < 3 || FLAG:7 == 2)
+					PRINTFORMW 
+					CFLAG:325 = 3
+				;それ以外
+				ELSEIF CFLAG:325 < 2 || FLAG:7 == 2
+					PRINTFORMW 
+					CFLAG:325 = 2
+				ENDIF
+			ENDIF
+		ELSE
+			IF CFLAG:325 == 1 || FLAG:7 == 2
+				CALL TRAIN_MESSAGE
+				PRINTFORMW 
+			ENDIF
+		ENDIF
+;-------------------------------------------------
+;44,바이브
+;-------------------------------------------------
+	CASE 44
+		IF TEQUIP:13 == 1
+			CALL TRAIN_MESSAGE
+			;初めて
+			IF CFLAG:326 == 0
+				;함락済み
+				IF TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8
+					;처녀
+					IF TALENT:0
+						PRINTFORML 「저기、진짜로 할 생각인 거야…？　그만두자、이런 거……」
+						PRINTFORMW 「%CSTR:一人称%、아직 처녀인데……이런 게 처음이라니、있을 수 없어……」
+					ELSE
+						PRINTFORML 「아……역시 쓰는구나、그거……」
+						PRINTFORMW 「응……으긋！ ！……읏……하앗、하아……으……뻑뻑해……」
+					ENDIF
+				;それ以外
+				ELSE
+					;처녀
+					IF TALENT:0
+						PRINTFORML 「노、농담이겠지…？　웃을 수 없으니까、그런 거…！」
+						PRINTFORML 「그만둬어……제발……」
+						PRINTFORMW 「%CSTR:一人称%、아직…！　으、으으……그게……읏……처녀、니까……」
+					ELSE
+						PRINTFORML 「거짓말……그렇게 굵은 거、절대로 무리야아……」
+						PRINTFORML 「앗！싫어어어어엇！　응윽……크으윽……아악！」
+						PRINTFORMW 「……아으윽……괴、괴로웟……부탁이니깟……빼 줘어……」
+					ENDIF
+				ENDIF
+				CFLAG:326 = 1
+			;二回눈以降
+			ELSE
+				;함락済み
+				IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:326 < 4 || FLAG:7 == 2)
+					;연모、친애
+					IF TALENT:3 || TALENT:6
+						PRINTFORMW 
+					;음란、창부
+					ELSEIF TALENT:4 || TALENT:7
+						PRINTFORMW 
+					;복종、예속
+					ELSEIF TALENT:5 || TALENT:8
+						PRINTFORMW 
+					ENDIF
+					CFLAG:326 = 4
+				;굴복각인Lv3
+				ELSEIF MARK:2 == 3 && (CFLAG:326 < 3 || FLAG:7 == 2)
+					PRINTFORMW 
+					CFLAG:326 = 3
+				;それ以外
+				ELSEIF CFLAG:326 < 2 || FLAG:7 == 2
+					IF RAND:2 == 0
+						PRINTFORML 「읏……크읏……우、우는 일따위 안햇……」
+					ELSE
+						PRINTFORML 「크읏……뭐、뭐얏……이런 거……읏……대단한 것……아니잖앗……」
+					ENDIF
+					PRINTFORMW %조사처리(CALLNAME,"는")% 목소리를 떨면서 필사적으로 허세를 부리지만、%조사처리(CALLNAME:MASTER,"가")% 쥔 바이브가 움직일 때마다 신음이 새어나오고 있다……
+					CFLAG:326 = 2
+				ENDIF
+			ENDIF
+		ELSE
+			IF CFLAG:326 == 1 || FLAG:7 == 2
+				CALL TRAIN_MESSAGE
+				PRINTFORMW 
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;45,애널바이브
+;-------------------------------------------------
+	CASE 45
+		IF TEQUIP:14 == 1
+			CALL TRAIN_MESSAGE
+			;初めて
+			IF CFLAG:327 == 0
+				PRINTFORMW 
+				CFLAG:327 = 1
+			;二回눈以降
+			ELSE
+				;함락済み
+				IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:327 < 4 || FLAG:7 == 2)
+					;연모、친애
+					IF TALENT:3 || TALENT:6
+						PRINTFORMW 
+					;음란、창부
+					ELSEIF TALENT:4 || TALENT:7
+						PRINTFORMW 
+					;복종、예속
+					ELSEIF TALENT:5 || TALENT:8
+						PRINTFORMW 
+					ENDIF
+					CFLAG:327 = 4
+				;굴복각인Lv3
+				ELSEIF MARK:2 == 3 && (CFLAG:327 < 3 || FLAG:7 == 2)
+					PRINTFORMW 
+					CFLAG:327 = 3
+				;それ以外
+				ELSEIF CFLAG:327 < 2 || FLAG:7 == 2
+					PRINTFORMW 
+					CFLAG:327 = 2
+				ENDIF
+			ENDIF
+		ELSE
+			IF CFLAG:327 == 1 || FLAG:7 == 2
+				CALL TRAIN_MESSAGE
+				PRINTFORMW 
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;46,애널비즈
+;-------------------------------------------------
+	CASE 46
+		IF TEQUIP:15 == 1
+			CALL TRAIN_MESSAGE
+			;初めて
+			IF CFLAG:328 == 0
+				PRINTFORMW 
+				CFLAG:328 = 1
+			;二回눈以降
+			ELSE
+				;함락済み
+				IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:328 < 4 || FLAG:7 == 2)
+					;연모、친애
+					IF TALENT:3 || TALENT:6
+						PRINTFORMW 
+					;음란、창부
+					ELSEIF TALENT:4 || TALENT:7
+						PRINTFORMW 
+					;복종、예속
+					ELSEIF TALENT:5 || TALENT:8
+						PRINTFORMW 
+					ENDIF
+					CFLAG:328 = 4
+				;굴복각인Lv3
+				ELSEIF MARK:2 == 3 && (CFLAG:328 < 3 || FLAG:7 == 2)
+					PRINTFORMW 
+					CFLAG:328 = 3
+				;それ以外
+				ELSEIF CFLAG:328 < 2 || FLAG:7 == 2
+					PRINTFORMW 
+					CFLAG:328 = 2
+				ENDIF
+			ENDIF
+		ELSE
+			IF CFLAG:328 == 1 || FLAG:7 == 2
+				CALL TRAIN_MESSAGE
+				PRINTFORMW 
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;47,유두캡
+;-------------------------------------------------
+	CASE 47
+		IF TEQUIP:16 == 1
+			CALL TRAIN_MESSAGE
+			;初めて
+			IF CFLAG:329 == 0
+				PRINTFORMW 
+				CFLAG:329 = 1
+			;二回눈以降
+			ELSE
+				;함락済み
+				IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:329 < 4 || FLAG:7 == 2)
+					;연모、친애
+					IF TALENT:3 || TALENT:6
+						PRINTFORMW 
+					;음란、창부
+					ELSEIF TALENT:4 || TALENT:7
+						PRINTFORMW 
+					;복종、예속
+					ELSEIF TALENT:5 || TALENT:8
+						PRINTFORMW 
+					ENDIF
+					CFLAG:329 = 4
+				;굴복각인Lv3
+				ELSEIF MARK:2 == 3 && (CFLAG:329 < 3 || FLAG:7 == 2)
+					PRINTFORMW 
+					CFLAG:329 = 3
+				;それ以外
+				ELSEIF CFLAG:329 < 2 || FLAG:7 == 2
+					PRINTFORMW 
+					CFLAG:329 = 2
+				ENDIF
+			ENDIF
+		ELSE
+			IF CFLAG:329 == 1 || FLAG:7 == 2
+				CALL TRAIN_MESSAGE
+				PRINTFORMW 
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;48,유두로터
+;-------------------------------------------------
+	CASE 48
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:330 == 0
+			PRINTFORMW 
+			CFLAG:330 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:330 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:330 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:330 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:330 = 3
+			;それ以外
+			ELSEIF CFLAG:330 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:330 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;49,착유기
+;-------------------------------------------------
+	CASE 49
+		IF TEQUIP:17 == 1
+			CALL TRAIN_MESSAGE
+			;初めて
+			IF CFLAG:331 == 0
+				PRINTFORMW 
+				CFLAG:331 = 1
+			;二回눈以降
+			ELSE
+				;함락済み
+				IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:331 < 4 || FLAG:7 == 2)
+					;연모、친애
+					IF TALENT:3 || TALENT:6
+						PRINTFORMW 
+					;음란、창부
+					ELSEIF TALENT:4 || TALENT:7
+						PRINTFORMW 
+					;복종、예속
+					ELSEIF TALENT:5 || TALENT:8
+						PRINTFORMW 
+					ENDIF
+					CFLAG:331 = 4
+				;굴복각인Lv3
+				ELSEIF MARK:2 == 3 && (CFLAG:331 < 3 || FLAG:7 == 2)
+					PRINTFORMW 
+					CFLAG:331 = 3
+				;それ以外
+				ELSEIF CFLAG:331 < 2 || FLAG:7 == 2
+					PRINTFORMW 
+					CFLAG:331 = 2
+				ENDIF
+			ENDIF
+		ELSE
+			IF CFLAG:331 == 1 || FLAG:7 == 2
+				CALL TRAIN_MESSAGE
+				PRINTFORMW 
+			ENDIF
+		ENDIF
+
+;=================================================
+;섹스系コマンド
+;=================================================
+;-------------------------------------------------
+;60,정상위
+;-------------------------------------------------
+	CASE 60
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:332 == 0
+			;처녀
+			IF TALENT:0
+				IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:332 < 4 || FLAG:7 == 2)
+					;연모、친애
+					IF TALENT:3 || TALENT:6
+						PRINTFORMW 
+					;음란、창부
+					ELSEIF TALENT:4 || TALENT:7
+						PRINTFORMW 
+					;복종、예속
+					ELSEIF TALENT:5 || TALENT:8
+						PRINTFORMW 
+					ELSE
+						PRINTFORMW 
+					ENDIF
+				ENDIF
+			;それ以外
+			ELSE
+				IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:332 < 4 || FLAG:7 == 2)
+					;연모、친애
+					IF TALENT:3 || TALENT:6
+						PRINTFORMW 
+					;음란、창부
+					ELSEIF TALENT:4 || TALENT:7
+						PRINTFORMW 
+					;복종、예속
+					ELSEIF TALENT:5 || TALENT:8
+						PRINTFORMW 
+					ELSE
+						PRINTFORMW 
+					ENDIF
+				ENDIF
+			ENDIF
+			CFLAG:332 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:332 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 「아히이♡」
+					PRINTFORMW 「자지이…%CSTR:二人称%의 자지 갱장해♡」
+					PRINTFORMW 「자지 너무 죠아아♡」
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 「아히이♡」
+					PRINTFORMW 「자지이…자지 갱장해♡」
+					PRINTFORMW 「자지 너무 죠아아♡」
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:332 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:332 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:332 = 3
+			;それ以外
+			ELSEIF CFLAG:332 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:332 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;61,후배위
+;-------------------------------------------------
+	CASE 61
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:333 == 0
+			;처녀
+			IF TALENT:0
+				IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:333 < 4 || FLAG:7 == 2)
+					;연모、친애
+					IF TALENT:3 || TALENT:6
+						PRINTFORMW 
+					;음란、창부
+					ELSEIF TALENT:4 || TALENT:7
+						PRINTFORMW 
+					;복종、예속
+					ELSEIF TALENT:5 || TALENT:8
+						PRINTFORMW 
+					ELSE
+						PRINTFORMW 
+					ENDIF
+				ENDIF
+			;それ以外
+			ELSE
+				IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:333 < 4 || FLAG:7 == 2)
+					;연모、친애
+					IF TALENT:3 || TALENT:6
+						PRINTFORMW 
+					;음란、창부
+					ELSEIF TALENT:4 || TALENT:7
+						PRINTFORMW 
+					;복종、예속
+					ELSEIF TALENT:5 || TALENT:8
+						PRINTFORMW 
+					ELSE
+						PRINTFORMW 
+					ENDIF
+				ENDIF
+			ENDIF
+			CFLAG:333 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:333 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 「하히이♡」
+					PRINTFORMW 「%CSTR:二人称%가 너무 딱딱해서 보지 얼얼해져 버려어어♡♡♡」
+					PRINTFORMW 「더 해줘어♪　자지 갱장해애♡」
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 「하히이♡」
+					PRINTFORMW 「보지 얼얼해져 버려어어♡♡♡」
+					PRINTFORMW 「더 해줘어♪　자지 갱장해애♡」
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:333 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:333 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:333 = 3
+			;それ以外
+			ELSEIF CFLAG:333 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:333 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;62,정상위애널
+;-------------------------------------------------
+	CASE 62
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:334 == 0
+			IF TALENT:MASTER:남자 == 1
+				;함락済み
+				IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:334 < 4 || FLAG:7 == 2)
+					PRINTFORMW 
+				ELSE
+					PRINTFORMW 
+				ENDIF
+			ELSE
+				;함락済み
+				IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:334 < 4 || FLAG:7 == 2)
+					PRINTFORMW 
+				ELSE
+					PRINTFORMW 
+				ENDIF
+			ENDIF
+			CFLAG:334 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:334 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					IF RAND:2 == 0
+						PRINTFORMW 
+					ELSE
+						PRINTFORMW 
+					ENDIF
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:334 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:334 < 3 || FLAG:7 == 2)
+				IF TALENT:MASTER:남자 == 1
+					IF RAND:2 == 0
+						PRINTFORMW 「부탁이니까…격하게 하지 말아줘」
+					ELSE
+						PRINTFORMW 「어쩔 수 없네요…」
+						PRINTFORMW 「%조사처리(CSTR:一人称,"는")% 노예인 걸…」
+					ENDIF
+				ELSE
+					IF RAND:2 == 0
+						PRINTFORMW 「부탁이니까…격하게 하지 말아줘」
+					ELSE
+						PRINTFORMW 「어쩔 수 없네요…」
+						PRINTFORMW 「%조사처리(CSTR:一人称,"는")% 노예인 걸…」
+					ENDIF
+				ENDIF
+				CFLAG:334 = 3
+			;それ以外
+			ELSEIF CFLAG:334 < 2 || FLAG:7 == 2
+				IF RAND:3 == 0
+					PRINTFORMW 「용서해 줘…싫어어엇！！」
+				ELSEIF RAND:2 == 0
+					PRINTFORMW 「싫어엇」
+				ELSE
+					PRINTFORMW 「그만둬어！！」
+				ENDIF
+				CFLAG:334 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;63,후배위애널
+;-------------------------------------------------
+	CASE 63
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:335 == 0
+			PRINTFORMW 
+			CFLAG:335 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:335 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					IF ASSIPLAY 
+						IF NO:ASSI == 4566
+							PRINTFORMW 「윽…윽……」
+							PRINTFORMW 『미안해……』
+							PRINTFORMW 엎드린 %CALLNAME%의 애널을 %CALLNAME:ASSI%가 범하고 있다
+							PRINTFORMW 사랑하는 사람의 눈 앞에서 예전의 친구들에게 엉덩이 구멍을 범해진다고 하는 괴로움
+							PRINTFORMW 세게 주먹을 쥔 %CALLNAME%의 눈에서 흘러나오는 눈물이 똑똑 떨어지고 있다
+							PRINTFORMW %조사처리(CALLNAME,"는")% 치욕을 참아、조금이나마 저항을 보여 쭉 목소리를 죽이고 있다…
+						ELSE
+							PRINTFORML 「잠、잠까아안！？　스톱！ 스토옵！　거、거기느은……」
+							PRINTFORML 「지、진짜로、거기로 하는 거야…？　……라고……할 맘、가득하잖아……」
+							PRINTFORMW 「윽……으으으윽……저얼대로、아프게 하지 말아줘…？　……그렇다면……좋아……」
+						ENDIF
+					ELSE
+						PRINTFORMW 
+					ENDIF
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:335 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:335 < 3 || FLAG:7 == 2)
+				IF RAND:3 == 0
+					PRINTFORMW 
+				ELSEIF RAND:2 == 0
+					PRINTFORMW 
+				ELSE
+					PRINTFORMW 
+				ENDIF
+				CFLAG:335 = 3
+			;それ以外
+			ELSEIF CFLAG:335 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:335 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;64,역강간
+;-------------------------------------------------
+	CASE 64
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:336 == 0
+			PRINTFORMW 
+			CFLAG:336 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:336 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:336 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:336 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:336 = 3
+			;それ以外
+			ELSEIF CFLAG:336 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:336 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;65,젖성교
+;-------------------------------------------------
+	CASE 65
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:337 == 0
+			PRINTFORMW 
+			CFLAG:337 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:337 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:337 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:337 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:337 = 3
+			;それ以外
+			ELSEIF CFLAG:337 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:337 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;66,기승위
+;-------------------------------------------------
+	CASE 66
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:338 == 0
+			;처녀
+			IF TALENT:0
+				IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:338 < 4 || FLAG:7 == 2)
+					;연모、친애
+					IF TALENT:3 || TALENT:6
+						PRINTFORMW 
+					;음란、창부
+					ELSEIF TALENT:4 || TALENT:7
+						PRINTFORMW 
+					;복종、예속
+					ELSEIF TALENT:5 || TALENT:8
+						PRINTFORMW 
+					ELSE
+						PRINTFORMW 
+					ENDIF
+				ENDIF
+			;それ以外
+			ELSE
+				IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:338 < 4 || FLAG:7 == 2)
+					;연모、친애
+					IF TALENT:3 || TALENT:6
+						PRINTFORMW 
+					;음란、창부
+					ELSEIF TALENT:4 || TALENT:7
+						IF TEQUIP:비디오카메라 == 1 && TALENT:재생처녀
+							PRINTFORMW 「에헤헤♪」
+							PRINTFORMW 「아버지、어머니、%조사처리(CSTR:一人称,"는")% 잘 지냅니다」
+							PRINTFORMW  ｢오늘은 %CALLNAME%의 생 질내사정 쇼를 봐 주세요♪」
+							PRINTFORMW %조사처리(CALLNAME,"는")% 스스로 %CALLNAME:PLAYER%의 위에 올라타 허리를 흔들기 시작한다
+							PRINTFORMW 「하힛、자지이♡　자지 굉자앙한 거야아♡」
+							PRINTFORMW 「섹스 기분 좋아아♡」
+							PRINTFORMW 맛간 얼굴을 한 %조사처리(CALLNAME,"는")% 카메라를 향해 양손으로 피스 사인을 만들어보였다
+							PRINTFORM 「아히이、자지로 %CSTR:一人称%의 처녀보지
+							IF RAND:2 == 0
+								PRINTFORMW 망가져 버려어어♪」
+							ELSE
+								PRINTFORMW 벌어져 버려어어♪」
+							ENDIF
+							IF RAND:2 == 0
+								PRINTFORMW ｢%조사처리(CALLNAME,"는")% 매일 생 질내사정이 기분 좋아아♡」
+							ELSE
+								PRINTFORMW 「와 줘어、%CSTR:一人称%의 자궁에 자지밀크 줘어♡」
+							ENDIF
+						ELSE
+							PRINTFORMW 
+						ENDIF
+					;복종、예속
+					ELSEIF TALENT:5 || TALENT:8
+						PRINTFORMW 
+					ELSE
+						PRINTFORMW 
+					ENDIF
+				ENDIF
+			ENDIF
+			CFLAG:338 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:338 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 「에헤헤♪」
+					PRINTFORMW %조사처리(CALLNAME,"는")% 스스로 %CALLNAME:PLAYER%의 위에 올라타 허리를 흔들기 시작한다
+					PRINTFORMW 「하힛、자지이♡　%CSTR:二人称%의 자지 굉자앙한 거야아♡」
+					PRINTFORMW 「섹스 기분 좋아아♡」
+					PRINTFORMW 맛간 얼굴을 한 %조사처리(CALLNAME,"는")% 양손으로 피스 사인을 만들어보였다
+					PRINTFORM 「아히이、%CSTR:一人称%의 자궁에 자지밀크 줘어♡」
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 「아하아♡」
+					PRINTFORMW 「섹스 좋아해애、보지 좋은 거야아♡」
+					PRINTFORMW 「더、더 자지 줘어♡♡♡」
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:338 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:338 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:338 = 3
+			;それ以外
+			ELSEIF CFLAG:338 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:338 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;67,기승위애널
+;-------------------------------------------------
+	CASE 67
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:339 == 0
+			PRINTFORMW 
+			CFLAG:339 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:339 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:339 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:339 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:339 = 3
+			;それ以外
+			ELSEIF CFLAG:339 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:339 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;68,대면좌위
+;-------------------------------------------------
+	CASE 68
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:340 == 0
+			;처녀
+			IF TALENT:0
+				IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:340 < 4 || FLAG:7 == 2)
+					;연모、친애
+					IF TALENT:3 || TALENT:6
+						PRINTFORMW 
+					;음란、창부
+					ELSEIF TALENT:4 || TALENT:7
+						PRINTFORMW 
+					;복종、예속
+					ELSEIF TALENT:5 || TALENT:8
+						PRINTFORMW 
+					ELSE
+						PRINTFORMW 
+					ENDIF
+				ENDIF
+			;それ以外
+			ELSE
+				IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:340 < 4 || FLAG:7 == 2)
+					;연모、친애
+					IF TALENT:3 || TALENT:6
+						PRINTFORMW 
+					;음란、창부
+					ELSEIF TALENT:4 || TALENT:7
+						PRINTFORMW 
+					;복종、예속
+					ELSEIF TALENT:5 || TALENT:8
+						PRINTFORMW 
+					ELSE
+						PRINTFORMW 
+					ENDIF
+				ENDIF
+			ENDIF
+			CFLAG:340 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:340 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 「힉」
+					PRINTFORMW 「갱장해애앳、%CSTR:一人称%의 보지이♡」
+					PRINTFORMW 「자지로 가득차써어♡」
+					PRINTFORMW 「더、더 해 줘어♡♡」
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 「힉」
+					PRINTFORMW 「갱장해애앳、%CSTR:一人称%의 보지이♡」
+					PRINTFORMW 「자지로 가득해애♡」
+					PRINTFORMW 「더、더 해 줘어♡♡」
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:340 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:340 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:340 = 3
+			;それ以外
+			ELSEIF CFLAG:340 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:340 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;69,배면좌위
+;-------------------------------------------------
+	CASE 69
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:341 == 0
+			;처녀
+			IF TALENT:0
+				IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:341 < 4 || FLAG:7 == 2)
+					;연모、친애
+					IF TALENT:3 || TALENT:6
+						PRINTFORMW 
+					;음란、창부
+					ELSEIF TALENT:4 || TALENT:7
+						PRINTFORMW 
+					;복종、예속
+					ELSEIF TALENT:5 || TALENT:8
+						PRINTFORMW 
+					ELSE
+						PRINTFORMW 
+					ENDIF
+				ENDIF
+			;それ以外
+			ELSE
+				IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:341 < 4 || FLAG:7 == 2)
+					;연모、친애
+					IF TALENT:3 || TALENT:6
+						PRINTFORMW 
+					;음란、창부
+					ELSEIF TALENT:4 || TALENT:7
+						PRINTFORMW 
+					;복종、예속
+					ELSEIF TALENT:5 || TALENT:8
+						PRINTFORMW 
+					ELSE
+						PRINTFORMW 
+					ENDIF
+				ENDIF
+			ENDIF
+			CFLAG:341 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:341 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 「으히이♡」
+					PRINTFORMW 「자지이♡　갱장한 거야아…하아♡♡」
+					PRINTFORMW 「%CSTR:二人称%만을 위한 음란 보지 더 괴롭혀 줘어♡」
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 「으히이♡」
+					PRINTFORMW 「자지이♡　갱장한 거야아…하아♡♡」
+					PRINTFORMW 「음란 보지 더 괴롭혀 줘어♡」
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:341 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:341 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:341 = 3
+			;それ以外
+			ELSEIF CFLAG:341 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:341 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;70,대면좌위애널
+;-------------------------------------------------
+	CASE 70
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:342 == 0
+			PRINTFORMW 
+			CFLAG:342 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:342 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:342 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:342 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:342 = 3
+			;それ以外
+			ELSEIF CFLAG:342 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:342 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;71,배면좌위애널
+;-------------------------------------------------
+	CASE 71
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:343 == 0
+			PRINTFORMW 
+			CFLAG:343 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:343 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:343 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:343 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:343 = 3
+			;それ以外
+			ELSEIF CFLAG:343 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:343 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;72,속옷비켜삽입
+;-------------------------------------------------
+	CASE 72
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:420 == 0
+			;처녀
+			IF TALENT:0
+				IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:420 < 4 || FLAG:7 == 2)
+					;연모、친애
+					IF TALENT:3 || TALENT:6
+						PRINTFORMW 
+					;음란、창부
+					ELSEIF TALENT:4 || TALENT:7
+						PRINTFORMW 
+					;복종、예속
+					ELSEIF TALENT:5 || TALENT:8
+						PRINTFORMW 
+					ELSE
+						PRINTFORMW 
+					ENDIF
+				ENDIF
+			;それ以外
+			ELSE
+				IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:420 < 4 || FLAG:7 == 2)
+					;연모、친애
+					IF TALENT:3 || TALENT:6
+						PRINTFORMW 
+					;음란、창부
+					ELSEIF TALENT:4 || TALENT:7
+					;복종、예속
+					ELSEIF TALENT:5 || TALENT:8
+						PRINTFORMW 
+					ELSE
+						PRINTFORMW 
+					ENDIF
+				ENDIF
+			ENDIF
+			CFLAG:420 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:420 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:420 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:420 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:420 = 3
+			;それ以外
+			ELSEIF CFLAG:420 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:420 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;73,속옷비켜삽입애널
+;-------------------------------------------------
+	CASE 73
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:421 == 0
+			PRINTFORMW 
+			CFLAG:421 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:421 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:421 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:421 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:421 = 3
+			;それ以外
+			ELSEIF CFLAG:421 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:421 = 2
+			ENDIF
+		ENDIF
+
+
+;=================================================
+;봉사계コマンド
+;=================================================
+;-------------------------------------------------
+;80,수음
+;-------------------------------------------------
+	CASE 80
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:344 == 0
+			PRINTFORMW 
+			CFLAG:344 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:344 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 「후읍ー……하아ー……」
+					PRINTFORMW %조사처리(CALLNAME,"는")% 귀두의 끝에 코가 닿을 정도의 거리에서 %CALLNAME:MASTER%의 체취를 만끽하며
+					PRINTFORMW 위아래로 빠르게 손을 움직이며 애무하기 시작했다。
+					PRINTFORMW 이후 절정으로 나온 정액을 손가락 끝에 붙은 것까지 한 방울도 남김없이 모아서 빨아들였다。
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:344 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:344 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:344 = 3
+			;それ以外
+			ELSEIF CFLAG:344 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:344 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;81,펠라치오
+;-------------------------------------------------
+	CASE 81
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:345 == 0
+			PRINTFORMW 
+			CFLAG:345 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:345 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 「꿀꺽……하아、잘 먹겠습니닷」
+					PRINTFORMW %조사처리(CALLNAME,"는")% 육봉을 쪽쪽거리며 빨아들이기 시작했다。
+					PRINTFORMW 「응읏……츄웁……하아……아하♪　커다래……♪」
+					PRINTFORMW 놔두면 영원히 육봉을 빨고 있을 것 같다。
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:345 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:345 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:345 = 3
+			;それ以外
+			ELSEIF CFLAG:345 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:345 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;82,파이즈리
+;-------------------------------------------------
+	CASE 82
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:346 == 0
+			PRINTFORMW 
+			CFLAG:346 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:346 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 「응……그럼、할 테니까、좀 더 가까이 와 줘……」
+					PRINTFORMW 밀당을 하는 것처럼 잠시 뒤로 물러나자、%조사처리(CALLNAME,"는")% 불만스러운 표정을 지었다。
+					PRINTFORMW 「%CSTR:二人称%의 정액、굉장히 진한 냄새가 나서 흥분해 버리니까……」
+					PRINTFORMW 「뜸들이지 말고 오늘도 %CSTR:二人称%의 정액으로 내 가슴을 질척질척하게 만들어줘……♪」
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:346 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:346 < 3 || FLAG:7 == 2)
+				PRINTFORML 「싫다는 건 아니지만……그렇게、가슴만……」
+				PRINTFORMW 「응……그럼、할 테니까、좀 더 가까이 와 줘……」
+				CFLAG:346 = 3
+			;それ以外
+			ELSEIF CFLAG:346 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:346 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;83,스마타
+;-------------------------------------------------
+	CASE 83
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:347 == 0
+			PRINTFORMW 
+			CFLAG:347 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:347 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:347 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:347 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:347 = 3
+			;それ以外
+			ELSEIF CFLAG:347 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:347 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;84,거품춤
+;-------------------------------------------------
+	CASE 84
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:348 == 0
+			PRINTFORMW 
+			CFLAG:348 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:348 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:348 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:348 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:348 = 3
+			;それ以外
+			ELSEIF CFLAG:348 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:348 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;85,풋잡
+;-------------------------------------------------
+	CASE 85
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:349 == 0
+			PRINTFORMW 
+			CFLAG:349 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:349 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORML 「다리로 해달라고……하아……내 몸 구석구석까지 정액으로 마킹하고 싶은거구나……」
+					PRINTFORMW 「%CSTR:二人称%이 원하는 대로 발로 해줄게……♪」
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:349 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:349 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:349 = 3
+			;それ以外
+			ELSEIF CFLAG:349 < 2 || FLAG:7 == 2
+				PRINTFORML 「다리로 해달라고……하아……이젠、이해불능……」
+				PRINTFORMW 「왜 이런 걸 하는 거야……」
+				CFLAG:349 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;86,다리핥기강제
+;-------------------------------------------------
+	CASE 86
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:350 == 0
+			PRINTFORML 「뭣、무슨 말하는 거야！？　그런 더러운 일、할 리 없잖앗！」
+			PRINTFORMW 「시！　싫엇！　큭……절대로 하지 않는다고、말하는뎃！　흡、으으으읍！」
+			CFLAG:350 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:350 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:350 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:350 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:350 = 3
+			;それ以外
+			ELSEIF CFLAG:350 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:350 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;87,세로파이즈리
+;-------------------------------------------------
+	CASE 87
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:351 == 0
+			PRINTFORMW 
+			CFLAG:351 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:351 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:351 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:351 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:351 = 3
+			;それ以外
+			ELSEIF CFLAG:351 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:351 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;88,파이즈리펠라
+;-------------------------------------------------
+	CASE 88
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:352 == 0
+			PRINTFORMW 
+			CFLAG:352 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:352 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:352 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:352 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:352 = 3
+			;それ以外
+			ELSEIF CFLAG:352 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:352 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;89,모유마시기　함락済みのみ
+;-------------------------------------------------
+	CASE 89
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:353 == 0
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+		CFLAG:353 = 1
+		;二回눈以降
+		ELSEIF CFLAG:353 < 2 || FLAG:7 == 2
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+		CFLAG:353 = 2
+		ENDIF
+
+
+;=================================================
+;조교자봉사계コマンド
+;=================================================
+;-------------------------------------------------
+;수음한다
+;-------------------------------------------------
+	CASE 90
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:423 == 0
+			PRINTFORMW 
+			CFLAG:423 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:423 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:423 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:423 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:423 = 3
+			;それ以外
+			ELSEIF CFLAG:423 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:423 = 2
+			ENDIF
+		ENDIF
+;-------------------------------------------------
+;파이즈리한다
+;-------------------------------------------------
+	CASE 91
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:424 == 0
+			PRINTFORMW 
+			CFLAG:424 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:424 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:424 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:424 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:424 = 3
+			;それ以外
+			ELSEIF CFLAG:424 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:424 = 2
+			ENDIF
+		ENDIF
+;-------------------------------------------------
+;정상위시킨다
+;-------------------------------------------------
+	CASE 92
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:425 == 0
+			PRINTFORMW 
+			CFLAG:425 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:425 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:425 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:425 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:425 = 3
+			;それ以外
+			ELSEIF CFLAG:425 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:425 = 2
+			ENDIF
+		ENDIF
+;-------------------------------------------------
+;후배위시킨다
+;-------------------------------------------------
+	CASE 93
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:426 == 0
+			PRINTFORMW 
+			CFLAG:426 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:426 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:426 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:426 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:426 = 3
+			;それ以外
+			ELSEIF CFLAG:426 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:426 = 2
+			ENDIF
+		ENDIF
+;-------------------------------------------------
+;기승위한다
+;-------------------------------------------------
+	CASE 94
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:427 == 0
+			PRINTFORMW 
+			CFLAG:427 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:427 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:427 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:427 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:427 = 3
+			;それ以外
+			ELSEIF CFLAG:427 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:427 = 2
+			ENDIF
+		ENDIF
+;-------------------------------------------------
+;애널정상위시킨다
+;-------------------------------------------------
+	CASE 95
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:428 == 0
+			PRINTFORMW 
+			CFLAG:428 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:428 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:428 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:428 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:428 = 3
+			;それ以外
+			ELSEIF CFLAG:428 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:428 = 2
+			ENDIF
+		ENDIF
+;-------------------------------------------------
+;애널후배위시킨다
+;-------------------------------------------------
+	CASE 96
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:429 == 0
+			PRINTFORMW 
+			CFLAG:429 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:429 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:429 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:429 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:429 = 3
+			;それ以外
+			ELSEIF CFLAG:429 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:429 = 2
+			ENDIF
+		ENDIF
+;-------------------------------------------------
+;애널기승위한다
+;-------------------------------------------------
+	CASE 97
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:430 == 0
+			PRINTFORMW 
+			CFLAG:430 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:430 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:430 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:430 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:430 = 3
+			;それ以外
+			ELSEIF CFLAG:430 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:430 = 2
+			ENDIF
+		ENDIF
+;=================================================
+;SM系コマンド
+;=================================================
+;-------------------------------------------------
+;100,스팽킹
+;-------------------------------------------------
+	CASE 100
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:354 == 0
+			PRINTFORMW 
+			CFLAG:354 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:354 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:354 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:354 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:354 = 3
+			;それ以外
+			ELSEIF CFLAG:354 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:354 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;101,젖스팽킹
+;-------------------------------------------------
+	CASE 101
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:355 == 0
+			PRINTFORMW 
+			CFLAG:355 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:355 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:355 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:355 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:355 = 3
+			;それ以外
+			ELSEIF CFLAG:355 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:355 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;102,채찍
+;-------------------------------------------------
+	CASE 102
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:356 == 0
+			PRINTFORMW 
+			CFLAG:356 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:356 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:356 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:356 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:356 = 3
+			;それ以外
+			ELSEIF CFLAG:356 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:356 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;103,양초
+;-------------------------------------------------
+	CASE 103
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:357 == 0
+			PRINTFORMW 
+			CFLAG:357 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:357 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					IF RAND:2 == 0
+						PRINTFORMW 「힉、익、아아악！！」
+					ELSE
+						PRINTFORMW 「시、싫어어어엇！！」
+					ENDIF
+					PRINTFORM %CALLNAME:PLAYER%의 손에 의해 뚝뚝 떨어진 뜨거운 촛농이 %CALLNAME%의
+					IF ABL:9 >= 4
+						IF RAND:2 == 0
+							PRINTFORMW 민감한 비부로 떨어진다
+						ELSE
+							PRINTFORMW 유두를 향해 떨어져 간다
+						ENDIF
+						PRINTFORMW %조사처리(CALLNAME,"는")% 오열을 흘리며 몸부림치지만、%조사처리(CALLNAME:MASTER,"는")% 촛농을 받아들이는 %CALLNAME%의 비부가 질척하게 젖어오는 것을 놓치지 않았다
+					ELSE
+						IF RAND:2 == 0
+							PRINTFORMW 풍만한 가슴으로 떨어졌다
+						ELSE
+							PRINTFORMW 엉덩이로 떨어졌다
+						ENDIF
+						PRINTFORMW %조사처리(CALLNAME,"는")% 비통한 절규를 지르고 있지만、떨어진 촛농으로부터 몸을 감싸려 하지 않는 것을 %조사처리(CALLNAME:MASTER,"는")% 알았다
+						PRINTFORMW 조금씩…이지만 확실히 %조사처리(CALLNAME,"는")% 마조로서 각성하고 있는 거 같다
+					ENDIF
+				ENDIF
+				CFLAG:357 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:357 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:357 = 3
+			;それ以外
+			ELSEIF CFLAG:357 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:357 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;104,바늘
+;-------------------------------------------------
+	CASE 104
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:358 == 0
+;(´・ω・｀)
+			PRINTFORML 「노、농담이겠지……겁주는 거라면、그만두세욧！」
+			PRINTFORMW 「잠、거짓말、싫어……어、아아……아、아팟、악、아파아아아앗！」
+			CFLAG:358 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:358 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:358 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:358 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:358 = 3
+			;それ以外
+			ELSEIF CFLAG:358 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:358 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;105,아이마스크
+;-------------------------------------------------
+	CASE 105
+		IF TEQUIP:18 == 1
+			CALL TRAIN_MESSAGE
+			;初めて
+			IF CFLAG:359 == 0
+				PRINTFORMW 
+				CFLAG:359 = 1
+			;二回눈以降
+			ELSE
+				;함락済み
+				IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:359 < 4 || FLAG:7 == 2)
+					;연모、친애
+					IF TALENT:3 || TALENT:6
+						PRINTFORMW 
+					;음란、창부
+					ELSEIF TALENT:4 || TALENT:7
+						PRINTFORMW 
+					;복종、예속
+					ELSEIF TALENT:5 || TALENT:8
+						PRINTFORMW 
+					ENDIF
+					CFLAG:359 = 4
+				;굴복각인Lv3
+				ELSEIF MARK:2 == 3 && (CFLAG:359 < 3 || FLAG:7 == 2)
+					PRINTFORMW 
+					CFLAG:359 = 3
+				;それ以外
+				ELSEIF CFLAG:359 < 2 || FLAG:7 == 2
+					PRINTFORMW 
+					CFLAG:359 = 2
+				ENDIF
+			ENDIF
+		ELSEIF SELECTCOM == 105
+			IF CFLAG:359 == 1 || FLAG:7 == 2
+				CALL TRAIN_MESSAGE
+				PRINTFORMW 
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;106,밧줄
+;-------------------------------------------------
+	CASE 106
+		IF TEQUIP:19 == 1
+			CALL TRAIN_MESSAGE
+			;初めて
+			IF CFLAG:360 == 0
+				PRINTFORMW 
+				CFLAG:360 = 1
+			;二回눈以降
+			ELSE
+				;함락済み
+				IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:360 < 4 || FLAG:7 == 2)
+					;연모、친애
+					IF TALENT:3 || TALENT:6
+						PRINTFORMW 
+					;음란、창부
+					ELSEIF TALENT:4 || TALENT:7
+						PRINTFORMW 
+					;복종、예속
+					ELSEIF TALENT:5 || TALENT:8
+						PRINTFORMW 
+					ENDIF
+					CFLAG:360 = 4
+				;굴복각인Lv3
+				ELSEIF MARK:2 == 3 && (CFLAG:360 < 3 || FLAG:7 == 2)
+					PRINTFORMW 
+					CFLAG:360 = 3
+				;それ以外
+				ELSEIF CFLAG:360 < 2 || FLAG:7 == 2
+					PRINTFORMW 
+					CFLAG:360 = 2
+				ENDIF
+			ENDIF
+		ELSE
+			IF CFLAG:360 == 1 || FLAG:7 == 2
+				CALL TRAIN_MESSAGE
+				PRINTFORMW 
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;107,볼재갈
+;-------------------------------------------------
+	CASE 107
+		IF TEQUIP:20
+			CALL TRAIN_MESSAGE
+			;初めて
+			IF CFLAG:361 == 0
+				PRINTFORMW 
+				CFLAG:361 = 1
+			;二回눈以降
+			ELSE
+				;함락済み
+				IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:361 < 4 || FLAG:7 == 2)
+					;연모、친애
+					IF TALENT:3 || TALENT:6
+						PRINTFORMW 
+					;음란、창부
+					ELSEIF TALENT:4 || TALENT:7
+						PRINTFORMW 
+					;복종、예속
+					ELSEIF TALENT:5 || TALENT:8
+						PRINTFORMW 
+					ENDIF
+					CFLAG:361 = 4
+				;굴복각인Lv3
+				ELSEIF MARK:2 == 3 && (CFLAG:361 < 3 || FLAG:7 == 2)
+					PRINTFORMW 
+					CFLAG:361 = 3
+				;それ以外
+				ELSEIF CFLAG:361 < 2 || FLAG:7 == 2
+					PRINTFORMW 
+					CFLAG:361 = 2
+				ENDIF
+			ENDIF
+		ELSE
+			IF CFLAG:361 == 1 || FLAG:7 == 2
+				CALL TRAIN_MESSAGE
+				PRINTFORMW 
+			ENDIF
+		ENDIF
+
+;=================================================
+;조수によるコマンド、及び레즈プ레이
+;=================================================
+;-------------------------------------------------
+;120,커닐링구스강제
+;-------------------------------------------------
+	CASE 120
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:362 == 0
+			PRINTFORMW 
+			CFLAG:362 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:362 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:362 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:362 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:362 = 3
+			;それ以外
+			ELSEIF CFLAG:362 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:362 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;121,조개맞대기
+;-------------------------------------------------
+	CASE 121
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:363 == 0
+			PRINTFORMW 
+			CFLAG:363 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:363 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:363 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:363 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:363 = 3
+			;それ以外
+			ELSEIF CFLAG:363 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:363 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;122,조수를범하게한다
+;-------------------------------------------------
+	CASE 122
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:364 == 0
+			PRINTFORMW 
+			CFLAG:364 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:364 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:364 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:364 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:364 = 3
+			;それ以外
+			ELSEIF CFLAG:364 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:364 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;123,풋잡한다
+;-------------------------------------------------
+	CASE 123
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:365 == 0
+			PRINTFORMW 
+			CFLAG:365 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:365 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:365 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:365 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:365 = 3
+			;それ以外
+			ELSEIF CFLAG:365 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:365 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;124,더블펠라
+;-------------------------------------------------
+	CASE 124
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:366 == 0
+			PRINTFORMW 
+			CFLAG:366 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:366 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:366 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:366 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:366 = 3
+			;それ以外
+			ELSEIF CFLAG:366 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:366 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;125,더블파이즈리
+;-------------------------------------------------
+	CASE 125
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:367 == 0
+			PRINTFORMW 
+			CFLAG:367 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:367 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:367 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:367 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:367 = 3
+			;それ以外
+			ELSEIF CFLAG:367 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:367 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;126,가슴맞대기
+;-------------------------------------------------
+	CASE 126
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:368 == 0
+			PRINTFORMW 
+			CFLAG:368 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:368 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:368 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:368 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:368 = 3
+			;それ以外
+			ELSEIF CFLAG:368 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:368 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;127,자위과시하기
+;-------------------------------------------------
+	CASE 127
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:430 == 0
+			PRINTFORMW 
+			CFLAG:430 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:368 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:430 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:368 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:430 = 3
+			;それ以外
+			ELSEIF CFLAG:430 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:430 = 2
+			ENDIF
+		ENDIF
+
+
+;=================================================
+;ハードな조교コマンド
+;=================================================
+;-------------------------------------------------
+;140,이라마치오
+;-------------------------------------------------
+	CASE 140
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:369 == 0
+			PRINTFORMW 
+			CFLAG:369 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:369 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:369 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:369 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:369 = 3
+			;それ以外
+			ELSEIF CFLAG:369 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:369 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;141,피스트퍽　복종、예속のみ
+;-------------------------------------------------
+	CASE 141
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:370 == 0
+			PRINTFORMW 
+			CFLAG:370 = 1
+		;二回눈以降
+		ELSEIF CFLAG:370 < 2 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:370 = 2
+		ENDIF
+
+;-------------------------------------------------
+;142,애널피스트　복종、예속のみ
+;-------------------------------------------------
+	CASE 142
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:371 == 0
+			PRINTFORMW 
+			CFLAG:371 = 1
+		;二回눈以降
+		ELSEIF CFLAG:371 < 2 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:371 = 2
+		ENDIF
+
+;-------------------------------------------------
+;143,양구멍피스트　복종、예속のみ
+;-------------------------------------------------
+	CASE 143
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:372 == 0
+			PRINTFORMW 
+			CFLAG:372 = 1
+		;二回눈以降
+		ELSEIF CFLAG:372 < 2 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:372 = 2
+		ENDIF
+
+;-------------------------------------------------
+;144,방뇨
+;-------------------------------------------------
+	CASE 144
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:373 == 0
+			PRINTFORMW 
+			CFLAG:373 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:373 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:373 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:373 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:373 = 3
+			;それ以外
+			ELSEIF CFLAG:373 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:373 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;145,애널봉사강제
+;-------------------------------------------------
+	CASE 145
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:374 == 0
+			PRINTFORMW 
+			CFLAG:374 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:374 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:374 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:374 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:374 = 3
+			;それ以外
+			ELSEIF CFLAG:374 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:374 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;146,관장기＋플러그
+;-------------------------------------------------
+	CASE 146
+		IF TEQUIP:21
+			CALL TRAIN_MESSAGE
+			;初めて
+			IF CFLAG:375 == 0
+				PRINTFORMW 
+				CFLAG:375 = 1
+			;二回눈以降
+			ELSE
+				;함락済み
+				IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:375 < 4 || FLAG:7 == 2)
+					;연모、친애
+					IF TALENT:3 || TALENT:6
+						PRINTFORMW 
+					;음란、창부
+					ELSEIF TALENT:4 || TALENT:7
+						PRINTFORMW 
+					;복종、예속
+					ELSEIF TALENT:5 || TALENT:8
+						PRINTFORMW 
+					ENDIF
+					CFLAG:375 = 4
+				;굴복각인Lv3
+				ELSEIF MARK:2 == 3 && (CFLAG:375 < 3 || FLAG:7 == 2)
+					PRINTFORMW 
+					CFLAG:375 = 3
+				;それ以外
+				ELSEIF CFLAG:375 < 2 || FLAG:7 == 2
+					PRINTFORMW 
+					CFLAG:375 = 2
+				ENDIF
+			ENDIF
+		ELSE
+			IF CFLAG:375 == 1 || FLAG:7 == 2
+				CALL TRAIN_MESSAGE
+				PRINTFORMW 
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;147,공기관장
+;-------------------------------------------------
+	CASE 147
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:376 == 0
+			PRINTFORMW 
+			CFLAG:376 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:376 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:376 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:376 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:376 = 3
+			;それ以外
+			ELSEIF CFLAG:376 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:376 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;148,확장벌룬
+;-------------------------------------------------
+	CASE 148
+		IF TEQUIP:22
+			CALL TRAIN_MESSAGE
+			;初めて
+			IF CFLAG:377 == 0
+				PRINTFORMW 
+				CFLAG:377 = 1
+			;二回눈以降
+			ELSE
+				;함락済み
+				IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:377 < 4 || FLAG:7 == 2)
+					;연모、친애
+					IF TALENT:3 || TALENT:6
+						PRINTFORMW 
+					;음란、창부
+					ELSEIF TALENT:4 || TALENT:7
+						PRINTFORMW 
+					;복종、예속
+					ELSEIF TALENT:5 || TALENT:8
+						PRINTFORMW 
+					ENDIF
+					CFLAG:377 = 4
+				;굴복각인Lv3
+				ELSEIF MARK:2 == 3 && (CFLAG:377 < 3 || FLAG:7 == 2)
+					PRINTFORMW 
+					CFLAG:377 = 3
+				;それ以外
+				ELSEIF CFLAG:377 < 2 || FLAG:7 == 2
+					PRINTFORMW 
+					CFLAG:377 = 2
+				ENDIF
+			ENDIF
+		ELSE
+			IF CFLAG:377 == 1 || FLAG:7 == 2
+				CALL TRAIN_MESSAGE
+				PRINTFORMW 
+			ENDIF
+		ENDIF
+;-------------------------------------------------
+;149,애널전극　복종、예속のみ
+;-------------------------------------------------
+	CASE 149
+		IF TEQUIP:23
+			CALL TRAIN_MESSAGE
+			;初めて
+			IF CFLAG:378 == 0
+				PRINTFORMW 
+				CFLAG:378 = 1
+			;二回눈以降
+			ELSEIF CFLAG:378 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:378 = 2
+			ENDIF
+		ELSE
+			IF CFLAG:378 == 1 || FLAG:7 == 2
+				CALL TRAIN_MESSAGE
+				PRINTFORMW 
+			ENDIF
+		ENDIF
+;-------------------------------------------------
+;150,유방전극　복종、예속のみ
+;-------------------------------------------------
+	CASE 150
+		IF TEQUIP:24
+			CALL TRAIN_MESSAGE
+			;初めて
+			IF CFLAG:379 == 0
+				PRINTFORMW 
+				CFLAG:379 = 1
+			;二回눈以降
+			ELSEIF CFLAG:379 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:379 = 2
+			ENDIF
+		ELSE
+			IF CFLAG:379 == 1 || FLAG:7 == 2
+				CALL TRAIN_MESSAGE
+				PRINTFORMW 
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;151,뱀장어욕탕　복종、예속のみ
+;-------------------------------------------------
+	CASE 151
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:380 == 0
+			;처녀
+			IF TALENT:0
+				PRINTFORMW 
+			;それ以外
+			ELSE
+				PRINTFORMW 
+			ENDIF
+			CFLAG:380 = 1
+		;二回눈以降
+		ELSEIF CFLAG:380 < 2 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:380 = 2
+		ENDIF
+
+;-------------------------------------------------
+;152,벌레욕탕　복종、예속のみ
+;-------------------------------------------------
+	CASE 152
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:381 == 0
+			PRINTFORMW 
+			CFLAG:381 = 1
+		;二回눈以降
+		ELSEIF CFLAG:381 < 2 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:381 = 2
+		ENDIF
+
+
+;=================================================
+;촉수계コマンド
+;=================================================
+;-------------------------------------------------
+;160,촉수소환
+;-------------------------------------------------
+	CASE 160
+		IF TEQUIP:25
+			CALL TRAIN_MESSAGE
+			;初めて
+			IF CFLAG:382 == 0
+				PRINTFORMW 
+				CFLAG:382 = 1
+			;二回눈以降
+			ELSE
+				;함락済み
+				IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:382 < 4 || FLAG:7 == 2)
+					;연모、친애
+					IF TALENT:3 || TALENT:6
+						PRINTFORMW 
+					;음란、창부
+					ELSEIF TALENT:4 || TALENT:7
+						PRINTFORMW 
+					;복종、예속
+					ELSEIF TALENT:5 || TALENT:8
+						PRINTFORMW 
+					ENDIF
+					CFLAG:382 = 4
+				;굴복각인Lv3
+				ELSEIF MARK:2 == 3 && (CFLAG:382 < 3 || FLAG:7 == 2)
+					PRINTFORMW 
+					CFLAG:382 = 3
+				;それ以外
+				ELSEIF CFLAG:382 < 2 || FLAG:7 == 2
+					PRINTFORMW 
+					CFLAG:382 = 2
+				ENDIF
+			ENDIF
+		ELSE
+			IF CFLAG:382 == 1 || FLAG:7 == 2
+				CALL TRAIN_MESSAGE
+				PRINTFORMW 
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;161,촉수삽입
+;-------------------------------------------------
+	CASE 161
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:383 == 0
+			;처녀
+			IF TALENT:0
+				PRINTFORMW 
+			;それ以外
+			ELSE
+				PRINTFORMW 
+			ENDIF
+			CFLAG:383 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:383 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:383 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:383 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:383 = 3
+			;それ以外
+			ELSEIF CFLAG:383 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:383 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;162,애널촉수
+;-------------------------------------------------
+	CASE 162
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:384 == 0
+			PRINTFORMW 
+			CFLAG:384 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:384 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:384 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:384 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:384 = 3
+			;それ以外
+			ELSEIF CFLAG:384 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:384 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;163,촉수클리자극
+;-------------------------------------------------
+	CASE 163
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:385 == 0
+			PRINTFORMW 
+			CFLAG:385 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:385 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:385 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:385 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:385 = 3
+			;それ以外
+			ELSEIF CFLAG:385 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:385 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;164,촉수유두자극
+;-------------------------------------------------
+	CASE 164
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:386 == 0
+			PRINTFORMW 
+			CFLAG:386 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:386 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:386 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:386 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:386 = 3
+			;それ以外
+			ELSEIF CFLAG:386 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:386 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;165,촉수착유
+;-------------------------------------------------
+	CASE 165
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:387 == 0
+			PRINTFORMW 
+			CFLAG:387 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:387 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:387 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:387 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:387 = 3
+			;それ以外
+			ELSEIF CFLAG:387 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:387 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;166,촉수긴박
+;-------------------------------------------------
+	CASE 166
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:388 == 0
+			PRINTFORMW 
+			CFLAG:388 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:388 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:388 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:388 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:388 = 3
+			;それ以外
+			ELSEIF CFLAG:388 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:388 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;167,촉수관장
+;-------------------------------------------------
+	CASE 167
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:389 == 0
+			PRINTFORMW 
+			CFLAG:389 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:389 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:389 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:389 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:389 = 3
+			;それ以外
+			ELSEIF CFLAG:389 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:389 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;168,촉수구욕
+;-------------------------------------------------
+	CASE 168
+		IF TEQUIP:36
+			CALL TRAIN_MESSAGE
+			;初めて
+			IF CFLAG:390 == 0
+				PRINTFORMW 
+				CFLAG:390 = 1
+			;二回눈以降
+			ELSE
+				;함락済み
+				IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:390 < 4 || FLAG:7 == 2)
+					;연모、친애
+					IF TALENT:3 || TALENT:6
+						PRINTFORMW 
+					;음란、창부
+					ELSEIF TALENT:4 || TALENT:7
+						PRINTFORMW 
+					;복종、예속
+					ELSEIF TALENT:5 || TALENT:8
+						PRINTFORMW 
+					ENDIF
+					CFLAG:390 = 4
+				;굴복각인Lv3
+				ELSEIF MARK:2 == 3 && (CFLAG:390 < 3 || FLAG:7 == 2)
+					PRINTFORMW 
+					CFLAG:390 = 3
+				;それ以外
+				ELSEIF CFLAG:390 < 2 || FLAG:7 == 2
+					PRINTFORMW 
+					CFLAG:390 = 2
+				ENDIF
+			ENDIF
+		ELSE
+			IF CFLAG:390 == 1 || FLAG:7 == 2
+				CALL TRAIN_MESSAGE
+				PRINTFORMW 
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;169,촉수페니스자극
+;-------------------------------------------------
+	CASE 169
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:391 == 0
+			PRINTFORMW 
+			CFLAG:391 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:391 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:391 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:391 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:391 = 3
+			;それ以外
+			ELSEIF CFLAG:391 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:391 = 2
+			ENDIF
+		ENDIF
+
+
+;=================================================
+;특수커맨드
+;=================================================
+;-------------------------------------------------
+;180,로션,
+;-------------------------------------------------
+	CASE 180
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:392 == 0
+			PRINTFORMW 
+			CFLAG:392 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:392 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:392 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:392 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:392 = 3
+			;それ以外
+			ELSEIF CFLAG:392 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:392 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;181,미약,
+;-------------------------------------------------
+	CASE 181
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:393 == 0
+			PRINTFORMW 
+			CFLAG:393 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:393 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:393 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:393 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:393 = 3
+			;それ以外
+			ELSEIF CFLAG:393 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:393 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;182,이뇨제,
+;-------------------------------------------------
+	CASE 182
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:394 == 0
+			PRINTFORMW 
+			CFLAG:394 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:394 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:394 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:394 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:394 = 3
+			;それ以外
+			ELSEIF CFLAG:394 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:394 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;183,비디오카메라,
+;-------------------------------------------------
+	CASE 183
+		IF TEQUIP:28
+			CALL TRAIN_MESSAGE
+			;初めて
+			IF CFLAG:395 == 0
+				PRINTFORMW 
+				CFLAG:395 = 1
+			;二回눈以降
+			ELSE
+				;함락済み
+				IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:395 < 4 || FLAG:7 == 2)
+					;연모、친애
+					IF TALENT:3 || TALENT:6
+						PRINTFORMW 
+					;음란、창부
+					ELSEIF TALENT:4 || TALENT:7
+						PRINTFORMW 
+					;복종、예속
+					ELSEIF TALENT:5 || TALENT:8
+						PRINTFORMW 
+					ENDIF
+					CFLAG:395 = 4
+				;굴복각인Lv3
+				ELSEIF MARK:2 == 3 && (CFLAG:395 < 3 || FLAG:7 == 2)
+					PRINTFORMW 
+					CFLAG:395 = 3
+				;それ以外
+				ELSEIF CFLAG:395 < 2 || FLAG:7 == 2
+					PRINTFORMW 
+					CFLAG:395 = 2
+				ENDIF
+			ENDIF
+		ELSE
+			IF CFLAG:395 == 1 || FLAG:7 == 2
+				CALL TRAIN_MESSAGE
+				PRINTFORMW 
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;184,야외플레이,
+;-------------------------------------------------
+	CASE 184
+		IF TEQUIP:29
+			CALL TRAIN_MESSAGE
+			;初めて
+			IF CFLAG:396 == 0
+				PRINTFORMW 
+				CFLAG:396 = 1
+			;二回눈以降
+			ELSE
+				;함락済み
+				IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:396 < 4 || FLAG:7 == 2)
+					;연모、친애
+					IF TALENT:3 || TALENT:6
+						PRINTFORMW 
+					;음란、창부
+					ELSEIF TALENT:4 || TALENT:7
+						PRINTFORMW 
+					;복종、예속
+					ELSEIF TALENT:5 || TALENT:8
+						PRINTFORMW 
+					ENDIF
+					CFLAG:396 = 4
+				;굴복각인Lv3
+				ELSEIF MARK:2 == 3 && (CFLAG:396 < 3 || FLAG:7 == 2)
+					PRINTFORMW 「……읏……하、하하……놓아 주는 게 아니었나요……당연한가……」
+					CFLAG:396 = 3
+				;それ以外
+				ELSEIF CFLAG:396 < 2 || FLAG:7 == 2
+					PRINTFORMW 
+					CFLAG:396 = 2
+				ENDIF
+			ENDIF
+		ELSE
+			IF CFLAG:396 == 1 || FLAG:7 == 2
+				CALL TRAIN_MESSAGE
+				PRINTFORMW 
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;185,조수를범한다,
+;-------------------------------------------------
+	CASE 185
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:397 == 0
+			PRINTFORMW 
+			CFLAG:397 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:397 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:397 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:397 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:397 = 3
+			;それ以外
+			ELSEIF CFLAG:397 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:397 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;186,수치플레이,
+;-------------------------------------------------
+	CASE 186
+		IF TEQUIP:30
+			CALL TRAIN_MESSAGE
+			;初めて
+			IF CFLAG:398 == 0
+				PRINTFORMW 
+				CFLAG:398 = 1
+			;二回눈以降
+			ELSE
+				;함락済み
+				IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:398 < 4 || FLAG:7 == 2)
+					;연모、친애
+					IF TALENT:3 || TALENT:6
+						PRINTFORMW 
+					;음란、창부
+					ELSEIF TALENT:4 || TALENT:7
+						PRINTFORMW 
+					;복종、예속
+					ELSEIF TALENT:5 || TALENT:8
+						PRINTFORMW 
+					ENDIF
+					CFLAG:398 = 4
+				;굴복각인Lv3
+				ELSEIF MARK:2 == 3 && (CFLAG:398 < 3 || FLAG:7 == 2)
+					PRINTFORMW 
+					CFLAG:398 = 3
+				;それ以外
+				ELSEIF CFLAG:398 < 2 || FLAG:7 == 2
+					PRINTFORMW 
+					CFLAG:398 = 2
+				ENDIF
+			ENDIF
+		ELSE
+			IF CFLAG:398 == 1 || FLAG:7 == 2
+				CALL TRAIN_MESSAGE
+				PRINTFORMW 
+			ENDIF
+		ENDIF
+;-------------------------------------------------
+;187,목욕탕플레이,
+;-------------------------------------------------
+	CASE 187
+		IF TEQUIP:31
+			CALL TRAIN_MESSAGE
+			;初めて
+			IF CFLAG:399 == 0
+				PRINTFORMW 
+				CFLAG:399 = 1
+			;二回눈以降
+			ELSE
+				;함락済み
+				IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:399 < 4 || FLAG:7 == 2)
+					;연모、친애
+					IF TALENT:3 || TALENT:6
+						PRINTFORMW 
+					;음란、창부
+					ELSEIF TALENT:4 || TALENT:7
+						PRINTFORMW 
+					;복종、예속
+					ELSEIF TALENT:5 || TALENT:8
+						PRINTFORMW 
+					ENDIF
+					CFLAG:399 = 4
+				;굴복각인Lv3
+				ELSEIF MARK:2 == 3 && (CFLAG:399 < 3 || FLAG:7 == 2)
+					PRINTFORMW 
+					CFLAG:399 = 3
+				;それ以外
+				ELSEIF CFLAG:399 < 2 || FLAG:7 == 2
+					PRINTFORMW 
+					CFLAG:399 = 2
+				ENDIF
+			ENDIF
+		ELSE
+			IF CFLAG:399 == 1 || FLAG:7 == 2
+				CALL TRAIN_MESSAGE
+				PRINTFORMW 
+			ENDIF
+		ENDIF
+;-------------------------------------------------
+;188,샤워,
+;-------------------------------------------------
+	CASE 188
+		IF TEQUIP:32
+			CALL TRAIN_MESSAGE
+			;初めて
+			IF CFLAG:400 == 0
+				PRINTFORMW 
+				CFLAG:400 = 1
+			;二回눈以降
+			ELSE
+				;함락済み
+				IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:400 < 4 || FLAG:7 == 2)
+					;연모、친애
+					IF TALENT:3 || TALENT:6
+						PRINTFORMW 
+					;음란、창부
+					ELSEIF TALENT:4 || TALENT:7
+						PRINTFORMW 
+					;복종、예속
+					ELSEIF TALENT:5 || TALENT:8
+						PRINTFORMW 
+					ENDIF
+					CFLAG:400 = 4
+				;굴복각인Lv3
+				ELSEIF MARK:2 == 3 && (CFLAG:400 < 3 || FLAG:7 == 2)
+					PRINTFORMW 
+					CFLAG:400 = 3
+				;それ以外
+				ELSEIF CFLAG:400 < 2 || FLAG:7 == 2
+					PRINTFORMW 
+					CFLAG:400 = 2
+				ENDIF
+			ENDIF
+		ELSE
+			IF CFLAG:400 == 1 || FLAG:7 == 2
+				CALL TRAIN_MESSAGE
+				PRINTFORMW 
+			ENDIF
+		ENDIF
+;-------------------------------------------------
+;189,새댁플레이,　연모、친애のみ
+;-------------------------------------------------
+	CASE 189
+		IF TEQUIP:33
+			CALL TRAIN_MESSAGE
+			;初めて
+			IF CFLAG:401 == 0
+				PRINTFORMW 
+				CFLAG:401 = 1
+			;二回눈以降
+			ELSEIF CFLAG:401 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:401 = 2
+			ENDIF
+		ELSE
+			IF CFLAG:401 == 1 || FLAG:7 == 2
+				CALL TRAIN_MESSAGE
+				PRINTFORMW 
+			ENDIF
+		ENDIF
+;-------------------------------------------------
+;190,사진촬영,
+;-------------------------------------------------
+	CASE 190
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:402 == 0
+			PRINTFORMW 
+			CFLAG:402 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:402 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:402 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:402 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:402 = 3
+			;それ以外
+			ELSEIF CFLAG:402 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:402 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;191,강정신약,
+;-------------------------------------------------
+	CASE 191
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:403 == 0
+			PRINTFORMW 
+			CFLAG:403 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:403 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:403 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:403 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:403 = 3
+			;それ以外
+			ELSEIF CFLAG:403 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:403 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;192,콘돔정음（노예）
+;-------------------------------------------------
+	CASE 192
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:404 == 0
+			PRINTFORMW 
+			CFLAG:404 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:404 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:404 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:404 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:404 = 3
+			;それ以外
+			ELSEIF CFLAG:404 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:404 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;193,콘돔정음（조수）
+;-------------------------------------------------
+	CASE 193
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:405 == 0
+			PRINTFORMW 
+			CFLAG:405 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:405 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:405 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:405 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:405 = 3
+			;それ以外
+			ELSEIF CFLAG:405 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:405 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;194,정액키스
+;-------------------------------------------------
+	CASE 194
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:406 == 0
+			PRINTFORMW 
+			CFLAG:406 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:406 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:406 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:406 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:406 = 3
+			;それ以外
+			ELSEIF CFLAG:406 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:406 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;195,유선개발
+;-------------------------------------------------
+	CASE 195
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:431 == 0
+			PRINTFORMW 
+			CFLAG:431 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:368 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:431 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:368 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:431 = 3
+			;それ以外
+			ELSEIF CFLAG:431 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:431 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;200,사람을부른다
+;-------------------------------------------------
+	CASE 200
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:433 == 0
+			PRINTFORMW 
+			CFLAG:433 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:433 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:433 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:433 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:433 = 3
+			;それ以外
+			ELSEIF CFLAG:433 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:433 = 2
+			ENDIF
+		ENDIF
+;-------------------------------------------------
+;201,윤간
+;-------------------------------------------------
+	CASE 201
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:434 == 0
+			PRINTFORMW 
+			CFLAG:434 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:434 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:434 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:434 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:434 = 3
+			;それ以外
+			ELSEIF CFLAG:434 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:434 = 2
+			ENDIF
+		ENDIF
+;=================================================
+;500番台,派生コマンド
+;=================================================
+;-------------------------------------------------
+;500,３Ｐ
+;-------------------------------------------------
+	CASE 500
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:407 == 0
+			;처녀
+			IF TALENT:0
+				PRINTFORMW 
+			;それ以外
+			ELSE
+				PRINTFORMW 
+			ENDIF
+			CFLAG:407 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:407 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:407 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:407 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:407 = 3
+			;それ以外
+			ELSEIF CFLAG:407 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:407 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;501,식스나인
+;-------------------------------------------------
+	CASE 501
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:408 == 0
+			PRINTFORMW 
+			CFLAG:408 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:408 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:408 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:408 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:408 = 3
+			;それ以外
+			ELSEIF CFLAG:408 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:408 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;502,석정수
+;-------------------------------------------------
+	CASE 502
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:409 == 0
+			PRINTFORMW 
+			CFLAG:409 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:409 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:409 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:409 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:409 = 3
+			;それ以外
+			ELSEIF CFLAG:409 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:409 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;503,G스팟자극
+;-------------------------------------------------
+	CASE 503
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:410 == 0
+			PRINTFORMW 
+			CFLAG:410 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:410 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:410 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:410 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:410 = 3
+			;それ以外
+			ELSEIF CFLAG:410 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:410 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;504,흐트러진모란
+;-------------------------------------------------
+	CASE 504
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:411 == 0
+			;처녀
+			IF TALENT:0
+				PRINTFORMW 
+			;それ以外
+			ELSE
+				PRINTFORMW 
+			ENDIF
+			CFLAG:411 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:411 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:411 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:411 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:411 = 3
+			;それ以外
+			ELSEIF CFLAG:411 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:411 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;505,기승유방자위
+;-------------------------------------------------
+;바기나派生
+	CASE 505
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:412 == 0
+			;처녀
+			IF TALENT:0
+				PRINTFORMW 
+			;それ以外
+			ELSE
+				PRINTFORMW 
+			ENDIF
+			CFLAG:412 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:412 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:412 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:412 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:412 = 3
+			;それ以外
+			ELSEIF CFLAG:412 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:412 = 2
+			ENDIF
+		ENDIF
+;애널派生
+	CASE 512
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:419 == 0
+			PRINTFORMW 
+			CFLAG:419 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:419 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:419 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:419 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:419 = 3
+			;それ以外
+			ELSEIF CFLAG:419 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:419 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;506,삽입Ｇ스팟자극
+;-------------------------------------------------
+	CASE 506
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:413 == 0
+			PRINTFORMW 
+			CFLAG:413 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:413 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 「아히이♡」
+					PRINTFORMW 「거기、거기 굉장해애♡♡♡」
+					PRINTFORMW 「빙글빙글 좋앗、더、더 해 줘어♡」
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:413 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:413 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:413 = 3
+			;それ以外
+			ELSEIF CFLAG:413 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:413 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;507,삽입자궁구자극
+;-------------------------------------------------
+	CASE 507
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:414 == 0
+			PRINTFORMW 
+			CFLAG:414 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:414 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 「앗、응앗♡」
+					PRINTFORMW 「자、자구웅♡　찌릿찌릿해 버려어♡」
+					PRINTFORMW 「섹스 갱장해、자지 더어♡♡♡」
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:414 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:414 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:414 = 3
+			;それ以外
+			ELSEIF CFLAG:414 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:414 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;508,６９파이즈리
+;-------------------------------------------------
+	CASE 508
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:415 == 0
+			PRINTFORMW 
+			CFLAG:415 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:415 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:415 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:415 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:415 = 3
+			;それ以外
+			ELSEIF CFLAG:415 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:415 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;509,착유
+;-------------------------------------------------
+	CASE 509
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:416 == 0
+			PRINTFORMW 
+			CFLAG:416 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:416 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:416 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:416 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:416 = 3
+			;それ以外
+			ELSEIF CFLAG:416 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:416 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;510,더블스마타
+;-------------------------------------------------
+	CASE 510
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:417 == 0
+			PRINTFORMW 
+			CFLAG:417 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:417 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:417 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:417 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:417 = 3
+			;それ以外
+			ELSEIF CFLAG:417 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:417 = 2
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;511,두개펠라
+;-------------------------------------------------
+	CASE 511
+		CALL TRAIN_MESSAGE
+		;初めて
+		IF CFLAG:418 == 0
+			PRINTFORMW 
+			CFLAG:418 = 1
+		;二回눈以降
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:418 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:418 = 4
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:418 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:418 = 3
+			;それ以外
+			ELSEIF CFLAG:418 < 2 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:418 = 2
+			ENDIF
+		ENDIF
+
+	CASEELSE
+		CALL TRAIN_MESSAGE
+ENDSELECT
+
+;-------------------------------------------------
+;@KOJO_MESSAGE_PALAMCNG関係（X1をキャラ번호に置換）
+;パラメータ변화などをトリガーにした구상　CFLAG 221～260を사용
+;-------------------------------------------------
+;-------------------------------------------------
+;@KOJO_MESSAGE_PALAMCNG_A（X1をキャラ번호に置換）
+;조교者の사정をトリガーにした구상
+;-------------------------------------------------
+@KOJO_MESSAGE_PALAMCNG_A_K4507_1
+;조수が조교した時に구상をスキップする（好みに応じて使う、行머리の;を消すとスキップするようになる）
+;SIF ASSI > 0 && ASSIPLAY
+;	RETURN 0 
+;볼재갈着用時には地の文を표시して구상をスキップする
+IF TEQUIP:20 &&  SELECTCOM != 107
+	CALL PALAM_MESSAGE_A
+	RETURN 0
+ENDIF
+;--------------------------------------------------
+;特定キャラが조수、主人時に特殊キャラ구상を呼び出す(Y1を特定キャラ、4507_1を奴隷のキャラ번호に置換）
+;--------------------------------------------------
+;IF NO:MASTER == Y1
+;	CALL KOJO_MESSAGE_PALAMCNG_A_PY1_K4507_1
+;	RETURN 0
+;ENDIF
+;IF ASSI > 0 && ASSIPLAY
+;	IF NO:ASSI == Y1
+;		CALL KOJO_MESSAGE_PALAMCNG_A_PY1_K4507_1
+;		RETURN 0
+;	ENDIF
+;ENDIF
+;-------------------------------------------------
+;조교者の사정時のテ키스ト
+;-------------------------------------------------
+;-------------------------------------------------
+;사정箇所변경時のテ키스ト　有効時はここで関数종료
+;-------------------------------------------------
+IF CFLAG:106
+	CALL PALAM_MESSAGE_A
+	;머리카락
+	IF CFLAG:106 == 1
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:221 < 3 || FLAG:7 == 2)
+			PRINTFORMW 
+			CFLAG:221 = 3
+		;굴복각인Lv3
+		ELSEIF MARK:2 == 3 && (CFLAG:221 < 2 || FLAG:7 == 2)
+			PRINTFORMW 
+			CFLAG:221 = 2
+		;それ以外
+		ELSEIF CFLAG:221 < 1 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:221 = 1
+		ENDIF
+	;顔
+	ELSEIF CFLAG:106 == 2
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:222 < 3 || FLAG:7 == 2)
+			PRINTFORMW 
+			CFLAG:222 = 3
+		;굴복각인Lv3
+		ELSEIF MARK:2 == 3 && (CFLAG:222 < 2 || FLAG:7 == 2)
+			PRINTFORMW 
+			CFLAG:222 = 2
+		;それ以外
+		ELSEIF CFLAG:222 < 1 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:222 = 1
+		ENDIF
+	;가슴
+	ELSEIF CFLAG:106 == 3
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:223 < 3 || FLAG:7 == 2)
+			PRINTFORMW 
+			CFLAG:223 = 3
+		;굴복각인Lv3
+		ELSEIF MARK:2 == 3 && (CFLAG:223 < 2 || FLAG:7 == 2)
+			PRINTFORMW 
+			CFLAG:223 = 2
+		;それ以外
+		ELSEIF CFLAG:223 < 1 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:223 = 1
+		ENDIF
+	;腹
+	ELSEIF CFLAG:106 == 4
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:224 < 3 || FLAG:7 == 2)
+			PRINTFORMW 
+			CFLAG:224 = 3
+		;굴복각인Lv3
+		ELSEIF MARK:2 == 3 && (CFLAG:224 < 2 || FLAG:7 == 2)
+			PRINTFORMW 
+			CFLAG:224 = 2
+		;それ以外
+		ELSEIF CFLAG:224 < 1 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:224 = 1
+		ENDIF
+	;腋
+	ELSEIF CFLAG:106 == 5
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:225 < 3 || FLAG:7 == 2)
+			PRINTFORMW 
+			CFLAG:225 = 3
+		;굴복각인Lv3
+		ELSEIF MARK:2 == 3 && (CFLAG:225 < 2 || FLAG:7 == 2)
+			PRINTFORMW 
+			CFLAG:225 = 2
+		;それ以外
+		ELSEIF CFLAG:225 < 1 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:225 = 1
+		ENDIF
+	;太腿
+	ELSEIF CFLAG:106 == 6
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:226 < 3 || FLAG:7 == 2)
+			PRINTFORMW 
+			CFLAG:226 = 3
+		;굴복각인Lv3
+		ELSEIF MARK:2 == 3 && (CFLAG:226 < 2 || FLAG:7 == 2)
+			PRINTFORMW 
+			CFLAG:226 = 2
+		;それ以外
+		ELSEIF CFLAG:226 < 1 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:226 = 1
+		ENDIF
+	;割れ눈
+	ELSEIF CFLAG:106 == 7
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:227 < 3 || FLAG:7 == 2)
+			PRINTFORMW 
+			CFLAG:227 = 3
+		;굴복각인Lv3
+		ELSEIF MARK:2 == 3 && (CFLAG:227 < 2 || FLAG:7 == 2)
+			PRINTFORMW 
+			CFLAG:227 = 2
+		;それ以外
+		ELSEIF CFLAG:227 < 1 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:227 = 1
+		ENDIF
+	;尻
+	ELSEIF CFLAG:106 == 8
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:228 < 3 || FLAG:7 == 2)
+			PRINTFORMW 
+			CFLAG:228 = 3
+		;굴복각인Lv3
+		ELSEIF MARK:2 == 3 && (CFLAG:228 < 2 || FLAG:7 == 2)
+			PRINTFORMW 
+			CFLAG:228 = 2
+		;それ以外
+		ELSEIF CFLAG:228 < 1 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:228 = 1
+		ENDIF
+	;ゴム
+	ELSEIF CFLAG:106 == 9
+		;섹스で사정かつ、애널섹스以外を実行時
+		IF SELECTCOM != 62 && SELECTCOM != 63 && SELECTCOM != 67 && SELECTCOM != 70 && SELECTCOM != 71
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:229 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:229 = 3
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:229 < 2 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:229 = 2
+			;それ以外
+			ELSEIF CFLAG:229 < 1 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:229 = 1
+			ENDIF
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:230 < 3 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:230 = 3
+			;굴복각인Lv3
+			ELSEIF MARK:2 == 3 && (CFLAG:230 < 2 || FLAG:7 == 2)
+				PRINTFORMW 
+				CFLAG:230 = 2
+			;それ以外
+			ELSEIF CFLAG:230 < 1 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:230 = 1
+			ENDIF
+		ENDIF
+	ENDIF
+	RETURN 0
+ENDIF
+
+;-------------------------------------------------
+;손、입以外で사정
+;対応コマンドは키스、스마타、발コキ、애널強制봉사、더블스마타
+;-------------------------------------------------
+IF TFLAG:9 == 1
+	CALL PALAM_MESSAGE_A
+	;함락済み
+	IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:231 < 4 || FLAG:7 == 2)
+		;연모、친애
+		IF TALENT:3 || TALENT:6
+			PRINTFORMW 「아핫……♪」
+			PRINTFORMW 「굉장한 기세로 나온다……！」
+		;음란、창부
+		ELSEIF TALENT:4 || TALENT:7
+			PRINTFORMW 「아핫……♪」
+			PRINTFORMW 「굉장한 기세로 나온다……！」
+		;복종、예속
+		ELSEIF TALENT:5 || TALENT:8
+			PRINTFORMW 
+		ENDIF
+		CFLAG:231 = 4
+	;굴복각인Lv3
+	ELSEIF MARK:2 == 3 && (CFLAG:231 < 3 || FLAG:7 == 2)
+		PRINTFORMW 「으윽……비릿해애……」
+		CFLAG:231 = 3
+	;それ以外
+	ELSEIF CFLAG:231 < 2 || FLAG:7 == 2
+		PRINTFORMW 「흑……너무해……」
+		CFLAG:231 = 2
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+;조수를범한다で사정
+;-------------------------------------------------
+IF TFLAG:7 > 0
+	CALL PALAM_MESSAGE_A
+	;함락済み
+	IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:232 < 3 || FLAG:7 == 2)
+		PRINTFORMW 
+		CFLAG:232 = 3
+	;굴복각인Lv3
+	ELSEIF MARK:2 == 3 && (CFLAG:232 < 2 || FLAG:7 == 2)
+		PRINTFORMW 
+		CFLAG:232 = 2
+	;それ以外
+	ELSEIF CFLAG:232 < 1 || FLAG:7 == 2
+		PRINTFORMW 
+		CFLAG:232 = 1
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+;입で사정
+;-------------------------------------------------
+IF TFLAG:0 > 0
+	CALL PALAM_MESSAGE_A
+	;이라마치오で사정
+	IF SELECTCOM == 140
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:233 < 4 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 。
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+			CFLAG:233 = 4
+		;굴복각인Lv3
+		ELSEIF MARK:2 == 3 && (CFLAG:233 < 3 || FLAG:7 == 2)
+			PRINTFORMW 
+			CFLAG:233 = 3
+		;それ以外
+		ELSEIF CFLAG:233 < 2 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:233 = 2
+		ENDIF
+	;それ以外の입사정
+	ELSE
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:233 < 4 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				IF RAND:2 == 0
+					PRINTFORMW 「음……꿀꺽……」
+					PRINTFORMW 「이 냄새、좋아하게 될지도……♪」
+				ELSE
+					PRINTFORMW 「이렇게 쟌뜩……♪」
+					PRINTFORMW 「저기、기분 좋았어？　에헤헤……」
+				ENDIF
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				IF RAND:2 == 0
+					PRINTFORMW 「하아……으응……」
+					PRINTFORMW %조사처리(CALLNAME,"는")% 입안에 싼 정액을 당장은 삼키지 않고、차분하게 입으로 굴리면서 냄새를 만끽하고 있다。
+					PRINTFORMW 그 냄새에 중독된、눈동자는 흐릿하여 꿈꾸는 것처럼 보인다……。
+				ELSE
+					PRINTFORMW 「꿀꺽……하아、잘 먹었습니닷」
+					PRINTFORMW %조사처리(CALLNAME,"는")% 정액을 삼키고、사정한지 얼마 안된 육봉에서 쪽쪽거리며 찌거기를 빨아들이기 시작했다。
+					PRINTFORMW 「응읏……츄웁……하아……아하♪　또 커다랗게 됐어……♪」
+					PRINTFORMW 놔두면 영원히 육봉을 빨고 있을 것 같다。
+				ENDIF
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+			CFLAG:233 = 4
+		;굴복각인Lv3
+		ELSEIF MARK:2 == 3 && (CFLAG:233 < 3 || FLAG:7 == 2)
+			PRINTFORMW 「우욱!?」
+			PRINTFORMW 입 안에 정액이 들어온 %조사처리(CALLNAME,"는")% 울 것 같은 눈으로 이쪽을 보지만、고개를 끄덕이자 마지못해 삼켰다。
+			PRINTFORMW 「흑……지독한 냄새……」
+			CFLAG:233 = 3
+		;それ以外
+		ELSEIF CFLAG:233 < 2 || FLAG:7 == 2
+			PRINTFORMW 「콜록、콜록……」
+			PRINTFORMW 「싫어어……냄새가 가시지 않아아……」
+			CFLAG:233 = 2
+		ENDIF
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+;손で사정
+;-------------------------------------------------
+IF TFLAG:1 > 0
+	CALL PALAM_MESSAGE_A
+	;함락済み
+	IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:234 < 4 || FLAG:7 == 2)
+		;연모、친애
+		IF TALENT:3 || TALENT:6
+			PRINTFORMW 「아하……굉장히 잔뜩 나왔군요」
+		;음란、창부
+		ELSEIF TALENT:4 || TALENT:7
+			PRINTFORMW 「후읍ー……하아ー……」
+			PRINTFORMW %조사처리(CALLNAME,"는")% 손에 싼 정액을 코끝에 가져가、그 냄새를 만끽하고 있다。
+			PRINTFORMW 대충 만족한 건지、그것을 꿀꺽 마셔、손가락 끝에 붙은 것까지 한 방울도 남김 없이 빨아들였다。
+		;복종、예속
+		ELSEIF TALENT:5 || TALENT:8
+			PRINTFORMW 
+		ENDIF
+		CFLAG:234 = 4
+	;굴복각인Lv3
+	ELSEIF MARK:2 == 3 && (CFLAG:234 < 3 || FLAG:7 == 2)
+		PRINTFORMW 「손이 끈적끈적해졌어……」
+		CFLAG:234 = 3
+	;それ以外
+	ELSEIF CFLAG:234 < 2 || FLAG:7 == 2
+		PRINTFORMW 「꺅!?　싫어어、뭔가 나왔다아……！」
+		CFLAG:234 = 2
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+;가슴で사정
+;-------------------------------------------------
+IF TFLAG:34 > 0
+	CALL PALAM_MESSAGE_A
+	;함락済み
+	IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:235 < 4 || FLAG:7 == 2)
+		;연모、친애
+		IF TALENT:3 || TALENT:6
+			IF RAND:3 == 0
+				PRINTFORMW 「앗……♪」
+				PRINTFORMW 「가슴의 골짜기에 잔뜩 쌓였다……♪」
+			ELSEIF RAND:2 == 0
+				PRINTFORMW 「가슴이 하얀 걸로 질척질척 해애」
+				PRINTFORMW 「아하……♪　번들번들 빛난다」
+			ELSE
+				PRINTFORMW 「ちゅる……おいしっ……♪」
+				PRINTFORMW %조사처리(CALLNAME,"는")% 가슴에 싼 정액을 떠서、맛있다는 듯이 마셨다……。
+			ENDIF
+		;음란、창부
+		ELSEIF TALENT:4 || TALENT:7
+			IF RAND:3 == 0
+				PRINTFORMW 「아하……♪　가슴이 %CSTR:二人称%의 냄새로 잔뜩」
+				PRINTFORMW 「%CSTR:二人称%에게 마킹되어 버렸다아……♡」
+			ELSEIF RAND:2 == 0
+				PRINTFORMW 「%CSTR:二人称%의 정액으로 가슴이 질척질척하게 되어 버렸다아……♪」
+				PRINTFORMW 「후룩……아하♪　굉장히 진해서……냄새로 흥분해 버려……」
+			ELSE
+				PRINTFORMW 「하아、하아……♪」
+				PRINTFORMW %조사처리(CALLNAME,"는")% 가슴에 싼 정액을 황홀하게 바라보다、고르게 펴바르기 시작했다……。
+			ENDIF
+		;복종、예속
+		ELSEIF TALENT:5 || TALENT:8
+			PRINTFORMW 
+		ENDIF
+		CFLAG:235 = 4
+	;굴복각인Lv3
+	ELSEIF MARK:2 == 3 && (CFLAG:235 < 3 || FLAG:7 == 2)
+		PRINTFORMW 「가슴이……뜨거워어……♪」
+		CFLAG:235 = 3
+	;それ以外
+	ELSEIF CFLAG:235 < 2 || FLAG:7 == 2
+		PRINTFORMW 「꺅！」
+		PRINTFORMW 「윽……가슴이 질척질척해……」
+		CFLAG:235 = 2
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+;섹스で사정
+;-------------------------------------------------
+IF TFLAG:2 > 0
+	CALL PALAM_MESSAGE_A
+	;애널섹스系
+	IF SELECTCOM == 62 || SELECTCOM == 63 || SELECTCOM == 67 || SELECTCOM == 70 || SELECTCOM == 71 || SELECTCOM == 73 || SELECTCOM == 78 || SELECTCOM == 79 || SELECTCOM == 512 || SELECTCOM == 515
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:237 < 4 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				IF ASSIPLAY 
+					IF NO:ASSI == 4566
+						PRINTFORMW 『미안…나、이제 참을 수 없을 거…같아…』
+						PRINTFORMW 「싫어어엇！！」
+					ELSE
+						PRINTFORMW 
+					ENDIF
+				ELSE
+					PRINTFORMW 
+				ENDIF
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+			CFLAG:237 = 4
+		;굴복각인Lv3
+		ELSEIF MARK:2 == 3 && (CFLAG:237 < 3 || FLAG:7 == 2)
+			PRINTFORMW 
+			CFLAG:237 = 3
+		;それ以外
+		ELSEIF CFLAG:237 < 2 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:237 = 2
+		ENDIF
+	;奥攻め섹스系
+	ELSEIF SELECTCOM == 506 || SELECTCOM == 507
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:238 < 4 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 「앗、나온다、안에 나온닷♪」
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 「뱃속까지 부글거리고 있어……♪」
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+			CFLAG:238 = 4
+		;굴복각인Lv3
+		ELSEIF MARK:2 == 3 && (CFLAG:238 < 3 || FLAG:7 == 2)
+			PRINTFORMW 「시、싫엇！　엄마가 되는 건 싫어엇！」
+			CFLAG:238 = 3
+		;それ以外
+		ELSEIF CFLAG:238 < 2 || FLAG:7 == 2
+		PRINTFORMW 「빼 줫！　빼 줘어엇！　우으윽……！」
+			CFLAG:238 = 2
+		ENDIF
+	;그외섹스系
+	ELSE
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:238 < 4 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 「대단해……잔뜩 나온다……」
+				PRINTFORMW 「싸 줘 싸 줘어♪」
+				PRINTFORMW 「%CSTR:一人称%의 냄새를 뱃속까지 잔뜩 묻혀 줫！」
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 「싸 줘 싸 줘어♪」
+				PRINTFORMW 「%CSTR:一人称%의 냄새를 뱃속까지 잔뜩 묻혀 줫！」
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+			CFLAG:238 = 4
+		;굴복각인Lv3
+		ELSEIF MARK:2 == 3 && (CFLAG:238 < 3 || FLAG:7 == 2)
+			IF RAND:2 == 0
+				PRINTFORMW 「싫엇！　질내에는 싸지 말아 줫！」
+			ELSE
+				PRINTFORMW 「바보옷！　……왜 질내에 싼 거야아……」
+			ENDIF
+			CFLAG:238 = 3
+		;それ以外
+		ELSEIF CFLAG:238 < 2 || FLAG:7 == 2
+			IF RAND:2 == 0
+				PRINTFORMW 「싫어어어엇！　아기 생겨버렷！　그만둬어엇！」
+			ELSE
+				PRINTFORML 「……우앗！　……엣、이걸로……아、아아앗！」
+				PRINTFORMW 「어、어어어、어쩌지이…！　지、질 안에……들어왔다아……」
+			ENDIF
+			CFLAG:238 = 2
+		ENDIF
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+;역강간で사정させた
+;-------------------------------------------------
+IF SELECTCOM == 64 && TFLAG:10 > 0
+	CALL PALAM_MESSAGE_A
+	;함락済み
+	IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:239 < 3 || FLAG:7 == 2)
+		PRINTFORMW 
+		CFLAG:239 = 3
+	;굴복각인Lv3
+	ELSEIF MARK:2 == 3 && (CFLAG:239 < 2 || FLAG:7 == 2)
+		PRINTFORMW 
+		CFLAG:239 = 2
+	;それ以外
+	ELSEIF CFLAG:239 < 1 || FLAG:7 == 2
+		PRINTFORMW 
+		CFLAG:239 = 1
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+;@KOJO_MESSAGE_PALAMCNG_E（4507_1をキャラ번호に置換）
+;촉수の사정をトリガーにした구상
+;-------------------------------------------------
+@KOJO_MESSAGE_PALAMCNG_E_K4507_1
+;조수が조교した時に구상をスキップする（好みに応じて使う、行머리の;を消すとスキップするようになる）
+;SIF ASSI > 0 && ASSIPLAY
+;	RETURN 0 
+;볼재갈着用時には地の文を표시して구상をスキップする
+IF TEQUIP:20 &&  SELECTCOM != 107
+	CALL PALAM_MESSAGE_E
+	RETURN 0
+ENDIF
+;--------------------------------------------------
+;特定キャラが조수、主人時に特殊キャラ구상を呼び出す(Y1を特定キャラ、4507_1を奴隷のキャラ번호に置換）
+;--------------------------------------------------
+;IF NO:MASTER == Y1
+;	CALL KOJO_MESSAGE_PALAMCNG_E_PY1_K4507_1
+;	RETURN 0
+;ENDIF
+;IF ASSI > 0 && ASSIPLAY
+;	IF NO:ASSI == Y1
+;		CALL KOJO_MESSAGE_PALAMCNG_E_PY1_K4507_1
+;		RETURN 0
+;	ENDIF
+;ENDIF
+;-------------------------------------------------
+;촉수の사정時のテ키스ト
+;-------------------------------------------------
+;-------------------------------------------------
+;촉수が사정
+;-------------------------------------------------
+IF TFLAG:15 >0
+	CALL PALAM_MESSAGE_E
+	;함락済み
+	IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:240 < 3 || FLAG:7 == 2)
+		PRINTFORMW 
+		CFLAG:240 = 3
+	;굴복각인Lv3
+	ELSEIF MARK:2 == 3 && (CFLAG:240 < 2 || FLAG:7 == 2)
+		PRINTFORMW 
+		CFLAG:240 = 2
+	;それ以外
+	ELSEIF CFLAG:240 < 1 || FLAG:7 == 2
+		PRINTFORMW 
+		CFLAG:240 = 1
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+;@KOJO_MESSAGE_PALAMCNG_B関係（4507_1をキャラ번호に置換）
+;奴隷の절정をトリガーにした구상
+;-------------------------------------------------
+@KOJO_MESSAGE_PALAMCNG_B_K4507_1
+;조수が조교した時に구상をスキップする（好みに応じて使う、行머리の;を消すとスキップするようになる）
+;SIF ASSI > 0 && ASSIPLAY
+;	RETURN 0 
+;볼재갈着用時には地の文を표시して구상をスキップする
+IF TEQUIP:20 &&  SELECTCOM != 107
+	CALL PALAM_MESSAGE_B
+	RETURN 0
+ENDIF
+;--------------------------------------------------
+;特定キャラが조수、主人時に特殊キャラ구상を呼び出す(Y1を特定キャラ、4507_1を奴隷のキャラ번호に置換）
+;--------------------------------------------------
+;IF NO:MASTER == Y1
+;	CALL KOJO_MESSAGE_PALAMCNG_B_PY1_K4507_1
+;	RETURN 0
+;ENDIF
+;IF ASSI > 0 && ASSIPLAY
+;	IF NO:ASSI == Y1
+;		CALL KOJO_MESSAGE_PALAMCNG_B_PY1_K4507_1
+;		RETURN 0
+;	ENDIF
+;ENDIF
+;-------------------------------------------------
+;奴隷の절정時のテ키스ト
+;-------------------------------------------------
+;-------------------------------------------------
+;初めてC절정
+;-------------------------------------------------
+IF NOWEX:0 > 0 && CFLAG:241 == 0
+	PRINTFORMW 「후、후앗……」
+	PRINTFORMW 「뭔가 와 버려……아아아앗！」
+	CFLAG:241 = 1
+ENDIF
+
+;-------------------------------------------------
+;初めてV절정
+;-------------------------------------------------
+IF NOWEX:1 > 0 && CFLAG:242 == 0
+	PRINTFORMW 「무、무서웟……」
+	PRINTFORMW 「뭔가 와 버려엇！」
+	CFLAG:242 = 1
+ENDIF
+
+;-------------------------------------------------
+;初めてA절정
+;-------------------------------------------------
+IF NOWEX:2 > 0 && CFLAG:243 == 0
+	PRINTFORMW 「후、아……아？」
+	PRINTFORMW 「거짓말……%CSTR:一人称%、 엉덩이같은 걸로……！」
+	CFLAG:243 = 1
+ENDIF
+
+;-------------------------------------------------
+;初めてB절정
+;-------------------------------------------------
+IF NOWEX:3 > 0 && CFLAG:244 == 0
+	PRINTFORMW 「후아아아아앗！」
+	PRINTFORMW 「가슴으로……간 거야、%CSTR:一人称%？」
+	CFLAG:244 = 1
+ENDIF
+
+;-------------------------------------------------
+;절정
+;-------------------------------------------------
+;強절정
+IF TFLAG:29 > 1
+	CALL PALAM_MESSAGE_B
+	;함락済み
+	IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:245 < 4 || FLAG:7 == 2)
+		;연모、친애
+		IF TALENT:3 || TALENT:6
+			PRINTFORMW 「안됏！　이런 것……너무 강해앳♪」
+			PRINTFORMW 「간다……앗！　가 버려어엇！」
+		;음란、창부
+		ELSEIF TALENT:4 || TALENT:7
+			PRINTFORMW 「머리가 새하얗게 돼……」
+			PRINTFORMW 「굉장한 게 와 버려어어어어엇♪」
+		;복종、예속
+		ELSEIF TALENT:5 || TALENT:8
+			PRINTFORMW 
+		ENDIF
+		CFLAG:245 = 4
+	;굴복각인Lv3
+	ELSEIF MARK:2 == 3 && (CFLAG:245 < 3 || FLAG:7 == 2)
+		PRINTFORMW 「이제 그만둬어어어어엇！　바보가 되어 버려어어엇！」
+		CFLAG:245 = 3
+	;それ以外
+	ELSEIF CFLAG:245 < 2 || FLAG:7 == 2
+		PRINTFORMW 「하……후……？」
+		PRINTFORMW %조사처리(CALLNAME,"는")% 너무나도 강렬한 절정을 맛봐、덜컥거리며 가볍게 기절했다。그 눈동자에는 아무것도 비치지 않는다……。
+		CFLAG:245 = 2
+	ENDIF
+;절정
+ELSEIF TFLAG:29 > 0
+	CALL PALAM_MESSAGE_B
+	;함락済み
+	IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:245 < 4 || FLAG:7 == 2)
+		;연모、친애
+		IF TALENT:3 || TALENT:6
+			IF RAND:2 == 0
+				PRINTFORMW 「하앗、아앙……아、아아아아아앗！」
+			ELSE
+				PRINTFORMW 「아앙、하앗、하앗、응……크으읏♪」
+				PRINTFORMW %조사처리(CALLNAME,"는")% 절정을 맞이한 후、기뻐하는 듯이 %CALLNAME:MASTER%에게 안겨들었다。
+			ENDIF
+		;음란、창부
+		ELSEIF TALENT:4 || TALENT:7
+			IF RAND:2 == 0
+				PRINTFORMW 「하앗、으긋、아아아아아앙♪」
+				PRINTFORMW 「이제 가 버려엇♪」
+			ELSE
+				PRINTFORMW 「이、이제 가 버려어！」
+				PRINTFORMW 「아아아아아앙♡」
+			ENDIF
+		;복종、예속
+		ELSEIF TALENT:5 || TALENT:8
+			PRINTFORMW 
+		ENDIF
+		CFLAG:245 = 4
+	;굴복각인Lv3
+	ELSEIF MARK:2 == 3 && (CFLAG:245 < 3 || FLAG:7 == 2)
+		PRINTFORML 「아앗、안됏、앗、아앗、아아아아아아아앗！」
+		PRINTFORMW （……아아……%CSTR:一人称%……억지로、가 버렸다……）
+		CFLAG:245 = 3
+	;それ以外
+	ELSEIF CFLAG:245 < 2 || FLAG:7 == 2
+		PRINTFORML 「아앗…읏…크읏…읏…으으읏！」
+		PRINTFORMW 「……으……뭐、뭘 말하는 거야！？　%CSTR:一人称%……가지 않았엇！」
+		CFLAG:245 = 2
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+;사정
+;-------------------------------------------------
+;사정している
+IF TFLAG:10 > 0
+	;함락済み
+	IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:246 < 3 || FLAG:7 == 2)
+		IF RAND:2 == 0
+			PRINTFORMW 「나와 버려、나와 버렷、%CSTR:二人称%♪」
+		ELSE
+			PRINTFORMW 「아앙、사정 멈추지 않아아앗♡」
+		ENDIF
+		CFLAG:246 = 3
+	;굴복각인Lv3
+	ELSEIF MARK:2 == 3 && (CFLAG:246 < 2 || FLAG:7 == 2)
+		PRINTFORMW 「이런 거 싫엇！　싫은데……기분 좋앗……！」
+		CFLAG:246 = 2
+	;それ以外
+	ELSEIF CFLAG:246 < 1 || FLAG:7 == 2
+		PRINTFORMW 「뭐、뭔가 나와버렷……！」
+		CFLAG:246 = 1
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+;분유
+;-------------------------------------------------
+;분유している
+IF TFLAG:11 > 0
+	;함락済み
+	IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:247 < 3 || FLAG:7 == 2)
+		;연모、친애
+		IF TALENT:3 || TALENT:6
+			IF RAND:2 == 0
+				PRINTFORMW 「아앙、하앗……밀크 멈추지 않아……♪」
+			ELSE
+				PRINTFORMW 「앗……또 젖 나와버려……♪」
+			ENDIF
+		;음란、창부
+		ELSEIF TALENT:4 || TALENT:7
+			IF RAND:2 == 0
+				PRINTFORMW 「하아、하아、젖 내보내고 싶어서 벌써 유두 꿈틀거리고 있습니닷♪」
+			ELSE
+				PRINTFORMW 「밀크 뿜으면서 가 버려……밀크 사정 봐 줘엇♡」
+			ENDIF
+		ENDIF
+		CFLAG:247 = 3
+	;굴복각인Lv3
+	ELSEIF MARK:2 == 3 && (CFLAG:247 < 2 || FLAG:7 == 2)
+		PRINTFORMW 
+		CFLAG:247 = 2
+	;それ以外
+	ELSEIF CFLAG:247 < 1 || FLAG:7 == 2
+		PRINTFORMW 
+		CFLAG:247 = 1
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+;방뇨
+;-------------------------------------------------
+;방뇨している
+IF TFLAG:29 > 0 && (TEQUIP:27 || TALENT:57)
+	;함락済み
+	IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:248 < 3 || FLAG:7 == 2)
+		PRINTFORMW 
+		CFLAG:248 = 3
+	;굴복각인Lv3
+	ELSEIF MARK:2 == 3 && (CFLAG:248 < 2 || FLAG:7 == 2)
+		PRINTFORMW 
+		CFLAG:248 = 2
+	;それ以外
+	ELSEIF CFLAG:248 < 1 || FLAG:7 == 2
+		PRINTFORMW 
+		CFLAG:248 = 1
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+;@KOJO_MESSAGE_PALAMCNG_C関係（4507_1をキャラ번호に置換）
+;조교後の변화をトリガーにした구상
+;-------------------------------------------------
+@KOJO_MESSAGE_PALAMCNG_C_K4507_1
+;조수が조교した時に구상をスキップする（好みに応じて使う、行머리の;を消すとスキップするようになる）
+;SIF ASSI > 0 && ASSIPLAY
+;	RETURN 0 
+;볼재갈着用時には地の文を표시して구상をスキップする
+IF TEQUIP:20 &&  SELECTCOM != 107
+	CALL PALAM_MESSAGE_C
+	RETURN 0
+ENDIF
+;--------------------------------------------------
+;特定キャラが조수、主人時に特殊キャラ구상を呼び出す(Y1を特定キャラ、4507_1を奴隷のキャラ번호に置換）
+;--------------------------------------------------
+;IF NO:MASTER == Y1
+;	CALL KOJO_MESSAGE_PALAMCNG_C_PY1_K4507_1
+;	RETURN 0
+;ENDIF
+;IF ASSI > 0 && ASSIPLAY
+;	IF NO:ASSI == Y1
+;		CALL KOJO_MESSAGE_PALAMCNG_C_PY1_K4507_1
+;		RETURN 0
+;	ENDIF
+;ENDIF
+;-------------------------------------------------
+;조교後のテ키스ト
+;-------------------------------------------------
+;-------------------------------------------------
+;처녀상실(처녀のみ)
+;-------------------------------------------------
+IF TFLAG:3 > 0
+	CALL PALAM_MESSAGE_C
+	;연모か친애かつ主人の섹스による처녀상실
+	IF TFLAG:20
+		PRINTFORMW 
+	;それ以外の時に처녀상실
+	ELSE
+		;함락済み
+		IF TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8
+			PRINTFORMW 
+		;굴복각인Lv3
+		ELSEIF MARK:2 == 3
+			PRINTFORMW 
+		;それ以外
+		ELSE
+			PRINTFORMW 
+		ENDIF
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+;@KOJO_MESSAGE_PALAMCNG_D関係（4507_1をキャラ번호に置換）
+;パラメータ변화をトリガーにした구상
+;-------------------------------------------------
+@KOJO_MESSAGE_PALAMCNG_D_K4507_1
+;조수が조교した時に구상をスキップする（好みに応じて使う、行머리の;を消すとスキップするようになる）
+;SIF ASSI > 0 && ASSIPLAY
+;	RETURN 0 
+;볼재갈着用時には地の文を표시して구상をスキップする
+IF TEQUIP:20 &&  SELECTCOM != 107
+	CALL PALAM_MESSAGE_D
+	RETURN 0
+ENDIF
+;--------------------------------------------------
+;特定キャラが조수、主人時に特殊キャラ구상を呼び出す(Y1を特定キャラ、4507_1を奴隷のキャラ번호に置換）
+;--------------------------------------------------
+;IF NO:MASTER == Y1
+;	CALL KOJO_MESSAGE_PALAMCNG_D_PY1_K4507_1
+;	RETURN 0
+;ENDIF
+;IF ASSI > 0 && ASSIPLAY
+;	IF NO:ASSI == Y1
+;		CALL KOJO_MESSAGE_PALAMCNG_D_PY1_K4507_1
+;		RETURN 0
+;	ENDIF
+;ENDIF
+;-------------------------------------------------
+;パラメータ변화時のテ키스ト
+;-------------------------------------------------
+;-------------------------------------------------
+;初めて윤활がLV3超えた
+;-------------------------------------------------
+P = PALAM:4 + UP:4
+IF P > PALAMLV:4 && CFLAG:245 == 0
+	CALL PALAM_MESSAGE_D
+	;로션を使った場合
+	IF SELECTCOM == 180
+		PRINTFORMW 
+	;それ以外
+	ELSE
+		PRINTFORMW 「……！　뭐、뭘 말하는 거얏！　이런 상황에서、 느끼고 있을 리 없잖아욧！」
+	ENDIF
+	CFLAG:245 = 1
+ENDIF
+
+;-------------------------------------------------
+;初めて욕정がLV2超えた
+;-------------------------------------------------
+P = PALAM:6 + UP:6
+IF P > PALAMLV:3 && CFLAG:246 == 0
+	CALL PALAM_MESSAGE_D
+	;미약を使った場合
+	IF SELECTCOM == 181
+		PRINTFORMW 
+	;それ以外
+	ELSE
+		PRINTFORMW 
+	ENDIF
+	CFLAG:246 = 1
+ENDIF
+
+;-------------------------------------------------
+;初めて굴복がLV3超えた
+;-------------------------------------------------
+P = PALAM:7 + UP:7
+IF P > PALAMLV:3 && CFLAG:247 == 0
+	CALL PALAM_MESSAGE_D
+	;함락済み
+	IF TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8
+		PRINTFORMW 
+	;それ以外
+	ELSE
+		PRINTFORMW 
+	ENDIF
+	CFLAG:247 = 1
+ENDIF
+
+;-------------------------------------------------
+;初めて복종がLV3超えた
+;-------------------------------------------------
+P = PALAM:5 + UP:5
+IF P > PALAMLV:3 && CFLAG:248 == 0
+	CALL PALAM_MESSAGE_D
+	;함락済み
+	IF TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8
+		PRINTFORMW 
+	;それ以外
+	ELSE
+		PRINTFORMW 
+	ENDIF
+	CFLAG:248 = 1
+ENDIF
+
+;-------------------------------------------------
+;初めて공포がLV3超えた
+;-------------------------------------------------
+P = PALAM:11 + UP:11
+IF P > PALAMLV:3 && CFLAG:249 == 0
+	CALL PALAM_MESSAGE_D
+	;함락済み
+	IF TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8
+		PRINTFORMW 
+	;それ以外
+	ELSE
+		PRINTFORMW 
+	ENDIF
+	CFLAG:249 = 1
+ENDIF
+
+;-------------------------------------------------
+;@KOJO_MESSAGE_MARKCNG関係（4507_1をキャラ번호に置換）
+;각인変動をトリガーにした구상
+;각인変動後に구상を発動します
+;-------------------------------------------------
+@KOJO_MESSAGE_MARKCNG_K4507_1
+;조수が조교した時に구상をスキップする（好みに応じて使う、行머리の;を消すとスキップするようになる）
+;SIF ASSI > 0 && ASSIPLAY
+;	RETURN 0 
+;볼재갈着用時には地の文を표시して구상をスキップする
+IF TEQUIP:20 &&  SELECTCOM != 107
+	CALL MARK_MESSAGE
+	RETURN 0
+ENDIF
+;--------------------------------------------------
+;特定キャラが조수、主人時に特殊キャラ구상を呼び出す(Y1を特定キャラ、4507_1を奴隷のキャラ번호に置換）
+;--------------------------------------------------
+;IF NO:MASTER == Y1
+;	CALL KOJO_MESSAGE_MARKCNG_PY1_K4507_1
+;	RETURN 0
+;ENDIF
+;IF ASSI > 0 && ASSIPLAY
+;	IF NO:ASSI == Y1
+;		CALL KOJO_MESSAGE_MARKCNG_PY1_K4507_1
+;		RETURN 0
+;	ENDIF
+;ENDIF
+;-------------------------------------------------
+;고통각인Lv3
+;-------------------------------------------------
+IF TFLAG:22 == 3
+	CALL MARK_MESSAGE_A
+	;함락済み
+	IF TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8
+		;연모、친애
+		IF TALENT:3 || TALENT:6
+			PRINTFORML 「윽……으윽……너무해、이런 거……」
+			PRINTFORMW 「부탁이니까、 이제 두번 다시 하지 말아 줘……。　%CSTR:一人称%、 이런 거 절대、싫으니까요…？」
+		;음란、창부
+		ELSEIF TALENT:4 || TALENT:7
+			PRINTFORMW 
+		;복종、예속
+		ELSEIF TALENT:5 || TALENT:8
+			PRINTFORMW 
+		ENDIF
+	ELSE
+		PRINTFORMW 
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+;쾌락각인Lv3
+;-------------------------------------------------
+IF TFLAG:23 == 3
+	CALL MARK_MESSAGE_P
+	;함락済み
+	IF TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8
+		;연모、친애
+		IF TALENT:3 || TALENT:6
+			PRINTFORMW 
+		;음란、창부
+		ELSEIF TALENT:4 || TALENT:7
+			PRINTFORMW 
+		;복종、예속
+		ELSEIF TALENT:5 || TALENT:8
+			PRINTFORMW 
+		ENDIF
+	ELSE
+		PRINTFORMW 
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+;굴복각인Lv3
+;-------------------------------------------------
+IF TFLAG:24 == 13 || TFLAG:24 == 23 || TFLAG:24 == 33
+	CALL MARK_MESSAGE_S
+	;쾌락による굴복
+	IF TFLAG:24 == 13
+		PRINTFORMW 
+	;공포と고통による굴복
+	ELSEIF TFLAG:24 == 23
+		PRINTFORMW 
+	;굴복と복종による굴복
+	ELSEIF TFLAG:24 == 33
+		PRINTFORMW 
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+;반발각인Lv3
+;-------------------------------------------------
+IF TFLAG:21 == 3
+	CALL MARK_MESSAGE_R
+	;함락済み
+	IF TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8
+		;연모、친애
+		IF TALENT:3 || TALENT:6
+			PRINTFORMW 
+		;음란、창부
+		ELSEIF TALENT:4 || TALENT:7
+			PRINTFORMW 
+		;복종、예속
+		ELSEIF TALENT:5 || TALENT:8
+			PRINTFORMW 
+		ENDIF
+	ELSE
+		PRINTFORML 「……윽……절대로……용서하지 않으니까…！」
+		PRINTFORMW 「이런 식으로、 사람을 농락해……신이라도 되었다고 생각하는 거야…！？」
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+;이벤트구상集（4507_1、X2をキャラ번호に置換する） CFLAG 261～299を사용
+;-------------------------------------------------
+@KOJO_MESSAGE_EVENT_K4507_1
+;--------------------------------------------------
+;特定主人時に特殊キャラ구상を呼び出す(Y1を特定キャラ、4507_1を奴隷のキャラ번호に置換）
+;--------------------------------------------------
+;IF NO:MASTER == Y1
+;	CALL KOJO_MESSAGE_EVENT_PY1_K4507_1
+;	RETURN 0
+;ENDIF
+;-------------------------------------------------
+;朝フェラ
+;-------------------------------------------------
+SELECTCASE TFLAG:13
+	CASE 1
+		CALL EVENT_MESSAGE
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:261 < 1 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+			CFLAG:261 = 1
+		ENDIF
+
+;-------------------------------------------------
+;朝파이즈리
+;-------------------------------------------------
+	CASE 2
+		CALL EVENT_MESSAGE
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:262 < 1 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				;모유체질かどうか
+				IF TALENT:149
+					PRINTFORMW 
+				ELSE
+					PRINTFORMW 
+				ENDIF
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				;모유체질かどうか
+				IF TALENT:149
+					PRINTFORMW 
+				ELSE
+					PRINTFORMW 
+				ENDIF
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				;모유체질かどうか
+				IF TALENT:149
+					PRINTFORMW 
+				ELSE
+					PRINTFORMW 
+				ENDIF
+			ENDIF
+			CFLAG:262 = 1
+		ENDIF
+
+;-------------------------------------------------
+;朝기승위
+;-------------------------------------------------
+	CASE 3
+		CALL EVENT_MESSAGE
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:263 < 1 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+			CFLAG:263 = 1
+		ENDIF
+
+;-------------------------------------------------
+;朝기승위A
+;-------------------------------------------------
+	CASE 24
+		CALL EVENT_MESSAGE
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:263 < 1 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+			CFLAG:263 = 1
+		ENDIF
+
+;-------------------------------------------------
+;朝키스
+;-------------------------------------------------
+	CASE 25
+		CALL EVENT_MESSAGE
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:263 < 1 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+			CFLAG:263 = 1
+		ENDIF
+
+;-------------------------------------------------
+;朝食
+;-------------------------------------------------
+	CASE 26
+		CALL EVENT_MESSAGE
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:263 < 1 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				;歌いながらかどうか
+				IF (TALENT:25 || TALENT:28) && ABL:14 >= 2
+					PRINTFORMW 
+				ELSE
+					PRINTFORMW 
+				ENDIF
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				;歌いながらかどうか
+				IF (TALENT:25 || TALENT:28) && ABL:14 >= 2
+					PRINTFORMW 
+				ELSE
+					PRINTFORMW 
+				ENDIF
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				;歌いながらかどうか
+				IF (TALENT:25 || TALENT:28) && ABL:14 >= 2
+					PRINTFORMW 
+				ELSE
+					PRINTFORMW 
+				ENDIF
+			ENDIF
+			CFLAG:263 = 1
+		ENDIF
+
+;-------------------------------------------------
+;起きたら隣で寝てる
+;-------------------------------------------------
+	CASE 27
+		CALL EVENT_MESSAGE
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:263 < 1 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+			CFLAG:263 = 1
+		ENDIF
+
+;-------------------------------------------------
+;朝の발コキ
+;-------------------------------------------------
+	CASE 28
+		CALL EVENT_MESSAGE
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:263 < 1 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+			CFLAG:263 = 1
+		ENDIF
+
+;-------------------------------------------------
+;;朝の搾りたてミルク
+;-------------------------------------------------
+	CASE 29
+		CALL EVENT_MESSAGE
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:263 < 1 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+			CFLAG:263 = 1
+		ENDIF
+
+;-------------------------------------------------
+;;お寝小
+;-------------------------------------------------
+	CASE 30
+		CALL EVENT_MESSAGE
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:263 < 1 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+			CFLAG:263 = 1
+		ENDIF
+
+;-------------------------------------------------
+;조교後레즈プ레이
+;-------------------------------------------------
+	CASE 4
+		CALL EVENT_MESSAGE
+		;初めて
+		IF CFLAG:264 == 0
+			PRINTFORMW 
+			CFLAG:264 = 1
+		;それ以外
+		ELSEIF CFLAG:264 < 1 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:264 = 1
+		ENDIF
+
+;-------------------------------------------------
+;조교後섹스
+;-------------------------------------------------
+	CASE 5
+		CALL EVENT_MESSAGE
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:265 < 1 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+			CFLAG:265 = 1
+		ENDIF
+
+;-------------------------------------------------
+;강정신약の反動
+;-------------------------------------------------
+	CASE 6
+		CALL EVENT_MESSAGE
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:266 < 2 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+			CFLAG:266 = 2
+		ELSEIF CFLAG:266 < 1 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:266 = 1
+		ENDIF
+
+;-------------------------------------------------
+;조교後착유
+;-------------------------------------------------
+	CASE 7
+		CALL EVENT_MESSAGE
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:267 < 2 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+			CFLAG:267 = 2
+		ELSEIF CFLAG:267 < 1 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:267 = 1
+		ENDIF
+
+;-------------------------------------------------
+;조교後자위
+;-------------------------------------------------
+	CASE 8
+		CALL EVENT_MESSAGE
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:268 < 2 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+			CFLAG:268 = 2
+		ELSEIF CFLAG:268 < 1 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:268 = 1
+		ENDIF
+
+;-------------------------------------------------
+;요바이（主人C 相손V）
+;-------------------------------------------------
+	CASE 9
+		CALL EVENT_MESSAGE
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:269 < 1 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+			CFLAG:269 = 1
+		ENDIF
+
+;-------------------------------------------------
+;요바이（主人C 相손A）
+;-------------------------------------------------
+	CASE 31
+		CALL EVENT_MESSAGE
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:269 < 1 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+			CFLAG:269 = 1
+		ENDIF
+
+;-------------------------------------------------
+;요바이（主人V 相손C）
+;-------------------------------------------------
+	CASE 32
+		CALL EVENT_MESSAGE
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:269 < 1 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+			CFLAG:269 = 1
+		ENDIF
+
+;-------------------------------------------------
+;요바이（主人A 相손C）
+;-------------------------------------------------
+	CASE 33
+		CALL EVENT_MESSAGE
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:269 < 1 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+			CFLAG:269 = 1
+		ENDIF
+
+;-------------------------------------------------
+;요바이（両者C（스마타）・両者C（貝合わせ））
+;-------------------------------------------------
+	CASE 34
+		CALL EVENT_MESSAGE
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:269 < 1 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+			CFLAG:269 = 1
+		ENDIF
+
+;-------------------------------------------------
+;夜자위
+;-------------------------------------------------
+	CASE 35
+		CALL EVENT_MESSAGE
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:269 < 1 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW \@ RAND:2 == 0 ? %CALLNAME:MASTER% # 自分 \@의 속옷을 콧등에 눌러、 %조사처리(CALLNAME,"는")% 격하게 자위에 열중했다。
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+			CFLAG:269 = 1
+		ENDIF
+
+;-------------------------------------------------
+;一緒に寝る
+;-------------------------------------------------
+	CASE 36
+		CALL EVENT_MESSAGE
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:269 < 1 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+			CFLAG:269 = 1
+		ENDIF
+
+;-------------------------------------------------
+;황색사탕사용時
+;-------------------------------------------------
+	CASE 10
+		CALL EVENT_MESSAGE
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:270 < 2 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+			CFLAG:270 = 2
+		ELSEIF CFLAG:270 < 1 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:270 = 1
+		ENDIF
+
+;-------------------------------------------------
+;임신発깨달음時
+;-------------------------------------------------
+	CASE 11
+		SIF CFLAG:271 >= 1 && FLAG:7 != 2
+			RETURN 0
+		CALL EVENT_MESSAGE
+		;임신대상をTARGETに격납し、父親は奴隷はV、조수はWとする
+		;붕괴してしまった場合
+		IF TALENT:9 == 1
+			PRINTFORMW 
+		;父親が主人で母親が연모か친애持ち
+		ELSEIF (TALENT:3 || TALENT:6) && CFLAG:102 == 1
+			PRINTFORMW 
+		;父親が奴隷か조수で母親が음란か창부持ち
+		ELSEIF (TALENT:4 || TALENT:7) && (CFLAG:102 == 2 || CFLAG:102 == 3)
+			;父親(조수）との相性が100より大きい場合
+			IF CFLAG:102 == 2 && RELATION:W > 100
+				PRINTFORMW 
+		 	;父親(奴隷）との相性が100より大きい場合
+			ELSEIF CFLAG:102 == 3 && RELATION:V > 100
+				PRINTFORMW 
+			ELSE
+				PRINTFORMW 
+			ENDIF
+		;복종か예속持ち
+		ELSEIF (TALENT:5 || TALENT:8)
+			PRINTFORMW 
+		ELSE
+			PRINTFORMW 
+		ENDIF
+		CFLAG:271 = 1
+
+;-------------------------------------------------
+;출산時
+;-------------------------------------------------
+	CASE 12
+		CALL EVENT_MESSAGE
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:272 < 2 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+			CFLAG:272 = 2
+		ELSEIF CFLAG:272 < 1 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:272 = 1
+		ENDIF
+
+;-------------------------------------------------
+;육아실
+;-------------------------------------------------
+	CASE 13
+		CALL EVENT_MESSAGE
+		;출산前
+		IF TALENT:153
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:273 < 2 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:273 = 2
+			ELSEIF CFLAG:273 < 1 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:273 = 1
+			ENDIF
+		;출산後
+		ELSE
+			;함락済み
+			IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:273 < 4 || FLAG:7 == 2)
+				;연모、친애
+				IF TALENT:3 || TALENT:6
+					PRINTFORMW 
+				;음란、창부
+				ELSEIF TALENT:4 || TALENT:7
+					PRINTFORMW 
+				;복종、예속
+				ELSEIF TALENT:5 || TALENT:8
+					PRINTFORMW 
+				ENDIF
+				CFLAG:273 = 4
+			ELSEIF CFLAG:273 < 3 || FLAG:7 == 2
+				PRINTFORMW 
+				CFLAG:273 = 3
+			ENDIF
+		ENDIF
+
+;-------------------------------------------------
+;親離れ時
+;-------------------------------------------------
+	CASE 14
+		CALL EVENT_MESSAGE
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:274 < 2 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+			CFLAG:274 = 2
+		ELSEIF CFLAG:274 < 1 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:274 = 1
+		ENDIF
+
+;-------------------------------------------------
+;定食포장마차時
+;-------------------------------------------------
+	CASE 15
+		CALL EVENT_MESSAGE
+		;初めて
+		IF CFLAG:275 == 0
+			PRINTFORMW 
+			CFLAG:275 = 1
+		;それ以外
+		ELSEIF CFLAG:275 < 1 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:275 = 1
+		ENDIF
+
+;-------------------------------------------------
+;창관でバイト時
+;-------------------------------------------------
+	CASE 16
+		CALL EVENT_MESSAGE
+		;初めて
+		IF CFLAG:276 == 0
+			PRINTFORMW 「몸을 팔라니……」
+			PRINTFORMW 「흑……」
+			PRINTFORMW %조사처리(CALLNAME,"는")% 터벅터벅 창관으로 향했다。
+			CFLAG:276 = 1
+		;それ以外
+		ELSEIF CFLAG:276 < 1 || FLAG:7 == 2
+			PRINTFORMW 『유즈쨩은 가슴이 크네요오』
+			PRINTFORMW 『특히 이 골짜기는 굉장하지 않은가。이렇게 크면 땀도 고이겠지』
+			PRINTFORMW 오늘의 손님은 냄새 페티시였다。
+			PRINTFORMW 손님은 유즈의 가슴 골짜기에 얼굴을 묻고、스읍스읍 하고 심호흡했다。
+			PRINTFORMW 「손님……간지럽습니다……♪」
+			PRINTFORMW 『오、 오오……미안해。 하지만 이건 참을 수 없어』
+			PRINTFORMW 『그럼 다음은 겨드랑이의 향기를 맡아 볼까……하아∼하아∼』
+			PRINTFORMW 
+			PRINTFORMW ㅠ즈는 냄새 페티시의 손님의 마음에 든 것 같다。
+			PRINTFORMW 
+			PRINTFORMW 「……왜 이런 이상한 손님만 달라붙는 걸까……」
+			CFLAG:276 = 1
+;	;함락済み
+;	ELSEIF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:276 < 2 || FLAG:7 == 2)
+;		;연모、친애
+;		IF TALENT:3 || TALENT:6
+;			PRINTFORMW 
+;		;음란、창부
+;		ELSEIF TALENT:4 || TALENT:7
+;			PRINTFORMW 
+;			PRINTFORMW 
+;		;복종、예속
+;		ELSEIF TALENT:5 || TALENT:8
+;			PRINTFORMW 
+;		ENDIF
+;	CFLAG:276 = 2
+		ENDIF
+
+;-------------------------------------------------
+;렌탈時
+;-------------------------------------------------
+	CASE 17
+		CALL EVENT_MESSAGE
+		;初めて
+		IF CFLAG:277 == 0
+			PRINTFORMW 
+			CFLAG:277 = 1
+		;それ以外
+		ELSEIF CFLAG:277 < 1 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:277 = 1
+		ENDIF
+
+;-------------------------------------------------
+;매각時
+;-------------------------------------------------
+	CASE 18
+		CALL EVENT_MESSAGE
+		;함락済み
+		IF TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8
+			;연모、친애+반발각인Lv3미만
+			IF (TALENT:3 || TALENT:6) && MARK:3 < 3
+				PRINTFORMW 
+			;음란、창부+반발각인Lv3미만
+			ELSEIF (TALENT:4 || TALENT:7) && MARK:3 < 3
+				PRINTFORMW 
+			;복종、예속+반발각인Lv3미만
+			ELSEIF (TALENT:5 || TALENT:8) && MARK:3 < 3
+				PRINTFORMW 
+			ENDIF
+		;반발각인Lv3
+		ELSEIF MARK:3 == 3
+			PRINTFORMW 
+		;それ以外
+		ELSE
+			PRINTFORML 「엣！？　……정말로、 여기에서 나가게 해주는 거야…？」
+			PRINTFORML %조사처리(CALLNAME,"는")% 오랜만에 보는 밝은 미소를 띄우며、허둥지둥 자기 물건을 정리하고 있다。
+			PRINTFORML %조사처리(CALLNAME:MASTER,"는")% 언제든지 나갈 수 있도록、이라고 명령했을 뿐이었던 거지만。
+			PRINTFORMW （집에 돌아가면、 제일 먼저 어머니에게 사과하자。　폐만 끼쳐서、 죄송합니다 라고……）
+		ENDIF
+
+;-------------------------------------------------
+;ビデオ매각時
+;-------------------------------------------------
+	CASE 19
+		CALL EVENT_MESSAGE
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:278 < 2 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+			CFLAG:278 = 2
+		ELSEIF CFLAG:278 < 1 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:278 = 1
+		ENDIF
+
+;-------------------------------------------------
+;コンサート時
+;-------------------------------------------------
+	CASE 20
+		CALL EVENT_MESSAGE
+		;初めて
+		IF CFLAG:279 == 0
+			PRINTFORMW 
+			CFLAG:279 = 1
+		;それ以外
+		ELSEIF CFLAG:279 < 1 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:279 = 1
+		ENDIF
+
+;-------------------------------------------------
+;乱交라이브時
+;-------------------------------------------------
+	CASE 21
+		CALL EVENT_MESSAGE
+		;初めて
+		IF CFLAG:280 == 0
+			PRINTFORMW 
+			CFLAG:280 = 1
+		;それ以外
+		ELSEIF CFLAG:280 < 1 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:280 = 1
+		ENDIF
+
+;-------------------------------------------------
+;공중변소プ레이時
+;-------------------------------------------------
+	CASE 22
+		CALL EVENT_MESSAGE
+		;初めて
+		IF CFLAG:281 == 0
+			PRINTFORMW 
+			CFLAG:281 = 1
+		;それ以外
+		ELSEIF CFLAG:281 < 1 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:281 = 1
+		ELSEIF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:281 < 2 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORML 「……아、 하하……%CSTR:一人称%……굉장히、 더러워져 버렸네요……」
+				PRINTFORMW 「그、그치만、 부탁해……싫어하지 말아 줘…！」
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+		CFLAG:281 = 2
+		ENDIF
+
+
+;-------------------------------------------------
+;ビデオ保有時
+;-------------------------------------------------
+	CASE 23
+		CALL EVENT_MESSAGE
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:282 < 2 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+			CFLAG:282 = 2
+		ELSEIF CFLAG:282 < 1 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:282 = 1
+		ENDIF
+
+;-------------------------------------------------
+;기억소거약사용時
+;-------------------------------------------------
+	CASE 30
+		CALL EVENT_MESSAGE
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:283 < 2 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+			CFLAG:283 = 2
+		ELSEIF CFLAG:283 < 1 || FLAG:7 == 2
+			PRINTFORMW 
+			CFLAG:283 = 1
+		ENDIF
+
+;-------------------------------------------------
+;;[아내][남편]취득時
+;-------------------------------------------------
+	CASE 40
+		CALL EVENT_MESSAGE
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:283 < 1 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 「%CSTR:一人称%에게 반지？」
+				PRINTFORMW 「그건……결혼반지라는 거？」
+				PRINTFORMW 「그、 그러언。 %CSTR:一人称%、 아직 고등학생이고……♪」
+				PRINTFORMW %조사처리(CALLNAME,"는")% 매우 쑥쓰러워하고 있지만、 역시 기쁜 듯하다。
+				PRINTFORMW 「부족한 몸입니다만、 잘 부탁드립니다♪」
+				PRINTFORMW 「에헤헤헤……앞으로도 잘 부탁해、 %CSTR:二人称%」
+				PRINTFORMW ・・・
+				PRINTFORMW ・・・・・・
+				PRINTFORMW ・・・・・・・・・
+				PRINTFORMW %조사처리(CALLNAME,"는")% %CALLNAME:MASTER%의 \@ TALENT:남자 ? [남편] # [아내] \@가 되었다。
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+			CFLAG:283 = 1
+		ENDIF
+
+;-------------------------------------------------
+;;[음마]취득時
+;-------------------------------------------------
+	CASE 41
+		CALL EVENT_MESSAGE
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:284 < 1 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW %CALLNAME%의 정신은 이젠 타락해、 인간의 범주에서 벗어나 있다。
+				PRINTFORMW 지금이라면 %조사처리(CALLNAME:MASTER,"와")% 혼의 계약을 맺어、 사역마로 다룰 수 있겠지。
+				PRINTFORMW 자신과 계악할까 라고 말을 걸자、%조사처리(CALLNAME,"는")% 황홀한 표정으로 고개를 끄덕인다。
+				PRINTFORMW 「네……♡」
+				PRINTFORMW 「%CSTR:一人称%、 이제 완전히 %CSTR:二人称% 중독이니까……」
+				PRINTFORMW 「이제 %CSTR:二人称% 없으면 1초도 살아갈 수 없습니다」
+				PRINTFORMW 「인간이 아니게 되도 상관없으니까、 계속 길러 주세요……♪」
+				PRINTFORMW ・・・
+				PRINTFORMW ・・・・・・
+				PRINTFORMW ・・・・・・・・・
+				PRINTFORMW %조사처리(CALLNAME,"는")% %CALLNAME:MASTER%의 [음마]가 되었다。
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+			CFLAG:284 = 1
+		ENDIF
+
+;-------------------------------------------------
+;;[노리개]취득時
+;-------------------------------------------------
+	CASE 42
+		CALL EVENT_MESSAGE
+		;함락済み
+		IF (TALENT:3 || TALENT:4 || TALENT:5 || TALENT:6 || TALENT:7 || TALENT:8) && (CFLAG:285 < 1 || FLAG:7 == 2)
+			;연모、친애
+			IF TALENT:3 || TALENT:6
+				PRINTFORMW 
+			;음란、창부
+			ELSEIF TALENT:4 || TALENT:7
+				PRINTFORMW 
+			;복종、예속
+			ELSEIF TALENT:5 || TALENT:8
+				PRINTFORMW 
+			ENDIF
+			CFLAG:285 = 1
+		ENDIF
+	CASEELSE
+		CALL EVENT_MESSAGE
+ENDSELECT
+;-------------------------------------------------
+;@KOJO_MESSAGE_ENDING関係(4507_1、X2をキャラ번호に置換する)
+;-------------------------------------------------
+;-------------------------------------------------
+;조건설정
+;-------------------------------------------------
+@EVENTTURNEND_K4507_1
+;特殊ハーレムエンド用조건판정構文샘플
+;XX内に조건とするキャラのキャラ번호を入れると、好きな組み合わせのハーレムエンドを설정できる
+;ハーレムエンドの조건を満たしたとき、ここの特殊ハーレムエンドの조건も満たしている場合、ハーレムエンドから派生する
+;A = 0
+;B = 0
+;REPEAT CHARANUM
+;	IF NO:COUNT == XX || NO:COUNT == XX || NO:COUNT == XX || NO:COUNT == XX || NO:COUNT == XX
+;		SIF TALENT:COUNT:6 || TALENT:COUNT:7 || TALENT:COUNT:8
+;			A += 1
+;		SIF TALENT:COUNT:3 || TALENT:COUNT:4 || TALENT:COUNT:5 || TALENT:COUNT:6 || TALENT:COUNT:7 || TALENT:COUNT:8
+;			B += 1
+;	ENDIF
+;REND
+;SIF A && A+B >= XXX
+;	CFLAG:21 = 2
+;１체エンド用分岐フラグ、１체エンドのある上位함락소질のみコメントアウトを해제する
+;SIF TALENT:6
+;	CFLAG:21 = 1
+;SIF TALENT:7
+;	CFLAG:21 = 1
+;SIF TALENT:8
+;	CFLAG:21 = 1
+;-------------------------------------------------
+;エンド本文
+;-------------------------------------------------
+@KOJO_MESSAGE_ENDING_K4507_1
+;--------------------------------------------------
+;特定主人時に特殊キャラ구상を呼び出す(Y1を特定キャラ、4507_1を奴隷のキャラ번호に置換）
+;--------------------------------------------------
+;IF NO:MASTER == Y1
+;	CALL KOJO_MESSAGE_ENDING_PY1_K4507_1
+;	RETURN 0
+;ENDIF
+;--------------------------------------------------
+;연모１체エンド
+;IF TALENT:6 && CFLAG:21 == 1
+	;DRAWLINE
+	;PRINTFORMW …………
+	;PRINTFORMW ………
+	;PRINTFORMW ……
+	;PRINTFORMW 
+
+	;PRINTFORMW 
+	;PRINTFORMW 　　　　　　　　―― Ending No.14507_1A (○○エンド)
+;음란１체エンド
+;ELSEIF TALENT:7 && CFLAG:21 == 1
+	;DRAWLINE
+	;PRINTFORMW …………
+	;PRINTFORMW ………
+	;PRINTFORMW ……
+	;PRINTFORMW 
+
+	;PRINTFORMW 
+	;PRINTFORMW 　　　　　　　　―― Ending No.14507_1B (○○エンド)
+;복종１체エンド
+;ELSEIF TALENT:8 && CFLAG:21 == 1
+	;DRAWLINE
+	;PRINTFORMW …………
+	;PRINTFORMW ………
+	;PRINTFORMW ……
+	;PRINTFORMW 
+
+	;PRINTFORMW 
+	;PRINTFORMW 　　　　　　　　―― Ending No.14507_1C (○○エンド)
+;ENDIF
+
+;特殊ハーレムエンド
+;IF CFLAG:21 == 2
+	;DRAWLINE
+	;PRINTFORMW …………
+	;PRINTFORMW ………
+	;PRINTFORMW ……
+	;PRINTFORMW 
+
+	;PRINTFORMW 
+	;PRINTFORMW 　　　　　　　　―― Ending No.24507_1 (○○エンド)
+;ENDIF
+
+;CALL GAME_CONTINUE
+;RETURN 0
+
+
+@ENEMY_BATTLE_EVENT_K4507_1, ARG, ARG:1, ARG:2
+IF TFLAG:전투이벤트 == 1
+;적でのデビルＣＯ－ＯＰ発動時の台詞
+;			PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+;			PRINTFORML ┃%"",72,LEFT%┃
+;			PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+ENDIF
+IF TFLAG:전투이벤트 == 2
+;적でのデビルＣＯ－ＯＰ참가時の台詞
+;			PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+;			PRINTFORML ┃%"",72,LEFT%┃
+;			PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+ENDIF
+
+@BATTLE_EVENT_K4507_1, ARG, ARG:1, ARG:2
+IF TFLAG:전투이벤트 == 1
+;아군パーティでのデビルＣＯ－ＯＰ発動時の台詞
+	IF RAND:2 == 0
+			PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+			PRINTFORML ┃%"좋아、해버리자구！",72,LEFT%┃
+			PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+	ELSE
+			PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+			PRINTFORML ┃%"모두들！ 부탁해！",72,LEFT%┃
+			PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+	ENDIF
+ENDIF
+IF TFLAG:전투이벤트 == 2
+;아군パーティでのデビルＣＯ－ＯＰ참가時の台詞
+	IF RAND:2 == 0
+			PRINTFORML ┏┓＠%CALLNAME:ARG,20,LEFT%　┏━━━━━━━━━━━━━━━━━━━━━━┓
+			PRINTFORML ┃%"지금이야、 가 버리자！",72,LEFT%┃
+			PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+	ELSE
+			PRINTFORML ┏┓＠%CALLNAME:ARG,20,LEFT%　┏━━━━━━━━━━━━━━━━━━━━━━┓
+			PRINTFORML ┃%"응、알았어！",72,LEFT%┃
+			PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+	ENDIF
+ENDIF
+
+@BATTLE_MESSAGE_K4507_1,ARG,ARG:1 = 0
+
+;메기도라온
+IF CFLAG:ARG:입력行動 == 2003
+	CALLFORM SKILL_NAME_{CFLAG:ARG:입력行動},ARG
+	IF RAND:2 == 0
+	PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+	PRINTFORML ┃%"！　사라져 버려！",72,LEFT%┃
+	PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+	ELSE
+	PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+	PRINTFORML ┃%"칫！　이걸로 끝내 주겠엇！",72,LEFT%┃
+	PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+	ENDIF
+;마하・부후다인
+ELSEIF CFLAG:ARG:입력行動 == 806
+	CALLFORM SKILL_NAME_{CFLAG:ARG:입력行動},ARG
+	IF RAND:2 == 0
+	PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+	PRINTFORML ┃%"！　얼어 버려ーーーー！",72,LEFT%┃
+	PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+	ELSE
+	PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+	PRINTFORML ┃%"칫！　꽁꽁 얼어라！",72,LEFT%┃
+	PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+	ENDIF
+;물의벽
+ELSEIF CFLAG:ARG:입력行動 == 807
+	CALLFORM SKILL_NAME_{CFLAG:ARG:입력行動},ARG
+	IF RAND:2 == 0
+	PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+	PRINTFORML ┃%"！　이걸로 불꽃도 아무렇지 않아",72,LEFT%┃
+	PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+	ELSE
+	PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+	PRINTFORML ┃%"！　……사용할 기회가 있을까、 이거……",72,LEFT%┃
+	PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+	ENDIF
+;메・디아라한
+ELSEIF CFLAG:ARG:입력行動 == 406
+	CALLFORM SKILL_NAME_{CFLAG:ARG:입력行動},ARG
+	IF RAND:2 == 0
+	PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+	PRINTFORML ┃%"！　모두 분발해！",72,LEFT%┃
+	PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+	ELSE
+	PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+	PRINTFORML ┃%"칫！　아직 싸울 수 있엇！",72,LEFT%┃
+	PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+	ENDIF
+;이악물기
+ELSEIF CFLAG:ARG:입력行動 == 2406
+	CALLFORM SKILL_NAME_{CFLAG:ARG:입력行動},ARG
+	IF RAND:2 == 0
+	PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+	PRINTFORML ┃%"이런 곳에서 질 수 없으니까……！",72,LEFT%┃
+	PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+	ELSE
+	PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+	PRINTFORML ┃%"아、 아직 싸울 수 있어……！",72,LEFT%┃
+	PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+	ENDIF
+ELSEIF CFLAG:ARG:입력行動 == 2101
+;총
+	CALLFORM SKILL_NAME_{CFLAG:ARG:입력行動},ARG
+	PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+	PRINTFORML ┃%"총은 서툴지만……！",72,LEFT%┃
+	PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+;選択したコマンドにより分岐させたい場合、IF文の조건にコマンドNoを記入すること
+;IF CFLAG:ARG:입력行動 == 
+;	PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+;	PRINTFORML ┃%"",72,LEFT%┃
+;	PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+;選択したコマンドにより分岐させたい場合、IF文の조건にコマンドNoを記入すること
+;ELSEIF CFLAG:ARG:입력行動 == 
+;	PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+;	PRINTFORML ┃%"",72,LEFT%┃
+;	PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+;ELSEIF ARG:1 > 0
+	;충성도が上昇する行動をとった場合に표시する구상
+
+;	CALLFORM SKILL_NAME_{CFLAG:ARG:입력行動},ARG
+;	;사용した스킬の이름をLOCALSに代入
+;	LOCALS = %RESULTS%
+
+;	SELECTCASE ARG:1
+;		;물리데미지を与える行動で、영맹持ちの충성도が上昇
+;		CASE GETNUM(TALENT,"영맹")
+;			PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+;			PRINTFORML ┃%LOCALS + "",72,LEFT%┃
+;			PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+;		;마법데미지を与える行動で、교활持ちの충성도が上昇
+;		CASE GETNUM(TALENT,"교활")
+;			PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+;			PRINTFORML ┃%LOCALS + "",72,LEFT%┃
+;			PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+;		;高위력の行動で、잔학持ちの충성도が上昇
+;		CASE GETNUM(TALENT,"잔학")
+;			PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+;			PRINTFORML ┃%LOCALS + "",72,LEFT%┃
+;			PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+;		;相손の약점を付いた공격or行動不能な상태이상の적に対する공격で、현명持ちの충성도が上昇
+;		CASE GETNUM(TALENT,"현명")
+;			PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+;			PRINTFORML ┃%LOCALS + "",72,LEFT%┃
+;			PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+;		;파마相性의 行動で、천사持ちの충성도が上昇
+;		CASE GETNUM(TALENT,"천사")
+;			PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+;			PRINTFORML ┃%LOCALS + "",72,LEFT%┃
+;			PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+;		;주살相性의 行動で、타천사持ちの충성도が上昇
+;		CASE GETNUM(TALENT,"타천사")
+;			PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+;			PRINTFORML ┃%LOCALS + "",72,LEFT%┃
+;			PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+;		;회복・상태회복行動では우애持ちの충성도が上昇
+;		CASE GETNUM(TALENT,"우애")
+;			PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+;			PRINTFORML ┃%LOCALS + "",72,LEFT%┃
+;			PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+;		;상태변화では교만持ちの충성도が上昇
+;		CASE GETNUM(TALENT,"교만")
+;			PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+;			PRINTFORML ┃%LOCALS + "",72,LEFT%┃
+;			PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+;		;特殊では냉정持ちの충성도が上昇
+;		CASE GETNUM(TALENT,"냉정")
+;			PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+;			PRINTFORML ┃%LOCALS + "",72,LEFT%┃
+;			PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+;		;우둔持ちは主人とのLv差だけ충성도が上昇
+;		CASE GETNUM(TALENT,"우둔")
+;			PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+;			PRINTFORML ┃%LOCALS + "",72,LEFT%┃
+;			PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+;		;허심持ちは최저２だけ충성도が上昇
+;		CASE GETNUM(TALENT,"허심")
+;			PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+;			PRINTFORML ┃%LOCALS + "",72,LEFT%┃
+;			PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+;	ENDSELECT
+;ELSE
+;	;システムによらず충성도を上げたいとか他があったらここに記載
+ENDIF
+

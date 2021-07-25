@@ -1,0 +1,3793 @@
+﻿@SOURCE_CHECK
+#DIM CHARA, 2
+#DIM PCOUNT, 2
+#DIM 절정수 , 1
+#DIM LCOUNT
+#DIM DYNAMIC C_ABLE1 ;조수 - 안면기승위 가능여부 판단변수
+#DIM DYNAMIC C_ABLE20 ;조수 - 키스한다 가능여부 판단변수
+#DIM DYNAMIC C_ABLE30 ;조수 - 파후파후 가능여부 판단변수
+#DIM DYNAMIC C_ABLE31 ;조수 - 손가락츄파 가능여부 판단변수
+#DIM DYNAMIC C_ABLE66 ;조수 - 기승위 가능여부 판단변수
+#DIM DYNAMIC C_ABLE80 ;조수 - 수음 가능여부 판단변수
+#DIM DYNAMIC C_ABLE81 ;조수 - 펠라치오 가능여부 판단변수
+#DIM DYNAMIC C_ABLE82 ;조수 - 파이즈리 가능여부 판단변수
+#DIM DYNAMIC C_ABLE83 ;조수 - 스마타 가능여부 판단변수
+#DIM DYNAMIC C_ABLE85 ;조수 - 풋잡 가능여부 판단변수
+#DIM DYNAMIC C_ABLE87 ;조수 - 세로파이즈리 가능여부 판단변수
+#DIM DYNAMIC C_ABLE88 ;조수 - 파이즈리펠라 가능여부 판단변수
+CHARA = TARGET
+CHARA:1 = PLAYER
+
+;-------------------------------------------------
+;바이브など付けっぱなし아이템の체크
+;-------------------------------------------------
+CALL EQUIP_CHECK
+
+;-------------------------------------------------
+;主人、동성、조교者の능력の処理
+;-------------------------------------------------
+CALL SOURCE_SEX_CHECK, TARGET, PLAYER
+CALL SOURCE_SEX_CHECK, PLAYER, TARGET
+CALL PLAYER_SKILL_CHECK, TARGET, PLAYER
+CALL PLAYER_SKILL_CHECK, PLAYER, TARGET
+
+;-------------------------------------------------
+;처녀상실の処理
+;-------------------------------------------------
+CALL LOST_VIRGIN
+
+;-------------------------------------------------
+;의존도체크
+;-------------------------------------------------
+CALL MASTER_DEPENDENCE_CHECK
+
+
+;-------------------------------------------------
+;기교の체크(ARGが行為者、ARG:1が被行為者)
+;-------------------------------------------------
+;行為者の판정(1が立つ時、TARGET→PLAYER、2が立つ時、PLAYER→TARGET)
+;TFLAG:28は가학쾌락경험の記録としても使われている…
+SIF TFLAG:28 & 1
+	CALL TECHNIQUE_CHECK, CHARA, CHARA:1
+SIF TFLAG:28 & 2
+	CALL TECHNIQUE_CHECK, CHARA:1, CHARA
+SIF TFLAG:28 & 4
+	CALL TECHNIQUE_CHECK, CHARA, CHARA
+SIF TFLAG:28 & 8
+	CALL TECHNIQUE_CHECK, CHARA:1, CHARA:1
+
+;暫定での손抜き추가処理
+DOWNBASE:CHARA:체력 += LOSEBASE:체력
+DOWNBASE:CHARA:기력 += LOSEBASE:기력
+LOSEBASE:체력 = 0
+LOSEBASE:기력 = 0
+FOR LOCAL,0,VARSIZE("PALAM")
+	CUP:TARGET:LOCAL += UP:LOCAL
+	CDOWN:TARGET:LOCAL += DOWN:LOCAL
+	UP:LOCAL = 0
+	DOWN:LOCAL = 0
+NEXT
+;ここまででPLAYERの동성の중독충족など処理されないソースが入ってる가능性があるのでとりあえず消しておく
+FOR LOCAL, 4, VARSIZE("SOURCE")
+	SIF GROUPMATCH(LOCAL , 7 , 11 , 20 , 21 , 22 , 23)
+		CONTINUE
+	SOURCE:PLAYER:LOCAL = 0
+NEXT
+;-------------------------------------------------
+;조교者のソース체크
+;-------------------------------------------------
+;CALL SOURCE_CHECK_PLAYER
+FOR PCOUNT, 0, 2
+	IF PCOUNT == 1
+		CHARA = PLAYER
+		CHARA:1 = TARGET
+	ENDIF
+	
+	SOURCE:CHARA:쾌Ｃ += SOURCE:CHARA:도구쾌Ｃ
+	SOURCE:CHARA:도구쾌Ｃ = 0
+	SOURCE:CHARA:쾌Ｖ += SOURCE:CHARA:도구쾌Ｖ
+	SOURCE:CHARA:도구쾌Ｖ = 0
+	SOURCE:CHARA:쾌Ａ += SOURCE:CHARA:도구쾌Ａ
+	SOURCE:CHARA:도구쾌Ａ = 0
+	SOURCE:CHARA:쾌Ｂ += SOURCE:CHARA:도구쾌Ｂ
+	SOURCE:CHARA:도구쾌Ｂ = 0
+	
+	
+	;-------------------------------------------------
+	;발정중のソース체크
+	;-------------------------------------------------
+	IF 위험일(CHARA) > 1
+		TIMES SOURCE:CHARA:쾌Ｃ , 1.50
+		TIMES SOURCE:CHARA:쾌Ｖ , 1.50
+		TIMES SOURCE:CHARA:쾌Ａ , 1.50
+		TIMES SOURCE:CHARA:쾌Ｂ , 1.50
+	ENDIF
+	;相性による수정
+	SOURCE:CHARA:쾌Ｃ *= LIMIT(100 + (GET_RELATION(CHARA, CHARA:1) - 100)/4 , 75, 125)
+	SOURCE:CHARA:쾌Ｃ /= 100
+
+	SOURCE:CHARA:쾌Ｖ *= LIMIT(100 + (GET_RELATION(CHARA, CHARA:1) - 100)/4 , 75, 125)
+	SOURCE:CHARA:쾌Ｖ /= 100
+
+	SOURCE:CHARA:쾌Ａ *= LIMIT(100 + (GET_RELATION(CHARA, CHARA:1) - 100)/4 , 75, 125)
+	SOURCE:CHARA:쾌Ａ /= 100
+
+	SOURCE:CHARA:쾌Ｂ *= LIMIT(100 + (GET_RELATION(CHARA, CHARA:1) - 100)/4 , 75, 125)
+	SOURCE:CHARA:쾌Ｂ /= 100
+
+	SOURCE:CHARA:정애 *= LIMIT(100 + (GET_RELATION(CHARA, CHARA:1) - 100)/4 , 75, 125)
+	SOURCE:CHARA:정애 /= 100
+
+	SOURCE:CHARA:성행위 *= LIMIT(100 + (GET_RELATION(CHARA, CHARA:1) - 100)/4 , 75, 125)
+	SOURCE:CHARA:성행위 /= 100
+
+	SOURCE:CHARA:달성 *= LIMIT(100 + (GET_RELATION(CHARA, CHARA:1) - 100)/4 , 75, 125)
+	SOURCE:CHARA:달성 /= 100
+
+	SOURCE:CHARA:무서움 *= LIMIT(100 + (GET_RELATION(CHARA, CHARA:1) - 100)/4 , 75, 125)
+	SOURCE:CHARA:무서움 /= 100
+
+	SOURCE:CHARA:중독충족 *= LIMIT(100 + (GET_RELATION(CHARA, CHARA:1) - 100)/4 , 75, 125)
+	SOURCE:CHARA:중독충족 /= 100
+
+	SOURCE:CHARA:욕정 *= LIMIT(100 + (GET_RELATION(CHARA, CHARA:1) - 100)/4 , 75, 125)
+	SOURCE:CHARA:욕정 /= 100
+
+	SOURCE:CHARA:복종 *= LIMIT(100 + (GET_RELATION(CHARA, CHARA:1) - 100)/4 , 75, 125)
+	SOURCE:CHARA:복종 /= 100
+
+	SOURCE:CHARA:굴종 *= LIMIT(100 + (GET_RELATION(CHARA, CHARA:1) - 100)/4 , 75, 125)
+	SOURCE:CHARA:굴종 /= 100
+	;-------------------------------------------------
+	;쾌Ｃのソース
+	;-------------------------------------------------
+	;Ｃ민감とＣ둔감はここで処理
+	SIF TALENT:CHARA:Ｃ둔감
+		TIMES SOURCE:CHARA:쾌Ｃ , 0.50
+	SIF TALENT:CHARA:Ｃ민감
+		TIMES SOURCE:CHARA:쾌Ｃ , 2.00
+
+
+	;충성도による수정
+	;LOCAL = (BASE:ARG:충성도 >= 500 ? LIMIT(BASE:충성도*3/4,500,750) # LIMIT(BASE:충성도/2,1,500))
+	;SOURCE:CHARA:쾌Ｃ *= LOCAL
+	;SOURCE:CHARA:쾌Ｃ /= 500
+
+	;C감각
+	SELECTCASE ABL:CHARA:3
+		CASE  0
+			TIMES SOURCE:CHARA:쾌Ｃ , 0.50
+		CASE  1
+			TIMES SOURCE:CHARA:쾌Ｃ , 1.80
+		CASE  2
+			TIMES SOURCE:CHARA:쾌Ｃ , 3.00
+		CASE  3
+			TIMES SOURCE:CHARA:쾌Ｃ , 5.00
+		CASE  4
+			TIMES SOURCE:CHARA:쾌Ｃ , 7.00
+		CASE  5
+			TIMES SOURCE:CHARA:쾌Ｃ , 9.00
+		CASE  6
+			TIMES SOURCE:CHARA:쾌Ｃ , 11.00
+		CASE  7
+			TIMES SOURCE:CHARA:쾌Ｃ , 13.00
+		CASE  8
+			TIMES SOURCE:CHARA:쾌Ｃ , 15.00
+		CASE  9
+			TIMES SOURCE:CHARA:쾌Ｃ , 17.00
+		CASE 10
+			TIMES SOURCE:CHARA:쾌Ｃ , 20.00
+		CASEELSE
+			SOURCE:CHARA:쾌Ｃ = SOURCE:CHARA:쾌Ｃ * 50 * (ABL:CHARA:3 - 6) / 10
+	ENDSELECT
+	LOCAL = SOURCE:CHARA:쾌Ｃ
+
+	;PALAM:욕정をみる
+	IF PALAM:CHARA:욕정 < PALAMLV:1
+		TIMES LOCAL , 0.80
+	ELSEIF PALAM:CHARA:욕정 < PALAMLV:2
+		TIMES LOCAL , 1.00
+	ELSEIF PALAM:CHARA:욕정 < PALAMLV:3
+		TIMES LOCAL , 1.20
+	ELSEIF PALAM:CHARA:욕정 < PALAMLV:4
+		TIMES LOCAL , 1.50
+	ELSEIF PALAM:CHARA:욕정 >= PALAMLV:4
+		TIMES LOCAL , 1.80
+	ENDIF
+
+	LOCAL:1 = SOURCE:CHARA:쾌Ｃ
+
+	;ABL:욕망をみる
+	SELECTCASE ABL:CHARA:욕망
+		CASE 0
+			TIMES LOCAL:1 , 0.50
+		CASE 1
+			TIMES LOCAL:1 , 0.60
+		CASE 2
+			TIMES LOCAL:1 , 0.70
+		CASE 3
+			TIMES LOCAL:1 , 0.80
+		CASE 4
+			TIMES LOCAL:1 , 0.90
+		CASE 5
+			TIMES LOCAL:1 , 1.00
+		CASE 6
+			TIMES LOCAL:1 , 1.05
+		CASE 7
+			TIMES LOCAL:1 , 1.10
+		CASE 8
+			TIMES LOCAL:1 , 1.15
+		CASE 9
+			TIMES LOCAL:1 , 1.20
+		CASE 10
+			TIMES LOCAL:1 , 1.40
+		CASEELSE
+			LOCAL:1 = LOCAL:1 * (20 * ABL:CHARA:욕망 - 60) / 100
+	ENDSELECT
+	CUP:CHARA:쾌Ｃ += LOCAL
+	CUP:CHARA:욕정 += LOCAL:1
+
+	;-------------------------------------------------
+	;쾌Ｖのソース
+	;-------------------------------------------------
+	;Ｖ민감とＶ둔감はここで処理
+	SIF TALENT:CHARA:Ｖ둔감
+		TIMES SOURCE:CHARA:쾌Ｖ , 0.50
+	SIF TALENT:CHARA:Ｖ민감
+		TIMES SOURCE:CHARA:쾌Ｖ , 2.00
+
+	;충성도による수정
+	;LOCAL = (BASE:ARG:충성도 >= 500 ? LIMIT(BASE:충성도*3/4,500,750) # LIMIT(BASE:충성도/2,1,500))
+	;SOURCE:CHARA:쾌Ｖ *= LOCAL
+	;SOURCE:CHARA:쾌Ｖ /= 500
+
+	;V감각
+	SELECTCASE ABL:CHARA:Ｖ감각
+		CASE 0
+			TIMES SOURCE:CHARA:쾌Ｖ , 0.50
+		CASE 1
+			TIMES SOURCE:CHARA:쾌Ｖ , 1.80
+		CASE 2
+			TIMES SOURCE:CHARA:쾌Ｖ , 3.00
+		CASE 3
+			TIMES SOURCE:CHARA:쾌Ｖ , 5.00
+		CASE 4
+			TIMES SOURCE:CHARA:쾌Ｖ , 7.00
+		CASE 5
+			TIMES SOURCE:CHARA:쾌Ｖ , 9.00
+		CASE 6
+			TIMES SOURCE:CHARA:쾌Ｖ , 11.00
+		CASE 7
+			TIMES SOURCE:CHARA:쾌Ｖ , 13.00
+		CASE 8
+			TIMES SOURCE:CHARA:쾌Ｖ , 15.00
+		CASE 9
+			TIMES SOURCE:CHARA:쾌Ｖ , 17.00
+		CASE 10
+			TIMES SOURCE:CHARA:쾌Ｖ , 20.00
+		CASEELSE
+			SOURCE:CHARA:쾌Ｖ = SOURCE:CHARA:쾌Ｖ * 50 * (ABL:CHARA:Ｖ감각 - 6) / 10
+	ENDSELECT
+	;EXP:CHARA:Ｖ경험をみる
+	IF EXP:CHARA:0 < EXPLV:1
+		TIMES SOURCE:CHARA:쾌Ｖ , 0.20
+	ELSEIF EXP:CHARA:0 < EXPLV:2
+		TIMES SOURCE:CHARA:쾌Ｖ , 0.60
+	ELSEIF EXP:CHARA:0 < EXPLV:3
+		TIMES SOURCE:CHARA:쾌Ｖ , 1.00
+	ELSEIF EXP:CHARA:0 < EXPLV:4
+		TIMES SOURCE:CHARA:쾌Ｖ , 1.20
+	ELSEIF EXP:CHARA:0 < EXPLV:5
+		TIMES SOURCE:CHARA:쾌Ｖ , 1.30
+	ELSEIF EXP:CHARA:0 >= EXPLV:5
+		TIMES SOURCE:CHARA:쾌Ｖ , 1.40
+	ENDIF
+
+
+	;PALAM:윤활をみる
+	IF PALAM:CHARA:윤활 < PALAMLV:1
+		TIMES SOURCE:CHARA:쾌Ｖ , 0.10
+	ELSEIF PALAM:CHARA:윤활 < PALAMLV:2
+		TIMES SOURCE:CHARA:쾌Ｖ , 0.40
+	ELSEIF PALAM:CHARA:윤활 < PALAMLV:3
+		TIMES SOURCE:CHARA:쾌Ｖ , 1.00
+	ELSEIF PALAM:CHARA:윤활 < PALAMLV:4
+		TIMES SOURCE:CHARA:쾌Ｖ , 1.10
+	ELSEIF PALAM:CHARA:윤활 >= PALAMLV:4
+		TIMES SOURCE:CHARA:쾌Ｖ , 1.20
+	ENDIF
+	LOCAL = SOURCE:CHARA:쾌Ｖ
+
+	;PALAM:욕정をみる
+	IF PALAM:CHARA:욕정 < PALAMLV:1
+		TIMES LOCAL , 0.60
+	ELSEIF PALAM:CHARA:욕정 < PALAMLV:2
+		TIMES LOCAL , 0.80
+	ELSEIF PALAM:CHARA:욕정 < PALAMLV:3
+		TIMES LOCAL , 1.00
+	ELSEIF PALAM:CHARA:욕정 < PALAMLV:4
+		TIMES LOCAL , 1.50
+	ELSEIF PALAM:CHARA:욕정 >= PALAMLV:4
+		TIMES LOCAL , 2.00
+	ENDIF
+
+	LOCAL:1 = SOURCE:CHARA:쾌Ｖ
+
+	;ABL:욕망をみる
+	SELECTCASE ABL:CHARA:욕망
+		CASE 0
+			TIMES LOCAL:1 , 0.50
+		CASE 1
+			TIMES LOCAL:1 , 0.60
+		CASE 2
+			TIMES LOCAL:1 , 0.70
+		CASE 3
+			TIMES LOCAL:1 , 0.80
+		CASE 4
+			TIMES LOCAL:1 , 0.90
+		CASE 5
+			TIMES LOCAL:1 , 1.00
+		CASE 6
+			TIMES LOCAL:1 , 1.05
+		CASE 7
+			TIMES LOCAL:1 , 1.10
+		CASE 8
+			TIMES LOCAL:1 , 1.15
+		CASE 9
+			TIMES LOCAL:1 , 1.20
+		CASE 10
+			TIMES LOCAL:1 , 1.40
+		CASEELSE
+			LOCAL:1 = LOCAL:1 * (20 * ABL:CHARA:욕망 - 60) / 100
+	ENDSELECT
+	;소인체형
+	IF TALENT:CHARA:소인체형
+		TIMES LOCAL , 0.80
+		TIMES LOCAL:1 , 1.20
+		CUP:CHARA:습득 += LOCAL:1/2
+	ENDIF
+
+	CUP:CHARA:쾌Ｖ += LOCAL
+	CUP:CHARA:욕정 += LOCAL:1
+
+	;-------------------------------------------------
+	;쾌Ａのソース
+	;-------------------------------------------------
+	;Ａ민감とＡ둔감はここで処理
+	SIF TALENT:CHARA:105
+		TIMES SOURCE:CHARA:쾌Ａ , 0.50
+	SIF TALENT:CHARA:106
+		TIMES SOURCE:CHARA:쾌Ａ , 2.00
+
+	;오토코노코
+	SIF TALENT:CHARA:오토코노코
+		TIMES SOURCE:CHARA:쾌Ａ , 1.50
+
+	;충성도による수정
+	;LOCAL = (BASE:ARG:충성도 >= 500 ? LIMIT(BASE:충성도*3/4,500,750) # LIMIT(BASE:충성도/2,1,500))
+	;SOURCE:CHARA:쾌Ａ *= LOCAL
+	;SOURCE:CHARA:쾌Ａ /= 500
+
+	;A감각
+	SELECTCASE ABL:CHARA:Ａ감각
+		CASE 0
+			TIMES SOURCE:CHARA:쾌Ａ , 0.50
+		CASE 1
+			TIMES SOURCE:CHARA:쾌Ａ , 1.80
+		CASE 2
+			TIMES SOURCE:CHARA:쾌Ａ , 3.00
+		CASE 3
+			TIMES SOURCE:CHARA:쾌Ａ , 5.00
+		CASE 4
+			TIMES SOURCE:CHARA:쾌Ａ , 7.00
+		CASE 5
+			TIMES SOURCE:CHARA:쾌Ａ , 9.00
+		CASE 6
+			TIMES SOURCE:CHARA:쾌Ａ , 11.00
+		CASE 7
+			TIMES SOURCE:CHARA:쾌Ａ , 13.00
+		CASE 8
+			TIMES SOURCE:CHARA:쾌Ａ , 15.00
+		CASE 9
+			TIMES SOURCE:CHARA:쾌Ａ , 17.00
+		CASE 10
+			TIMES SOURCE:CHARA:쾌Ａ , 20.00
+		CASEELSE
+			SOURCE:CHARA:쾌Ａ = SOURCE:CHARA:쾌Ａ * 50 * (ABL:CHARA:Ａ감각 - 6) / 10
+	ENDSELECT
+
+	;EXP:CHARA:Ａ경험をみる
+	IF EXP:CHARA:1 < EXPLV:1
+		TIMES SOURCE:CHARA:쾌Ａ , 0.10
+	ELSEIF EXP:CHARA:1 < EXPLV:2
+		TIMES SOURCE:CHARA:쾌Ａ , 0.30
+	ELSEIF EXP:CHARA:1 < EXPLV:3
+		TIMES SOURCE:CHARA:쾌Ａ , 0.50
+	ELSEIF EXP:CHARA:1 < EXPLV:4
+		TIMES SOURCE:CHARA:쾌Ａ , 1.00
+	ELSEIF EXP:CHARA:1 < EXPLV:5
+		TIMES SOURCE:CHARA:쾌Ａ , 1.20
+	ELSEIF EXP:CHARA:1 >= EXPLV:5
+		TIMES SOURCE:CHARA:쾌Ａ , 1.40
+	ENDIF
+
+	;PALAM:윤활をみる
+	IF PALAM:CHARA:윤활 < PALAMLV:1
+		TIMES SOURCE:CHARA:쾌Ａ , 0.40
+	ELSEIF PALAM:CHARA:윤활 < PALAMLV:2
+		TIMES SOURCE:CHARA:쾌Ａ , 0.80
+	ELSEIF PALAM:CHARA:윤활 < PALAMLV:3
+		TIMES SOURCE:CHARA:쾌Ａ , 1.00
+	ELSEIF PALAM:CHARA:윤활 < PALAMLV:4
+		TIMES SOURCE:CHARA:쾌Ａ , 1.10
+	ELSEIF PALAM:CHARA:윤활 >= PALAMLV:4
+		TIMES SOURCE:CHARA:쾌Ａ , 1.20
+	ENDIF
+
+	LOCAL = SOURCE:CHARA:쾌Ａ
+
+	;PALAM:욕정をみる
+	;쾌ＡはあまりPALAM:욕정では差が出ない
+	IF PALAM:CHARA:욕정 < PALAMLV:1
+		TIMES LOCAL , 0.80
+	ELSEIF PALAM:CHARA:욕정 < PALAMLV:2
+		TIMES LOCAL , 1.00
+	ELSEIF PALAM:CHARA:욕정 < PALAMLV:3
+		TIMES LOCAL , 1.20
+	ELSEIF PALAM:CHARA:욕정 < PALAMLV:4
+		TIMES LOCAL , 1.40
+	ELSEIF PALAM:CHARA:욕정 >= PALAMLV:4
+		TIMES LOCAL , 1.60
+	ENDIF
+
+
+	LOCAL:1 = SOURCE:CHARA:쾌Ａ
+
+	;ABL:욕망をみる
+	SELECTCASE ABL:CHARA:욕망
+		CASE 0
+			TIMES LOCAL:1 , 0.50
+		CASE 1
+			TIMES LOCAL:1 , 0.60
+		CASE 2
+			TIMES LOCAL:1 , 0.70
+		CASE 3
+			TIMES LOCAL:1 , 0.80
+		CASE 4
+			TIMES LOCAL:1 , 0.90
+		CASE 5
+			TIMES LOCAL:1 , 1.00
+		CASE 6
+			TIMES LOCAL:1 , 1.05
+		CASE 7
+			TIMES LOCAL:1 , 1.10
+		CASE 8
+			TIMES LOCAL:1 , 1.15
+		CASE 9
+			TIMES LOCAL:1 , 1.20
+		CASE 10
+			TIMES LOCAL:1 , 1.40
+		CASEELSE
+			LOCAL:1 = LOCAL:1 * (20 * ABL:CHARA:욕망 - 60) / 100
+	ENDSELECT
+
+	;소인체형
+	IF TALENT:CHARA:소인체형
+		TIMES LOCAL , 0.50
+		TIMES LOCAL:1 , 1.50
+	ENDIF
+
+
+
+	;쾌Aのソースが0이상で처녀で정조관념のとき、굴복のソースを三分の一にする
+	IF EXP:CHARA:0 == 0 && TALENT:CHARA:30 && SOURCE:CHARA:쾌Ａ > 0
+		SOURCE:CHARA:굴종 /= 3
+	ENDIF
+
+	CUP:CHARA:쾌Ａ += LOCAL
+	CUP:CHARA:욕정 += LOCAL:1
+
+	;-------------------------------------------------
+	;쾌Ｂのソース
+	;-------------------------------------------------
+	;Ｂ민감とＢ둔감はここで処理
+	SIF TALENT:CHARA:107
+		TIMES SOURCE:CHARA:쾌Ｂ , 0.50
+	SIF TALENT:CHARA:108
+		TIMES SOURCE:CHARA:쾌Ｂ , 2.00
+
+	;오토코노코
+	SIF TALENT:CHARA:오토코노코
+		TIMES SOURCE:CHARA:쾌Ｂ , 1.50
+
+	;충성도による수정
+	;LOCAL = (BASE:ARG:충성도 >= 500 ? LIMIT(BASE:충성도*3/4,500,750) # LIMIT(BASE:충성도/2,1,500))
+	;SOURCE:CHARA:쾌Ｂ *= LOCAL
+	;SOURCE:CHARA:쾌Ｂ /= 500
+
+
+
+
+
+	;B감각
+	SELECTCASE ABL:CHARA:Ｂ감각
+		CASE  0
+			TIMES SOURCE:CHARA:쾌Ｂ , 0.50
+		CASE  1
+			TIMES SOURCE:CHARA:쾌Ｂ , 1.80
+		CASE  2
+			TIMES SOURCE:CHARA:쾌Ｂ , 3.00
+		CASE  3
+			TIMES SOURCE:CHARA:쾌Ｂ , 5.00
+		CASE  4
+			TIMES SOURCE:CHARA:쾌Ｂ , 7.00
+		CASE  5
+			TIMES SOURCE:CHARA:쾌Ｂ , 9.00
+		CASE  6
+			TIMES SOURCE:CHARA:쾌Ｂ , 11.00
+		CASE  7
+			TIMES SOURCE:CHARA:쾌Ｂ , 13.00
+		CASE  8
+			TIMES SOURCE:CHARA:쾌Ｂ , 15.00
+		CASE  9
+			TIMES SOURCE:CHARA:쾌Ｂ , 17.00
+		CASE 10
+			TIMES SOURCE:CHARA:쾌Ｂ , 20.00
+		CASEELSE
+			SOURCE:CHARA:쾌Ｂ = SOURCE:CHARA:쾌Ｂ * 50 * (ABL:CHARA:Ｂ감각 - 6) / 10
+	ENDSELECT
+	LOCAL = SOURCE:CHARA:쾌Ｂ
+
+	;PALAM:욕정をみる
+	IF PALAM:CHARA:욕정 < PALAMLV:1
+		TIMES LOCAL , 0.80
+	ELSEIF PALAM:CHARA:욕정 < PALAMLV:2
+		TIMES LOCAL , 1.00
+	ELSEIF PALAM:CHARA:욕정 < PALAMLV:3
+		TIMES LOCAL , 1.20
+	ELSEIF PALAM:CHARA:욕정 < PALAMLV:4
+		TIMES LOCAL , 1.50
+	ELSEIF PALAM:CHARA:욕정 >= PALAMLV:4
+		TIMES LOCAL , 1.80
+	ENDIF
+
+	LOCAL:1 = SOURCE:CHARA:쾌Ｂ
+
+	;ABL:욕망をみる
+	SELECTCASE ABL:CHARA:욕망
+		CASE 0
+			TIMES LOCAL:1 , 0.50
+		CASE 1
+			TIMES LOCAL:1 , 0.60
+		CASE 2
+			TIMES LOCAL:1 , 0.70
+		CASE 3
+			TIMES LOCAL:1 , 0.80
+		CASE 4
+			TIMES LOCAL:1 , 0.90
+		CASE 5
+			TIMES LOCAL:1 , 1.00
+		CASE 6
+			TIMES LOCAL:1 , 1.05
+		CASE 7
+			TIMES LOCAL:1 , 1.10
+		CASE 8
+			TIMES LOCAL:1 , 1.15
+		CASE 9
+			TIMES LOCAL:1 , 1.20
+		CASE 10
+			TIMES LOCAL:1 , 1.40
+		CASEELSE
+			LOCAL:1 = LOCAL:1 * (20 * ABL:CHARA:욕망 - 60) / 100
+	ENDSELECT
+
+	CUP:CHARA:쾌Ｂ += LOCAL
+	CUP:CHARA:욕정 += LOCAL:1
+
+	;-------------------------------------------------
+	;同じコマンドの連続実行による上下の処理（쾌락系）
+	;-------------------------------------------------
+	IF SELECTCOM == PREVCOM
+		;CUP:CHARA:쾌ＣＶＡＢは절정に絡むので先に処理してある
+		CUP:CHARA:쾌Ｃ /= 2
+		CUP:CHARA:쾌Ｖ /= 2
+		CUP:CHARA:쾌Ａ /= 2
+		CUP:CHARA:쾌Ｂ /= 2
+	ENDIF
+
+	;-------------------------------------------------
+	;기력０による上下の処理（쾌락系）
+	;-------------------------------------------------
+	IF BASE:CHARA:기력 <= 0
+		;CUP:CHARA:쾌ＣＶＡＢは절정に絡むので先に処理してある
+		CUP:CHARA:쾌Ｃ /= 2
+		CUP:CHARA:쾌Ｖ /= 2
+		CUP:CHARA:쾌Ａ /= 2
+		CUP:CHARA:쾌Ｂ /= 2
+	ENDIF
+
+	;-------------------------------------------------
+	;相性による上下の処理（쾌락系）
+	;-------------------------------------------------
+	;R = NO:PLAYER
+	;IF RELATION:R != 0
+	;	CUP:CHARA:쾌Ｃ *= RELATION:R
+	;	CUP:CHARA:쾌Ｃ /= 100
+	;	CUP:CHARA:쾌Ｖ *= RELATION:R
+	;	CUP:CHARA:쾌Ｖ /= 100
+	;	CUP:CHARA:쾌Ａ *= RELATION:R
+	;	CUP:CHARA:쾌Ａ /= 100
+	;	CUP:CHARA:쾌Ｂ *= RELATION:R
+	;	CUP:CHARA:쾌Ｂ /= 100
+	;ENDIF
+
+	;-------------------------------------------------
+	;쾌감을부정は、쾌ソースの数値に応じて、억울증가（음란、창부で무효）
+	;-------------------------------------------------
+	SIF TALENT:CHARA:71 && (TALENT:CHARA:4 == 0 && TALENT:CHARA:7 == 0)
+		SOURCE:CHARA:울굴 += (CUP:CHARA:쾌Ｃ+UP:1+CUP:CHARA:쾌Ａ+CUP:CHARA:쾌Ｂ)/10
+
+	;-------------------------------------------------
+	;소질などによる上下の処理（쾌락系）
+	;-------------------------------------------------
+	;미약
+	IF TEQUIP:CHARA:미약
+		TIMES CUP:CHARA:쾌Ｃ , 2.00
+		TIMES CUP:CHARA:쾌Ｖ , 2.00
+		TIMES CUP:CHARA:쾌Ａ , 2.00
+		TIMES CUP:CHARA:쾌Ｂ , 2.00
+	ENDIF
+
+	;이뇨제
+	IF TEQUIP:CHARA:이뇨제
+		TIMES CUP:CHARA:쾌Ｃ , 0.70
+		TIMES CUP:CHARA:쾌Ｖ , 0.70
+		TIMES CUP:CHARA:쾌Ａ , 0.70
+		TIMES CUP:CHARA:쾌Ｂ , 0.70
+	ENDIF
+
+	;-------------------------------------------------
+	;함락소질
+	;-------------------------------------------------
+	;음란
+	IF TALENT:CHARA:음란
+		TIMES CUP:CHARA:쾌Ｃ , 1.20
+		TIMES CUP:CHARA:쾌Ｖ , 1.20
+		TIMES CUP:CHARA:쾌Ａ , 1.20
+		TIMES CUP:CHARA:쾌Ｂ , 1.20
+	ENDIF
+
+	;창부
+	IF TALENT:CHARA:창부
+		TIMES CUP:CHARA:쾌Ｃ , 1.50
+		TIMES CUP:CHARA:쾌Ｖ , 1.50
+		TIMES CUP:CHARA:쾌Ａ , 1.50
+		TIMES CUP:CHARA:쾌Ｂ , 1.50
+	ENDIF
+
+	;-------------------------------------------------
+	;소질
+	;-------------------------------------------------
+	;자제심
+	IF TALENT:CHARA:20
+		TIMES CUP:CHARA:쾌Ｃ , 0.70
+		TIMES CUP:CHARA:쾌Ｖ , 0.90
+		TIMES CUP:CHARA:쾌Ａ , 1.00
+		TIMES CUP:CHARA:쾌Ｂ , 0.70
+	ENDIF
+
+	;즉각함락
+	IF TALENT:CHARA:73
+		TIMES CUP:CHARA:쾌Ｃ , 2.00
+		TIMES CUP:CHARA:쾌Ｖ , 2.00
+		TIMES CUP:CHARA:쾌Ａ , 2.00
+		TIMES CUP:CHARA:쾌Ｂ , 2.00
+	ENDIF
+	;자위광
+	SIF TALENT:CHARA:74
+		TIMES CUP:CHARA:쾌Ｃ , 1.20
+	;섹스광い
+	SIF TALENT:CHARA:75
+		TIMES CUP:CHARA:쾌Ｖ , 1.20
+	;애널광
+	SIF TALENT:CHARA:76
+		TIMES CUP:CHARA:쾌Ａ , 1.20
+	;음유
+	SIF TALENT:CHARA:77
+		TIMES CUP:CHARA:쾌Ｂ , 1.20
+
+	;남자
+	IF IS_MALE(TARGET)
+		TIMES CUP:CHARA:쾌Ａ , 1.30
+	ENDIF
+
+	;-------------------------------------------------
+	;난이도による上下の処理（쾌락系）
+	;-------------------------------------------------
+	;EASY
+	IF FLAG:4 == 1
+		TIMES CUP:CHARA:쾌Ｃ , 1.60
+		TIMES CUP:CHARA:쾌Ｖ , 1.60
+		TIMES CUP:CHARA:쾌Ａ , 1.60
+		TIMES CUP:CHARA:쾌Ｂ , 1.60
+	;NORMAL
+	ELSEIF FLAG:4 == 2
+		TIMES CUP:CHARA:쾌Ｃ , 1.20
+		TIMES CUP:CHARA:쾌Ｖ , 1.20
+		TIMES CUP:CHARA:쾌Ａ , 1.20
+		TIMES CUP:CHARA:쾌Ｂ , 1.20
+	;HARD
+	ELSEIF FLAG:4 == 3
+		TIMES CUP:CHARA:쾌Ｃ , 0.80
+		TIMES CUP:CHARA:쾌Ｖ , 0.80
+		TIMES CUP:CHARA:쾌Ａ , 0.80
+		TIMES CUP:CHARA:쾌Ｂ , 0.80
+	ENDIF
+
+
+	;손가락삽입の慣らしギミック用処理、V경험が0の時は쾌Vは99で최대にする
+	LOCAL = CUP:CHARA:쾌Ｖ + PALAM:CHARA:쾌Ｖ
+	IF LOCAL >= 100 && EXP:CHARA:0 == 0
+		CUP:CHARA:쾌Ｖ = 0
+		PALAM:CHARA:쾌Ｖ = 99
+	ENDIF
+
+	;-------------------------------------------------
+	;음문발동(유동닉)
+	;-------------------------------------------------
+	IF TEQUIP:CHARA:음문발동
+		TIMES CUP:CHARA:쾌Ｃ , 10.00
+		TIMES CUP:CHARA:쾌Ｖ , 10.00
+		TIMES CUP:CHARA:쾌Ａ , 10.00
+		TIMES CUP:CHARA:쾌Ｂ , 10.00
+		TIMES CUP:CHARA:복종 , 2.00
+		TIMES CUP:CHARA:굴복 , 2.00
+		TIMES CUP:CHARA:욕정 , 2.00
+		TIMES CUP:CHARA:반감 , 0.50
+		TIMES CUP:CHARA:불쾌 , 0.50
+	ENDIF
+	
+	;-------------------------------------------------
+	;애액処理
+	;-------------------------------------------------
+	LOCAL = CUP:CHARA:쾌Ｃ + CUP:CHARA:쾌Ｖ + CUP:CHARA:쾌Ａ + CUP:CHARA:쾌Ｂ
+	;쾌Ｃ＋쾌Ｖ＋쾌Ａ＋쾌Ｂが合わせて100이상上昇ならその20%の액체のソースが加わる（남자はダメ）
+	IF LOCAL > 100
+		;젖기쉬움と젖기어려움はここで処理
+		SIF TALENT:CHARA:42
+			TIMES LOCAL , 3.00
+		SIF TALENT:CHARA:43
+			TIMES LOCAL , 0.40
+		CUP:CHARA:윤활 += LOCAL / 5
+	ENDIF
+	;-------------------------------------------------
+	;강정신약による절정취소
+	;-------------------------------------------------
+	IF TEQUIP:CHARA:강정신약 > 1
+		CALL ECST_CANCEL, CHARA
+	;-------------------------------------------------
+	;절정処理
+	;-------------------------------------------------
+	ELSE
+		CALL ORGASM_ADD, CHARA
+	ENDIF
+
+	;-------------------------------------------------
+	;액체のソース
+	;-------------------------------------------------
+	LOCAL = SOURCE:CHARA:액체
+
+	;소인체형
+	IF TALENT:CHARA:소인체형 == 0 && TALENT:(CHARA:1):소인체형
+		SIF SELECTCOM != 180
+			TIMES SOURCE:CHARA:액체 , 0.40
+	ENDIF
+
+	CUP:CHARA:윤활 += SOURCE:CHARA:액체
+
+	;-------------------------------------------------
+	;욕정のソース
+	;-------------------------------------------------
+
+	;충성도による수정
+	;LOCAL = (BASE:ARG:충성도 >= 500 ? LIMIT(BASE:충성도*3/4,500,750) # LIMIT(BASE:충성도/2,1,500))
+
+	;SOURCE:CHARA:욕정 *= LOCAL
+	;SOURCE:CHARA:욕정 /= 500
+
+	LOCAL = SOURCE:CHARA:욕정
+
+	;욕망を見る
+	SELECTCASE ABL:CHARA:욕망
+		CASE 0
+			TIMES LOCAL , 0.00
+		CASE 1
+			TIMES LOCAL , 0.40
+		CASE 2
+			TIMES LOCAL , 0.80
+		CASE 3
+			TIMES LOCAL , 1.20
+		CASE 4
+			TIMES LOCAL , 1.60
+		CASE 5
+			TIMES LOCAL , 2.00
+		CASE 6
+			TIMES LOCAL , 2.40
+		CASE 7
+			TIMES LOCAL , 2.80
+		CASE 8
+			TIMES LOCAL , 3.20
+		CASE 9
+			TIMES LOCAL , 3.60
+		CASE 10
+			TIMES LOCAL , 5.00
+		CASEELSE
+			LOCAL = LOCAL * (ABL:CHARA:욕망 * 15 - 100) / 10
+	ENDSELECT
+	CUP:CHARA:욕정 += LOCAL
+	;-------------------------------------------------
+	;아픔のソース
+	;-------------------------------------------------
+	LOCAL = SOURCE:CHARA:아픔
+	LOCAL:1 = SOURCE:CHARA:아픔
+	LOCAL:2 = SOURCE:CHARA:아픔/20
+
+
+	;충성도による수정
+	;LOCAL = (BASE:ARG:충성도 >= 500 ? LIMIT(BASE:충성도*3/4,500,750) # LIMIT(BASE:충성도/2,1,500))
+	;B *= LOCAL
+	;B /= 500
+
+	;相性による수정
+	IF CHARA == TARGET
+		LOCAL:1 *= LIMIT(100 + (GET_RELATION(CHARA, CHARA:1) - 100)/4 , 75, 125)
+		LOCAL:1 /= 100
+	ENDIF
+
+
+	;마조끼
+	SELECTCASE ABL:CHARA:마조끼
+		CASE 0
+			TIMES LOCAL:1 , 0.00
+		CASE 1
+			TIMES LOCAL:1 , 0.10
+		CASE 2
+			TIMES LOCAL:1 , 0.20
+		CASE 3
+			TIMES LOCAL:1 , 0.30
+		CASE 4
+			TIMES LOCAL:1 , 0.45
+		CASE 5
+			TIMES LOCAL:1 , 0.60
+		CASE 6
+			TIMES LOCAL:1 , 0.75
+		CASE 7
+			TIMES LOCAL:1 , 0.90
+		CASE 8
+			TIMES LOCAL:1 , 1.20
+		CASE 9
+			TIMES LOCAL:1 , 1.50
+		CASE 10
+			TIMES LOCAL:1 , 3.00
+		CASEELSE
+			LOCAL:1 = LOCAL:1 * (ABL:CHARA:마조끼 * 30) / 100
+	ENDSELECT
+	;소인체형
+	IF TALENT:CHARA:소인체형
+		TIMES LOCAL , 2.00
+		TIMES LOCAL:1 , 0.75
+	ENDIF
+
+	;조교者が【새드】
+	SIF TALENT:PLAYER:83 && TARGET == CHARA
+		TIMES LOCAL:1 , 2.50
+
+	;겁쟁이
+	SIF TALENT:CHARA:10
+		TIMES LOCAL:2 , 2.00
+
+	;마조끼があるとPALAM:욕정も上がる
+	;そのとき조교者が【새드】だと効果的
+	;고통に応じて공포のソースが증가する
+	CUP:CHARA:고통 += LOCAL
+	CUP:CHARA:욕정 += LOCAL:1
+	CUP:CHARA:공포 += LOCAL:2
+
+NEXT
+SIF ASSI >= 0 && (TFLAG:61 > 0)
+	CALL ORGASM_ADD, ASSI
+CHARA = TARGET
+CHARA:1 = PLAYER
+
+;-------------------------------------------------
+;조교대상の사정체크（후타나리・남자）
+;-------------------------------------------------
+CALL TARGET_EJAC_CHECK
+;-------------------------------------------------
+;主人・조수の사정체크（후타나리・남자）
+;-------------------------------------------------
+CALL EJAC_CHECK , MASTER
+SIF ASSI > -1
+	CALL EJAC_CHECK , ASSI
+;-------------------------------------------------
+;분유체크
+;-------------------------------------------------
+CALL MILK_CHECK, CHARA, CHARA:1
+CALL MILK_CHECK, CHARA:1, CHARA
+
+;-------------------------------------------------
+;정애のソース
+;-------------------------------------------------
+
+;충성도による수정
+;LOCAL = (BASE:ARG:충성도 >= 500 ? LIMIT(BASE:충성도*3/4,500,750) # LIMIT(BASE:충성도/2,1,500))
+
+;SOURCE:CHARA:정애 *= LOCAL
+;SOURCE:CHARA:정애 /= 500
+
+LOCAL = SOURCE:CHARA:정애
+
+;ABL:순종をみる
+SELECTCASE ABL:CHARA:순종
+	CASE 0
+		TIMES LOCAL , 0.10
+	CASE 1
+		TIMES LOCAL , 0.50
+	CASE 2
+		TIMES LOCAL , 1.00
+	CASE 3
+		TIMES LOCAL , 1.50
+	CASE 4
+		TIMES LOCAL , 2.00
+	CASE 5
+		TIMES LOCAL , 2.50
+	CASE 6
+		TIMES LOCAL , 3.00
+	CASE 7
+		TIMES LOCAL , 3.50
+	CASE 8
+		TIMES LOCAL , 4.00
+	CASE 9
+		TIMES LOCAL , 5.00
+	CASE 10
+		TIMES LOCAL , 6.00
+	CASEELSE
+		LOCAL = LOCAL * (ABL:CHARA:순종 - 4)
+ENDSELECT
+LOCAL:1 = SOURCE:CHARA:정애
+
+;욕망を見る
+SELECTCASE ABL:CHARA:욕망
+	CASE 0
+		TIMES LOCAL:1 , 0.00
+	CASE 1
+		TIMES LOCAL:1 , 0.40
+	CASE 2
+		TIMES LOCAL:1 , 0.80
+	CASE 3
+		TIMES LOCAL:1 , 1.20
+	CASE 4
+		TIMES LOCAL:1 , 1.60
+	CASE 5
+		TIMES LOCAL:1 , 2.00
+	CASE 6
+		TIMES LOCAL:1 , 2.40
+	CASE 7
+		TIMES LOCAL:1 , 2.80
+	CASE 8
+		TIMES LOCAL:1 , 3.20
+	CASE 9
+		TIMES LOCAL:1 , 3.60
+	CASE 10
+		TIMES LOCAL:1 , 5.00
+	CASEELSE
+		LOCAL:1 = LOCAL:1 * ABL:CHARA:욕망 * 50 / 100
+ENDSELECT
+CUP:CHARA:복종 += LOCAL
+CUP:CHARA:욕정 += LOCAL:1
+
+;-------------------------------------------------
+;성행위のソース
+;-------------------------------------------------
+
+;충성도による수정
+;LOCAL = (BASE:ARG:충성도 >= 500 ? LIMIT(BASE:충성도*3/4,500,750) # LIMIT(BASE:충성도/2,1,500))
+;SOURCE:CHARA:성행위 *= LOCAL
+;SOURCE:CHARA:성행위 /= 500
+
+LOCAL = SOURCE:CHARA:성행위
+
+;ABL:기교をみる
+SELECTCASE ABL:CHARA:기교
+	CASE 0
+		TIMES LOCAL , 0.60
+	CASE 1
+		TIMES LOCAL , 1.20
+	CASE 2
+		TIMES LOCAL , 1.80
+	CASE 3
+		TIMES LOCAL , 2.40
+	CASE 4
+		TIMES LOCAL , 3.00
+	CASE 5
+		TIMES LOCAL , 3.60
+	CASE 6
+		TIMES LOCAL , 4.20
+	CASE 7
+		TIMES LOCAL , 4.80
+	CASE 8
+		TIMES LOCAL , 5.40
+	CASE 9
+		TIMES LOCAL , 6.00
+	CASE 10
+		TIMES LOCAL , 7.00
+	CASEELSE
+		LOCAL = LOCAL * (ABL:CHARA:기교 - 3)
+ENDSELECT
+;ABL:봉사정신をみる
+SELECTCASE ABL:CHARA:봉사정신
+	CASE 0
+		TIMES LOCAL , 0.60
+	CASE 1
+		TIMES LOCAL , 0.80
+	CASE 2
+		TIMES LOCAL , 1.00
+	CASE 3
+		TIMES LOCAL , 1.20
+	CASE 4
+		TIMES LOCAL , 1.40
+	CASE 5
+		TIMES LOCAL , 1.70
+	CASE 6
+		TIMES LOCAL , 2.00
+	CASE 7
+		TIMES LOCAL , 2.40
+	CASE 8
+		TIMES LOCAL , 2.80
+	CASE 9
+		TIMES LOCAL , 4.00
+	CASE 10
+		TIMES LOCAL , 5.00
+	CASEELSE
+		LOCAL = LOCAL * (ABL:CHARA:봉사정신 - 5)
+ENDSELECT
+CUP:CHARA:습득 += LOCAL
+
+;-------------------------------------------------
+;달성のソース
+;-------------------------------------------------
+
+;충성도による수정
+;LOCAL = (BASE:ARG:충성도 >= 500 ? LIMIT(BASE:충성도*3/4,500,750) # LIMIT(BASE:충성도/2,1,500))
+;SOURCE:CHARA:달성 *= LOCAL
+;SOURCE:CHARA:달성 /= 500
+
+LOCAL = SOURCE:CHARA:달성
+
+;ABL:순종をみる
+SELECTCASE ABL:CHARA:순종
+	CASE 0
+		TIMES LOCAL , 0.50
+	CASE 1
+		TIMES LOCAL , 1.00
+	CASE 2
+		TIMES LOCAL , 1.50
+	CASE 3
+		TIMES LOCAL , 2.00
+	CASE 4
+		TIMES LOCAL , 2.50
+	CASE 5
+		TIMES LOCAL , 3.00
+	CASE 6
+		TIMES LOCAL , 3.50
+	CASE 7
+		TIMES LOCAL , 4.00
+	CASE 8
+		TIMES LOCAL , 4.50
+	CASE 9
+		TIMES LOCAL , 5.00
+	CASE 10
+		TIMES LOCAL , 6.00
+	CASEELSE
+		LOCAL = LOCAL * (ABL:CHARA:순종 - 4)
+ENDSELECT
+;ABL:봉사정신をみる
+SELECTCASE ABL:CHARA:봉사정신
+	CASE 0
+		TIMES LOCAL , 0.00
+	CASE 1
+		TIMES LOCAL , 0.50
+	CASE 2
+		TIMES LOCAL , 1.00
+	CASE 3
+		TIMES LOCAL , 1.50
+	CASE 4
+		TIMES LOCAL , 2.00
+	CASE 5
+		TIMES LOCAL , 2.50
+	CASE 6
+		TIMES LOCAL , 3.00
+	CASE 7
+		TIMES LOCAL , 3.50
+	CASE 8
+		TIMES LOCAL , 4.00
+	CASE 9
+		TIMES LOCAL , 4.50
+	CASE 10
+		TIMES LOCAL , 6.00
+	CASEELSE
+		LOCAL = LOCAL * (ABL:CHARA:봉사정신 * 150 - 900 ) / 100
+ENDSELECT
+CUP:CHARA:복종 += LOCAL
+
+
+
+;-------------------------------------------------
+;무서움のソース
+;-------------------------------------------------
+
+;충성도による수정
+;LOCAL = (BASE:ARG:충성도 >= 500 ? LIMIT(BASE:충성도*3/4,500,750) # LIMIT(BASE:충성도/2,1,500))
+;SOURCE:CHARA:무서움 *= LOCAL
+;SOURCE:CHARA:무서움 /= 500
+
+LOCAL = SOURCE:CHARA:무서움
+
+;ABL:순종をみる（공포よりは畏怖に近いと解釈）
+SELECTCASE ABL:CHARA:순종
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.50
+	CASE 2
+		TIMES LOCAL , 2.00
+	CASE 3
+		TIMES LOCAL , 2.50
+	CASE 4
+		TIMES LOCAL , 3.00
+	CASE 5
+		TIMES LOCAL , 3.50
+	CASE 6
+		TIMES LOCAL , 4.00
+	CASE 7
+		TIMES LOCAL , 4.50
+	CASE 8
+		TIMES LOCAL , 5.00
+	CASE 9
+		TIMES LOCAL , 5.50
+	CASE 10
+		TIMES LOCAL , 7.00
+	CASEELSE
+		LOCAL = LOCAL * (ABL:CHARA:순종 * 150 - 800 ) / 100
+ENDSELECT
+CUP:CHARA:공포 += LOCAL
+
+;-------------------------------------------------
+;중독충족のソース
+;-------------------------------------------------
+
+;충성도による수정
+;LOCAL = (BASE:ARG:충성도 >= 500 ? LIMIT(BASE:충성도*3/4,500,750) # LIMIT(BASE:충성도/2,1,500))
+
+;SOURCE:CHARA:중독충족 *= LOCAL
+;SOURCE:CHARA:중독충족 /= 500
+
+LOCAL = SOURCE:CHARA:중독충족
+LOCAL:1 = SOURCE:CHARA:중독충족
+
+;욕망
+SELECTCASE ABL:CHARA:욕망
+	CASE 0
+		TIMES LOCAL , 0.40
+		TIMES LOCAL:1 , 0.50
+	CASE  1
+		TIMES LOCAL , 0.60
+		TIMES LOCAL:1 , 0.70
+	CASE  2
+		TIMES LOCAL , 0.80
+		TIMES LOCAL:1 , 0.90
+	CASE  3
+		TIMES LOCAL , 1.00
+		TIMES LOCAL:1 , 1.10
+	CASE  4
+		TIMES LOCAL , 1.20
+		TIMES LOCAL:1 , 1.30
+	CASE  5
+		TIMES LOCAL , 1.40
+		TIMES LOCAL:1 , 1.50
+	CASE  6
+		TIMES LOCAL , 1.60
+		TIMES LOCAL:1 , 1.70
+	CASE  7
+		TIMES LOCAL , 1.80
+		TIMES LOCAL:1 , 1.90
+	CASE  8
+		TIMES LOCAL , 2.00
+		TIMES LOCAL:1 , 2.10
+	CASE  9
+		TIMES LOCAL , 2.20
+		TIMES LOCAL:1 , 2.30
+	CASE 10
+		TIMES LOCAL , 2.50
+		TIMES LOCAL:1 , 2.70
+	CASEELSE
+		LOCAL = LOCAL * ABL:CHARA:욕망 * 25 / 10
+		LOCAL:1 = LOCAL:1 * (ABL:CHARA:욕망 * 40 - 130) / 10
+ENDSELECT
+
+CUP:CHARA:복종 += LOCAL
+CUP:CHARA:욕정 += LOCAL:1
+
+
+;-------------------------------------------------
+;복종のソース
+;-------------------------------------------------
+
+;충성도による수정
+;LOCAL = (BASE:ARG:충성도 >= 500 ? LIMIT(BASE:충성도*3/4,500,750) # LIMIT(BASE:충성도/2,1,500))
+
+;SOURCE:CHARA:복종 *= LOCAL
+;SOURCE:CHARA:복종 /= 500
+
+LOCAL = SOURCE:CHARA:복종
+
+;ABL:순종をみる
+SELECTCASE ABL:CHARA:순종
+	CASE 0
+		TIMES LOCAL , 0.50
+	CASE 1
+		TIMES LOCAL , 0.80
+	CASE 2
+		TIMES LOCAL , 1.00
+	CASE 3
+		TIMES LOCAL , 1.20
+	CASE 4
+		TIMES LOCAL , 1.40
+	CASE 5
+		TIMES LOCAL , 1.60
+	CASE 6
+		TIMES LOCAL , 1.80
+	CASE 7
+		TIMES LOCAL , 2.00
+	CASE 8
+		TIMES LOCAL , 2.40
+	CASE 9
+		TIMES LOCAL , 3.00
+	CASE 10
+		TIMES LOCAL , 5.00
+	CASEELSE
+		LOCAL = LOCAL * (ABL:CHARA:순종 - 5) * 2 - LOCAL
+ENDSELECT
+CUP:CHARA:복종 += LOCAL
+
+;-------------------------------------------------
+;노출のソース
+;-------------------------------------------------
+;부끄럼쟁이と부끄럼없음はここで処理
+SIF TALENT:CHARA:35
+	TIMES SOURCE:CHARA:노출 , 2.00
+SIF TALENT:CHARA:36
+	TIMES SOURCE:CHARA:노출 , 0.50
+
+;윤활アップの50％を노출のソースに加える
+;ただし액체추가のソースのぶんは引く
+SOURCE:CHARA:노출 += (CUP:CHARA:윤활-SOURCE:CHARA:액체) / 2
+
+LOCAL = SOURCE:CHARA:노출
+
+;ABL:노출증をみる
+SELECTCASE ABL:CHARA:노출증
+	CASE 0
+		TIMES LOCAL , 0.00
+	CASE 1
+		TIMES LOCAL , 0.10
+	CASE 2
+		TIMES LOCAL , 0.20
+	CASE 3
+		TIMES LOCAL , 0.40
+	CASE 4
+		TIMES LOCAL , 0.60
+	CASE 5
+		TIMES LOCAL , 0.80
+	CASE 6
+		TIMES LOCAL , 1.00
+	CASE 7
+		TIMES LOCAL , 1.20
+	CASE 8
+		TIMES LOCAL , 1.40
+	CASE 9
+		TIMES LOCAL , 1.60
+	CASE 10
+		TIMES LOCAL , 2.00
+	CASEELSE
+		LOCAL = LOCAL * (ABL:CHARA:노출증 * 40 - 200)/ 100
+ENDSELECT
+LOCAL:1 = SOURCE:CHARA:노출
+
+;PALAM:치정をみる
+;恥ずかしさを感じれば感じるほどあまり恥ずかしくなくなる
+IF PALAM:CHARA:치정 < PALAMLV:1
+	TIMES LOCAL:1 , 1.00
+ELSEIF PALAM:CHARA:치정 < PALAMLV:2
+	TIMES LOCAL:1 , 0.90
+ELSEIF PALAM:CHARA:치정 < PALAMLV:3
+	TIMES LOCAL:1 , 0.80
+ELSEIF PALAM:CHARA:치정 < PALAMLV:4
+	TIMES LOCAL:1 , 0.70
+ELSEIF PALAM:CHARA:치정 >= PALAMLV:4
+	TIMES LOCAL:1 , 0.60
+ENDIF
+
+
+CUP:CHARA:욕정 += LOCAL
+CUP:CHARA:치정 += LOCAL:1
+
+
+;-------------------------------------------------
+;굴종のソース
+;-------------------------------------------------
+
+;충성도による수정
+;LOCAL = (BASE:ARG:충성도 >= 500 ? LIMIT(BASE:충성도*3/4,500,750) # LIMIT(BASE:충성도/2,1,500))
+
+;SOURCE:CHARA:굴종 *= LOCAL
+;SOURCE:CHARA:굴종 /= 500	
+
+LOCAL = SOURCE:CHARA:굴종
+
+;ABL:순종をみる
+SELECTCASE ABL:CHARA:순종
+	CASE 0
+		TIMES LOCAL , 0.50
+	CASE 1
+		TIMES LOCAL , 1.00
+	CASE 2
+		TIMES LOCAL , 1.50
+	CASE 3
+		TIMES LOCAL , 2.00
+	CASE 4
+		TIMES LOCAL , 2.50
+	CASE 5
+		TIMES LOCAL , 3.00
+	CASE 6
+		TIMES LOCAL , 3.50
+	CASE 7
+		TIMES LOCAL , 4.00
+	CASE 8
+		TIMES LOCAL , 4.50
+	CASE 9
+		TIMES LOCAL , 5.00
+	CASE 10
+		TIMES LOCAL , 6.00
+	CASEELSE
+		LOCAL = LOCAL * (ABL:CHARA:순종 - 4)
+ENDSELECT
+;ABL:봉사정신をみる
+SELECTCASE ABL:CHARA:봉사정신
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.50
+	CASE 2
+		TIMES LOCAL , 2.00
+	CASE 3
+		TIMES LOCAL , 2.50
+	CASE 4
+		TIMES LOCAL , 3.00
+	CASE 5
+		TIMES LOCAL , 3.50
+	CASE 6
+		TIMES LOCAL , 4.00
+	CASE 7
+		TIMES LOCAL , 4.50
+	CASE 8
+		TIMES LOCAL , 5.00
+	CASE 9
+		TIMES LOCAL , 5.50
+	CASE 10
+		TIMES LOCAL , 7.00
+	CASEELSE
+		LOCAL = LOCAL * (ABL:CHARA:봉사정신 * 15 - 80) / 10
+ENDSELECT
+CUP:CHARA:굴복 += LOCAL
+
+;-------------------------------------------------
+;불결のソース
+;-------------------------------------------------
+;충성도による수정
+;LOCAL = (BASE:ARG:충성도 >= 500 ? LIMIT(BASE:충성도*3/4,500,750) # LIMIT(BASE:충성도/2,1,500))
+;SOURCE:CHARA:불결 *= 500
+;SOURCE:CHARA:불결 /= LOCAL
+LOCAL = SOURCE:CHARA:불결
+
+;ABL:순종をみる
+SELECTCASE ABL:CHARA:순종
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 0.90
+	CASE 2
+		TIMES LOCAL , 0.80
+	CASE 3
+		TIMES LOCAL , 0.70
+	CASE 4
+		TIMES LOCAL , 0.60
+	CASE 5
+		TIMES LOCAL , 0.50
+	CASE 6
+		TIMES LOCAL , 0.40
+	CASE 7
+		TIMES LOCAL , 0.30
+	CASE 8
+		TIMES LOCAL , 0.20
+	CASE 9
+		TIMES LOCAL , 0.10
+	CASEELSE
+		TIMES LOCAL , 0.00
+ENDSELECT
+CUP:CHARA:불쾌 += LOCAL
+
+
+;-------------------------------------------------
+;울굴のソース
+;-------------------------------------------------
+;충성도による수정
+;LOCAL = (BASE:ARG:충성도 >= 500 ? LIMIT(BASE:충성도*3/4,500,750) # LIMIT(BASE:충성도/2,1,500))
+;SOURCE:CHARA:울굴 *= 500
+;SOURCE:CHARA:울굴 /= LOCAL
+LOCAL = SOURCE:CHARA:울굴
+
+;ABL:순종をみる
+SELECTCASE ABL:CHARA:순종
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 0.80
+	CASE 2
+		TIMES LOCAL , 0.60
+	CASE 3
+		TIMES LOCAL , 0.40
+	CASE 4
+		TIMES LOCAL , 0.30
+	CASE 5
+		TIMES LOCAL , 0.20
+	CASE 6
+		TIMES LOCAL , 0.10
+	CASE 7
+		TIMES LOCAL , 0.08
+	CASE 8
+		TIMES LOCAL , 0.06
+	CASE 9
+		TIMES LOCAL , 0.04
+	CASEELSE
+		TIMES LOCAL , 0.00
+ENDSELECT
+
+;ABL:욕망をみる
+SELECTCASE ABL:CHARA:욕망
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 0.90
+	CASE 2
+		TIMES LOCAL , 0.80
+	CASE 3
+		TIMES LOCAL , 0.70
+	CASE 4
+		TIMES LOCAL , 0.60
+	CASE 5
+		TIMES LOCAL , 0.50
+	CASE 6
+		TIMES LOCAL , 0.40
+	CASE 7
+		TIMES LOCAL , 0.30
+	CASE 8
+		TIMES LOCAL , 0.20
+	CASE 9
+		TIMES LOCAL , 0.10
+	CASEELSE
+		TIMES LOCAL , 0.00
+ENDSELECT
+
+CUP:CHARA:억울 += LOCAL
+
+;-------------------------------------------------
+;일탈のソース
+;-------------------------------------------------
+;호기심と보수적はここで処理
+SIF TALENT:CHARA:23
+	TIMES SOURCE:CHARA:일탈 , 0.80
+SIF TALENT:CHARA:24
+	TIMES SOURCE:CHARA:일탈 , 2.00
+
+;충성도による수정
+;LOCAL = (BASE:ARG:충성도 >= 500 ? LIMIT(BASE:충성도*3/4,500,750) # LIMIT(BASE:충성도/2,1,500))
+;SOURCE:CHARA:일탈 *= 500
+;SOURCE:CHARA:일탈 /= LOCAL
+LOCAL = SOURCE:CHARA:일탈
+
+;ABL:순종をみる
+SELECTCASE ABL:CHARA:순종
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 0.80
+	CASE 2
+		TIMES LOCAL , 0.60
+	CASE 3
+		TIMES LOCAL , 0.40
+	CASE 4
+		TIMES LOCAL , 0.30
+	CASE 5
+		TIMES LOCAL , 0.20
+	CASE 6
+		TIMES LOCAL , 0.10
+	CASE 7
+		TIMES LOCAL , 0.08
+	CASE 8
+		TIMES LOCAL , 0.06
+	CASE 9
+		TIMES LOCAL , 0.04
+	CASEELSE
+		TIMES LOCAL , 0.00
+ENDSELECT
+;ABL:마조끼をみる
+SELECTCASE ABL:CHARA:마조끼
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 0.90
+	CASE 2
+		TIMES LOCAL , 0.80
+	CASE 3
+		TIMES LOCAL , 0.70
+	CASE 4
+		TIMES LOCAL , 0.60
+	CASE 5
+		TIMES LOCAL , 0.50
+	CASE 6
+		TIMES LOCAL , 0.40
+	CASE 7
+		TIMES LOCAL , 0.30
+	CASE 8
+		TIMES LOCAL , 0.20
+	CASE 9
+		TIMES LOCAL , 0.10
+	CASEELSE
+		TIMES LOCAL , 0.00
+ENDSELECT
+CUP:CHARA:반감 += LOCAL
+
+;-------------------------------------------------
+;반감のソース
+;-------------------------------------------------
+;충성도による수정
+;LOCAL = (BASE:ARG:충성도 >= 500 ? LIMIT(BASE:충성도*3/4,500,750) # LIMIT(BASE:충성도/2,1,500))
+;SOURCE:CHARA:반감 *= 500
+;SOURCE:CHARA:반감 /= LOCAL
+LOCAL = SOURCE:CHARA:반감
+
+;ABL:순종をみる
+SELECTCASE ABL:CHARA:순종
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 0.80
+	CASE 2
+		TIMES LOCAL , 0.60
+	CASE 3
+		TIMES LOCAL , 0.40
+	CASE 4
+		TIMES LOCAL , 0.30
+	CASE 5
+		TIMES LOCAL , 0.20
+	CASE 6
+		TIMES LOCAL , 0.10
+	CASE 7
+		TIMES LOCAL , 0.08
+	CASE 8
+		TIMES LOCAL , 0.06
+	CASE 9
+		TIMES LOCAL , 0.04
+	CASEELSE
+		TIMES LOCAL , 0.00
+ENDSELECT
+;ABL:봉사정신をみる
+SELECTCASE ABL:CHARA:봉사정신
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 0.90
+	CASE 2
+		TIMES LOCAL , 0.80
+	CASE 3
+		TIMES LOCAL , 0.70
+	CASE 4
+		TIMES LOCAL , 0.60
+	CASE 5
+		TIMES LOCAL , 0.50
+	CASE 6
+		TIMES LOCAL , 0.40
+	CASE 7
+		TIMES LOCAL , 0.30
+	CASE 8
+		TIMES LOCAL , 0.20
+	CASE 9
+		TIMES LOCAL , 0.10
+	CASEELSE
+		TIMES LOCAL , 0.00
+ENDSELECT
+;ABL:마조끼をみる
+	SELECTCASE ABL:CHARA:마조끼
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 0.90
+	CASE 2
+		TIMES LOCAL , 0.80
+	CASE 3
+		TIMES LOCAL , 0.70
+	CASE 4
+		TIMES LOCAL , 0.60
+	CASE 5
+		TIMES LOCAL , 0.50
+	CASE 6
+		TIMES LOCAL , 0.40
+	CASE 7
+		TIMES LOCAL , 0.30
+	CASE 8
+		TIMES LOCAL , 0.20
+	CASE 9
+		TIMES LOCAL , 0.10
+	CASEELSE
+		TIMES LOCAL , 0.00
+ENDSELECT
+CUP:CHARA:반감 += LOCAL
+
+;-------------------------------------------------
+;소질などによる上下の処理
+;-------------------------------------------------
+;-------------------------------------------------
+;発情
+;-------------------------------------------------
+IF 위험일() > 1
+	TIMES CUP:CHARA:욕정 , 1.50
+	TIMES CUP:CHARA:윤활 , 1.50
+	IF 함락() == 0
+		TIMES CUP:CHARA:복종 , 0.50
+		TIMES CUP:CHARA:공포 , 0.50
+		TIMES CUP:CHARA:습득 , 0.50
+	ENDIF
+ENDIF
+;-------------------------------------------------
+;장비系（薬等）
+;-------------------------------------------------
+;미약
+IF TEQUIP:CHARA:26
+	TIMES CUP:CHARA:복종 , 1.20
+	TIMES CUP:CHARA:욕정 , 2.00
+	TIMES CUP:CHARA:굴복 , 1.20
+	TIMES CUP:CHARA:불쾌 , 0.75
+ENDIF
+
+;이뇨제
+IF TEQUIP:CHARA:27
+	TIMES CUP:CHARA:복종 , 0.80
+	TIMES CUP:CHARA:욕정 , 0.80
+	TIMES CUP:CHARA:치정 , 1.20
+	TIMES CUP:CHARA:반감 , 1.50
+	TIMES CUP:CHARA:불쾌 , 1.20
+ENDIF
+
+;-------------------------------------------------
+;함락소질
+;-------------------------------------------------
+;연모
+;IF TALENT:CHARA:3 && ASSIPLAY == 0
+IF 연모(CHARA, CHARA:1)
+	TIMES CUP:CHARA:복종 , 1.50
+	TIMES CUP:CHARA:굴복 , 2.00
+	TIMES CUP:CHARA:반감 , 0.50
+	TIMES CUP:CHARA:불쾌 , 0.50
+;ELSEIF TALENT:CHARA:3 && ASSIPLAY > 0
+;	TIMES CUP:CHARA:복종 , 0.80
+;	TIMES CUP:CHARA:반감 , 1.20
+;	TIMES CUP:CHARA:불쾌 , 1.20
+ENDIF
+
+;음란
+IF TALENT:CHARA:음란
+	TIMES CUP:CHARA:복종 , 1.20
+	TIMES CUP:CHARA:굴복 , 1.20
+	TIMES CUP:CHARA:반감 , 0.80
+	TIMES CUP:CHARA:불쾌 , 0.80
+	TIMES CUP:CHARA:억울 , 0.40
+ENDIF
+
+;복종
+IF TALENT:CHARA:복종
+	TIMES CUP:CHARA:복종 , 0.50
+	TIMES CUP:CHARA:굴복 , 2.00
+	TIMES CUP:CHARA:공포 , 1.50
+	TIMES CUP:CHARA:반감 , 0.50
+ENDIF
+
+;친애
+;IF TALENT:CHARA:친애 && ASSIPLAY == 0
+IF 친애(CHARA, CHARA:1)
+	TIMES CUP:CHARA:복종 , 2.00
+	TIMES CUP:CHARA:굴복 , 3.00
+	TIMES CUP:CHARA:반감 , 0.20
+	TIMES CUP:CHARA:불쾌 , 0.20
+	TIMES CUP:CHARA:억울 , 0.50
+;ELSEIF TALENT:CHARA:6 && ASSIPLAY > 0
+;	TIMES CUP:CHARA:복종 , 0.80
+;	TIMES CUP:CHARA:반감 , 1.20
+;	TIMES CUP:CHARA:불쾌 , 1.20
+ENDIF
+
+;창부
+IF TALENT:CHARA:창부
+	TIMES CUP:CHARA:복종 , 1.50
+	TIMES CUP:CHARA:굴복 , 1.50
+	TIMES CUP:CHARA:반감 , 0.60
+	TIMES CUP:CHARA:불쾌 , 0.60
+	TIMES CUP:CHARA:억울 , 0.30
+ENDIF
+
+;예속
+IF TALENT:CHARA:예속
+	TIMES CUP:CHARA:복종 , 0.20
+	TIMES CUP:CHARA:굴복 , 2.50
+	TIMES CUP:CHARA:공포 , 3.00
+	TIMES CUP:CHARA:반감 , 0.25
+	TIMES CUP:CHARA:불쾌 , 0.25
+	TIMES CUP:CHARA:억울 , 0.25
+ENDIF
+;貞操
+IF 貞操(CHARA, CHARA:1) == -1
+	TIMES CUP:CHARA:복종 , 0.80
+	TIMES CUP:CHARA:반감 , 1.20
+	TIMES CUP:CHARA:불쾌 , 1.20
+ENDIF
+IF 貞操(CHARA, CHARA:1) == -2
+	TIMES CUP:CHARA:복종 , 0.50
+	TIMES CUP:CHARA:반감 , 1.50
+	TIMES CUP:CHARA:불쾌 , 1.50
+ENDIF
+;-------------------------------------------------
+;소질
+;-------------------------------------------------
+;겁쟁이
+IF TALENT:CHARA:10
+	TIMES CUP:CHARA:공포 , 1.20
+	TIMES CUP:CHARA:반감 , 1.20
+ENDIF
+;반항적（복종、예속で무효）
+IF TALENT:CHARA:11 && (TALENT:CHARA:5 == 0 && TALENT:CHARA:8 == 0)
+	TIMES CUP:CHARA:복종 , 0.80
+	TIMES CUP:CHARA:굴복 , 0.80
+	TIMES CUP:CHARA:반감 , 1.20
+ENDIF
+;꿋꿋함
+IF TALENT:CHARA:12
+	TIMES CUP:CHARA:복종 , 0.80
+	TIMES CUP:CHARA:욕정 , 0.80
+	TIMES CUP:CHARA:굴복 , 0.80
+	TIMES CUP:CHARA:공포 , 0.80
+	TIMES CUP:CHARA:반감 , 1.20
+	TIMES CUP:CHARA:억울 , 1.20
+ENDIF
+;솔직함
+IF TALENT:CHARA:13
+	TIMES CUP:CHARA:복종 , 1.20
+	TIMES CUP:CHARA:반감 , 0.80
+ENDIF
+;얌전함
+IF TALENT:CHARA:14
+	TIMES CUP:CHARA:복종 , 0.80
+	TIMES CUP:CHARA:반감 , 0.80
+ENDIF
+;프라이드높음
+IF TALENT:CHARA:15
+	TIMES CUP:CHARA:굴복 , 0.80
+	TIMES CUP:CHARA:공포 , 0.80
+	TIMES CUP:CHARA:반감 , 1.20
+ENDIF
+;건방짐
+IF TALENT:CHARA:16
+	TIMES CUP:CHARA:복종 , 0.80
+	TIMES CUP:CHARA:굴복 , 0.80
+	TIMES CUP:CHARA:반감 , 1.20
+ENDIF
+;프라이드낮음
+IF TALENT:CHARA:17
+	TIMES CUP:CHARA:굴복 , 1.20
+	TIMES CUP:CHARA:공포 , 1.20
+	TIMES CUP:CHARA:반감 , 0.80
+ENDIF
+;츤데레
+IF TALENT:CHARA:18
+	;함락소질がある場合と無い場合で변화する
+	IF 함락(CHARA)
+		TIMES CUP:CHARA:복종 , 1.20
+		TIMES CUP:CHARA:굴복 , 1.20
+		TIMES CUP:CHARA:반감 , 0.80
+	ELSE
+		TIMES CUP:CHARA:복종 , 0.80
+		TIMES CUP:CHARA:굴복 , 0.80
+		TIMES CUP:CHARA:반감 , 1.20
+	ENDIF
+ENDIF
+
+;자제심
+IF TALENT:CHARA:20
+	TIMES CUP:CHARA:굴복 , 0.80
+	TIMES CUP:CHARA:공포 , 0.80
+	TIMES CUP:CHARA:반감 , 1.20
+ENDIF
+;무관심
+IF TALENT:CHARA:21
+	TIMES CUP:CHARA:복종 , 0.80
+	TIMES CUP:CHARA:욕정 , 0.80
+	TIMES CUP:CHARA:굴복 , 0.80
+	TIMES CUP:CHARA:공포 , 0.80
+	TIMES CUP:CHARA:반감 , 0.80
+ENDIF
+;감정결핍
+IF TALENT:CHARA:22
+	TIMES CUP:CHARA:복종 , 0.80
+	TIMES CUP:CHARA:욕정 , 0.80
+	TIMES CUP:CHARA:굴복 , 0.80
+	TIMES CUP:CHARA:치정 , 0.80
+	TIMES CUP:CHARA:공포 , 0.80
+	TIMES CUP:CHARA:반감 , 0.80
+	TIMES CUP:CHARA:불쾌 , 0.80
+	TIMES CUP:CHARA:억울 , 0.80
+ENDIF
+;호기심
+SIF TALENT:CHARA:23
+	TIMES CUP:CHARA:습득 , 1.20
+;보수적
+SIF TALENT:CHARA:24
+	TIMES CUP:CHARA:습득 , 0.80
+;낙관적
+SIF TALENT:CHARA:25
+	TIMES CUP:CHARA:억울 , 0.80
+;비관적
+SIF TALENT:CHARA:26
+	TIMES CUP:CHARA:억울 , 1.20
+;눈에띄고싶어함
+SIF TALENT:CHARA:28
+	TIMES CUP:CHARA:복종 , 1.20
+
+;억압
+IF TALENT:CHARA:32
+	TIMES CUP:CHARA:욕정 , 0.80
+	TIMES CUP:CHARA:반감 , 1.20
+	TIMES CUP:CHARA:억울 , 1.20
+ENDIF
+;해방
+IF TALENT:CHARA:33
+	TIMES CUP:CHARA:욕정 , 1.20
+	TIMES CUP:CHARA:굴복 , 1.20
+ENDIF
+;저항
+IF TALENT:CHARA:34
+	TIMES CUP:CHARA:복종 , 0.80
+	TIMES CUP:CHARA:반감 , 1.20
+	TIMES CUP:CHARA:억울 , 1.20
+ENDIF
+
+;아픔에약함
+SIF TALENT:CHARA:40
+	TIMES CUP:CHARA:고통 , 1.20
+;아픔에강함
+SIF TALENT:CHARA:41
+	TIMES CUP:CHARA:고통 , 0.80
+
+;습득빠름
+SIF TALENT:CHARA:50
+	TIMES CUP:CHARA:습득 , 1.20
+;습득느림
+SIF TALENT:CHARA:51
+	TIMES CUP:CHARA:습득 , 0.80
+
+;헌신적
+SIF TALENT:CHARA:63
+	TIMES CUP:CHARA:굴복 , 1.20
+
+;쾌감에솔직
+SIF TALENT:CHARA:70
+	TIMES CUP:CHARA:욕정 , 1.20
+;쾌감을부정（음란、창부で무효）
+SIF TALENT:CHARA:71 && (TALENT:CHARA:4 == 0 && TALENT:CHARA:7 == 0)
+	TIMES CUP:CHARA:욕정 , 0.80
+;즉각함락
+IF TALENT:CHARA:73
+	TIMES CUP:CHARA:복종 , 2.00
+	TIMES CUP:CHARA:욕정 , 2.00
+	TIMES CUP:CHARA:굴복 , 2.00
+	TIMES CUP:CHARA:습득 , 2.00
+	TIMES CUP:CHARA:치정 , 2.00
+	TIMES CUP:CHARA:공포 , 2.00
+	TIMES CUP:CHARA:반감 , 0.50
+	TIMES CUP:CHARA:불쾌 , 0.50
+	TIMES CUP:CHARA:억울 , 0.50
+ENDIF
+;자위광
+SIF TALENT:CHARA:74
+	TIMES CUP:CHARA:욕정 , 1.20
+;섹스광い
+SIF TALENT:CHARA:75
+	TIMES CUP:CHARA:복종 , 1.20
+;애널광
+SIF TALENT:CHARA:76
+	TIMES CUP:CHARA:굴복 , 1.20
+;음유
+SIF TALENT:CHARA:77
+	TIMES CUP:CHARA:치정 , 1.20
+
+;도착적
+IF TALENT:CHARA:80
+	TIMES CUP:CHARA:굴복 , 1.20
+	TIMES CUP:CHARA:치정 , 1.20
+ENDIF
+;남성혐오（女性のみ연모、친애で무효）
+IF HATE_MALE(TARGET,PLAYER)
+	TIMES CUP:CHARA:복종 , 0.80
+	TIMES CUP:CHARA:욕정 , 0.80
+	TIMES CUP:CHARA:굴복 , 0.80
+	TIMES CUP:CHARA:습득 , 0.80
+	TIMES CUP:CHARA:반감 , 1.20
+	TIMES CUP:CHARA:불쾌 , 1.20
+ENDIF
+;새드
+IF TALENT:CHARA:83
+	TIMES CUP:CHARA:굴복 , 0.80
+	TIMES CUP:CHARA:공포 , 0.80
+ENDIF
+;마조
+IF TALENT:CHARA:84
+	TIMES CUP:CHARA:굴복 , 1.20
+	TIMES CUP:CHARA:공포 , 1.20
+	TIMES CUP:CHARA:억울 , 0.80
+ENDIF
+;망신
+IF TALENT:CHARA:86
+	TIMES CUP:CHARA:굴복 , 1.20
+	TIMES CUP:CHARA:반감 , 0.80
+ENDIF
+;여성혐오（男性のみ연모、친애で무효）
+IF HATE_FEMALE(TARGET,PLAYER)
+	TIMES CUP:CHARA:복종 , 0.80
+	TIMES CUP:CHARA:욕정 , 0.80
+	TIMES CUP:CHARA:굴복 , 0.80
+	TIMES CUP:CHARA:습득 , 0.80
+	TIMES CUP:CHARA:반감 , 1.20
+	TIMES CUP:CHARA:불쾌 , 1.20
+ENDIF
+
+
+;-------------------------------------------------
+;그외
+;-------------------------------------------------
+;고통각인
+IF MARK:CHARA:고통각인 == 3
+	TIMES CUP:CHARA:고통 , 1.30
+	TIMES CUP:CHARA:공포 , 1.30
+ELSEIF MARK:CHARA:고통각인 == 2
+	TIMES CUP:CHARA:고통 , 1.20
+	TIMES CUP:CHARA:공포 , 1.20
+ELSEIF MARK:CHARA:고통각인 == 1
+	TIMES CUP:CHARA:고통 , 1.10
+	TIMES CUP:CHARA:공포 , 1.10
+ENDIF
+
+;쾌락각인
+IF MARK:CHARA:쾌락각인 == 3
+	TIMES CUP:CHARA:욕정 , 1.30
+	TIMES CUP:CHARA:습득 , 1.30
+ELSEIF MARK:CHARA:쾌락각인 == 2
+	TIMES CUP:CHARA:욕정 , 1.20
+	TIMES CUP:CHARA:습득 , 1.20
+ELSEIF MARK:CHARA:쾌락각인 == 1
+	TIMES CUP:CHARA:욕정 , 1.10
+	TIMES CUP:CHARA:습득 , 1.10
+ENDIF
+
+;굴복각인
+IF MARK:CHARA:굴복각인 == 3
+	TIMES CUP:CHARA:복종 , 1.30
+	TIMES CUP:CHARA:굴복 , 1.30
+ELSEIF MARK:CHARA:굴복각인 == 2
+	TIMES CUP:CHARA:복종 , 1.20
+	TIMES CUP:CHARA:굴복 , 1.20
+ELSEIF MARK:CHARA:굴복각인 == 1
+	TIMES CUP:CHARA:복종 , 1.10
+	TIMES CUP:CHARA:굴복 , 1.10
+ENDIF
+
+;반발각인
+IF MARK:CHARA:반발각인 == 3
+	TIMES CUP:CHARA:복종 , 0.10
+	TIMES CUP:CHARA:반감 , 2.50
+	TIMES CUP:CHARA:불쾌 , 2.50
+ELSEIF MARK:CHARA:반발각인 == 2
+	TIMES CUP:CHARA:복종 , 0.25
+	TIMES CUP:CHARA:반감 , 1.75
+	TIMES CUP:CHARA:불쾌 , 1.75
+ELSEIF MARK:CHARA:반발각인 == 1
+	TIMES CUP:CHARA:복종 , 0.50
+	TIMES CUP:CHARA:반감 , 1.25
+	TIMES CUP:CHARA:불쾌 , 1.25
+ENDIF
+;-------------------------------------------------
+;난이도などによる上下の処理
+;-------------------------------------------------
+;EASY
+IF FLAG:4 == 1
+	TIMES CUP:CHARA:윤활 , 1.20
+	TIMES CUP:CHARA:복종 , 1.20
+	TIMES CUP:CHARA:욕정 , 1.20
+	TIMES CUP:CHARA:굴복 , 1.20
+	TIMES CUP:CHARA:습득 , 1.20
+	TIMES CUP:CHARA:치정 , 1.20
+	TIMES CUP:CHARA:고통 , 1.20
+	TIMES CUP:CHARA:공포 , 1.20
+	TIMES CUP:CHARA:반감 , 0.90
+	TIMES CUP:CHARA:불쾌 , 0.90
+	TIMES CUP:CHARA:억울 , 0.90
+;NORMAL
+ELSEIF FLAG:4 == 2
+;	TIMES CUP:CHARA:윤활 , 1.20
+;	TIMES CUP:CHARA:복종 , 1.20
+;	TIMES CUP:CHARA:욕정 , 1.20
+;	TIMES CUP:CHARA:굴복 , 1.20
+;	TIMES CUP:CHARA:습득 , 1.20
+;	TIMES CUP:CHARA:치정 , 1.20
+;	TIMES CUP:CHARA:고통 , 1.20
+;	TIMES CUP:CHARA:공포 , 1.20
+;	TIMES CUP:CHARA:반감 , 1.20
+;	TIMES CUP:CHARA:불쾌 , 1.20
+;	TIMES CUP:CHARA:억울 , 1.20
+;HARD
+ELSEIF FLAG:4 >= 3
+	TIMES CUP:CHARA:윤활 , 0.80
+	TIMES CUP:CHARA:복종 , 0.80
+	TIMES CUP:CHARA:욕정 , 0.80
+	TIMES CUP:CHARA:굴복 , 0.80
+	TIMES CUP:CHARA:습득 , 0.80
+	TIMES CUP:CHARA:치정 , 0.80
+	TIMES CUP:CHARA:고통 , 0.80
+	TIMES CUP:CHARA:공포 , 0.80
+	TIMES CUP:CHARA:반감 , 1.60
+	TIMES CUP:CHARA:불쾌 , 1.60
+	TIMES CUP:CHARA:억울 , 1.60
+ENDIF
+
+;-------------------------------------------------
+;相性による上下の処理
+;-------------------------------------------------
+;R = NO:PLAYER
+;IF RELATION:R != 0
+;	CUP:CHARA:욕정 *= RELATION:R
+;	CUP:CHARA:욕정 /= 100
+;	CUP:CHARA:굴복 *= RELATION:R
+;	CUP:CHARA:굴복 /= 100
+;	CUP:CHARA:치정 *= RELATION:R
+;	CUP:CHARA:치정 /= 100
+;	CUP:CHARA:반감 *= 100
+;	CUP:CHARA:반감 /= RELATION:R
+;	CUP:CHARA:불쾌 *= 100
+;	CUP:CHARA:불쾌 /= RELATION:R
+;	CUP:CHARA:억울 *= 100
+;	CUP:CHARA:억울 /= RELATION:R
+;ENDIF
+
+;-------------------------------------------------
+;同じコマンドの連続実行による上下の処理
+;-------------------------------------------------
+IF SELECTCOM == PREVCOM
+	;CUP:CHARA:쾌Ｃ,1,2は절정に絡むので先に処理してある
+	CUP:CHARA:복종 /= 2
+	CUP:CHARA:욕정 /= 2
+	CUP:CHARA:굴복 /= 2
+	CUP:CHARA:습득 /= 2
+	CUP:CHARA:치정 /= 2
+	CUP:CHARA:고통 /= 2
+	CUP:CHARA:공포 /= 2
+ENDIF
+
+;-------------------------------------------------
+;기력０による上下の処理
+;-------------------------------------------------
+IF BASE:CHARA:기력 <= 0
+	;PRINTL ★기력０★
+	;CUP:CHARA:쾌Ｃ,1,2は절정に絡むので先に処理してある
+	CUP:CHARA:복종 /= 2
+	CUP:CHARA:욕정 /= 2
+	CUP:CHARA:굴복 /= 2
+	CUP:CHARA:치정 /= 2
+	CUP:CHARA:공포 /= 2
+	CUP:CHARA:억울 /= 2
+
+	DOWNBASE:CHARA:체력 *= 2
+	DOWNBASE:CHARA:체력 += 80
+ENDIF
+;-------------------------------------------------
+;고통쾌락경험、봉사쾌락경험の체크
+;-------------------------------------------------
+CALL EXP_GOT_CHECK, CHARA, CHARA:1
+CALL EXP_GOT_CHECK, CHARA:1, CHARA
+;-------------------------------------------------
+;衣装による경험증가の체크
+;-------------------------------------------------
+CALL CHECK_EXP(CHARA)
+CALL CHECK_EXP(CHARA:1)
+
+;-------------------------------------------------
+;확장・수간첫경험の場合이상경험부여
+;-------------------------------------------------
+SIF TCVAR:(CHARA):획득Ｖ확장경험 || TCVAR:(CHARA):획득Ａ확장경험
+	CALL ADDS_ABNORMAL_EXP, "확장첫경험" , CHARA
+SIF TCVAR:(CHARA:1):획득Ｖ확장경험 || TCVAR:(CHARA:1):획득Ａ확장경험
+	CALL ADDS_ABNORMAL_EXP, "확장첫경험" , CHARA:1
+SIF TCVAR:(CHARA):획득수간경험
+	CALL ADDS_ABNORMAL_EXP, "수간" , CHARA
+SIF TCVAR:(CHARA:1):획득수간경험
+	CALL ADDS_ABNORMAL_EXP, "수간" , CHARA:1
+
+;-------------------------------------------------
+;고통からくる체력・기력の減少
+;-------------------------------------------------
+LOCAL:3 = CUP:CHARA:고통/20
+;ABL:마조끼をみる
+SELECTCASE ABL:CHARA:마조끼
+	CASE 0
+		TIMES LOCAL:3, 1.00
+	CASE 1
+		TIMES LOCAL:3, 0.95
+	CASE 2
+		TIMES LOCAL:3, 0.90
+	CASE 3
+		TIMES LOCAL:3, 0.80
+	CASE 4
+		TIMES LOCAL:3, 0.65
+	CASEELSE
+		TIMES LOCAL:3, 0.50
+ENDSELECT
+;아픔에약함
+SIF TALENT:CHARA:40
+	TIMES LOCAL:3, 1.20
+;아픔에강함
+SIF TALENT:CHARA:41
+	TIMES LOCAL:3, 0.80
+
+DOWNBASE:CHARA:체력 += LOCAL:3
+DOWNBASE:CHARA:기력 += LOCAL:3
+
+;-------------------------------------------------
+;체력・기력の減少
+;-------------------------------------------------
+BASE:CHARA:체력 -= DOWNBASE:CHARA:체력
+IF BASE:CHARA:체력 < 0
+	BASE:CHARA:체력 = 0
+ELSEIF BASE:CHARA:체력 > MAXBASE:CHARA:체력
+	BASE:CHARA:체력 = MAXBASE:CHARA:체력
+ENDIF
+BASE:CHARA:기력 -= DOWNBASE:CHARA:기력
+IF BASE:CHARA:기력 < 0
+	BASE:CHARA:기력 = 0
+ELSEIF BASE:CHARA:기력 > MAXBASE:CHARA:기력
+	BASE:CHARA:기력 = MAXBASE:CHARA:기력
+ENDIF
+
+;-------------------------------------------------
+;일시적함락소질변경
+;-------------------------------------------------
+LOCAL:1 = 0
+LOCAL:2 = 0
+FOR LOCAL , 0, 6
+	SIF TALENT:(3 + LOCAL) > 0
+		SETBIT LOCAL:1,LOCAL
+NEXT
+FOR LOCAL , 0, 4
+	SIF TALENT:(170 + LOCAL) > 0
+		SETBIT LOCAL:1,LOCAL + 6
+NEXT
+IF CFLAG:일시적함락소질변경
+	IF 함락(TARGET,PLAYER) > 0 && RESULTS == "연모"
+		LOCAL:3 = MIN(함락(TARGET,PLAYER),2)
+		IF RESULTS == "연모"
+			SETBIT LOCAL:2,(LOCAL:3 - 1) * 3
+		;ELSEIF RESULTS == 음란
+		;	SETBIT LOCAL:2,(LOCAL:3 - 1) * 3 + 1
+		;ELSEIF RESULTS == 복종
+		;	SETBIT LOCAL:2,(LOCAL:3 - 1) * 3 + 2
+		ENDIF
+		LOCALS = %RESULTS%
+		IF 함락(TARGET,PLAYER) > 2
+			IF RESULTS == "연모" && LOCALS == RESULTS
+				IF TALENT:남편
+					SETBIT LOCAL:2,7
+				ELSE
+					SETBIT LOCAL:2,6
+				ENDIF
+			;ELSEIF RESULTS == 음란 && LOCALS == RESULTS
+			;	SETBIT LOCAL:2,8
+			;ELSEIF RESULTS == 복종 && LOCALS == RESULTS
+			;	SETBIT LOCAL:2,9
+			ENDIF
+		ENDIF
+	ELSEIF 함락(TARGET) > 0 && RESULTS != "연모"
+		LOCAL:3 = MIN(함락(TARGET,PLAYER),2)
+		IF RESULTS == "음란" || TALENT:ＮＴＲ == 2
+			SETBIT LOCAL:2,(LOCAL:3 - 1) * 3 + 1
+		ELSEIF RESULTS == "복종"
+			SETBIT LOCAL:2,(LOCAL:3 - 1) * 3 + 2
+		ENDIF
+		LOCALS = %RESULTS%
+		IF 함락(TARGET,PLAYER) > 2
+			IF RESULTS == "음란" && LOCALS == RESULTS
+				SETBIT LOCAL:2,8
+			ELSEIF RESULTS == "복종" && LOCALS == RESULTS
+				SETBIT LOCAL:2,9
+			ENDIF
+		ENDIF
+	ENDIF
+	IF (함락(TARGET) && !GETBIT(LOCAL:2,2) && !GETBIT(LOCAL:2,3) && !GETBIT(LOCAL:2,7) && CFLAG:음란度 > 1000 && !RAND:4) || (함락(TARGET) && LOCAL:2 == 0 && CFLAG:음란度 > 1500 && !RAND:2)
+		LOCAL:2 = 0
+		IF 함락(TARGET,PLAYER) == 1
+			SETBIT LOCAL:2,1
+		ELSE
+			SETBIT LOCAL:2,4
+		ENDIF
+	ENDIF 
+	FOR LOCAL , 0, 6
+		TALENT:(3 + LOCAL) = 0
+		SIF GETBIT(LOCAL:2,LOCAL) > 0
+			TALENT:(3 + LOCAL) = 1
+	NEXT
+	FOR LOCAL , 0, 4
+		TALENT:(170 + LOCAL) = 0
+		SIF GETBIT(LOCAL:2,LOCAL + 6)
+			TALENT:(170 + LOCAL) = 1
+	NEXT
+ENDIF
+;-------------------------------------------------
+;コマンド구상
+;-------------------------------------------------
+PRINTL
+CALL KOJO_MESSAGE_COM
+PRINTL
+;-------------------------------------------------
+;처녀상실체크
+;-------------------------------------------------
+;主人
+IF TCVAR:MASTER:획득Ｖ경험 > 0 && (TALENT:MASTER:처녀 || TALENT:MASTER:재생처녀)
+	TALENT:MASTER:처녀 = 0
+	TALENT:MASTER:재생처녀 = 0
+ENDIF
+;조수
+IF ASSI > -1 && TCVAR:ASSI:획득Ｖ경험 > 0 && (TALENT:ASSI:처녀 || TALENT:ASSI:재생처녀)
+	TALENT:ASSI:처녀 = 0
+	TALENT:ASSI:재생처녀 = 0
+ENDIF
+;조교대상
+IF TFLAG:19 && (TALENT:처녀 || TALENT:재생처녀)
+	IF TALENT:처녀
+		IF TALENT:TARGET:3 && TFLAG:20
+			PRINTFORML %타겟은()% %CALLNAME:MASTER%에게 처녀를 바친 것에 행복을 느끼고 있는 모양이다……
+		ELSEIF TALENT:TARGET:6 && TFLAG:20
+			PRINTFORML %타겟은()% %플레이어가()% 첫 상대인 것에 지극한 기쁨을 느끼고 있는 모양이다……
+		ENDIF
+		PRINTL
+		;처녀관통내역用
+		SIF TEQUIP:TARGET:Ｖ삽입자 == MASTER
+			SETBIT FLAG:(50000+NO:TARGET), 7
+
+		;처녀탈취人数카운트
+		FLAG:처녀탈취人数 += 1
+	ENDIF
+	TALENT:처녀 = 0
+	TALENT:재생처녀 = 0
+ENDIF
+;-------------------------------------------------
+;섹스時の挿入継続フラグ
+;-------------------------------------------------
+;TFLAG:60 = 0
+;SIF (SELECTCOM == 60 || SELECTCOM == 61 || SELECTCOM == 62 || SELECTCOM == 63 || SELECTCOM == 64 || SELECTCOM == 65 || SELECTCOM == 66 || SELECTCOM == 67 || SELECTCOM == 68 || SELECTCOM == 69 || SELECTCOM == 70 || SELECTCOM == 71 || SELECTCOM == 72  || SELECTCOM == 73 || SELECTCOM == 154 || SELECTCOM == 74) && (TFLAG:2 == 0 || PALAM:CHARA:욕정 >= PALAMLV:4) && CFLAG:TARGET:106 == 0 && CHARA == TARGET
+;	TFLAG:60 = 1
+
+;삽입유지 코드들 - 선커맨드 후처리
+IF TFLAG:60 == 0
+	TFLAG:59 = 0 ;이전 체위를 '아무것도 아님'으로 설정
+	;후배위
+	IF (SELECTCOM == 61)
+		TFLAG:60 = 1
+	;대면위
+	ELSEIF (SELECTCOM == 68 || SELECTCOM == 76)
+		TFLAG:60 = 2
+	;배면위
+	ELSEIF (SELECTCOM == 69 || SELECTCOM == 77)
+		TFLAG:60 = 3
+	;기승위, 역강간당한다
+	ELSEIF (SELECTCOM == 66 || SELECTCOM == 74)
+		TFLAG:60 = 4
+	;정상위, 속옷빗겨, 요정오나홀
+	ELSEIF (SELECTCOM == 60 || SELECTCOM == 72 || SELECTCOM == 154)
+		TFLAG:60 = 5
+	;역강간, 기승위한다
+	ELSEIF (SELECTCOM == 64 || SELECTCOM == 94)
+		TFLAG:60 = 6
+	;후배위애널
+	ELSEIF (SELECTCOM == 63)
+		TFLAG:60 = 7
+	;대면위애널
+	ELSEIF (SELECTCOM == 70 || SELECTCOM == 78)
+		TFLAG:60 = 8
+	;배면위애널
+	ELSEIF (SELECTCOM == 71 || SELECTCOM == 79)
+		TFLAG:60 = 9
+	;기승위애널
+	ELSEIF (SELECTCOM == 67)
+		TFLAG:60 = 10
+	;정상위, 속옷빗겨 애널
+	ELSEIF (SELECTCOM == 62 || SELECTCOM == 73)
+		TFLAG:60 = 11
+	;삽입체위가 아닌 경우
+	ELSE
+		TFLAG:60 = 0
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+;(SELECTCOM == 66 || SELECTCOM == 67 || TFLAG:60 == 4 || TFLAG:60 == 10) && (PLAYER == MASTER) && (ASSI >= 0 && (TALENT:ASSI:연모 || TALENT:ASSI:친애 || TALENT:ASSI:복종 || TALENT:ASSI:예속))
+;-------------------------------------------------
+;<조수 가능목록>
+;안면기승위(1), 키스한다(20), 파후파후(30), 손가락츄파(31)
+;--> 노예가 기승위(애널)중일 때 높은 확률로 자동실행
+;--> 노예가 기승위(애널)중이면서 파생커맨드로 '키스하기(20)'를 실행할 경우, 파후파후(30)와 손가락츄파(31)밖에 선택지가 없다
+;--> 그 외에도 실행가능성 있음
+;기승위(66)
+;--> 노예가 기승위(애널) 이외의 커맨드를 실행하고 있을 때 높은 확률로 자동실행
+;=================================================
+;조수 3P 커맨드 행동결정
+;=================================================
+IF ASSI >= 0 && (BASE:ASSI:체력 >= 700)
+;조수의 체력이 700 이상이면 계속할 수 있다
+	IF TFLAG:61 > 0 && SELECTCOM != 229
+	;조수3P참가여부가 ON되어 있어야 한다
+	;조수도 참가한다/빠진다 커맨드가 선택되지 않은 경우여야 한다
+
+		;조수 체위실행여부 검사
+		CALL ASSI_CHECK_COM_ABLE1 ;안면기승위 검사
+		C_ABLE1 = RESULT
+		CALL ASSI_CHECK_COM_ABLE20 ;키스한다 검사
+		C_ABLE20 = RESULT
+		CALL ASSI_CHECK_COM_ABLE30 ;파후파후 검사
+		C_ABLE30 = RESULT
+		CALL ASSI_CHECK_COM_ABLE31 ;손가락츄파 검사
+		C_ABLE31 = RESULT
+		CALL ASSI_CHECK_COM_ABLE66 ;기승위 검사
+		C_ABLE66 = RESULT
+		CALL ASSI_CHECK_COM_ABLE80 ;수음 검사
+		C_ABLE80 = RESULT
+		CALL ASSI_CHECK_COM_ABLE81 ;펠라치오 검사
+		C_ABLE81 = RESULT
+		CALL ASSI_CHECK_COM_ABLE82 ;파이즈리 검사
+		C_ABLE82 = RESULT
+		CALL ASSI_CHECK_COM_ABLE83 ;스마타 검사
+		C_ABLE83 = RESULT
+		CALL ASSI_CHECK_COM_ABLE85 ;풋잡 검사
+		C_ABLE85 = RESULT
+		CALL ASSI_CHECK_COM_ABLE87 ;세로파이즈리 검사
+		C_ABLE87 = RESULT
+		CALL ASSI_CHECK_COM_ABLE88 ;파이즈리펠라 검사
+		C_ABLE88 = RESULT
+		
+		IF (SELECTCOM == 66 || SELECTCOM == 67 || SELECTCOM == 506 || SELECTCOM == 507) || (TFLAG:60 == 4 || TFLAG:60 == 10)
+		;노예가 기승위(애널) 시작 혹은 그 삽입유지중일 경우
+			SIF TFLAG:62 > 0 ;노예가 기승위(애널)을 하려고 하면 조수는 비켜줘야 한다
+				TFLAG:62 = 0 ;조수기승위 유지변수 OFF
+			IF (TFLAG:60 == 4 || TFLAG:60 == 10) && SELECTCOM == 20
+			;노예가 삽입유지중이면서 키스한다(파생커맨드)를 실행했을 경우
+				IF C_ABLE31 == 1 && (RAND:5 == 0)
+					CALL ASSI_3P_DOING, 31 ;손가락츄파
+				ELSEIF C_ABLE30 == 1
+					CALL ASSI_3P_DOING, 30 ;파후파후
+				ELSE
+					CALL ASSI_3P_DOING     ;대기행동
+				ENDIF
+			ELSE
+			;그 외(주인의 얼굴이 자유로운 상태)
+				IF C_ABLE31 == 1 && (RAND:9 == 0)
+					CALL ASSI_3P_DOING, 31 ;손가락츄파
+				ELSEIF C_ABLE30 == 1 && (RAND:7 == 0)
+					CALL ASSI_3P_DOING, 30 ;파후파후
+				ELSEIF C_ABLE20 == 1 && (RAND:5 == 0)
+					CALL ASSI_3P_DOING, 20 ;키스한다
+				ELSEIF C_ABLE1 == 1
+					CALL ASSI_3P_DOING, 1 ;안면기승위
+				ELSE
+					CALL ASSI_3P_DOING     ;대기행동
+				ENDIF
+			ENDIF
+		ELSEIF SELECTCOM == 80 || SELECTCOM == 81 || SELECTCOM == 82 || SELECTCOM == 83 || SELECTCOM == 85 || SELECTCOM == 87 || SELECTCOM == 88
+		;노예가 봉사계 커맨드를 실행할 경우
+			SIF TFLAG:62 > 0 ;노예가 봉사커맨드를 하려고 하면 조수는 비켜줘야 한다
+				TFLAG:62 = 0 ;조수기승위 유지변수 OFF
+			IF C_ABLE31 == 1 && (RAND:9 == 0)
+				CALL ASSI_3P_DOING, 31 ;손가락츄파
+			ELSEIF C_ABLE30 == 1 && (RAND:7 == 0)
+				CALL ASSI_3P_DOING, 30 ;파후파후
+			ELSEIF C_ABLE20 == 1 && (RAND:5 == 0)
+				CALL ASSI_3P_DOING, 20 ;키스한다
+			ELSEIF C_ABLE1 == 1
+				CALL ASSI_3P_DOING, 1 ;안면기승위
+			ELSE
+				CALL ASSI_3P_DOING     ;대기행동
+			ENDIF
+		ELSE
+		;그 외(노예가 삽입행위를 하지 않는 경우)
+			IF TFLAG:62 > 0
+			;조수가 기승위 삽입유지 상태일 경우
+				IF C_ABLE31 == 1 && (SELECTCOM != 31) && (RAND:35 == 0)
+					TFLAG:62 = 0 ;조수 삽입유지 해제
+					CALL ASSI_3P_DOING, 31 ;손가락츄파
+				ELSEIF C_ABLE30 == 1 && (SELECTCOM != 30) && (RAND:30 == 0)
+					TFLAG:62 = 0 ;조수 삽입유지 해제
+					CALL ASSI_3P_DOING, 30 ;파후파후
+				ELSEIF C_ABLE20 == 1 && (SELECTCOM != 20) && (RAND:25 == 0)
+					TFLAG:62 = 0 ;조수 삽입유지 해제
+					CALL ASSI_3P_DOING, 20 ;키스한다
+				ELSEIF C_ABLE80 == 1 && (SELECTCOM != 80) && (RAND:25 == 0)
+					TFLAG:62 = 0 ;조수 삽입유지 해제
+					CALL ASSI_3P_DOING, 80 ;수음
+				ELSEIF C_ABLE81 == 1 && (SELECTCOM != 81) && (RAND:25 == 0)
+					TFLAG:62 = 0 ;조수 삽입유지 해제
+					CALL ASSI_3P_DOING, 81 ;펠라치오
+				ELSEIF C_ABLE82 == 1 && (SELECTCOM != 82) && (RAND:25 == 0)
+					TFLAG:62 = 0 ;조수 삽입유지 해제
+					CALL ASSI_3P_DOING, 82 ;파이즈리
+				ELSEIF C_ABLE83 == 1 && (SELECTCOM != 83) && (RAND:25 == 0)
+					TFLAG:62 = 0 ;조수 삽입유지 해제
+					CALL ASSI_3P_DOING, 83 ;스마타
+				ELSEIF C_ABLE85 == 1 && (SELECTCOM != 85) && (RAND:25 == 0)
+					TFLAG:62 = 0 ;조수 삽입유지 해제
+					CALL ASSI_3P_DOING, 85 ;풋잡
+				ELSEIF C_ABLE87 == 1 && (SELECTCOM != 87) && (RAND:25 == 0)
+					TFLAG:62 = 0 ;조수 삽입유지 해제
+					CALL ASSI_3P_DOING, 87 ;세로파이즈리
+				ELSEIF C_ABLE88 == 1 && (SELECTCOM != 88) && (RAND:25 == 0)
+					TFLAG:62 = 0 ;조수 삽입유지 해제
+					CALL ASSI_3P_DOING, 88 ;파이즈리펠라
+				ELSEIF C_ABLE1 == 1 && (SELECTCOM != 1) && (RAND:20 == 0)
+					TFLAG:62 = 0 ;조수 삽입유지 해제
+					CALL ASSI_3P_DOING, 1 ;안면기승위
+				ELSEIF C_ABLE66 == 1
+					CALL ASSI_3P_DOING, 66 ;기승위
+				ELSE
+					CALL ASSI_3P_DOING     ;대기행동
+				ENDIF
+			ELSE
+				IF SELECTCOM == 1
+				;노예가 안면기승위를 채택할 경우
+					IF C_ABLE31 == 1 && (RAND:25 == 0)
+						CALL ASSI_3P_DOING, 31 ;손가락츄파
+					ELSEIF C_ABLE80 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 80 ;수음
+					ELSEIF C_ABLE81 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 81 ;펠라치오
+					ELSEIF C_ABLE82 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 82 ;파이즈리
+					ELSEIF C_ABLE83 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 83 ;스마타
+					ELSEIF C_ABLE85 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 85 ;풋잡
+					ELSEIF C_ABLE87 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 87 ;세로파이즈리
+					ELSEIF C_ABLE88 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 88 ;파이즈리펠라
+					ELSEIF C_ABLE66 == 1
+						CALL ASSI_3P_DOING, 66 ;기승위
+					ELSE
+						CALL ASSI_3P_DOING     ;대기행동
+					ENDIF
+				ELSEIF SELECTCOM == 20
+				;노예가 키스한다를 채택할 경우
+					IF C_ABLE31 == 1 && (RAND:25 == 0)
+						CALL ASSI_3P_DOING, 31 ;손가락츄파
+					ELSEIF C_ABLE30 == 1 && (RAND:25 == 0)
+						CALL ASSI_3P_DOING, 30 ;파후파후
+					ELSEIF C_ABLE80 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 80 ;수음
+					ELSEIF C_ABLE81 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 81 ;펠라치오
+					ELSEIF C_ABLE82 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 82 ;파이즈리
+					ELSEIF C_ABLE83 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 83 ;스마타
+					ELSEIF C_ABLE85 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 85 ;풋잡
+					ELSEIF C_ABLE87 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 87 ;세로파이즈리
+					ELSEIF C_ABLE88 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 88 ;파이즈리펠라
+					ELSEIF C_ABLE66 == 1
+						CALL ASSI_3P_DOING, 66 ;기승위
+					ELSE
+						CALL ASSI_3P_DOING     ;대기행동
+					ENDIF
+				ELSEIF SELECTCOM == 30
+				;노예가 파후파후를 채택할 경우
+					IF C_ABLE31 == 1 && (RAND:25 == 0)
+						CALL ASSI_3P_DOING, 31 ;손가락츄파
+					ELSEIF C_ABLE20 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 20 ;키스한다
+					ELSEIF C_ABLE80 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 80 ;수음
+					ELSEIF C_ABLE81 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 81 ;펠라치오
+					ELSEIF C_ABLE82 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 82 ;파이즈리
+					ELSEIF C_ABLE83 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 83 ;스마타
+					ELSEIF C_ABLE85 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 85 ;풋잡
+					ELSEIF C_ABLE87 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 87 ;세로파이즈리
+					ELSEIF C_ABLE88 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 88 ;파이즈리펠라
+					ELSEIF C_ABLE66 == 1
+						CALL ASSI_3P_DOING, 66 ;기승위
+					ELSE
+						CALL ASSI_3P_DOING     ;대기행동
+					ENDIF
+				ELSEIF SELECTCOM == 31
+				;노예가 손가락츄파를 채택할 경우
+					IF C_ABLE30 == 1 && (RAND:25 == 0)
+						CALL ASSI_3P_DOING, 30 ;파후파후
+					ELSEIF C_ABLE20 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 20 ;키스한다
+					ELSEIF C_ABLE80 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 80 ;수음
+					ELSEIF C_ABLE81 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 81 ;펠라치오
+					ELSEIF C_ABLE82 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 82 ;파이즈리
+					ELSEIF C_ABLE83 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 83 ;스마타
+					ELSEIF C_ABLE85 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 85 ;풋잡
+					ELSEIF C_ABLE87 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 87 ;세로파이즈리
+					ELSEIF C_ABLE88 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 88 ;파이즈리펠라
+					ELSEIF C_ABLE1 == 1 && (RAND:15 == 0)
+						CALL ASSI_3P_DOING, 1 ;안면기승위
+					ELSEIF C_ABLE66 == 1
+						CALL ASSI_3P_DOING, 66 ;기승위
+					ELSE
+						CALL ASSI_3P_DOING     ;대기행동
+					ENDIF
+				ELSEIF SELECTCOM == 80 || SELECTCOM == 81 || SELECTCOM == 82 || SELECTCOM == 83 || SELECTCOM == 85 || SELECTCOM == 87 || SELECTCOM == 88
+				;노예가 봉사계 커맨드를 실행할 경우
+					IF C_ABLE31 == 1 && (RAND:9 == 0)
+						CALL ASSI_3P_DOING, 31 ;손가락츄파
+					ELSEIF C_ABLE30 == 1 && (RAND:7 == 0)
+						CALL ASSI_3P_DOING, 30 ;파후파후
+					ELSEIF C_ABLE20 == 1 && (RAND:5 == 0)
+						CALL ASSI_3P_DOING, 20 ;키스한다
+					ELSEIF C_ABLE1 == 1
+						CALL ASSI_3P_DOING, 1 ;안면기승위
+					ELSE
+						CALL ASSI_3P_DOING     ;대기행동
+					ENDIF
+				ELSE
+				;그 외
+					IF C_ABLE31 == 1 && (RAND:25 == 0)
+						CALL ASSI_3P_DOING, 31 ;손가락츄파
+					ELSEIF C_ABLE30 == 1 && (RAND:25 == 0)
+						CALL ASSI_3P_DOING, 30 ;파후파후
+					ELSEIF C_ABLE20 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 20 ;키스한다
+					ELSEIF C_ABLE80 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 80 ;수음
+					ELSEIF C_ABLE81 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 81 ;펠라치오
+					ELSEIF C_ABLE82 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 82 ;파이즈리
+					ELSEIF C_ABLE83 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 83 ;스마타
+					ELSEIF C_ABLE85 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 85 ;풋잡
+					ELSEIF C_ABLE87 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 87 ;세로파이즈리
+					ELSEIF C_ABLE88 == 1 && (RAND:20 == 0)
+						CALL ASSI_3P_DOING, 88 ;파이즈리펠라
+					ELSEIF C_ABLE1 == 1 && (RAND:10 == 0)
+						CALL ASSI_3P_DOING, 1 ;안면기승위
+					ELSEIF C_ABLE66 == 1
+						CALL ASSI_3P_DOING, 66 ;기승위
+					ELSE
+						CALL ASSI_3P_DOING     ;대기행동
+					ENDIF
+				ENDIF
+			ENDIF
+		ENDIF
+	ENDIF
+ELSE
+;조수의 체력이 700보다 낮아질 경우, 강제로 빠지게 한다
+	IF TFLAG:61 > 0
+		TFLAG:61 = 0
+		TFLAG:62 = 0
+		TSTR:3 = 
+		SETCOLOR 0xff0000
+		PRINTFORMW %조사처리(CALLNAME:ASSI,"는")% 체력이 바닥났기에 정사에서 빠졌다
+		RESETCOLOR
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+;절정표시
+;-------------------------------------------------
+FONTBOLD
+SETCOLOR 0xFFFFFF
+FOR LOCAL , 0 , 2 + (ASSI > 0)
+	절정수 = 0
+	SIF LOCAL == 0
+		CHARA = MASTER
+	SIF LOCAL == 1
+		CHARA = TARGET
+	SIF LOCAL == 2
+		CHARA = ASSI
+	SIF NOWEX:CHARA:0
+		PRINTFORML \@ NOWEX:CHARA:0 == 5 ? 궁극 # \@\@ NOWEX:CHARA:0 == 4 ? 최강 # \@\@ NOWEX:CHARA:0 == 3 ? 초강 # \@\@ NOWEX:CHARA:0 == 2 ? 강 # \@Ｃ절정\@ CHARA == MASTER ? (주인) # \@\@ CHARA == ASSI ? (조수) # \@
+	SIF NOWEX:CHARA:1
+		PRINTFORML \@ NOWEX:CHARA:1 == 5 ? 궁극 # \@\@ NOWEX:CHARA:1 == 4 ? 최강 # \@\@ NOWEX:CHARA:1 == 3 ? 초강 # \@\@ NOWEX:CHARA:1 == 2 ? 강 # \@Ｖ절정\@ CHARA == MASTER ? (주인) # \@\@ CHARA == ASSI ? (조수) # \@
+	SIF NOWEX:CHARA:2
+		PRINTFORML \@ NOWEX:CHARA:2 == 5 ? 궁극 # \@\@ NOWEX:CHARA:2 == 4 ? 최강 # \@\@ NOWEX:CHARA:2 == 3 ? 초강 # \@\@ NOWEX:CHARA:2 == 2 ? 강 # \@Ａ절정\@ CHARA == MASTER ? (주인) # \@\@ CHARA == ASSI ? (조수) # \@
+	SIF NOWEX:CHARA:3
+		PRINTFORML \@ NOWEX:CHARA:3 == 5 ? 궁극 # \@\@ NOWEX:CHARA:3 == 4 ? 최강 # \@\@ NOWEX:CHARA:3 == 3 ? 초강 # \@\@ NOWEX:CHARA:3 == 2 ? 강 # \@Ｂ절정\@ CHARA == MASTER ? (주인) # \@\@ CHARA == ASSI ? (조수) # \@
+	절정수 = (NOWEX:CHARA:0 > 0) + (NOWEX:CHARA:1 > 0) + (NOWEX:CHARA:2 > 0) + (NOWEX:CHARA:3 > 0)
+	IF 절정수 == 4
+		IF NOWEX:CHARA:0 >= 5 && NOWEX:CHARA:1 >= 5 && NOWEX:CHARA:2 >= 5 && NOWEX:CHARA:3 >= 5
+			PRINTFORML 궁 극 사 중 절 정\@ CHARA == MASTER ? (주인) # \@\@ CHARA == ASSI ? (조수) # \@
+			절정수 = 4
+			IF CHARA == TARGET
+				FONTREGULAR
+				RESETCOLOR
+				PRINTFORML (각각 40배의 구슬을 얻을 수 있습니다)
+				FONTBOLD
+				SETCOLOR 0xFFFFFF
+			ENDIF
+		ELSEIF NOWEX:CHARA:0 >= 4 && NOWEX:CHARA:1 >= 4 && NOWEX:CHARA:2 >= 4 && NOWEX:CHARA:3 >= 4
+			PRINTFORML 최 강 사 중 절 정\@ CHARA == MASTER ? (주인) # \@\@ CHARA == ASSI ? (조수) # \@
+			절정수 = 4
+			IF CHARA == TARGET
+				FONTREGULAR
+				RESETCOLOR
+				PRINTFORML (각각 32배의 구슬을 얻을 수 있습니다)
+				FONTBOLD
+				SETCOLOR 0xFFFFFF
+			ENDIF
+		ELSEIF NOWEX:CHARA:0 >= 3 && NOWEX:CHARA:1 >= 3 && NOWEX:CHARA:2 >= 3 && NOWEX:CHARA:3 >= 3
+			PRINTFORML 초 강 사 중 절 정\@ CHARA == MASTER ? (주인) # \@\@ CHARA == ASSI ? (조수) # \@
+			절정수 = 4
+			IF CHARA == TARGET
+				FONTREGULAR
+				RESETCOLOR
+				PRINTFORML (각각 24배의 구슬을 얻을 수 있습니다)
+				FONTBOLD
+				SETCOLOR 0xFFFFFF
+			ENDIF
+		ELSEIF NOWEX:CHARA:0 >= 2 && NOWEX:CHARA:1 >= 2 && NOWEX:CHARA:2 >= 2 && NOWEX:CHARA:3 >= 2
+			PRINTFORML 강 사 중 절 정\@ CHARA == MASTER ? (주인) # \@\@ CHARA == ASSI ? (조수) # \@
+			절정수 = 4
+			IF CHARA == TARGET
+				FONTREGULAR
+				RESETCOLOR
+				PRINTFORML (각각 16배의 구슬을 얻을 수 있습니다)
+				FONTBOLD
+				SETCOLOR 0xFFFFFF
+			ENDIF
+		ELSE
+			PRINTFORML 사 중 절 정\@ CHARA == MASTER ? (주인) # \@\@ CHARA == ASSI ? (조수) # \@
+			절정수 = 4
+			IF CHARA == TARGET
+				FONTREGULAR
+				RESETCOLOR
+				PRINTFORML (각각 8배의 구슬을 얻을 수 있습니다)
+				FONTBOLD
+				SETCOLOR 0xFFFFFF
+			ENDIF
+		ENDIF
+	ELSEIF 절정수 > 1
+		절정수 = 0
+		IF NOWEX:CHARA:0
+			PRINTFORM Ｃ
+			절정수 ++
+		ENDIF
+		IF NOWEX:CHARA:1
+			PRINTFORM \@절정수 ? ＆ # \@Ｖ
+			절정수 ++
+		ENDIF
+		IF NOWEX:CHARA:2
+			PRINTFORM \@절정수 ? ＆ # \@Ａ
+			절정수 ++
+		ENDIF
+		IF NOWEX:CHARA:3
+			PRINTFORM \@절정수 ? ＆ # \@Ｂ
+			절정수 ++
+		ENDIF
+		PRINTFORML 절정\@ CHARA == MASTER ? (주인) # \@\@ CHARA == ASSI ? (조수) # \@
+		IF CHARA == TARGET
+			FONTREGULAR
+			RESETCOLOR
+			PRINTFORML (각각 {POWER(2,절정수-1)}배의 구슬을 얻을 수 있습니다)
+			FONTBOLD
+			SETCOLOR 0xFFFFFF
+		ENDIF
+	ENDIF
+	;분유표시;下のNOWEX:CHARA:분유はすべてNOWEX:CHARA:4だった
+	IF NOWEX:CHARA:분유
+		PRINTFORM \@ NOWEX:CHARA:분유 == 5 ? 궁극 # \@\@ NOWEX:CHARA:분유 == 4 ? 최강 # \@\@ NOWEX:CHARA:분유 == 3 ? 초대량 # \@\@ NOWEX:CHARA:분유 == 2 ? 대량 # \@분유
+		SELECTCASE CHARA
+			CASE MASTER
+				PRINTFORM (주인)
+			CASE TARGET
+				PRINTFORM (%CALLNAME:CHARA%)
+			CASE ASSI
+				PRINTFORM (조수)
+		ENDSELECT
+;		IF NOWEX:CHARA:4 == 2
+;			PRINTFORML %CALLNAME:CHARA%은(는) 유두에서 대량의 모유를 분출했다
+;		ELSE
+;			PRINTFORML %CALLNAME:CHARA%은(는) 유두에서 모유를 흘렸다
+;		ENDIF
+		PRINTL 
+	ENDIF
+	;ＴＳして女になっているキャラがＶ절정すると이상경험부여
+	SIF NOWEX:CHARA:Ｖ절정 && EXP:CHARA:ＴＳ경험 % 2 == 1 && !IS_MALE(CHARA)
+		CALL ADDS_ABNORMAL_EXP , "ＴＳＶ절정" , CHARA
+NEXT
+
+CHARA = TARGET
+;-------------------------------------------------
+;사정処理
+;-------------------------------------------------
+SIF TFLAG:10
+	CALL SAMEN_SHOOT_TARGET
+SIF TCVAR:MASTER:사정
+	CALL SAMEN_SHOOT,MASTER
+SIF ASSI > -1 && TCVAR:ASSI:사정
+	CALL SAMEN_SHOOT,ASSI
+PRINTL
+FONTREGULAR
+RESETCOLOR
+
+;-------------------------------------------------
+;奴隷の절정時の구상
+;-------------------------------------------------
+CALL KOJO_MESSAGE_PALAMCNG_B
+;-------------------------------------------------	
+;절정時の방뇨処理
+;-------------------------------------------------
+CALL ORGASM_ADD_URINE, TARGET
+;-------------------------------------------------
+;조교者の사정時の구상
+;-------------------------------------------------
+CALL KOJO_MESSAGE_PALAMCNG_A
+;-------------------------------------------------
+;사정フラグはここで초기化
+;-------------------------------------------------	
+CFLAG:TARGET:106 = 0
+;-------------------------------------------------
+;촉수の사정時の구상
+;-------------------------------------------------
+CALL KOJO_MESSAGE_PALAMCNG_E
+
+;-------------------------------------------------
+;일시적함락소질변경戻し
+;-------------------------------------------------
+IF CFLAG:일시적함락소질변경
+	FOR LOCAL , 0, 6
+		TALENT:(3 + LOCAL) = 0
+		SIF GETBIT(LOCAL:1,LOCAL) > 0
+			TALENT:(3 + LOCAL) = 1
+	NEXT
+	FOR LOCAL , 0, 4
+		SIF GETBIT(LOCAL:1,LOCAL + 6)
+			TALENT:(170 + LOCAL) = 1
+	NEXT
+ENDIF
+;-------------------------------------------------
+;조교後の구상
+;-------------------------------------------------
+CALL KOJO_MESSAGE_PALAMCNG_C
+;-------------------------------------------------
+;パラメータ変動による구상
+;-------------------------------------------------
+CALL KOJO_MESSAGE_PALAMCNG_D
+;-------------------------------------------------
+;각인취득の체크
+;-------------------------------------------------
+CALL MARK_GOT_CHECK
+;-------------------------------------------------
+;각인취득による구상
+;-------------------------------------------------
+CALL KOJO_MESSAGE_MARKCNG
+;-------------------------------------------------
+;각인취득の処理
+;-------------------------------------------------
+CALL MARK_GOT_RESULT
+;-------------------------------------------------
+;순종上昇による[저항]の消滅체크
+;-------------------------------------------------
+CALL JUJUN_UP_CHECK
+DRAWLINE
+;IF ASSIPLAY
+;	TFLAG:50 = 1
+;ELSE
+;	TFLAG:50 = 0
+;ENDIF
+;現状ではMASTERとASSIの체력기력の減少はない
+DOWNBASE:MASTER:체력 = 0
+DOWNBASE:MASTER:기력 = 0
+IF ASSI > 0
+	DOWNBASE:ASSI:체력 = 0
+	DOWNBASE:ASSI:기력 = 0
+ENDIF
+;체력・기력の減少
+PRINT 체력-
+PRINTV DOWNBASE:CHARA:체력
+PRINT  기력-
+PRINTVL DOWNBASE:CHARA:기력
+
+IF TFLAG:お掃除フェラ発生
+	SIF TFLAG:お掃除フェラ発生 & (1)
+		STAIN:PLAYER:페니스 = 2
+	SIF TFLAG:お掃除フェラ発生 & (2 | 32)
+		STAIN:(PLAYER != MASTER ? MASTER # ASSI):페니스 = 2
+	SIF TFLAG:お掃除フェラ発生 & (4 | 512)
+		STAIN:MASTER:페니스 = 2
+	SIF TFLAG:お掃除フェラ発生 & (8 | 128)
+		STAIN:ASSI:페니스 = 2
+	SIF TFLAG:お掃除フェラ発生 & (16 | 64 | 256)
+		STAIN:TARGET:페니스 = 2
+	TFLAG:お掃除フェラ発生 = 0
+ENDIF
+
+;-------------------------------------------------
+;数値変動の표시
+;-------------------------------------------------
+;相性
+;R = NO:PLAYER
+LOCAL = LIMIT(100 + (GET_RELATION(CHARA, CHARA:1) - 100)/2 , 50, 150)
+SIF LOCAL != 100
+	PRINTFORML ＜상성%TOSTR(LOCAL, "0'.'00")%배＞
+;同じコマンドの連続実行
+SIF SELECTCOM == PREVCOM
+	PRINTL ＜동일 커맨드 연속실행＞
+;今回のコマンドを「전회のコマンド」とする
+ARRAYSHIFT PREVCOM, 1, SELECTCOM
+;PREVCOM = SELECTCOM
+;전회の조교者の취득
+TFLAG:전회の조교者 = PLAYER
+;기력０
+SIF BASE:CHARA:기력 <= 0
+	PRINTL ★기력０★
+;-------------------------------------------------
+;조교ソースの표시
+;-------------------------------------------------
+CALL SHOW_SOURCE, CHARA
+;-------------------------------------------------
+;ソースの표시(조교者)
+;-------------------------------------------------
+LOCAL:1 = 0
+FOR LOCAL, 0, 100
+	SIF PALAM:(CHARA:1):LOCAL + PALAM:(CHARA:1):LOCAL == 0
+		CONTINUE
+	LOCAL:1 = 1
+	BREAK
+NEXT
+IF LOCAL:1
+	CALL SHOW_SOURCE, CHARA:1
+	;-------------------------------------------------
+	;数値変動の표시
+	;-------------------------------------------------
+	;相性
+	;R = NO:PLAYER
+	LOCAL = LIMIT(100 + (GET_RELATION(CHARA:1, CHARA) - 100)/2 , 50, 150)
+	SIF LOCAL != 100
+		PRINTFORML ＜상성%TOSTR(LOCAL, "0'.'00")%배＞
+	;同じコマンドの連続実行
+;	SIF SELECTCOM == PREVCOM
+;		PRINTL ＜동일 커맨드 연속실행＞
+	;기력０
+	SIF BASE:(CHARA:1):기력 <= 0
+		PRINTL ★기력０★
+ENDIF
+
+;-------------------------------------------------
+;사정後の再装填処理
+;-------------------------------------------------
+IF PCOUNT == 2
+	FOR LCOUNT, 0, CHARANUM
+		SIF CFLAG:LCOUNT:9 > 0
+			CFLAG:LCOUNT:9 -= 1
+	NEXT
+ENDIF
+;-------------------------------------------------
+;パラメータの上昇＆표시（DOWNもここで）
+;-------------------------------------------------
+;UPCHECK
+CALL UPCHECK_A, CHARA
+CALL UPCHECK_A, CHARA:1
+SIF ASSI >= 0
+	CALL UPCHECK_A, ASSI
+;-------------------------------------------------
+;EXP・MAG等の표시
+;-------------------------------------------------
+;CALL SHOW_ADD_EXP, TARGET
+;CALL SHOW_ADD_EXP, MASTER
+;CALL SHOW_ADD_EXP, ASSI
+;CALL SHOW_ABNORMAL_EXP, TARGET
+;CALL SHOW_ABNORMAL_EXP, MASTER
+;CALL SHOW_ABNORMAL_EXP, ASSI
+CALL SHOW_EXTRA, TARGET
+CALL SHOW_EXTRA, MASTER
+CALL SHOW_EXTRA, ASSI
+;WAIT
+;-------------------------------------------------
+;조교者のSOURCEを0に
+;-------------------------------------------------
+;FOR LCOUNT, 0, 4
+;	SOURCE:PLAYER:LCOUNT = 0
+;NEXT
+;-------------------------------------------------
+;조교ソースの표시（DOWNもここで）
+;-------------------------------------------------
+@SHOW_SOURCE, ARG
+;PRINTL 　
+SIF ARG < 0
+	RETURN 0
+LOCAL:1 = 0
+FOR LOCAL,0,VARSIZE("SOURCE")
+	SIF SOURCE:ARG:LOCAL == 0
+		CONTINUE
+	LOCAL:1 = 1
+	BREAK
+NEXT
+IF LOCAL:1
+	DRAWLINE
+;	DRAWLINE
+	PRINTFORML 소스(%CALLNAME:ARG%)
+	FOR LOCAL,0,VARSIZE("SOURCE")
+		SIF SOURCE:ARG:LOCAL == 0
+			CONTINUE
+		PRINTFORM %SOURCENAME:LOCAL%({SOURCE:ARG:LOCAL})
+	NEXT
+	PRINTL 
+ENDIF
+
+;SIF SOURCE:ARG:쾌Ｃ > 0
+;	PRINTFORM 쾌Ｃ({SOURCE:ARG:쾌Ｃ})
+;SIF SOURCE:ARG:쾌Ｖ > 0
+;	PRINTFORM 쾌Ｖ({SOURCE:ARG:쾌Ｖ})
+;SIF SOURCE:ARG:쾌Ａ > 0
+;	PRINTFORM 쾌Ａ({SOURCE:ARG:쾌Ａ})
+;SIF SOURCE:ARG:쾌Ｂ > 0
+;	PRINTFORM 쾌Ｂ({SOURCE:ARG:쾌Ｂ})
+;SIF SOURCE:ARG:정애 > 0
+;	PRINTFORM 정애({SOURCE:ARG:정애})
+;SIF SOURCE:ARG:성행위 > 0
+;	PRINTFORM 성행위({SOURCE:ARG:성행위})
+;SIF SOURCE:ARG:달성 > 0
+;	PRINTFORM 달성({SOURCE:ARG:달성})
+;SIF SOURCE:ARG:아픔 > 0
+;	PRINTFORM 아픔({SOURCE:ARG:아픔})
+;SIF SOURCE:ARG:무서움 > 0
+;	PRINTFORM 무서움({SOURCE:ARG:무서움})
+;SIF SOURCE:ARG:중독충족 > 0
+;	PRINTFORM 중독충족({SOURCE:ARG:중독충족})
+;SIF SOURCE:ARG:액체 > 0
+;	PRINTFORM 액체({SOURCE:ARG:액체})
+;SIF SOURCE:ARG:욕정 > 0
+;	PRINTFORM 욕정({SOURCE:ARG:욕정})
+;SIF SOURCE:ARG:복종 > 0
+;	PRINTFORM 복종({SOURCE:ARG:복종})
+;SIF SOURCE:ARG:노출 > 0
+;	PRINTFORM 노출({SOURCE:ARG:노출})
+;SIF SOURCE:ARG:굴종 > 0
+;	PRINTFORM 굴종({SOURCE:ARG:굴종})
+;SIF SOURCE:ARG:불결 > 0
+;	PRINTFORM 불결({SOURCE:ARG:불결})
+;SIF SOURCE:ARG:울굴 > 0
+;	PRINTFORM 울굴({SOURCE:ARG:울굴})
+;SIF SOURCE:ARG:일탈 > 0
+;	PRINTFORM 일탈({SOURCE:ARG:일탈})
+;SIF SOURCE:ARG:반감 > 0
+;	PRINTFORM 반감({SOURCE:ARG:반감})
+;PRINTL
+
+
+;-------------------------------------------------
+;UPCHECK措置
+;-------------------------------------------------
+@UPCHECK_A, ARG
+#DIM PALAMLV_B, 1
+#DIM PALAMLV_A, 1
+#DIM 元PALAM, 1
+#DIM 결과PALAM, 1
+#DIM 증가PALAM, 1
+#DIM 減少PALAM, 1
+#DIM COMPARE1 ;비교 변수1
+#DIM COMPARE2 ;비교 변수2
+#DIM COMPARE3 ;비교 변수3
+#DIM COMPARE4 ;비교 변수4
+#LOCALSSIZE 1
+SIF ARG < 0
+	RETURN 0
+LOCAL:1 = 0
+FOR LOCAL,0,VARSIZE("PALAM")
+	SIF CUP:ARG:LOCAL + CDOWN:ARG:LOCAL == 0
+		CONTINUE
+	LOCAL:1 = 1
+	BREAK
+NEXT
+;ＮＴＲ기능による음란度の増減処理
+IF FLAG:ＮＴＲ기능
+	IF (ARG == TARGET && FAVORITE_1(ARG) != PLAYER) || (ARG == PLAYER && FAVORITE_1(ARG) != TARGET)
+		FOR LOCAL , 0 , 10
+			IF LOCAL == 9 || CUP:ARG:욕정 < PALAMLV:LOCAL
+				CFLAG:ARG:음란度 += LOCAL*2
+				BREAK
+			ENDIF
+		NEXT
+	ELSE
+		;바람꽃의이슬
+		SIF CFLAG:117 == 1
+			CFLAG:ARG:음란度 -= 500
+		CFLAG:ARG:음란度 -= 1
+	ENDIF
+ENDIF
+IF LOCAL:1
+	DRAWLINE
+	PRINTFORML ＰＡＬＡＭ(%CALLNAME:ARG%)
+	;표시설정Ｃ
+	IF FLAG:PALAM표시설정 == 2
+		FOR LOCAL,0,VARSIZE("PALAM")
+			SIF CUP:ARG:LOCAL + CDOWN:ARG:LOCAL == 0
+				CONTINUE
+			元PALAM = PALAM:ARG:LOCAL - PALAMLV:GETPALAMLV(PALAM:ARG:LOCAL, 17)
+			減少PALAM = 0
+			증가PALAM = CUP:ARG:LOCAL
+			;레벨업を판정
+			;쾌感は特別
+			PALAMLV_B = GETPALAMLV(PALAM:ARG:LOCAL, 17)
+			IF LOCAL < 4 && CUP:ARG:LOCAL + PALAM:ARG:LOCAL >= 10000
+				PALAM:ARG:LOCAL += CUP:ARG:LOCAL - CDOWN:ARG:LOCAL
+				결과PALAM = PALAM:ARG:LOCAL
+				減少PALAM = CDOWN:ARG:LOCAL
+			ELSEIF CUP:ARG:LOCAL + PALAM:ARG:LOCAL >=  PALAMLV:(GETPALAMLV(PALAM:ARG:LOCAL, 17) + 1)
+				PALAM:ARG:LOCAL += CUP:ARG:LOCAL - CDOWN:ARG:LOCAL
+				PALAMLV_A = GETPALAMLV(PALAM:ARG:LOCAL, 17)
+				결과PALAM = PALAM:ARG:LOCAL - PALAMLV:PALAMLV_A
+				증가PALAM = PALAM:ARG:LOCAL - 元PALAM
+				減少PALAM = PALAM:ARG:LOCAL - 결과PALAM 
+			ELSE
+				PALAM:ARG:LOCAL += CUP:ARG:LOCAL - CDOWN:ARG:LOCAL
+				결과PALAM = 元PALAM + CUP:ARG:LOCAL - CDOWN:ARG:LOCAL
+				PALAMLV_A = PALAMLV_B
+				減少PALAM = CDOWN:ARG:LOCAL
+			ENDIF
+			LOCALS = %PALAMNAME:LOCAL%
+			IF LOCAL > 4
+				IF (PALAMNAME:LOCAL == "윤활" && PALAMLV_A >= 5) || PALAMLV_A >= 17
+					LOCALS += "(MAX)"
+				ELSEIF PALAMLV_A == PALAMLV_B
+					LOCALS += "(Lv" + @"{PALAMLV_A}"+ ")"
+				ELSE
+					LOCALS += "(Lv" + @"{PALAMLV_B}"+ "→" + @"{PALAMLV_A}" + ")"
+				ENDIF
+			ENDIF
+			PRINTFORM %LOCALS,12,LEFT% 
+			PRINTFORM {元PALAM,8,RIGHT}    
+			PRINTFORM + {증가PALAM,8,RIGHT}    
+			IF 減少PALAM > 0
+				PRINTFORM - {減少PALAM,8,RIGHT}    
+			ELSE
+				PRINTFORM %" "*14%
+			ENDIF
+			PRINTFORM ={결과PALAM,8,RIGHT}
+			;PALAM:ARG:LOCAL += CUP:ARG:LOCAL - CDOWN:ARG:LOCAL
+			IF (PALAMNAME:LOCAL == "윤활" && PALAMLV_A >= 5) || PALAMLV_A >= 17
+			ELSEIF LOCAL < 4 && CDOWN:ARG:LOCAL > 0
+				FONTBOLD
+				SETCOLOR 0xFFAAFF
+				PRINTFORM 　　Ecstasy
+				CALL HEARTB, NOWEX:ARG:LOCAL
+				RESETCOLOR
+				FONTREGULAR
+			ELSE
+				PRINTFORM 　　NEXT({PALAMLV:(PALAMLV_A+1) - PALAMLV:PALAMLV_A})
+			ENDIF
+			PRINTL 
+			CUP:ARG:LOCAL = 0
+			CDOWN:ARG:LOCAL = 0
+		NEXT
+	;표시설정ＡＢ
+	ELSE
+		FOR LOCAL,0,VARSIZE("PALAM")
+			SIF CUP:ARG:LOCAL + CDOWN:ARG:LOCAL == 0
+				CONTINUE
+			元PALAM = PALAM:ARG:LOCAL
+			減少PALAM = 0
+			증가PALAM = CUP:ARG:LOCAL
+			;레벨업を판정
+			;쾌感は特別
+			PALAMLV_B = GETPALAMLV(PALAM:ARG:LOCAL, 17)
+			IF LOCAL < 4 && CUP:ARG:LOCAL + PALAM:ARG:LOCAL >= 10000
+				PALAM:ARG:LOCAL += CUP:ARG:LOCAL - CDOWN:ARG:LOCAL
+				결과PALAM = PALAM:ARG:LOCAL
+				減少PALAM = CDOWN:ARG:LOCAL
+			ELSEIF CUP:ARG:LOCAL + PALAM:ARG:LOCAL >=  PALAMLV:(GETPALAMLV(PALAM:ARG:LOCAL, 17) + 1)
+				PALAM:ARG:LOCAL += CUP:ARG:LOCAL - CDOWN:ARG:LOCAL
+				PALAMLV_A = GETPALAMLV(PALAM:ARG:LOCAL, 17)
+				결과PALAM = PALAM:ARG:LOCAL
+				減少PALAM = 元PALAM + 증가PALAM - 결과PALAM 
+			ELSE
+				PALAM:ARG:LOCAL += CUP:ARG:LOCAL - CDOWN:ARG:LOCAL
+				결과PALAM = 元PALAM + CUP:ARG:LOCAL - CDOWN:ARG:LOCAL
+				PALAMLV_A = PALAMLV_B
+				減少PALAM = CDOWN:ARG:LOCAL
+			ENDIF
+			LOCALS = %PALAMNAME:LOCAL%
+			IF LOCAL > 4
+				IF (PALAMNAME:LOCAL == "윤활" && PALAMLV_A >= 5) || PALAMLV_A >= 17
+					LOCALS += "(MAX)"
+				ELSEIF PALAMLV_A == PALAMLV_B
+					LOCALS += "(Lv" + @"{PALAMLV_A}"+ ")"
+				ELSE
+					LOCALS += "(Lv" + @"{PALAMLV_B}"+ "→" + @"{PALAMLV_A}" + ")"
+				ENDIF
+			ENDIF
+			PRINTFORM %LOCALS,12,LEFT% 
+			PRINTFORM {元PALAM,8,RIGHT}    
+			PRINTFORM + {증가PALAM,8,RIGHT}    
+			IF 減少PALAM > 0
+				PRINTFORM - {減少PALAM,8,RIGHT}    
+			ELSE
+				PRINTFORM %" "*14%
+			ENDIF
+			PRINTFORM ={결과PALAM,8,RIGHT}
+			;PALAM:ARG:LOCAL += CUP:ARG:LOCAL - CDOWN:ARG:LOCAL
+			IF (PALAMNAME:LOCAL == "윤활" && PALAMLV_A >= 5) || PALAMLV_A >= 17
+			ELSEIF LOCAL < 4 && CDOWN:ARG:LOCAL > 0
+				FONTBOLD
+				SETCOLOR 0xFFAAFF
+				PRINTFORM 　　Ecstasy
+				CALL HEARTB, NOWEX:ARG:LOCAL
+				RESETCOLOR
+				FONTREGULAR
+			ELSE
+				PRINTFORM 　　NEXT({PALAMLV:(PALAMLV_A+1)})
+			ENDIF
+			PRINTL 
+			CUP:ARG:LOCAL = 0
+			CDOWN:ARG:LOCAL = 0
+		NEXT
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+;착의 불결처리
+;-------------------------------------------------
+;주인
+;착용하고 있는 옷들의 가랑이 유형 조사 (하의 - 바지)
+;참고 - 바지 유형, ビキニ 유형 리턴값(1,2), 해당 의복이 없거나 탈의됐을 경우 리턴값(0)
+TRYCALLFORM CLOTHES_CROTCH_{TEQUIP:MASTER:하의}
+COMPARE1 = RESULT
+
+;착용하고 있는 옷들의 가랑이 유형 조사 (전신복)
+;참고 - 바지 유형, ビキニ 유형 리턴값(1,2), 해당 의복이 없거나 탈의됐을 경우 리턴값(0)
+TRYCALLFORM CLOTHES_CROTCH_{TEQUIP:MASTER:전신복}
+COMPARE2 = RESULT
+
+;착용하고 있는 옷들의 가랑이 유형 조사 (속옷（하）)
+;참고 - 바지 유형, ビキニ 유형 리턴값(1,2), 해당 의복이 없거나 탈의됐을 경우 리턴값(0)
+TRYCALLFORM CLOTHES_CROTCH_{TEQUIP:MASTER:속옷（하）}
+COMPARE3 = RESULT
+
+;착용하고 있는 옷들의 가랑이 유형 조사 (양말)
+;참고 - 해당 의복이 없거나 탈의됐거나 가랑이를 덮지 않는 경우 리턴값(0)
+TRYCALLFORM CLOTHES_CROTCH_{TEQUIP:MASTER:양말}
+COMPARE4 = RESULT
+
+;(COMPARE4 == 1 || COMPARE4 == 4)
+
+IF PALAM:TARGET:윤활 >= PALAMLV:4 && HAVE_VAGINA(MASTER)
+	IF (TEQUIP:MASTER:하의 && (COMPARE1 == 1 || COMPARE1 == 2)) && (TEQUIP:MASTER:전신복 && (COMPARE2 == 1 || COMPARE2 == 2))
+	;하의(바지)와 전신복(바지)을 모두 입었을 경우
+		IF TEQUIP:MASTER:속옷（하） || TEQUIP:MASTER:전신속옷
+		;하의 속옷류 착용
+			IF TEQUIP:MASTER:속옷（하）
+			;속옷(하)를 입었을 경우
+				CALL SET_STAIN("속옷（하）", "애액", MASTER) ;팬티가 애액에 젖는다
+				CALL MOVE_STAIN("속옷（하）", MASTER, "바기나", MASTER)
+			ELSEIF TEQUIP:MASTER:전신속옷
+			;전신속옷을 입었을 경우
+				CALL SET_STAIN("전신속옷", "애액", MASTER) ;전신속옷이 애액에 젖는다
+				CALL MOVE_STAIN("전신속옷", MASTER, "바기나", MASTER)
+			ENDIF
+		ELSEIF TEQUIP:MASTER:양말 && (COMPARE4 == 1 || COMPARE4 == 4)
+		;스타킹 착용
+			CALL SET_STAIN("양말", "애액", MASTER) ;스타킹이 애액에 젖는다
+			CALL MOVE_STAIN("양말", MASTER, "바기나", MASTER)
+		ELSE
+		;하의 속옷류 미착용 → 하의(바지)와 전신복(바지)에 모두 얼룩이 뭍는다
+			CALL SET_STAIN("하의", "애액", MASTER) ;하의(바지)가 애액에 젖는다
+			CALL SET_STAIN("전신복", "애액", MASTER) ;전신복(바지)이 애액에 젖는다
+			CALL MOVE_STAIN("하의", MASTER, "바기나", MASTER)
+			CALL MOVE_STAIN("전신복", MASTER, "바기나", MASTER)
+		ENDIF
+	ELSEIF !(TEQUIP:MASTER:하의 && (COMPARE1 == 1 || COMPARE1 == 2)) && (TEQUIP:MASTER:전신복 && (COMPARE2 == 1 || COMPARE2 == 2))
+	;하의(스커트/밑개방형/미착용)와 전신복(바지)을 모두 입었을 경우
+		IF TEQUIP:MASTER:속옷（하） || TEQUIP:MASTER:전신속옷
+		;하의 속옷류 착용
+			IF TEQUIP:MASTER:속옷（하）
+			;속옷(하)를 입었을 경우
+				CALL SET_STAIN("속옷（하）", "애액", MASTER) ;팬티가 애액에 젖는다
+				CALL MOVE_STAIN("속옷（하）", MASTER, "바기나", MASTER)
+			ELSEIF TEQUIP:MASTER:전신속옷
+			;전신속옷을 입었을 경우
+				CALL SET_STAIN("전신속옷", "애액", MASTER) ;전신속옷이 애액에 젖는다
+				CALL MOVE_STAIN("전신속옷", MASTER, "바기나", MASTER)
+			ENDIF
+		ELSEIF TEQUIP:MASTER:양말 && (COMPARE4 == 1 || COMPARE4 == 4)
+		;스타킹 착용
+			CALL SET_STAIN("양말", "애액", MASTER) ;스타킹이 애액에 젖는다
+			CALL MOVE_STAIN("양말", MASTER, "바기나", MASTER)
+		ELSE
+		;하의 속옷류 미착용 → 전신복(바지)에만 얼룩이 뭍는다
+			CALL SET_STAIN("전신복", "애액", MASTER) ;전신복(바지)이 애액에 젖는다
+			CALL MOVE_STAIN("전신복", MASTER, "바기나", MASTER)
+		ENDIF
+	ELSEIF (TEQUIP:MASTER:하의 && (COMPARE1 == 1 || COMPARE1 == 2)) && !(TEQUIP:MASTER:전신복 && (COMPARE2 == 1 || COMPARE2 == 2))
+	;하의(바지)와 전신복(스커트/밑개방형/미착용)을 모두 입었을 경우
+		IF TEQUIP:MASTER:속옷（하） || TEQUIP:MASTER:전신속옷
+		;하의 속옷류 착용
+			IF TEQUIP:MASTER:속옷（하）
+			;속옷(하)를 입었을 경우
+				CALL SET_STAIN("속옷（하）", "애액", MASTER) ;팬티가 애액에 젖는다
+				CALL MOVE_STAIN("속옷（하）", MASTER, "바기나", MASTER)
+			ELSEIF TEQUIP:MASTER:전신속옷
+			;전신속옷을 입었을 경우
+				CALL SET_STAIN("전신속옷", "애액", MASTER) ;전신속옷이 애액에 젖는다
+				CALL MOVE_STAIN("전신속옷", MASTER, "바기나", MASTER)
+			ENDIF
+		ELSEIF TEQUIP:MASTER:양말 && (COMPARE4 == 1 || COMPARE4 == 4)
+		;스타킹 착용
+			CALL SET_STAIN("양말", "애액", MASTER) ;스타킹이 애액에 젖는다
+			CALL MOVE_STAIN("양말", MASTER, "바기나", MASTER)
+		ELSE
+		;하의 속옷류 미착용 → 하의(바지)에만 얼룩이 뭍는다
+			CALL SET_STAIN("하의", "애액", MASTER) ;하의(바지)가 애액에 젖는다
+			CALL MOVE_STAIN("하의", MASTER, "바기나", MASTER)
+		ENDIF
+	ELSEIF !(TEQUIP:MASTER:하의 && (COMPARE1 == 1 || COMPARE1 == 2)) && !(TEQUIP:MASTER:전신복 && (COMPARE2 == 1 || COMPARE2 == 2))
+	;하의(스커트/밑개방형/미착용)와 전신복(스커트/밑개방형/미착용)을 모두 입었을 경우
+		IF TEQUIP:MASTER:속옷（하） || TEQUIP:MASTER:전신속옷
+		;하의 속옷류 착용
+			IF TEQUIP:MASTER:속옷（하）
+			;속옷(하)를 입었을 경우
+				CALL SET_STAIN("속옷（하）", "애액", MASTER) ;팬티가 애액에 젖는다
+				CALL MOVE_STAIN("속옷（하）", MASTER, "바기나", MASTER)
+			ELSEIF TEQUIP:MASTER:전신속옷
+			;전신속옷을 입었을 경우
+				CALL SET_STAIN("전신속옷", "애액", MASTER) ;전신속옷이 애액에 젖는다
+				CALL MOVE_STAIN("전신속옷", MASTER, "바기나", MASTER)
+			ENDIF
+		ELSEIF TEQUIP:MASTER:양말 && (COMPARE4 == 1 || COMPARE4 == 4)
+		;스타킹 착용
+			CALL SET_STAIN("양말", "애액", MASTER) ;스타킹이 애액에 젖는다
+			CALL MOVE_STAIN("양말", MASTER, "바기나", MASTER)
+		ELSE
+		;하의 속옷류 미착용 → 얼룩은 음순에만 있는 상태
+			;구현 안해도 됨
+		ENDIF
+	ENDIF
+ENDIF
+
+;노예
+;착용하고 있는 옷들의 가랑이 유형 조사 (하의 - 바지)
+;참고 - 바지 유형, ビキニ 유형 리턴값(1,2), 해당 의복이 없거나 탈의됐을 경우 리턴값(0)
+TRYCALLFORM CLOTHES_CROTCH_{TEQUIP:TARGET:하의}
+COMPARE1 = RESULT
+
+;착용하고 있는 옷들의 가랑이 유형 조사 (전신복)
+;참고 - 바지 유형, ビキニ 유형 리턴값(1,2), 해당 의복이 없거나 탈의됐을 경우 리턴값(0)
+TRYCALLFORM CLOTHES_CROTCH_{TEQUIP:TARGET:전신복}
+COMPARE2 = RESULT
+
+;착용하고 있는 옷들의 가랑이 유형 조사 (속옷（하）)
+;참고 - 바지 유형, ビキニ 유형 리턴값(1,2), 해당 의복이 없거나 탈의됐을 경우 리턴값(0)
+TRYCALLFORM CLOTHES_CROTCH_{TEQUIP:TARGET:속옷（하）}
+COMPARE3 = RESULT
+
+;착용하고 있는 옷들의 가랑이 유형 조사 (양말)
+;참고 - 해당 의복이 없거나 탈의됐거나 가랑이를 덮지 않는 경우 리턴값(0)
+TRYCALLFORM CLOTHES_CROTCH_{TEQUIP:TARGET:양말}
+COMPARE4 = RESULT
+
+IF PALAM:TARGET:윤활 >= PALAMLV:4 && HAVE_VAGINA(TARGET)
+	IF (TEQUIP:TARGET:하의 && (COMPARE1 == 1 || COMPARE1 == 2)) && (TEQUIP:TARGET:전신복 && (COMPARE2 == 1 || COMPARE2 == 2))
+	;하의(바지)와 전신복(바지)을 모두 입었을 경우
+		IF TEQUIP:TARGET:속옷（하） || TEQUIP:TARGET:전신속옷
+		;하의 속옷류 착용
+			IF TEQUIP:TARGET:속옷（하）
+			;속옷(하)를 입었을 경우
+				CALL SET_STAIN("속옷（하）", "애액", TARGET) ;팬티가 애액에 젖는다
+				CALL MOVE_STAIN("속옷（하）", TARGET, "바기나", TARGET)
+			ELSEIF TEQUIP:TARGET:전신속옷
+			;전신속옷을 입었을 경우
+				CALL SET_STAIN("전신속옷", "애액", TARGET) ;전신속옷이 애액에 젖는다
+				CALL MOVE_STAIN("전신속옷", TARGET, "바기나", TARGET)
+			ENDIF
+		ELSEIF TEQUIP:TARGET:양말 && (COMPARE4 == 1 || COMPARE4 == 4)
+		;스타킹 착용
+			CALL SET_STAIN("양말", "애액", TARGET) ;스타킹이 애액에 젖는다
+			CALL MOVE_STAIN("양말", TARGET, "바기나", TARGET)
+		ELSE
+		;하의 속옷류 미착용 → 하의(바지)와 전신복(바지)에 모두 얼룩이 뭍는다
+			CALL SET_STAIN("하의", "애액", TARGET) ;하의(바지)가 애액에 젖는다
+			CALL SET_STAIN("전신복", "애액", TARGET) ;전신복(바지)이 애액에 젖는다
+			CALL MOVE_STAIN("하의", TARGET, "바기나", TARGET)
+			CALL MOVE_STAIN("전신복", TARGET, "바기나", TARGET)
+		ENDIF
+	ELSEIF !(TEQUIP:TARGET:하의 && (COMPARE1 == 1 || COMPARE1 == 2)) && (TEQUIP:TARGET:전신복 && (COMPARE2 == 1 || COMPARE2 == 2))
+	;하의(스커트/밑개방형/미착용)와 전신복(바지)을 모두 입었을 경우
+		IF TEQUIP:TARGET:속옷（하） || TEQUIP:TARGET:전신속옷
+		;하의 속옷류 착용
+			IF TEQUIP:TARGET:속옷（하）
+			;속옷(하)를 입었을 경우
+				CALL SET_STAIN("속옷（하）", "애액", TARGET) ;팬티가 애액에 젖는다
+				CALL MOVE_STAIN("속옷（하）", TARGET, "바기나", TARGET)
+			ELSEIF TEQUIP:TARGET:전신속옷
+			;전신속옷을 입었을 경우
+				CALL SET_STAIN("전신속옷", "애액", TARGET) ;전신속옷이 애액에 젖는다
+				CALL MOVE_STAIN("전신속옷", TARGET, "바기나", TARGET)
+			ENDIF
+		ELSEIF TEQUIP:TARGET:양말 && (COMPARE4 == 1 || COMPARE4 == 4)
+		;스타킹 착용
+			CALL SET_STAIN("양말", "애액", TARGET) ;스타킹이 애액에 젖는다
+			CALL MOVE_STAIN("양말", TARGET, "바기나", TARGET)
+		ELSE
+		;하의 속옷류 미착용 → 전신복(바지)에만 얼룩이 뭍는다
+			CALL SET_STAIN("전신복", "애액", TARGET) ;전신복(바지)이 애액에 젖는다
+			CALL MOVE_STAIN("전신복", TARGET, "바기나", TARGET)
+		ENDIF
+	ELSEIF (TEQUIP:TARGET:하의 && (COMPARE1 == 1 || COMPARE1 == 2)) && !(TEQUIP:TARGET:전신복 && (COMPARE2 == 1 || COMPARE2 == 2))
+	;하의(바지)와 전신복(스커트/밑개방형/미착용)을 모두 입었을 경우
+		IF TEQUIP:TARGET:속옷（하） || TEQUIP:TARGET:전신속옷
+		;하의 속옷류 착용
+			IF TEQUIP:TARGET:속옷（하）
+			;속옷(하)를 입었을 경우
+				CALL SET_STAIN("속옷（하）", "애액", TARGET) ;팬티가 애액에 젖는다
+				CALL MOVE_STAIN("속옷（하）", TARGET, "바기나", TARGET)
+			ELSEIF TEQUIP:TARGET:전신속옷
+			;전신속옷을 입었을 경우
+				CALL SET_STAIN("전신속옷", "애액", TARGET) ;전신속옷이 애액에 젖는다
+				CALL MOVE_STAIN("전신속옷", TARGET, "바기나", TARGET)
+			ENDIF
+		ELSEIF TEQUIP:TARGET:양말 && (COMPARE4 == 1 || COMPARE4 == 4)
+		;스타킹 착용
+			CALL SET_STAIN("양말", "애액", TARGET) ;스타킹이 애액에 젖는다
+			CALL MOVE_STAIN("양말", TARGET, "바기나", TARGET)
+		ELSE
+		;하의 속옷류 미착용 → 하의(바지)에만 얼룩이 뭍는다
+			CALL SET_STAIN("하의", "애액", TARGET) ;하의(바지)가 애액에 젖는다
+			CALL MOVE_STAIN("하의", TARGET, "바기나", TARGET)
+		ENDIF
+	ELSEIF !(TEQUIP:TARGET:하의 && (COMPARE1 == 1 || COMPARE1 == 2)) && !(TEQUIP:TARGET:전신복 && (COMPARE2 == 1 || COMPARE2 == 2))
+	;하의(스커트/밑개방형/미착용)와 전신복(스커트/밑개방형/미착용)을 모두 입었을 경우
+		IF TEQUIP:TARGET:속옷（하） || TEQUIP:TARGET:전신속옷
+		;하의 속옷류 착용
+			IF TEQUIP:TARGET:속옷（하）
+			;속옷(하)를 입었을 경우
+				CALL SET_STAIN("속옷（하）", "애액", TARGET) ;팬티가 애액에 젖는다
+				CALL MOVE_STAIN("속옷（하）", TARGET, "바기나", TARGET)
+			ELSEIF TEQUIP:TARGET:전신속옷
+			;전신속옷을 입었을 경우
+				CALL SET_STAIN("전신속옷", "애액", TARGET) ;전신속옷이 애액에 젖는다
+				CALL MOVE_STAIN("전신속옷", TARGET, "바기나", TARGET)
+			ENDIF
+		ELSEIF TEQUIP:TARGET:양말 && (COMPARE4 == 1 || COMPARE4 == 4)
+		;스타킹 착용
+			CALL SET_STAIN("양말", "애액", TARGET) ;스타킹이 애액에 젖는다
+			CALL MOVE_STAIN("양말", TARGET, "바기나", TARGET)
+		ELSE
+		;하의 속옷류 미착용 → 얼룩은 음순에만 있는 상태
+			;구현 안해도 됨
+		ENDIF
+	ENDIF
+ENDIF
+
+;조수
+IF ASSI >= 0
+	;착용하고 있는 옷들의 가랑이 유형 조사 (하의 - 바지)
+	;참고 - 바지 유형, ビキニ 유형 리턴값(1,2), 해당 의복이 없거나 탈의됐을 경우 리턴값(0)
+	TRYCALLFORM CLOTHES_CROTCH_{TEQUIP:ASSI:하의}
+	COMPARE1 = RESULT
+
+	;착용하고 있는 옷들의 가랑이 유형 조사 (전신복)
+	;참고 - 바지 유형, ビキニ 유형 리턴값(1,2), 해당 의복이 없거나 탈의됐을 경우 리턴값(0)
+	TRYCALLFORM CLOTHES_CROTCH_{TEQUIP:ASSI:전신복}
+	COMPARE2 = RESULT
+
+	;착용하고 있는 옷들의 가랑이 유형 조사 (속옷（하）)
+	;참고 - 바지 유형, ビキニ 유형 리턴값(1,2), 해당 의복이 없거나 탈의됐을 경우 리턴값(0)
+	TRYCALLFORM CLOTHES_CROTCH_{TEQUIP:ASSI:속옷（하）}
+	COMPARE3 = RESULT
+	
+	;착용하고 있는 옷들의 가랑이 유형 조사 (양말)
+	;참고 - 해당 의복이 없거나 탈의됐거나 가랑이를 덮지 않는 경우 리턴값(0)
+	TRYCALLFORM CLOTHES_CROTCH_{TEQUIP:ASSI:양말}
+	COMPARE4 = RESULT
+	
+	IF PALAM:ASSI:윤활 >= PALAMLV:4 && HAVE_VAGINA(ASSI)
+		IF (TEQUIP:ASSI:하의 && (COMPARE1 == 1 || COMPARE1 == 2)) && (TEQUIP:ASSI:전신복 && (COMPARE2 == 1 || COMPARE2 == 2))
+		;하의(바지)와 전신복(바지)을 모두 입었을 경우
+			IF TEQUIP:ASSI:속옷（하） || TEQUIP:ASSI:전신속옷
+			;하의 속옷류 착용
+				IF TEQUIP:ASSI:속옷（하）
+				;속옷(하)를 입었을 경우
+					CALL SET_STAIN("속옷（하）", "애액", ASSI) ;팬티가 애액에 젖는다
+					CALL MOVE_STAIN("속옷（하）", ASSI, "바기나", ASSI)
+				ELSEIF TEQUIP:ASSI:전신속옷
+				;전신속옷을 입었을 경우
+					CALL SET_STAIN("전신속옷", "애액", ASSI) ;전신속옷이 애액에 젖는다
+					CALL MOVE_STAIN("전신속옷", ASSI, "바기나", ASSI)
+				ENDIF
+			ELSEIF TEQUIP:ASSI:양말 && (COMPARE4 == 1 || COMPARE4 == 4)
+			;스타킹 착용
+				CALL SET_STAIN("양말", "애액", ASSI) ;스타킹이 애액에 젖는다
+				CALL MOVE_STAIN("양말", ASSI, "바기나", ASSI)
+			ELSE
+			;하의 속옷류 미착용 → 하의(바지)와 전신복(바지)에 모두 얼룩이 뭍는다
+				CALL SET_STAIN("하의", "애액", ASSI) ;하의(바지)가 애액에 젖는다
+				CALL SET_STAIN("전신복", "애액", ASSI) ;전신복(바지)이 애액에 젖는다
+				CALL MOVE_STAIN("하의", ASSI, "바기나", ASSI)
+				CALL MOVE_STAIN("전신복", ASSI, "바기나", ASSI)
+			ENDIF
+		ELSEIF !(TEQUIP:ASSI:하의 && (COMPARE1 == 1 || COMPARE1 == 2)) && (TEQUIP:ASSI:전신복 && (COMPARE2 == 1 || COMPARE2 == 2))
+		;하의(스커트/밑개방형/미착용)와 전신복(바지)을 모두 입었을 경우
+			IF TEQUIP:ASSI:속옷（하） || TEQUIP:ASSI:전신속옷
+			;하의 속옷류 착용
+				IF TEQUIP:ASSI:속옷（하）
+				;속옷(하)를 입었을 경우
+					CALL SET_STAIN("속옷（하）", "애액", ASSI) ;팬티가 애액에 젖는다
+					CALL MOVE_STAIN("속옷（하）", ASSI, "바기나", ASSI)
+				ELSEIF TEQUIP:ASSI:전신속옷
+				;전신속옷을 입었을 경우
+					CALL SET_STAIN("전신속옷", "애액", ASSI) ;전신속옷이 애액에 젖는다
+					CALL MOVE_STAIN("전신속옷", ASSI, "바기나", ASSI)
+				ENDIF
+			ELSEIF TEQUIP:ASSI:양말 && (COMPARE4 == 1 || COMPARE4 == 4)
+			;스타킹 착용
+				CALL SET_STAIN("양말", "애액", ASSI) ;스타킹이 애액에 젖는다
+				CALL MOVE_STAIN("양말", ASSI, "바기나", ASSI)
+			ELSE
+			;하의 속옷류 미착용 → 전신복(바지)에만 얼룩이 뭍는다
+				CALL SET_STAIN("전신복", "애액", ASSI) ;전신복(바지)이 애액에 젖는다
+				CALL MOVE_STAIN("전신복", ASSI, "바기나", ASSI)
+			ENDIF
+		ELSEIF (TEQUIP:ASSI:하의 && (COMPARE1 == 1 || COMPARE1 == 2)) && !(TEQUIP:ASSI:전신복 && (COMPARE2 == 1 || COMPARE2 == 2))
+		;하의(바지)와 전신복(스커트/밑개방형/미착용)을 모두 입었을 경우
+			IF TEQUIP:ASSI:속옷（하） || TEQUIP:ASSI:전신속옷
+			;하의 속옷류 착용
+				IF TEQUIP:ASSI:속옷（하）
+				;속옷(하)를 입었을 경우
+					CALL SET_STAIN("속옷（하）", "애액", ASSI) ;팬티가 애액에 젖는다
+					CALL MOVE_STAIN("속옷（하）", ASSI, "바기나", ASSI)
+				ELSEIF TEQUIP:ASSI:전신속옷
+				;전신속옷을 입었을 경우
+					CALL SET_STAIN("전신속옷", "애액", ASSI) ;전신속옷이 애액에 젖는다
+					CALL MOVE_STAIN("전신속옷", ASSI, "바기나", ASSI)
+				ENDIF
+			ELSEIF TEQUIP:ASSI:양말 && (COMPARE4 == 1 || COMPARE4 == 4)
+			;스타킹 착용
+				CALL SET_STAIN("양말", "애액", ASSI) ;스타킹이 애액에 젖는다
+				CALL MOVE_STAIN("양말", ASSI, "바기나", ASSI)
+			ELSE
+			;하의 속옷류 미착용 → 하의(바지)에만 얼룩이 뭍는다
+				CALL SET_STAIN("하의", "애액", ASSI) ;하의(바지)가 애액에 젖는다
+				CALL MOVE_STAIN("하의", ASSI, "바기나", ASSI)
+			ENDIF
+		ELSEIF !(TEQUIP:ASSI:하의 && (COMPARE1 == 1 || COMPARE1 == 2)) && !(TEQUIP:ASSI:전신복 && (COMPARE2 == 1 || COMPARE2 == 2))
+		;하의(스커트/밑개방형/미착용)와 전신복(스커트/밑개방형/미착용)을 모두 입었을 경우
+			IF TEQUIP:ASSI:속옷（하） || TEQUIP:ASSI:전신속옷
+			;하의 속옷류 착용
+				IF TEQUIP:ASSI:속옷（하）
+				;속옷(하)를 입었을 경우
+					CALL SET_STAIN("속옷（하）", "애액", ASSI) ;팬티가 애액에 젖는다
+					CALL MOVE_STAIN("속옷（하）", ASSI, "바기나", ASSI)
+				ELSEIF TEQUIP:ASSI:전신속옷
+				;전신속옷을 입었을 경우
+					CALL SET_STAIN("전신속옷", "애액", ASSI) ;전신속옷이 애액에 젖는다
+					CALL MOVE_STAIN("전신속옷", ASSI, "바기나", ASSI)
+				ENDIF
+			ELSEIF TEQUIP:ASSI:양말 && (COMPARE4 == 1 || COMPARE4 == 4)
+			;스타킹 착용
+				CALL SET_STAIN("양말", "애액", ASSI) ;스타킹이 애액에 젖는다
+				CALL MOVE_STAIN("양말", ASSI, "바기나", ASSI)
+			ELSE
+			;하의 속옷류 미착용 → 얼룩은 음순에만 있는 상태
+				;구현 안해도 됨
+			ENDIF
+		ENDIF
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+;珠획득표시
+;-------------------------------------------------
+@SHOW_JUEL_CHECK, ARG, ARGS = "표시"
+#LOCALSIZE 1
+FOR LOCAL, 0 , 101
+	IF GOTJUEL:ARG:LOCAL
+		SIF  ARGS == "표시"
+			PRINTFORML %PALAMNAME:LOCAL%의 구슬×{GOTJUEL:ARG:LOCAL}
+		JUEL:ARG:LOCAL += GOTJUEL:ARG:LOCAL
+		GOTJUEL:ARG:LOCAL = 0
+	ENDIF
+NEXT
+;-------------------------------------------------
+;그외の표시
+;-------------------------------------------------
+@SHOW_EXTRA, ARG
+SIF ARG < 0
+	RETURN 0
+SIF TCVAR:ARG:획득충성도 == 0 && TCVAR:ARG:획득의존도 == 0 && MATCH(TCVAR:ARG:0,0,0,100) == 100
+	RETURN 0
+DRAWLINE
+PRINTFORML ＥＸＴＲＡ(%CALLNAME:ARG%)
+CALL SHOW_DEPENDENCE, ARG
+CALL SHOW_GET_MAG, ARG
+CALL SHOW_ADD_EXP, ARG
+CALL SHOW_ABNORMAL_EXP, ARG
+;===============================
+;획득MAG표시
+;==============================
+@SHOW_GET_MAG, ARG
+SIF ARG < 0
+	RETURN 0
+SIF TCVAR:ARG:획득ＭＡＧ
+	PRINTFORML %"ＭＡＧ",12,LEFT% {BASE:ARG:ＭＡＧ - TCVAR:ARG:획득ＭＡＧ,16,RIGHT}      \@TCVAR:ARG:획득ＭＡＧ > 0 ? + # - \@{ABS(TCVAR:ARG:획득ＭＡＧ),16,RIGHT} = {BASE:ARG:ＭＡＧ,16,RIGHT}
+TCVAR:ARG:획득ＭＡＧ = 0
+
+@SHOW_DEPENDENCE, ARG
+SIF ARG < 0
+	RETURN 0
+;今のところターゲットしか動かないので
+IF ARG == TARGET
+	IF TCVAR:ARG:획득의존도 && TALENT:MASTER:깨달음
+		PRINTFORML %"의존도",12,LEFT% {CFLAG:ARG:의존도-TCVAR:ARG:획득의존도,16,RIGHT}      \@TCVAR:ARG:획득의존도>0?+#-\@{TCVAR:ARG:획득의존도,16,RIGHT} = {CFLAG:ARG:의존도,16,RIGHT}
+	ELSE
+		PRINTFORM %"의존도",12,LEFT% 
+		IF TCVAR:ARG:획득의존도 > 0
+			PRINTFORML %"증가",16,RIGHT%
+		ELSEIF TCVAR:ARG:획득의존도 < 0
+			PRINTFORML %"감소",16,RIGHT%
+		ELSE
+			PRINTFORML %"변화없음",16,RIGHT%
+		ENDIF
+	ENDIF
+ENDIF
+TCVAR:ARG:획득의존도 = 0
+SIF TCVAR:ARG:획득충성도
+	PRINTFORML %"충성도",12,LEFT% {BASE:ARG:충성도-TCVAR:ARG:획득충성도,16,RIGHT}      \@TCVAR:ARG:획득충성도>0?+#-\@{TCVAR:ARG:획득충성도,16,RIGHT} = {BASE:ARG:충성도,16,RIGHT}
+TCVAR:ARG:획득충성도 = 0
+;-------------------------------------------------
+;획득ＥＸＰの표시・加算
+;-------------------------------------------------
+@SHOW_ADD_EXP, ARG , ARGS = "표시"
+#LOCALSIZE 2
+SIF ARG < 0
+	RETURN 0
+LOCAL:1 = 0
+FOR LOCAL, 0, VARSIZE("EXP")
+	SIF TCVAR:ARG:LOCAL == 0
+		CONTINUE
+	LOCAL:1 = 1
+	BREAK
+NEXT
+IF LOCAL:1
+	FOR LOCAL,0,VARSIZE("EXP")
+		SIF TCVAR:ARG:LOCAL == 0
+			CONTINUE
+		;이상경험は弾く
+		SIF LOCAL == 50
+			CONTINUE
+		SIF ARGS == "표시"
+			PRINTFORML %EXPNAME:LOCAL,12, LEFT% {EXP:ARG:LOCAL,16,RIGHT}      \@TCVAR:ARG:LOCAL > 0 ?+#-\@{ABS(TCVAR:ARG:LOCAL),16,RIGHT} = {EXP:ARG:LOCAL + TCVAR:ARG:LOCAL,16,RIGHT}
+		;PALAM:ARG:LOCAL += CUP:ARG:LOCAL - CDOWN:ARG:LOCAL
+		;확장첫경험の場合ここで이상경험부여
+		SIF GROUPMATCH(EXPNAME:LOCAL , "Ｖ확장경험" , "Ａ확장경험")
+			CALL ADDS_ABNORMAL_EXP, "확장첫경험" , ARG
+		;수간첫경험の場合ここで이상경험부여
+		SIF EXPNAME:LOCAL == "수간경험"
+			CALL ADDS_ABNORMAL_EXP, "수간" , ARG
+		;후타나리・TSして男になったキャラの사정の場合ここで이상경험부여
+		SIF EXPNAME:LOCAL == "사정경험" && (!IS_MALE(ARG) || EXP:ARG:ＴＳ경험 % 2 == 1)
+			CALL ADDS_ABNORMAL_EXP, "사정" , ARG
+		EXP:ARG:LOCAL += TCVAR:ARG:LOCAL
+		TCVAR:ARG:LOCAL = 0
+	NEXT
+ENDIF
+
+;-------------------------------------------------
+;이상경험부여関数
+;TRAIN_FUNCTIONに置きたいところだけど、上記関数と場所わけるべきじゃないよなぁということで
+;両方まとめてSOURCEか、FANCTIONかどっちかだと思います
+;-------------------------------------------------
+@ADDS_ABNORMAL_EXP, ARGS, ARG = -1
+#LOCALSIZE 1
+;TCVAR:50は획득이상경험
+SIF ARG == -1
+	ARG = TARGET
+LOCAL = NUM_ABNORMAL_EXP(ARGS)
+IF LOCAL == -1
+	SETCOLOR COLOR("red")
+	PRINTFORML 이상경험 부여 함수의 지정이 잘못되었습니다(지정된 ARGS：%ARGS%)
+	PRINTW 죄송하지만 이 메시지가 나온 상황을 보고해주세요
+	RESETCOLOR
+	TWAIT 1, 1
+	WAIT
+ENDIF
+SIF !GETBIT(CFLAG:ARG:이상경험記録, LOCAL)
+	SETBIT TCVAR:ARG:획득이상경험 , LOCAL
+
+;-------------------------------------------------
+;이상경험표시
+;-------------------------------------------------
+@SHOW_ABNORMAL_EXP, ARG, 텍스트あり = 1
+#DIM 텍스트あり
+#LOCALSIZE 2
+SIF ARG < 0
+	RETURN 0
+SIF !TCVAR:ARG:50
+	RETURN 0
+DRAWLINE
+IF 텍스트あり
+	SETCOLOR COLOR("red")
+	PRINTFORML 이상경험 획득(%CALLNAME:ARG%)
+	RESETCOLOR
+ENDIF
+FOR LOCAL, 0, 64
+	SIF !GETBIT(TCVAR:ARG:50, LOCAL)
+		CONTINUE
+	LOCAL:1 = RANK_ABNORMAL_EXP( , LOCAL)
+	SIF 텍스트あり
+		PRINTFORML 【＋%TOFULL(TOSTR(LOCAL:1))%】   %NAME_ABNORMAL_EXP(LOCAL)%
+	EXP:ARG:이상경험 += LOCAL:1
+	SETBIT CFLAG:ARG:이상경험記録 , LOCAL
+NEXT
+TCVAR:ARG:50 = 0
+IF 텍스트あり
+	TWAIT 1, 1
+	WAIT
+ENDIF
+;-------------------------------------------------
+;이상경험に関する式中関数群
+;@NAME_ABNORMAL_EXP(ARG , ARGS)　：ARG番にあたる이상경험名を返す
+;@NUM_ABNORAML_EXP(ARGS)　　　　 ：指定された이상경험(ARGS)の번호を返す
+;@RANK_ABNORMAL_EXP(ARGS , ARG)　：指定された이상경험(ARGS또는ARG)を경험した場合に획득する이상경험の値を返す
+;-------------------------------------------------
+@NAME_ABNORMAL_EXP(ARG = -1 , ARGS = "")
+#FUNCTIONS
+#LOCALSSIZE 1
+#DIMS 이상경험名 , 64
+IF 이상경험名 == ""
+	LOCALS += "처녀상실（기승위）"
+	LOCALS += "_처녀상실（바이브）"
+	LOCALS += "_처녀상실（촉수）"
+	LOCALS += "_처녀상실（３Ｐ）"
+	LOCALS += "_처녀상실（윤간）"
+	LOCALS += "_처녀상실（뱀장어욕탕）"
+	LOCALS += "_처녀상실（삼각목마）"
+	LOCALS += "_처녀상실（매춘）"
+	LOCALS += "_처녀상실（촬영）"
+	LOCALS += "_처녀상실（동성）"
+	LOCALS += "_처녀상실（요정오나홀）"
+	LOCALS += "_처녀탈취（동성）"
+	LOCALS += "_공개자위"
+	LOCALS += "_확장첫경험"
+	LOCALS += "_야외방뇨"
+	LOCALS += "_전극"
+	LOCALS += "_벌레욕탕"
+	LOCALS += "_뱀장어욕탕"
+	LOCALS += "_촉수첫경험"
+	LOCALS += "_수간"
+	LOCALS += "_사정"
+	LOCALS += "_ＴＳＶ절정"
+	LOCALS += "_유선개발"
+	LOCALS += "_분유"
+	LOCALS += "_고통각인LV3"
+	LOCALS += "_고통각인LV3（새드）"
+	LOCALS += "_고통각인LV3（바늘다루기）"
+	LOCALS += "_관장배설"
+	LOCALS += "_근친상간（父）"
+	LOCALS += "_근친상간（母）"
+	LOCALS += "_근친상간（兄弟）"
+	LOCALS += "_근친상간（姉妹）"
+	LOCALS += "_근친상간（娘）"
+	LOCALS += "_근친상간（息子）"
+	LOCALS += "_ＴＳ"
+	LOCALS += "_음뇨"
+	LOCALS += "_처녀상실（行きずり）"
+	LOCALS += "_처녀상실（변기）"
+	LOCALS += "_처녀상실（강간）"
+	LOCALS += "_처녀상실（ＮＴＲ）"
+	LOCALS += "_처녀상실（난교라이브）"
+	LOCALS += "_유두확장"
+	LOCALS += "_비대음핵"
+	LOCALS += "_거대음핵"
+	LOCALS += "_강제배설"
+	LOCALS += "_낙태"
+	LOCALS += "_사정기능개발"
+	LOCALS += "_포피제거"
+
+	SPLIT LOCALS , "_" , 이상경험名
+ENDIF
+IF ARGS == ""
+	RETURNF 이상경험名:ARG
+ELSE
+	RETURNF TOSTR(FINDELEMENT(이상경험名 , ARGS , , , 1))
+ENDIF
+;父_母_兄弟_姉妹_娘_息子
+@NUM_ABNORMAL_EXP(ARGS)
+#FUNCTION
+RETURNF TOINT(NAME_ABNORMAL_EXP(, ARGS))
+
+
+;이상경험毎の加算数値
+@RANK_ABNORMAL_EXP(ARGS = "" , ARG = -1)
+#FUNCTION
+#LOCALSIZE 1
+LOCALS = \@ ARGS != "" ? %ARGS% # %NAME_ABNORMAL_EXP(ARG)% \@
+SELECTCASE LOCALS
+	;可読性の為、あえて同じ数値でも複数行に分けて書いてみる
+	CASE "처녀상실(동성+조수+기승위)" , "처녀상실(동성+조수+기승위한다)", "처녀상실（난교라이브）"
+		RETURNF 3
+	CASE "처녀상실（기승위）" , "처녀상실（촉수）" , "처녀상실（３Ｐ）" , "처녀상실（윤간）" , "처녀상실（行きずり）" , "처녀상실（뱀장어욕탕）" , "처녀상실（변기）" , "처녀상실（강간）", "처녀상실（ＮＴＲ）"
+		RETURNF 2
+	CASE "처녀상실（삼각목마）" , "벌레욕탕" , "고통각인LV3（새드）" , "고통각인LV3（바늘다루기）"
+		RETURNF 2
+	CASE "뱀장어욕탕" , "처녀상실(기승위한다)" , "처녀상실（매춘）"
+		RETURNF 2
+	CASE "처녀상실（바이브）" , "처녀상실（촬영）" , "처녀탈취（동성）" , "처녀상실（동성）" , "공개자위"
+		RETURNF 1
+	CASE "확장첫경험" , "야외방뇨" , "전극" , "촉수첫경험" , "수간" , "사정" , "유선개발" , "분유"
+		RETURNF 1
+	CASE "고통각인LV3" , "관장배설" , "처녀상실（요정오나홀）" , "ＴＳＶ절정" , "ＴＳ" , "음뇨"
+		RETURNF 1
+	CASE "근친상간（父）" , "근친상간（母）" , "근친상간（兄弟）" , "근친상간（姉妹）" , "근친상간（娘）" , "근친상간（息子）"
+		RETURNF 1
+	CASE "유두확장" , "비대음핵" , "거대음핵", "사정기능개발"
+		RETURNF 1
+	CASE "낙태"
+		RETURNF 3
+	CASE "강제배설","포피제거"
+		RETURNF 1
+	CASEELSE
+		SETCOLOR COLOR("red")
+		PRINTFORML %조사처리(LOCALS,"라")%는 이상경험 이름 설정되지 않았습니다
+		PRINTL 이상경험 획득의 표시 함수의 지정지 잘못되었습니다
+		PRINTL 죄송하지만 이 메시지가 나온 상황을 보고해주세요
+		RESETCOLOR
+ENDSELECT
+

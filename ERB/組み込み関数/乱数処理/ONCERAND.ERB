@@ -1,0 +1,43 @@
+﻿;----------------------------------------------------------
+;@ONCERAND
+;랜덤に1～ARG:0を返す。ただし一度返した数字は返さない。数字を使い切ったら0を返す。
+;ARG:0　乱数の최대値（최대63?）
+;ARG:1　패턴번호（）　呼び出す時は被らないような번호で
+;@LOSE_COLOSSEUM以外での사용は想定してない
+;なんかもっとわかりやすい・スマートな方法があったら直してくれ
+;LOCAL:0 一時変数
+;LOCAL:（패턴번호＋１）　数字の사용状況　
+;　　　（사용した数字－１）番눈のビットが１：사용済み０：未사용
+;----------------------------------------------------------
+@ONCERAND(ARG:0, ARG:1, ARG:2 = 0)
+#FUNCTION
+#LOCALSIZE 300
+#DIM LCOUNT
+;ARG:2 が1이상なら、LOCALを리셋
+SIF ARG:2 > 0
+	VARSET LOCAL
+;ARG:2 が2で有る場合、乱数を사용せずに帰る。CALLFで呼ぶことしか想定してない
+SIF ARG:2 == 2
+	RETURNF 0
+	;後いくつ数字が残っているか
+	FOR LCOUNT, 0, ARG:0
+		LOCAL += GETBIT(LOCAL:(ARG:1 +1), LCOUNT)
+	NEXT
+	;数字が残ってないなら0を返す
+	SIF ARG:0 - LOCAL <= 0
+		RETURNF 0
+	;０～（残っている数字の数－１）　の乱数発生
+	LOCAL = RAND:(ARG:0 - LOCAL)
+	;（乱数）番눈の残っている数字を返す
+	FOR LCOUNT, 0, ARG:0
+		IF GETBIT(LOCAL:(ARG:1 + 1), LCOUNT) == 0
+			IF LOCAL == 0
+				SETBIT LOCAL:(ARG:1 +1), LCOUNT
+				RETURNF LCOUNT + 1
+			ELSE
+				LOCAL -= 1
+			ENDIF
+		ENDIF
+	NEXT
+;エ라
+RETURNF -1

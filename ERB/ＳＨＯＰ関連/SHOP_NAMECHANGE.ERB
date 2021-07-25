@@ -1,0 +1,737 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		20xx/xx/xx		----					新規作成
+;	002		2019/09/04		空気					名称/呼び名変更からも顔グラ選択できるように
+;	003		2020/11/20		SUIHOU					エン디무ングNo.99を設定
+;	004		2021/03/01		JK好き					称号を細分化された表向きの職業に対応
+;	005		2021/04/24		JK好き					スリーサイズ決定時に子宮最大容量が0の時の処理を追加
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+
+@SHOPCOMABLE_107
+RESULT:1 =1
+RESULTS = 이름/호칭변경
+RETURN 1
+
+@SHOP_COM_107
+PRINTL
+CUSTOMDRAWLINE =
+;キャラリストを표시
+CALL INPUT_CHARA_LIST("이름이나 일인칭 등을 변경하고 싶은 캐릭터를 선택해주세요","CASTING_NAMECHANGE")
+SIF RESULT == 1000
+	RETURN 0
+CALL NAME_CHANGE,RESULT
+PRINTFORML {RESULT}
+RESTART
+
+@CASTING_NAMECHANGE(ARG)
+SIF CFLAG:ARG:필터링フラグ
+	RETURN 0
+RETURN 1
+
+
+@NAME_CHANGE,ARG
+PRINTFORML {ARG}
+LOCAL = 0
+CUSTOMDRAWLINE = 
+PRINTFORML 이름：%NAME:ARG% 애칭:%CALLNAME:ARG% 일인칭:%CSTR:ARG:11% \@ ARG == MASTER ? 칭호:%CSTR:MASTER:종족명% # %CALLNAME:MASTER%에 대한 이인칭：%CSTR:ARG:12% \@
+DRAWLINE
+
+LOCALS = 이름_애칭_이름과애칭_일인칭
+SIF ARG != MASTER
+	LOCALS = %LOCALS%_이인칭
+;SIF ARG == MASTER || NO:ARG == 3501 || NO:ARG == 3502
+SIF ARG == MASTER || NO:ARG == 3501 || NO:ARG == 3502 || (NO:ARG > 4900 && NO:ARG < 4921)
+	LOCALS = %LOCALS%_프로필
+SIF ARG == MASTER
+	LOCALS = %LOCALS%_칭호
+
+;外見・쓰리사이즈설정が有効
+IF SETTING_IS_3SIZE()
+	;머리카락と瞳は대상がないと설정できない
+	SIF TALENT:ARG:머리
+		LOCALS = %LOCALS%_머리카락색깔_머리카락형태
+	SIF TALENT:ARG:눈
+		LOCALS = %LOCALS%_눈동자색깔
+	;쓰리사이즈は조건厳しめ　人型でサイズ的に일탈していないこと　[큰체형][거체]は今後対処を検討
+	SIF TALENT:ARG:머리 && TALENT:ARG:팔 && TALENT:ARG:발 && !TALENT:ARG:유아／유아퇴행 && !TALENT:ARG:갈퀴 && !TALENT:ARG:갈퀴발 && !TALENT:ARG:모피 && !TALENT:ARG:촉수 && !TALENT:ARG:부리 && !TALENT:ARG:짐승 && !TALENT:ARG:새 && !TALENT:ARG:파충류 && !TALENT:ARG:부정형 && !TALENT:ARG:물고기 && !TALENT:ARG:이형 && !TALENT:ARG:소인체형 && !TALENT:ARG:큰체형 && !TALENT:ARG:거체
+		LOCALS = %LOCALS%_신장_쓰리사이즈
+ENDIF
+
+;---- EDIT 002 MOD START -------------------------
+;SIF EXIST_PICTURE(NO:ARG, 100) || CFLAG:ARG:顔グラ > 0
+;	LOCALS = %LOCALS%_얼굴그래픽
+
+; 메뉴 무조건 뜨게 수정 2020-05-09
+LOCALS = %LOCALS%_얼굴그래픽
+PRINTFORML {ARG}
+CALL INPUT_SPLIT("무엇을 변경합니까？",LOCALS,"_","돌아간다")
+SIF RESULT == 0
+	RETURN
+LOCALS = %RESULTS%
+IF LOCALS == "얼굴그래픽"
+; 얼굴 구조 무시를 위해 추가 함수 작성
+;	CALL 顔グラ변경,ARG
+PRINTFORML {ARG}
+	CALL 顔グラ변경2,ARG
+ELSE
+	CALLFORM NAME_CHANGE_%LOCALS%,ARG
+	IF RESULTS == "설정せず"
+		PRINTFORMW %LOCALS%를 설정하지 못했습니다
+	ELSEIF LOCALS == "신장" || LOCALS == "쓰리사이즈"
+		CALL SHOW_INFO_BODYSIZE(ARG)
+		PRINTW 이상으로 설정했습니다
+	ELSE
+		PRINTFORMW %조사처리(LOCALS,"를")% %조사처리(RESULTS,"으로")% 변경했습니다.
+	ENDIF
+ENDIF
+;---- EDIT 002 MOD END ---------------------------
+RESTART
+
+;====================================================
+;이름
+;====================================================
+@NAME_CHANGE_이름,ARG
+PRINTFORML %CALLNAME:ARG%의 새로운 이름을 입력해주세요.
+CALL CREATE_RANDOM_NAME_IF
+IF TALENT:ARG:아이
+	IF CFLAG:ARG:娘の父親の固有번호娘 == MASTER || CFLAG:ARG:娘の産みの親の固有번호娘 == MASTER
+		IF TALENT:ARG:남자 == 0
+			NAME:ARG = %RESULTS%(딸)
+		ELSE
+			NAME:ARG = %RESULTS%(아들)
+		ENDIF
+	ELSE
+		NAME:ARG = %RESULTS%(자식)
+	ENDIF
+ELSE
+	NAME:ARG = %RESULTS%
+ENDIF
+
+;====================================================
+;애칭
+;====================================================
+@NAME_CHANGE_애칭,ARG
+PRINTFORML %CALLNAME:ARG%의 새로운 애칭을 입력해주세요.
+INPUTS
+CALLNAME:ARG = %RESULTS%
+
+;====================================================
+;이름과애칭
+;====================================================
+@NAME_CHANGE_이름과애칭,ARG
+PRINTFORML %CALLNAME:ARG%의 새로운 이름과 애칭을 입력해주세요(같은 문자열로 변경됩니다)
+CALL CREATE_RANDOM_NAME_IF
+IF TALENT:ARG:아이
+	IF CFLAG:ARG:娘の父親の固有번호娘 == MASTER || CFLAG:ARG:娘の産みの親の固有번호娘 == MASTER
+		IF TALENT:ARG:남자 == 0
+			NAME:ARG = %RESULTS%(딸)
+		ELSE
+			NAME:ARG = %RESULTS%(아들)
+		ENDIF
+	ELSE
+		NAME:ARG = %RESULTS%(자식)
+	ENDIF
+ELSE
+	NAME:ARG = %RESULTS%
+ENDIF
+CALLNAME:ARG = %RESULTS%
+
+;====================================================
+;一人称
+;====================================================
+@NAME_CHANGE_일인칭,ARG
+RESULTS = %CSTR:ARG:11%_나_저_소생_소인_졸자_소녀_소첩_Me_이몸_본관_본좌_본녀_짐_늙은이_%CALLNAME:ARG%_%CALLNAME:ARG%씨_%CALLNAME:ARG%쨩_%CALLNAME:ARG%님_직접입력
+CALL INPUT_SPLIT(CALLNAME:ARG+"의 새로운 일인칭을 입력해주세요", RESULTS , "_" , , 4)
+IF RESULTS == "직접입력"
+	PRINTL 
+	INPUTS
+ENDIF
+CSTR:ARG:11 = %RESULTS%
+
+;====================================================
+;二人称
+;====================================================
+@NAME_CHANGE_이인칭,ARG
+RESULTS = %CSTR:ARG:12%_당신_그대_주인님_서머너_소환사님_주인_서방님_나으리_대장_두목_마스터_주군_폐하_파파_아빠_아버지_아버님_마마_엄마_어머니_어머님_오빠_오라버니_오라버님_형아_형_형님_언냐_언니_누나_누님_아저씨_어르신_아줌마_아주머니_아주머님_%CALLNAME:MASTER%_%CALLNAME:MASTER%씨_%CALLNAME:MASTER%님_%CALLNAME:MASTER%공_직접입력
+CALL INPUT_SPLIT(CALLNAME:ARG+"의 새로운 "+CALLNAME:MASTER+"에 대한 호칭을 입력해주세요", RESULTS , "_" , , 4)
+IF RESULTS == "직접입력"
+	PRINTL 
+	INPUTS
+ENDIF
+CSTR:ARG:12 = %RESULTS%
+
+;====================================================
+;プロフィール
+;====================================================
+@NAME_CHANGE_프로필, ARG
+#LOCALSIZE 5
+LOCAL:1 = LOCAL:4 ? LOCAL:1 # LINECOUNT
+LOCAL:2 = LOCAL:4 ? LOCAL:2 # CURRENTREDRAW()
+LOCAL:3 = LOCAL:4 ? LOCAL:3 # RESULT
+LOCAL:4 = 1
+REDRAW 2
+CLEARLINE LINECOUNT - LOCAL:1
+CUSTOMDRAWLINE =
+PRINTL 변경하고 싶은 행을 선택해주세요
+DRAWLINE
+FOR LOCAL, 1, 21
+	PRINTFORML [{LOCAL, 2}] %CSTR:ARG:(29 + LOCAL)%
+NEXT
+PRINTL
+DRAWLINE
+PRINTL [ 0] 유저 정의 파일 읽기
+PRINTL [100] 돌아간다
+DO
+	INPUT
+	LOCAL = INRANGE(RESULT, 0, 20) !| RESULT == 100
+	SIF LOCAL
+		CLEARLINE 1
+LOOP LOCAL
+IF RESULT != 100
+	IF RESULT
+		PRINTFORML {RESULT}번째 줄에 삽입할 문자열을 입력해주세요.
+		INPUTS
+		CSTR:ARG:(29 + RESULT) '= RESULTS
+	ELSE
+		SWAP ARG, TARGET
+		TRYCCALLFORM USER_PROFILE_%CALLNAME%
+			PRINTFORMW %CALLNAME%의 프로필을 읽어들였습니다.
+		CATCH
+			PRINTFORMW %CALLNAME%의 프로필을 정의한 함수를 찾을 수 없습니다.
+		ENDCATCH
+		SWAP ARG, TARGET
+	ENDIF
+	RESTART
+ENDIF
+CLEARLINE LINECOUNT - LOCAL:1
+REDRAW LOCAL:2
+LOCAL:4 = 0
+RESULTS = 지정된 상태로 유지
+RETURN LOCAL:3
+
+;====================================================
+;称号
+;0〜47番までの48종류
+;誰かページめくり기능とか作ってくだしあ
+;一度得た称号は조건を満たしていなくても名乗れるようになると嬉しい
+;====================================================
+@NAME_CHANGE_칭호,ARG
+VARSET RESULTS,"????"
+;通常は『인간』
+RESULTS:0  = %STR:(ABL:MASTER:종족)%
+;변경なし
+RESULTS:1  = %종족명(ARG)%
+;表向きの職業
+;ないしょ
+SIF CFLAG:MASTER:72 == 0
+	RESULTS:2 = 은닉자
+;生粋のデビル서머너
+;うｐる直前になってかぶってることに気がついたがま아이いや
+SIF CFLAG:MASTER:72 == 1
+	RESULTS:2 = 데빌서머너
+SIF CFLAG:MASTER:72 == 2
+	RESULTS:2 = 초등학생
+SIF CFLAG:MASTER:72 == 20
+	RESULTS:2 = 중학생
+SIF CFLAG:MASTER:72 == 21
+	RESULTS:2 = 고등학생
+SIF CFLAG:MASTER:72 == 22
+	RESULTS:2 = 카루코자카생
+SIF CFLAG:MASTER:72 == 23
+	RESULTS:2 = 엘민생
+SIF CFLAG:MASTER:72 == 3
+	RESULTS:2 = 대학생
+SIF CFLAG:MASTER:72 == 3
+	RESULTS:2 = 프리터
+SIF CFLAG:MASTER:72 == 4
+	RESULTS:2 = 사회인
+SIF CFLAG:MASTER:72 == 5
+	RESULTS:2 = 규중의영애
+SIF CFLAG:MASTER:72 == 6
+	RESULTS:2 = 공중변소
+SIF CFLAG:MASTER:72 == 7
+	RESULTS:2 = 여왕님
+SIF CFLAG:MASTER:72 == 8
+	RESULTS:2 = 도박꾼
+SIF CFLAG:MASTER:72 == 9
+	RESULTS:2 = 메이드
+SIF CFLAG:MASTER:72 == 10
+	RESULTS:2 = 집사
+SIF CFLAG:MASTER:72 == 11
+	RESULTS:2 = 승려
+SIF CFLAG:MASTER:72 == 12
+	RESULTS:2 = 무녀
+
+;●強さ・속성・기능系称号
+RESULTS:3  = \@ TALENT:MASTER:서머너                  ? 악마술사        # %RESULTS:3%  \@
+RESULTS:4  = \@ TALENT:MASTER:서머너                  ? 데빌서머너  # %RESULTS:4%  \@
+RESULTS:5  = \@ TALENT:MASTER:이능자                    ? 이능자          # %RESULTS:5%  \@
+RESULTS:6  = \@ TALENT:MASTER:페르소나구사자              ? 페르소나구사자    # %RESULTS:6%  \@
+RESULTS:7  = \@ TALENT:MASTER:식노                      ? 식노            # %RESULTS:7%  \@
+RESULTS:8  = \@ TALENT:MASTER:달인                      ? 달인            # %RESULTS:8%  \@
+
+RESULTS:9  = \@ ABL:MASTER:속성LD == 1                  ? 데빌버스터      # %RESULTS:9%   \@
+RESULTS:10 = \@ ABL:MASTER:속성LD == 2                  ? 데빌유저  # %RESULTS:10%  \@
+RESULTS:11 = \@ ABL:MASTER:속성LD == 3                  ? 다크서머너  # %RESULTS:11%  \@
+RESULTS:12 = \@ TALENT:MASTER:건슬링거            ? 마총사용자        # %RESULTS:12%  \@
+RESULTS:13 = \@ TALENT:MASTER:석세서                ? 마검사          # %RESULTS:13%  \@
+RESULTS:14 = \@ HAVE_SKILL(ARG,[[스킬:사바트마]])     ? 악마소환사      # %RESULTS:14%  \@
+
+RESULTS:15 = \@ BASE:MASTER:LV >= 20                    ? 팬텀의개        # %RESULTS:15%  \@
+RESULTS:16 = \@ BASE:MASTER:LV >= 50                    ? 팬텀의첨병 # %RESULTS:16% \@
+RESULTS:17 = \@ BASE:MASTER:LV >= 80                    ? 팬텀의단두대 # %RESULTS:17% \@
+RESULTS:18 = \@ BASE:MASTER:LV >= 60 && ABL:MASTER:속성LD == 1 ? 영웅     # %RESULTS:18% \@
+RESULTS:19 = \@ BASE:MASTER:LV >= 60 && ABL:MASTER:속성LD == 2 ? 초인     # %RESULTS:19% \@
+RESULTS:20 = \@ BASE:MASTER:LV >= 60 && ABL:MASTER:속성LD == 3 ? 마인     # %RESULTS:20% \@
+
+;RESULTS:21 = \@ ABL:MASTER:요리기능 >= 5                ? コックさん      # %RESULTS:21% \@
+RESULTS:21 = \@ ABL:MASTER:요리기능 >= 5                ? 요리사          # %RESULTS:21% \@
+RESULTS:22 = \@ ABL:MASTER:촬영기능 >= 5                ? 카메라맨      # %RESULTS:22% \@
+RESULTS:23 = \@ ABL:MASTER:가창기능 >= 5                ? 아이돌        # %RESULTS:23% \@
+
+;●観光客（勝利者は本来***と三つだった気がする。しかし三つだと표시が……）
+RESULTS:24 = \@ !(TALENT:MASTER:서머너 || TALENT:MASTER:이능자 || TALENT:MASTER:페르소나구사자 || TALENT:MASTER:달인 || TALENT:MASTER:식노)                         ? 관광객     # %RESULTS:24% \@
+RESULTS:25 = \@ !(TALENT:MASTER:서머너 || TALENT:MASTER:이능자 || TALENT:MASTER:페르소나구사자 || TALENT:MASTER:달인 || TALENT:MASTER:식노) && BASE:MASTER:LV >= 50 ? 달팽이 # %RESULTS:25% \@
+RESULTS:26 = \@ !(TALENT:MASTER:서머너 || TALENT:MASTER:이능자 || TALENT:MASTER:페르소나구사자 || TALENT:MASTER:달인 || TALENT:MASTER:식노) && BASE:MASTER:LV >= 99 ? **승리자** # %RESULTS:26% \@
+
+;●매각数
+RESULTS:27 = \@ SUMARRAY(FLAG,34501,34700) > 10         ? 납치범          # %RESULTS:27% \@
+RESULTS:28 = \@ SUMARRAY(FLAG,34501,34700) > 30         ? 맨헌터    # %RESULTS:28% \@
+RESULTS:29 = \@ SUMARRAY(FLAG,34501,34700) > 50         ? 노예상          # %RESULTS:29% \@
+RESULTS:30 = \@ SUMARRAY(FLAG,30000,34501) > 10         ? 악마조교사      # %RESULTS:30% \@
+RESULTS:31 = \@ SUMARRAY(FLAG,30000,34501) > 30         ? 악마지배사      # %RESULTS:31% \@
+RESULTS:32 = \@ SUMARRAY(FLAG,30000,34501) > 50         ? 악귀            # %RESULTS:32% \@
+
+
+;●おパイサイズorちんちん
+;男の페니스サイズは未実装？ 후타나리もあるので、ちんちんサイズだけの조건を설정しておく
+;RESULTS:33 = \@ BASE:MASTER:23 >  25         ? 巨根            # %RESULTS:33% \@
+;RESULTS:33 = \@ BASE:MASTER:23 >= 30         ? 마라の화신    # %RESULTS:33% \@
+RESULTS:34 = \@ !IS_MALE(ARG) && TALENT:MASTER:魔乳 == 1 && ABL:MASTER:속성LD == 1 ? 성유    # %RESULTS:34% \@
+RESULTS:34 = \@ !IS_MALE(ARG) && TALENT:MASTER:魔乳 == 1 && ABL:MASTER:속성LD == 2 ? 초유    # %RESULTS:34% \@
+RESULTS:34 = \@ !IS_MALE(ARG) && TALENT:MASTER:魔乳 == 1 && ABL:MASTER:속성LD == 3 ? 마유    # %RESULTS:34% \@
+
+;●エン디무ング関連
+;ファントム幹部エンド
+RESULTS:36 = \@ GETBIT(FLAG:発見ED,0)                   ? 그리고리        # %RESULTS:36%  \@
+;ファントム乗っ取りエンド（未実装）
+;RESULTS:37 = \@ GETBIT(FLAG:発見ED,2)                   ? 팬텀      # %RESULTS:37%  \@
+;조교師エンド１
+RESULTS:38 = \@ GETBIT(FLAG:発見ED,2)                   ? 조교사          # %RESULTS:38%  \@
+;조교師エンド２
+RESULTS:39 = \@ GETBIT(FLAG:発見ED,3)                   ? Master of slave # %RESULTS:39% \@
+;식당
+RESULTS:40 = \@ GETBIT(FLAG:発見ED,10)                  ? 오너        # %RESULTS:40% \@
+;RESULTS:41 = \@ GETBIT(FLAG:発見ED,11)                  ? クッキング서머너 # %RESULTS:41% \@
+;창관경영
+RESULTS:42 = \@ GETBIT(FLAG:発見ED,12)                  ? 창관경영자      # %RESULTS:42% \@
+;夜の王
+RESULTS:43 = \@ GETBIT(FLAG:発見ED,13) && IS_MALE(ARG)  ? 밤의왕          # %RESULTS:43% \@
+RESULTS:43 = \@ GETBIT(FLAG:発見ED,13) && !IS_MALE(ARG) ? 밤의여왕        # %RESULTS:43% \@
+;流浪の창부
+;RESULTS:44 = \@ GETBIT(FLAG:発見ED,14)                  ? 道端の穴        # %RESULTS:44% \@
+;堕落（淫売）
+RESULTS:45 = \@ GETBIT(FLAG:発見ED,15)                  ? 매춘부          # %RESULTS:45% \@
+;아이돌
+RESULTS:46 = \@ GETBIT(FLAG:発見ED,19)                  ? 아이돌마스터  # %RESULTS:46% \@
+;武断
+RESULTS:47 = \@ GETBIT(FLAG:発見ED,20)                  ? 전귀            # %RESULTS:47% \@
+;個別エンド/"いちずな"田中さん、のような形を想定
+RESULTS:48 = \@ GETBIT(FLAG:発見ED,21)                  ? “한결같은”    # %RESULTS:48% \@
+
+;페르소나（세벡
+RESULTS:49 = \@ GETBIT(FLAG:発見ED,28)                  ? 아바타라    # %RESULTS:49% \@
+;페르소나（雪の女王）：아수라여왕張り倒すので
+RESULTS:50 = \@ GETBIT(FLAG:発見ED,29)                  ? 아수라          # %RESULTS:50% \@
+;페르소나２　エン디무ング名："Innocent Sin"より
+RESULTS:51 = \@ GETBIT(FLAG:発見ED,30)                  ? 원죄를 짊어진 자  # %RESULTS:51% \@
+;コロシアム
+RESULTS:52 = \@ GETBIT(FLAG:発見ED,40)                  ? 챔피언    # %RESULTS:52% \@
+RESULTS:53 = \@ GETBIT(FLAG:発見ED,40)                  ? 신의 적대자      # %RESULTS:53% \@
+;ナイト・テイル（トゥルー、ノーマル、라그나로크
+RESULTS:54 = \@ GETBIT(FLAG:発見ED,50)                  ? 탐정        # %RESULTS:54% \@
+RESULTS:55 = \@ GETBIT(FLAG:発見ED,51)                  ? 더・히어로    # %RESULTS:55% \@
+RESULTS:56 = \@ GETBIT(FLAG:発見ED,52)                  ? 황금의 짐승        # %RESULTS:56% \@
+;아마라심계
+RESULTS:57 = \@ GETBIT(FLAG:発見ED,55)                  ? 혼돈왕          # %RESULTS:57% \@
+RESULTS:58 = \@ GETBIT(FLAG:発見ED,56)                  ? 인류의 빛          # %RESULTS:58% \@
+;데빌칠드런（新세계、호시가미、노른의열쇠ゲット）
+RESULTS:59 = \@ GETBIT(FLAG:発見ED,60)                  ? 창세주          # %RESULTS:59% \@
+RESULTS:60 = \@ GETBIT(FLAG:発見ED,61)                  ? 호시가미        # %RESULTS:60% \@
+RESULTS:61 = \@ 던전フラグ:64:0 >= 4              ? 大마왕          # %RESULTS:61% \@
+;まどマギ
+RESULTS:62 = \@ GETBIT(FLAG:発見ED,63) && IS_MALE(ARG)  ? 마법소녀？      # %RESULTS:62% \@
+RESULTS:62 = \@ GETBIT(FLAG:発見ED,63) && !IS_MALE(ARG) ? 마법소녀        # %RESULTS:62% \@
+;メルブラ
+RESULTS:63 = \@ GETBIT(FLAG:発見ED2,0) ? 방문자        # %RESULTS:63% \@
+;ナナドラ
+RESULTS:64 = \@ GETBIT(FLAG:発見ED2,1) ? 사냥꾼        # %RESULTS:64% \@
+;DMC
+RESULTS:99 = \@ GETBIT(FLAG:発見ED2,35) ? 마제사냥          # %RESULTS:99% \@
+
+;●그외称号
+;엘리자베스＆마가렛を倒している（仲魔にいるかは関係なし）（16>=4だと戦っていない場合も판정されてしまう）
+RESULTS:65 = \@ DB:70:96 == 4 && (DB:101:16 ==2 || DB:101:16 == 3)  ? 힘의 끝에 선 자     # %RESULTS:65% \@
+;RESULTS:66 = \@ DB:70:96 == 4 && (DB:101:16 ==2 || DB:101:16 == 3)  ? もう何も怖くない # %RESULTS:66% \@
+RESULTS:67 = \@ BASE:MASTER:LV > 1000                   ? 월드 디스트로이어 # %RESULTS:67% \@
+;いつもお疲れ様です
+RESULTS:68 = \@ FLAG:DEBUG                              ? 디버거      # %RESULTS:68%  \@
+
+
+;リスト표시
+CUSTOMDRAWLINE =
+FOR LOCAL,0,69
+	PRINTFORMLC [{LOCAL,2}]%RESULTS:LOCAL%
+	SIF LOCAL%3 == 2
+		PRINTL
+NEXT
+DRAWLINE
+DO 
+	INPUT
+LOOP !RANGE(RESULT,0,68) || EQUALCHECK_STR(RESULTS:RESULT,"????")
+CSTR:ARG:종족명 = %RESULTS:RESULT%
+VARSET RESULTS
+RESULTS = %CSTR:ARG:종족명%
+
+;以下外見설정　色や머리카락형태には부족があると思われるので、知識のある方追加お願いします
+;====================================================
+;머리카락색깔 CFLAG:35に指定
+;====================================================
+@NAME_CHANGE_머리카락색깔, ARG
+IF TALENT:ARG:남자 && !TALENT:ARG:오토코노코 && CFLAG:ARG:머리카락형태 == 1
+	PRINTW 먼저 머리카락 형태를 변경하십시오
+ELSE
+PRINTFORML %NAME:ARG%의 머리카락색을 결정하십시오
+PRINTL [1]검은색
+PRINTL [2]갈색
+PRINTL [3]금색
+PRINTL [4]은색
+PRINTL [5]붉은색
+PRINTL [6]파란색
+PRINTL [7]녹색
+PRINTL [8]핑크색
+PRINTL [9]자색
+PRINTL [10]백색
+PRINTL [11]적갈색
+PRINTL [12]연보라색
+PRINTL [13]적자색
+PRINTL [14]백금
+PRINTL [15]애쉬브라운
+PRINTL [16]오렌지
+
+CALL INPUTINT,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16
+SELECTCASE RESULT
+	CASE 1
+		CFLAG:ARG:머리카락색깔 = 1
+		RESULTS = 검은색
+	CASE 2
+		CFLAG:ARG:머리카락색깔 = 2
+		RESULTS = 갈색
+	CASE 3
+		CFLAG:ARG:머리카락색깔 = 3
+		RESULTS = 금색
+	CASE 4
+		CFLAG:ARG:머리카락색깔 = 4
+		RESULTS = 은색
+	CASE 5
+		CFLAG:ARG:머리카락색깔 = 5
+		RESULTS = 붉은색
+	CASE 6
+		CFLAG:ARG:머리카락색깔 = 6
+		RESULTS = 파란색
+	CASE 7
+		CFLAG:ARG:머리카락색깔 = 7
+		RESULTS = 녹색
+	CASE 8
+		CFLAG:ARG:머리카락색깔 = 8
+		RESULTS = 핑크색
+	CASE 9
+		CFLAG:ARG:머리카락색깔 = 9
+		RESULTS = 자색
+	CASE 10
+		CFLAG:ARG:머리카락색깔 = 10
+		RESULTS = 백색
+	CASE 11
+		CFLAG:ARG:머리카락색깔 = 11
+		RESULTS = 적갈색
+	CASE 12
+		CFLAG:ARG:머리카락색깔 = 12
+		RESULTS = 연보라색
+	CASE 13
+		CFLAG:ARG:머리카락색깔 = 13
+		RESULTS = 적자색
+	CASE 14
+		CFLAG:ARG:머리카락색깔 = 14
+		RESULTS = 백금
+	CASE 15
+		CFLAG:ARG:머리카락색깔 = 15
+		RESULTS = 애쉬브라운
+	CASE 16
+		CFLAG:ARG:머리카락색깔 = 16
+		RESULTS = 오렌지
+ENDSELECT
+ENDIF
+
+;====================================================
+;머리카락형태 CFLAG:36に指定 [남자]　[오토코노코or女]で別타입
+;====================================================
+@NAME_CHANGE_머리카락형태, ARG
+PRINTFORML %NAME:ARG%의 머리카락형태를 결정하십시오
+IF TALENT:ARG:남자 && !TALENT:ARG:오토코노코
+	PRINTL [1]스킨 헤드
+	PRINTL [2]스포츠 컷
+	PRINTL [3]단발
+	PRINTL [4]모히칸
+	PRINTL [5]상투
+	PRINTL [6]칠 대 삼
+	PRINTL [7]장발
+	PRINTL [8]펀치 파마
+	PRINTL [9]결발
+	PRINTL [10]변발
+	
+	CALL INPUTINT,1,2,3,4,5,6,7,8,9,10
+	SELECTCASE RESULT
+	CASE 1
+		;無いものに色は付けられない
+		CFLAG:ARG:머리카락색깔 = 0
+		CFLAG:ARG:머리카락형태 = 1
+		RESULTS = 스킨 헤드
+	CASE 2
+		CFLAG:ARG:머리카락형태 = 2
+		RESULTS = 스포츠 컷
+	CASE 3
+		CFLAG:ARG:머리카락형태 = 3
+		RESULTS = 단발
+	CASE 4
+		CFLAG:ARG:머리카락형태 = 4
+		RESULTS = 모히칸
+	CASE 5
+		CFLAG:ARG:머리카락형태 = 5
+		RESULTS = 상투
+	CASE 6
+		CFLAG:ARG:머리카락형태 = 6
+		RESULTS = 칠 대 삼
+	CASE 7
+		CFLAG:ARG:머리카락형태 = 7
+		RESULTS = 장발
+	CASE 8
+		CFLAG:ARG:머리카락형태 = 8
+		RESULTS = 펀치 파마
+	CASE 9
+		CFLAG:ARG:머리카락형태 = 9
+		RESULTS = 결발
+	CASE 10
+		CFLAG:ARG:머리카락형태 = 10
+		RESULTS = 변발
+	
+	ENDSELECT
+ELSE
+	PRINTL [1]쇼트 헤어
+	PRINTL [2]쇼트 보브
+	PRINTL [3]세미롱
+	PRINTL [4]포니 테일
+	PRINTL [5]트윈 테일
+	PRINTL [6]스트레이트 롱
+	PRINTL [7]업
+	PRINTL [8]느슨한 파마
+	PRINTL [9]롱 웨이브
+	PRINTL [10]3가닥 땋은 머리
+	PRINTL [11]투 사이드 업
+	PRINTL [12]시뇽
+	PRINTL [13]화발
+
+	CALL INPUTINT,1,2,3,4,5,6,7,8,9,10,11,12,13
+	SELECTCASE RESULT
+	CASE 1
+		CFLAG:ARG:머리카락형태 = 1
+		RESULTS = 쇼트 헤어
+	CASE 2
+		CFLAG:ARG:머리카락형태 = 2
+		RESULTS = 쇼트 보브
+	CASE 3
+		CFLAG:ARG:머리카락형태 = 3
+		RESULTS = 세미롱
+	CASE 4
+		CFLAG:ARG:머리카락형태 = 4
+		RESULTS = 포니 테일
+	CASE 5
+		CFLAG:ARG:머리카락형태 = 5
+		RESULTS = 트윈 테일
+	CASE 6
+		CFLAG:ARG:머리카락형태 = 6
+		RESULTS = 스트레이트 롱
+	CASE 7
+		CFLAG:ARG:머리카락형태 = 7
+		RESULTS = 업
+	CASE 8
+		CFLAG:ARG:머리카락형태 = 8
+		RESULTS = 느슨한 파마
+	CASE 9
+		CFLAG:ARG:머리카락형태 = 9
+		RESULTS = 롱 웨이브
+	CASE 10
+		CFLAG:ARG:머리카락형태 = 10
+		RESULTS = 3가닥 땋은 머리
+	CASE 11
+		CFLAG:ARG:머리카락형태 = 11
+		RESULTS = 투 사이드 업
+	CASE 12
+		CFLAG:ARG:머리카락형태 = 12
+		RESULTS = 시뇽
+	CASE 13
+		CFLAG:ARG:머리카락형태 = 13
+		RESULTS = 화발
+	
+	ENDSELECT
+ENDIF
+;====================================================
+;눈동자색깔 CFLAG:37に指定
+;====================================================
+@NAME_CHANGE_눈동자색깔, ARG
+PRINTFORML %NAME:ARG%의 눈동자색을 결정하십시오
+PRINTL [1]검은색
+PRINTL [2]갈색
+PRINTL [3]금색
+PRINTL [4]은색
+PRINTL [5]붉은색
+PRINTL [6]파란색
+PRINTL [7]녹색
+PRINTL [8]자색
+PRINTL [9]회색
+PRINTL [10]하늘색
+
+$INPUT_LOOP
+CALL INPUTINT,1,2,3,4,5,6,7,8,9,10
+SELECTCASE RESULT
+	CASE 1
+		CFLAG:ARG:눈동자색깔 = 1
+		RESULTS = 검은색
+	CASE 2
+		CFLAG:ARG:눈동자색깔 = 2
+		RESULTS = 갈색
+	CASE 3
+		CFLAG:ARG:눈동자색깔 = 3
+		RESULTS = 금색
+	CASE 4
+		CFLAG:ARG:눈동자색깔 = 4
+		RESULTS = 은색
+	CASE 5
+		CFLAG:ARG:눈동자색깔 = 5
+		RESULTS = 붉은색
+	CASE 6
+		CFLAG:ARG:눈동자색깔 = 6
+		RESULTS = 파란색
+	CASE 7
+		CFLAG:ARG:눈동자색깔 = 7
+		RESULTS = 녹색
+	CASE 8
+		CFLAG:ARG:눈동자색깔 = 8
+		RESULTS = 자색
+	CASE 9
+		CFLAG:ARG:눈동자색깔 = 9
+		RESULTS = 회색
+	CASE 10
+		CFLAG:ARG:눈동자색깔 = 10
+		RESULTS = 하늘색
+ENDSELECT
+
+;====================================================
+;신장 BASE:24に설정
+;====================================================
+@NAME_CHANGE_신장, ARG
+IF BASE:ARG:신장 > 0
+	PRINTFORML %NAME:ARG%의 신장은 {BASE:ARG:24}cm로 설정되어 있습니다
+ELSE
+	PRINTFORML %NAME:ARG%의 신장을 설정합니다
+ENDIF
+$INPUT_TALL
+IF TALENT:ARG:남자 && TALENT:ARG:유아체형 && !TALENT:ARG:오토코노코
+	PRINTL 얼마로 하시겠습니까 (120-164)
+	INPUT
+	IF RESULT < 120 || RESULT > 164
+		PRINTL 잘못된 값입니다
+		GOTO INPUT_TALL
+	ELSE
+		BASE:ARG:신장 = RESULT
+	ENDIF
+ELSEIF TALENT:ARG:남자 && !TALENT:ARG:오토코노코
+	PRINTL 얼마로 하시겠습니까 (165-180)
+	INPUT
+	IF RESULT < 165 || RESULT > 180
+		PRINTL 잘못된 값입니다
+		GOTO INPUT_TALL
+	ELSE
+		BASE:ARG:신장 = RESULT
+	ENDIF
+ELSEIF TALENT:ARG:유아체형
+	PRINTL 얼마로 하시겠습니까 (115-149)
+	INPUT
+	IF RESULT < 115 || RESULT > 149
+		PRINTL 잘못된 값입니다
+		GOTO INPUT_TALL
+	ELSE
+		BASE:ARG:신장 = RESULT
+	ENDIF
+ELSE
+	PRINTL 얼마로 하시겠습니까 (150-175)
+	INPUT
+	IF RESULT < 150 || RESULT > 175
+		PRINTL 잘못된 값입니다
+		GOTO INPUT_TALL
+	ELSE
+		BASE:ARG:신장 = RESULT
+	ENDIF
+ENDIF
+;====================================================
+;쓰리사이즈 BASE:25～27に설정
+;160センチで以下の範囲
+;B:71-120
+;W:48-93
+;H:72-100
+;====================================================
+@NAME_CHANGE_쓰리사이즈, ARG
+IF TALENT:ARG:남자 && !TALENT:ARG:오토코노코
+	PRINTL ？？「…가자　곧 여기도 썩은 바다에 침몰한다」
+	RESULTS = 설정하지 않는다
+ELSEIF BASE:ARG:신장 == 0
+	PRINTW 먼저 신장을 결정하십시오
+	RESULTS = 설정하지 않는다
+ELSE
+	IF BASE:ARG:바스트 == 0 || BASE:ARG:웨스트 == 0 || BASE:ARG:힙사이즈 == 0
+		PRINTFORML %NAME:ARG%의 쓰리 사이즈를 설정합니다
+	ELSE
+		PRINTFORML %NAME:ARG%의 현재 쓰리 사이즈는 다음과 같습니다
+		CALL SHOW_INFO_BODYSIZE(ARG)
+	ENDIF
+	$INPUT_B
+	PRINTFORML 바스트의 값을 설정하십시오 ({BASE:ARG:신장 * 4 / 9}-{BASE:ARG:신장 * 75 / 100})
+	INPUT
+	IF RESULT < BASE:ARG:신장 * 4 / 9 || RESULT > BASE:ARG:신장 * 3 / 4
+		PRINTL 잘못된 값입니다
+		GOTO INPUT_B
+	ELSE
+		BASE:ARG:바스트 = RESULT
+	ENDIF
+	$INPUT_W
+	PRINTFORML 웨스트의 값을 설정하십시오 ({BASE:ARG:신장 * 3 / 10}-{BASE:ARG:신장 / 2})
+	INPUT
+	IF RESULT < BASE:ARG:신장 * 3 / 10 || RESULT > BASE:ARG:신장 * 7 / 12
+		PRINTL 잘못된 값입니다
+		GOTO INPUT_W
+	ELSE
+		BASE:ARG:웨스트 = RESULT
+	ENDIF
+	$INPUT_H
+	PRINTFORML 힙의 값을 설정하십시오 ({BASE:ARG:신장 * 9 / 20}-{BASE:ARG:신장 * 3 / 5})
+	INPUT
+	IF RESULT < BASE:ARG:신장 * 9 / 20 || RESULT > BASE:ARG:신장 * 5 / 8
+		PRINTL 잘못된 값입니다
+		GOTO INPUT_H
+	ELSE
+		BASE:ARG:힙사이즈 = RESULT
+	ENDIF
+	CALL 子宮最大容量初期設定,ARG
+ENDIF

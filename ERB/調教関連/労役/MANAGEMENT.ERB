@@ -1,0 +1,1408 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		20XX/XX/XX		----					新規作成
+;	002		2011/02/25		黒天					점포규모、雇用人数の확장数を指定가능に
+;													パラダイムX・飛行船の宣伝広告메시지がラ지오と同じだったのを수정
+;	003		2012/09/22		ネトリス				報告の설정변경を추가、個別이용方法설정で現在の설정状況を一覧で확인できるように
+;	004		2012/12/06		ネトリス				『이용方法個別설정』の설정화면で直接前後のキャラに바꾸기られるように
+;													有無표시の色をわかり易いように調整
+;													『변기설정가능수확장』、『점포규모확장』、『広告を出す』の화면に現在の소지金を표시するように
+;	005		2013/01/12		TR						@MANAGAMENT_MAINでグローバル変数"VAR_점포번호"を読み込むように
+;	006		2013/11/24		ひみつ					リスト표시数설정
+;	007		2014/09/19		ネトリス				노역：教会の処理を추가
+;	008		2017/06/23		kuni					キャラ표시でINPUT_CHARA_LISTを사용するように변경
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;=============================================
+;점포경영システム
+;=============================================
+;========================================================
+;점포경영
+;========================================================
+@MANAGEMENT
+CUSTOMDRAWLINE =
+FOR LOCAL,0,10
+	PRINTFORM [{LOCAL}] - 
+	IF 점포("종류",LOCAL) > 0
+		PRINTFORML  %SAVESTR:(20+LOCAL)%
+	ELSE
+		SETCOLOR 0x909090
+		PRINTFORML 점포건설
+		RESETCOLOR
+	ENDIF
+NEXT
+DRAWLINE
+PRINTL [10] 돌아간다
+$INPUT_LOOP
+INPUT
+IF RESULT == 10
+	RETURN 0
+ELSEIF RESULT < 0 || RESULT > 9
+	GOTO INPUT_LOOP
+ENDIF
+LOCAL = RESULT
+IF 점포("종류",LOCAL) > 0
+	CALL MANAGEMENT_MAIN,LOCAL
+ELSE
+	CALL MANAGEMENT_MAKE,LOCAL
+ENDIF
+
+RESTART
+
+;========================================================
+;점포設営
+;========================================================
+@MANAGEMENT_MAKE,ARG
+CUSTOMDRAWLINE ･
+PRINTFORML 어떤 점포를 건설하겠습니까?　（소지금：￥{MONEY}）
+DRAWLINE
+PRINTL [10] - 공중변소 (￥50000)
+PRINTL [11] - 스트립 극장 (￥25000)
+PRINTL [12] - 곡예 오두막 (￥25000)
+;教会추가
+PRINTL [13] - 메시아 교회 (￥50000)
+PRINTL [14] - 가이아 교회 (￥50000)
+PRINTL [15] - 교회 (￥75000)
+DRAWLINE
+PRINTL [0]  - 그만둔다
+$INPUT_LOOP
+INPUT
+LOCAL = RESULT
+SELECTCASE LOCAL
+	CASE 0
+		RETURN 0
+	CASE 10
+		LOCAL:1 = 50000
+	CASE 11
+		LOCAL:1 = 25000
+	CASE 12
+		LOCAL:1 = 25000
+;教会추가
+	CASE 13
+		LOCAL:1 = 50000
+	CASE 14
+		LOCAL:1 = 50000
+	CASE 15
+		LOCAL:1 = 75000
+	CASEELSE
+		GOTO INPUT_LOOP
+ENDSELECT
+SIF MONEY < LOCAL:1
+	GOTO INPUT_LOOP
+PRINTFORML 건설하려면 ￥{LOCAL:1}이 필요합니다. 정말로 건설하겠습니까?
+CALL INPUT_YN,"YES","NO"
+IF RESULT == 1
+	RESTART
+ENDIF
+
+CALL 점포演算("종류",ARG,LOCAL,"=")
+;建設作業
+SELECTCASE LOCAL
+	CASE 10
+		CALL 점포演算("규모",ARG,10,"=")
+		CALL 점포演算("접객고용",ARG,2,"=")
+		CALL 점포演算("펠라가격",ARG,1,"=")
+		CALL 점포演算("섹스가격",ARG,2,"=")
+		CALL 점포演算("애널가격",ARG,2,"=")
+		CALL 점포演算("질내사정가격",ARG,4,"=")
+		CALL 점포演算("처녀가격",ARG,10,"=")
+		CALL 점포演算("성적서비스",ARG,120,"=")
+		LOCALS = 공중변소
+	CASE 11
+		CALL 점포演算("규모",ARG,1,"=")
+		LOCALS = 스트립 극장
+	CASE 12
+		CALL 점포演算("규모",ARG,1,"=")
+		CALL 점포演算("접객고용",ARG,1,"=")
+		LOCALS = 곡예 오두막
+	CASE 13
+		CALL 점포演算("규모",ARG,1,"=")
+		CALL 점포演算("접객고용",ARG,2,"=")
+		LOCALS = 메시아교회
+	CASE 14
+		CALL 점포演算("규모",ARG,1,"=")
+		CALL 점포演算("접객고용",ARG,2,"=")
+		LOCALS = 가이아교회
+	CASE 15
+		CALL 점포演算("규모",ARG,1,"=")
+		CALL 점포演算("접객고용",ARG,2,"=")
+		LOCALS = 교회
+ENDSELECT
+MONEY -= LOCAL:1
+
+PRINTL
+$CHANGE_NAME
+PRINTFORML 점포 이름은 「%LOCALS%」%조사만처리(LOCALS,"로")% 좋습니까?
+CALL INPUT_YN,"그대로","변경한다"
+IF RESULT == 1
+	PRINTL 점포의 명칭을 입력해 주세요
+	INPUTS
+	LOCALS = %RESULTS%
+	GOTO CHANGE_NAME
+ENDIF
+SAVESTR:(20+ARG) = %LOCALS%
+PRINTFORML 축하합니다. %조사처리(SAVESTR:(20+ARG),"가")% 개점했습니다.
+RETURN 0
+
+;========================================================
+;점포경영メイン화면
+;========================================================
+@MANAGEMENT_MAIN,ARG
+CUSTOMDRAWLINE =
+;EDIT004 ADD START -------------------------------
+VAR_점포번호 = ARG
+;EDIT004 ADD END   -------------------------------
+;스테이터스표시
+CALL SHOW_STATUS_MANAGEMENT,ARG
+
+PRINTFORML 소지금：￥{MONEY}
+
+CALL PRINT_COMMAND_MANAGEMENT,ARG
+
+$INPUT_LOOP
+INPUT
+IF RESULT == 100
+	RETURN 0
+ELSEIF RESULT < 0 || RESULT > 100
+	GOTO INPUT_LOOP
+ELSEIF C:RESULT == -1
+	GOTO INPUT_LOOP
+ENDIF
+IF 점포("종류",ARG) <= 10
+	SELECTCASE RESULT
+		CASE 0
+			;配置
+			CALL ARRANGE_MANAGEMENT,ARG
+		CASE 1
+			;人数확장
+			CALL EXTEND_MEMBER_MANAGEMENT,ARG
+		CASE 2
+			;규모확장
+			CALL EXTEND_MANAGEMENT,ARG
+		CASE 3
+			;가격설정
+			CALL ARRANGE_PRICE_MANAGEMENT,ARG
+		CASE 4
+			;상품설정
+			CALL ARRANGE_COMMODITY_MANAGEMENT,ARG
+		CASE 5
+			;広告
+			CALL ADVERTISEMENT_MANAGEMENT,ARG
+		CASE 6
+			;報告方法の選択
+			SELECTCASE FLAG:공중변소報告설정
+				CASE 0
+					FLAG:공중변소報告설정 = 1
+				CASE 1
+					FLAG:공중변소報告설정 = 2
+				CASE 2
+					FLAG:공중변소報告설정 = 0
+			ENDSELECT
+		CASE 10
+			;料金個別설정（便所、창관）
+			CALL ARRANGE_CHARA_PRICE_MANAGEMENT,ARG
+		CASE 11
+			;이용方法個別설정（便所、창관）
+			CALL ARRANGE_CHARA_COMMODITY_MANAGEMENT,ARG
+		CASE 99
+			CALL 점포매각,ARG
+			IF RESULT == 1
+				CLEARBIT FLAG:공중변소報告설정, ARG
+				RETURN 0
+			ENDIF
+	ENDSELECT
+ELSEIF 점포("종류",ARG) == 11
+	SELECTCASE RESULT
+		CASE 0
+			;出演者변경
+			CALL ARRANGE_MANAGEMENT_STRIP_THEATER,ARG
+		CASE 1
+			;규모확장
+			CALL EXTEND_MANAGEMENT_STRIP_THEATER,ARG
+		CASE 2
+			;広告
+			CALL ADVERTISEMENT_MANAGEMENT,ARG
+		CASE 3
+			INVERTBIT FLAG:ストリップ劇場報告설정, ARG
+		CASE 99
+			CALL 점포매각,ARG
+			IF RESULT == 1
+				CLEARBIT FLAG:ストリップ劇場報告설정, ARG
+				RETURN 0
+			ENDIF
+	ENDSELECT
+ELSEIF 점포("종류",ARG) == 12
+	SELECTCASE RESULT
+		CASE 0
+			;出演者변경
+			CALL ARRANGE_MANAGEMENT, VAR_점포번호
+		CASE 1
+			;렌탈악마
+			CALL SHOW_TENT_RENTALDEVIL
+		CASE 2
+			;규모확장
+			CALL EXTEND_MANAGEMENT_SHOW_TENT
+		CASE 3
+			;広告
+			CALL ADVERTISEMENT_MANAGEMENT, VAR_점포번호
+		CASE 4
+			INVERTBIT VAR_점포リザルト, VAR_점포번호
+		;#;CASE 5
+		;#;	INVERTBIT VAR_점포リザルト, VAR_점포번호+10
+		CASE 99
+			CALL 점포매각,ARG
+			IF RESULT == 1
+				CLEARBIT VAR_점포リザルト, VAR_점포번호
+				FOR LOCAL,0,5
+					렌탈악마:ARG:LOCAL = 0
+				NEXT
+				RETURN 0
+			ENDIF
+	ENDSELECT
+;教会、まとめようと思ったけど個別に何かするときの為に分けておく
+ELSEIF 점포("종류",ARG) == 13
+	SELECTCASE RESULT
+		CASE 0
+			;配置
+			CALL ARRANGE_MANAGEMENT,ARG
+		CASE 1
+			;人数확장
+			CALL EXTEND_MEMBER_MANAGEMENT,ARG
+		CASE 2
+			CALL EXTEND_MANAGEMENT_教会, ARG
+		CASE 3
+			CALL 教会_敬拝値_交換, ARG
+		CASE 11
+			;이용方法個別설정
+			CALL ARRANGE_CHARA_COMMODITY_MANAGEMENT_教会,ARG
+		CASE 99
+			CALL 점포매각,ARG
+			IF RESULT == 1
+				RETURN 0
+			ENDIF
+	ENDSELECT
+ELSEIF 점포("종류",ARG) == 14
+	SELECTCASE RESULT
+		CASE 0
+			;配置
+			CALL ARRANGE_MANAGEMENT,ARG
+		CASE 1
+			;人数확장
+			CALL EXTEND_MEMBER_MANAGEMENT,ARG
+		CASE 2
+			CALL EXTEND_MANAGEMENT_教会, ARG
+		CASE 3
+			CALL 教会_敬拝値_交換, ARG
+		CASE 11
+			;이용方法個別설정
+			CALL ARRANGE_CHARA_COMMODITY_MANAGEMENT_教会,ARG
+		CASE 99
+			CALL 점포매각,ARG
+			IF RESULT == 1
+				RETURN 0
+			ENDIF
+	ENDSELECT
+ELSEIF 점포("종류",ARG) == 15
+	SELECTCASE RESULT
+		CASE 0
+			;配置
+			CALL ARRANGE_MANAGEMENT,ARG
+		CASE 1
+			;人数확장
+			CALL EXTEND_MEMBER_MANAGEMENT,ARG
+		CASE 2
+			CALL EXTEND_MANAGEMENT_教会, ARG
+		CASE 3
+			CALL 教会_敬拝値_交換, ARG
+		CASE 11
+			;이용方法個別설정
+			CALL ARRANGE_CHARA_COMMODITY_MANAGEMENT_教会,ARG
+		CASE 99
+			CALL 점포매각,ARG
+			IF RESULT == 1
+				RETURN 0
+			ENDIF
+	ENDSELECT
+ENDIF
+
+RESTART
+
+;========================================================
+;配置
+;========================================================
+@ARRANGE_MANAGEMENT,ARG,ARG:1
+#DIM LCOUNT
+P = 0
+CUSTOMDRAWLINE = 
+$INPUT_LOOP_2
+;표시させるキャラを抽出（Q:*に표시するキャラの등록번호、LOCAL:2に人数）
+VARSET Q, -1
+A = 0
+FOR LCOUNT, 0, CHARANUM
+	SIF WORKABLE(ARG,LCOUNT) == 0
+		CONTINUE
+	;SIF CFLAG:LCOUNT:노역フラグ != 0 && CFLAG:LCOUNT:노역フラグ != 10+ARG
+	SIF CFLAG:LCOUNT:노역フラグ != 0 && CFLAG:LCOUNT:노역フラグ != 10+ARG
+		CONTINUE
+	SIF CFLAG:LCOUNT:この場に居ないフラグ == 1
+		CONTINUE
+	SIF CFLAG:LCOUNT:필터링フラグ
+		CONTINUE
+
+	Q:A = LCOUNT
+	A += 1
+NEXT
+LOCAL:2 = A
+
+$PRINT_LIST
+DRAWLINE
+SELECTCASE 점포("종류",ARG)
+	CASE 13, 14, 15
+		PRINTFORM 이 교회에서 봉사시키고 싶다
+	CASEELSE
+		PRINTFORM 이 점포에서 노역시키고 싶다
+ENDSELECT
+PRINTFORML /제외하고 싶은 캐릭터를 선택하십시오　현재{接客人数(ARG)}/{점포("접객고용",ARG)}명＜page.{P + 1}＞
+DRAWLINE
+CALL MANAGEMENT_CHARALIST,ARG,0
+DRAWLINE
+PRINTFORMLC \@(P <= 0) ? %" " * 16% # [1007]이전 페이지\@
+PRINTLC [1000]돌아간다
+PRINTFORMLC \@(P >= (LOCAL:2 - 1) / リスト표시数()) ? %" " * 16% # [1009]다음 페이지\@
+
+$INPUT_LOOP_1
+INPUT
+IF RESULT == 1000
+	RETURN 0
+ELSEIF RESULT == 1007
+	IF P > 0
+		P -= 1
+		GOTO PRINT_LIST
+	ELSE
+		GOTO INPUT_LOOP_1
+	ENDIF
+ELSEIF RESULT == 1009
+	LOCAL = (LOCAL:2 - 1) / リスト표시数()
+	IF P < LOCAL
+		P += 1
+		GOTO PRINT_LIST
+	ELSE
+		GOTO INPUT_LOOP_1
+	ENDIF
+ELSEIF RESULT < 0 || RESULT >= CHARANUM || MATCH(Q,RESULT) == 0
+	GOTO INPUT_LOOP_1
+ENDIF
+
+;노역바꾸기
+IF CFLAG:RESULT:노역フラグ == 10+ARG
+	CFLAG:RESULT:노역フラグ = 0
+ELSEIF 接客人数(ARG) < 점포("접객고용",ARG)
+	SELECTCASE 점포("종류",ARG)
+	CASE 10
+		CFLAG:RESULT:노역フラグ = 10+ARG
+		CFLAG:RESULT:펠라가격= 점포("펠라가격",ARG)
+		CFLAG:RESULT:섹스가격= 점포("섹스가격",ARG)
+		CFLAG:RESULT:질내사정가격= 점포("질내사정가격",ARG)
+		CFLAG:RESULT:애널가격= 점포("애널가격",ARG)
+		CFLAG:RESULT:처녀가격= 점포("처녀가격",ARG)
+		CFLAG:RESULT:従事内容 = 1
+		CFLAG:RESULT:個別성적서비스 = 점포("성적서비스",ARG)
+	CASE 12
+		CFLAG:RESULT:노역フラグ = 10+ARG
+		CFLAG:RESULT:従事内容 = 1
+	CASE 13, 14, 15, 99
+		CFLAG:RESULT:노역フラグ = 10+ARG
+		CFLAG:RESULT:従事内容 = 1
+		CFLAG:RESULT:個別성적서비스 = 1
+	ENDSELECT
+ELSE
+	GOTO INPUT_LOOP_1
+ENDIF
+GOTO INPUT_LOOP_2
+
+;========================================================
+;雇用가능人数확장
+;========================================================
+@EXTEND_MEMBER_MANAGEMENT,ARG
+IF 점포("종류",ARG) == 10
+	PRINTFORML 현재, 이 화장실에 설치할 수 있는 변기는 {점포("접객고용",ARG)}명입니다.　　소지금:￥{MONEY}
+ELSEIF 점포("종류",ARG) == 13 || 점포("종류",ARG) == 14 || 점포("종류",ARG) == 15
+	PRINTFORML 현재, 이 교회에 둘 수 있는 인원은 {점포("접객고용",ARG)}명입니다.　　소지금:￥{MONEY}
+ELSE
+	PRINTFORML 현재, 이 점포에 배치할 수 있는 접객 담당은 {점포("접객고용",ARG)}명입니다.
+ENDIF
+
+;---- EDIT 002 MOD START ---------
+;雇用人数の확장を一気に行えるようにしてみる。
+;現在の雇用人数を취득
+LOCAL:1 = 점포("접객고용",ARG)
+
+PRINTL
+IF 점포("종류",ARG) == 10
+	PRINT 변기의 수를 
+ELSE
+	PRINT 인원수를 
+ENDIF
+PRINTL 얼마나 늘릴 지 선택해 주세요.
+PRINTL 직접 입력해서 수를 지정할 수 있습니다.
+PRINTL 0을 입력하면 확장을 중지합니다.
+PRINTL
+PRINTFORML [1]  - 1명 늘린다  (￥{규모확장金額(LOCAL:1,1,0)})
+PRINTFORML [5]  - 5명 늘린다  (￥{규모확장金額(LOCAL:1,5,0)})
+PRINTFORML [10] - 10명 늘린다 (￥{규모확장金額(LOCAL:1,10,0)})
+PRINTL [0]  - 확장하지 않는다
+
+INPUT
+
+LOCAL:2 = RESULT
+
+PRINTL
+
+IF LOCAL:2 == 0
+	PRINTL 확장을 중지합니다.
+	RETURN 0
+ELSE
+	LOCAL = 규모확장金額(LOCAL:1,LOCAL:2,0)
+	PRINTFORM {LOCAL:2}명을 늘리기 위해서는 ￥{LOCAL}이 필요합니다
+	IF MONEY < LOCAL
+		PRINTL 만, 자금이 부족합니다。
+		RETURN 0
+	ENDIF
+	PRINTL 。
+ENDIF
+
+PRINTL 확장하겠습니까?
+CALL INPUT_YN,"YES","NO"
+SIF RESULT == 1
+	RETURN 0
+CALL 점포演算("접객고용",ARG,LOCAL:2,"+")
+;---- EDIT 002 MOD END -----------
+MONEY -= LOCAL
+
+;========================================================
+;규모확장
+;========================================================
+@EXTEND_MANAGEMENT,ARG
+PRINTFORML 현재, 이 점포는 하루에 {점포("규모",ARG)}명이 이용할 수 있습니다.　　소지금:￥{MONEY}
+
+;---- EDIT 002 MOD START ---------
+;규모の확장を一気に行えるようにしてみる。
+;現在の규모を취득
+LOCAL:1 = 점포("규모",ARG)
+
+PRINTL
+PRINTL 점포의 이용 가능 인원을 얼마 만큼 확장할지 선택해 주세요.
+PRINTL 직접 입력으로도 확장 규모를 지정할 수 있습니다.
+PRINTL 0을 입력하면 확장을 중지합니다.
+PRINTL
+PRINTFORML [1]  -  1명 늘린다 (￥{규모확장金額(LOCAL:1,1,1)})
+PRINTFORML [5]  -  5명 늘린다 (￥{규모확장金額(LOCAL:1,5,1)})
+PRINTFORML [10] - 10명 늘린다 (￥{규모확장金額(LOCAL:1,10,1)})
+PRINTL [0]  - 확장하지 않는다
+
+INPUT
+
+LOCAL:2 = RESULT
+
+PRINTL
+
+IF LOCAL:2 == 0
+	PRINTL 확장을 중지합니다。
+	RETURN 0
+ELSE
+	LOCAL = 규모확장金額(LOCAL:1,LOCAL:2,1)
+	PRINTFORM {LOCAL:2}명을 늘리기 위해서는 ￥{LOCAL}이 필요합니다
+	IF MONEY < LOCAL
+		PRINTL 만, 자금이 부족합니다.
+		RETURN 0
+	ENDIF
+	PRINTL 。
+ENDIF
+
+PRINTL 확장하겠습니까?
+CALL INPUT_YN,"YES","NO"
+SIF RESULT == 1
+	RETURN 0
+CALL 점포演算("규모",ARG,LOCAL:2,"+")
+;---- EDIT 002 MOD END -----------
+MONEY -= LOCAL
+
+;========================================================
+;가격설정
+;========================================================
+@ARRANGE_PRICE_MANAGEMENT,ARG
+SELECTCASE [[점포:종류]]:ARG
+	CASE 10
+		PRINTFORML 현재, 상품의 기본요금은 다음과 같습니다. 변경할 상품을 선택해 주세요
+		PRINTFORML [1] 펠라치오：{점포("펠라가격",ARG)}마카
+		LOCALS:1 = 펠라치오
+		PRINTFORML [2] 본방      ：{점포("섹스가격",ARG)}마카
+		LOCALS:2 = 本番
+		PRINTFORML [3] 애널    ：{점포("애널가격",ARG)}마카
+		LOCALS:3 = 애널
+		PRINTFORML [4] 질내사정    ：{점포("질내사정가격",ARG)}마카
+		LOCALS:4 = 中出し
+		PRINTFORML [5] 처녀      ：{점포("처녀가격",ARG)}마카
+		LOCALS:5 = 처녀
+		DRAWLINE
+		PRINTL [0] 돌아간다 [9]가격을 전원에게 반영
+		CALL INPUTINT,0,1,2,3,4,5,9
+		IF RESULT == 0
+			RETURN 0
+		ELSEIF RESULT == 9
+			FOR LOCAL , 0 ,CHARANUM
+				IF CFLAG:LOCAL:노역フラグ % 10 == ARG
+					CFLAG:LOCAL:펠라가격= 점포("펠라가격",ARG)
+					CFLAG:LOCAL:섹스가격= 점포("섹스가격",ARG)
+					CFLAG:LOCAL:질내사정가격= 점포("질내사정가격",ARG)
+					CFLAG:LOCAL:애널가격= 점포("애널가격",ARG)
+					CFLAG:LOCAL:처녀가격= 점포("처녀가격",ARG)
+				ENDIF
+			NEXT
+			RESTART
+		ENDIF
+		LOCAL = RESULT
+		PRINTFORML %LOCALS:LOCAL%의 가격을 결정해 주세요
+		CALL INPUT_MANY,0,999999999
+		IF LOCAL == 1
+			CALL 점포演算("펠라가격",ARG,RESULT,"=")
+		ELSEIF LOCAL == 2
+			CALL 점포演算("섹스가격",ARG,RESULT,"=")
+		ELSEIF LOCAL == 3
+			CALL 점포演算("애널가격",ARG,RESULT,"=")
+		ELSEIF LOCAL == 4
+			CALL 점포演算("질내사정가격",ARG,RESULT,"=")
+		ELSE
+			CALL 점포演算("처녀가격",ARG,RESULT,"=")
+		ENDIF
+		RESTART
+	CASEELSE
+		RETURN 0
+ENDSELECT
+
+;========================================================
+;이용方法설정
+;========================================================
+@ARRANGE_COMMODITY_MANAGEMENT,ARG
+SELECTCASE 점포("종류",ARG)
+	CASE 10
+		PRINTFORML 현재, 상품의 기본 이용 방법은 이하와 같습니다. 변경하고 싶은 상품을 선택해 주세요
+		PRINTFORML [1] 펠라치오：\@ 점포("성적서비스",ARG) & 8 ? 있음 # 없음 \@
+		LOCALS:1 = 펠라치오
+		PRINTFORML [2] 본방    ：\@ 점포("성적서비스",ARG) & 16 ? 있음 # 없음 \@
+		LOCALS:2 = 本番
+		PRINTFORML [3] 애널    ：\@ 점포("성적서비스",ARG) & 32 ? 있음 # 없음 \@
+		LOCALS:3 = 애널
+		PRINTFORML [4] 질내사정：\@ 점포("성적서비스",ARG) & 64 ? 있음 # 없음 \@
+		LOCALS:4 = 中出し
+		PRINTFORML [5] 동성객    ：\@ 점포("성적서비스",ARG) & 128 ? 있음 # 없음 \@
+		LOCALS:5 = 동성客
+		PRINTFORML [6] 수간      ：\@ 점포("성적서비스",ARG) & 256 ? 있음 # 없음 \@
+		LOCALS:6 = 수간
+		DRAWLINE
+		PRINTL [0] 돌아온다 [9]이용방법을 전원에게 반영
+		CALL INPUTINT,0,1,2,3,4,5,6,9
+		IF RESULT == 0
+			RETURN 0
+		ELSEIF RESULT == 9
+			FOR LOCAL , 0 ,CHARANUM
+				IF CFLAG:LOCAL:노역フラグ % 10 == ARG
+					CFLAG:LOCAL:個別성적서비스 = 점포("성적서비스",ARG)
+				ENDIF
+			NEXT
+			RESTART
+		ENDIF
+		LOCAL = RESULT
+		IF LOCAL == 1
+			IF 점포("성적서비스",ARG) & 8
+				CALL 점포演算("성적서비스",ARG,8,"-")
+			ELSE
+				CALL 점포演算("성적서비스",ARG,8,"+")
+			ENDIF
+		ELSEIF LOCAL == 2
+			IF 점포("성적서비스",ARG) & 16
+				CALL 점포演算("성적서비스",ARG,16,"-")
+			ELSE
+				CALL 점포演算("성적서비스",ARG,16,"+")
+			ENDIF
+		ELSEIF LOCAL == 3
+			IF 점포("성적서비스",ARG) & 32
+				CALL 점포演算("성적서비스",ARG,32,"-")
+			ELSE
+				CALL 점포演算("성적서비스",ARG,32,"+")
+			ENDIF
+		ELSEIF LOCAL == 4
+			IF 점포("성적서비스",ARG) & 64
+				CALL 점포演算("성적서비스",ARG,64,"-")
+			ELSE
+				CALL 점포演算("성적서비스",ARG,64,"+")
+			ENDIF
+		ELSEIF LOCAL == 5
+			IF 점포("성적서비스",ARG) & 128
+				CALL 점포演算("성적서비스",ARG,128,"-")
+			ELSE
+				CALL 점포演算("성적서비스",ARG,128,"+")
+			ENDIF
+		ELSE
+			IF 점포("성적서비스",ARG) & 256
+				CALL 점포演算("성적서비스",ARG,256,"-")
+			ELSE
+				CALL 점포演算("성적서비스",ARG,256,"+")
+			ENDIF
+		ENDIF
+		RESTART
+	CASEELSE
+		RETURN 0
+
+ENDSELECT
+;※변경点ここから※
+;========================================================
+;広告
+;========================================================
+@ADVERTISEMENT_MANAGEMENT,ARG
+PRINTFORM 어떻게 광고를 낼까요？(현재의 선전효과:{점포("선전효과",ARG)}　
+SIF [[점포:선전플래그]]:ARG == 0
+	PRINTFORML 현재 선전 매체:없음)
+SIF [[점포:선전플래그]]:ARG == 1
+	PRINTFORML 현재 선전 매체:전단지 배포)
+SIF [[점포:선전플래그]]:ARG == 2
+	PRINTFORML 현재 선전 매체:라디오 광고)
+SIF [[점포:선전플래그]]:ARG == 3
+	PRINTFORML 현재 선전 매체:패러다임Ｘ)
+SIF [[점포:선전플래그]]:ARG == 4
+	PRINTFORML 현재 선전 매체:비행선에서 선전)
+SIF [[점포:선전플래그]]:ARG >= 1000000
+	PRINTFORML 현재 선전 매체:대대적으로 선전 비용：{[[점포:선전플래그]]:ARG})
+PRINTL 
+PRINTL 광고비는 명단 위의 점포부터 순서대로 밤마다 자동적으로 지급됩니다.
+PRINTL 그 점포의 광고비를 내지 못할 경우 그 날의 지급은 없습니다.
+PRINTL 광고를 내는 것을 그만둘 경우에는　「광고를 내지 않는다」　을 선택하세요.
+PRINTL 
+PRINTL 　　　　　　　　　　 비용　　　　　　효과
+PRINTL [1] 전단지 배포　　　　 5000　　　　　　 50
+PRINTL [2] 라디오 광고　　　20000　　　　　　100
+PRINTL [3] 패러다임 Ｘ　 100000　　　　　　300
+PRINTL [4] 비행선에서 선전　 500000　　　　　　800
+PRINTL [5] 대대적으로 선전　1000000～　　　　 1000～（비용의0.1%）
+DRAWLINE
+PRINTL [0] 광고를 내지 않는다
+$LOOP
+CALL INPUTINT,0,1,2,3,4,5
+SELECTCASE RESULT
+	CASE 0
+		CALL 점포演算("선전플래그",ARG,RESULT,"=")
+		PRINTFORMW 광고를 중지합니다
+	CASE 1
+		CALL 점포演算("선전플래그",ARG,RESULT,"=")
+		PRINTFORMW 점포 부근에서 전단지 배포를 부탁합니다
+	CASE 2
+		CALL 점포演算("선전플래그",ARG,RESULT,"=")
+		PRINTFORMW 라디오에 광고를 냅니다
+	CASE 3
+		CALL 점포演算("선전플래그",ARG,RESULT,"=")
+		PRINTFORMW 패러다임 X에 광고를 냅니다
+	CASE 4
+		CALL 점포演算("선전플래그",ARG,RESULT,"=")
+		PRINTFORMW 비행선에서 선전합니다
+	CASE 5
+		PRINTFORM 비용은 얼마나 들이겠습니까？（최저 1000000, 포기한다 0）
+		$INPUT_LOOP
+		CALL INPUT_MANY,0,1000000000
+		IF RESULT == 0
+			PRINTFORMW 중지했습니다
+		ELSEIF RESULT >= 1000000
+			CALL 점포演算("선전플래그",ARG,RESULT,"=")
+			PRINTFORMW 비용：{[[점포:선전플래그]]:ARG}를 걸고 대대적으로 선전합니다
+		ELSE
+			GOTO INPUT_LOOP
+		ENDIF
+ENDSELECT
+;※변경点ここまで※
+
+;========================================================
+;個別料金설정
+;========================================================
+@ARRANGE_CHARA_PRICE_MANAGEMENT,ARG
+Z = ARG
+CALL INPUT_CHARA_LIST("이용 요금을 변경하고 싶은 변기를 선택해주세요", "CASTING_ARRANGE_CHARA_PRICE_MANAGEMENT")
+IF RESULT == 1000
+	RETURN 0
+ENDIF
+
+LOCAL:1 = RESULT
+
+
+$CHANGE_PRICE
+		PRINTFORML 현재, 이 변기의 이용 가격은 이하와 같습니다. 변경하고 싶은 이용 방법을 선택해 주세요
+		PRINTFORML [1] 펠라치오：{CFLAG:(LOCAL:1):펠라가격}마카
+		LOCALS:1 = 펠라치오
+		PRINTFORML [2] 본방      ：{CFLAG:(LOCAL:1):섹스가격}마카
+		LOCALS:2 = 本番
+		PRINTFORML [3] 애널    ：{CFLAG:(LOCAL:1):애널가격}마카
+		LOCALS:3 = 애널
+		PRINTFORML [4] 질내사정    ：{CFLAG:(LOCAL:1):질내사정가격}마카
+		LOCALS:4 = 中出し
+		PRINTFORML [5] 처녀    ：{CFLAG:(LOCAL:1):처녀가격}마카
+		LOCALS:5 = 처녀
+		DRAWLINE
+		PRINTL [0] 돌아간다
+		CALL INPUTINT,0,1,2,3,4,5
+		IF RESULT == 0
+			RESTART
+		ENDIF
+		LOCAL = RESULT
+		PRINTFORML %LOCALS:LOCAL%의 가격을 결정해 주세요
+		CALL INPUT_MANY,0,999999999
+		IF LOCAL == 1
+			CFLAG:(LOCAL:1):펠라가격 = RESULT
+		ELSEIF LOCAL == 2
+			CFLAG:(LOCAL:1):섹스가격 = RESULT
+		ELSEIF LOCAL == 3
+			CFLAG:(LOCAL:1):애널가격 = RESULT
+		ELSEIF LOCAL == 4
+			CFLAG:(LOCAL:1):질내사정가격 = RESULT
+		ELSE
+			CFLAG:(LOCAL:1):처녀가격 = RESULT
+		ENDIF
+		GOTO CHANGE_PRICE
+		
+		
+@CASTING_ARRANGE_CHARA_PRICE_MANAGEMENT(ARG)
+SIF CFLAG:ARG:노역フラグ != 10+Z
+	RETURN 0
+RETURN 1
+
+;========================================================
+;個別이용方法설정
+;========================================================
+@ARRANGE_CHARA_COMMODITY_MANAGEMENT,ARG
+#DIM LCOUNT
+
+P = 0
+$INPUT_LOOP_2
+;표시させるキャラを抽出（Q:*に표시するキャラの등록번호、LOCAL:2に人数）
+VARSET Q, -1
+A = 0
+FOR LCOUNT, 0, CHARANUM
+	SIF CFLAG:LCOUNT:노역フラグ != 10+ARG
+		CONTINUE
+	Q:A = LCOUNT
+	A += 1
+NEXT
+LOCAL:2 = A
+
+$PRINT_LIST
+DRAWLINE
+PRINTFORML 이용 방법을 변경하고 싶은 변기를 고르세요　＜page.{P + 1}＞
+DRAWLINE
+PRINTFORML 　　　　　　　　　　　　　　　　 펠라　본방　애널 질내사정 동성객 수간
+FOR LCOUNT, 0, リスト표시数()
+	LOCAL = Q:(LCOUNT + P * リスト표시数())
+	SIF LOCAL < 0 || CFLAG:LOCAL:この場に居ないフラグ == 1
+		CONTINUE
+	CALL ARRANGE_SETCOLOR, LOCAL
+
+	CALL ARRANGE_TARGETSIGN, LOCAL
+
+	CALL ARRANGE_CHARALIST, LOCAL
+	CALL ARRANGE_FALLTALENT, LOCAL
+	CALL ARRANGE_SEX, LOCAL
+	
+	CALL 是非色分け(LOCAL, 8)
+	PRINTFORM 　-　\@ CFLAG:LOCAL:個別성적서비스 & 8 ? Ｏ # Ｘ \@
+	
+	CALL 是非色分け(LOCAL, 16)
+	PRINTFORM 　-　\@ CFLAG:LOCAL:個別성적서비스 & 16 ? Ｏ # Ｘ \@
+	
+	CALL 是非色分け(LOCAL, 32)
+	PRINTFORM 　-　\@ CFLAG:LOCAL:個別성적서비스 & 32 ? Ｏ # Ｘ \@
+	
+	CALL 是非色分け(LOCAL, 64)
+	PRINTFORM 　-　\@ CFLAG:LOCAL:個別성적서비스 & 64 ? Ｏ # Ｘ \@
+		
+	CALL 是非色分け(LOCAL, 128)
+	PRINTFORM 　-　\@ CFLAG:LOCAL:個別성적서비스 & 128 ? Ｏ # Ｘ \@
+
+	CALL 是非色分け(LOCAL, 256)
+	PRINTFORM 　-　\@ CFLAG:LOCAL:個別성적서비스 & 256 ? Ｏ # Ｘ \@
+
+	RESETCOLOR
+	IF TALENT:LOCAL:처녀 == 1
+		SETCOLOR COLOR("pink")
+		PRINTFORM 　　%ハート()%
+		PRINTFORM 처녀
+		PRINTFORML %ハート()%
+	ENDIF
+		PRINTL 
+NEXT
+RESETCOLOR
+DRAWLINE
+PRINTFORMLC \@(P <= 0) ? %" " * 16% # [1007]이전 페이지\@
+PRINTLC [1000]돌아간다
+PRINTFORMLC \@(P >= (LOCAL:2 - 1) / リスト표시数()) ? %" " * 16% # [1009]다음 페이지\@
+
+$INPUT_LOOP_1
+INPUT
+IF RESULT == 1000
+	RETURN 0
+ELSEIF RESULT == 1007
+	IF P > 0
+		P -= 1
+		GOTO PRINT_LIST
+	ELSE
+		GOTO INPUT_LOOP_1
+	ENDIF
+ELSEIF RESULT == 1009
+	LOCAL = (LOCAL:2 - 1) / リスト표시数()
+	IF P < LOCAL
+		P += 1
+		GOTO PRINT_LIST
+	ELSE
+		GOTO INPUT_LOOP_1
+	ENDIF
+ELSEIF RESULT < 0 || RESULT >= CHARANUM || MATCH(Q,RESULT) == 0
+	GOTO INPUT_LOOP_1
+ENDIF
+
+LOCAL:1 = RESULT
+
+
+$CHANGE_COMMODITY
+		;リストの何人눈かをLOCALに保存
+		LOCAL:4 = FINDELEMENT(Q, LOCAL:1)
+		PRINTFORML 현재, %CALLNAME:(LOCAL:1)%의 기본 가격은 다음과 같습니다. 변경하고 싶은 이용 방법을 고르세요
+
+		CALL 是非色分け(LOCAL:1, 8)
+		PRINTFORML [1] 펠라치오：\@ CFLAG:(LOCAL:1):個別성적서비스 & 8 ? 있음 # 없음 \@
+		LOCALS:1 = 펠라치오
+		CALL 是非色分け(LOCAL:1, 16)
+		IF TALENT:(LOCAL:1):처녀
+			PRINTFORM [2] 본방      ：\@ CFLAG:(LOCAL:1):個別성적서비스 & 16 ? 있음 # 없음 \@
+			SETCOLOR COLOR("pink")
+			PRINTFORM 　　%ハート()%
+			PRINTFORM 처녀
+			PRINTFORML %ハート()%
+			RESETCOLOR
+		ELSE
+			PRINTFORML [2] 본방    ：\@ CFLAG:(LOCAL:1):個別성적서비스 & 16 ? 있음 # 없음 \@
+		ENDIF
+		LOCALS:2 = 本番
+		CALL 是非色分け(LOCAL:1, 32)
+		PRINTFORML [3] 애널    ：\@ CFLAG:(LOCAL:1):個別성적서비스 & 32 ? 있음 # 없음 \@
+		LOCALS:3 = 애널
+		CALL 是非色分け(LOCAL:1, 64)
+		PRINTFORML [4] 질내사정：\@ CFLAG:(LOCAL:1):個別성적서비스 & 64 ? 있음 # 없음 \@
+		LOCALS:4 = 中出し
+		CALL 是非色分け(LOCAL:1, 128)
+		PRINTFORML [5] 동성객    ：\@ CFLAG:(LOCAL:1):個別성적서비스 & 128 ? 있음 # 없음 \@
+		LOCALS:5 = 동성客
+		CALL 是非色分け(LOCAL:1, 256)
+		PRINTFORML [6] 수간      ：\@ CFLAG:(LOCAL:1):個別성적서비스 & 256 ? 있음 # 없음 \@
+		LOCALS:6 = 수간
+		RESETCOLOR
+		
+		DRAWLINE
+		PRINTFORMLC \@(LOCAL:4 > 0) ? [1001]이전 캐릭터 # %" " * 16%\@
+		PRINTLC [0] 돌아간다
+		PRINTFORMLC \@(LOCAL:4 < A - 1) ? [1003]다음 캐릭터 # %" " * 16%\@
+		CALL INPUTINT,0,1,2,3,4,5,6,1001,1003
+		IF RESULT == 0
+			GOTO INPUT_LOOP_2
+		ELSEIF RESULT == 1001 && LOCAL:4 > 0
+			LOCAL:4 -= 1
+			LOCAL:1 = Q:(LOCAL:4)
+			GOTO CHANGE_COMMODITY
+		ELSEIF RESULT == 1003 && LOCAL:4 < A - 1
+			LOCAL:4 += 1
+			LOCAL:1 = Q:(LOCAL:4)
+			GOTO CHANGE_COMMODITY
+		ELSEIF RESULT == 1
+			IF CFLAG:(LOCAL:1):個別성적서비스 & 8
+				CFLAG:(LOCAL:1):個別성적서비스 -= 8
+			ELSE
+				CFLAG:(LOCAL:1):個別성적서비스 |= 8
+			ENDIF
+		ELSEIF RESULT == 2
+			IF CFLAG:(LOCAL:1):個別성적서비스 & 16
+				CFLAG:(LOCAL:1):個別성적서비스 -= 16
+			ELSE
+				CFLAG:(LOCAL:1):個別성적서비스 |= 16
+			ENDIF
+		ELSEIF RESULT == 3
+			IF CFLAG:(LOCAL:1):個別성적서비스 & 32
+				CFLAG:(LOCAL:1):個別성적서비스 -= 32
+			ELSE
+				CFLAG:(LOCAL:1):個別성적서비스 |= 32
+			ENDIF
+		ELSEIF RESULT == 4
+			IF CFLAG:(LOCAL:1):個別성적서비스 & 64
+				CFLAG:(LOCAL:1):個別성적서비스 -= 64
+			ELSE
+				CFLAG:(LOCAL:1):個別성적서비스 |= 64
+			ENDIF
+		ELSEIF RESULT == 5
+			IF CFLAG:(LOCAL:1):個別성적서비스 & 128
+				CFLAG:(LOCAL:1):個別성적서비스 -= 128
+			ELSE
+				CFLAG:(LOCAL:1):個別성적서비스 |= 128
+			ENDIF
+		ELSE
+			IF CFLAG:(LOCAL:1):個別성적서비스 & 256
+				CFLAG:(LOCAL:1):個別성적서비스 -= 256
+			ELSE
+				CFLAG:(LOCAL:1):個別성적서비스 |= 256
+			ENDIF
+		ENDIF
+		GOTO CHANGE_COMMODITY
+
+;========================================================
+;점포매각
+;========================================================
+@점포매각,ARG
+PRINTFORML 이 점포는 ￥{(점포("인기",ARG)+10)*50}에 매각할 수 있습니다.
+PRINTFORML 매각하겠습니까?
+CALL INPUT_YN,"YES","NO"
+IF RESULT == 0
+	MONEY += (점포("인기",ARG)+10)*50
+	CALL 점포演算("종류",ARG,0,"=")
+	FOR LOCAL,0,CHARANUM
+		SIF CFLAG:LOCAL:노역フラグ == 10+ARG
+			CFLAG:LOCAL:노역フラグ = 0
+	NEXT
+	FOR LOCAL,0,100
+		DE:LOCAL:ARG = 0
+	NEXT
+	
+	RETURN 1
+ENDIF
+
+;=============================================
+;一日の処理
+;=============================================
+@점포日報,ARG
+#DIM LCOUNT
+CUSTOMDRAWLINE =
+;店の종류で分岐
+;とりあえず喫茶店とレストラン。現在混合。
+PRINTFORMW %SAVESTR:(20+ARG)% 수지보고
+;キャラクタ초기化
+CALL INITIALIZE_MANAGEMENT,ARG
+;※변경点ここから※
+	IF [[점포:선전플래그]]:ARG == 1
+		IF MONEY >= 5000
+			MONEY -= 5000
+			CALL 점포演算("선전효과",ARG,50,"+")
+			PRINTFORML 전단지 배포를 실시했습니다（현재의 선전효과：{점포("선전효과",ARG)}）
+		ELSE
+			PRINTFORML 자금이 충분하지 않기 때문에 전단지 배포하지 않습니다（현재의 선전효과：{점포("선전효과",ARG)}）
+		ENDIF
+	ELSEIF [[점포:선전플래그]]:ARG == 2
+		IF MONEY >= 20000
+			MONEY -= 20000
+			CALL 점포演算("선전효과",ARG,100,"+")
+			PRINTFORML 라디오에 선전을 실시했습니다（현재의 선전효과：{점포("선전효과",ARG)}）
+		ELSE
+			PRINTFORML 자금이 부족하여 라디오에 선전을 실시하지 않았습니다（현재의 선전효과：{점포("선전효과",ARG)}）
+		ENDIF
+	ELSEIF [[점포:선전플래그]]:ARG == 3
+		IF MONEY >= 100000
+			MONEY -= 100000
+			CALL 점포演算("선전효과",ARG,300,"+")
+			PRINTFORML 패러다임 Ｘ에 선전을 실시했습니다（현재의 선전효과：{점포("선전효과",ARG)}）
+		ELSE
+			PRINTFORML 자금이 부족하여 패러다임 Ｘ에 선전을 실시하지 않았습니다（현재의 선전효과：{점포("선전효과",ARG)}）
+		ENDIF
+	ELSEIF [[점포:선전플래그]]:ARG == 4
+		IF MONEY >= 500000
+			MONEY -= 500000
+			CALL 점포演算("선전효과",ARG,800,"+")
+			PRINTFORML 비행선에 선전을 실시했습니다（현재의 선전효과：{점포("선전효과",ARG)}）
+		ELSE
+			PRINTFORML 자금이 부족하여 비행선에 선전을 실시하지 않았습니다（현재의 선전효과：{점포("선전효과",ARG)}）
+		ENDIF
+	ELSEIF [[점포:선전플래그]]:ARG >= 1000000
+		IF MONEY >= [[점포:선전플래그]]:ARG
+			MONEY -= [[점포:선전플래그]]:ARG
+			CALL 점포演算("선전효과",ARG,[[점포:선전플래그]]:ARG / 1000,"+")
+			PRINTFORML 대대적으로 선전을 실시했습니다（현재의 선전효과：{점포("선전효과",ARG)}）
+		ELSE
+			PRINTFORML 자금이 부족하여 선전을 실시하지 않았습니다（현재의 선전효과：{점포("선전효과",ARG)}）
+		ENDIF
+	ENDIF
+	PRINTFORML 　
+	PRINTFORML 　
+;※변경点ここまで※
+
+;LOCAL = 計算・ループ用
+IF 점포("종류",ARG) == 1 || 점포("종류",ARG) == 2
+;	;客入りを計算
+;	;LOLCA:1 = 客入り최대
+;	;LOCAL:2 = 客入り
+;	;점포の인기10につき一人、요리인기5につき一人訪れるかどうかの판정を行う
+;	LOCAL:1 = MAX(1,[[점포:인기]]:ARG/10+[[점포:요리인기]]:ARG/5)
+;	LOCAL:2 = 0
+;	FOR LOCAL,0,LOCAL:1
+;		SIF RAND:2 == 0
+;			LOCAL:2 += 1
+;	NEXT
+;	;SIF LOCAL:2 == 0
+;		
+;	SIF LOCAL:2 > [[점포:규모]]:ARG
+;		LOCAL:2 = [[점포:규모]]:ARG
+;	;女の子のサービスが特定の三종류無料だと、난교플래그が立つ。
+;	SIF ([[점포:성적서비스]]:ARG & 8 && [[점포:펠라가격]]:ARG == 0) && ([[점포:성적서비스]]:ARG & 16 && [[점포:섹스가격]]:ARG == 0) && ([[점포:성적서비스]]:ARG & 32 && [[점포:애널가격]]:ARG == 0)
+;		[[점포:난교플래그]] = 2
+;	;入った客の人数だけ接客処理を繰り返す
+;	FOR LOCAL,0,LOCAL:2
+;		;욕정が기교*2LV超えたキャラはおねだりフラグが立つ。
+;		FOR LCOUNT, 0, CHARANUM
+;			SIF PALAMLV_F(LCOUNT,"욕정") >= ABL:LCOUNT:기교 * 2
+;				CFLAG:LCOUNT:おねだりフラグ = 1
+;		NEXT
+;		
+;		
+;		;LOCAL:4 = 接客キャラのおねだり人数
+;		;接客キャラ全員がおねだりしてしまうと、난교플래그が立つ。
+;		FOR LCOUNT, 0, CHARANUM
+;			SIF CFLAG:LCOUNT:おねだりフラグ && CFLAG:LCOUNT:従事内容 == 1
+;				LOCAL:4 += 1
+;		NEXT
+;		SIF LOCAL:4 >= 接客人数(ARG)
+;			[[점포:난교플래그:ARG]] = 1
+;		;난교플래그が立ってる場合、全員のサービス횟수だけ増えて終わり。
+;		IF [[점포:난교플래그]]:ARG
+;			FOR LCOUNT, 0, CHARANUM
+;				SIF CFLAG:LCOUNT:노역フラグ != 10+ARG
+;					CONTINUE
+;				CFLAG:LCOUNT:おさわりおねだり횟수 += 1
+;				CFLAG:LCOUNT:애무おねだり횟수 += 1
+;				CFLAG:LCOUNT:손コキおねだり횟수 += 1
+;				CFLAG:LCOUNT:フェラおねだり횟수 += 1
+;				CFLAG:LCOUNT:本番おねだり횟수 += 1
+;				CFLAG:LCOUNT:애널おねだり횟수 += 1
+;				CFLAG:LCOUNT:中出しおねだり횟수 += 1
+;			NEXT
+;			CONTINUE
+;		ENDIF
+;		;おねだりフラグの立ったキャラがいると、そのキャラが無料サービスしてしまって종료。
+;		FOR LCOUNT, 0, CHARANUM
+;			IF CFLAG:LCOUNT:おねだりフラグ == 1
+;				CALL ONEDARI,LCOUNT
+;				GOTO TURNEND
+;			ENDIF
+;		NEXT
+;		
+;		;接客するキャラを決める
+;		VARSET C,-1
+;		;LOCAL:3 = 接客できる人数
+;		FOR LCOUNT, 0, CHARANUM
+;			
+;		NEXT
+;		
+;		$TURNEND
+;		;全員の욕정が복장や状況に合わせて増減
+;		
+;		;接客や調理をしておらず、욕정が一定이상의 キャラは자위して욕정を鎮める。ただし、자위した횟수だけ욕정が上がりやすくなる。
+;		
+;		;接客や調理、サービスにかかるターンが減少する。
+;	NEXT
+;	;収益や결과を표시
+;공중변소
+ELSEIF [[점포:종류]]:ARG == 10
+	CALL MANAGEMENT_PUBLIC_TOILET,ARG
+ELSEIF [[점포:종류]]:ARG == 11
+	CALL MANAGEMENT_STRIP_THEATER,ARG
+ELSEIF [[점포:종류]]:ARG == 12
+	CALL MANAGEMENT_SHOW_TENT,ARG
+ELSEIF [[점포:종류]]:ARG == 13 || [[점포:종류]]:ARG == 14 || [[점포:종류]]:ARG == 15
+	CALL MANAGEMENT_教会,ARG
+ENDIF
+
+;※변경点ここから※
+	;선전효과が１日毎に70％に
+	CALL 점포演算("선전효과",ARG,70,"*")
+	CALL 점포演算("선전효과",ARG,100,"/")
+;※변경点ここまで※
+
+;=============================================
+;CFLAG等の초기化
+;=============================================
+@INITIALIZE_MANAGEMENT,ARG
+#DIM LCOUNT
+FOR LCOUNT, 0, CHARANUM
+	SIF CFLAG:LCOUNT:노역フラグ != 10+ARG
+		CONTINUE
+	;ソース초기化
+	FOR LOCAL,0,100
+		SOURCE:LCOUNT:LOCAL = 0
+		PALAM:LCOUNT:LOCAL = 0
+		CUP:LCOUNT:LOCAL = 0
+		CDOWN:LCOUNT:LOCAL = 0
+		GOTJUEL:LCOUNT:LOCAL = 0
+		DOWNBASE:LCOUNT:LOCAL = 0
+	NEXT
+	GOTJUEL:LCOUNT:100 = 0
+	;절정횟수초기化
+	FOR LOCAL,0,4
+		NOWEX:LCOUNT:LOCAL = 0
+		EX:LCOUNT:LOCAL = 0
+	NEXT
+	
+	FOR LOCAL,1407,1450
+		SIF GETNUM(CFLAG,"個別성적서비스") == LOCAL
+			CONTINUE
+		SIF GETNUM(CFLAG,"펠라가격") == LOCAL
+			CONTINUE
+		SIF GETNUM(CFLAG,"애널가격") == LOCAL
+			CONTINUE
+		SIF GETNUM(CFLAG,"질내사정가격") == LOCAL
+			CONTINUE
+		SIF GETNUM(CFLAG,"섹스가격") == LOCAL
+			CONTINUE
+		SIF GETNUM(CFLAG,"처녀가격") == LOCAL
+			CONTINUE
+		CFLAG:LCOUNT:LOCAL = 0
+	NEXT
+	
+	;暫定父親を초기化(-1=임신確定時に決定)
+	CFLAG:LCOUNT:노역中の中出氏による暫定父親 = -1
+	
+NEXT
+
+
+;=============================================
+;おねだり処理
+;=============================================
+@ONEDARI,ARG
+
+;=============================================
+;PALAM上昇処理
+;=============================================
+@CUP_MANAGEMENT,ARG
+FOR LOCAL,0,19
+	PALAM:ARG:LOCAL += CUP:ARG:LOCAL - CDOWN:ARG:LOCAL
+	CUP:ARG:LOCAL = 0
+	CDOWN:ARG:LOCAL = 0
+NEXT
+;ソース초기化
+FOR LOCAL,0,100
+	SOURCE:ARG:LOCAL = 0
+NEXT
+
+
+
+;=============================================
+;필요한FUNCTION関数
+;=============================================
+
+@接客人数(ARG)
+#FUNCTION
+LOCAL:1 = 0
+FOR LOCAL,0,CHARANUM
+	SIF CFLAG:LOCAL:노역フラグ == 10+ARG && CFLAG:LOCAL:従事内容 == 1
+		LOCAL:1 += 1
+NEXT
+RETURNF LOCAL:1
+
+@キッ짐人数(ARG)
+#FUNCTION
+LOCAL:1 = 0
+FOR LOCAL,0,CHARANUM
+	SIF CFLAG:LOCAL:노역フラグ == 10+ARG && CFLAG:LOCAL:従事内容 == 2
+		LOCAL:1 += 1
+NEXT
+RETURNF LOCAL:1
+
+@간판아가씨(ARG)
+#FUNCTION
+LOCAL:1 = -1
+FOR LOCAL,0,CHARANUM
+	IF CFLAG:LOCAL:노역フラグ == 10+ARG && CFLAG:LOCAL:従事内容 == 1
+		IF LOCAL:1 == -1
+			LOCAL:1 = LOCAL
+		ELSE
+			SIF CFLAG:LOCAL:接客인기 + CFLAG:LOCAL:매춘인기 > CFLAG:(LOCAL:1):接客인기 + CFLAG:(LOCAL:1):매춘인기
+				LOCAL:1 = LOCAL
+		ENDIF
+	ENDIF
+NEXT
+RETURNF LOCAL:1
+
+
+
+@유혹度(ARG)
+#FUNCTION
+LOCAL:1 = 0
+;점포の종류で分けようかとも考えたが、とりあえず保留
+;교복の종류によって＋が변화
+SELECTCASE CFLAG:ARG:교복
+	CASE 1
+		;기모노
+		LOCAL:1 += 20
+		
+	CASE 2
+		;소매있는앞치마
+		LOCAL:1 += 10
+	CASE 3
+		;에이프런드레스
+		LOCAL:1 += 25
+	CASE 4
+		;アンミラ
+		LOCAL:1 += 35
+	CASE 5
+		;ランジェリー
+		LOCAL:1 += 60
+	CASE 6
+		;裸에이프런
+		LOCAL:1 += 100
+ENDSELECT
+SELECTCASE CFLAG:ARG:교복스커트
+	CASE 0
+		LOCAL:1 += 0
+	CASE 1
+		LOCAL:1 += 5
+	CASE 2
+		LOCAL:1 += 15
+	CASE 3
+		LOCAL:1 += 30
+		SIF CFLAG:ARG:교복속옷 == 2
+			LOCAL:1 += 20
+	CASE 4
+		LOCAL:1 += 50
+		SIF CFLAG:ARG:교복속옷 == 2
+			LOCAL:1 += 30
+		SIF CFLAG:ARG:교복속옷 == 3
+			LOCAL:1 += 40
+	CASE 5
+		LOCAL:1 += 70
+		SIF CFLAG:ARG:교복속옷 == 2
+			LOCAL:1 += 30
+		SIF CFLAG:ARG:교복속옷 == 3
+			LOCAL:1 += 40
+	CASE 6
+		LOCAL:1 += 60
+		SIF CFLAG:ARG:교복속옷 == 2
+			LOCAL:1 += 30
+		SIF CFLAG:ARG:교복속옷 == 3
+			LOCAL:1 += 40
+ENDSELECT
+SELECTCASE CFLAG:ARG:교복가슴
+	CASE 0
+		LOCAL:1 += 0
+	CASE 1
+		LOCAL:1 += 5
+	CASE 2
+		LOCAL:1 += 20
+	CASE 3
+		LOCAL:1 += 50
+		SIF CFLAG:ARG:교복속옷 == 2
+			LOCAL:1 += 20
+	CASE 4
+		LOCAL:1 += 70
+		SIF CFLAG:ARG:교복속옷 == 2
+			LOCAL:1 += 30
+		SIF CFLAG:ARG:교복속옷 == 3
+			LOCAL:1 += 40
+ENDSELECT
+;어른의 장난감
+IF CFLAG:ARG:교복음구 & 1
+	LOCAL:1 += 5
+	SIF CFLAG:ARG:교복스커트>= 4 && (CFLAG:ARG:교복속옷 == 2 || CFLAG:ARG:교복속옷 == 3)
+		LOCAL:1 += 100
+ENDIF
+IF CFLAG:ARG:교복음구 & 2
+	LOCAL:1 += 5
+	SIF CFLAG:ARG:교복가슴 == 3 || (CFLAG:ARG:교복가슴 == 4 && CFLAG:ARG:교복속옷 > 1)
+		LOCAL:1 += 80
+ENDIF
+IF CFLAG:ARG:교복음구 & 4
+	LOCAL:1 += 5
+	SIF CFLAG:ARG:교복스커트>= 4 && (CFLAG:ARG:교복속옷 == 2 || CFLAG:ARG:교복속옷 == 3)
+		LOCAL:1 += 80
+ENDIF
+IF CFLAG:ARG:교복음구 & 8
+	LOCAL:1 += 5
+	SIF CFLAG:ARG:교복스커트>= 4 && (CFLAG:ARG:교복속옷 == 2 || CFLAG:ARG:교복속옷 == 3)
+		LOCAL:1 += 100
+ENDIF
+IF CFLAG:ARG:교복음구 & 16
+	LOCAL:1 += 30
+	SIF CFLAG:ARG:교복스커트>= 4 && (CFLAG:ARG:교복속옷 == 2 || CFLAG:ARG:교복속옷 == 3)
+		LOCAL:1 += 80
+ENDIF
+;욕망에 따라 추가
+LOCAL:1 += ABL:ARG:욕망 * 5
+
+;음란・창부면 추가
+LOCAL:1 += TALENT:ARG:음란 * 20 + TALENT:ARG:창부 * 40
+
+;PALAM・욕정에 따라 추가
+LOCAL:1 += PALAMLV_F(ARG,"욕정")*5
+
+RETURNF LOCAL:1
+
+;=============================================================
+;규모を확장するために필요한金額を計算する。
+;<引数>
+; ARG    = 現在の규모
+; ARG:1  = 확장규모
+; ARG:2  = 확장する内容(0:雇用人数／1:이용가능客数)
+;<戻り値>
+; LOCAL  = ARG:1の人数확장するために필요한トータル金額
+;=============================================================
+@규모확장金額(ARG,ARG:1,ARG:2)
+#FUNCTION
+#DIM LCOUNT
+
+;확장に필요한金額
+LOCAL = 0
+
+FOR LCOUNT, ARG, ARG+ARG:1
+	IF ARG:2 == 0
+		;雇用人数확장
+		SELECTCASE LCOUNT
+			CASE IS < 4
+				LOCAL += 10000
+			CASE IS < 6
+				LOCAL += 25000
+			CASE IS < 8
+				LOCAL += 50000
+			CASE IS < 10
+				LOCAL += 80000
+			CASEELSE
+				LOCAL += 150000
+		ENDSELECT
+	ELSEIF ARG:2 == 1
+		;이용가능客数확장
+		SELECTCASE LCOUNT
+			CASE IS < 5
+				LOCAL += 1000
+			CASE IS < 10
+				LOCAL += 3000
+			CASE IS < 15
+				LOCAL += 7500
+			CASE IS < 20
+				LOCAL += 10000
+			CASE IS < 30
+				LOCAL += 15000
+			CASEELSE
+				LOCAL += 25000
+		ENDSELECT
+	ENDIF
+NEXT
+
+RETURNF LOCAL
+
+
+;=============================================================
+;個別이용方法설정用是非色分け
+;ARG = キャラ
+;ARG:1 = 判別用の数値
+;=============================================================
+@是非色分け(ARG,ARG:1)
+IF CFLAG:ARG:個別성적서비스 & ARG:1
+	RESETCOLOR
+ELSE
+	SETCOLOR COLOR("灰色")
+ENDIF

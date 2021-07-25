@@ -1,0 +1,872 @@
+﻿; EVENT_16_AI.ERB
+; 전능의밸런서と마가렛の전투AIを記述しています
+
+; 전능의밸런서の사고패턴
+; 컨센트레이트と6種の１체속성마법、메기도라온を繰り返す。1moreは컨센트레이트固定
+; 마력が高いためHP3桁程度では약점でなくても即死するくらいには痛い。운が低いのでよく外れるが……
+; 기본的に１체마법で약점狙い。마법반사がかかっている場合、33%で메기도라온、HPが30%を切ると確実に메기도라온
+; HPが30%を切ると마법반사がかかっていなくても메기도라온が混ざる
+; クリティカルの出方次第で1ターンでも倒せるが下손に削って生き残ってしまうとコンセ메기도がとんでくる
+; ところでバランサーの공격時のぶるるるるって声なんか異様にかわいくないですかね？
+@SET_ACTION_전능의밸런서, ARG
+; 초기化
+VARSET LOCAL, 0
+; 1moreか컨센트레이트未実行なら컨센트레이트
+IF CFLAG:ARG:１moreフラグ > 0 || CFLAG:ARG:集中フラグ == 0
+	CALL EVENT_16_SET_ACTION, ARG, [[스킬:컨센트레이트]]
+	RETURN 0
+; それ以外
+ELSE
+	; HPが5割を切ってるなら1/4で메기도라온세트
+	IF 現HP割合(ARG) < 50 && RAND:4 == 0
+		CALL EVENT_16_SET_ACTION, ARG, [[스킬:메기도라온]]
+		RETURN 0
+	ENDIF
+	; キャラ走査
+	FOR LOCAL:3, 1, 7
+		LOCAL = POS(LOCAL:3)
+		; 空포지션かDYINGなら次
+		SIF LOCAL < 0 || GET_STATE(CFLAG:LOCAL:ステート) == "DYING"
+			CONTINUE
+		; 마법반사상태なら一定확률로메기도라온セットしてキャラ走査종료
+		; 気づいてしまったけど반사の持続1ターンだしもしかしてこれ意味がな……
+		IF CFLAG:LOCAL:마법반사フラグ > 0 && (現HP割合(ARG) < 40 || (現HP割合(ARG) < 80 && RAND:3 == 0))
+			CALL EVENT_16_SET_ACTION, ARG, [[스킬:메기도라온]]
+			BREAK
+		ENDIF
+		; 既に行動が입력されている場合は1/3でキャラ走査종료
+		SIF CFLAG:ARG:입력行動 >= 0 && RAND:3 == 0
+			BREAK
+		; 내성走査
+		FOR LOCAL:4, 40, 59
+			SELECTCASE LOCAL:4
+				; 화염
+				CASE 44
+					; 약점でなければ次
+					SIF CHECK_WEAKNESS(MAXBASE:LOCAL:(LOCAL:4)) < 0
+						CONTINUE
+					; 既に行動が입력されている場合は1/3で내성走査종료
+					SIF CFLAG:ARG:입력行動 > 0 && RAND:3 == 0
+						BREAK
+					CALL EVENT_16_SET_ACTION, ARG, [[스킬:아기다인]], LOCAL:3
+				; 빙결
+				CASE 45
+					; 약점でなければ次
+					SIF CHECK_WEAKNESS(MAXBASE:LOCAL:(LOCAL:4)) < 0
+						CONTINUE
+					; 既に行動が입력されている場合は1/3で내성走査종료
+					SIF CFLAG:ARG:입력行動 > 0 && RAND:3 == 0
+						BREAK
+					CALL EVENT_16_SET_ACTION, ARG, [[스킬:부후다인]], LOCAL:3
+				; 전격
+				CASE 46
+					; 약점でなければ次
+					SIF CHECK_WEAKNESS(MAXBASE:LOCAL:(LOCAL:4)) < 0
+						CONTINUE
+					; 既に行動が입력されている場合は1/3で내성走査종료
+					SIF CFLAG:ARG:입력行動 > 0 && RAND:3 == 0
+						BREAK
+					CALL EVENT_16_SET_ACTION, ARG, [[스킬:지오다인]], LOCAL:3
+				; 지변
+				CASE 52
+					; 약점でなければ次
+					SIF CHECK_WEAKNESS(MAXBASE:LOCAL:(LOCAL:4)) < 0
+						CONTINUE
+					; 既に行動が입력されている場合は1/3で내성走査종료
+					SIF CFLAG:ARG:입력行動 > 0 && RAND:3 == 0
+						BREAK
+					CALL EVENT_16_SET_ACTION, ARG, [[스킬:마그다인]], LOCAL:3
+				; 수격
+				CASE 53
+					; 약점でなければ次
+					SIF CHECK_WEAKNESS(MAXBASE:LOCAL:(LOCAL:4)) < 0
+						CONTINUE
+					; 既に行動が입력されている場合は1/3で내성走査종료
+					SIF CFLAG:ARG:입력行動 > 0 && RAND:3 == 0
+						BREAK
+					CALL EVENT_16_SET_ACTION, ARG, [[스킬:아쿠아다인]], LOCAL:3
+				; 질풍
+				CASE 54
+					; 약점でなければ次
+					SIF CHECK_WEAKNESS(MAXBASE:LOCAL:(LOCAL:4)) < 0
+						CONTINUE
+					; 既に行動が입력されている場合は1/3で내성走査종료
+					SIF CFLAG:ARG:입력行動 > 0 && RAND:3 == 0
+						BREAK
+					CALL EVENT_16_SET_ACTION, ARG, [[스킬:갈다인]], LOCAL:3
+			ENDSELECT
+		NEXT
+	NEXT
+	; ここまで来て속성마법がセットされていない場合は랜덤대상で속성마법を使う
+	SIF CFLAG:ARG:입력行動 > 0
+		RETURN 0
+	SELECTCASE RAND:6
+		CASE 0
+			CALL EVENT_16_SET_ACTION, ARG, [[스킬:아기다인]]
+		CASE 1
+			CALL EVENT_16_SET_ACTION, ARG, [[스킬:부후다인]]
+		CASE 2
+			CALL EVENT_16_SET_ACTION, ARG, [[스킬:지오다인]]
+		CASE 3
+			CALL EVENT_16_SET_ACTION, ARG, [[스킬:마그다인]]
+		CASE 4
+			CALL EVENT_16_SET_ACTION, ARG, [[스킬:아쿠아다인]]
+		CASE 5
+			CALL EVENT_16_SET_ACTION, ARG, [[스킬:갈다인]]
+	ENDSELECT
+ENDIF
+
+; 마가렛の사고패턴
+; 
+; ・全단계で常時2回行動
+; ・全단계で1moreを含む行動50回毎に9999固定메기도라온
+; ・全단계で一定조건において메기도라온모드(行動が全て9999固定데미지메기도라온化)
+;     불굴의투지が発動した場合、메기도라온모드on
+;     パーティーに레벨に対して능력が高すぎる(18+Lv*1.5+5の2倍이상)キャラが存在する場合、메기도라온모드on
+;     パーティーに당신 이외의 마하애널라이즈を持っているキャラが存在する場合、메기도라온모드on
+; 
+; ・第一단계 HP90%まで
+;   アタック*2
+; ・第二단계 HP50%まで
+;   화염->빙결->전격->질풍->コンセ->메기도라온のローテーションで공격
+; ・第三단계 初めてHP50%미만
+;   새벽의명성
+; ・第四단계 새벽의명성後
+;   디아라한
+; ・第五단계 第三단계以降HP90%まで
+;   アタック*2
+; ・第六단계 第三단계以降HP50%まで
+;   화염->빙결->전격->질풍->コンセ->메기도라온のローテーションで공격。공격상성が무효と흡수のみの場合は次の공격상성のガードブ레이호우ク
+; ・第七단계 第三단계以降HP50%미만
+;   화염->빙결->전격->질풍->기합->팔척뛰기のローテーションで공격
+;   この時点で스킬から불굴의투지が삭제される
+@SET_ACTION_마가렛, ARG
+#LOCALSIZE 4
+VARSET LOCAL, 0
+; 全能の真珠모드체크
+IF !CFLAG:ARG:601 < 99
+	; 速攻キルしたら死ぬがよい
+	IF CFLAG:ARG:이악물기フラグ
+		DEBUGPRINTL 메기도라온모드on(이악물기フラグ)
+		CFLAG:ARG:601 = 99
+	ELSE
+		FOR LOCAL, 1, 7
+			SIF POS(LOCAL) < 0
+				CONTINUE
+			; 마하애널라이즈を持っていたら死ぬがよい(ただしMASTERは除く)
+			IF POS(LOCAL) != MASTER && HAVE_SKILL(POS(LOCAL), [[스킬:마하애널라이즈]])
+				DEBUGPRINTL 메기도라온모드on(마하애널라이즈)
+				CFLAG:ARG:601 = 99
+				BREAK
+			ENDIF
+			; 능력許容値(캐릭터작성時の基準の2倍)を超えているなら死ぬがよい
+			; 例. Lv100なら합계346まで許容
+			LOCAL:2 = 0
+			FOR LOCAL:1 ,31 ,37
+				LOCAL:2 += BASE:(POS(LOCAL)):(LOCAL:1)
+			NEXT
+			FOR LOCAL:1 ,1171 ,1177
+				LOCAL:2 += CFLAG:(POS(LOCAL)):(LOCAL:1)
+			NEXT
+			IF LOCAL:2 > (23 + BASE:(POS(LOCAL)):LV * 3 / 2) * 3 / 2
+				DEBUGPRINTL 메기도라온모드on(능력許容値オーバー)
+				CFLAG:ARG:601 = 99
+				BREAK
+			ENDIF
+		NEXT
+	ENDIF
+ELSE
+	FOR LOCAL, 0, 6
+		CFLAG:ARG:(GET_BATTLESTATUS(LOCAL) + "강화") = 32
+	NEXT
+ENDIF
+
+; 50の倍数回行動するか全能の真珠모드で9999메기도라온
+IF (CFLAG:ARG:600 > 0 && (CFLAG:ARG:600 % 50) == 0) || CFLAG:ARG:601 == 99
+	; 9999메기도라온
+	CALL EVENT_16_SET_ACTION, ARG, [[스킬:9999메기도라온]]
+	DEBUGPRINTFORML 행동 {CFLAG:ARG:600, 4}회째:9999메기도라온
+; 전투開始
+ELSEIF CFLAG:ARG:601 == 0
+	CALL EVENT_16_SET_ACTION, ARG, [[스킬:ＡＴＴＡＣＫ]]
+	CFLAG:ARG:601 = 1
+; 第一, 第五단계 アタックのみ
+ELSEIF 現HP割合(ARG) > 90
+	DEBUGPRINTFORML 행동 {CFLAG:ARG:600, 4}회째:アタック
+	CALL EVENT_16_SET_ACTION, ARG, [[스킬:ＡＴＴＡＣＫ]]
+ELSEIF 現HP割合(ARG) < 50 && CFLAG:ARG:601 < 5
+	; 第三단계 새벽의명성
+	IF CFLAG:ARG:601 < 4
+		CALL EVENT_16_SET_ACTION, ARG, [[스킬:새벽의명성]]
+		CFLAG:ARG:601 = 4
+		DEBUGPRINTFORML 행동 {CFLAG:ARG:600, 4}회째:새벽의명성
+	; 第四단계 디아라한
+	ELSE
+		CALL EVENT_16_SET_ACTION, ARG, [[스킬:디아라한]]
+		CFLAG:ARG:601 = 5
+		DEBUGPRINTFORML 행동 {CFLAG:ARG:600, 4}회째:디아라한
+	ENDIF
+; 第二, 第六, 第七단계 화염->빙결->전격->질풍->(コンセ메기도라온 or チャージ팔척뛰기) ローテーション공격
+ELSE
+	; 단계更新
+	IF CFLAG:ARG:601 < 2
+		CFLAG:ARG:601 = 2
+		CFLAG:ARG:602 = 0
+	ELSEIF CFLAG:ARG:601 == 5
+		CFLAG:ARG:601 = 6
+	ELSEIF 現HP割合(ARG) < 50 && CFLAG:ARG:601 == 6
+		CFLAG:ARG:601 = 7
+	ENDIF
+	; ローテーション行動
+	SELECTCASE CFLAG:ARG:602
+		CASE 0
+			; 기본的に메기도라온で1moreは取らないと思うので、
+			; 必然的に八艘跳びで取った際にここに来る
+			IF CFLAG:ARG:１moreフラグ > 0
+				; 弱体がかかっていればデクンダ。かかってなければ히트라이저
+				FOR LOCAL, 0, 6
+					IF CFLAG:ARG:(GET_BATTLESTATUS(LOCAL) + "강화") < 0
+						; デクンダ
+						CALL EVENT_16_SET_ACTION, ARG, [[스킬:데・쿤다]]
+						DEBUGPRINTFORML 행동 {CFLAG:ARG:600, 4}회째:1more_デクンダ
+						BREAK
+					ELSE
+						; 히트라이저
+						CALL EVENT_16_SET_ACTION, ARG, [[스킬:히트라이저]]
+						DEBUGPRINTFORML 행동 {CFLAG:ARG:600, 4}회째:1more_히트라이저
+					ENDIF
+				NEXT
+			ELSE
+				RESULT = EVENT_16_SEARCH_REGISTANCE(2, "화염", 1, 1)
+				DEBUGPRINTFORML 화염내성検索결과:{RESULT}
+				; 약점持ちがいる
+				IF RESULT > 0
+					; 화염1명
+					CALL EVENT_16_SET_ACTION, ARG, [[스킬:라그나로크]], RESULT
+					DEBUGPRINTFORML 행동 {CFLAG:ARG:600, 4}회째:ローテーション{CFLAG:ARG:602}_화염1명
+				; 全員が무효か흡수
+				ELSEIF (RESULT == -2 || (RESULT == -1 && RAND:2)) && CFLAG:ARG:601 >= 5
+					; 가드킬
+					CALL EVENT_16_SET_ACTION, ARG, [[스킬:빙결가드브레이크]]
+					DEBUGPRINTFORML 행동 {CFLAG:ARG:600, 4}회째:ローテーション{CFLAG:ARG:602}_화염내성対応
+				; 弱点持ちがいないか반사持ちが混ざっている
+				ELSE
+					; 화염전체
+					CALL EVENT_16_SET_ACTION, ARG, [[스킬:프로미넌스]]
+					DEBUGPRINTFORML 행동 {CFLAG:ARG:600, 4}회째:ローテーション{CFLAG:ARG:602}_화염전체
+				ENDIF
+			ENDIF
+		CASE 1
+			; 화염で1more
+			IF CFLAG:ARG:１moreフラグ > 0
+				; 화염전체
+				CALL EVENT_16_SET_ACTION, ARG, [[스킬:프로미넌스]]
+				DEBUGPRINTFORML 행동 {CFLAG:ARG:600, 4}회째:1more_화염전체
+			ELSE
+				RESULT = EVENT_16_SEARCH_REGISTANCE(2, "빙결", 1, 1)
+				DEBUGPRINTFORML 빙결내성検索결과:{RESULT}
+				; 弱点持ちがいる
+				IF RESULT > 0
+					; 빙결1명
+					CALL EVENT_16_SET_ACTION, ARG, [[스킬:코큐토스]], RESULT
+					DEBUGPRINTFORML 행동 {CFLAG:ARG:600, 4}회째:ローテーション{CFLAG:ARG:602}_빙결1명
+				; 全員が무효か흡수
+				ELSEIF (RESULT == -2 || (RESULT == -1 && RAND:2)) && CFLAG:ARG:601 >= 5
+					; 가드킬
+					CALL EVENT_16_SET_ACTION, ARG, [[스킬:전격가드브레이크]]
+					DEBUGPRINTFORML 행동 {CFLAG:ARG:600, 4}회째:ローテーション{CFLAG:ARG:602}_빙결내성対応
+				; 弱点持ちがいないか반사持ちが混ざっている
+				ELSE
+					; 빙결전체
+					CALL EVENT_16_SET_ACTION, ARG, [[스킬:니플헤임]]
+					DEBUGPRINTFORML 행동 {CFLAG:ARG:600, 4}회째:ローテーション{CFLAG:ARG:602}_빙결전체
+				ENDIF
+			ENDIF
+		CASE 2
+			; 빙결で1more
+			IF CFLAG:ARG:１moreフラグ > 0
+				; 빙결전체
+				CALL EVENT_16_SET_ACTION, ARG, [[스킬:니플헤임]]
+				DEBUGPRINTFORML 행동 {CFLAG:ARG:600, 4}회째:1more_빙결전체
+			ELSE
+				RESULT = EVENT_16_SEARCH_REGISTANCE(2, "전격", 1, 1)
+				DEBUGPRINTFORML 전격내성検索결과:{RESULT}
+				; 弱点持ちがいる
+				IF RESULT > 0
+					; 전격1명
+					CALL EVENT_16_SET_ACTION, ARG, [[스킬:진리의번개]], RESULT
+					DEBUGPRINTFORML 행동 {CFLAG:ARG:600, 4}회째:ローテーション{CFLAG:ARG:602}_전격1명
+				; 全員が무효か흡수
+				ELSEIF (RESULT == -2 || (RESULT == -1 && RAND:2)) && CFLAG:ARG:601 >= 5
+					; 가드킬
+					CALL EVENT_16_SET_ACTION, ARG, [[스킬:질풍가드브레이크]]
+					DEBUGPRINTFORML 행동 {CFLAG:ARG:600, 4}회째:ローテーション{CFLAG:ARG:602}_전격내성対応
+				; 弱点持ちがいないか반사持ちが混ざっている
+				ELSE
+					; 전격전체
+					CALL EVENT_16_SET_ACTION, ARG, [[스킬:엘・지하드]]
+					DEBUGPRINTFORML 행동 {CFLAG:ARG:600, 4}회째:ローテーション{CFLAG:ARG:602}_전격전체
+				ENDIF
+			ENDIF
+		CASE 3
+			; 전격で1more
+			IF CFLAG:ARG:１moreフラグ > 0
+				; 전격전체
+				CALL EVENT_16_SET_ACTION, ARG, [[스킬:엘・지하드]]
+				DEBUGPRINTFORML 행동 {CFLAG:ARG:600, 4}회째:1more_전격전체
+			ELSE
+				RESULT = EVENT_16_SEARCH_REGISTANCE(2, "질풍", 1, 1)
+				DEBUGPRINTFORML 질풍내성検索결과:{RESULT}
+				; 弱点持ちがいる
+				IF RESULT > 0
+					; 질풍1명
+					CALL EVENT_16_SET_ACTION, ARG, [[스킬:만물유전]], RESULT
+					DEBUGPRINTFORML 행동 {CFLAG:ARG:600, 4}회째:ローテーション{CFLAG:ARG:602}_질풍1명
+				; 全員が무효か흡수
+				ELSEIF (RESULT == -2 || (RESULT == -1 && RAND:2)) && CFLAG:ARG:601 >= 5
+					; 가드킬
+					CALL EVENT_16_SET_ACTION, ARG, [[스킬:화염가드브레이크]]
+					DEBUGPRINTFORML 행동 {CFLAG:ARG:600, 4}회째:ローテーション{CFLAG:ARG:602}_질풍내성対応
+				; 弱点持ちがいないか반사持ちが混ざっている
+				ELSE
+					; 질풍전체
+					CALL EVENT_16_SET_ACTION, ARG, [[스킬:신공파]]
+					DEBUGPRINTFORML 행동 {CFLAG:ARG:600, 4}회째:ローテーション{CFLAG:ARG:602}_질풍전체
+				ENDIF
+			ENDIF
+		CASE 4
+			; 질풍で1more
+			IF CFLAG:ARG:１moreフラグ > 0
+				; 질풍전체
+				CALL EVENT_16_SET_ACTION, ARG, [[스킬:신공파]]
+				DEBUGPRINTFORML 행동 {CFLAG:ARG:600, 4}회째:1more_질풍전체
+			ELSE
+				IF CFLAG:ARG:601 == 7
+					RESULT = EVENT_16_SEARCH_REGISTANCE(2, "검격", 1, 0)
+					DEBUGPRINTFORML 검격내성検索결과:{RESULT}
+					; 검격が通らないなら가드브레이크
+					IF RESULT == -2 || (RESULT == -1 && RAND:2)
+						CALL EVENT_16_SET_ACTION, ARG, [[스킬:검격가드브레이크]]
+						DEBUGPRINTFORML 행동 {CFLAG:ARG:600, 4}회째:ローテーション{CFLAG:ARG:602}_검격내성対応
+					ELSE
+						CALL EVENT_16_SET_ACTION, ARG, [[스킬:기합]]
+						DEBUGPRINTFORML 행동 {CFLAG:ARG:600, 4}회째:ローテーション{CFLAG:ARG:602}_チャージ
+					ENDIF
+				ELSE
+					CALL EVENT_16_SET_ACTION, ARG, [[스킬:컨센트레이트]]
+					DEBUGPRINTFORML 행동 {CFLAG:ARG:600, 4}회째:ローテーション{CFLAG:ARG:602}_コンセ
+				ENDIF
+			ENDIF
+		CASE 5
+			IF CFLAG:ARG:601 == 7
+				; 팔척뛰기
+				CALL EVENT_16_SET_ACTION, ARG, [[스킬:팔척뛰기]]
+				DEBUGPRINTFORML 행동 {CFLAG:ARG:601,4}회째:ローテーション{CFLAG:ARG:602}_HASSO-BEAT
+			ELSE
+				; 메기도라온
+				CALL EVENT_16_SET_ACTION, ARG, [[스킬:메기도라온]]
+				DEBUGPRINTFORML 행동 {CFLAG:ARG:601,4}회째:ローテーション{CFLAG:ARG:602}_通常메기도라온
+			ENDIF
+	ENDSELECT
+ENDIF
+CFLAG:ARG:600++
+RETURN 0
+
+; 相性변화
+; 스테이터스변화はオミット
+; ARG   변경대상キャラ
+; ARG:1 변경페르소나번호
+; ARG:2 현재의페르소나번호
+; ARG:3 변경を표시するかどうか
+@EVENT_16_PCHANGE, ARG, CHANGE_P, ARG:1 = 0
+#DIM CHANGE_P, 1
+; 現況と변경先の페르소나번호が同じならスキップ
+SIF CHANGE_P == CFLAG:ARG:603
+	RETURN 0
+SELECTCASE CHANGE_P
+	CASE 0
+		; 페르소나無し
+		; 第一단계のみ
+		LOCALS = P・체인지
+		BASE:ARG:검격 = 100
+		BASE:ARG:비구 = 100
+		BASE:ARG:타격 = 100
+		BASE:ARG:전술 = 100
+		BASE:ARG:화염 = 100
+		BASE:ARG:빙결 = 100
+		BASE:ARG:전격 = 100
+		BASE:ARG:충격 = 100
+		BASE:ARG:신경 = 100
+		BASE:ARG:정신 = 100
+		BASE:ARG:파마 = 0
+		BASE:ARG:주살 = 100
+		BASE:ARG:지변 = 100
+		BASE:ARG:수격 = 100
+		BASE:ARG:질풍 = 100
+		BASE:ARG:중력 = 100
+		BASE:ARG:핵열 = 100
+		BASE:ARG:만능 = 100
+		BASE:ARG:사이코 = 100
+		CALL SYNC_STATUS, ARG
+	CASE 1
+		; 剛毅 ジークフリード (화염)
+		LOCALS = P・체인지(용기 지크프리드)
+		BASE:ARG:검격 = 100
+		BASE:ARG:비구 = 100
+		BASE:ARG:타격 = 100
+		BASE:ARG:전술 = 100
+		BASE:ARG:화염 = -200
+		BASE:ARG:빙결 = 100
+		BASE:ARG:전격 = 100
+		BASE:ARG:충격 = 100
+		BASE:ARG:신경 = 0
+		BASE:ARG:정신 = 0
+		BASE:ARG:파마 = 0
+		BASE:ARG:주살 = 0
+		BASE:ARG:지변 = 100
+		BASE:ARG:수격 = 100
+		BASE:ARG:질풍 = 100
+		BASE:ARG:중력 = 100
+		BASE:ARG:핵열 = -50
+		BASE:ARG:만능 = 25
+		BASE:ARG:사이코 = 100
+		CALL SYNC_STATUS, ARG
+	CASE 2
+		; 광대 로키 (빙결)
+		LOCALS = P・체인지(광대 로키)
+		BASE:ARG:검격 = 100
+		BASE:ARG:비구 = 100
+		BASE:ARG:타격 = 100
+		BASE:ARG:전술 = 100
+		BASE:ARG:화염 = 100
+		BASE:ARG:빙결 = -200
+		BASE:ARG:전격 = 100
+		BASE:ARG:충격 = 100
+		BASE:ARG:신경 = 0
+		BASE:ARG:정신 = 0
+		BASE:ARG:파마 = 0
+		BASE:ARG:주살 = 0
+		BASE:ARG:지변 = 100
+		BASE:ARG:수격 = -50
+		BASE:ARG:질풍 = 100
+		BASE:ARG:중력 = 100
+		BASE:ARG:핵열 = 100
+		BASE:ARG:만능 = 25
+		BASE:ARG:사이코 = 100
+		CALL SYNC_STATUS, ARG
+	CASE 3
+		; 皇帝 오오쿠니누시 (전격)
+		LOCALS = P・체인지(황제 오오쿠니누시)
+		BASE:ARG:검격 = 100
+		BASE:ARG:비구 = 100
+		BASE:ARG:타격 = 100
+		BASE:ARG:전술 = 100
+		BASE:ARG:화염 = 100
+		BASE:ARG:빙결 = 100
+		BASE:ARG:전격 = -200
+		BASE:ARG:충격 = 100
+		BASE:ARG:신경 = 0
+		BASE:ARG:정신 = 0
+		BASE:ARG:파마 = 0
+		BASE:ARG:주살 = 0
+		BASE:ARG:지변 = -50
+		BASE:ARG:수격 = 100
+		BASE:ARG:질풍 = 100
+		BASE:ARG:중력 = 100
+		BASE:ARG:핵열 = 100
+		BASE:ARG:만능 = 25
+		BASE:ARG:사이코 = 100
+		CALL SYNC_STATUS, ARG
+	CASE 4
+		; 塔 クー・フーリン (질풍)
+		LOCALS = P・체인지(탑 쿠・훌린)
+		BASE:ARG:검격 = 100
+		BASE:ARG:비구 = 100
+		BASE:ARG:타격 = 100
+		BASE:ARG:전술 = 100
+		BASE:ARG:화염 = 100
+		BASE:ARG:빙결 = 100
+		BASE:ARG:전격 = 100
+		BASE:ARG:충격 = -50
+		BASE:ARG:신경 = 0
+		BASE:ARG:정신 = 0
+		BASE:ARG:파마 = 0
+		BASE:ARG:주살 = 0
+		BASE:ARG:지변 = 100
+		BASE:ARG:수격 = 100
+		BASE:ARG:질풍 = -200
+		BASE:ARG:중력 = 100
+		BASE:ARG:핵열 = 100
+		BASE:ARG:만능 = 25
+		BASE:ARG:사이코 = 100
+		CALL SYNC_STATUS, ARG
+	CASE 5
+		; 皇帝 오베론 (컨센트레이트, チャージ, 9999메기도라온)
+		; 만능이외무효。만능1/4
+		; 이악물기フラグが立っている場合は全무효
+		; 가드킬で殴ることもできるが……
+		LOCALS = P・체인지(황제 오베론)
+		BASE:ARG:검격 = 0
+		BASE:ARG:비구 = 0
+		BASE:ARG:타격 = 0
+		BASE:ARG:전술 = 0
+		BASE:ARG:화염 = 0
+		BASE:ARG:빙결 = 0
+		BASE:ARG:전격 = 0
+		BASE:ARG:충격 = 0
+		BASE:ARG:신경 = 0
+		BASE:ARG:정신 = 0
+		BASE:ARG:파마 = 0
+		BASE:ARG:주살 = 0
+		BASE:ARG:지변 = 0
+		BASE:ARG:수격 = 0
+		BASE:ARG:질풍 = 0
+		BASE:ARG:중력 = 0
+		BASE:ARG:핵열 = 0
+		BASE:ARG:만능 = 25
+		SIF CFLAG:ARG:601 == 99
+			BASE:ARG:만능 = 0
+		BASE:ARG:사이코 = 0
+		CALL SYNC_STATUS, ARG
+	CASE 6
+		; 審判 아르다 (디아라한, 메기도라온)
+		; 全내성。
+		LOCALS = P・체인지(심판 아르다)
+		BASE:ARG:검격 = 25
+		BASE:ARG:비구 = 25
+		BASE:ARG:타격 = 25
+		BASE:ARG:전술 = 25
+		BASE:ARG:화염 = 25
+		BASE:ARG:빙결 = 25
+		BASE:ARG:전격 = 25
+		BASE:ARG:충격 = 25
+		BASE:ARG:신경 = 0
+		BASE:ARG:정신 = 0
+		BASE:ARG:파마 = 0
+		BASE:ARG:주살 = 0
+		BASE:ARG:지변 = 25
+		BASE:ARG:수격 = 25
+		BASE:ARG:질풍 = 25
+		BASE:ARG:중력 = 25
+		BASE:ARG:핵열 = 25
+		BASE:ARG:만능 = 25
+		BASE:ARG:사이코 = 100
+		CALL SYNC_STATUS, ARG
+	CASE 7
+		; 쇼우 ルシフェル (새벽의명성)
+		; 물리と만능、파마주살이외を흡수
+		; ただし行動패턴の関係上、これで공격を受けることはほぼない
+		LOCALS = P・체인지(별 루시펠)
+		BASE:ARG:검격 = 100
+		BASE:ARG:비구 = 100
+		BASE:ARG:타격 = 100
+		BASE:ARG:전술 = 100
+		BASE:ARG:화염 = -100
+		BASE:ARG:빙결 = -100
+		BASE:ARG:전격 = -100
+		BASE:ARG:충격 = -100
+		BASE:ARG:신경 = 0
+		BASE:ARG:정신 = 0
+		BASE:ARG:파마 = 0
+		BASE:ARG:주살 = 0
+		BASE:ARG:지변 = -100
+		BASE:ARG:수격 = -100
+		BASE:ARG:질풍 = -100
+		BASE:ARG:중력 = -100
+		BASE:ARG:핵열 = -100
+		BASE:ARG:만능 = 25
+		BASE:ARG:사이코 = 100
+		CALL SYNC_STATUS, ARG
+	CASE 8
+		; 塔 요시츠네 (팔척뛰기)
+		; 물리흡수
+		LOCALS = P・체인지(탑 요시츠네)
+		BASE:ARG:검격 = -200
+		BASE:ARG:비구 = -100
+		BASE:ARG:타격 = -100
+		BASE:ARG:전술 = -100
+		BASE:ARG:화염 = 100
+		BASE:ARG:빙결 = 100
+		BASE:ARG:전격 = 100
+		BASE:ARG:충격 = 100
+		BASE:ARG:신경 = 0
+		BASE:ARG:정신 = 0
+		BASE:ARG:파마 = 0
+		BASE:ARG:주살 = 0
+		BASE:ARG:지변 = 100
+		BASE:ARG:수격 = 100
+		BASE:ARG:질풍 = 100
+		BASE:ARG:중력 = 100
+		BASE:ARG:핵열 = 100
+		BASE:ARG:만능 = 25
+		BASE:ARG:사이코 = 100
+		CALL SYNC_STATUS, ARG
+ENDSELECT
+; 변경페르소나の표시
+IF ARG:1 == 0
+	CUSTOMDRAWLINE =
+	SETCOLOR 0xff0033
+	PRINTFORML 　                            　┏>ACT━━━━━━━━━━━━━━━━━━┓
+	PRINTFORML 　                            　┃%LOCALS + "", 40, LEFT%┃
+	PRINTFORML 　                            　┗━━━━━━━━━━━━━━━━━━━━┛
+	RESETCOLOR
+ENDIF
+CFLAG:ARG:603 = CHANGE_P
+RETURN 0
+
+; 行動세트
+@EVENT_16_SET_ACTION, ARG, ARG:1, ARG:2 = -1
+; MP全쾌
+BASE:ARG:ＭＰ = MAXBASE:ARG:ＭＰ
+CFLAG:ARG:입력行動 = ARG:1
+IF ARG:2 == -1
+	CALL RANDOM_TARGET, ARG, CFLAG:ARG:입력行動
+ELSE
+	CFLAG:ARG:ターゲット = ARG:2
+ENDIF
+CALL CHECK_ACTIONABLE, ARG, CFLAG:ARG:입력行動
+IF RESULT != 1
+	CFLAG:ARG:입력行動 = [[스킬:ＡＴＴＡＣＫ]]
+	CALL RANDOM_TARGET, ARG, CFLAG:ARG:입력行動
+ENDIF
+RETURN 0
+
+; ほんま벨벳룸の従者はドＳやでぇ……
+@ENEMY_BATTLE_MESSAGE_K4574, ARG
+IF CFLAG:ARG:입력行動 == [[스킬:9999메기도라온]]
+	CALL EVENT_16_PCHANGE, ARG, 5
+; 메시지출력
+ELSEIF CFLAG:ARG:601 == 1 || CFLAG:ARG:601 == 5
+	; 初回
+	IF CFLAG:ARG:601 == 1
+		IF CFLAG:ARG:604 < 1
+			CALL EVENT_16_PCHANGE, ARG, 0, 1
+			SETCOLOR 0xff0033
+			PRINTL ┏>MESSAGE━━━━━━━━━━━━━━━━━━┓
+			PRINTL ┃싸움의 열기와 긴장감이 몸을 채운다……　　  ┃
+			PRINTL ┃　　　　　　　　　　　　　　　　　　　　　　┃
+			PRINTL ┃　　　　　　　　　　　　　　　　　　　　　　┃
+			PRINTW ┗━━━━━━━━━━━━━━━━━━━━━━┛
+			PRINTL 
+			PRINTL ┏>MESSAGE━━━━━━━━━━━━━━━━━━┓
+			PRINTL ┃자, 시작하자　　　　　　　　　　　　        ┃
+			PRINTL ┃나를 실망시키지 말아줘！　　　　　　　      ┃
+			PRINTL ┃　　　　　　　　　　　　　　　　　　　　　　┃
+			PRINTW ┗━━━━━━━━━━━━━━━━━━━━━━┛
+			RESETCOLOR
+			PRINTL 
+			CUSTOMDRAWLINE =
+			PRINTL 
+			CFLAG:ARG:604 = 1
+		ENDIF
+	; 디아라한後
+	ELSE
+		CALL EVENT_16_PCHANGE, ARG, 6
+	ENDIF
+ELSEIF CFLAG:ARG:601 == 2 && CFLAG:ARG:604 < 2
+	CALL ENEMY_BATTLE_MESSAGE_K4574_LOTATION, ARG
+	SETCOLOR 0xff0033
+	PRINTL ┏>MESSAGE━━━━━━━━━━━━━━━━━━┓
+	PRINTL ┃지금 말해두지요。　　　　　　　　　　       ┃
+	PRINTL ┃저를 걱정하는 마음은 버리세요.              ┃
+	PRINTL ┃　　　　　　　　　　　　　　　　　　　　　　┃
+	PRINTW ┗━━━━━━━━━━━━━━━━━━━━━━┛
+	PRINTL 
+	PRINTL ┏>MESSAGE━━━━━━━━━━━━━━━━━━┓
+	PRINTL ┃죽일 생각으로 도전하는 것이야말로 존경.     ┃
+	PRINTL ┃대충하는 것은 모욕이야.                     ┃
+	PRINTL ┃　　　　　　　　　　　　　　　　　　　　　　┃
+	PRINTW ┗━━━━━━━━━━━━━━━━━━━━━━┛
+	RESETCOLOR
+	PRINTL 
+	CUSTOMDRAWLINE =
+	PRINTL 
+	CFLAG:ARG:604 = 2
+ELSEIF CFLAG:ARG:601 == 4 && CFLAG:ARG:604 < 3
+	CALL EVENT_16_PCHANGE, ARG, 7
+	SETCOLOR 0xff0033
+	PRINTL ┏>MESSAGE━━━━━━━━━━━━━━━━━━┓
+	PRINTL ┃후우……이 고양감……　 　　　　　　　　　　┃
+	PRINTL ┃언제부터일까.　　　　　　　　　　　　　　   ┃
+	PRINTL ┃　　　　　　　　　　　　　　　　　　　　　　┃
+	PRINTW ┗━━━━━━━━━━━━━━━━━━━━━━┛
+	PRINTL 
+	PRINTL ┏>MESSAGE━━━━━━━━━━━━━━━━━━┓
+	PRINTL ┃나쁘게 생각하지 마……　　　　　　　　　　　┃
+	PRINTL ┃점점 당신을 죽이고 싶어졌어요.              ┃
+	PRINTL ┃　　　　　　　　　　　　　　　　　　　　　　┃
+	PRINTW ┗━━━━━━━━━━━━━━━━━━━━━━┛
+	RESETCOLOR
+	PRINTL 
+	CUSTOMDRAWLINE =
+	PRINTL 
+	CFLAG:ARG:604 = 3
+ELSEIF CFLAG:ARG:601 == 5
+	CALL EVENT_16_PCHANGE, ARG, 6
+ELSE
+	CALL ENEMY_BATTLE_MESSAGE_K4574_LOTATION, ARG
+	IF CFLAG:ARG:601 == 7 && CFLAG:ARG:604 < 4
+		SETCOLOR 0xff0033
+		PRINTL ┏>MESSAGE━━━━━━━━━━━━━━━━━━┓
+		PRINTL ┃하아, 하아…… 최고에요. 엘리자베스도　　　 ┃
+		PRINTL ┃여기까지 저를 몰아세우라고 말하지 않았는데  ┃
+		PRINTL ┃　　　　　　　　　　　　　　　　　　　　　　┃
+		PRINTW ┗━━━━━━━━━━━━━━━━━━━━━━┛
+		PRINTL 
+		PRINTL ┏>MESSAGE━━━━━━━━━━━━━━━━━━┓
+		PRINTL ┃자, 이제 보여주세요……　　　　　         　┃
+		PRINTL ┃전투, 그 앞에 있는 것을……！　　　　　   　┃
+		PRINTL ┃　　　　　　　　　　　　　　　　　　　　　　┃
+		PRINTW ┗━━━━━━━━━━━━━━━━━━━━━━┛
+		RESETCOLOR
+		PRINTL 
+		CUSTOMDRAWLINE =
+		PRINTL 
+		CFLAG:ARG:604 = 4
+		; 불굴의투지を外す
+		ABL:ARG:스킬8 = 0
+	ELSE
+		SETCOLOR 0xff0033
+		IF RAND:3 == 0
+			PRINTL ┏>MESSAGE━━━━━━━━━━━━━━━━━━┓
+			PRINTL ┃쓰러지면 안 돼요？　　　　　　　　　　　　　　┃
+			PRINTL ┃　　　　　　　　　　　　　　　　　　　　　　┃
+			PRINTL ┃　　　　　　　　　　　　　　　　　　　　　　┃
+			PRINTL ┗━━━━━━━━━━━━━━━━━━━━━━┛
+		ELSEIF RAND:2 == 0
+			PRINTL ┏>MESSAGE━━━━━━━━━━━━━━━━━━┓
+			PRINTL ┃받아라！　　　　　　　　　　　　　　　    　┃
+			PRINTL ┃　　　　　　　　　　　　　　　　　　　　　　┃
+			PRINTL ┃　　　　　　　　　　　　　　　　　　　　　　┃
+			PRINTL ┗━━━━━━━━━━━━━━━━━━━━━━┛
+		ELSE
+			PRINTL ┏>MESSAGE━━━━━━━━━━━━━━━━━━┓
+			PRINTL ┃자아 보세요！　　　　　　　　　　　　　　　┃
+			PRINTL ┃　　　　　　　　　　　　　　　　　　　　　　┃
+			PRINTL ┃　　　　　　　　　　　　　　　　　　　　　　┃
+			PRINTL ┗━━━━━━━━━━━━━━━━━━━━━━┛
+		ENDIF
+		PRINTL 
+		CUSTOMDRAWLINE =
+		PRINTL 
+		RESETCOLOR
+	ENDIF
+ENDIF
+RETURN 0
+
+@ENEMY_BATTLE_MESSAGE_K4574_LOTATION, ARG
+SELECTCASE CFLAG:ARG:602
+	CASE 0
+		SIF !CFLAG:ARG:１moreフラグ
+			CALL EVENT_16_PCHANGE, ARG, 1
+	CASE 1
+		SIF !CFLAG:ARG:１moreフラグ
+			CALL EVENT_16_PCHANGE, ARG, 2
+	CASE 2
+		SIF !CFLAG:ARG:１moreフラグ
+			CALL EVENT_16_PCHANGE, ARG, 3
+	CASE 3
+		SIF !CFLAG:ARG:１moreフラグ
+			CALL EVENT_16_PCHANGE, ARG, 4
+	CASE 4
+		SIF !CFLAG:ARG:１moreフラグ
+			CALL EVENT_16_PCHANGE, ARG, 5
+	CASE 5
+		IF !CFLAG:ARG:１moreフラグ
+			IF CFLAG:ARG:601 < 7
+				CALL EVENT_16_PCHANGE, ARG, 6
+			ELSE
+				CALL EVENT_16_PCHANGE, ARG, 8
+			ENDIF
+		ENDIF
+ENDSELECT
+CFLAG:ARG:602 = (CFLAG:ARG:602 + 1) % 6
+RETURN 0
+
+;-----------------------------------------------------------
+; 相性走査関数　@EVENT_16_SEARCH_REGISTANCE(ARG, ARGS, ARG:1 = 0, ARG:2 = 0)
+; 
+; 引数
+;  ARG   공격범위。0 == 전열(1～3), 1 == 후열(4～6), 2 == 전체(1～6)
+;  ARGS  相性名
+;  ARG:1 カーン、壁、가드킬を考慮するか？(1 == する)
+;  ARG:2 カーンを考慮する場合の공격종별 (0 == 물리, 1 == 마법)
+;
+; 戻り値
+;  -999 引数の설정ミスによる処理中断
+;  -3   반사持ちキャラがいる
+;  -2   흡수のみ
+;  -1   무효のみ
+;  0    약점持ちキャラがいない
+;  >= 1 약점持ちキャラの포지션
+;-----------------------------------------------------------
+@EVENT_16_SEARCH_REGISTANCE(ARG, ARGS, ARG:1 = 0, ARG:2 = 0)
+#FUNCTION
+#DIM COM, 7
+#LOCALSIZE 6
+; 変数초기化
+VARSET LOCAL, 0
+VARSET COM, -999
+; 走査범위설정
+SELECTCASE ARG
+	CASE 0
+		LOCAL:2 = 1
+		LOCAL:3 = 4
+	CASE 1
+		LOCAL:2 = 4
+		LOCAL:3 = 7
+	CASE 2
+		LOCAL:2 = 1
+		LOCAL:3 = 7
+ENDSELECT
+; 범위체크
+SIF !LOCAL:2 && !LOCAL:3
+	RETURNF -999
+; 走査処理
+FOR LOCAL, LOCAL:2, LOCAL:3
+	; 存在しないか死んでいるならスキップ
+	SIF POS(LOCAL) < 0 || GET_STATE(CFLAG:(POS(LOCAL)):ステート) == "DYING"
+		CONTINUE
+	LOCAL:1 = GETNUM(BASE, ARGS)
+	; カーン
+	; 반사扱いにする
+	IF ARG:1 && ARGS != "만능" && (ARG:2 == 0 && CFLAG:(POS(LOCAL)):물리반사フラグ) || (ARG:2 == 1 && CFLAG:(POS(LOCAL)):마법반사フラグ)
+		COM:(LOCAL - 1) = 999
+		CONTINUE
+	; 壁
+	; 무효미만なら무효扱いにする
+	ELSEIF ARG:1 && CFLAG:(POS(LOCAL)):(1130 + GET_TYPE_NUM(ARGS)) > 0 && MAXBASE:(POS(LOCAL)):(LOCAL:1) > 0
+		COM:(LOCAL - 1) = 0
+		CONTINUE
+	; 가드킬
+	; 내성이상なら等倍扱いにする
+	ELSEIF ARG:1 && CFLAG:(POS(LOCAL)):(1270 + GET_TYPE_NUM(ARGS)) > 0 && MAXBASE:(POS(LOCAL)):(LOCAL:1) < 100
+		COM:(LOCAL - 1) = 100
+		CONTINUE
+	; 방어
+	; 1moreが取れないので等倍扱いにする
+	ELSEIF ARG:1 && CFLAG:(POS(LOCAL)):방어フラグ && MAXBASE:(POS(LOCAL)):(LOCAL:1) > 100
+		COM:(LOCAL - 1) = 100
+		CONTINUE
+	ENDIF
+	COM:(LOCAL - 1) = MAXBASE:(POS(LOCAL)):(LOCAL:1)
+NEXT
+; 変数세트
+LOCAL:4 = -999
+FOR LOCAL, 0, 6
+	IF LOCAL:4 < COM:LOCAL
+		LOCAL:4 = COM:LOCAL
+		LOCAL:5 = LOCAL
+	ENDIF
+NEXT
+SIF LOCAL:4 == 999
+	RETURNF -3
+SIF LOCAL:4 < 0
+	RETURNF -2
+SIF LOCAL:4 == 0
+	RETURNF -1
+SIF LOCAL:4 > 100
+	RETURNF LOCAL:5 + 1
+RETURNF 0
+
+

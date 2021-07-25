@@ -1,0 +1,1660 @@
+﻿
+;=======================================================================
+;경시청
+;真Iの旧警視庁이벤트を再現するべく作成
+;フラグ1～6：宝箱
+;フラグ11:ボス戦フラグ
+;フラグ12:報酬フラグ
+;フラグ13:突入フラグ
+;フラグ20:ナイトテイル（ばら売り）이벤트　入り입
+;フラグ21:ナイトテイル（ばら売り）이벤트　宮下さんGET=1　スルー=2
+;フラグ22:ナイトテイル（ばら売り）이벤트　水紀くんGET=1　グロマン=2　붕괴=3　맨이터=4　웬디고=5　미노타우로스=6　아리오크=7　슬라임=8　宮下さんGET=100
+;2015/07/14 宮下さんの台詞추가
+;2015/07/21 再突入時に初回突入時の文章が出るミスを修正
+;2019/02/12 ナイトテイル（ばら売り）이벤트추가　by(ﾟдﾟ)
+;2019/03/03 宮下さんの습득스킬をcsvに合わせ변경、아리오크様の스킬ミス修正　by(ﾟдﾟ)
+;2020/06/09 オイィィィ　宮下さんがずっと전투참가불가능상태で加入していたのを수정　by kamedakeisuke(ﾟдﾟ)
+;2020/12/09 Ｂ１Ｆのマップ표시がおかしくなる問題を수정　by JK好き
+;作者：トドもどき
+;=======================================================================
+
+
+
+
+;=======================================================================
+;攻略조건
+;=======================================================================
+@PREREQUISITE_DUNGEON_8
+SIF BASE:MASTER:LV < 30
+	RETURN 0
+RETURN 1
+
+
+;=======================================================================
+;던전名
+;=======================================================================
+@GET_DUNGEON_NAME_8
+RESULTS = 경시청
+
+
+;=======================================================================
+;フ로어名표시
+;=======================================================================
+@FLOORNAME_8
+PRINT 경시청
+SELECTCASE FLAG:現M
+	CASE 0
+		PRINTL Ｂ１Ｆ
+	CASE 1
+		PRINTL １Ｆ
+	CASE 2
+		PRINTL ２Ｆ
+	CASE 3
+		PRINTL ３Ｆ
+	CASE 4
+		PRINTL ４Ｆ
+	CASEELSE
+		PRINTL ５Ｆ
+ENDSELECT
+
+;=======================================================================
+;特殊タイル표시
+;=======================================================================
+
+;@TILE_MARK_8_0_4_9
+;RESULTS = □
+
+@TILE_MARK_8_5_8_5
+RESULTS = □
+
+@TILE_MARK_8_5_3_1
+RESULTS = Ｔ
+
+;=======================================================================
+;スタート地点입력
+;=======================================================================
+@START_DUNGEON_8,ARG
+FLAG:現M = 0
+FLAG:現X = 9
+FLAG:現Y = 15
+;CALL AUTOMAP
+
+;=======================================================================
+;スタート時이벤트
+;=======================================================================
+@EVENT_DUNGEON_START_8
+IF 던전フラグ:8:13 == 0
+	CALL MESSAGE_WINDOW_D, , "＞" + CALLNAME:MASTER + "는 경시청의 의뢰를 받았다/＞아무래도 경시청이 갑자기 이계화、경비 로봇도 폭주한 것 같다"
+	CALL MESSAGE_WINDOW_D, , "＞경비 로봇은 국가 기밀이기 때문에、실력자라 불리는 " + CALLNAME:MASTER + "에게 비밀리에 해결을 요청한 것 같다"
+	
+	;ナイト・テイルルートに乗っていて、宮下さん同行時はテ키스トが増える
+	IF FINDCHARA_B(4630,0) == 2 && 이벤트フラグ:30:0 == 1
+		CALL MESSAGE_WINDOW_D, "미야시타 쇼고" , "本来なら、自分たち0課の担当です。/なんてったって、我々は身内ですから、/“秘密裏に”やるというなら打って付けでしょう。しかし……"
+		CALL MESSAGE_WINDOW_D, , "＞宮下は장비を点検しながら言葉を続ける"
+		CALL MESSAGE_WINDOW_D, "미야시타 쇼고" , "公安が横やりを入れてきたんです。/SATを突入させる、みすみす庁舎を乗っ取られた『オカルト同好会』には任せられないって。/ええ、官僚組織の弱点、という奴です。"
+		CALL MESSAGE_WINDOW_D, , "＞そこから利権や面子やらで揉めに揉めて、話がまとまらなくなってしまったようだ。/そこで、事態を重く見た宮下の父――副総監である――が、/裏のツテを使って、팬텀・ソサエティにアプローチを掛けてきたということらしい"
+		CALL MESSAGE_WINDOW_D, "미야시타 쇼고" , "ええ、うちの親父が言うには、/「손段を選んでいる暇があるか？」/とのことで"
+		CALL MESSAGE_WINDOW_D, , "＞もっともな話である"
+		;さらに고토우氏同行時
+		IF FINDCHARA_B(4208,0) == 2
+			CALL MESSAGE_WINDOW_D, "五島", "私ならば、これを介入の糸입とする。軍も눈を付けているだろうな"
+			CALL MESSAGE_WINDOW_D, , "＞五島の捕捉に、宮下は大きく溜息をついた"
+		ENDIF
+		CALL MESSAGE_WINDOW_D, "미야시타 쇼고" , "これ以上の邪魔が入る前に、まずはファントムの傭兵が突入、/情報収集と異界化の根源を潰したうえで、/それからSATでも機動隊でも何でも突っ込んで掃討させればいい……ということです"
+		CALL MESSAGE_WINDOW_D, , "＞" + CALLNAME:MASTER + "는 고액의 보수를 기대하면서 이계화한 경시청으로 발을 들여놓았다…"
+	ELSE
+	CALL MESSAGE_WINDOW_D, , "＞" + CALLNAME:MASTER + "는 고액의 보수를 기대하면서 이계화한 경시청으로 발을 들여놓았다…"
+	ENDIF
+	던전フラグ:8:13 = 1
+ENDIF
+;=======================================================================
+;탈출時の이벤트
+;=======================================================================
+@EVENT_DUNGEON_END_8
+IF 던전フラグ:8:11 && !던전フラグ:8:12
+	CALL SHOW_PICTURE, "D"
+	CALL MESSAGE_WINDOW_D, "", "＞경시청을 구한 보수로 100000엔을 입수했다/＞또한、200의 명성을 얻었다"
+	MONEY += 100000
+	FLAG:名声 += 200
+	던전フラグ:8:12 = 1
+ENDIF
+
+;=======================================================================
+;指定したマスに進入可能か
+;=======================================================================
+@CAN_ENTER_8,ARG,ARG:1
+CALL CAN_ENTER,ARG,ARG:1
+RETURN RESULT
+
+;=======================================================================
+;フ로어데이터
+;=======================================================================
+@MAKE_FLOOR_8
+SELECTCASE FLAG:現M
+	CASE 0
+		FLAG:최대X = 10
+		FLAG:최대Y = 18
+		;						 01234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"          "
+		CALL MAKE_FLOOR_LINE, 1," DDDDDDDD "
+		CALL MAKE_FLOOR_LINE, 2," D      D "
+		CALL MAKE_FLOOR_LINE, 3," D 1DD  D "
+		CALL MAKE_FLOOR_LINE, 4," D   D  D "
+		CALL MAKE_FLOOR_LINE, 5," DDDDD  D "
+		CALL MAKE_FLOOR_LINE, 6," D   1  D "
+		CALL MAKE_FLOOR_LINE, 7," 1  11  D "
+		CALL MAKE_FLOOR_LINE, 8,"    1   D "
+		CALL MAKE_FLOOR_LINE, 9,"    16  D "
+		CALL MAKE_FLOOR_LINE,10," E  1   D "
+		CALL MAKE_FLOOR_LINE,11," 2  11  D "
+		CALL MAKE_FLOOR_LINE,12," 1111   D "
+		CALL MAKE_FLOOR_LINE,13,"       DD "
+		CALL MAKE_FLOOR_LINE,14,"       D  "
+		CALL MAKE_FLOOR_LINE,15," DDDDDDD28"
+		CALL MAKE_FLOOR_LINE,16,"          "
+
+		;ナイト・テイルばら売りルート　入り입
+		SIF 이벤트フラグ:30:0 == 3 && 던전フラグ:8:20 == 0
+			CALL SET_TILE,7,15,던전フラグ:8:20,0,1004
+		;ナイト・テイルばら売りルート　宮下さん
+		SIF 이벤트フラグ:30:0 == 3 && 던전フラグ:8:21 == 0
+			CALL SET_TILE,4,9,던전フラグ:8:21,0,1014
+
+	CASE 1
+		FLAG:최대X = 10
+		FLAG:최대Y = 18
+		;						 01234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"          "
+		CALL MAKE_FLOOR_LINE, 1," DDDDDDDD "
+		CALL MAKE_FLOOR_LINE, 2," D      D "
+		CALL MAKE_FLOOR_LINE, 3," D21 111D "
+		CALL MAKE_FLOOR_LINE, 4," D   1  D "
+		CALL MAKE_FLOOR_LINE, 5," D   1  D "
+		CALL MAKE_FLOOR_LINE, 6," D   1  D "
+		CALL MAKE_FLOOR_LINE, 7," D   6  9 "
+		CALL MAKE_FLOOR_LINE, 8," DDD      "
+		CALL MAKE_FLOOR_LINE, 9,"   D 7DDD "
+		CALL MAKE_FLOOR_LINE,10," E D    D "
+		CALL MAKE_FLOOR_LINE,11," 2 D    D "
+		CALL MAKE_FLOOR_LINE,12," 1 DDDDDD "
+		CALL MAKE_FLOOR_LINE,13," 1 D 2 DD "
+		CALL MAKE_FLOOR_LINE,14," 1DD 8 DD "
+		CALL MAKE_FLOOR_LINE,15,"          "
+		CALL MAKE_FLOOR_LINE,16,"          "
+
+		;宝箱の設置
+		CALL SET_TILE,3,3,던전フラグ:8:0,0,3
+
+	CASE 2
+		FLAG:최대X = 10
+		FLAG:최대Y = 18
+		;						 01234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"          "
+		CALL MAKE_FLOOR_LINE, 1," DD111111 "
+		CALL MAKE_FLOOR_LINE, 2," 9 D    1 "
+		CALL MAKE_FLOOR_LINE, 3," D D  121 "
+		CALL MAKE_FLOOR_LINE, 4," DDD    1 "
+		CALL MAKE_FLOOR_LINE, 5," 2 D    1 "
+		CALL MAKE_FLOOR_LINE, 6," 1 D    1 "
+		CALL MAKE_FLOOR_LINE, 7,"   D 7111 "
+		CALL MAKE_FLOOR_LINE, 8," DDD    1 "
+		CALL MAKE_FLOOR_LINE, 9,"   DD6  1 "
+		CALL MAKE_FLOOR_LINE,10," E D    1 "
+		CALL MAKE_FLOOR_LINE,11," 2 D    1 "
+		CALL MAKE_FLOOR_LINE,12," 1   1111 "
+		CALL MAKE_FLOOR_LINE,13," 1   1    "
+		CALL MAKE_FLOOR_LINE,14," 11111121 "
+		CALL MAKE_FLOOR_LINE,15,"          "
+		CALL MAKE_FLOOR_LINE,16,"          "
+
+		;宝箱の設置
+		CALL SET_TILE,1,6,던전フラグ:8:1,0,3
+		CALL SET_TILE,8,14,던전フラグ:8:2,0,3
+
+	CASE 3
+		FLAG:최대X = 10
+		FLAG:최대Y = 18
+		;						 01234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"          "
+		CALL MAKE_FLOOR_LINE, 1," DD211111 "
+		CALL MAKE_FLOOR_LINE, 2," D    2 1 "
+		CALL MAKE_FLOOR_LINE, 3," D    1 1 "
+		CALL MAKE_FLOOR_LINE, 4," DD9    1 "
+		CALL MAKE_FLOOR_LINE, 5," D   1111 "
+		CALL MAKE_FLOOR_LINE, 6," D   2  2 "
+		CALL MAKE_FLOOR_LINE, 7," D   6  1 "
+		CALL MAKE_FLOOR_LINE, 8," DDD      "
+		CALL MAKE_FLOOR_LINE, 9,"   D 7DDD "
+		CALL MAKE_FLOOR_LINE,10," E D    D "
+		CALL MAKE_FLOOR_LINE,11," 2 DDD  D "
+		CALL MAKE_FLOOR_LINE,12," 1 2 D  D "
+		CALL MAKE_FLOOR_LINE,13," 111 D  D "
+		CALL MAKE_FLOOR_LINE,14,"   1 DDDD "
+		CALL MAKE_FLOOR_LINE,15," 121      "
+		CALL MAKE_FLOOR_LINE,16,"          "
+
+		;宝箱の設置
+		CALL SET_TILE,1,15,던전フラグ:8:3,0,3
+
+	CASE 4
+		FLAG:최대X = 10
+		FLAG:최대Y = 18
+		;						 01234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"          "
+		CALL MAKE_FLOOR_LINE, 1," DDDDDDDD "
+		CALL MAKE_FLOOR_LINE, 2," D  2   D "
+		CALL MAKE_FLOOR_LINE, 3," D  1 1 D "
+		CALL MAKE_FLOOR_LINE, 4," D    2 D "
+		CALL MAKE_FLOOR_LINE, 5," D DDDDDD "
+		CALL MAKE_FLOOR_LINE, 6," 2 D    D "
+		CALL MAKE_FLOOR_LINE, 7," 1   72DD "
+		CALL MAKE_FLOOR_LINE, 8," 111    D "
+		CALL MAKE_FLOOR_LINE, 9,"   116  D "
+		CALL MAKE_FLOOR_LINE,10," E 1    D "
+		CALL MAKE_FLOOR_LINE,11," 2 11   D "
+		CALL MAKE_FLOOR_LINE,12," 1 1  12D "
+		CALL MAKE_FLOOR_LINE,13," 1 1    D "
+		CALL MAKE_FLOOR_LINE,14," 11111 9D "
+		CALL MAKE_FLOOR_LINE,15,"          "
+		CALL MAKE_FLOOR_LINE,16,"          "
+
+		;宝箱の設置
+		CALL SET_TILE,6,3,던전フラグ:8:4,0,3
+		CALL SET_TILE,6,12,던전フラグ:8:5,0,3
+
+	CASE 5
+		FLAG:최대X = 10
+		FLAG:최대Y = 18
+		;						 01234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"          "
+		CALL MAKE_FLOOR_LINE, 1," 1 T 1111 "
+		CALL MAKE_FLOOR_LINE, 2," 1 2 1  1 "
+		CALL MAKE_FLOOR_LINE, 3," 11111  1 "
+		CALL MAKE_FLOOR_LINE, 4,"        2 "
+		CALL MAKE_FLOOR_LINE, 5," D2111119 "
+		CALL MAKE_FLOOR_LINE, 6," D        "
+		CALL MAKE_FLOOR_LINE, 7," D   12DD "
+		CALL MAKE_FLOOR_LINE, 8," D2D    D "
+		CALL MAKE_FLOOR_LINE, 9,"   D 7DDD "
+		CALL MAKE_FLOOR_LINE,10," E D    D "
+		CALL MAKE_FLOOR_LINE,11," 2 D 1  D "
+		CALL MAKE_FLOOR_LINE,12," 1 D 2  D "
+		CALL MAKE_FLOOR_LINE,13," 1 D DDDD "
+		CALL MAKE_FLOOR_LINE,14," 1 D    D "
+		CALL MAKE_FLOOR_LINE,15," 12DDDD2D "
+		CALL MAKE_FLOOR_LINE,16,"          "
+
+		CALL SET_TILE,5,7,던전フラグ:8:6,0,3
+		CALL SET_TILE,3,1,던전フラグ:8:11,1,9
+		CALL SET_TILE,3,1,던전フラグ:8:11,0,4
+		
+		;미즈키さんフラグ
+		SIF 이벤트フラグ:30:0 == 3 && 던전フラグ:8:22 == 0
+			CALL SET_TILE,5,11,던전フラグ:8:22,0,5004
+	CASEELSE
+ENDSELECT
+
+
+
+;=======================================================================
+;[5]調べる　実行時の이벤트
+;=======================================================================
+@EVENT_CHECK_DUNGEON_8
+
+;==========
+;出입の処理
+;==========
+IF DA:(FLAG:現X):(FLAG:現Y) == 8
+	CALL DUNGEON_EXIT
+	RETURN 1
+;========
+;宝の処理
+;========
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 3
+	CALL TREASURE_8
+	RETURN RESULT
+	
+;=======
+;階段
+;=======
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 6
+	CALL UPSTAIRS_8
+	RETURN RESULT
+
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 7
+	CALL DOWNSTAIRS_8
+	RETURN RESULT
+
+
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 9
+	CALL DUNGEON_TERMINAL
+	RETURN 1
+ELSE
+	CALL MESSAGE_WINDOW_D, , "＞何も無いようだ"
+	RETURN 0
+ENDIF
+
+;=======================================================================
+;タイル進入時の이벤트
+;=======================================================================
+@EVENT_ENTER_DUNGEON_8,ARG
+;ARG = 進入時の向き　0の場合ワープなど
+;==========
+;出입の処理
+;==========
+IF DA:(FLAG:現X):(FLAG:現Y) == 8
+	CALL DUNGEON_EXIT
+	RETURN 1
+;========
+;宝の処理
+;========
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 3
+	CALL TREASURE_8
+	RETURN RESULT
+	
+;=======
+;階段
+;=======
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 6
+	CALL UPSTAIRS_8
+	RETURN RESULT
+
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 7
+	CALL DOWNSTAIRS_8
+	RETURN RESULT
+
+
+;==========
+;扉の処理
+;==========
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 2
+	CALL DUNGEON_DOOR,ARG
+	RETURN 1
+
+
+;========================
+;이벤트
+;========================
+	
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 1001 && 던전フラグ:8:20 != 1
+	;ナイトテイル（ばら売り）時、生存者の気配を感じる
+	IF 이벤트フラグ:30:0 == 3
+		CALL MESSAGE_WINDOW_D, , "＞ドカカッ……バシッ……バキッ……！/＞激しい전투音が、どこからともなく響いている"
+		CALL MESSAGE_WINDOW_D, , "＞この異界に、まだ生存者がいるようだ"
+		던전フラグ:8:20 = 1
+		DA:(FLAG:現X):(FLAG:現Y) = -1
+		RETURN 1
+	ENDIF
+	
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 1002 && 던전フラグ:8:21 != 1
+	;ナイトテイル（ばら売り）時、宮下さんGET이벤트発生
+	IF 이벤트フラグ:30:0 == 3
+		CALL MESSAGE_WINDOW_D, , "＞머신の残骸の上で、武装した警察官らしき男が座り込んでいる。/＞옷や장비はボロボロだが、視線はまだ健在だ。/＞좀비ではないらしい。"
+		CALL MESSAGE_WINDOW_D, "미야시타 쇼고" , "「あんたは……そうか、ファントムのデビル서머너か」"
+		CALL MESSAGE_WINDOW_D, "미야시타 쇼고" , "「上の階に、取り残された職員が居るんだ。/　仲間もやられた。俺が一人で頑張ってみたが……/　情けないことに、ご覧の有様、という訳だ」"
+		CALL MESSAGE_WINDOW_D, "미야시타 쇼고" , "「頼む、あんたが何者かは分かっているつもりだが、/　協힘してはくれないか？」"
+		CALL INPUT_YN_D
+			IF RESULT == 0;y
+					CALL MESSAGE_WINDOW_D, "미야시타 쇼고" ,"「助かる。あんたの邪魔はしない」"
+					CALL MESSAGE_WINDOW_D, , "＞宮下쇼고が당신の後を付いてくる……/　少し気になるが、あちらはあちらで自衛できるようだ。/　放っておこう。"
+					던전フラグ:8:21 = 1
+					
+			ELSEIF RESULT == 1;n
+					CALL MESSAGE_WINDOW_D, "미야시타 쇼고" ,"「そうか……まあ、そうだよな」"
+					CALL MESSAGE_WINDOW_D, , "＞男はゆっくりと立ち上がると、何も言わずに上階をめざし歩いて行った……"
+					던전フラグ:8:21 = 2
+					
+			ENDIF
+
+		DA:(FLAG:現X):(FLAG:現Y) = 1
+		RETURN 1
+	ENDIF
+
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 5001 && 던전フラグ:8:22 < 1
+	IF 이벤트フラグ:30:0 == 3
+		CALL MESSAGE_WINDOW_D, , "＞扉を開けると、そこは슬라임とマグネタイトの海となっていた。/　とてつもない悪臭と共に、肉と汚物が交じり合った、/　中途半端な成れの果てが蠢いていた。"
+		
+		;宮下さんをスルーした場合、真上水紀を何やかんやできる
+		IF 던전フラグ:8:21 == 2
+			CALL MESSAGE_WINDOW_D, "真上水紀" , "「くうっ、離しなさいっ、離して……ッ！」"
+			CALL MESSAGE_WINDOW_D, , "＞수트姿の、メガネをかけた賢そうな女性が、腐肉と粘液の촉수に絡め取られている。/＞彼女の周囲には、“成り損ない”の슬라임が、打ち上げられた물고기のように、/　びちびちとのた打ち回っていた。"
+			CALL MESSAGE_WINDOW_D, , "＞あの女性、영매체질のようだ。/＞異界化に巻き込まれたせいで、保有していたマグネタイトが暴走、/　周囲で악마が“中途半端に”実体化している……と言ったところか？"
+			CALL MESSAGE_WINDOW_D, "真上水紀" , "「何よ、これっ、うう、臭いッ……/　ああっ！？　な、何をするのっ、やめて、来ないで……っ！/　がぼぼぼっ、ぶはっ！　げほっ、げほっ！」"
+			CALL MESSAGE_WINDOW_D, , "＞天井から降って来た슬라임が、女性の体を覆い、옷をジクジクと溶かしている。/　放っておくと面白いものが見られそうだが……さて、助けようか？"
+			CALL INPUT_YN_D
+				;きれいな姉貴
+				IF RESULT == 0;y
+					
+					CALL MESSAGE_WINDOW_D, , "＞당신は무기を構え슬라임たちに襲い掛かった！"
+					FLAG:도주불가フラグ = 1
+					FLAG:회화불능フラグ = 1
+					FLAG:선제기습취소 = 1
+					CALL SET_ENEMY,7,1028,35,0,1
+					CALL SET_ENEMY,8,1028,35,0,1
+					CALL SET_ENEMY,9,1028,35,0,1
+					CALL SET_ENEMY,10,1028,35,0,1
+					CALL SET_ENEMY,11,1028,35,0,1
+					CALL SET_ENEMY,13,1028,35,0,1
+					CALL SET_ENEMY,14,1028,35,0,1
+					CALL SET_ENEMY,15,1028,35,0,1
+					CALL BATTLE_START
+					FLAG:도주불가フラグ = 0
+					FLAG:회화불능フラグ = 0
+					FLAG:선제기습취소 = 0
+					CALL MESSAGE_WINDOW_D, "真上水紀" , "「げほっ、げほっ、ありがとうございます、でも、당신は……？」"
+					CALL MESSAGE_WINDOW_D, , "＞당신は、警視庁が壊滅したこと、ここが악마と暴走機械の巣であること、/　そして、自分が、팬텀・ソサエティのものであることを伝えた。/＞女はそれだけで事態を察したらしい、苦い顔をして、당신のことを睨みつけた。"
+					CALL MESSAGE_WINDOW_D, "真上水紀" , "「……拒否権は、無いようですね。/　分かりました、저항しません。당신に投降します」"
+					
+					CALL ADD_NEW_COMPANION,4634,0
+					
+					CALL MESSAGE_WINDOW_D, , "＞인간　真上水紀が奴隷になった"
+					
+					던전フラグ:8:22 = 1
+					
+				;グロマン姉貴
+				ELSEIF RESULT == 1;n
+					
+					CALL MESSAGE_WINDOW_D, , "＞眺めていると、突如、슬라임たちが脈を打って一本の太い촉수へと変わった。"
+					CALL MESSAGE_WINDOW_D, "真上水紀" , "「ああっ、やめなさいっ！　いやあ……っ！」"
+					CALL MESSAGE_WINDOW_D, , "＞女の발が、大きく抉じ開けられた。/＞整えられた陰毛が、슬라임の粘液で、鈍く粘ついて光っていた。"
+					CALL MESSAGE_WINDOW_D, , "＞女の悲鳴よりも早く、슬라임の촉수が、肉色のクレバスを貫いた。"
+					CALL MESSAGE_WINDOW_D, "真上水紀" , "「ぎっ……！？」"
+					CALL MESSAGE_WINDOW_D, , "＞鮮血が飛び散った。/＞처녀だったのかもしれないが、仮にそうでなかったとしても、팔よりも太い촉수である、/　女性器に激しい裂傷が起きたのは想像するのが容易かった。"
+					CALL MESSAGE_WINDOW_D, "真上水紀" , "「があああっ……！？　痛いっ、やめてっ、やめてえええっ！/　ひぃ……っ、ひぃ……っ、裂ける！　裂けちゃうからぁ！/　うごかっ、ないで……んがああああああ！」"
+					CALL MESSAGE_WINDOW_D, , "＞ごりっ、ぶちっ、みちちちっ！/＞슬라임の粘液で無理矢理抽挿され、女の性器は見る間に破壊されていく。/＞今なら簡가운に救助できそうだが、助けようか？"
+					
+					CALL INPUT_YN_D
+					IF RESULT == 0;y
+						
+						CALL MESSAGE_WINDOW_D, , "＞幸い、“성교”に夢中になっている슬라임は滅ぼすのが容易い。/＞당신は一撃で촉수を切り飛ばすと、女を縛めから해방した。"
+						
+						CALL MESSAGE_WINDOW_D, "真上水紀" , "「かひっ、かひっ……あ、당신、は……」"
+						CALL MESSAGE_WINDOW_D, , "＞당신は、警視庁が壊滅したこと、ここが악마と暴走機械の巣であること、/　そして、自分が、팬텀・ソサエティのものであることを伝えた。/＞女はそれだけで事態を察したらしい、아픔で涙をこぼしながら、悔しげに顔を伏せた。"
+						CALL MESSAGE_WINDOW_D, "真上水紀" , "「……誰に食べられるか、変わるだけ、なんですね。/分かりました、저항しません。당신に投降します」"
+						
+						CALL ADD_NEW_COMPANION,4634,0
+						IF RESULT == 1
+							;グロマン化
+							TALENT:(RESULT:1):처녀 = 0
+							TALENT:(RESULT:1):Ｖ둔감 = 1
+							EXP:(RESULT:1):Ｖ경험 = 20
+							EXP:(RESULT:1):Ｖ확장경험 = 20
+							EXP:(RESULT:1):촉수경험 = 20
+							EXP:(RESULT:1):이상경험 = 3
+							
+							;たくさん注がれたので레벨アップ
+							BASE:(RESULT:1):LV = 20
+							BASE:(RESULT:1):ＥＸＰ = 5*(BASE:(RESULT:1):LV - 1)*(BASE:(RESULT:1):LV)*(BASE:(RESULT:1):LV + 1)/3
+							
+						ENDIF
+						
+						CALL MESSAGE_WINDOW_D, , "＞인간　真上水紀が奴隷になった"
+						던전フラグ:8:22 = 2
+						
+					;しょんべん姉貴
+					ELSEIF RESULT == 1;n
+						
+						CALL MESSAGE_WINDOW_D, "真上水紀" , "「ンギいいいぃぃぃぃ！？　は、入って、入ってぐるぅぅぅ！/　わ、私の中にぃ、グエッ、私じゃっ、ないものが……がああ、ごえええええええええッ！/　おなっ、おなかっ……膨れ、ふくれて、げぼっ、げぼっ……/　おげえええええええええええ！？」"
+						CALL MESSAGE_WINDOW_D, , "＞슬라임が女の子宮へと侵入を始めた。/＞細かった腰はブチブチと音を立てて膨れ上がり、/　聡明さが感じられた顔も、今や知性を失い涙と吐瀉物を撒き散らすだけの/　穴ぼこと化している。"
+						CALL MESSAGE_WINDOW_D, , "＞激しい水音と共に、圧迫された膀胱から、勢いよく尿が噴出した。"
+						CALL MESSAGE_WINDOW_D, "真上水紀" , "「お……おげげっ、ごぼお……/　たすけて、課長……、このままじゃ、わたし……/　うぶっ！？」"
+						CALL MESSAGE_WINDOW_D, , "＞슬라임の“おかわり”が、天井から降って来た。/＞それらは女の顔面にまとわりつき、顎を抉じ開け、/　引き伸ばされた唇の中へ雪崩れ込んでいく。"
+						CALL MESSAGE_WINDOW_D, , "＞細かった身体が、水死体のように膨れ上がって、/　ごり、ぶち、と、/　肉と뼈が無理矢理に引きちぎられる音が重なった。"
+						CALL MESSAGE_WINDOW_D, "真上水紀" , "「ごぼぼ、ごげっ……/　부후ーっ、ふーっ……！　いや、こんなの、いやっ/　助けて、助けて、助け……ア゛」"
+						CALL MESSAGE_WINDOW_D, , "＞ボンッ。"
+						CALL MESSAGE_WINDOW_D, , "＞女の身体が、ポップコーンのように、膨らんだ。"
+						CALL MESSAGE_WINDOW_D, "真上水紀" , "「おオ……ぎょぼ、ェェ……」"
+						CALL MESSAGE_WINDOW_D, , "＞すっかり손遅れだが、これ以上はこちらへの危険もありそうだ。/　救出しようか？"
+						
+						CALL INPUT_YN_D
+						IF RESULT == 0;y
+							
+							CALL ADD_NEW_COMPANION,4634,0
+							IF RESULT == 1
+								;グロマン脱糞スカトロ姉貴（붕괴）
+								;たくさん注がれたので레벨アップ
+								BASE:(RESULT:1):LV = 40
+								BASE:(RESULT:1):ＥＸＰ = 5*(BASE:(RESULT:1):LV - 1)*(BASE:(RESULT:1):LV)*(BASE:(RESULT:1):LV + 1)/3
+								
+								TALENT:(RESULT:1):처녀 = 0
+								TALENT:(RESULT:1):Ｖ둔감 = 1
+								TALENT:(RESULT:1):Ａ둔감 = 1
+								EXP:(RESULT:1):Ｖ경험 = 50
+								EXP:(RESULT:1):Ｖ확장경험 = 50
+								EXP:(RESULT:1):촉수경험 = 50
+								EXP:(RESULT:1):이상경험 = 10
+								
+								;もうほとんど別인간화。상품価値は皆無だが조수としての使い道を残す
+								;ホラー映画でありそうな、이형の조수포지션で、がんばれ。
+								TALENT:(RESULT:1):꿋꿋함 = 0
+								TALENT:(RESULT:1):억압 = 0
+								TALENT:(RESULT:1):저항 = 0
+								TALENT:(RESULT:1):정조관념 = 0
+								TALENT:(RESULT:1):부끄럼쟁이 = 0
+								TALENT:(RESULT:1):헌신적 = 0
+								TALENT:(RESULT:1):아픔에강함 = 0
+								
+								TALENT:(RESULT:1):붕괴 = 1
+								
+								TALENT:(RESULT:1):얌전함 = 1
+								TALENT:(RESULT:1):프라이드낮음 = 1
+								TALENT:(RESULT:1):무관심 = 1
+								TALENT:(RESULT:1):감정결핍 = 1
+								TALENT:(RESULT:1):정조관결여 = 1
+								TALENT:(RESULT:1):부끄럼없음 = 1
+								TALENT:(RESULT:1):자위하기쉬움 = 1
+								TALENT:(RESULT:1):광기 = 1
+								TALENT:(RESULT:1):즉각함락 = 1
+								TALENT:(RESULT:1):새드 = 1
+								TALENT:(RESULT:1):마조 = 1
+								TALENT:(RESULT:1):포동포동 = 2
+								
+								TALENT:(RESULT:1):150 = 1
+								TALENT:(RESULT:1):유치 = 1
+								
+								TALENT:(RESULT:1):불결무시 = 1
+								TALENT:(RESULT:1):아픔에약함 = 1
+								TALENT:(RESULT:1):오줌싸개 = 1
+								EXP:(RESULT:1):방뇨경험 = 5
+								
+								
+								CSTR:(RESULT:1):タイトル = 怪奇！　弛んだ女
+								CSTR:(RESULT:1):41 = ……本来、二人は結ばれる운命にあったが、この세계ではその미라이は起こり得ない。
+								
+								CSTR:(RESULT:1):43 = マグネタイトの暴走と浸食により、彼女の身体は二눈と見られぬ化け物になってしまった。
+								CSTR:(RESULT:1):44 = 皮は弛み、뼈は曲がり、全身の신경はズタズタになった。
+								CSTR:(RESULT:1):45 = 不自然なほど白い弛んだ体の中に、もはや、理性はほとんど残っていなかった。
+								
+								;もう正気を失っているので名前を知るすべがない(해설文を見れば分かるけどな）
+								NAME:(RESULT:1) = 弛んだ女
+								CALLNAME:(RESULT:1) = 弛んだ女
+							
+							ENDIF
+							
+							CALL MESSAGE_WINDOW_D, , "＞この상태の슬라임は無防備だ。/＞당신はちょっとした術で슬라임をただのマグネタイトに変換し、/　女性を縛めから해방した。"
+							CALL MESSAGE_WINDOW_D, "真上水紀" , "「げぼぉ……」"
+							CALL MESSAGE_WINDOW_D, , "＞だが、思った通り、손遅れだったようだ。/＞女性は心だけではなく、肉体すらも壊されていた。/＞穴という穴から血と汚物を垂らし、伸び切った全身の皮をピタピタと鳴らしながら、２、３歩歩いた後……"
+							CALL MESSAGE_WINDOW_D, "真上水紀" , "「げぴ」"
+							CALL MESSAGE_WINDOW_D, , "＞潰れたカエルのように、自ら撒き散らした糞尿の上へと崩れ落ちた。"
+							CALL MESSAGE_WINDOW_D, "真上水紀" , "「ひぎぎ……わ、わだじ、ごんなァ……」"
+						
+							CALL MESSAGE_WINDOW_D, , "＞この短時間で、すっかり醜く붕괴した彼女であるが、/　腐っても영매체질だ、使い道はあるだろう。戦利品とする。/＞処分は、いつだって、出来るのだから。"
+							CALL MESSAGE_WINDOW_D, , "＞인간　弛んだ女を拾った"
+							
+							던전フラグ:8:22 = 3
+							
+						;姉貴の身体で何かが爆誕！
+						ELSEIF RESULT == 1;n
+								
+								CALL MESSAGE_WINDOW_D, "真上水紀" , "「アﾞァー……/　ふしゅ、ふしゅっ、ごぼぼぼっ……」"
+								CALL MESSAGE_WINDOW_D, , "＞肥大した顔面に押され、女のメガネが、べちょりと汚物の上へと落下した。"
+								CALL MESSAGE_WINDOW_D, , "＞彼女の身体は、元の3倍ほどに膨れ上がっていた。/＞完全に外れ、開けっ放しになった顎の中から、肉色の슬라임の飛沫が、/　沸騰した水のように忙しそうに飛び跳ねていた。"
+								CALL MESSAGE_WINDOW_D, "真上水紀" , "「ごぼぼ」"
+								CALL MESSAGE_WINDOW_D, , "＞今の彼女は、莫大なエネルギーを内包した、マグネタイトの卵である。/　あれを媒介に악마を召喚すれば、通常より強힘な個体が仲魔となってくれるだろう。/　……당신が調伏できれば、であるが。"
+								CALL MESSAGE_WINDOW_D, , "＞さて、選択肢は複数ある。どうするべきか。"
+								
+								$HAPPY_BIRTHDAY_LOOP
+								PRINTFORML 
+								PRINTFORML [100]　유귀　맨이터　の依り代にする（普通）
+								PRINTFORML [200]　사귀　웬디고　の依り代にする（強い）
+								PRINTFORML [300]　마수　미노타우로스　の依り代にする（危険）
+								PRINTFORML [400]　마왕　아리오크　　　の依り代にする（超危険！）
+								PRINTFORML [500]　放っておく
+								
+								INPUT
+								
+								IF RESULT == 100
+									;유귀　맨이터
+									CALL MESSAGE_WINDOW_D, , "＞知性派美女の成れの果てから、男狂いの尻軽女を召喚するのも悪くない。/　サ디무スティックな思いつきを実行するべく、당신は、召喚コマンドを입력した。"
+									CALL MESSAGE_WINDOW_D, "真上水紀" , "「ごぼ、ごぼぼぼぼぼ！」"
+									CALL MESSAGE_WINDOW_D, , "＞女の腹がさらに膨れ上がる。/＞ぼちゅっ！/＞圧힘に耐えかね、白い眼玉が天井눈掛けて飛び出した。"
+									CALL MESSAGE_WINDOW_D, "真上水紀" , "「ごえ」"
+									CALL MESSAGE_WINDOW_D, , "＞배꼽から、粘液にまみれた팔が飛び出した。/＞隙間から、腸が蛇花火のような動きで漏れ出した。"
+									CALL MESSAGE_WINDOW_D, , "＞女の腹を引き裂いて、一匹の악마が産まれ落ちた！"
+									
+									FLAG:도주불가フラグ = 1
+									FLAG:회화불능フラグ = 1
+									FLAG:선제기습취소 = 1
+									CALL SET_ENEMY,7,1028,35,1
+									CALL SET_ENEMY,8,1028,35,1
+									CALL SET_ENEMY,9,1028,35,1
+									CALL SET_ENEMY,10,1028,35,1
+									CALL SET_ENEMY,11,1028,35,1
+									CALL SET_ENEMY,13,1028,35,1
+									CALL SET_ENEMY,14,1007,40,2
+									;特別性맨이터
+									MAXBASE:(CHARANUM-1):검격 = 100
+									BASE:(CHARANUM-1):검격 = 100
+									MAXBASE:(CHARANUM-1):전격 = 100
+									BASE:(CHARANUM-1):전격 = 100
+									CFLAG:(CHARANUM-1):ＨＰ보정 += 500
+									CFLAG:(CHARANUM-1):ＭＰ보정 += 500
+									CFLAG:(CHARANUM-1):속도보정 = 5
+									CFLAG:(CHARANUM-1):行動횟수 = 2
+									CALL SET_ENEMY,15,1028,35,1
+									CUSTOMDRAWLINE =
+									
+									PRINTFORML 
+									PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━┓
+									PRINTFORML ┃あー、美味しかった♪　なにこのインテリ女　　┃
+									PRINTFORML ┃こんな歳まで처녀で…憧れの上司に片思いして…┃
+									PRINTFORML ┃アハ、醜い顔！　産んでくれてあ・り・が・と♪┃
+									PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━┛
+									PRINTFORMW ＞유귀　맨이터が現われた！
+									CALL BATTLE_START
+									FLAG:도주불가フラグ = 0
+									FLAG:회화불능フラグ = 0
+									FLAG:선제기습취소 = 0
+									
+									CALL MESSAGE_WINDOW_D, "맨이터" , "「당신、強いわね、당신にだったら従ってもいいわ/　でも、そのまえに……」"
+									CALL MESSAGE_WINDOW_D, ,"＞맨이터は、脱皮されて抜け殻みたいになった、女の머리を摘まみ上げた。/＞マグネタイトの影響か、まだ息があるらしい。/　潰れた声오비で、しきりに、誰かの名前を呼んでいる。"
+									CALL MESSAGE_WINDOW_D, "맨이터" , "「安心しなさい、行き遅れの인텔리안경さん。/　당신の記憶は、ぜぇんぶ私が食べちゃったから。/　あんたの地位も、家族も、思い人も。ぜぇんぶ私が、食べて、あげるから……♪」"
+									CALL MESSAGE_WINDOW_D, , "＞女は、眼球を失って空洞になった眼窩を、맨이터へ向けた。"
+									CALL MESSAGE_WINDOW_D, , "＞맨이터はサ디무スティックな笑みを浮かべると、/　ぴじゃん！　と、女の身体を壁に向かって投げ付けた。"
+									CALL MESSAGE_WINDOW_D, "유귀ミズキ" , "「さ、行きましょ、서머너さん。まだやることがあるのでしょう？」"
+									CALL MESSAGE_WINDOW_D, , "＞壁でトマトみたいになった女の亡骸を一瞥し、/　맨이터は、床に落ちていたメガネを拾って……"
+									CALL MESSAGE_WINDOW_D, , "＞同じように投げ捨てた。"
+									CALL MESSAGE_WINDOW_D, "유귀ミズキ" , "「やっぱり新しいの買お」"
+									CALL MESSAGE_WINDOW_D, , "＞유귀　ミズキ　を仲魔にした。/＞ミズキは자택서버ーへと勝손に帰った……"
+									
+									CALL ADD_NEW_COMPANION,4634,0
+									IF RESULT == 1
+										;유귀ミズキ　ほら、弟が유우키（ゆうき）くんだから……（どんな理由だ）
+										;전투もできるヤリマンといった方向で
+										;검격弱点を潰しているのでそれなり以上に戦えるはず
+										;なんでわざわざＣＳＶを流用しているのかって？　アイコンが水紀さんのものになるからですよ
+										BASE:(RESULT:1):LV = 40
+										MAXBASE:(RESULT:1):LV = 40
+										BASE:(RESULT:1):ＥＸＰ = 5*(BASE:(RESULT:1):LV - 1)*(BASE:(RESULT:1):LV)*(BASE:(RESULT:1):LV + 1)/3
+										
+										;基準値78+10　ちょっと強めで
+										BASE:(RESULT:1):힘 = 30
+										BASE:(RESULT:1):지혜 = 5
+										BASE:(RESULT:1):마력 = 8
+										BASE:(RESULT:1):인내력 = 20
+										BASE:(RESULT:1):속도 = 20
+										BASE:(RESULT:1):운 = 5
+										MAXBASE:(RESULT:1):힘 = 30
+										MAXBASE:(RESULT:1):지혜 = 5
+										MAXBASE:(RESULT:1):마력 = 8
+										MAXBASE:(RESULT:1):인내력 = 20
+										MAXBASE:(RESULT:1):속도 = 20
+										MAXBASE:(RESULT:1):운 = 5
+										
+										;화염・파마・질풍弱点
+										;타격・전술減衰
+										;비구無効
+										;주살반사
+										BASE:(RESULT:1):검격 = 100
+										BASE:(RESULT:1):비구 = 0
+										BASE:(RESULT:1):타격 = 75
+										BASE:(RESULT:1):전술 = 50
+										BASE:(RESULT:1):화염 = 125
+										BASE:(RESULT:1):빙결 = 100
+										BASE:(RESULT:1):전격 = 100
+										BASE:(RESULT:1):충격 = 100
+										BASE:(RESULT:1):신경 = 100
+										BASE:(RESULT:1):정신 = 100
+										BASE:(RESULT:1):파마 = 200
+										BASE:(RESULT:1):주살 = 999
+										BASE:(RESULT:1):지변 = 100
+										BASE:(RESULT:1):수격 = 100
+										BASE:(RESULT:1):질풍 = 125
+										BASE:(RESULT:1):중력 = 100
+										BASE:(RESULT:1):핵열 = 100
+										BASE:(RESULT:1):만능 = 100
+										BASE:(RESULT:1):사이코 = 100
+										MAXBASE:(RESULT:1):검격 = 100
+										MAXBASE:(RESULT:1):비구 = 0
+										MAXBASE:(RESULT:1):타격 = 75
+										MAXBASE:(RESULT:1):전술 = 50
+										MAXBASE:(RESULT:1):화염 = 125
+										MAXBASE:(RESULT:1):빙결 = 100
+										MAXBASE:(RESULT:1):전격 = 100
+										MAXBASE:(RESULT:1):충격 = 100
+										MAXBASE:(RESULT:1):신경 = 100
+										MAXBASE:(RESULT:1):정신 = 100
+										MAXBASE:(RESULT:1):파마 = 200
+										MAXBASE:(RESULT:1):주살 = 999
+										MAXBASE:(RESULT:1):지변 = 100
+										MAXBASE:(RESULT:1):수격 = 100
+										MAXBASE:(RESULT:1):질풍 = 125
+										MAXBASE:(RESULT:1):중력 = 100
+										MAXBASE:(RESULT:1):핵열 = 100
+										MAXBASE:(RESULT:1):만능 = 100
+										MAXBASE:(RESULT:1):사이코 = 100
+										
+										;깨달음えるものは맨이터のCSVに倣う＋α
+										;돌려차기・マヒ噛み付き・マカンダ・흡혈
+										ABL:(RESULT:1):스킬1 = 204
+										ABL:(RESULT:1):스킬2 = 323
+										ABL:(RESULT:1):스킬3 = 556
+										ABL:(RESULT:1):스킬4 = 2013
+										;섹시댄스・데스샤워・지옥떨구기
+										ABL:(RESULT:1):습득스킬1 = 1212
+										ABL:(RESULT:1):습득스킬2 = 148
+										ABL:(RESULT:1):습득스킬3 = 1511
+										
+										ABL:(RESULT:1):습득LV1 = 42
+										ABL:(RESULT:1):습득LV2 = 44
+										ABL:(RESULT:1):습득LV3 = 46
+										
+										TALENT:(RESULT:1):비전투원 = 0
+										TALENT:(RESULT:1):영매체질 = 0
+										
+										;ヤリマン처녀とはコレ如何に（처녀ないと음란付けづらいし……）
+										TALENT:(RESULT:1):처녀 = 1
+										TALENT:(RESULT:1):Ｖ민감 = 1
+										TALENT:(RESULT:1):Ｃ민감 = 0
+										TALENT:(RESULT:1):Ｃ둔감 = 1
+										EXP:(RESULT:1):이상경험 = 1
+										
+										;別人なんで、総とっかえ
+										TALENT:(RESULT:1):꿋꿋함 = 0
+										TALENT:(RESULT:1):억압 = 0
+										TALENT:(RESULT:1):저항 = 0
+										TALENT:(RESULT:1):정조관념 = 0
+										TALENT:(RESULT:1):부끄럼쟁이 = 0
+										TALENT:(RESULT:1):헌신적 = 0
+										
+										TALENT:(RESULT:1):아픔에강함 = 1
+										TALENT:(RESULT:1):부끄럼없음 = 1
+										TALENT:(RESULT:1):정조관결여 = 1
+										TALENT:(RESULT:1):해방 = 1
+										TALENT:(RESULT:1):건방짐 = 1
+										TALENT:(RESULT:1):츤데레 = 1
+										TALENT:(RESULT:1):호기심 = 1
+										TALENT:(RESULT:1):낙관적 = 1
+										TALENT:(RESULT:1):눈에띄고싶어함 = 1
+										TALENT:(RESULT:1):쾌감에솔직 = 1
+										TALENT:(RESULT:1):매혹 = 1
+										TALENT:(RESULT:1):고무 = 1
+										TALENT:(RESULT:1):회복빠름 = 1
+										
+										TALENT:(RESULT:1):새드 = 1
+										TALENT:(RESULT:1):불결무시 = 1
+										
+										ABL:(RESULT:1):욕망 = 2
+										ABL:(RESULT:1):기교 = 3
+										
+										;외도
+										ABL:(RESULT:1):종족 = 11
+										CSTR:(RESULT:1):종족명 = 유귀
+										
+										;D-C
+										ABL:(RESULT:1):속성LD = 3
+										ABL:(RESULT:1):속성LC = 3
+										
+										TALENT:(RESULT:1):전술 = 1
+										TALENT:(RESULT:1):신경 = 1
+										TALENT:(RESULT:1):주살 = 1
+										
+										;메가인텔리안경を産む！
+										ABL:(RESULT:1):수태아이템 = 5022
+										
+										CSTR:(RESULT:1):一人称 = 私
+										CSTR:(RESULT:1):二人称 = 서머너
+										
+										CSTR:(RESULT:1):タイトル = 음란女事務員
+										CSTR:(RESULT:1):41 = ……本来、二人は結ばれる운命にあったが、この세계ではそんな미라이は起こり得ない。
+										
+										CSTR:(RESULT:1):43 = これは、水紀の皮をかぶった、악마である。
+										CSTR:(RESULT:1):44 = 本来の彼女はもう死んだ。苗床にされた挙句、壁にたたきつけられて脳髄が弾け飛んだ。
+										CSTR:(RESULT:1):45 = 彼女の記憶と容姿を喰らって誕生したのがこの악마である。
+										
+										NAME:(RESULT:1) = ミズキ
+										CALLNAME:(RESULT:1) = ミズキ
+										
+										CALL SYNC_STATUS,(RESULT:1)
+										CALL HEALTH_CHARA,(RESULT:1)
+										
+									ENDIF
+									
+									던전フラグ:8:22 = 4
+									
+								ELSEIF RESULT == 200
+									;사귀　웬디고
+									CALL MESSAGE_WINDOW_D, , "＞ふむ、どうやら웬디고と相性が良い肉体のようだ。/　당신はCOMPのコマンドを叩き、사귀召喚を実行した。"
+									CALL MESSAGE_WINDOW_D, "真上水紀" , "「ごぼ、ごぼぼぼぼぼ！」"
+									CALL MESSAGE_WINDOW_D, , "＞女の腹がさらに膨れ上がる。/＞ぼちゅっ！/＞圧힘に耐えかね、白い眼玉が天井눈掛けて飛び出した。"
+									CALL MESSAGE_WINDOW_D, "真上水紀" , "「ごえ」"
+									CALL MESSAGE_WINDOW_D, , "＞배꼽から、粘液にまみれた毛むくじゃらの팔が飛び出した。/　そして隙間から、腸が蛇花火のような動きで漏れ出した。"
+									CALL MESSAGE_WINDOW_D, , "＞女の腹を引き裂いて、一匹の악마が産まれ落ちた！"
+									
+									FLAG:도주불가フラグ = 1
+									FLAG:회화불능フラグ = 1
+									FLAG:선제기습취소 = 1
+									CALL SET_ENEMY,7,1028,35,2
+									CALL SET_ENEMY,8,1028,35,2
+									CALL SET_ENEMY,9,1028,35,2
+									CALL SET_ENEMY,10,1028,35,2
+									CALL SET_ENEMY,11,1028,35,2
+									CALL SET_ENEMY,13,1028,35,2
+									CALL SET_ENEMY,14,666,45,3
+									;特別性ウェン디무ゴ
+									MAXBASE:(CHARANUM-1):만능 = 100
+									BASE:(CHARANUM-1):만능 = 100
+									CFLAG:(CHARANUM-1):ＨＰ보정 = 500
+									CFLAG:(CHARANUM-1):ＭＰ보정 = 9999
+									CFLAG:(CHARANUM-1):속도보정 = 5
+									CFLAG:(CHARANUM-1):行動횟수 = 3
+									
+									;펨파트라を무거운공기に
+									ABL:(CHARANUM-1):스킬6 = 519
+									
+									TALENT:(CHARANUM-1):남자 = 0
+									TALENT:(CHARANUM-1):절벽 = 0
+									TALENT:(CHARANUM-1):우둔 = 0
+									;무인
+									ABL:(CHARANUM-1):회화타입 = 311
+									
+									CALL SET_ENEMY,15,1028,35,1
+									CUSTOMDRAWLINE =
+									
+									PRINTFORML 
+									PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━┓
+									PRINTFORML ┃悪趣味な召喚だ、だが、それが故に俺が呼ばれた┃
+									PRINTFORML ┃인간よ、힘を示せ　　　　　　　　　　　　　　┃
+									PRINTFORML ┃俺を打ちのめすことができるのなら汝に従おう　┃
+									PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━┛
+									PRINTFORMW ＞요귀　웬디고が現われた！
+									CALL BATTLE_START
+									FLAG:도주불가フラグ = 0
+									FLAG:회화불능フラグ = 0
+									FLAG:선제기습취소 = 0
+									
+									CALL ADD_NEW_COMPANION,666,200,1
+									
+									IF RESULT == 1
+										;요귀ミズキ　弟がウェン디무ゴと縁があったので……
+										BASE:(RESULT:1):LV = 45
+										MAXBASE:(RESULT:1):LV = 45
+										BASE:(RESULT:1):ＥＸＰ = 5*(BASE:(RESULT:1):LV - 1)*(BASE:(RESULT:1):LV)*(BASE:(RESULT:1):LV + 1)/3
+										
+										;基準値85.5+10　ちょっと強めで/魔型に調整し얼음의난무を有効活用できるように
+										BASE:(RESULT:1):힘 = 7
+										BASE:(RESULT:1):지혜 = 23
+										BASE:(RESULT:1):마력 = 34
+										BASE:(RESULT:1):인내력 = 10
+										BASE:(RESULT:1):속도 = 20
+										BASE:(RESULT:1):운 = 1
+										MAXBASE:(RESULT:1):힘 = 7
+										MAXBASE:(RESULT:1):지혜 = 23
+										MAXBASE:(RESULT:1):마력 = 34
+										MAXBASE:(RESULT:1):인내력 = 10
+										MAXBASE:(RESULT:1):속도 = 20
+										MAXBASE:(RESULT:1):운 = 1
+										
+										;만능を200から100に
+										;수격を100から-50に
+										;주살を 50から999に
+										;정신を100から999に
+										MAXBASE:(RESULT:1):만능 = 100
+										BASE:(RESULT:1):만능 = 100
+										MAXBASE:(RESULT:1):수격 = -50
+										BASE:(RESULT:1):수격 = -50
+										MAXBASE:(RESULT:1):주살 = 999
+										BASE:(RESULT:1):주살 = 999
+										MAXBASE:(RESULT:1):정신 = 999
+										BASE:(RESULT:1):정신 = 999
+										
+										TALENT:(RESULT:1):남자 = 0
+										TALENT:(RESULT:1):절벽 = 0
+										TALENT:(RESULT:1):우둔 = 0
+										TALENT:(RESULT:1):해방 = 0
+										
+										TALENT:(RESULT:1):처녀 = 1
+										TALENT:(RESULT:1):Ｃ민감 = 1
+										TALENT:(RESULT:1):Ｂ민감 = 1
+										TALENT:(RESULT:1):프라이드높음 = 1
+										TALENT:(RESULT:1):일선을넘지않음 = 1
+										TALENT:(RESULT:1):억압 = 1
+										TALENT:(RESULT:1):불결무시 = 1
+										TALENT:(RESULT:1):헌신적 = 1
+										TALENT:(RESULT:1):절벽 = 1
+										TALENT:(RESULT:1):바이 = 1
+										TALENT:(RESULT:1):아픔에강함 = 1
+										TALENT:(RESULT:1):현명 = 1
+										
+										;무인
+										ABL:(RESULT:1):회화타입 = 311
+										
+										;ウェン디무ゴそのまま
+										ABL:(RESULT:1):스킬1 = 802
+										ABL:(RESULT:1):스킬2 = 805
+										ABL:(RESULT:1):스킬3 = 101
+										ABL:(RESULT:1):스킬4 = 204
+										
+										ABL:(RESULT:1):스킬5 = 809
+										ABL:(RESULT:1):스킬6 = 409
+										ABL:(RESULT:1):스킬7 = 520
+										ABL:(RESULT:1):스킬8 = 815
+										
+										;무거운공기・머리깨기・아토믹・부후라
+										ABL:(RESULT:1):습득스킬1 = 519
+										ABL:(RESULT:1):습득스킬2 = 355
+										ABL:(RESULT:1):습득스킬3 = 812
+										
+										
+										ABL:(RESULT:1):습득LV1 = 48
+										ABL:(RESULT:1):습득LV2 = 50
+										ABL:(RESULT:1):습득LV3 = 75
+										
+										ABL:(RESULT:1):습득스킬4 = 0
+										ABL:(RESULT:1):습득스킬5 = 0
+										ABL:(RESULT:1):습득LV4 = 0
+										ABL:(RESULT:1):습득LV5 = 0
+										
+										;메가인텔리안경を産む！
+										ABL:(RESULT:1):수태아이템 = 5022
+										
+										CSTR:(RESULT:1):11 = 俺
+										CSTR:(RESULT:1):12 = マスター
+										
+										CSTR:(RESULT:1):タイトル = 女野蛮人
+										CSTR:(RESULT:1):36 = この個体は、真上水紀の身体を母体として召喚された特別な악마である。
+										
+										CSTR:(RESULT:1):38 = この魔都で召喚されるものは、지혜や마력が低い個体が大半であるが、
+										CSTR:(RESULT:1):39 = 彼女は魔法を得意とし、高い知性を持っている。
+										
+										NAME:(RESULT:1) = ミズキ
+										CALLNAME:(RESULT:1) = ミズキ
+										
+										CALL SYNC_STATUS,(RESULT:1)
+										CALL HEALTH_CHARA,(RESULT:1)
+										
+									ENDIF
+									
+									CALL MESSAGE_WINDOW_D, "웬디고" , "「なるほど、俺は他の“俺”より、少しばかり현명ようだ。/　自分で言うのもなんだが、流暢に言葉を話すことができる。/　この女の記憶を喰らったせいだろうな」"
+									CALL MESSAGE_WINDOW_D, , "＞ウェン디무ゴは、脱皮された抜け殻みたいになった、女の머리を摘まみ上げた。/＞マグネタイトの影響か、まだ息があるらしい。/　潰れた声오비で、しきりに、誰かの名前を呼んでいる。"
+									CALL MESSAGE_WINDOW_D, "웬디고" , "「哀れなヤツだ」"
+									CALL MESSAGE_WINDOW_D, , "＞女は、眼球を失って空洞になった眼窩を、ウェン디무ゴへ向けた。/＞ウェン디무ゴは、野菜スティックでも齧るかのような気軽さで、/　女の머리を噛み千切った。"
+									CALL MESSAGE_WINDOW_D, "웬디고" , "「うむ、いい味だ。/　さて、これで、マガミ・ミズキの記憶を持つものは、/　俺一人となったわけだ」"
+									CALL MESSAGE_WINDOW_D, , "＞웬디고……いや、“ミズキ”は、/　残った女の肉体をいそいそと입に押し込むと、満발げに입元を拭った。"
+									CALL MESSAGE_WINDOW_D, "ミズキ" , "「行くぞマスター、もうここに用事は無いだろう？」"
+									CALL MESSAGE_WINDOW_D, , "＞사귀　ミズキ　を仲魔にした。"
+									
+									
+									던전フラグ:8:22 = 5
+									
+								ELSEIF RESULT == 300
+									;ミノ
+									CALL MESSAGE_WINDOW_D, , "＞これだけのマグネタイトがあれば、大物を呼ぶことができるだろう。/당신はCOMPのコンソールを叩き、마수召喚のコマンドを打ち込んだ。"
+									CALL MESSAGE_WINDOW_D, "真上水紀" , "「ごぼ、ごぼぼぼぼぼ！」"
+									CALL MESSAGE_WINDOW_D, , "＞女の腹がさらに膨れ上がる。/＞ぼちゅっ！/＞圧힘に耐えかね、白い眼玉が天井눈掛けて飛び出した。"
+									CALL MESSAGE_WINDOW_D, "真上水紀" , "「オゴゴゴ……ゴゲッ……ゴゲゲッ……/　……げべっ」"
+									CALL MESSAGE_WINDOW_D, , "＞それが才女の断末魔となった。"
+									CALL MESSAGE_WINDOW_D, , "＞限界まで膨れ上がった身体が、水風船のように破裂した。"
+
+									FLAG:도주불가フラグ = 1
+									FLAG:회화불능フラグ = 1
+									FLAG:선제기습취소 = 1
+									CALL SET_ENEMY,9,869,55,3
+									;特別性미노타우로스
+									MAXBASE:(CHARANUM-1):화염 = 100
+									BASE:(CHARANUM-1):화염 = 100
+									MAXBASE:(CHARANUM-1):빙결 = 100
+									BASE:(CHARANUM-1):빙결 = 100
+									MAXBASE:(CHARANUM-1):질풍 = 100
+									BASE:(CHARANUM-1):질풍 = 100
+									CFLAG:(CHARANUM-1):ＨＰ보정 = 1000
+									CFLAG:(CHARANUM-1):ＭＰ보정 = 5000
+									CFLAG:(CHARANUM-1):속도보정 = 5
+									CFLAG:(CHARANUM-1):行動횟수 = 4
+									CSTR:(CHARANUM-1):종족명 = 마수
+
+									;짐승
+									ABL:(CHARANUM-1):회화타입 = 329
+									
+									CUSTOMDRAWLINE =
+									
+									PRINTFORML 
+									PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━┓
+									PRINTFORML ┃ガァーッ！　オレ　ウマレタ！　オメデトウ！　┃
+									PRINTFORML ┃オレ　アバレル！　ジャマ　スルナ！　アア　　┃
+									PRINTFORML ┃ナニ　コノ　カラダ　コンナノ　ワタシジャ……┃
+									PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━┛
+									PRINTFORMW ＞마수　미노타우로스が現われた！
+									CALL BATTLE_START
+									FLAG:도주불가フラグ = 0
+									FLAG:회화불능フラグ = 0
+									FLAG:선제기습취소 = 0
+									
+									CALL ADD_NEW_COMPANION,869,200,1
+									IF RESULT == 1
+										;미노타우로스ミズキ　ごずき・めずき、みずきってね。
+										BASE:(RESULT:1):LV = 55
+										MAXBASE:(RESULT:1):LV = 55
+										BASE:(RESULT:1):ＥＸＰ = 5*(BASE:(RESULT:1):LV - 1)*(BASE:(RESULT:1):LV)*(BASE:(RESULT:1):LV + 1)/3
+										
+										;基準値100.5+10　ちょっと強めで
+										BASE:(RESULT:1):힘 = 50
+										BASE:(RESULT:1):지혜 = 1
+										BASE:(RESULT:1):마력 = 6
+										BASE:(RESULT:1):인내력 = 30
+										BASE:(RESULT:1):속도 = 20
+										BASE:(RESULT:1):운 = 3
+										MAXBASE:(RESULT:1):힘 = 50
+										MAXBASE:(RESULT:1):지혜 = 1
+										MAXBASE:(RESULT:1):마력 = 6
+										MAXBASE:(RESULT:1):인내력 = 30
+										MAXBASE:(RESULT:1):속도 = 20
+										MAXBASE:(RESULT:1):운 = 3
+										
+										;一部の弱点を潰す
+										MAXBASE:(RESULT:1):화염 = 100
+										BASE:(RESULT:1):화염 = 100
+										MAXBASE:(RESULT:1):빙결 = 100
+										BASE:(RESULT:1):빙결 = 100
+										MAXBASE:(RESULT:1):충격 = 100
+										BASE:(RESULT:1):충격 = 100
+										
+										TALENT:(RESULT:1):남자 = 0
+										TALENT:(RESULT:1):후타나리 = 1
+										TALENT:(RESULT:1):처녀 = 1
+										TALENT:(RESULT:1):거유 = 1
+										TALENT:(RESULT:1):巨尻 = 1
+										TALENT:(RESULT:1):후타나리 = 1
+										TALENT:(RESULT:1):눈에띄고싶어함 = 1
+										TALENT:(RESULT:1):바이 = 1
+										TALENT:(RESULT:1):저항 = 1
+										TALENT:(RESULT:1):프라이드높음 = 1
+										TALENT:(RESULT:1):건방짐 = 1
+										TALENT:(RESULT:1):반항적 = 1
+										TALENT:(RESULT:1):보수적 = 1
+										TALENT:(RESULT:1):젖기쉬움 = 1
+										TALENT:(RESULT:1):Ｃ민감 = 1
+										TALENT:(RESULT:1):Ｂ민감 = 1
+										TALENT:(RESULT:1):새드 = 1
+										TALENT:(RESULT:1):크고아름다움 = 1
+										TALENT:(RESULT:1):절륜 = 1
+										
+										TALENT:(RESULT:1):우둔 = 0
+										
+										TALENT:(RESULT:1):짐승 = 1
+										TALENT:(RESULT:1):모피 = 1
+										TALENT:(RESULT:1):꼬리 = 1
+										
+										;무인
+										ABL:(RESULT:1):회화타입 = 311
+										
+										;ミノそのままだが、마하・지오다인は無し
+										ABL:(RESULT:1):스킬1 = 931
+										ABL:(RESULT:1):스킬2 = 327
+										ABL:(RESULT:1):스킬3 = 511
+										ABL:(RESULT:1):스킬4 = 514
+										
+										ABL:(RESULT:1):스킬5 = 211
+										ABL:(RESULT:1):스킬6 = 69
+										ABL:(RESULT:1):스킬7 = 515
+										ABL:(RESULT:1):스킬8 = 205
+										
+										;길로틴블레이드・이할의활천・육탄
+										ABL:(RESULT:1):습득스킬1 = 60
+										ABL:(RESULT:1):습득스킬2 = 2401
+										ABL:(RESULT:1):습득스킬3 = 248
+										
+										ABL:(RESULT:1):습득LV1 = 60
+										ABL:(RESULT:1):습득LV2 = 65
+										ABL:(RESULT:1):습득LV3 = 75
+										
+										;메가인텔리안경を産む！
+										ABL:(RESULT:1):수태아이템 = 5022
+										
+										CSTR:(RESULT:1):11 = 私
+										CSTR:(RESULT:1):12 = お前
+										
+										;마왕→마수へ
+										CSTR:(RESULT:1):종족명 = 마수
+										
+										CSTR:(RESULT:1):タイトル = 巨根の牝牛
+										CSTR:(RESULT:1):43 = この個体は、真上水紀の身体を母体として召喚された特別な악마である。
+										
+										CSTR:(RESULT:1):45 = イレギュラーな召喚により、身体や정신に変調があるものの、その能力は通常の個体より高い。
+										CSTR:(RESULT:1):46 = ただし、その分、気位や凶暴さもこちらの方が上であり、扱いは慎重に行う필요がある。
+										
+										NAME:(RESULT:1) = ミズキ
+										CALLNAME:(RESULT:1) = ミズキ
+										
+										CALL SYNC_STATUS,(RESULT:1)
+										CALL HEALTH_CHARA,(RESULT:1)
+										
+									ENDIF
+									
+									CALL MESSAGE_WINDOW_D, "미노타우로스" , "「ワタシ　ワタシハ　ア곰　ジャ　ナイ……/　ド　ドウシテ　コンナ　アア！」"
+									CALL MESSAGE_WINDOW_D, , "＞どうやら、イレギュラーな召喚であったせいで、/　미노타우로스のアイデンティティが混乱しているようだ。"
+									CALL MESSAGE_WINDOW_D, "미노타우로스" , "「コ　コンナノ　ウソヨ　アリエナイ……/　タスケテ　タスケテ　ショウゴ　サン/　コンナ　ケムクジャラノ　カラダ　イヤァ……ブモオオオオオーン！」"
+									CALL MESSAGE_WINDOW_D, , "＞巨大な규키は、見た눈に似合わぬ女々しい言葉を上げながら、머리を抱えてのた打ち回っている。/　가랑이では、棍棒めいた男性器が、ブルンブルンとそそり立っていた。/＞身体も心も変調しているようだ。せめて정신を安定せなければ使い物にならないのだが……。"
+									CALL MESSAGE_WINDOW_D, , "＞と、不意に미노타우로스の動きが止まった。/　악마は、발元に落ちていた襤褸切れのようなものを摘まみ上げると、不思議そうに首を傾げた。"
+									CALL MESSAGE_WINDOW_D, "미노타우로스" ,"「ニンゲンノ　アタマ　ダ」"
+									CALL MESSAGE_WINDOW_D, , "＞はじけ飛んだ女の残骸だろう。/　미노타우로스は、躊躇いもなくヒョイと입に放り込むと、しばらくゴリゴリと咀嚼した。"
+									CALL MESSAGE_WINDOW_D, "미노타우로스" , "「ウムウム　ニンゲンノ　オンナダ。/　ドウセナラ　イキタ　オンナヲ　おチンチンで、貫きたかったな。/　……どうした、인간。私を従えるのだろう？」"
+									CALL MESSAGE_WINDOW_D, , "そう言って규키は笑った。"
+									CALL MESSAGE_WINDOW_D, "미노타우로스" , "「お前は強い、強い奴は、偉い。そうでしょう？」"
+									CALL MESSAGE_WINDOW_D, , "＞母体の残骸と一緒に、魂までも食らったのか？/＞急に理性を見せ始めた미노타우로스だったが、使い物になるならしめたものだ。"
+									CALL MESSAGE_WINDOW_D, "미노타우로스" , "「私のことはミズキと呼べ。/　その名前で呼ばれると、不思議とおチンチンが勃起する/　興奮するんだ」"
+									CALL MESSAGE_WINDOW_D, , "＞마수　ミズキ　を仲魔にした。"
+									
+									던전フラグ:8:22 = 6
+									
+								ELSEIF RESULT == 400
+								
+									;아리오크　やりこみ要素だぞ
+									CALL MESSAGE_WINDOW_D, , "＞これだけのマグネタイトがあれば、大物を呼ぶことができるだろう。/　更に、ここは異界だ。通常ではありえないようなものだって呼び出せる。/　당신は期待に가슴を躍らせながら、『마왕召喚』のコマンドを打ち込んだ。"
+									CALL MESSAGE_WINDOW_D, "真上水紀" , "「ごぼ、ごぼぼぼぼぼ！」"
+									CALL MESSAGE_WINDOW_D, , "＞女の腹がさらに膨れ上がる。/　ぼちゅっ！/　圧힘に耐えかね、白い眼玉が天井눈掛けて飛び出した。"
+									CALL MESSAGE_WINDOW_D, "真上水紀" , "「オゴゴゴ……ゴゲッ……ゴゲゲッ……/　……ごべ」"
+									CALL MESSAGE_WINDOW_D, , "＞それが彼女の、인간としての最期の言葉となった。"
+									CALL MESSAGE_WINDOW_D, , "＞膨張が止まった。禍々しい瘴気で景色が歪んでゆく。/＞何者かの笑い声がする。/＞限界まで膨れ上がった女の身体が、紫色に変色する！"
+
+									FLAG:도주불가フラグ = 1
+									FLAG:회화불능フラグ = 1
+									FLAG:선제기습취소 = 1
+									CALL SET_ENEMY,9,268,72,3
+									;特別性아리오크様
+									CFLAG:(CHARANUM-1):ＨＰ보정 = 2500
+									CFLAG:(CHARANUM-1):ＭＰ보정 = 5000
+									CFLAG:(CHARANUM-1):속도보정 = 5
+									CFLAG:(CHARANUM-1):行動횟수 = 5
+									
+									;마하・부후다인추가
+									ABL:(CHARANUM-1):스킬7 = 806
+									;마하・무도온추가
+									ABL:(CHARANUM-1):스킬8 = 1413
+									
+									CUSTOMDRAWLINE =
+									
+									PRINTFORML 
+									SETCOLOR 0xff0033
+									PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━┓
+									PRINTFORML ┃欲に駆られたな、矮小なるものよ……。　　　　┃
+									PRINTFORML ┃我が身は復讐。我が名は、마왕　아리오크。　　┃
+									PRINTFORML ┃女の無念で研がれた我が牙の鋭さ　とくと味わえ┃
+									PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━┛
+									RESETCOLOR
+									PRINTFORMW ＞마왕　아리오크が現われた！
+									CALL BATTLE_START
+									FLAG:도주불가フラグ = 0
+									FLAG:회화불능フラグ = 0
+									FLAG:선제기습취소 = 0
+									
+									CALL ADD_NEW_COMPANION,268,200,1
+									IF RESULT == 1
+										;아리오크様はほぼそのまま（素の레벨が67だし……）
+										
+										;取得스킬を増やしてみよう
+										;텐타라후・베어먹기・삼할의활천
+										ABL:(RESULT:1):습득스킬4 = 1226
+										ABL:(RESULT:1):습득스킬5 = 326
+										ABL:(RESULT:1):습득스킬6 = 2402
+										
+										ABL:(RESULT:1):습득LV4 = 75
+										ABL:(RESULT:1):습득LV5 = 79
+										ABL:(RESULT:1):습득LV6 = 82
+										
+										;その分、조교素質を盛る
+										TALENT:(RESULT:1):처녀 = 1
+										TALENT:(RESULT:1):폭유 = 1
+										TALENT:(RESULT:1):거유 = 0
+										TALENT:(RESULT:1):爆尻 = 1
+										TALENT:(RESULT:1):푸른피부 = 1
+										TALENT:(RESULT:1):포동포동 = 2
+										
+										TALENT:(RESULT:1):저항 = 1
+										TALENT:(RESULT:1):건방짐 = 1
+										TALENT:(RESULT:1):반항적 = 1
+										TALENT:(RESULT:1):보수적 = 1
+										TALENT:(RESULT:1):츤데레 = 1
+										TALENT:(RESULT:1):젖기쉬움 = 1
+										TALENT:(RESULT:1):Ｂ둔감 = 0
+										TALENT:(RESULT:1):Ｃ민감 = 1
+										TALENT:(RESULT:1):Ｂ민감 = 1
+										
+										EXP:(RESULT:1):Ｖ경험 = 0
+										
+										;무인
+										ABL:(RESULT:1):회화타입 = 311
+										
+										;메가인텔리안경を産む！
+										ABL:(RESULT:1):수태아이템 = 5022
+										
+										CSTR:(RESULT:1):タイトル = 巨大女性器
+										CSTR:(RESULT:1):36 = この個体は、真上水紀の身体を母体として召喚された特別な악마である。
+										
+										CSTR:(RESULT:1):38 = 大量のマグネタイトと、女の『無念』によって召喚された彼女は、
+										CSTR:(RESULT:1):39 = しかし、そんな自分を打ちのめした“당신”に惹かれ、仲魔となった。
+										CSTR:(RESULT:1):40 = ……己の依り代となった矮小な女など、既に머리に無い様子である。
+										
+										NAME:(RESULT:1) = ミズキ・아리오크
+										CALLNAME:(RESULT:1) = ミズキ・아리오크
+										
+										CALL SYNC_STATUS,(RESULT:1)
+										CALL HEALTH_CHARA,(RESULT:1)
+										
+									ENDIF
+									
+									CALL MESSAGE_WINDOW_D, "아리오크" , "「たかが인간と、侮っていた。/　さあ、とどめを刺すがよい、검は折れ、我が관も打ち砕かれた」"
+									CALL MESSAGE_WINDOW_D, , "＞満身創痍となった마왕は、潔くその場に座り込んだ。/＞殺してしまっては意味がない。/＞당신は強い仲魔を探していること、自分の軍門に下ってほしいことを伝えた。"
+									CALL MESSAGE_WINDOW_D, "아리오크" , "「なんと、我の힘を欲するか！/　인간よ、なかなか見る눈があるではないか。/　それに、よく눈を凝らせば、なるほど、良い面構えをしている……。」"
+									CALL MESSAGE_WINDOW_D, , "＞아리오크は、당신を値踏みするように眺めたあと、不적な笑みを浮かべた。"
+									CALL MESSAGE_WINDOW_D, "아리오크" , "「おのれ、小賢しき인간め。/　我が、復讐の牙を折っただけでは飽き발らず、我が心までも捉えようとするとは。/　……好かろう」"
+									CALL MESSAGE_WINDOW_D, , "＞마왕は同意し、당신と계약を交わした。"
+									CALL MESSAGE_WINDOW_D, "아리오크" , "「しかし、ゆめゆめ忘れるなよ、我が牙の鋭きことをな」"
+									CALL MESSAGE_WINDOW_D, , "＞마왕　ミズキ・아리오크　を仲魔にした。"
+									
+									던전フラグ:8:22 = 7
+									
+								ELSEIF RESULT == 500
+									;放置プ레이
+									CALL MESSAGE_WINDOW_D, , "＞このまま放っておいたらどうなるだろうか？/　당신は、호기심の赴くまま、状況を見守ることとした。"
+									CALL MESSAGE_WINDOW_D, "真上水紀" , "「ごぼ、ごぼぼぼぼぼ！」"
+									CALL MESSAGE_WINDOW_D, , "＞女の腹がさらに膨れ上がる。/＞ぼちゅっ！/＞圧힘に耐えかね、白い眼玉が天井눈掛けて飛び出した。"
+									CALL MESSAGE_WINDOW_D, , "＞腸は脱肛し、배꼽がブルンと音を立てて裏返った。"
+									CALL MESSAGE_WINDOW_D, "真上水紀" , "「ごぼぼっ、ぼぼ」"
+									CALL MESSAGE_WINDOW_D, , "＞皮膚が토오루けてきた……/　肉体の分子結合が、高圧のマグネタイトに負けて溶解してきたようだ。/＞신경も誤動作を始めたらしい、/　ぶよぶよに膨れ上がった손발が、電気を走らせたみたいに痙攣している。"
+									CALL MESSAGE_WINDOW_D, "真上水紀" , "「ごピェっ」"
+									CALL MESSAGE_WINDOW_D, , "＞それが麗しき才女の最期の言葉となった。/＞ねっとりと糸を引きながら、喉が割れ、/　首が、입角が、ミチミチと音を立てて千切れて、糸を引きながら床へと着いた。"
+									CALL MESSAGE_WINDOW_D, , "＞ぱつん、ぱつん。"
+									CALL MESSAGE_WINDOW_D, , "＞皮膚が弾ける。/　緑色の粘液が、肉の割れ눈から飛び出してくる。/＞たちまちのうちに身体が崩れ、大きな슬라임が、床の上へと零れ落ちた……。"
+									
+									FLAG:도주불가フラグ = 1
+									FLAG:회화불능フラグ = 1
+									FLAG:선제기습취소 = 1
+									CALL SET_ENEMY,9,1028,40,2
+									;特別性슬라임
+									CFLAG:(CHARANUM-1):ＨＰ보정 += 500
+									CFLAG:(CHARANUM-1):ＭＰ보정 += 500
+									CFLAG:(CHARANUM-1):속도보정 = 5
+									CFLAG:(CHARANUM-1):行動횟수 = 3
+									
+									CUSTOMDRAWLINE =
+									
+									PRINTFORML 
+									PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━┓
+									PRINTFORML ┃うぉぇぇぇぇぇ……　　　　　　　　　　　　　┃
+									PRINTFORML ┃ワダジ……ナンデェ……　　　　　　　　　　　┃
+									PRINTFORML ┃ナンデ……ズライムニ……ナッチャッタノオ……┃
+									PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━┛
+									PRINTFORMW ＞외도　슬라임が現われた！
+									CALL BATTLE_START
+									FLAG:도주불가フラグ = 0
+									FLAG:회화불능フラグ = 0
+									FLAG:선제기습취소 = 0
+									
+									CALL ADD_NEW_COMPANION,1028,200,1
+									IF RESULT == 1
+										;스킬はそのまま
+										ABL:(RESULT:1):스킬3 = 321
+										ABL:(RESULT:1):스킬4 = 330
+										
+										BASE:(RESULT:1):LV = 40
+										MAXBASE:(RESULT:1):LV = 40
+										BASE:(RESULT:1):ＥＸＰ = 5*(BASE:(RESULT:1):LV - 1)*(BASE:(RESULT:1):LV)*(BASE:(RESULT:1):LV + 1)/3
+										
+										;基準値78+10　ちょっと強めで
+										BASE:(RESULT:1):힘 = 28
+										BASE:(RESULT:1):지혜 = 1
+										BASE:(RESULT:1):마력 = 10
+										BASE:(RESULT:1):인내력 = 30
+										BASE:(RESULT:1):속도 = 18
+										BASE:(RESULT:1):운 = 1
+										MAXBASE:(RESULT:1):힘 = 28
+										MAXBASE:(RESULT:1):지혜 = 1
+										MAXBASE:(RESULT:1):마력 = 10
+										MAXBASE:(RESULT:1):인내력 = 30
+										MAXBASE:(RESULT:1):속도 = 18
+										MAXBASE:(RESULT:1):운 = 1
+										
+										;あえて남자を外さない
+										TALENT:(RESULT:1):젖기쉬움 = 1
+										TALENT:(RESULT:1):Ｃ민감 = 1
+										TALENT:(RESULT:1):Ｂ민감 = 1
+										TALENT:(RESULT:1):크고아름다움 = 1
+										TALENT:(RESULT:1):절륜 = 1
+										TALENT:(RESULT:1):거체 = 1
+										TALENT:(RESULT:1):회복빠름 = 1
+										
+										;메가인텔리안경を産む！
+										ABL:(RESULT:1):수태아이템 = 5022
+										
+										CSTR:(RESULT:1):タイトル = 巨大슬라임
+										CSTR:(RESULT:1):37 = この個体は、真上水紀の身体を母体として召喚された特別な악마である。
+										
+										CSTR:(RESULT:1):39 = 豊富なマグネタイトによって生成されたこの個体は、他よりもやや身体が大きい。
+										CSTR:(RESULT:1):40 = 母体の知能も、ある程度引き継いでいるようだが、それは決して良いことではないようだ。
+										CSTR:(RESULT:1):41 = 今も“これ”は、発作的に真上水紀の記憶を思い出し、おぞましい声で蠢き続けている。
+										
+										NAME:(RESULT:1) = ミズキ・슬라임
+										CALLNAME:(RESULT:1) = ミズキ・슬라임
+										
+										CSTR:(RESULT:1):11 = ワダジ
+										CSTR:(RESULT:1):12 = アナダ
+										
+										CALL SYNC_STATUS,(RESULT:1)
+										CALL HEALTH_CHARA,(RESULT:1)
+										
+									ENDIF
+									
+									CALL MESSAGE_WINDOW_D, "슬라임" , "「うぉぇぇぇぇぇ……」"
+									CALL MESSAGE_WINDOW_D, , "＞叩きのめした슬라임を、術式により強制的に調伏する。/　これだけの大物は珍しい、ただ滅するにも惜しい存在だ。"
+									CALL MESSAGE_WINDOW_D, "슬라임" , "「イヤァ……ワダッ……ワダジイイ……ナンデ　ドロドロ　ナノォ……/　ゴゲゲッ……グルジイ……/　うぉぇぇ……タズゲデエエエエ……」"
+									CALL MESSAGE_WINDOW_D, , "＞しかし、정신に不純物が混ざっているようだ。/　母体の記憶が、슬라임のアイデンティティを蝕んでいるように見受けられる。/　全く不便なことだ。“本物”は、ドロドロに溶けて、とうに絶命しているというのに。"
+									CALL MESSAGE_WINDOW_D, "슬라임" , "「ワダジ　ニンゲンヨォォォ　ニンゲンナノヨォォォ……/　ナンデ　ナンデ　カラダガ　トケテルノヨォォォ……/　슬라임ナンカニィィィ　슬라임ナンカニ　ナリタクナイィィィィ……」"
+									CALL MESSAGE_WINDOW_D, , "＞支離滅裂なことを言っているが、운用には支障がない。/　슬라임は所詮“なりそこない”、動くマグネタイトの固まりである。/　いかに저항しようとも、ちょっとした術式で、自由自在な傀儡に出来る。"
+									CALL MESSAGE_WINDOW_D, "슬라임" , "「ワダジ　ワダジハ　ニンゲンヨォォォ……/　ユウキ……ワカルデショオォォォ……オネエチャンヨォォォォ……/　タスケテ……タスケテクダサイ……ショウゴ……サン……うぉぇぇぇぇぇぇぇ……」"
+									CALL MESSAGE_WINDOW_D, , "＞외도　ミズキ・슬라임　を仲魔にした。"
+									
+									던전フラグ:8:22 = 8
+								ELSE
+									GOTO HAPPY_BIRTHDAY_LOOP
+								ENDIF
+							
+							
+						ENDIF
+						
+					ENDIF
+					
+					
+					
+				ENDIF
+			
+		;宮下さんがいる場合
+		ELSEIF 던전フラグ:8:21 == 1
+			
+			CALL MESSAGE_WINDOW_D, "真上水紀" , "「くうっ、離しなさいっ、離して……ッ！」"
+			CALL MESSAGE_WINDOW_D, , "＞수트姿の、メガネをかけた賢そうな女性が、腐肉と粘液の촉수に絡め取られている。/＞彼女の周囲には、“成り損ない”の슬라임が、打ち上げられた물고기のように、/　びちびちとのた打ち回っていた。"
+			CALL MESSAGE_WINDOW_D, , "＞あの女性、영매체질のようだ。/＞異界化に巻き込まれたせいで、保有していたマグネタイトが暴走、/　周囲で악마が“中途半端に”実体化していると言ったところか？"
+			CALL MESSAGE_WINDOW_D, "真上水紀" , "「何よ、これっ、うう、臭いッ……/　ああっ！？　な、何をするのっ、やめて、来ないで……っ！/　がぼぼぼっ、ぶはっ！　げほっ、げほっ！」"
+			CALL MESSAGE_WINDOW_D, , "＞天井から降って来た슬라임が、女性の体を覆い、옷をジクジクと溶かしている。/このまま放っておけば、どうなるかは火を見るよりも明らかだ。"
+			CALL MESSAGE_WINDOW_D, "宮下쇼고" , "「水紀くん、今助ける！」"
+			CALL MESSAGE_WINDOW_D, , "＞宮下は슬라임の群れに돌격した。/　さて、こちらも加勢しなければならない。"
+			CALL MESSAGE_WINDOW_D, , "＞당신は무기を構え、슬라임たちに襲い掛かった！"
+			
+			FLAG:도주불가フラグ = 1
+			FLAG:회화불능フラグ = 1
+			FLAG:선제기습취소 = 1
+			CALL SET_ENEMY,7,1028,35,0,1
+			CALL SET_ENEMY,8,1028,35,0,1
+			CALL SET_ENEMY,9,1028,35,0,1
+			CALL SET_ENEMY,10,1028,35,0,1
+			CALL SET_ENEMY,11,1028,35,0,1
+			CALL SET_ENEMY,13,1028,35,0,1
+			CALL SET_ENEMY,14,1028,35,0,1
+			CALL SET_ENEMY,15,1028,35,0,1
+			CALL BATTLE_START
+			FLAG:도주불가フラグ = 0
+			FLAG:회화불능フラグ = 0
+			FLAG:선제기습취소 = 0
+			CALL MESSAGE_WINDOW_D, "真上水紀" , "「げほっ、げほっ、ありがとうございます」"
+			CALL MESSAGE_WINDOW_D, "宮下쇼고" , "「水紀くん、どうしてこんな無茶をしたんだ、君に戦う힘は無いというのに……」"
+			CALL MESSAGE_WINDOW_D, "真上水紀" , "「すみません、どうしても、どうしても、取り残された人が見捨てられなくて……」"
+			CALL MESSAGE_WINDOW_D, , "＞宮下は당신に向き直り、深く머리を下げた。"
+			CALL MESSAGE_WINDOW_D, "宮下쇼고" , "「おかげで助かった、正直に言えば、あんたがここまで付き合ってくれるとは思わなかった。/　困ったことがあればいつでも呼んでくれ、俺に出来ることなら、何でも힘になるよ」"
+			CALL MESSAGE_WINDOW_D, , "＞인간　宮下쇼고　が協힘してくれるようになった。"
+			
+			CALL ADD_NEW_COMPANION,4630,0
+			IF RESULT == 1
+				;스테이터스基準値は72だが、ここで입수した場合はちょっと多め（+7）に
+				;そしてプレミア感()を出すため위협を도발に差し替えてみる
+				
+				CFLAG:(RESULT:1):전투참가불가능 = -1
+				
+				BASE:(RESULT:1):LV = 36
+				BASE:(RESULT:1):ＥＸＰ = 5*(BASE:(RESULT:1):LV - 1)*(BASE:(RESULT:1):LV)*(BASE:(RESULT:1):LV + 1)/3
+				BASE:(RESULT:1):힘 = 4
+				BASE:(RESULT:1):지혜 = 14
+				BASE:(RESULT:1):마력 = 3
+				BASE:(RESULT:1):인내력 = 19
+				BASE:(RESULT:1):속도 = 29
+				BASE:(RESULT:1):운 = 8
+				ABL:(RESULT:1):스킬4 = [[스킬:어드바이스]]
+				ABL:(RESULT:1):스킬5 = [[스킬:퀵드로]]
+				ABL:(RESULT:1):스킬6 = [[스킬:플레어샷]]
+				ABL:(RESULT:1):스킬7 = [[스킬:기합]]
+				ABL:(RESULT:1):스킬9 = [[스킬:추격의심득]]
+				ABL:(RESULT:1):스킬10 = [[스킬:와이즈맨스냅]]
+				ABL:(RESULT:1):스킬11 = [[스킬:도발]]
+				ABL:(RESULT:1):스킬12 = [[스킬:백발백중]]
+				CALL SYNC_STATUS,(RESULT:1)
+				CALL HEALTH_CHARA,(RESULT:1)
+			ENDIF
+			
+			던전フラグ:8:22 = 100
+		;それ以外は想定外の動作
+		ELSE
+			CALL MESSAGE_WINDOW_D, "バグ" , "「にゃーん」"
+			CALL MESSAGE_WINDOW_D, , "＞なんだバグか……/　この메시지が出たら不具合です、スレで報告してたもれ"
+		ENDIF
+		RETURN 1
+	ENDIF
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 5004 && 던전フラグ:8:22 > 0
+	
+	IF 던전フラグ:8:22 > 4 && 던전フラグ:8:22 < 9
+		CALL MESSAGE_WINDOW_D, , "＞もうここには何もない……"
+		CALL MESSAGE_WINDOW_D, , "＞と思ったが、あの女の撒き散らした汚物の中に、彼女のメガネが沈んでいた。"
+		CALL MESSAGE_WINDOW_D, , "＞……マグネタイトの影響でマジック・아이템化している。/　少し汚らしいが、放置するのも勿体ないだろう。"
+		CALL MESSAGE_WINDOW_D, , "＞メガ・인텔리안경を손に入れた"
+		CALL GET_ITEM,5022,1
+		DA:(FLAG:現X):(FLAG:現Y) = 1
+	ELSE
+		CALL MESSAGE_WINDOW_D, , "＞もうここには何もない……"
+	ENDIF
+	
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 9
+	SELECTCASE FLAG:現M
+		CASE 1
+			CALL MESSAGE_WINDOW_D, , "＞함정이다！"
+			CALL DUNGEON_WORP,0,8,7
+		CASE 2
+			CALL MESSAGE_WINDOW_D, , "＞함정이다！"
+			CALL DUNGEON_WORP,1,1,2
+		CASE 3
+			CALL MESSAGE_WINDOW_D, , "＞함정이다！"
+			CALL DUNGEON_WORP,2,3,4
+		CASE 4
+			CALL MESSAGE_WINDOW_D, , "＞함정이다！"
+			CALL DUNGEON_WORP,3,7,14
+		CASE 5
+			IF FLAG:現X == 8
+				CALL MESSAGE_WINDOW_D, , "＞ＩＤ카드를…ＩＤ카드를…/＞ＩＤ카드를…ＩＤ카드를…"
+				CALL MESSAGE_WINDOW_D, , "＞문은 망가져 있는 것 같다…"
+			ELSE
+				CALL DUNGEON_TERMINAL
+			ENDIF
+		CASEELSE
+	ENDSELECT
+	RETURN 1
+
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 4
+	CALL MESSAGE_WINDOW_D, , "＞한 노인이 컴퓨터를 조작하고 있다…"
+	CALL MESSAGE_WINDOW_D, "매드 사이언티스트" , "히히히힛　움직였다　움직였어/로보트 경관의 컨트롤 시스템이"
+	CALL MESSAGE_WINDOW_D, "매드 사이언티스트" , "이걸로 사람도 악마도 몰살이다/모두 지옥에 가버려라！/히히히"
+	CALL MESSAGE_WINDOW_D, "매드 사이언티스트" , "…설마 방해하러 온 게냐？/그렇겐 못한다！/가라앗！　로보트 경관！"
+	FLAG:도주불가フラグ = 1
+	FLAG:회화불능フラグ = 1
+	FLAG:선제기습취소 = 1
+	CALL SET_ENEMY,7,1114,45,0,2	
+	CALL SET_ENEMY,8,1114,45,0,2
+	CALL SET_ENEMY,9,1114,45,0,2
+	CALL SET_ENEMY,10,1114,45,0,2
+	CALL SET_ENEMY,11,1114,45,0,2
+	CALL SET_ENEMY,13,1114,45,0,2
+	CALL SET_ENEMY,14,1114,45,0,2
+	CALL SET_ENEMY,15,1114,45,0,2
+	CALL BATTLE_START
+	CALL MESSAGE_WINDOW_D, "경비 시스템" , "긴급사태！　시스템 작동 개시/직접 침입자를 배제합니다"
+	CALL SET_ENEMY,9,1108,50,0,5
+	CFLAG:(CHARANUM-1):行動횟수 = 3
+	NAME:(CHARANUM-1) = 경비 시스템
+	CALLNAME:(CHARANUM-1) = 경비 시스템
+	BASE:(CHARANUM-1):힘 += 6
+	BASE:(CHARANUM-1):지혜 += 6
+	BASE:(CHARANUM-1):마력 += 6
+	BASE:(CHARANUM-1):인내력 += 5
+	BASE:(CHARANUM-1):속도 += 5
+	BASE:(CHARANUM-1):운 += 5
+	CALL BATTLE_START
+	FLAG:도주불가フラグ = 0
+	FLAG:회화불능フラグ = 0
+	FLAG:선제기습취소 = 0
+	CALL MESSAGE_WINDOW_D, "매드 사이언티스트" , "오오… 이 몸의 메카 로보트 군단이…"
+	CALL MESSAGE_WINDOW_D, "" , "＞실의에 빠진 노인의 곁에、경시청 제품으로 여겨지는 로봇들의 잔해가 널려 있다/＞가만 보면 꽤 쓸만하다、이걸로 ＣＯＭＰ를 강화할 수 있겠지…"
+	CALL MESSAGE_WINDOW_D, "" , "＞・・・・・/＞・・・/＞・"
+	CALL MESSAGE_WINDOW_D, "" , "＞ＣＯＭＰ의 용량이 2 증가했다"
+	FLAG:ＣＯＭＰ용량 += 2	
+	던전フラグ:8:11 = 1
+	DA:(FLAG:現X):(FLAG:現Y) = -9
+ENDIF
+RETURN 0
+
+
+;=======================================================================
+;宝箱の中身
+;=======================================================================
+@TREASURE_8
+SELECTCASE FLAG:現M
+	CASE 1
+		CALL GET_TREASURE_TRAP, "ＨＰ", 25 , GET_TYPE_NUM("만능") , FLAG:現던전, LOCAL , 0
+		던전フラグ:8:0 = 1
+	CASE 2
+		IF (FLAG:現X) == 1
+			CALL GET_TREASURE_TRAP, "ＨＰ", 25 , GET_TYPE_NUM("만능") , FLAG:現던전, LOCAL , 1
+			던전フラグ:8:1 = 1
+		ELSE
+			CALL GET_TREASURE, 276 , 1 , FLAG:現던전, LOCAL , 2
+			던전フラグ:8:2 = 1
+		ENDIF
+	CASE 3
+		CALL GET_TREASURE_TRAP, "ＨＰ", 25 , GET_TYPE_NUM("만능") , FLAG:現던전, LOCAL , 3
+		던전フラグ:8:3 = 1
+	CASE 4
+		IF FLAG:現Y == 3
+			CALL GET_TREASURE, 1014 , 1 , FLAG:現던전, LOCAL , 4
+			던전フラグ:8:4 = 1
+		ELSE
+			CALL GET_TREASURE, 1015 , 1 , FLAG:現던전, LOCAL , 5
+			던전フラグ:8:5 = 1
+		ENDIF
+	CASEELSE
+		CALL GET_TREASURE_TRAP, "ＨＰ", 25 , GET_TYPE_NUM("만능") , FLAG:現던전, LOCAL , 1
+		던전フラグ:8:6 = 1
+ENDSELECT
+RETURN 1
+
+;=======================================================================
+;階段置き場
+;=======================================================================
+@UPSTAIRS_8
+SELECTCASE FLAG:現M
+	CASE 0
+		CALL DUNGEON_UPSTAIRS,1,5,9
+	CASE 1
+		CALL DUNGEON_UPSTAIRS,2,5,7
+	CASE 2
+		CALL DUNGEON_UPSTAIRS,3,5,9
+	CASE 3
+		CALL DUNGEON_UPSTAIRS,4,5,7
+	CASE 4
+		CALL DUNGEON_UPSTAIRS,5,5,9
+	CASEELSE
+ENDSELECT
+RETURN 1
+
+@DOWNSTAIRS_8
+SELECTCASE FLAG:現M
+	CASE 1
+		CALL DUNGEON_DOWNSTAIRS,0,5,9
+	CASE 2
+		CALL DUNGEON_DOWNSTAIRS,1,5,7
+	CASE 3
+		CALL DUNGEON_DOWNSTAIRS,2,5,9
+	CASE 4
+		CALL DUNGEON_DOWNSTAIRS,3,5,7
+	CASE 5
+		CALL DUNGEON_DOWNSTAIRS,4,5,9
+ENDSELECT
+RETURN 1
+
+;=======================================================================
+;エンカウント率
+;=======================================================================
+@ENCOUNT_RATE_8
+	FLAG:エンカウント率 = FLAG:未遭遇歩数*5
+
+
+;=======================================================================
+;필요레벨눈安
+;권장LV 雑물고기최저LV 雑물고기最高LV ボスLV 
+;=======================================================================
+@GET_DUNGEON_LV_8
+RETURN 38, 28, 38, 50
+;=======================================================================
+;エンカウント処理
+;=======================================================================
+@CHECK_ENCOUNT_8
+IF RAND:100 < FLAG:エンカウント率
+	CALL ENEMY_TABLE
+	RETURN 1
+ELSE
+	FLAG:未遭遇歩数 += 1
+	RETURN 0
+ENDIF
+
+;=======================================================================
+;적の종족の종류数
+;=======================================================================
+@CLASS_NUM_8
+SELECTCASE RAND:100
+	CASE IS < 40
+		RETURN 1
+	CASE IS < 80
+		RETURN 2
+	CASEELSE
+		RETURN 3
+ENDSELECT
+;=======================================================================
+;적の総数
+;=======================================================================
+@ENEMY_NUM_8, ARG
+RETURN ENEMY_NUM_COMMON("中級", ARG)
+;=======================================================================
+;적の종류
+;=======================================================================
+@ENEMY_8, ARG
+SELECTCASE RAND:100
+	CASE IS < 20
+		;30%でピットボール
+		RETURN 1107,35
+	CASE IS < 45
+		;25%でゴーレム
+		RETURN 1113,38
+	CASE IS < 70
+		;25%で좀비캅
+		RETURN 1095,33
+	CASE IS < 90
+		;20%で콥스
+		RETURN 1098,30
+	CASE IS < 100
+		;10%で슬라임、ブラックウーズの代理
+		RETURN 1028,28
+ENDSELECT
+
+;=======================================================================
+;エレベーター定義
+;=======================================================================
+;ARGはそのエレベーターのタイル
+@DUNGEON_ELEVATOR_8, ARG
+;RESULT:1～5にエレベータが存在するマップの番号を代入し、RESULTS:1～5には표시したい명칭を代入、RETURNでは-1を返しておく
+RESULT:1 = 0
+RESULT:2 = 1
+RESULT:3 = 2
+RESULT:4 = 3
+RESULT:5 = 4
+RESULT:6 = 5
+RESULTS:1 = Ｂ１Ｆ
+RESULTS:2 = １Ｆ
+RESULTS:3 = ２Ｆ
+RESULTS:4 = ３Ｆ
+RESULTS:5 = ４Ｆ
+RESULTS:6 = ５Ｆ
+RETURN -1

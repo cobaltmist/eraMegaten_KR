@@ -1,0 +1,450 @@
+﻿;당신合体用処理を記述したファイルです
+
+
+@FUSION_WITH_YOU
+;MASTER　당신の등록번호
+;LOCAL:2　조마、소재の등록번호
+#DIM 完成品 , 1
+#DIM TSフラグ
+LOCAL:2 = -1
+$START_FUSION
+
+;これ표시する場面も필요もないよね？
+;SIF LOCAL:2 > -1
+;	PRINTFORML 제물:%CALLNAME:(LOCAL:2)%
+
+CALL INPUT_CHARA_LIST("융합할 악마를 선택하세요", "CASTING_FUSION_WITH_YOU", "UP_PRINT_FUSION_WITH_YOU")
+IF RESULT == 1000
+	RETURN 0
+ENDIF
+	TSフラグ = 0
+	LOCAL:2 = RESULT
+	
+	完成品 = CHARANUM
+	ADDCOPYCHARA MASTER
+	LOCAL:7 = RESULT
+	
+	;취득する경험치を計算
+	LOCAL:4 = CFLAG:(LOCAL:2):초기LV
+	LOCAL:3 = BASE:(LOCAL:2):ＥＸＰ - 5*(LOCAL:4-1)*(LOCAL:4+1)*(LOCAL:4)/3
+	;香で강화されている場合경험치にボーナス
+	LOCAL:3 += MAX(0, BASE:(LOCAL:2):힘 + BASE:(LOCAL:2):지혜 + BASE:(LOCAL:2):마력 + BASE:(LOCAL:2):인내력 + BASE:(LOCAL:2):속도 + BASE:(LOCAL:2):운 - 18 - MAXBASE:(LOCAL:2):LV * 3 / 2) * 100
+	SIF BASE:MASTER:LV > LOCAL:4
+		LOCAL:3 /= (BASE:MASTER:LV - LOCAL:4)/4+1
+	SIF BASE:MASTER:LV < LOCAL:4
+		LOCAL:3 *= POWER(2, MIN(( LOCAL:4 - BASE:MASTER:LV)/4,4))
+	TIMES LOCAL:3 , 0.70
+	;취득するＭＡＧを記録
+	LOCAL:4 = BASE:(LOCAL:2):ＭＡＧ
+	;소질の引継ぎ체크
+	IF TALENT:(LOCAL:2):폭유 == 1
+		TALENT:完成品:폭유 = 1
+		TALENT:完成品:거유 = 0
+		TALENT:完成品:빈유 = 0
+		TALENT:完成品:절벽 = 0
+	ELSEIF TALENT:(LOCAL:2):거유 == 1
+		TALENT:完成品:폭유 = 0
+		TALENT:完成品:거유 = 1
+		TALENT:完成品:빈유 = 0
+		TALENT:完成品:절벽 = 0
+	ELSEIF TALENT:(LOCAL:2):빈유 == 1
+		TALENT:完成品:폭유 = 0
+		TALENT:完成品:거유 = 0
+		TALENT:完成品:빈유 = 1
+		TALENT:完成品:절벽 = 0
+	ELSEIF TALENT:(LOCAL:2):절벽 == 1
+		TALENT:完成品:폭유 = 0
+		TALENT:完成品:거유 = 0
+		TALENT:完成品:빈유 = 0
+		TALENT:完成品:절벽 = 1
+	ELSE
+		TALENT:完成品:폭유 = 0
+		TALENT:完成品:거유 = 0
+		TALENT:完成品:빈유 = 0
+		TALENT:完成品:절벽 = 0
+	ENDIF
+	IF (TALENT:完成品:남자 == 1 && TALENT:(LOCAL:2):남자 == 0) || (TALENT:完成品:남자 == 0 && TALENT:(LOCAL:2):남자 == 1) || TALENT:(LOCAL:2):후타나리 == 1
+		TALENT:完成品:후타나리 = 1
+		TALENT:完成品:오토코노코 = 0
+		IF TALENT:完成品:남자 == 1 && TALENT:(LOCAL:2):남자 == 0
+			TSフラグ = 1
+			TALENT:完成品:남자 = 0
+		ENDIF
+	ENDIF
+	SIF TALENT:(LOCAL:2):동물귀 == 1
+		TALENT:完成品:동물귀 = 1
+	SIF TALENT:(LOCAL:2):갈퀴 == 1
+		TALENT:完成品:갈퀴 = 1
+	SIF TALENT:(LOCAL:2):날개 == 1
+		TALENT:完成品:날개 = 1
+	SIF TALENT:(LOCAL:2):꼬리 == 1
+		TALENT:完成品:꼬리 = 1
+	SIF TALENT:(LOCAL:2):갈퀴발 == 1
+		TALENT:完成品:갈퀴발 = 1
+	IF TALENT:(LOCAL:2):물고기 == 1
+		TALENT:完成品:물고기 = 1
+		TALENT:完成品:꼬리 = 1
+		TALENT:完成品:발 = 0
+		;人물고기になります…多分
+	ENDIF
+	SIF TALENT:(LOCAL:2):기계의처녀 == 1 || ABL:(LOCAL:2):종족 == 12
+		TALENT:完成品:기계의처녀 = 1
+		;実質クリス・ザ・カーとの合体時専用？一応종족:머신との合体時にも기계의처녀に변화するように設計したつもり…
+	SIF TALENT:(LOCAL:2):부정형 == 1
+		TALENT:完成品:부정형 = 1
+	CALL SUCCESS_TALENT, 完成品, 完成品, LOCAL:2, LOCAL:10
+	IF TSフラグ
+		TALENT:完成品:처녀 = !EXP:(LOCAL:1):ＴＳ경험 || CFLAG:(LOCAL:1):元처녀
+		ABL:完成品:Ｖ감각 = EXP:(LOCAL:1):ＴＳ경험 ? CFLAG:(LOCAL:1):元Ｖ감각 # 0
+		CALL ADDS_ABNORMAL_EXP , "ＴＳ" , 完成品
+		CALL SHOW_ABNORMAL_EXP , 完成品, 0
+		EXP:完成品:ＴＳ경험 += 1
+	ENDIF
+	CUSTOMDRAWLINE =
+	PRINTFORML %CALLNAME:MASTER% LV{MAXBASE:MASTER:LV}({BASE:MASTER:LV})
+	PRINTFORML 　　　　ＥＸＰ:＋{MAX(LOCAL:3,0)}　　ＭＡＧ：＋{LOCAL:4}
+	CUSTOMDRAWLINE =
+	;合体결과の스테이터스を표시
+	U = 完成品
+	PRINTFORML %STR:(ABL:U:80)%　　%CALLNAME:U%　　
+	CALL SHOW_INFO_PAGE_1
+	CUSTOMDRAWLINE =
+	
+	
+	;合体するかどうか　→　合体実行
+	PRINTL 이상의 결과가 됩니다만 괜찮겠습니까?
+	CALL INPUT_YN, "Yes", "No", 2
+
+	IF RESULT == 1
+		DELCHARA 完成品
+		RESTART
+	ENDIF
+	
+	DELCHARA 完成品
+	
+	
+	;소질の引継ぎ
+	CALL SUCCESS_TALENT, MASTER, MASTER, LOCAL:2, LOCAL:10
+	
+	;경험치加算
+	BASE:MASTER:ＥＸＰ += LOCAL:3
+	CALL CHECK_LEVEL_UP, MASTER
+	;ＭＡＧ加算
+	BASE:MASTER:ＭＡＧ += LOCAL:4
+	
+	;손紙システム
+	CALL FUSION_LETTER_WITH_YOU, LOCAL:2
+	
+	SIF TSフラグ
+		CALL ＴＳ処理,LOCAL:1
+	
+	IF TALENT:(LOCAL:2):폭유 == 1
+		TALENT:MASTER:폭유 = 1
+		TALENT:MASTER:거유 = 0
+		TALENT:MASTER:빈유 = 0
+		TALENT:MASTER:절벽 = 0
+	ELSEIF TALENT:(LOCAL:2):거유 == 1
+		TALENT:MASTER:폭유 = 0
+		TALENT:MASTER:거유 = 1
+		TALENT:MASTER:빈유 = 0
+		TALENT:MASTER:절벽 = 0
+	ELSEIF TALENT:(LOCAL:2):빈유 == 1
+		TALENT:MASTER:폭유 = 0
+		TALENT:MASTER:거유 = 0
+		TALENT:MASTER:빈유 = 1
+		TALENT:MASTER:절벽 = 0
+	ELSEIF TALENT:(LOCAL:2):절벽 == 1
+		TALENT:MASTER:폭유 = 0
+		TALENT:MASTER:거유 = 0
+		TALENT:MASTER:빈유 = 0
+		TALENT:MASTER:절벽 = 1
+	ELSE
+		TALENT:MASTER:폭유 = 0
+		TALENT:MASTER:거유 = 0
+		TALENT:MASTER:빈유 = 0
+		TALENT:MASTER:절벽 = 0
+	ENDIF
+	IF TSフラグ || (TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:2):남자 == 1) || (TALENT:(LOCAL:1):후타나리 == 0 &&TALENT:(LOCAL:2):후타나리 == 1)
+		PRINTFORML
+		PRINTFORML %조사처리(CALLNAME:MASTER,"는")% 후타나리가 되었다…
+		IF TSフラグ
+			PRINTFORM %조사처리(CALLNAME:MASTER,"는")% 다시 태어난 몸으로 
+			IF EXP:MASTER:Ｖ경험 > 0
+				PRINTFORM 오랜만에
+			ELSE
+				PRINTFORM 첫
+			ENDIF
+			PRINTFORML  「여자」로서의 기쁨을 실컷 맛보았다…
+			IF TALENT:MASTER:폭유 == 1 || TALENT:MASTER:거유 == 1
+				PRINTFORMW 그건 그렇고 이 몸, %조사처리(CALLNAME:(LOCAL:2),"와")% 닮아서 가슴이 크다. 여자용 속옷이 필요하다.
+				IF TALENT:MASTER:108 ;B민감
+					PRINTFORML 더구나 이 크기에도 불구하고 민감해서 만진 것만으로 몸에 전류가 흐르는 것 같다.
+				ENDIF
+				IF TALENT:MASTER:폭유
+					PRINTFORML 그런데 어깨가 무겁다. %조사처리(CALLNAME:(LOCAL:2),"는")% 이런 것을 매달고 다녔는지.
+				ENDIF
+			ELSEIF TALENT:MASTER:빈유 == 1 || TALENT:MASTER:절벽 == 1
+				IF TALENT:MASTER:108 ;B민감
+					PRINTFORML 가슴은 %조사처리(CALLNAME:(LOCAL:2),"와")% 닮아서 작지만 꽤 민감하다. 속옷은 가능한 한 빨리 준비하자…
+				ELSE
+					PRINTFORML 다행이라고 해야 할지, %조사처리(CALLNAME:(LOCAL:2),"와")% 닮아서 가슴은 작다. 속옷 등은 뒤로 미뤄도 충분하겠지.
+				ENDIF
+			ELSE
+				PRINTFORMW 다만 이 몸은 그럭저럭 가슴이 있다.
+				IF TALENT:MASTER:108 ;B민감
+					PRINTFORML 게다가 민감해서 옷이 스치는 것만으로도 무심코 몸이 뒤로 젖혀저 버린다.
+				ENDIF
+				PRINTFORML 여자용 속옷을 준비해두는 편이 좋을지도 모르겠다.
+			ENDIF
+		ELSE
+			PRINTFORM %조사처리(CALLNAME:MASTER,"는")% %CALLNAME:(LOCAL:2)%과 하나가 도니 몸으로
+			IF EXP:MASTER:사정경험 > 0
+				PRINTFORM 오랜만의
+			ELSE
+				PRINTFORM 첫
+				EXP:MASTER:사정경험 += 10
+			ENDIF
+			PRINTFORML  사정감을 숨을 헐떡일 때까지 맛보았다…
+			IF TALENT:MASTER:102 ;C민감、全角半角の自信がないため数値입력
+				IF EXP:MASTER:사정경험 > 0
+					PRINTFORML 그런데 이전보다 페니스가 기분 좋은 것 같은 느낌이 든다.
+					PRINTFORML 악마로부터 얻은 부분 때문에 더 민감하게 되어있는 것일까.
+				ELSE
+					PRINTFORML 그런데 페니스라는 것이 여기까지 민감하다고는 생각하지 않았다.
+				ENDIF
+				PRINTFORML 이것은 여성용 속옷은 너무 조이는 것 같다.
+				PRINTFORML 이제 여성용 팬티는 입지 않는게 좋을것 같다.
+			ELSEIF TALENT:MASTER:크고아름다움
+				PRINTFORML 그러나 %CALLNAME:(LOCAL:2)%의 페니스는 여기까지 컸었을까.
+				PRINTFORML 아무래도 불필요하게 커지고 있는 것 같은 생각이 들지만…
+				PRINTFORML 이제 여성용 팬티는 입지 못할 것 같다. 아니 남성용도 어려운가.
+			ELSE
+				PRINTFORML 단지、이런 것이 붙어있으면 더 이상 여성용 팬티는 입지 못할 것이다.
+			ENDIF
+		ENDIF
+		PRINTFORM %조사처리(CALLNAME:MASTER,"는")% 새로운 몸에서 내뿜은 
+		SIF TALENT:MASTER:모유체질
+			PRINTFORM 모유와 
+		SIF TALENT:MASTER:104
+			PRINTFORM 애액과 
+		PRINTFORMW 정액으로 뿌옇게 흐려진 방에서、숨을 헐떡이며 그런 것을 생각했다…
+		TALENT:MASTER:후타나리 = 1
+		TALENT:MASTER:오토코노코 = 0
+		TALENT:MASTER:남자 = 0
+		IF TSフラグ
+			CFLAG:(LOCAL:1):現가슴サイズ = BUST(LOCAL:1)
+			CALL ADDS_ABNORMAL_EXP , "ＴＳ" , LOCAL:1
+			CALL SHOW_ABNORMAL_EXP , LOCAL:1
+
+			PRINTL ＴＳ경험 + 1
+			EXP:(LOCAL:1):ＴＳ경험 += 1
+		ENDIF
+	ENDIF
+	
+	IF TALENT:(LOCAL:2):동물귀 == 1 && TALENT:MASTER:동물귀 == 0
+		PRINTFORML
+		TALENT:MASTER:동물귀 = 1
+		PRINTFORM %CALLNAME:MASTER%의 귀는 
+		IF TALENT:(LOCAL:2):여우 == 1
+			PRINTFORM %조사처리(CALLNAME:(LOCAL:2),"와")% 비슷하게 여우같은
+		ELSEIF CSTR:(LOCAL:2):相性グループ == "猫"
+			PRINTFORM %조사처리(CALLNAME:(LOCAL:2),"와")% 비슷하게 고양이같은
+		ELSEIF CSTR:(LOCAL:2):相性グループ == "犬"
+			PRINTFORM %조사처리(CALLNAME:(LOCAL:2),"와")% 비슷하게 개같은
+		ELSE
+			PRINTFORM %조사처리(CALLNAME:(LOCAL:2),"와")% 비슷하게 동물의
+		ENDIF
+		PRINTFORML  형태로 변했다.
+		PRINTFORML 귀가 머리카락때문에 간지러워서 신경쓰인다… 익숙해질 때까지는 시간이 걸릴지도 모르겠군…
+		PRINTFORMW 무엇보다 빨리 모자든 뭐든 사오지 않으면.
+	ENDIF
+	IF TALENT:(LOCAL:2):갈퀴 == 1 && TALENT:MASTER:갈퀴 == 0
+		PRINTFORML
+		TALENT:MASTER:갈퀴 = 1
+		PRINTFORML %CALLNAME:MASTER%의 손에 갈퀴가 자랐다。
+		PRINTFORML 다행히도 넣고 빼는 게 가능한 것 같아서 당분간은 저절로 나오지 않도록 길을 들여야만 할 것이다.
+		PRINTFORMW 만약 ＣＯＭＰ 조작 중에 맘대로 갈퀴가 나오면 어떡하나 생각하면 무섭다.
+	ENDIF
+	IF TALENT:(LOCAL:2):날개 == 1 && TALENT:MASTER:날개 == 0
+		PRINTFORML
+		TALENT:MASTER:날개 = 1
+		PRINTFORM %CALLNAME:MASTER%의 등에서 %CALLNAME:(LOCAL:2)% 
+		IF TALENT:(LOCAL:2):천사 == 1
+			PRINTFORM 순백의 
+		ELSEIF TALENT:(LOCAL:2):타천사 == 1
+			PRINTFORM 칠흑의 
+		ELSEIF TALENT:(LOCAL:2):새 == 1
+			PRINTFORM 새의 
+		ELSE
+			PRINTFORM %CALLNAME:(LOCAL:2)%의 것과 많이 닮은 
+		ENDIF
+		PRINTFORML 날개가 났다.
+		PRINTFORML 몇번쯤 시험해 봤지만、여하튼 %조사처리(CALLNAME:MASTER,"가")% 공중에 뜰 정도의 힘은 있는 것 같다。
+		PRINTFORMW 단지 상당히 큰 날개라서 숨기기는 어려울 성싶다. 망토라도 걸칠까…?
+	ENDIF
+	IF TALENT:(LOCAL:2):꼬리 == 1 && TALENT:MASTER:꼬리 == 0 && TALENT:(LOCAL:2):물고기 == 0
+		PRINTFORML
+		TALENT:MASTER:꼬리 = 1
+		PRINTFORM %CALLNAME:MASTER%의 엉덩이 골 위에서 
+		IF TALENT:(LOCAL:2):여우 == 1
+			PRINTFORM %조사처리(CALLNAME:(LOCAL:2),"와")% 닮은 여우 같은 
+		ELSEIF CSTR:(LOCAL:2):相性グループ == "猫"
+			PRINTFORM %조사처리(CALLNAME:(LOCAL:2),"와")% 닮은 고양이에 가까운 
+		ELSEIF CSTR:(LOCAL:2):相性グループ == "犬"
+			PRINTFORM %조사처리(CALLNAME:(LOCAL:2),"와")% 닮은 개다운 
+		ELSEIF TALENT:(LOCAL:2):파충류 == 1
+			PRINTFORM %조사처리(CALLNAME:(LOCAL:2),"와")% 닮은 도마뱀이 연상되는 
+		ELSE
+			PRINTFORM %조사처리(CALLNAME:(LOCAL:2),"와")% 많이 비슷한 
+		ENDIF
+		PRINTFORML 꼬리가 났다.
+		PRINTFORML 아무래도 이쪽 감정에 맞추어서 제멋대로 움직이는 것 같았다.
+		PRINTFORMW 약간 민망한걸…
+	ENDIF
+	IF TALENT:(LOCAL:2):물고기 == 1 && TALENT:MASTER:물고기 == 0
+		PRINTFORML
+		TALENT:MASTER:물고기 = 1
+		TALENT:MASTER:꼬리 = 1
+		TALENT:MASTER:발 = 0
+		PRINTFORMW 무려 %CALLNAME:MASTER%의 다리가 물고기의 꼬리가 되었다！
+		PRINTFORML 다행히 악마의 힘 때문인지、육상에선 부유하는 것으로 전처럼 움직일 수 있었다。
+		PRINTFORMW 하지만、이건…　향후엔 스커트라도 입지 않으면 일상 생활조차 어려울 것 같다…
+	ENDIF
+	IF TALENT:(LOCAL:2):갈퀴발 == 1 && TALENT:MASTER:갈퀴발 == 0 && TALENT:MASTER:물고기 == 0
+		PRINTFORML
+		TALENT:MASTER:갈퀴발 = 1
+		PRINTFORM %CALLNAME:MASTER%의 발목 앞부터 
+		IF TALENT:(LOCAL:2):짐승
+			PRINTFORML 짐승같은 형태가 되었다。
+			PRINTFORML 육구가 땅을 밟는 감촉이 뭐라 형언할 수 없을 정도로 기분이 좋았다…
+		ELSE
+			PRINTFORML 새와 비슷한 형태가 되었다。
+			PRINTFORML 손가락이 발목의 뒤에 있다、는 감각이 매우 기묘했다…
+		ENDIF
+		PRINTFORMW 일단、당분간은 동료마의 신발을 신기로 할까。
+	ENDIF
+	
+	IF TALENT:(LOCAL:2):기계의처녀 == 1 || ABL:(LOCAL:2):종족 == 12
+		;카야ちゃんもゴーレムと合体して기계의처녀になるし、多分머신と合体したらなるよね…？
+		;기계의처녀소지자の都合上女or후타나리だから問題はないはず
+		;머신が仲魔になる機会があるのか、が分からないので無駄になるかも…
+		PRINTFORML
+		TALENT:MASTER:기계의처녀 = 1
+		PRINTFORML %CALLNAME:MASTER%의 몸은 기계화 되었다…
+		PRINTFORML 쓱 보면 그렇게 보이진 않지만、몸을 움직이면 조금씩 진동이 느껴지고、관절이 구체 파츠처럼 되었다。
+		PRINTFORML 한편 몇번이나 만지면서 살펴봤지만、어째서인지 만지는 감촉도、안쪽에서 기계가 움직이는 감촉도 느껴졌다。
+		PRINTFORML 생각해보니、%조사처리(CALLNAME:(LOCAL:2),"는")% 자신이 조교했으니 그 정도는 느낄 수 있었을 것이다。
+		PRINTFORMW 그렇다곤 해도 모처럼 기계의 몸이 되었다、차라리 ＣＯＭＰ를 짜넣는 것도 재밌지 않을까…
+	ENDIF
+	IF TALENT:(LOCAL:2):부정형 == 1 && TALENT:MASTER:부정형 == 0
+		PRINTFORML
+		TALENT:MASTER:부정형 = 1
+		PRINTFORMW ？　뭔가 몸의 촉감에 위화감이 느껴졌다…
+		PRINTFORMW 무려 %CALLNAME:MASTER%의 몸 일부는 %CALLNAME:(LOCAL:2)%처럼 녹아내렸다！
+		PRINTFORML 기본적으로는 사람의 형태를 유지하고 있지만、부위에 따라선 손가락으로 누르면 그대로 삼켜졌다…
+		PRINTFORML 어쨋든 일부가 슬라임 상태인 육체가 된 것 같다。
+		PRINTFORML 그나저나 이 몸、뭔가 잘못되면 녹아버리는게 아닐까。
+		PRINTFORMW %조사처리(CALLNAME:MASTER,"는")% 새삼스럽지만 %CALLNAME:(LOCAL:2)%의 노고에 생각이 미쳤다…
+	ENDIF
+	
+	EXP:MASTER:85 += 1 ;당신合体の횟수を확인
+	
+	;合体소재の악마を소거
+	CALL キャラ삭제, LOCAL:2
+	RETURN 0
+
+GOTO START_FUSION
+
+@CASTING_FUSION_WITH_YOU(ARG)
+;소재は계약済みのみ、인간
+SIF (계약(ARG) == 0 || ABL:ARG:종족 == 0)
+	RETURN 0
+SIF ARG == MASTER
+	RETURN 0
+SIF CFLAG:ARG:노역フラグ == 3
+	RETURN 0
+SIF CFLAG:ARG:合体불가
+	RETURN 0
+SIF CFLAG:ARG:この場に居ないフラグ == 1
+	RETURN 0
+RETURN 1
+
+@UP_PRINT_FUSION_WITH_YOU
+PRINTFORML %CALLNAME:MASTER%과 융합할 악마를 선택하세요　\@ A > リスト표시数() ? ＜page.{P + 1}/{A / リスト표시数() + 1}＞ # \@
+
+@FUSION_LETTER_WITH_YOU,ARG
+PRINTL 편지가 있습니다. 읽겠습니까?
+
+CALL INPUT_YN,"Yes","NO"
+IF RESULT == 0
+	PRINTFORMW %조사처리(CALLNAME:(ARG),"가")% 남긴 편지다.
+	CALL FUSION_LETTER_MESSAGE_WITH_YOU_PUB,ARG
+ENDIF
+
+
+@FUSION_LETTER_MESSAGE_WITH_YOU_PUB,ARG
+
+;연모、친애
+IF TALENT:(ARG):3 || TALENT:(ARG):6
+	IF TALENT:(ARG):임신 && (RAND:2)
+		PRINTFORMW 뱃속의 아이와 함께 당신의 힘이 되겠다고 적혀 있다.
+	ELSEIF TALENT:(ARG):처녀 && (RAND:2)
+		PRINTFORMW 당신에게 처녀를 바치고 싶었다고 적혀 있다.
+	ELSE
+		SELECTCASE RAND:13
+			CASE 0
+				PRINTFORMW 앞으로도 당신의 힘이 되겠다고, 강한 결의가 적혀 있다.
+			CASE 1
+				PRINTFORMW 바람피웠다간 당신의 안에서 저주해주겠다고 써져 있다.
+			CASE 2
+				PRINTFORMW 당신에 대한 사랑이 장황하게 적혀 있다…
+			CASE 3
+				PRINTFORMW 당신에 대한 마음이 정성껏 새겨져 있었다…
+			CASE 4
+				PRINTFORMW 당신을 염려하는 다정한 말로 넘치고 있었다
+			CASE 5
+				PRINTFORMW 당신에 대한 마음으로 채워져 있었다…
+			CASE 6
+				PRINTFORMW 「고마워」
+			CASE 7
+				PRINTFORMW 눈물로 번져서 읽을 수가 없다・・・
+			CASE 8
+				PRINTFORMW 당신과의 추억이 적혀 있다.
+			CASE 9
+				PRINTFORMW 편지에서 좋은 냄새가 난다・・・
+			CASE 10
+				PRINTFORMW 당신과 하나가 된 것에 대한 기쁨이 기재되어 있다・・・
+			CASE 11
+				PRINTFORMW 설령 죽더라도 함께 있을 수 있다고 흥문한 느낌의 문장이 장황하게 적혀 있다.
+			CASEELSE
+				PRINTFORMW 편지에는 아직 %CALLNAME:(ARG)%의 온기가 남아 있었다.
+		ENDSELECT
+	ENDIF
+	
+;음란、창부
+ELSEIF TALENT:(ARG):4 || TALENT:(ARG):7
+	SELECTCASE RAND:5
+	CASE 0
+		PRINTFORMW 세상에! 당신에게 보내는 것이 아니었다.
+	CASE 1
+		PRINTFORMW 잡지 투고용 체험담이 적혀 있었다.
+	CASE 2
+		PRINTFORMW 첫 체험에 대한 내용이 적혀 있다.
+	CASE 3
+		PRINTFORMW 당신과 함께 더한 체험을 할 수 있다는 기쁨으로 넘쳐나고 있다.
+	CASEELSE
+		PRINTFORMW 편지에는 아직 %CALLNAME:(ARG)%의 음란한 냄새가 남아 있었다.
+	ENDSELECT
+
+;복종、예속
+ELSEIF TALENT:(ARG):5 || TALENT:(ARG):8
+	SELECTCASE RAND:3
+	CASE 0
+		PRINTFORMW 왠지 악마의 반생이 적혀 있다
+	CASE 1
+		PRINTFORMW 당신의 일부로서 영원한 충성을 맹세한다고 적혀 있었다.
+	CASEELSE
+		PRINTFORMW 당신에 대한 충성심에 대해서 적혀 있다.
+	ENDSELECT
+
+ENDIF

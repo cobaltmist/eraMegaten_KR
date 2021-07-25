@@ -1,0 +1,76 @@
+﻿
+;======================================================================
+;現在居るフ로어の데이터を입력するための関数群のファイルです
+;======================================================================
+
+;=====================================================================
+;フ로어데이터の입력処理
+;=====================================================================
+@MAKE_FLOOR_LINE,ARG,ARGS
+FOR LOCAL,0,FLAG:최대X
+	DA:LOCAL:ARG = TOINT(SUBSTRING(ARGS,LOCAL,1))
+	SIF SUBSTRING(ARGS,LOCAL,1) == "D"
+		DA:LOCAL:ARG = -1
+	SIF SUBSTRING(ARGS,LOCAL,1) == " " || SUBSTRING(ARGS,LOCAL,1) == "_"
+		DA:LOCAL:ARG = 0
+	TRYCCALLFORM DEFINE_TILES_{FLAG:現던전}, SUBSTRING(ARGS,LOCAL,1), LOCAL, ARG
+		IF RESULT == 0
+			CALL DEFINE_TILES,ARGS,LOCAL,ARG
+		ELSE
+			DA:LOCAL:ARG = RESULT
+		ENDIF
+	CATCH
+		CALL DEFINE_TILES,ARGS,LOCAL,ARG
+	ENDCATCH
+	TRYCALLFORM MAKE_FLOOR_LINE_COMMON_{FLAG:現던전}, DA:LOCAL:ARG, LOCAL, ARG
+NEXT
+;=====================================================================
+;조건付きで床以外のタイルを指定された座標にセット
+;=====================================================================
+@SET_TILE,ARG,ARG:1,ARG:2,ARG:3,ARG:4
+SIF ARG:2 == ARG:3
+	DA:ARG:(ARG:1) = ARG:4
+
+@SET_TILES,ARG,ARG:1,ARG:2,ARG:3,ARG:4,ARGS
+SIF (ARGS == "＝" && ARG:2 == ARG:3) || (ARGS == "＜" && ARG:2 < ARG:3) || (ARGS == "＜＝" && ARG:2 <= ARG:3) || (ARGS == "＞" && ARG:2 > ARG:3) || (ARGS == "＞＝" && ARG:2 >= ARG:3)
+	DA:ARG:(ARG:1) = ARG:4
+
+@DEFINE_TILES, ARGS, ARG, ARG:1
+SIF SUBSTRING(ARGS, ARG, 1) == "T"
+	DA:ARG:(ARG:1) = -9
+SIF SUBSTRING(ARGS, ARG, 1) == "R"
+	DA:ARG:(ARG:1) = -19
+SIF SUBSTRING(ARGS, ARG, 1) == "E"
+	DA:ARG:(ARG:1) = -29
+
+;記述例、これならば에코빌딩でXが9となる
+;@DEFINE_TILES_1, ARGS
+;SIF ARGS == "X"
+;	RETURN 9
+
+;=====================================================================
+;タイル破壊
+;引数はARGがX座標、ARG:1がY座標
+;ARG:2は破壊後のタイル(생략した場合は1)
+;=====================================================================
+@CLEAR_TILE, ARG = -1, ARG:1 = -1, ARG:2 = 1
+IF ARG == -1 && ARG:1 == -1
+	DA:(FLAG:現X):(FLAG:現Y) = ARG:2
+ELSE
+	DA:ARG:(ARG:1) = ARG:2
+ENDIF
+
+;ID版タイル破壊　引数0はID, 引数1は破壊後のタイル(생략した場合は1)
+;文字列引数 複数指定したい場合に사용,<11><21><23>といったように<ID>の形式で記述してください
+@CLEAR_TILE_ID, ARG, ARG:1 = 1, ARGS
+#LOCALSIZE 2
+FOR LOCAL:1, 0, FLAG:최대Y
+	FOR LOCAL, 0, FLAG:최대X
+		SIF DA:LOCAL:(LOCAL:1) == ARG
+			DA:LOCAL:(LOCAL:1) = ARG:1
+		IF ARGS != ""
+			SIF STRCOUNT(ARGS, "<"+TOSTR(DA:LOCAL:(LOCAL:1))+">")
+				DA:LOCAL:(LOCAL:1) = ARG:1
+		ENDIF
+	NEXT
+NEXT

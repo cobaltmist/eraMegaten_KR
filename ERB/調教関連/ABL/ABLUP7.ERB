@@ -1,0 +1,357 @@
+﻿;봉사정신の可否
+@ISABLUP7
+;연모、친애、복종、예속はMAXLV10
+IF ABL:7 >= 10
+	RETURN 0
+ELSEIF ABL:7 >= 5 && !함락(TARGET) && TARGET != MASTER
+	RETURN 0
+ENDIF
+
+CALL DECIDE_ABLUP7
+
+IF Z == 0
+	RETURN 0
+ELSE
+	RETURN 1
+ENDIF
+
+
+;봉사정신
+@ABLUP7
+$ABLUP_LOOP
+
+DRAWLINE
+;연모、친애、복종、예속はMAXLV10
+IF ABL:7 >= 10
+	PRINTW 이미 MAX입니다
+	RETURN 0
+ELSEIF ABL:7 >= 5 && !함락(TARGET) && TARGET != MASTER
+	PRINTW 이미 MAX입니다
+	RETURN 0
+ENDIF
+
+CALL DECIDE_ABLUP7
+
+;ＬＶ４から５に上げるときは이상경험이상필요（소질：[연모][친애]なら無視できる）
+IF ABL:7 == 4 && TALENT:3 == 0 && TALENT:6 == 0
+	PRINTS EXPNAME:50
+	PRINTL 있음、그리고
+;ＬＶ８から９に上げるときは이상경험5이상필요（소질：[연모][친애]なら無視できる）
+ELSEIF ABL:7 == 8 && TALENT:3 == 0 && TALENT:6 == 0
+	PRINTS EXPNAME:50
+	PRINTL 5이상、그리고
+ENDIF
+
+;순종が필요
+PRINTS ABLNAME:0
+PRINTV ABL:7 + 1
+PRINTL LV이상、그리고
+
+PRINT [0] - 
+PRINTS PALAMNAME:7
+PRINT 의 구슬×
+PRINTV A
+IF E > 0
+	PRINT 、
+	PRINTS EXPNAME:2
+	PRINTV E
+	PRINT 이상
+	PRINT 、
+	PRINTS EXPNAME:20
+	PRINTV E
+	PRINT 이상
+ENDIF
+PRINT ……
+
+IF I == 0
+	PRINT ＯＫ
+ELSE
+	SIF I & 1
+		PRINT 구슬부족 
+	SIF I & 2
+		PRINT 경험부족 
+	SIF I & 4
+		PRINT 능력부족 
+ENDIF
+PRINTL 
+
+IF B > 0
+	;복종의 구슬で上げる
+	SIF JUEL:5 < B
+		J |= 1
+	;この場合봉사쾌락경험が필요한ことあり
+	SIF EXP:21 < D
+		J |= 2
+
+	PRINT [1] - 
+	PRINTS PALAMNAME:5
+	PRINT 의 구슬×
+	PRINTV B
+	IF D > 0
+		PRINT 、
+		PRINTS EXPNAME:21
+		PRINTV D
+		PRINT 이상
+	ENDIF
+	PRINT ……
+	
+	IF J == 0
+		PRINT ＯＫ
+	ELSE
+		SIF J & 1
+			PRINT 구슬부족 
+		SIF J & 2
+			PRINT 경험부족 
+		SIF J & 4
+			PRINT 능력부족 
+	ENDIF
+	PRINTL 
+ELSE
+	J = 256
+ENDIF
+
+IF C > 0
+	;습득의 구슬で上げる
+	SIF JUEL:8 < C
+		K |= 1
+	;この場合절정경험が１이상필요
+	SIF EXP:2 < 1
+		K |= 2
+
+	PRINT [2] - 
+	PRINTS PALAMNAME:8
+	PRINT 의 구슬×
+	PRINTV C
+	PRINT 、
+	PRINTS EXPNAME:2
+	PRINTV 1
+	PRINT 이상
+	PRINT ……
+
+	IF K == 0
+		PRINT ＯＫ
+	ELSE
+		SIF K & 1
+			PRINT 구슬부족 
+		SIF K & 2
+			PRINT 경험부족 
+		SIF K & 4
+			PRINT 능력부족 
+	ENDIF
+	PRINTL 
+ELSE
+	K = 256
+ENDIF
+
+IF Z == 0
+	WAIT
+	RETURN
+ENDIF
+
+PRINTLC [100] - 그만둔다
+PRINTFORMLC   %" " * 42%
+PRINTLC [200] - 자동 능력 상승
+
+$INPUT_LOOP
+INPUT
+IF (RESULT < 0 || RESULT > 2) && RESULT != 100 && RESULT != 200
+	RESTART
+ELSEIF I != 0 && RESULT == 0
+	PRINTL 조건을 만족하지 못했습니다 재입력해 주세요
+	RETURN 0
+ELSEIF J == 256 && RESULT == 1
+	RETURN 0
+ELSEIF J != 0 && RESULT == 1
+	PRINTL 조건을 만족하지 못했습니다 재입력해 주세요
+	RETURN 0
+ELSEIF K == 256 && RESULT == 2
+	RESTART
+ELSEIF K != 0 && RESULT == 2
+	PRINTL 조건을 만족하지 못했습니다 재입력해 주세요
+	RETURN 0
+ELSEIF RESULT == 100
+	RETURN 0
+ELSEIF RESULT == 200
+	CALL AUTOMAX, 7
+	RETURN 0
+ENDIF
+
+ABL:7 += 1
+
+IF RESULT == 0
+	JUEL:7 -= A
+ELSEIF RESULT == 1
+	JUEL:5 -= B
+ELSEIF RESULT == 2
+	JUEL:8 -= C
+ENDIF
+
+PRINTS ABLNAME:7
+PRINT 의 레벨이 
+PRINTV ABL:7
+PRINTFORMW %조사만처리(ABL:7,"가")% 되었습니다
+GOTO ABLUP_LOOP
+
+;봉사정신LvUP판정
+@DECIDE_ABLUP7
+;조건別にＯＫかダメかを記録する
+I = 0
+J = 0
+K = 0
+;능력アップ가능なら1にする
+Z = 0
+
+IF ABL:7 == 0
+	A = 100
+	B = 20
+	C = 100
+	D = 5
+	E = 5
+ELSEIF ABL:7 == 1
+	A = 1200
+	B = 100
+	C = 0
+	D = 5
+	E = 10
+ELSEIF ABL:7 == 2
+	A = 5000
+	B = 600
+	C = 0
+	D = 20
+	E = 20
+ELSEIF ABL:7 == 3
+	A = 10000
+	B = 2000
+	C = 0
+	D = 50
+	E = 20
+ELSEIF ABL:7 == 4
+	A = 30000
+	B = 8000
+	C = 0
+	D = 100
+	E = 30
+ELSEIF ABL:7 == 5
+	A = 35000
+	B = 8500
+	C = 0
+	D = 150
+	E = 40
+ELSEIF ABL:7 == 6
+	A = 40000
+	B = 10000
+	C = 0
+	D = 200
+	E = 100
+ELSEIF ABL:7 == 7
+	A = 45000
+	B = 15000
+	C = 0
+	D = 250
+	E = 150
+ELSEIF ABL:7 == 8
+	A = 50000
+	B = 20000
+	C = 0
+	D = 300
+	E = 200
+ELSEIF ABL:7 == 9
+	A = 60000
+	B = 30000
+	C = 0
+	D = 400
+	E = 300
+ENDIF
+
+;연모
+SIF TALENT:3
+	TIMES B , 0.80
+;친애
+SIF TALENT:6
+	TIMES B , 0.60
+;복종
+SIF TALENT:5
+	TIMES A , 0.70
+;예속
+SIF TALENT:8
+	TIMES A , 0.40
+;일선을넘지않음
+IF TALENT:27 && (TALENT:3 == 0 && TALENT:4 == 0 && TALENT:5 == 0 && 함락() < 2)
+	TIMES A , 2.00
+	TIMES B , 2.00
+	TIMES C , 2.00
+	TIMES D , 2.00
+	TIMES E , 2.00
+ENDIF
+
+;순종が봉사정신＋１레벨でないといけない
+IF ABL:0 < ABL:7+1
+	;순종が부족
+	I |= 4
+	J |= 4
+	K |= 4
+ENDIF
+
+;ＬＶ４から５に上げるときは이상경험이상필요（소질：[연모][친애]なら無視できる）
+IF ABL:7 == 4 && TALENT:3 == 0 && TALENT:6 == 0
+	IF EXP:50 == 0
+		;이상경험が부족
+		I |= 2
+		J |= 2
+		K |= 2
+	ENDIF
+;ＬＶ８から９に上げるときは이상경험5이상필요（소질：[연모][친애]なら無視できる）
+ELSEIF ABL:7 == 8 && TALENT:3 == 0 && TALENT:6 == 0
+	IF EXP:50 < 5
+		;이상경험が부족
+		I |= 2
+		J |= 2
+		K |= 2
+	ENDIF
+ENDIF
+
+;굴복의 구슬で上げる
+SIF JUEL:7 < A
+	I |= 1
+;절정경험が필요한場合
+SIF EXP:2 < E
+	I |= 2
+;정액경험が필요한場合
+SIF EXP:20 < E
+	I |= 2
+
+IF I == 0
+	Z = 1
+ENDIF
+
+IF B > 0
+	;복종의 구슬で上げる
+	SIF JUEL:5 < B
+		J |= 1
+	;この場合봉사쾌락경험が필요한ことあり
+	SIF EXP:21 < D
+		J |= 2
+	
+	IF J == 0
+		Z = 1
+	ENDIF
+ELSE
+	J = 256
+ENDIF
+
+IF C > 0
+	;습득의 구슬で上げる
+	SIF JUEL:8 < C
+		K |= 1
+	;この場合절정경험が１이상필요
+	SIF EXP:2 < 1
+		K |= 2
+
+	IF K == 0
+		Z = 1
+	ENDIF
+ELSE
+	K = 256
+ENDIF
+RETURN 1
+

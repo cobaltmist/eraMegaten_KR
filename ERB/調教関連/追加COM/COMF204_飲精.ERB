@@ -1,0 +1,131 @@
+﻿;-------------------------------------------------
+;정액먹기
+;특수커맨드
+;-------------------------------------------------
+@CHECK_COM_ABLE204
+;야외플레이中 야외플레이 확장 기능이 있어야 한다
+SIF TEQUIP:29  == 0 || FLAG:46 == 0
+	RETURN 0
+;사람은 5명 이상이어야 한다
+SIF TEQUIP:46 < 5
+	RETURN 0
+;구경꾼의 흥분도는 60 이상이어야 한다
+SIF TEQUIP:47 < 60
+	RETURN 0
+RETURN 1
+
+;最初に표시
+@ACT_COM204
+;정액먹기
+PRINTL 정액먹기
+TSTR:0 = 정액먹기
+;CALL KOJO_MESSAGE_COM
+;CALL MESSAGE_COM204
+;-------------------------------------------------
+;ソース추가処理
+;-------------------------------------------------
+;소비체력、기력
+DOWNBASE:TARGET:체력 += 0
+DOWNBASE:TARGET:기력 += 100
+
+SOURCE:TARGET:성행위 = 420
+SOURCE:TARGET:달성 = 200
+SOURCE:TARGET:굴종 = 650
+SOURCE:TARGET:일탈 = 500
+SOURCE:TARGET:반감 = 500
+
+;上のほうで計算した불결데이터
+SOURCE:TARGET:불결 = Y*40 + 100
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;억압、저항持ちには、억울ソース추가
+SIF TALENT:32 || TALENT:34
+	SOURCE:TARGET:울굴 += 200
+
+;-------------------------------------------------
+;불결の処理
+;-------------------------------------------------
+;奴隷の입に불결移動
+CALL SET_STAIN("입", "정액", TARGET)
+
+;-------------------------------------------------
+;경험の処理
+;-------------------------------------------------
+
+;-------------------------------------------------
+;吸精処理
+;野次馬の人数*500
+;-------------------------------------------------
+LOCAL = TEQUIP:46 * 500
+CALL CONTROL_MAG,TARGET,LOCAL
+
+
+RETURN 1
+
+;-------------------------------------------------
+;実行판정処理
+;-------------------------------------------------
+@COM_ORDER_204, ARG, ARG:1
+IF TEQUIP:ARG:음문발동
+	CALL ADD_COM_ORDER, "판정無視", "음문 발동중"
+	RETURN 0
+ENDIF
+CALL ADD_COM_ORDER, "ABL", "욕망", 2, ARG, ARG:1
+CALL ADD_COM_ORDER, "ABL", "봉사정신", 4, ARG, ARG:1
+CALL ADD_COM_ORDER, "ABL", "정액중독", 3, ARG, ARG:1
+CALL ADD_COM_ORDER, "MARK", "쾌락각인", 1, ARG, ARG:1
+CALL ADD_COM_ORDER, "PALAM", "욕정", 1, ARG, ARG:1
+CALL ADD_COM_ORDER, "TALENT", "악취둔감", 1, ARG, ARG:1
+CALL ADD_COM_ORDER, "TALENT", "악취민감", -3, ARG, ARG:1
+CALL ADD_COM_ORDER, "TALENT", "헌신적", 6, ARG, ARG:1
+SIF !TALENT:ARG:음란 && !TALENT:ARG:창부
+	CALL ADD_COM_ORDER, "TALENT", "쾌감을부정", -1, ARG, ARG:1
+;남성혐오（음란、창부で무효）
+SIF HATE(ARG, ARG:1)
+	CALL ADD_COM_ORDER, "TALENT", \@IS_MALE(PLAYER) ? 남성혐오 # 여성혐오 \@, -12, ARG, ARG:1
+CALL ADD_COM_ORDER, "TALENT", "음란", 5, ARG, ARG:1
+CALL ADD_COM_ORDER, "TALENT", "창부", 10, ARG, ARG:1
+;조교者が후타나리
+;CALL ADD_COM_ORDER, "TALENT", "후타나리", 8, ARG:1, ARG
+;CALL ADD_COM_ORDER, "STAIN", "페니스", 100, ARG, ARG:1
+CALL ADD_COM_ORDER, "RELATION", , , ARG, ARG:1
+;-------------------------------------------------
+;実行値
+;-------------------------------------------------
+@COM_ORDER_NUM_204
+RETURN 34
+
+;-------------------------------------------------
+;204,정액먹기
+;-------------------------------------------------
+@MESSAGE_COM204
+PRINTFORML %CALLNAME:PLAYER%는、구경꾼들을 부추겨、준비해둔 용기에 정액을 모으게 했다…
+PRINTFORM %CALLNAME:TARGET%는 
+;구경꾼이 14명 이상
+IF TEQUIP:46 > 14
+	IF RAND:2 == 0
+		PRINTL 눈앞의 조끼에 따라진 대량의 정액을 천천히 마시기 시작했다…
+	ELSE
+		PRINTL 정액이 빵빵하게 들어간 패트병을 잡고、조용히 시간을 들여 맛보기 시작했다…
+	ENDIF
+ELSE
+	IF RAND:2 == 0
+		PRINTL 정액이 찰랑거릴 정도로 따라진 잔을 잡고、그대로 맛있다는 듯이 마시기 시작했다…
+	ELSE
+		PRINTL 정액이 부어진 컵을 손에 쥐고、과시하듯이 마시기 시작했다…
+	ENDIF
+ENDIF
+PRINT 주위의 구경꾼들은 
+IF RAND:2 == 0
+	PRINTFORMW 천박한 미소로、%CALLNAME:TARGET%가 정액을 삼키는 모습을 바라보고 있다…
+ELSE
+	PRINTFORMW 가끔씩、입안에 남은 정액을 음미시키면서、입을 벌리고、제대로 정액을 삼켰는지 확인하고 있다…
+ENDIF
+
+;===================================================
+;조교타입
+;===================================================
+@COMTYPE_204
+RETURN COMTYPE("특수커맨드계")

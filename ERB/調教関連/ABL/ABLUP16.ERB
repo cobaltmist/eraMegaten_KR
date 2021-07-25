@@ -1,0 +1,302 @@
+﻿;정액중독の可否
+@ISABLUP16
+;연모、친애、음란、창부はMAXLV10
+IF ABL:16 >= 10
+	RETURN 0
+ELSEIF ABL:16 >= 5 && !함락(TARGET) && TARGET != MASTER
+	RETURN 0
+ENDIF
+
+CALL DECIDE_ABLUP16
+
+IF Z == 0
+	RETURN 0
+ELSE
+	RETURN 1
+ENDIF
+
+
+;정액중독
+@ABLUP16
+$ABLUP_LOOP
+
+DRAWLINE
+;연모、친애、음란、창부はMAXLV10
+IF ABL:16 >= 10
+	PRINTW 이미 MAX입니다
+	RETURN 0
+ELSEIF ABL:16 >= 5 && !함락(TARGET) && TARGET != MASTER
+	PRINTW 이미 MAX입니다
+	RETURN 0
+ENDIF
+
+CALL DECIDE_ABLUP16
+
+;ＬＶ２から３に上げるときは이상경험필요（소질：[악취둔감][중독되기쉬움]なら無視できる）
+IF ABL:16 == 2 && TALENT:61 == 0 && TALENT:72 == 0
+	PRINTS EXPNAME:50
+	PRINTL 있음、그리고
+;ＬＶ３から４に上げるときは이상경험2이상필요（소질：[악취둔감][중독되기쉬움]なら無視できる）
+ELSEIF ABL:16 == 3 && TALENT:61 == 0 && TALENT:72 == 0
+	PRINTS EXPNAME:50
+	PRINTL 2이상、그리고
+;ＬＶ４から５に上げるときは이상경험3이상필요（소질：[악취둔감][중독되기쉬움]なら無視できる）
+ELSEIF ABL:16 == 4 && TALENT:61 == 0 && TALENT:72 == 0
+	PRINTS EXPNAME:50
+	PRINTL 3이상、그리고
+;ＬＶ８から９に上げるときは이상경험7이상필요（소질：[악취둔감][중독되기쉬움]なら無視できる）
+ELSEIF ABL:16 == 8 && TALENT:61 == 0 && TALENT:72 == 0
+	PRINTS EXPNAME:50
+	PRINTL 7이상、그리고
+ENDIF
+
+;봉사정신が필요（함락無し時＆연모친애時）
+IF TALENT:4 == 0 && TALENT:7 == 0
+	PRINTS ABLNAME:7
+	PRINTV ABL:16+1
+	PRINTL LV이상、그리고
+;욕망が필요（음란창부時）
+ELSEIF TALENT:4 == 1 || TALENT:7 == 1
+	PRINTS ABLNAME:1
+	PRINTV ABL:16+1
+	PRINTL LV이상、그리고
+ENDIF
+
+PRINT [0] - 
+PRINTS PALAMNAME:6
+PRINT 의 구슬×
+PRINTV A
+PRINT 、
+PRINTS PALAMNAME:7
+PRINT 의 구슬×
+PRINTV B
+PRINT 、
+PRINTS EXPNAME:20
+PRINTV C
+PRINT 이상
+PRINT ……
+
+IF I == 0
+	PRINT ＯＫ
+ELSE
+	SIF I & 1
+		PRINT 구슬부족 
+	SIF I & 2
+		PRINT 경험부족 
+	SIF I & 4
+		PRINT 능력부족 
+ENDIF
+PRINTL 
+
+IF I != 0
+	PRINT [1] - 
+	PRINTS PALAMNAME:6
+	PRINT 의 구슬 ×
+	PRINTV A*3
+	PRINT 、
+	PRINTS PALAMNAME:7
+	PRINT 의 구슬 ×
+	PRINTV B*3
+	PRINT 、
+	PRINTS EXPNAME:20
+	PRINTV C/2
+	PRINT 이상
+	PRINT ……
+
+	IF J == 0
+		PRINT ＯＫ
+	ELSE
+		SIF J & 1
+			PRINT 구슬부족
+		SIF J & 2
+			PRINT 경험부족
+		SIF J & 4
+			PRINT 능력부족
+	ENDIF
+	PRINTL 
+ENDIF
+
+IF Z == 0
+	WAIT
+	RETURN
+ENDIF
+
+PRINTLC [100] - 그만둔다
+PRINTFORMLC   %" " * 42%
+PRINTLC [200] - 자동 능력 상승
+
+
+INPUT
+IF (RESULT < 0 || RESULT > 1) && RESULT != 100 && RESULT != 200
+	RESTART
+ELSEIF I != 0 && RESULT == 0
+	PRINTL 조건을 만족하지 못했습니다
+	RETURN 0
+ELSEIF J != 0 && RESULT == 1
+	IF I == 0
+		RESTART
+	ELSE
+		PRINTL 조건을 만족하지 못했습니다
+		RETURN 0
+	ENDIF
+ELSEIF RESULT == 100
+	RETURN 0
+ELSEIF RESULT == 200
+	CALL AUTOMAX, 16
+	RETURN 0
+ENDIF
+
+ABL:16 += 1
+
+IF RESULT == 0
+	JUEL:6 -= A
+	JUEL:7 -= B
+ELSEIF RESULT == 1
+	JUEL:6 -= A*3
+	JUEL:7 -= B*3
+ENDIF
+
+PRINTS ABLNAME:16
+PRINT 의 레벨이 
+PRINTV ABL:16
+PRINTFORMW %조사만처리(ABL:16,"가")% 되었습니다
+GOTO ABLUP_LOOP
+
+;정액중독LVUP판정
+@DECIDE_ABLUP16
+;조건別にＯＫかダメかを記録する
+I = 0
+J = 0
+;능력アップ가능なら1にする
+Z = 0
+
+IF ABL:16 == 0
+	A = 3000
+	B = 10000
+	C = 10
+ELSEIF ABL:16 == 1
+	A = 8000
+	B = 25000
+	C = 25
+ELSEIF ABL:16 == 2
+	A = 15000
+	B = 50000
+	C = 40
+ELSEIF ABL:16 == 3
+	A = 30000
+	B = 100000
+	C = 80
+ELSEIF ABL:16 == 4
+	A = 55000
+	B = 300000
+	C = 200
+ELSEIF ABL:16 == 5
+	A = 60000
+	B = 350000
+	C = 250
+ELSEIF ABL:16 == 6
+	A = 65000
+	B = 400000
+	C = 300
+ELSEIF ABL:16 == 7
+	A = 70000
+	B = 450000
+	C = 350
+ELSEIF ABL:16 == 8
+	A = 75000
+	B = 500000
+	C = 400
+ELSEIF ABL:16 == 9
+	A = 90000
+	B = 650000
+	C = 500
+ENDIF
+
+;일선을넘지않음
+IF TALENT:27 && (TALENT:3 == 0 && TALENT:4 == 0 && TALENT:5 == 0 && 함락() < 2)
+	TIMES A , 2.00
+	TIMES B , 2.00
+	TIMES C , 2.00
+ENDIF
+;중독되기쉬움
+IF TALENT:72
+	TIMES A , 0.50
+	TIMES B , 0.50
+	TIMES C , 0.50
+	TIMES D , 0.50
+ENDIF
+
+;ＬＶ２から３に上げるときは이상경험필요（소질：[악취둔감][중독되기쉬움]なら無視できる）
+IF ABL:16 == 2 && TALENT:61 == 0 && TALENT:72 == 0
+	IF EXP:50 == 0
+		;이상경험が부족
+		I |= 2
+		J |= 2
+	ENDIF
+;ＬＶ３から４に上げるときは이상경험2이상필요（소질：[악취둔감][중독되기쉬움]なら無視できる）
+ELSEIF ABL:16 == 3 && TALENT:61 == 0 && TALENT:72 == 0
+	IF EXP:50 < 2
+		;이상경험が부족
+		I |= 2
+		J |= 2
+	ENDIF
+;ＬＶ４から５に上げるときは이상경험3이상필요（소질：[악취둔감][중독되기쉬움]なら無視できる）
+ELSEIF ABL:16 == 4 && TALENT:61 == 0 && TALENT:72 == 0
+	IF EXP:50 < 3
+		;이상경험が부족
+		I |= 2
+		J |= 2
+	ENDIF
+;ＬＶ８から９に上げるときは이상경험7이상필요（소질：[악취둔감][중독되기쉬움]なら無視できる）
+ELSEIF ABL:16 == 8 && TALENT:61 == 0 && TALENT:72 == 0
+	IF EXP:50 < 7
+		;이상경험が부족
+		I |= 2
+		J |= 2
+	ENDIF
+ENDIF
+
+;봉사정신が필요（함락無し時＆연모친애時）
+IF TALENT:4 == 0 && TALENT:7 == 0
+	IF ABL:7 < ABL:16 + 1
+		I |= 4
+		J |= 4
+	ENDIF
+;욕망が필요（음란창부時）
+ELSEIF TALENT:4 == 1 || TALENT:7 == 1
+	IF ABL:1 < ABL:16 + 1
+		I |= 4
+		J |= 4
+	ENDIF
+ENDIF
+
+;욕정의 구슬で上げる
+SIF JUEL:6 < A
+	I |= 1
+;굴복의 구슬で上げる
+SIF JUEL:7 < B
+	I |= 1
+;정액경험が필요
+SIF EXP:20 < C
+	I |= 2
+
+IF I == 0
+	Z = 1
+ENDIF
+
+
+;욕정의 구슬で上げる
+SIF JUEL:6 < A*3
+	J |= 1
+;굴복의 구슬で上げる
+SIF JUEL:7 < B*3
+	J |= 1
+;정액경험が필요
+SIF EXP:20 < C/2
+	J |= 2
+
+IF J == 0
+	Z = 1
+ENDIF
+RETURN 1
+

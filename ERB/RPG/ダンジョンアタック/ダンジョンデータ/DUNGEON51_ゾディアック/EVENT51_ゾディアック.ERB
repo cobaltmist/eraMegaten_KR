@@ -1,0 +1,511 @@
+﻿
+;=======================================================================
+;조디악
+;ボス・イシュッキックOR레이디스콜피오
+;星아카리OR吉崎안나加入
+;던전ナンバー13
+;=======================================================================
+;=======================================================================
+;関連フラグ一覧
+;=======================================================================
+;他の이벤트で立てられるもの
+;이벤트フラグ:4:0　仮面党討伐指令クリアフラグ（仮面党討伐指令クリア）
+;던전フラグ:13:3、大迷路フラグ（仮面党討伐指令）
+;던전フラグ:13:4、가면당원강화フラグ（仮面党討伐指令）
+;던전フラグ:13:5、악마登場フラグ（仮面党討伐指令）
+;던전フラグ:13:6、ボス決定フラグ（仮面党討伐指令）
+
+;この던전内でつくフラグ
+;던전フラグ:13:1、突入フラグ
+;던전フラグ:13:2、奥突入フラグ:いらなくなったきがする
+;던전フラグ:13:11、クリアフラグ;EVENT5「페르소나」出現フラグでもある
+
+;宝フラグ
+;1F 12,1 외상약　21
+;2F 1,1 운의향　22
+;	5,1 마카 300　23
+;	13.15 도반옥　24
+;	7,7 ナパームボム　25
+;	5,8* 마석　26
+;	6,8* \ 1500　27
+;3F 8,9 디스챰　28
+;	9,8 야마타노드링크　29
+
+
+
+;=======================================================================
+;スタート時이벤트
+;=======================================================================
+@EVENT_DUNGEON_START_51
+PRINTL 어떻게든, JOKER에게서 소원을 이룬 자는 가면당이라는 조직에 들어가지 않으면 안 된다、
+PRINTW 그 입당식이 이 조디악의 시크릿 룸에서 열린다
+PRINTW 그리고, 그 입당식에는 가면당의 간부도 참석하는 것 같다
+PRINTW 이번 임무는 그 간부를 습격하고, 식을 방해하는 것이다
+PRINTW 실패는 허용되지 않는다. 즉시 시크릿 룸에 들어가 간부를 격파하자
+;=======================================================================
+;[5]조사　実行時の이벤트
+;=======================================================================
+@EVENT_CHECK_DUNGEON_51
+;==========
+;メッセンジャー
+;==========
+IF DA:(FLAG:現X):(FLAG:現Y) % 10  == 8
+	CALL MESSAGE_51
+	RETURN 1
+;========
+;宝の処理
+;========
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10  == 3
+	CALL TREASURE_51
+	RETURN 1
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10  == 4
+	CALL EVENT_51
+	RETURN 1
+;=======
+;階段
+;=======
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10  == 6 || DA:(FLAG:現X):(FLAG:現Y) % 10  == 7
+CALL DUNGEON_STAIRS_51
+RETURN 1
+ELSE
+	PRINTW 아무도 없는 것 같다
+	RETURN 0
+ENDIF
+
+;=======================================================================
+;タイル進入時の이벤트
+;=======================================================================
+@EVENT_ENTER_DUNGEON_51,ARG
+;ARG = 進入時の向き　0の場合ワープなど
+;========
+;宝の処理
+;========
+IF DA:(FLAG:現X):(FLAG:現Y) % 10  == 3
+	CALL TREASURE_51
+	RETURN 1
+;=======
+;階段
+;=======
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10  == 6 || DA:(FLAG:現X):(FLAG:現Y) % 10  == 7
+	CALL DUNGEON_STAIRS_51
+	RETURN 1
+;=======
+;特殊タイル
+;=======
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10  == 9
+SELECTCASE FLAG:現M
+	CASE 0
+		CALL DUNGEON_WORP_ID, 1, 9, 1
+		FLAG:現Y -= 1
+	CASE 1
+		PRINTW 여기서 돌아가버린다면, 입당식은 무사히 끝나버리고 만다
+		PRINTW 그리고, 침입자가 들어온 이상, 이곳을 버릴 가능성도 높다
+		PRINTW 후퇴해서는 안 될 것이다
+		FLAG:現Y = 15
+	CASEELSE
+ENDSELECT
+RETURN 1
+;==========
+;扉の処理
+;==========
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10  == 2
+	CALL DUNGEON_DOOR, ARG
+	RETURN 1
+;========================
+;이벤트
+;========================
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10  == 4
+	CALL EVENT_51
+ENDIF
+RETURN 0
+@TREASURE_51
+#DIM LOCALSIZE, 2
+;個数,-1のとき、마카・0の時、\となる
+LOCAL:1 = 1
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+	;1F
+	CASE 100
+		LOCAL = GETNUM(ITEM, "외상약")
+		LOCAL:1 = 3
+	;2F(통상)
+	CASE 200
+		LOCAL = GETNUM(ITEM, "네이팜탄")
+		LOCAL:1 = 3
+	CASE 201
+		LOCAL = 1750
+		LOCAL:1 = 0
+	CASE 202
+		LOCAL = 100
+		LOCAL:1 = -1
+	;2F(迷路)
+	CASE 300
+		LOCAL = GETNUM(ITEM, "도반옥")
+	CASE 301
+		LOCAL = 270
+		LOCAL:1 = -1
+	CASE 302
+		LOCAL = 120
+		LOCAL:1 = -1
+	CASE 303
+		LOCAL = GETNUM(ITEM, "스킬카드【아쿠에스】")
+	CASE 304
+		LOCAL = 2720
+		LOCAL:1 = 0
+	CASE 305
+		LOCAL = GETNUM(ITEM, "성스러운탄환")
+		LOCAL:1 = 5
+	CASE 306
+		LOCAL = GETNUM(ITEM, "스킬카드【타룬・다】")
+	CASE 307
+		LOCAL = GETNUM(ITEM, "우황단")
+		LOCAL:1 = 3
+	CASE 308
+		LOCAL = 1750
+		LOCAL:1 = 0
+	CASE 309
+		LOCAL = GETNUM(ITEM, "천헐궁교복")
+	CASE 310
+		LOCAL = GETNUM(ITEM, "운의향")
+	CASE 311
+		LOCAL = GETNUM(ITEM, "스킬카드【마린카린】")
+	;南東
+	CASE 312
+		LOCAL = GETNUM(ITEM, "네이팜탄")
+		LOCAL:1 = 3
+	CASE 313
+		LOCAL = GETNUM(ITEM, "지혜의향")
+	CASE 314
+		LOCAL = 3250
+		LOCAL:1 = 0
+	CASE 315
+		LOCAL = 87
+		LOCAL:1 = -1
+	;3F
+	CASE 400
+		LOCAL = GETNUM(ITEM, "야마타노드링크")
+	CASE 401
+		LOCAL = GETNUM(ITEM, "디스챰")
+ENDSELECT
+IF LOCAL:1 > 0
+	CALL GET_TREASURE, LOCAL, LOCAL:1 , FLAG:現던전, FLAG:現M + 75, (DA:(FLAG:現X):(FLAG:現Y) / 10) % 100
+ELSE
+	CALL GET_TREASURE_MONEY, -LOCAL:1, LOCAL, (FLAG:現던전), FLAG:現M + 75, (DA:(FLAG:現X):(FLAG:現Y) / 10) % 100
+ENDIF
+@DUNGEON_STAIRS_51
+;迷路フラグが立っている場合は階段の飛び先が変わる
+IF DA:(FLAG:現X):(FLAG:現Y) % 10  == 6
+	IF FLAG:現M == 1
+		IF STRFLAG_NUM_EV("조디악의 기이한 소문", , , , [[이벤트:소문]]) == 2
+			CALL DUNGEON_UPSTAIRS_ID, 3, 3007
+		ELSE
+			CALL DUNGEON_UPSTAIRS_ID, 2, 2007
+		ENDIF
+	ELSE
+		CALL DUNGEON_UPSTAIRS_ID, 4, 4007
+	ENDIF
+ELSE
+	IF FLAG:現M == 4
+		IF STRFLAG_NUM_EV("조디악의 기이한 소문", , , , [[이벤트:소문]]) == 2
+			CALL DUNGEON_DOWNSTAIRS_ID, 3, 3006
+		ELSE
+			CALL DUNGEON_DOWNSTAIRS_ID, 2, 2006
+		ENDIF
+	ELSE
+		CALL DUNGEON_DOWNSTAIRS_ID, 1, 1006
+	ENDIF
+ENDIF
+@EVENT_51
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+	CASE 400
+		FLAG:도주불가フラグ = 1
+		FLAG:회화불능フラグ = 1
+		FLAG:선제기습취소 = 1
+		;部屋をアナライズし표시更新
+		FOR LOCAL, 0, 12
+			FOR LOCAL:1, 0, 5
+				CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, LOCAL, LOCAL:1)
+			NEXT
+		NEXT
+		CALL SHOW_FLOOR
+		CUSTOMDRAWLINE =
+		IF STRFLAG_NUM_EV("코스프레 클럽의 소문", , , , [[이벤트:소문]]) == 2
+			PRINTW ＞방 안에는 가면을 쓴 인간들이 여럿 있다
+			PRINTW ＞그리고, 그들의 중심에서 이상한 가면을 쓰고, 빨간 망토로 몸을 감싼 인간이 연설하고 있다
+			PRINTW ＞목소리로 추정해보면 여자, 그것도 어린아이인 것 같다……
+			PRINTL 
+			PRINTL 가면을 쓴 소녀?:
+			PRINTW 「제군들은 세계를 구하기 위해 전생해 온 용사들인 것이다！」
+			PRINTW 「전생을 기억해낸 지금이야말로, 우리가 구루、레오님 곁에서 사명을 위해 싸우자ー！」
+			PRINTL 
+			PRINTFORMW ＞눈앞의 광경에 조금 얼굴을 경련하는 채 관찰하고 있자, 소녀 쪽도 %플레이어를()% 눈치챈 것 같다
+			PRINTL 
+			PRINTL 가면을 쓴 소녀?:
+			PRINTW 「오ー! 가면을 안 쓴 네놈은 보고받은 침략자렷다ー！」
+			PRINTL 
+			PRINTL ＞소녀는 포즈를 취하고선 삿대질을 해온다
+			PRINTL 
+			PRINTL 가면을 쓴 소녀?:
+			PRINTW 「이 녀석ー! 세계를 파멸시킬 악마술사놈！」
+			PRINTW 「놈, 놈, 놈, 놈? 잠깐 타임이야」
+			PRINTL 
+			PRINTW ＞대본을 꺼내든 소녀는 곁에 있던 가면당원에게 말을 걸었다
+			PRINTL 
+			PRINTL 가면을 쓴 소녀?:
+			PRINTW 「저기ー저ー, 이거 뭐라고 읽는 거더라？」
+			PRINTW 「아아, 유ー구우ー인 거군」
+			PRINTL 
+			PRINTW ＞가면을 쓴 소녀?는 다시 포즈를 취해 보인다
+			PRINTL 
+			PRINTL 가면을 쓴 소녀?:
+			PRINTW 「유ー구우ー한, 시간의 흐름을 따라 전생한 마법전사 이슈킥이」
+			PRINTW 「정의를 집행하는 김에, 검열삭제 해주마！！」
+			PRINTL 
+			PRINTW ＞전생용사 이슈킥과 용사들이 나타났다！
+			PRINTL 
+			;イシュはHP1200に調整
+			;가면당원も即死もあれなんでそれぞれHP증가
+			;さらにハマ무도もかなり通りにくくしておく
+			;その代わり、정신・신경に弱くしとく
+			;ターン数少ないうちは공격ぬるい仕様＋イシュ死亡で弱体化な仕様なんで
+			;速攻で数を減らしていくか、イシュを潰すか
+			;あとは상태이상で止めまくるか
+			;イシュが검격COOP取れるキャラが複数いるなら、つまり인간落としてるならイシュ潰し
+			;そうじゃないなら、가면당원減らしがおすすめか
+			;상태이상はどっちにしろ、有効だと思います
+			CALL SET_ENEMY,9, [[キャラ:이슈킥]], 24, 0, 1
+			CFLAG:(CHARANUM-1):ＨＰ보정 = 250
+			CALL SYNC_STATUS,(CHARANUM-1)
+			CALL HEALTH_CHARA,(CHARANUM-1)
+			CALL SET_ENEMY,7,[[キャラ:황소가면]],21
+			CFLAG:(CHARANUM-1):ＨＰ보정 = 400
+			CSTR:(CHARANUM-1):사고패턴 = %CALLNAME:(CHARANUM-1)%
+			MAXBASE:(CHARANUM-1):파마 = 20
+			MAXBASE:(CHARANUM-1):주살 = 20
+			MAXBASE:(CHARANUM-1):정신 = 150
+			MAXBASE:(CHARANUM-1):신경 = 150
+			CALL SYNC_STATUS,(CHARANUM-1)
+			CALL HEALTH_CHARA,(CHARANUM-1)
+			CALL SET_ENEMY,8,[[キャラ:황소가면]],21
+			CFLAG:(CHARANUM-1):ＨＰ보정 = 400
+			CSTR:(CHARANUM-1):사고패턴 = %CALLNAME:(CHARANUM-1)%
+			MAXBASE:(CHARANUM-1):파마 = 20
+			MAXBASE:(CHARANUM-1):주살 = 20
+			MAXBASE:(CHARANUM-1):정신 = 150
+			MAXBASE:(CHARANUM-1):신경 = 150
+			CALL SYNC_STATUS,(CHARANUM-1)
+			CALL HEALTH_CHARA,(CHARANUM-1)
+			CALL SET_ENEMY,10,[[キャラ:사자가면]],21
+			CFLAG:(CHARANUM-1):ＨＰ보정 = 350
+			CSTR:(CHARANUM-1):사고패턴 = %CALLNAME:(CHARANUM-1)%
+			MAXBASE:(CHARANUM-1):파마 = 20
+			MAXBASE:(CHARANUM-1):주살 = 20
+			MAXBASE:(CHARANUM-1):정신 = 150
+			MAXBASE:(CHARANUM-1):신경 = 150
+			CALL SYNC_STATUS,(CHARANUM-1)
+			CALL HEALTH_CHARA,(CHARANUM-1)
+			CALL SET_ENEMY,11,[[キャラ:사자가면]],21
+			CFLAG:(CHARANUM-1):ＨＰ보정 = 350
+			CSTR:(CHARANUM-1):사고패턴 = %CALLNAME:(CHARANUM-1)%
+			MAXBASE:(CHARANUM-1):파마 = 20
+			MAXBASE:(CHARANUM-1):주살 = 20
+			MAXBASE:(CHARANUM-1):정신 = 150
+			MAXBASE:(CHARANUM-1):신경 = 150
+			CALL SYNC_STATUS,(CHARANUM-1)
+			CALL HEALTH_CHARA,(CHARANUM-1)
+			CALL SET_ENEMY,12,[[キャラ:전갈가면]],21
+			CFLAG:(CHARANUM-1):ＨＰ보정 = 250
+			CSTR:(CHARANUM-1):사고패턴 = %CALLNAME:(CHARANUM-1)%
+			MAXBASE:(CHARANUM-1):파마 = 20
+			MAXBASE:(CHARANUM-1):주살 = 20
+			MAXBASE:(CHARANUM-1):정신 = 150
+			MAXBASE:(CHARANUM-1):신경 = 150
+			CALL SYNC_STATUS,(CHARANUM-1)
+			CALL HEALTH_CHARA,(CHARANUM-1)
+			CALL SET_ENEMY,13,[[キャラ:전갈가면]],21
+			CFLAG:(CHARANUM-1):ＨＰ보정 = 250
+			CSTR:(CHARANUM-1):사고패턴 = %CALLNAME:(CHARANUM-1)%
+			MAXBASE:(CHARANUM-1):파마 = 20
+			MAXBASE:(CHARANUM-1):주살 = 20
+			MAXBASE:(CHARANUM-1):정신 = 150
+			MAXBASE:(CHARANUM-1):신경 = 150
+			CALL SYNC_STATUS,(CHARANUM-1)
+			CALL HEALTH_CHARA,(CHARANUM-1)
+			CALL SET_ENEMY,15,[[キャラ:물병가면]],21
+			CFLAG:(CHARANUM-1):ＨＰ보정 = 250
+			CSTR:(CHARANUM-1):사고패턴 = %CALLNAME:(CHARANUM-1)%
+			MAXBASE:(CHARANUM-1):파마 = 20
+			MAXBASE:(CHARANUM-1):주살 = 20
+			MAXBASE:(CHARANUM-1):정신 = 150
+			MAXBASE:(CHARANUM-1):신경 = 150
+			CALL SYNC_STATUS,(CHARANUM-1)
+			CALL HEALTH_CHARA,(CHARANUM-1)
+			CALL SET_ENEMY,16,[[キャラ:물병가면]],21
+			CFLAG:(CHARANUM-1):ＨＰ보정 = 250
+			CSTR:(CHARANUM-1):사고패턴 = %CALLNAME:(CHARANUM-1)%
+			MAXBASE:(CHARANUM-1):파마 = 20
+			MAXBASE:(CHARANUM-1):주살 = 20
+			MAXBASE:(CHARANUM-1):정신 = 150
+			MAXBASE:(CHARANUM-1):신경 = 150
+			CALL SYNC_STATUS,(CHARANUM-1)
+			CALL HEALTH_CHARA,(CHARANUM-1)
+			CALL BATTLE_START
+			CUSTOMDRAWLINE =
+			WAIT
+			CUSTOMDRAWLINE =
+			WAIT
+			PRINTW ＞이미 주위에 사람은 없다
+			PRINTFORMW ＞%조사처리(CALLNAME:MASTER,"는")%, 일단 소녀의 가면을 벗겨보기로 했다
+			PRINTW ＞그러자, 가면 아래에서 사랑스럽게 생긴 얼굴이 드러났다
+			PRINTW ＞너무 어려 꺼려지는 감도 있지만, 이거라면 높은 값에 팔릴 것 같다
+			PRINTW ＞아니, 오히려 이런 것을 좋아하는 인간이라면 군침이 흐를 정도의 물건일 것이다
+			PRINTW ＞호시 아카리 를 손에 넣었다
+			CALL ADD_NEW_COMPANION,[[キャラ:아카리]],200
+			;LV20に調整+저항추가
+			IF RESULT == 1
+				BASE:(GETCHARA([[キャラ:아카리]])):LV = 20
+				BASE:(GETCHARA([[キャラ:아카리]])):ＥＸＰ = 5*19*20*21/3
+				CALL SYNC_STATUS,GETCHARA([[キャラ:아카리]])
+				BASE:(GETCHARA([[キャラ:아카리]])):힘 = 7
+				BASE:(GETCHARA([[キャラ:아카리]])):지혜 = 4
+				BASE:(GETCHARA([[キャラ:아카리]])):마력 = 4
+				BASE:(GETCHARA([[キャラ:아카리]])):인내력 = 5
+				BASE:(GETCHARA([[キャラ:아카리]])):속도 = 8
+				BASE:(GETCHARA([[キャラ:아카리]])):운 = 11
+				TALENT:(GETCHARA([[キャラ:아카리]])):저항 = 1
+			ENDIF
+		ELSE
+			IF STRFLAG_NUM_EV("전 육상부원의 뜻밖의 취직 장소의 소문", , , , [[이벤트:소문]]) == 2
+				PRINTW ＞방 안에서는, 철썩, 처얼썩, 철썩, 처얼썩, 철썩 하는 소리가 울려퍼지고 있다…
+				PRINTW ＞커다란 푸른 보석이 박힌 가면을 쓴 여자가 채찍으로, 똑같이 가면을 쓴 인간들을 마구 때리고 있다
+				PRINTW ＞그리고, 가면을 쓴 인간들은 맞을 때마다, 하일 가면! 하고 외친다
+				PRINTW ＞이것이 입당 의식이라는 것인가…？
+				PRINTFORMW ＞눈앞의 광경에 조금 당황해하면서 관찰하고 있자, 여자 쪽도 %플레이어를()% 눈치챈 것 같다
+				PRINTL 
+				PRINTL 가면을 쓴 여자:
+				PRINTW 「가면을 쓰지 않았다. 아무래도 입당 희망자는 아닌 것 같군」
+				PRINTW 「뭐 좋아. 모처럼이니 서비스로 당신에게도 이 채찍을 드리도록 하죠」
+			ELSE
+				PRINTW ＞방 안에는 가면을 쓴 인간들이 여럿 있다
+				PRINTW ＞그리고, 그들 앞에 큰 보석이 이마에 박힌 가면을 쓴 여자가 있다
+				PRINTW ＞가면을 쓴 인간들은  한사람 한 사람, 여자 앞으로 가서 포즈를 취하면서, 하일 가면! 이라고 외친다
+				PRINTW ＞틀림없이, 이것이 입당 의식이라는 거겠지
+				PRINTFORMW ＞조금 관찰하고 있자, 여자 쪽도 %플레이어를()% 눈치챈 모양이다
+				PRINTL 
+				PRINTL 가면을 쓴 여자:
+				PRINTW 「가면을 쓰지 않았다. 아무래도 입당 희망자는 아닌 것 같군」
+				PRINTW 「뭐 됐어. 귀찮지만 상대해주겠어」
+			ENDIF
+			PRINTL 
+			PRINTW ＞페르소나구사자 레이디스콜피온이 나타났다！
+			CUSTOMDRAWLINE =
+			WAIT
+			;레이디はイシュと比べるとふつー
+			;ふつーすぎるんで、色々AIでフォロー
+			;でも가운一속성で火약점はまぁどうとでもなると思います
+			CALL SET_ENEMY,9, [[キャラ:레이디]], 24, 0 , 1
+			;SMクラブ化している場合は채찍の위력UP
+			SIF STRFLAG_NUM_EV("전 육상부원의 뜻밖의 취직 장소의 소문", , , , [[이벤트:소문]]) == 2
+				BASE:(CHARANUM-1):힘 += 10
+			CFLAG:(CHARANUM-1):ＨＰ보정 = 1950
+			CFLAG:(CHARANUM-1):ＭＰ보정 = 200
+			CFLAG:(CHARANUM-1):속도보정 = 5
+			CSTR:(CHARANUM-1):사고패턴 = %CALLNAME:(CHARANUM-1)%
+			CFLAG:(CHARANUM-1):行動횟수 = 3
+			CALL SYNC_STATUS,(CHARANUM-1)
+			CALL HEALTH_CHARA,(CHARANUM-1)
+			CALL BATTLE_START
+			CUSTOMDRAWLINE =
+			WAIT
+			PRINTW ＞이미 주위에 사람은 없다
+			PRINTFORMW ＞%조사처리(CALLNAME:MASTER,"는")%, 일단 여자의 가면을 벗겨보기로 했다
+			PRINTW ＞그러자, 가면 아래에서 아름답게 생긴 얼굴이 드러났다
+			PRINTW ＞이거라면 충분히 비싸게 팔 수 있을 것이다
+			PRINTW ＞귀찮은 임무가 있었지만, 이것은 상당한 횡재일지도 모른다
+			CALL ADD_NEW_COMPANION,[[キャラ:안나]],200
+			IF RESULT == 1
+				IF STRFLAG_NUM_EV("전 육상부원의 뜻밖의 취직 장소의 소문", , , , [[이벤트:소문]]) == 2
+					ABL:(GETCHARA([[キャラ:안나]])):새드끼 = 3
+					EXP:(GETCHARA([[キャラ:안나]])):가학쾌락경험 = 30
+				ENDIF
+				BASE:(GETCHARA([[キャラ:안나]])):LV = 20
+				BASE:(GETCHARA([[キャラ:안나]])):ＥＸＰ = 5*19*20*21/3
+				CALL SYNC_STATUS, GETCHARA([[キャラ:안나]])
+				BASE:(GETCHARA([[キャラ:안나]])):힘 = 5
+				BASE:(GETCHARA([[キャラ:안나]])):지혜 = 8
+				BASE:(GETCHARA([[キャラ:안나]])):마력 = 9
+				BASE:(GETCHARA([[キャラ:안나]])):인내력 = 4
+				BASE:(GETCHARA([[キャラ:안나]])):속도 = 9
+				BASE:(GETCHARA([[キャラ:안나]])):운 = 4
+				TALENT:(GETCHARA([[キャラ:안나]])):저항 = 1
+			ENDIF
+			PRINTW ＞요시자카 안나 를 손에 넣었다
+		ENDIF
+		CUSTOMDRAWLINE =
+		PRINTW ＞식은 완전히 없어질 때까지 박살을 냈다
+		PRINTW ＞간부도 무사히 쓰러트려서 붙잡았다
+		PRINTW ＞무사히, 임무를 달성했다고 말할 수 있을 것이다
+		PRINTW ＞임무를 달성한 것에 대한 보상으로 계좌에 ￥50000가 지급되었다
+		MONEY += 50000
+		CALLF STRFLAG_NUM_EV("罪ルート進行", "=", , 4, [[이벤트:페르소나２]])
+		CALLF STRFLAG_D("조디악クリア", 1, [[던전:페르소나２]])
+		FLAG:도주불가フラグ = 0
+		FLAG:회화불능フラグ = 0
+		FLAG:선제기습취소 = 0
+		FLAG:탈출스킬禁止 = 0
+		FLAG:탈출 = 1
+	CASEELSE
+ENDSELECT
+;=====================
+;メッセンジャー(50)
+;=====================
+@TILE_MARK_COMMON_51_8, ARG, ARG:1, ARG:2
+SETCOLOR 0x00ff00
+RESULTS = ｍ
+@MESSAGE_51
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+	CASE 0
+		;大迷路フラグ　もちろん宝箱が増える
+		PRINTL 피곤한 얼굴의 스탭:
+		IF STRFLAG_NUM_EV("조디악의 기이한 소문", , , , [[이벤트:소문]]) == 2
+			PRINTW 「하아… 진짜 싫어져부러」
+			PRINTW 「어째서 이곳의 2층은 이렇게 복잡한 거여」
+			PRINTW 「이래서야 방향치인 내가 아니더라도 좆망이구먼…」
+			PRINTW 「라고 할까… 예전엔 나 정도밖에 고생했던 사람이 없었던 것 같은데？」
+			PRINTW 「어라?」
+		ELSE
+			PRINTW 「하아, 정말 피곤하다…」
+			PRINTW 「이래서야 마치 2층이 미로가 아니라고 하는 것 같잖어」
+			PRINTW 「그래, 나는 방향치지만 말이지ー」
+			PRINTW 「다들 훠딱 헤매부리고서 내 고충을 좀 알아줬음 좋겄는디」
+		ENDIF
+	CASE 1
+		PRINTL 머리나빠보이는 남자:
+		PRINTW 「야, 너 알고 있냐？」
+		PRINTW 「최근 이 근처에 가면 가면당이라는 놈들이 있다는 것 같지만」
+		PRINTW 「왠지 악의 비밀결사라는 것 같고, 위험ー한데」
+		PRINTW 「그래도 뭐, 나타나면 박살내버리겠어 하고 생각하고 있지만」
+		PRINTW 「그렇게 되면 나도 정의의 히어로라는 거잖아. 완전 초 멋있어 보이겠지？」
+	CASE 2
+		;악마登場フラグ
+		PRINTL 겁쟁이 같은 여자:
+		PRINTW 「어쩐지, 당신 평범한 사람이 아닌 것 같네…」
+		PRINTW 「어쩐지, 어둠의 주민이라던가, 악마술사라던가 그런 분위기고…」
+		PRINTW 「아하하, 설마… 그렇지만, 조디악 내부에는 악마가 득시글거린다는 소문도 있고…」
+		PRINTW 「그래서 귀여운 여자 손님을 우적우적 먹어치운다거나…」
+		PRINTW 「아아 무서워… 친구들이 꾀어내서 왔지만 그냥 돌아갈까…」
+	CASE 3
+		;ボス決定フラグ
+		;微妙に사고패턴関係のヒント
+		PRINTL 위험해 보이는 남자:
+		IF STRFLAG_NUM_EV("코스프레 클럽의 소문", , , , [[이벤트:소문]]) == 2
+			PRINTW 「하앍, 이슈킥 님…」
+			PRINTW 「당신과 함께 싸울 수 있다면, 이 몸이 어찌 되든 상관 없습니다…」
+			PRINTW 「당신의 곁에 있는 것만으로도, 평소에는 상상도 할 수 없는 힘을 발휘할 수 있게 됩니다」
+			PRINTW 「이것이 전생에서 이어져 내려오는 운명의 힘이란 말입니까, 후후후후」
+		ELSE
+			PRINTW 「후욱, 레이디 님…」
+			PRINTW 「당신께서 싸늘한 눈초리로 보시는 것만으로도 오싹오싹합니다…」
+			PRINTW 「거기에 상대의 약점을 철저하게 괴롭히고, 효과 없다고 간파된 공격은 하지 않으시죠」
+			PRINTW 「조금이라도 고통을 늘려주려는 듯한 그 태도…… 후욱, 밟히고 싶다！」
+		ENDIF
+ENDSELECT

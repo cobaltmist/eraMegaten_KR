@@ -1,0 +1,683 @@
+﻿;-----------------------------------
+;キングレオ(罪ルートボス)
+;-----------------------------------
+@SET_ACTION_킹・레오, ARG
+;HP減少による확률보정を作成
+LOCAL = (100 - 現HP割合(ARG)) / 5
+;입력行動を-1とターゲットを-1にしておく
+CFLAG:ARG:입력行動 = -1
+CFLAG:ARG:ターゲット = -1
+IF CFLAG:ARG:１moreフラグ > 0
+	SELECTCASE RAND:100
+		CASE 0 TO LOCAL * 2
+			CFLAG:ARG:입력行動 = [[스킬:열화의곡옥]]
+		CASE LOCAL * 2 TO LOCAL * 4
+			CFLAG:ARG:입력行動 = [[스킬:암흑광염난무]]
+	ENDSELECT
+;1ターン눈は補助的な行動を取る
+ELSEIF CFLAG:ARG:行動した횟수 == 0
+		IF MAX(100 - CFLAG:ARG:공격강화 * 3, 80) > RAND:100
+			IF CFLAG:ARG:공격강화 < 16
+				CFLAG:ARG:입력行動 = [[스킬:타루・카쟈]]
+			ELSE
+				CFLAG:ARG:입력行動 = [[스킬:히트라이저]]
+			ENDIF
+		ELSE
+			SELECTCASE RAND:100
+				CASE 0 TO 70
+					IF CFLAG:ARG:빙결무효화횟수 == 0
+						CFLAG:ARG:입력行動 = [[스킬:명왕신부]]
+					ELSE
+						CFLAG:ARG:입력行動 = [[스킬:포효]]
+					ENDIF
+				CASEELSE
+					CFLAG:ARG:입력行動 = [[스킬:액화질소봄베]]
+			ENDSELECT
+		ENDIF
+ELSEIF CFLAG:ARG:行動した횟수 == 1
+	SELECTCASE RAND:100
+		CASE 0 TO 19 +LOCAL
+			CFLAG:ARG:입력行動 = [[스킬:산산조각베기]]
+		CASE 20 TO 39 +LOCAL
+			CFLAG:ARG:입력行動 = [[스킬:암흑광염난무]]
+	ENDSELECT
+ELSE
+	;ニャルルートの場合、水晶髑髏공격을してくる
+	IF STRFLAG_NUM_EV("ニャル進行", , , , [[이벤트:페르소나２]]) == 3 && RAND:2 && EQUIP:ARG:특수탄1
+		CALL RANDOM_TARGET, ARG, 0
+		TSTR = 水晶髑髏
+		CFLAG:ARG:입력行動 = [[스킬:ＤＵＭＭＹ]]
+		RETURN 1
+	ENDIF
+	SELECTCASE RAND:100
+		CASE 0 TO 19 +LOCAL
+			CFLAG:ARG:입력行動 = [[스킬:프레이라]]
+		CASE 20 TO 49 +LOCAL
+			CFLAG:ARG:입력行動 = [[스킬:마하・라기온]]
+		CASE 50 TO 54 +LOCAL * 2
+			CFLAG:ARG:입력行動 = [[스킬:열화의곡옥]]
+	ENDSELECT
+ENDIF
+;ここまで입력行動が決まってなかったら、汎用3種に行く
+;GUNは특수탄でも撃って来やすいので減らしとく
+IF CFLAG:ARG:입력行動 == -1
+	SELECTCASE RAND:100
+		CASE 0 TO 34
+			CFLAG:ARG:입력行動 = [[스킬:아기다인]]
+		CASE 35 TO 69 
+			CFLAG:ARG:입력行動 = 0
+		CASEELSE
+			CFLAG:ARG:입력行動 = [[스킬:화염격]]
+	ENDSELECT
+ENDIF
+;アクション実行不能なら自動的に통상공격にする
+CALL CHECK_ACTIONABLE, ARG, CFLAG:ARG:입력行動
+IF RESULT == 0
+	CFLAG:ARG:입력行動 = 0
+	CALL RANDOM_TARGET, ARG, CFLAG:ARG:입력行動
+ENDIF
+;ここまでターゲットが決まってなかったら、랜덤ターゲットをよんで決定
+SIF CFLAG:ARG:ターゲット == -1
+	CALL RANDOM_TARGET, ARG, CFLAG:ARG:입력行動
+RETURN 1
+
+;구상
+@ENEMY_BATTLE_MESSAGE_K4010, ARG
+SKIPDISP 0
+LOCAL:1 = 1
+LOCAL = CFLAG:ARG:입력行動
+LOCALS = EMPTY
+IF CFLAG:ARG:입력行動 == [[스킬:ＤＵＭＭＹ]]
+	IF RAND:3 == 0
+		CALL MESSAGE_B(1, "그분으로부터 받은 힘을…、너희들 따위가 견딜 수 있을 리가 없어！！")
+	ELSEIF RAND:2
+		CALL MESSAGE_B(1, "수정해골에 의해 죽는 것을 영광으로 알아라！！")
+	ELSE
+		CALL MESSAGE_B(1, "위해한 마이아의 힘이여！！")
+	ENDIF
+	WHILE 1
+		LOCAL:1 = RAND:6 + 1
+		LOCALS = 포지션{LOCAL:1}
+		SIF FLAG:LOCALS >= 0 && GET_STATE(CFLAG:(FLAG:LOCALS):ステート) != "DYING"
+			BREAK
+	WEND
+	LOCAL:1 = FLAG:LOCALS
+	LOCALS = %GET_TYPE(EQUIP:ARG:특수탄1)%
+	EQUIP:ARG:특수탄1 = 0
+	IF MAXBASE:(LOCAL:1):LOCALS == 999 || MAXBASE:(LOCAL:1):LOCALS <= 0 || LOCAL:1 == 0
+		LOCALS =  "하늘의 수정해골이 빛을 내뿜어 %플레이어를()% 지켰다！
+		SIF LOCAL:1 == 0
+			CALL MESSAGE_B(1, LOCALS)
+		LOCALS = BLOCK
+		LOCAL:3 = 0
+	ELSE
+		LOCAL:3 = (MAXBASE:(LOCAL:1):ＨＰ * MAXBASE:(LOCAL:1):LOCALS) / 100
+		SIF CFLAG:(LOCAL:1):방어フラグ
+			LOCAL:3 /= 2
+		LOCALS = {LOCAL:3} 데미지
+	ENDIF
+	PRINTFORMW TARGET:[{LOCAL:1,2}] %CALLNAME:(LOCAL:1),20,LEFT%　>>>>>>　%LOCALS%
+	CALL VAR_HP, LOCAL:1, -(LOCAL:3), 0
+	RETURN 0
+ENDIF
+;実は1MOREとるたびに徐々に공격력があがる
+IF CFLAG:ARG:１moreフラグ
+	MAXBASE:ARG:공격 += 5
+	MAXBASE:ARG:마법위력 += 5
+	CFLAG:ARG:공격강화 += 5
+	CFLAG:ARG:마법위력강화 += 5
+	LOCALS = 좋아！ 힘이 솟는다…！ 너희들을 죽일 힘이！！
+ELSE
+	;숯덩어리로 만들어 주마
+	;페르소나ー
+	SELECTCASE LOCAL
+		CASE 0, [[스킬:산산조각베기]]
+			IF !RAND:3
+				LOCALS = 그 분을 방해하게 둘까보냐！
+			ELSEIF RAND:2
+				LOCALS = 햐하！！ 잘게 썰어주마！
+			ELSE
+				LOCALS = 죽어라！ 죽어라！ 죽어버려어어！！
+			ENDIF
+		CASE [[스킬:마하・라기온]], [[스킬:아기다인]]
+			IF !RAND:3
+				LOCALS = 바짝 익혀주마！！
+			ELSEIF RAND:2
+				LOCALS = 햐하하！！ 타오르는거야！！
+			ELSE
+				LOCALS = 불타라 불타라！ 불타버려라라！！
+			ENDIF
+		CASE [[스킬:프레이라]]
+			LOCALS = 시끄럽다！ 시끄러워！ 모두 날아가버려！！
+		CASE [[스킬:암흑광염난무]], [[스킬:열화의곡옥]]
+			IF !RAND:3
+				LOCALS = 모두 한꺼번에 몰살이다아아！！
+			ELSEIF RAND:2
+				LOCALS = …히…이히…햐하！히야ー 하하하아아아아！！
+			ELSE
+				LOCALS = 숯덩어리로 만들어 주마！
+			ENDIF
+		CASE [[스킬:명왕신부]], [[스킬:액화질소봄베]]
+			LOCALS = 이히…히히…히야아！ 이런 것도 있다！！
+		CASE [[스킬:타루・카쟈]], [[스킬:히트라이저]]
+			IF RAND:2
+				LOCALS = 전파전파전파！！ 전파가 몸에 가득 찼다！
+			ELSE
+				LOCALS = 히야하아！！ 불타라！！
+			ENDIF
+		CASE [[스킬:포효]]
+			IF RAND:2
+				LOCALS = 히ー얏핫핫핫하！
+			ELSE
+				LOCALS = 나는 자유롭다！ 자유로워！！
+			ENDIF
+	ENDSELECT
+ENDIF
+SIF LOCALS != "EMPTY"
+	CALL MESSAGE_B(LOCAL:1, LOCALS, LOCALS:1, LOCALS:2, LOCALS:3, LOCALS:4)
+
+@EVENT_BATTLE_TURNEND_DUNGEON14
+SIF !FINDCHARA_ENEMY([[キャラ:킹・레오]])
+	RETURN 0
+LOCAL= RESULT:1
+SIF STRFLAG_NUM_EV("ニャル進行", , , ,  [[이벤트:페르소나２]]) != 3
+	RETURN 0
+IF EQUIP:LOCAL:특수탄1 == 0
+	SELECTCASE RAND:4
+		CASE 0
+			EQUIP:LOCAL:특수탄1 = 12
+			LOCALS = 地
+		CASE 1
+			EQUIP:LOCAL:특수탄1 = 13
+			LOCALS = 水
+		CASE 2
+			EQUIP:LOCAL:특수탄1 = 4
+			LOCALS = 火
+		CASE 3
+			EQUIP:LOCAL:특수탄1 = 14
+			LOCALS = 風
+	ENDSELECT
+	SETCOLOR 0x990000
+	PRINTFORML ┏>CHARA━━━━━━━━━━┓　┏>ACT━━━━━━━━━━━━━━━━━━┓
+	PRINTFORML ┃[9] 킹・레오　　　　　　　┃　┃%LOCALS%의 수정해골　　　　　　　　　　 ┃
+	PRINTFORMW ┗━━━━━━━━━━━━━┛　┗━━━━━━━━━━━━━━━━━━━━┛
+	PRINTFORMW 킹・레오는 %LOCALS%의 수정해골을 얻었다！
+	RESETCOLOR
+	WAIT
+ENDIF
+
+;----------------------------------
+;쇼고스　罰ルート前座
+;一斉자폭テロ子ちゃん
+;----------------------------------
+@SET_ACTION_쇼고스, ARG
+;입력行動を-1とターゲットを-1にしておく
+CFLAG:ARG:입력行動 = -1
+CFLAG:ARG:ターゲット = -1
+SELECTCASE RAND:100
+	CASE IS < 20
+		IF CFLAG:ARG:BS付着率강화 < 2
+			CFLAG:ARG:입력行動 = [[스킬:무거운공기]]
+		ELSE
+			CFLAG:ARG:입력行動 = [[스킬:혼탁의장기]]
+		ENDIF
+	CASE IS < 40
+		CFLAG:ARG:입력行動 = [[스킬:바이에이하]]
+	CASE IS < 60
+		CFLAG:ARG:입력行動 = [[스킬:돌격]]
+	CASE IS < 80
+		CFLAG:ARG:입력行動 = [[스킬:라쿤・다]]
+	CASEELSE
+		CFLAG:ARG:입력行動 = 0
+ENDSELECT
+;HP20%以下の쇼고스がでたら一斉に자폭（死亡も含む）
+FOR LOCAL, 7, 12
+	SIF 現HP割合(POS(LOCAL)) < 20
+		CFLAG:ARG:입력行動 = [[스킬:옥쇄파]]
+NEXT
+;アクション実行不能なら自動的に통상공격にする
+CALL CHECK_ACTIONABLE, ARG, CFLAG:ARG:입력行動
+IF RESULT == 0
+	CFLAG:ARG:입력行動 = 0
+	CALL RANDOM_TARGET, ARG, CFLAG:ARG:입력行動
+ENDIF
+;ここまでターゲットが決まってなかったら、랜덤ターゲットをよんで決定
+SIF CFLAG:ARG:ターゲット == -1
+	CALL RANDOM_TARGET, ARG, CFLAG:ARG:입력行動
+RETURN 1
+
+;-------------------------------
+;스도타츠야
+;罰ルートボス
+;-------------------------------
+@SET_ACTION_須藤竜也, ARG
+;HP減少による확률보정を作成
+LOCAL = (100 - 現HP割合(ARG)) / 5
+;입력行動を-1とターゲットを-1にしておく
+CFLAG:ARG:입력行動 = -1
+CFLAG:ARG:ターゲット = -1
+IF CFLAG:ARG:１moreフラグ > 0
+	SELECTCASE RAND:100
+		CASE 0 TO LOCAL * 2
+			CFLAG:ARG:입력行動 = [[스킬:프레이라]]
+		CASE LOCAL * 2 TO LOCAL * 4
+			CFLAG:ARG:입력行動 = [[스킬:마하・라기온]]
+	ENDSELECT
+ELSEIF CFLAG:ARG:行動した횟수 == 0
+	CALL OLDMADE, ARG
+	SELECTCASE RAND:100
+		CASE IS < 20
+			CFLAG:ARG:입력行動 = [[스킬:프린파]]
+		CASE IS < 40
+			IF CFLAG:ARG:빙결무효화횟수 == 0
+				CFLAG:ARG:입력行動 = [[스킬:명왕신부]]
+			ELSE
+				CFLAG:ARG:입력行動 = [[스킬:도발]]
+			ENDIF
+		CASE IS < 60 + LOCAL
+			TSTR = オールド메이드
+			;オールド메이드
+			CFLAG:ARG:입력行動 = [[스킬:ＤＵＭＭＹ]]
+	ENDSELECT
+ELSE
+	SELECTCASE RAND:100
+		CASE 0 TO 19 +LOCAL
+			CFLAG:ARG:입력行動 = [[스킬:프레이라]]
+		CASE 20 TO 49 +LOCAL
+			CFLAG:ARG:입력行動 = [[스킬:마하・라기온]]
+	ENDSELECT
+ENDIF
+;ここまで입력行動が決まってなかったら、汎用3種に行く
+;GUNは특수탄でも撃って来やすいので減らしとく
+IF CFLAG:ARG:입력行動 == -1
+	SELECTCASE RAND:100
+		CASE 0 TO 24
+			CFLAG:ARG:입력行動 = [[스킬:아기라오]]
+		CASE 25 TO 49 
+			CFLAG:ARG:입력行動 = 0
+		CASE 50 TO 74
+			CFLAG:ARG:입력行動 = [[스킬:소닉펀치]]
+		CASEELSE
+			CFLAG:ARG:입력行動 = [[스킬:화염격]]
+	ENDSELECT
+ENDIF
+;アクション実行不能なら自動的に통상공격にする
+CALL CHECK_ACTIONABLE, ARG, CFLAG:ARG:입력行動
+IF RESULT == 0
+	CFLAG:ARG:입력行動 = 0
+	CALL RANDOM_TARGET, ARG, CFLAG:ARG:입력行動
+ENDIF
+;ここまでターゲットが決まってなかったら、랜덤ターゲットをよんで決定
+SIF CFLAG:ARG:ターゲット == -1
+	CALL RANDOM_TARGET, ARG, CFLAG:ARG:입력行動
+RETURN 1
+;힘技で、JOKERを最速行動させて、そこで処理を行う
+@EVENT_BATTLE_TURNTOP_DUNGEON52
+LOCAL = GETCHARA([[キャラ:스도타츠야]])
+SIF LOCAL == -1
+	RETURN 0
+SIF ABL:LOCAL:초기페르소나 == -1
+	RETURN 0
+CFLAG:LOCAL:속도보정 += 50000
+
+@ENEMY_BATTLE_MESSAGE_K4043, ARG
+SKIPDISP 0
+LOCAL:1 = 1
+LOCAL = CFLAG:ARG:입력行動
+LOCALS = EMPTY
+SELECTCASE LOCAL
+	CASE 0, [[스킬:화염격]]
+		IF !RAND:3
+			LOCALS = 잘못을 바로 잡는거야！
+		ELSEIF RAND:2
+			LOCALS = 햐하！！ 잘게 썰어주마！
+		ELSE
+			LOCALS = 죽어라！ 죽어라！ 죽어버려어어！！
+		ENDIF
+	CASE [[스킬:마하・라기온]], [[스킬:아기라오]]
+		IF !RAND:3
+			LOCALS = 바짝 익혀주마！！
+		ELSEIF RAND:2
+			LOCALS = 햐하하！！ 타오르는거야！！
+		ELSE
+			LOCALS = 불타라 불타라！ 불타버려라라！！
+		ENDIF
+	CASE [[스킬:프레이라]]
+		LOCALS = 시끄럽다！ 시끄러워！ 모두 날아가버려！！
+	CASE [[스킬:명왕신부]]
+		LOCALS = 이히…히히…히야아！ 이런 것도 있다！！
+	CASE [[스킬:포효]]
+		IF RAND:2
+			LOCALS = 히ー얏핫핫핫하！
+		ELSE
+			LOCALS = 나는 자유롭다！ 자유로워！！
+		ENDIF
+	CASE  [[스킬:ＤＵＭＭＹ]]
+		PRINTFORMW 아군 누군가에게 ＪＯＫＥＲ가 빙의했다！
+		WHILE 1
+			LOCAL = RAND:6 + 1
+			SIF POS(LOCAL) >= 0 && GET_STATE(CFLAG:POS(LOCAL):ステート) != "DYING"
+				BREAK
+			LOCAL = 0
+		WEND
+		ABL:ARG:초기페르소나 = POS(LOCAL)
+		IF RAND:2
+			LOCALS = 조커어어어！
+		ELSE
+			LOCALS = 전파전파전파！！
+		ENDIF
+	CASEELSE
+		IF RAND:2
+			LOCALS = 죽어어어！
+		ELSE
+			LOCALS = 햐하아！
+		ENDIF
+ENDSELECT
+SIF LOCALS != "EMPTY"
+	CALL MESSAGE_B(LOCAL:1, LOCALS, LOCALS:1, LOCALS:2, LOCALS:3, LOCALS:4)
+
+
+;--------------------------------
+;炎데미지
+;--------------------------------
+@EVENT_BATTLE_ACTEND_DUNGEON52
+LOCAL = FLAG:行動順1
+SIF LOCAL < 0
+	RETURN 0
+SIF CFLAG:LOCAL:ステート == GET_STATE_NUM("DYING")
+	RETURN 0
+IF MAXBASE:LOCAL:화염 == 999
+	LOCAL:1 = 0
+ELSE
+	LOCAL:1 = RAND:20 + 10
+	IF CFLAG:LOCAL:화염무효화횟수 > 0
+		LOCAL:1 = 0
+		CFLAG:LOCAL:화염무효화횟수 -= 1
+	ELSE
+		LOCAL:1 = LOCAL:1 * MAXBASE:LOCAL:화염 / 100
+		SIF NO:LOCAL == [[キャラ:킹・레오]] || NO:LOCAL == [[キャラ:스도타츠야]]
+			LOCAL:1 *= 4
+	ENDIF
+ENDIF
+IF LOCAL:1 < 0
+	LOCALS:1 = {-LOCAL:1}회복
+ELSEIF LOCAL:1 == 0
+	LOCALS:1 = BLOCK
+ELSE
+	LOCALS:1 = {LOCAL:1} 데미지
+ENDIF
+LOCALS = 불길이 %조사처리(CALLNAME:LOCAL,"를")% 덮친다!
+CALL MESSAGE_B(1, LOCALS)
+PRINTFORMW TARGET:[{LOCAL,2}] %CALLNAME:LOCAL,20,LEFT%　>>>>>>　%LOCALS:1%
+CALL VAR_HP, LOCAL, -(LOCAL:1), 0
+
+;=======================================================================
+;エンカウント率
+;=======================================================================
+@ENCOUNT_RATE_52
+;火がつくまでは적が出ない
+FLAG:エンカウント率 = STRFLAG_D("炎上開始") ? FLAG:未遭遇歩数*5 # 0
+SIF FLAG:未遭遇歩数 < 5
+	FLAG:エンカウント率 = 0
+;=======================================================================
+;필요레벨눈安
+;권장LV 雑물고기최저LV 雑물고기最高LV ボスLV 
+;=======================================================================
+@GET_DUNGEON_LV_52
+IF STRFLAG_EV("罪ルート", , [[이벤트:페르소나２]])
+	RETURN 31, 28, 31, 35
+ELSE
+	RETURN 20, 20, 21, 25
+ENDIF
+;=======================================================================
+;エンカウント処理
+;=======================================================================
+@CHECK_ENCOUNT_52
+IF RAND:100 < FLAG:エンカウント率
+	IF STRFLAG_EV("罪ルート", , [[이벤트:페르소나２]])
+		FOR LOCAL, 7, 17
+			LOCAL:LOCAL = -1
+		NEXT
+		LOCAL:20 = 0
+		$ENCOUNT_LOOP
+		;소문の状況では가면당원が出てくる
+		IF RAND:2 && STRFLAG_NUM_EV("아지트의 소문", , , , [[이벤트:소문]]) == 2
+			SELECTCASE RAND:100
+				;4色
+				CASE 0 TO 19
+					LOCAL:7 = 21
+					LOCAL:8 = 21
+					LOCAL:10 = 22
+					LOCAL:11 = 22
+					LOCAL:12 = 23
+					LOCAL:13 = 23
+					LOCAL:15 = 24
+					LOCAL:16 = 24
+				;前衛後衛2色 10体
+				CASE 10 TO 29
+					LOCAL:1 = RAND:2 + 21
+					LOCAL:2 = RAND:2 + 23
+					FOR LOCAL, 7, 17
+						IF LOCAL > 11
+							LOCAL:LOCAL = LOCAL:1
+						ELSE
+							LOCAL:LOCAL = LOCAL:2
+						ENDIF
+					NEXT
+				;1色１열
+				CASE 30 TO 49
+					LOCAL:1 = RAND:4 + 21
+					FOR LOCAL, 7, 17
+						LOCAL:LOCAL = LOCAL:1
+					NEXT
+				;40%の확률로랜덤配置、1枠50%
+				CASEELSE
+					FOR LOCAL, 7, 17
+						SIF RAND:2
+							LOCAL:LOCAL = RAND:4 + 21
+					NEXT
+			ENDSELECT
+		ELSE
+			SELECTCASE RAND:100
+				;一種
+				CASE 0 TO 29
+					;모스맨は少なめ
+					IF RAND:6 == 0
+						LOCAL:1 = 4
+					ELSE
+						LOCAL:1 = RAND:3 + 1
+					ENDIF
+					FOR LOCAL, 7, 17
+						IF RAND:2
+							LOCAL:LOCAL = LOCAL:1
+						ENDIF
+					NEXT
+				;二種
+				CASE 30 TO 49
+					;모스맨は少なめ
+					DO
+						IF RAND:6 == 0
+							LOCAL:2 = 4
+						ELSE
+							LOCAL:2 = RAND:3 + 1
+						ENDIF
+					LOOP LOCAL:1 == LOCAL:2
+					FOR LOCAL, 7, 17
+						SIF RAND:2
+							LOCAL:LOCAL = LOCAL:(RAND:2 + 1)
+					NEXT
+				;四種
+				CASE 50 TO 59
+					FOR LOCAL, 7, 17
+						SIF RAND:2
+							LOCAL:LOCAL = RAND:4 + 1
+					NEXT
+				;빙결のみテーブル
+				CASE 69 TO 89
+					FOR LOCAL, 7, 17
+						IF RAND:2
+							LOCAL:LOCAL = RAND:2 + 11
+						ENDIF
+					NEXT
+				;混合テーブル
+				CASEELSE
+					FOR LOCAL, 7, 17
+						IF RAND:2
+							IF RAND:3
+								LOCAL:LOCAL = RAND:4 + 1
+							ELSE
+								LOCAL:LOCAL = RAND:2 + 11
+							ENDIF
+						ENDIF
+					NEXT
+			ENDSELECT
+		ENDIF
+		FOR LOCAL, 7, 17
+			SIF LOCAL:LOCAL >= 0
+				CALL SET_DUNGEON_ENEMY_52, LOCAL, LOCAL:LOCAL / 10, LOCAL:LOCAL % 10
+		NEXT
+		FOR LOCAL,7,17
+			SIF POS(LOCAL) > -1
+				LOCAL:20 += 1
+		NEXT
+		SIF LOCAL:20 == 0
+			GOTO ENCOUNT_LOOP
+		RETURN 1
+	ELSE
+		CALL ENEMY_TABLE
+		RETURN 1
+	ENDIF
+ELSE
+	FLAG:未遭遇歩数 += 1
+	RETURN 0
+ENDIF
+
+;=======================================================================
+;적キャラの中身
+;=======================================================================
+@SET_DUNGEON_ENEMY_52, ARG, ARG:1, ARG:2
+;ARG 포지션
+;ARG:1 テーブル패턴
+;ARG:2 キャラ指定
+;LOCAL 作った적の등록번호
+;LOCAL;1 キャラ번호
+;LOCAL:2 랭크
+LOCAL:2 = 0
+;통상テーブル
+IF ARG:1 == 0
+	ARG:2 = ARG:2 ? ARG:2 # RAND:4 + 1
+	SELECTCASE ARG:2
+		CASE 1
+			LOCAL:1 = [[キャラ:켈라이노]]
+			LOCAL:2 = 28
+		CASE 2
+			LOCAL:1 = [[キャラ:카라스텐구]]
+			LOCAL:2 = 28
+		CASE 3
+			LOCAL:1 = [[キャラ:프린시펄리티]]
+			LOCAL:2 = 28
+		CASE 4
+			LOCAL:1 = [[キャラ:모스맨]]
+			LOCAL:2 = 30
+	ENDSELECT
+	LOCAL:2 += ((FLAG:現M - 1) * 10 > RAND:100) * 3
+;빙결持ちテーブル
+ELSEIF ARG:1 == 1
+	ARG:2 = ARG:2 ? ARG:2 # RAND:2 + 1
+	SELECTCASE ARG:2
+		CASE 1
+			LOCAL:1 = [[キャラ:하우르바타트]]
+			LOCAL:2 = 28
+		CASE 2
+			LOCAL:1 = [[キャラ:아에로]]
+			LOCAL:2 = 28
+	ENDSELECT
+	LOCAL:2 += ((FLAG:現M - 1) * 10 > RAND:100)
+;仮面党テーブル
+ELSEIF ARG:1 == 2
+	ARG:2 = ARG:2 ? ARG:2 # RAND:4 + 1
+	LOCAL:2 = 28 + ((FLAG:現M - 1) * 10 > RAND:100) * 2 + ((FLAG:現M - 2) * 10 > RAND:100) * 2
+	SELECTCASE ARG:2
+		CASE 1
+			LOCAL:1 = [[キャラ:황소가면]]
+		CASE 2
+			LOCAL:1 = [[キャラ:사자가면]]
+		CASE 3
+			LOCAL:1 = [[キャラ:전갈가면]]
+		CASE 4
+			LOCAL:1 = [[キャラ:물병가면]]
+	ENDSELECT
+ENDIF
+CALL SET_ENEMY, ARG, LOCAL:1, LOCAL:2
+LOCAL = CHARANUM - 1
+SELECTCASE LOCAL:1
+	CASE [[キャラ:프린시펄리티]]
+		ABL:LOCAL:스킬1 = [[스킬:아기라오]]
+	CASE [[キャラ:모스맨]]
+		IF LOCAL:2 == 1
+			ABL:LOCAL:스킬6 = [[스킬:파이어브레스]]
+		ELSE
+			ABL:LOCAL:스킬4 = [[스킬:파이어브레스]]
+		ENDIF
+	CASE [[キャラ:카라스텐구]]
+		ABL:LOCAL:스킬4 = [[스킬:마하・라기온]]
+		ABL:LOCAL:스킬5 = [[스킬:천구신부]]
+	CASE [[キャラ:하우르바타트]]
+		MAXBASE:LOCAL:충격 = 150
+		BASE:LOCAL:충격 = 150
+	CASE [[キャラ:켈라이노]]
+		ABL:LOCAL:스킬2 = [[스킬:마하・라기]]
+		ABL:LOCAL:스킬4 = [[스킬:아기라오]]
+	CASE [[キャラ:황소가면]]
+		ABL:LOCAL:스킬2 = [[스킬:마하・마그나스]]
+		ABL:LOCAL:스킬3 = [[스킬:섬머솔트]]
+	CASE [[キャラ:사자가면]]
+		ABL:LOCAL:스킬2 = [[스킬:마하・라기온]]
+		ABL:LOCAL:스킬3 = [[스킬:회전베기]]
+	CASE [[キャラ:전갈가면]]
+		ABL:LOCAL:스킬2 = [[스킬:마하・아쿠에스]]
+		ABL:LOCAL:스킬3 = [[스킬:메・디아라마]]
+	CASE [[キャラ:물병가면]]
+		ABL:LOCAL:스킬2 = [[스킬:마하・갈라]]
+ENDSELECT
+
+;罰ルート用
+;=======================================================================
+;적の종족の종류数
+;=======================================================================
+@CLASS_NUM_52
+RETURN CLASS_NUM_COMMON("中級")
+;=======================================================================
+;적の総数
+;ARGは出現する적の종류です
+;=======================================================================
+@ENEMY_NUM_52, ARG
+RETURN ENEMY_NUM_COMMON("中級", ARG)
+
+;=======================================================================
+;적の종류
+;=======================================================================
+@ENEMY_52, ARG
+SELECTCASE RAND:100
+	CASE IS < 15
+		RETURN [[キャラ:익스타브]], 21
+	CASE IS < 30
+		RETURN [[キャラ:오퀴페테]], 20
+	CASE IS < 45
+		RETURN [[キャラ:쿠시나다히메]], 20
+	CASE IS < 60
+		RETURN [[キャラ:뷔브르]], 21
+	CASE IS < 90
+		RETURN [[キャラ:오르트로스]], 21
+	CASEELSE
+		RETURN [[キャラ:잭랜턴]], 20
+ENDSELECT
+
+;=======================================================================
+;윤간참가악마
+;=======================================================================
+@DUNGEON_RAPE_DEVIL_52
+;랜덤にどの악마が出るか決定
+;RETURN CSV번호 , 人数 , 레벨
+RETURN [[キャラ:오르트로스]] , 3 + RAND:10 , CSVBASE([[キャラ:오르트로스]] , GETNUM(BASE , "LV") , 0) + RAND:3
+

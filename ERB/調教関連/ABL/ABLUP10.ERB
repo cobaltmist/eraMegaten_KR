@@ -1,0 +1,219 @@
+﻿;새드끼の可否
+@ISABLUP10
+;연모、친애、복종、예속はMAXLV10
+IF ABL:10 >= 10
+	RETURN 0
+ELSEIF ABL:10 >= 5 && !함락(TARGET) && TARGET != MASTER
+	RETURN 0
+ENDIF
+
+CALL DECIDE_ABLUP10
+
+IF Z == 0
+	RETURN 0
+ELSE
+	RETURN 1
+ENDIF
+
+
+;새드끼
+@ABLUP10
+$ABLUP_LOOP
+
+DRAWLINE
+;연모、친애、복종、예속はMAXLV10
+IF ABL:10 >= 10
+	PRINTW 이미 MAX입니다
+	RETURN 0
+ELSEIF ABL:10 >= 5 && !함락(TARGET) && TARGET != MASTER
+	PRINTW 이미 MAX입니다
+	RETURN 0
+ENDIF
+
+CALL DECIDE_ABLUP10
+
+;욕망が새드끼＋１레벨でないといけない（함락無し時＆연모친애時）
+IF TALENT:5 == 0 && TALENT:8 == 0
+	PRINTS ABLNAME:1
+	PRINTV ABL:10+1
+	PRINTL LV이상、그리고
+;기교が새드끼＋１레벨でないといけない（복종예속時）
+ELSEIF TALENT:5 == 1 || TALENT:8 == 1
+	PRINTS ABLNAME:2
+	PRINTV ABL:10+1
+	PRINTL LV이상、그리고
+ENDIF
+
+;ＬＶ３から４、４から５に上げるときは이상경험필요（소질：[새드]なら無視できる）
+IF ABL:10 == 3 && TALENT:83 == 0
+	PRINTS EXPNAME:50
+	PRINTL 있음、그리고
+;ＬＶ４から５に上げるときは이상경험3이상필요（소질：[새드]なら無視できる）
+ELSEIF ABL:10 == 4 && TALENT:83 == 0
+	PRINTS EXPNAME:50
+	PRINTL 3이상、그리고
+;ＬＶ８から９に上げるときは이상경험5이상필요（소질：[새드]なら無視できる）
+ELSEIF ABL:10 == 8 && TALENT:83 == 0
+	PRINTS EXPNAME:50
+	PRINTL 5이상、그리고
+ENDIF
+
+
+PRINT [0] - 
+PRINTS PALAMNAME:6
+PRINT 의 구슬×
+PRINTV A
+PRINT 、
+PRINTS EXPNAME:32
+PRINTV B
+PRINT 이상
+PRINT 、
+PRINTS EXPNAME:2
+PRINTV 1
+PRINT 이상
+PRINT ……
+
+IF I == 0
+	PRINT ＯＫ
+ELSE
+	SIF I & 1
+		PRINT 구슬부족 
+	SIF I & 2
+		PRINT 경험부족 
+	SIF I & 4
+		PRINT 능력부족 
+ENDIF
+PRINTL 
+
+IF Z == 0
+	WAIT
+	RETURN
+ENDIF
+
+PRINTLC [100] - 그만둔다
+PRINTFORMLC   %" " * 42%
+PRINTLC [200] - 자동 능력 상승
+
+
+INPUT
+IF RESULT != 0 && RESULT != 100 && RESULT != 200
+	RESTART
+ELSEIF I != 0 && RESULT == 0
+	PRINTL 조건을 만족하지 못했습니다
+	RETURN 0
+ELSEIF RESULT == 100
+	RETURN 0
+ELSEIF RESULT == 200
+	CALL AUTOMAX, 10
+	RETURN 0
+ENDIF
+
+ABL:10 += 1
+
+IF RESULT == 0
+	JUEL:6 -= A
+ENDIF
+
+PRINTS ABLNAME:10
+PRINT 의 레벨이 
+PRINTV ABL:10
+PRINTFORMW %조사만처리(ABL:10,"가")% 되었습니다
+GOTO ABLUP_LOOP
+
+;새드끼LVUP판정
+@DECIDE_ABLUP10
+;조건別にＯＫかダメかを記録する
+I = 0
+J = 0
+;능력アップ가능なら1にする
+Z = 0
+
+IF ABL:10 == 0
+	A = 100
+	B = 5
+ELSEIF ABL:10 == 1
+	A = 500
+	B = 10
+ELSEIF ABL:10 == 2
+	A = 1500
+	B = 20
+ELSEIF ABL:10 == 3
+	A = 3000
+	B = 50
+ELSEIF ABL:10 == 4
+	A = 5000
+	B = 80
+ELSEIF ABL:10 == 5
+	A = 8000
+	B = 100
+ELSEIF ABL:10 == 6
+	A = 12000
+	B = 150
+ELSEIF ABL:10 == 7
+	A = 15000
+	B = 200
+ELSEIF ABL:10 == 8
+	A = 25000
+	B = 250
+ELSEIF ABL:10 == 9
+	A = 30000
+	B = 350
+ENDIF
+
+;일선을넘지않음
+IF TALENT:27 && (TALENT:3 == 0 && TALENT:4 == 0 && TALENT:5 == 0 && 함락() < 2)
+	TIMES A , 2.00
+	TIMES B , 2.00
+ENDIF
+;새드
+IF TALENT:83
+	TIMES A , 0.50
+	TIMES B , 0.50
+ENDIF
+
+;욕망が새드끼＋１레벨でないといけない（함락無し時＆연모친애時）
+IF TALENT:5 == 0 && TALENT:8 == 0
+	IF ABL:1 < ABL:10+1
+		;욕망が부족
+		I |= 4
+	ENDIF
+;기교が새드끼＋１레벨でないといけない（복종예속時）
+ELSEIF TALENT:5 == 1 || TALENT:8 == 1
+	IF ABL:2 < ABL:10+1
+		;욕망が부족
+		I |= 4
+	ENDIF
+ENDIF
+
+;ＬＶ３から４、４から５に上げるときは이상경험필요（소질：[새드]なら無視できる）
+IF ABL:10 == 3 && TALENT:83 == 0
+	IF EXP:50 == 0
+		;이상경험が부족
+		I |= 2
+	ENDIF
+;ＬＶ４から５に上げるときは이상경험3이상필요（소질：[새드]なら無視できる）
+ELSEIF ABL:10 == 4 && TALENT:83 == 0
+	IF EXP:50 < 3
+		;이상경험が부족
+		I |= 2
+	ENDIF
+;ＬＶ８から９に上げるときは이상경험5이상필요（소질：[새드]なら無視できる）
+ELSEIF ABL:10 == 8 && TALENT:83 == 0
+	IF EXP:50 < 5
+		;이상경험が부족
+		I |= 2
+	ENDIF
+ENDIF
+
+;욕정의 구슬で上げる
+SIF JUEL:6 < A
+	I |= 1
+;가학쾌락경험が필요한場合
+SIF EXP:32 < B
+	I |= 2
+
+SIF I == 0
+	Z = 1
+
+RETURN 1
+

@@ -1,0 +1,226 @@
+﻿
+@SET_ACTION_사탄,ARG
+#DIM CHARA
+#DIM 강화랭크
+VARSET 강화랭크
+;毎ターン最初に내성破壊
+IF CFLAG:ARG:行動した횟수 == 0
+	CALL SKILL_2504_RESISTBREAK
+ENDIF
+FOR LOCAL,1,7
+	SIF POS(LOCAL) < 0
+		CONTINUE
+	SIF GROUPMATCH(GET_STATE(CFLAG:POS(LOCAL):ステート),"STONE","DYING")
+		CONTINUE	
+	;아군の입력行動に마법반사があった場合発狂(行動횟수증가、랜덤행동が必ず신의심판)
+	IF GROUPMATCH(CFLAG:POS(LOCAL):입력行動,[[스킬:마반경]],[[스킬:마카라칸]],[[스킬:결계부・마법]])
+		発狂モード = 1
+		CFLAG:ARG:行動횟수 = 6
+	ENDIF
+NEXT
+
+;初回行動は必ず衣
+IF FLAG:経過ターン数 == 0 && CFLAG:ARG:行動した횟수 == 0
+	;PRINTW 너의옷은무력
+	CALL CHECK_ACTIONABLE_AND_SET,ARG,DEF_SKILL_너의옷은무력
+
+;HP1500以下になったターンの最初に디아라한
+ELSEIF BASE:ARG:ＨＰ < 1500 && CFLAG:ARG:行動した횟수 == 0
+	;PRINTW 디아라한
+	CALL CHECK_ACTIONABLE_AND_SET,ARG,[[스킬:디아라한]]
+	RETURN
+
+;4n+3ターン눈は神の息吹orデカジャ
+ELSEIF FLAG:経過ターン数 % 4 == 3
+	;2回눈以降はなにもしない
+	IF CFLAG:ARG:行動した횟수
+		CFLAG:ARG:입력行動 = -1
+		RETURN
+	ENDIF
+	;PRINTW 神の息吹or데・카쟈
+	;神の息吹or데・카쟈
+	FOR LOCAL,1,7
+		CHARA = POS(LOCAL)
+		SIF CHARA < 0
+			CONTINUE
+		강화랭크 = ( CFLAG:CHARA:공격강화 + CFLAG:CHARA:방어강화 + CFLAG:CHARA:명중강화 + CFLAG:CHARA:회피강화 + CFLAG:CHARA:마법위력강화 + CFLAG:CHARA:마법효과강화 ) / 6
+		;강화랭크平均が16(돌격의봉화2回分)に満たない場合、신의숨결(전체99999데미지)
+		IF 강화랭크 < 16
+			CALL CHECK_ACTIONABLE_AND_SET,ARG,DEF_SKILL_신의숨결
+			RETURN
+		ENDIF
+	NEXT
+	CALL CHECK_ACTIONABLE_AND_SET,ARG,[[스킬:데・카쟈]]
+
+;4n+4ターン눈orHPが반감した時に유혹の果実を사용
+ELSEIF CFLAG:ARG:行動した횟수 == 0 && BASE:ARG:ＨＰ < 15000 && ( !유혹の果実  || GROUPMATCH(FLAG:経過ターン数%4,0) )
+	;PRINTW 유혹の果実
+	CALL CHECK_ACTIONABLE_AND_SET,ARG,DEF_SKILL_유혹의과실
+	유혹の果実 = 1
+
+;いずれかの능력が최저まで下がっている時랜덤に데・쿤다
+;신의심판より優先度が高い
+ELSEIF GROUPMATCH(-16,CFLAG:ARG:공격강화,CFLAG:ARG:방어강화,CFLAG:ARG:마법위력강화,CFLAG:ARG:마법효과강화,CFLAG:ARG:명중강화,CFLAG:ARG:회피강화) && !RAND:4
+	;PRINTW 데・쿤다
+	CALL CHECK_ACTIONABLE_AND_SET,ARG,[[스킬:데・쿤다]]
+
+;반사感知での発狂orHP1/4以下かつ4n+2,4n+3ターン눈に신의심판
+ELSEIF 発狂モード || ( BASE:ARG:ＨＰ < 7500 && GROUPMATCH(FLAG:経過ターン数%4,1,2) && CFLAG:ARG:行動した횟수 == 0 )
+	;PRINTW 신의심판
+	CALL CHECK_ACTIONABLE_AND_SET,ARG,DEF_SKILL_신의심판
+
+;以降、랜덤패턴
+ELSEIF BASE:ARG:ＨＰ < 7500
+	;PRINTW 패턴Ｃ
+	CALL SET_ACTION_사탄Ｃ,ARG
+ELSEIF BASE:ARG:ＨＰ < 15000
+	;PRINTW 패턴Ｂ
+	CALL SET_ACTION_사탄Ｂ,ARG
+ELSE
+	;PRINTW 패턴Ａ
+	CALL SET_ACTION_사탄Ａ,ARG
+ENDIF
+
+@SET_ACTION_사탄Ａ,ARG
+#DIM 仮입력行動
+仮입력行動 = -1
+;HP15000이상의 行動
+;메기도라온(5％)
+;마한마온・마하무도온(10％)
+;○○ダイン(45％)
+;それ以外の行動(스쿠・카쟈、라쿠・카쟈、마카・카쟈、랜더마이저、색즉시공、各8%)
+SELECTCASE RAND:100
+CASE IS < 5
+	CALL CHECK_ACTIONABLE_AND_SET,ARG,[[스킬:메기도라온]]
+CASE IS < 15
+	;대상(랜덤に1人選択)に有効なほうを選択
+	CALL RANDOM_TARGET, ARG, [[스킬:마한마온]]
+	CALL SATAN_GET_WEAK(ARG,CFLAG:ARG:ターゲット)
+	SELECTCASE GET_TYPE(RESULT:1)
+	CASE "파마"
+		仮입력行動 = [[스킬:마한마온]]
+	CASE "주살"
+		仮입력行動 = [[스킬:마하무도온]]
+	ENDSELECT
+CASE IS < 60
+	;대상(랜덤に1人選択)に一番有効なダイン系に변경
+	CALL RANDOM_TARGET, ARG, [[스킬:아기다인]]
+	CALL SATAN_GET_WEAK(ARG,CFLAG:ARG:ターゲット)
+	SELECTCASE GET_TYPE(RESULT:2)
+	CASE "화염"
+		仮입력行動 = [[스킬:아기다인]]
+	CASE "빙결"
+		仮입력行動 = [[스킬:부후다인]]
+	CASE "전격"
+		仮입력行動 = [[스킬:지오다인]]
+	CASE "충격"
+		仮입력行動 = [[스킬:잔다인]]
+	CASE "지변"
+		仮입력行動 = [[스킬:마그다인]]
+	ENDSELECT
+CASEELSE
+	SELECTCASE RAND:5
+	CASE 0
+		;PRINTW 스쿠・카쟈
+		CALL CHECK_ACTIONABLE_AND_SET,ARG,[[스킬:스쿠・카쟈]]
+	CASE 1
+		;PRINTW 마카・카쟈
+		CALL CHECK_ACTIONABLE_AND_SET,ARG,[[스킬:마카・카쟈]]
+	CASE 2
+		;PRINTW 라쿠・카쟈
+		CALL CHECK_ACTIONABLE_AND_SET,ARG,[[스킬:라쿠・카쟈]]
+	CASE 3
+		;PRINTW 랜더마이저
+		CALL CHECK_ACTIONABLE_AND_SET,ARG,[[스킬:랜더마이저]]
+	CASE 4
+		;PRINTW 색즉시공
+		CALL CHECK_ACTIONABLE_AND_SET,ARG,[[스킬:색즉시공]]
+	ENDSELECT
+ENDSELECT
+SIF 仮입력行動 == -1
+	RETURN
+CALL CHECK_ACTIONABLE,ARG,仮입력行動
+SIF !RESULT
+	RETURN
+CFLAG:ARG:입력行動 = 仮입력行動
+
+
+
+@SET_ACTION_사탄Ｂ,ARG
+#DIM 仮입력行動
+仮입력行動 = -1
+;HP15000미만の行動
+;메기도라온(15％)
+;○○ダイン(65％)
+;색즉시공(20%)
+SELECTCASE RAND:100
+CASE IS < 15
+	CALL CHECK_ACTIONABLE_AND_SET,ARG,[[스킬:메기도라온]]
+CASE IS < 80
+	;대상(랜덤に1人選択)に一番有効なダイン系に변경
+	CALL RANDOM_TARGET, ARG, [[스킬:마하・라기다인]]
+	CALL SATAN_GET_WEAK(ARG,CFLAG:ARG:ターゲット)
+	SELECTCASE GET_TYPE(RESULT:2)
+	CASE "화염"
+		仮입력行動 = [[스킬:마하・라기다인]]
+	CASE "빙결"
+		仮입력行動 = [[스킬:마하・부후다인]]
+	CASE "전격"
+		仮입력行動 = [[스킬:마하・지오다인]]
+	CASE "충격"
+		仮입력行動 = [[스킬:마하・잔다인]]
+	CASE "지변"
+		仮입력行動 = [[스킬:마하・마그다인]]
+	ENDSELECT
+CASEELSE
+	CALL CHECK_ACTIONABLE_AND_SET,ARG,[[스킬:색즉시공]]
+ENDSELECT
+SIF 仮입력行動 == -1
+	RETURN
+CALL CHECK_ACTIONABLE,ARG,仮입력行動
+SIF !RESULT
+	RETURN
+CFLAG:ARG:입력行動 = 仮입력行動
+
+@SET_ACTION_사탄Ｃ,ARG
+#DIM 仮입력行動
+仮입력行動 = -1
+;HP7500미만の行動
+;메기도라온(25％)
+;전체○○ダイン(65％)
+;마하무도온・마한마온(10%)
+SELECTCASE RAND:100
+CASE IS < 25
+	CALL CHECK_ACTIONABLE_AND_SET,ARG,[[스킬:메기도라온]]
+CASE IS < 90
+	;랜덤な속성공격
+	CALL RANDOM_TARGET, ARG, [[스킬:데들리번]]
+	SELECTCASE RAND:5
+	CASE 0
+		仮입력行動 = [[스킬:데들리번]]
+	CASE 1
+		仮입력行動 = [[스킬:주극의거포]]
+	CASE 2
+		仮입력行動 = [[스킬:암흑의뇌광]]
+	CASE 3
+		仮입력行動 = [[스킬:파괴의성풍]]
+	CASE 4
+		仮입력行動 = [[스킬:대지의분노]]
+	ENDSELECT
+CASEELSE
+	;대상(랜덤に1人選択)に有効なほうを選択
+	CALL RANDOM_TARGET, ARG, [[스킬:마한마온]]
+	CALL SATAN_GET_WEAK(ARG,CFLAG:ARG:ターゲット)
+	SELECTCASE GET_TYPE(RESULT:1)
+	CASE "파마"
+		仮입력行動 = [[스킬:마한마온]]
+	CASE "주살"
+		仮입력行動 = [[스킬:마하무도온]]
+	ENDSELECT
+ENDSELECT
+SIF 仮입력行動 == -1
+	RETURN
+CALL CHECK_ACTIONABLE,ARG,仮입력行動
+SIF !RESULT
+	RETURN
+CFLAG:ARG:입력行動 = 仮입력行動

@@ -1,0 +1,3274 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:VELVET_ROOM.ERB
+;	Facility	:페르소나作成・装着などの処理。
+;
+;	Licence		:ライセンスフリー。
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	000		20xx/xx/xx		----					新規作成
+;	001		2011/1/12		P						내성강화を추가
+;	002		2011/1/16		P						내성강화の式を一部修正
+;	003		2011/2/04		P						페르소나해제を修正
+;	004		2011/3/06		P						一部バグ修正・인센스카드取得・사용の処理を추가
+;	005		2011/3/10		P						一部バグ修正・레벨アップに필요な経験値の式を改訂・변이関係のフラグの名前を登録
+;	006		2011/4/11		P						페르소나스테이터스표시화면を一部修正
+;	007		2011/4/24		P						페르소나스테이터스표시におけるバーの표시변경
+;	008		2011/5/26		P						스킬습득時に説明を표시するように
+;	009		2011/6/22		P						一体しか作れない악마を페르소나化できないように
+;	010		2011/7/29		P						合体불가の악마は페르소나化できないように・一部UI변경
+;	011		2012/12/8		GATA					잠재능력추가
+;	012		2012/04/18		豚の娘の豚				カード作成페르소나に원환의이치추가
+;	013		2013/11/30		ひみつ					リスト표시数설정。스킬속성표시の適用範囲拡大
+;	014		2017/06/23		kuni					キャラ표시でINPUT_CHARA_LISTを사용するように변경
+;	015		2019/05/09		NNSI					マテカ召喚時の습득스킬설정변경
+;	016		2019/12/06		しぐれみそ				레벨アップして스킬を깨달음える時に엘라ーになる場合があったので修正
+;	017		2019/12/10		しぐれみそ				스킬を깨달음える際のバグを修正
+;	018		2020/04/27		木綿豆腐				초기페르소나の강화時、표시される랭크が10固定だったので修正
+;	019		2020/08/12		スパロボガスキー		引き継いだ페르소나구사자がいた場合벨벳룸が사용可能になるように。新しい스테이터스アップ화면が選べるように
+;	020		2020/08/13		마리ーちゃんの中の人	초기페르소나の내성강화を可能に。現行では변경可能な내성は1つのみ
+;	021		2020/08/13		마리ーちゃんの中の人	옵션でデメリット해제時に초기페르소나の내성강화を可能に。現行の仕様では내성변경は불가능に近い
+;	022		2020/08/15		마리ーちゃんの中の人	時間城の스킬카드生成기능をこちらにも作成
+;	023		2020/08/15		마리ーちゃんの中の人	Ｐ３クリア報酬にＰ５ＤＬＣ메사이어・賊神を実装
+;	024		2020/09/07		마리ーちゃんの中の人	페르소나の次습득스킬を벨벳룸内で표시
+;	025		2020/09/06		Jガン					악마消滅させずに페르소나化できるように(デメリットあり)、페르소나구사자が使いやすくなるようかなり改良
+;													전투できれば페르소나강화と降魔ができるように、초기페르소나の내성변경をしやすく
+;	026		2020/09/25		木綿豆腐				페르소나の스킬が埋まっている상태で스킬を新たに깨달음え、かつそれを습득しない場合に페르소나が増殖する不具合を修正
+;	027		2021/02/21		Rsp暇人					新しいステータスアップ画面の選択肢表示ずれを修正
+;	028		2021/04/07		Jガン					ペルソナのスキルにロック機能を付けました(「スキルロック」で検索すると変更場所がわかります)
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+
+
+;이벤트フラグ:5:0 벨벳룸内
+;이벤트フラグ:5:1 EVENT_7.SHOP内の時間城初回台詞差し替えフラグ
+;이벤트フラグ:5:2 EVENT_7.SHOP内の時間城通常台詞差し替えフラグ
+;時間城内の台詞を이벤트フラグで差し替える　フラグを立てる
+
+;=================================================
+;  ◇記載関数一覧(記載順)
+;
+;		Module Name
+;
+; *- SHOP関連(RPG)
+;
+;	# 메뉴関連
+;	・SHOPCOMABLE_123
+;	・SHOP_COM_123
+;	・VELVET_ROOM
+;
+;	# 페르소나の作成
+;	・PERSONA_MAKE1(作成する페르소나の指定)
+;	・PERSONA_MAKE2(実際の페르소나作成作業)
+;	・ADJUST_MAKE_PSTATUS(페르소나の스테이터스を偏らせる処理)
+;	・MAKE_MATERIALCARD(マテリアルカードからの페르소나作成)
+;	・EVOLUTE_PERSONA
+;
+;	# 스테이터스確認
+;	・PERSONA_STATUS_CHECK
+;	・PERSONA_STATUS(ARG)
+;	・SHOW_PERSONA_MASTER_STATUS
+;
+;	# 페르소나の着脱
+;	・CHANGE_PERSONA
+;	・CHANGE_PERSONA
+;	・PERSONA_UNEQUIPMENT
+;
+;	# 페르소나の削除
+;	・DEL_PERSONA
+;	・DEL_PERSONA2
+;	・MAKE_PERSONA_SKILLCARD
+;	# 페르소나강화
+;	・ADD_SKILL_PERSONA
+;	・POWERUP_PERSONA
+;	・EVENT_LEVELUP_P
+;	・LEARN_SKILL_P
+;	・PERSONA_ENHANCE_DEFTYPE
+;
+;	#FUNCTION
+;	・PERSONA_MASTER_LIST
+;	・페르소나
+;=================================================
+@SHOPCOMABLE_123
+	RESULT:1 = 4
+	RESULTS = 벨벳룸
+		;すでに鍵を持っているか이벤트『타르타로스답파지령』『深い霧のスタ지오』のどちらかを起こしているかセブンスがらみのフラグを立てている
+		IF ITEM:계약자의열쇠 || 이벤트フラグ:9:0  || 이벤트フラグ:12:0 || STRFLAG_EV("벨벳룸사용가능", , [[이벤트:페르소나]])
+			RETURN 1
+		;여신異聞録페르소나の이벤트で페르소나구사자を仲間にしている
+		ELSEIF 던전フラグ:10:10 == 1 || 던전フラグ:10:10 == 2 || 의뢰フラグ:15:0 == 1
+			RETURN 1
+;---- EDIT 025 MOD -------------------------
+		;페르소나5のキャラが仲間になる이벤트を見ている
+		ELSEIF 던전フラグ:13:1 > 0
+			RETURN 1
+		;
+		ELSEIF !이벤트フラグ:5:0
+			FOR LOCAL, 0, CHARANUM
+				SIF !TALENT:LOCAL:페르소나구사자
+					CONTINUE
+;---- EDIT 019 MOD START -------------------------
+;---- EDIT 025 MOD -------------------------
+				IF (!CFLAG:LOCAL:전투참가불가능 > 0 && CFLAG:LOCAL:매각가능) || CFLAG:LOCAL:引継ぎ횟수
+;---- EDIT 019 MOD END   -------------------------
+					RESULTS = 페르소나
+					RETURN 1
+				ENDIF
+			NEXT
+		;デバッグフラグが立っているときは조건なし
+		ELSEIF FLAG:DEBUG
+			RETURN 1
+		ENDIF
+	RETURN 0
+
+@SHOP_COM_123
+	CUSTOMDRAWLINE =
+	CALL VELVET_ROOM
+
+@VELVET_ROOM
+	;時間城内の台詞を이벤트フラグで差し替える　フラグを立てる
+	이벤트フラグ:5:2 = 1
+	IF 이벤트フラグ:5:0 == 0
+		IF FLAG:SHOPコマンド == [[SHOP:벨벳룸]]
+			PRINTFORMW 정크숍과 사교의 관이 있는 구획을 이렇다 할 목적도 없이 어슬렁거리고 있으려니,
+			PRINTFORMW 골목에 본 적이 없는 새파란 문이 서 있는 것이 눈에 들어왔다…
+		ELSEIF FLAG:SHOPコマンド == [[SHOP:탐색]]
+			PRINTFORMW 장소에 어울리지 않은 새파란 나비가 춤추고 있는 것이 눈에 들어왔다…
+		ENDIF
+		PRINTFORMW 환각인가 싶어 눈을 비벼 보았지만 아무래도 그런 것도 아닌 모양이다.
+		SIF STRFLAG_EV("벨벳룸사용가능", , [[이벤트:페르소나]])
+			PRINTFORMW 필레몬의 \@FLAG:SHOPコマンド == [[SHOP:벨벳룸]] ?「푸른 문을 찾아라」#「푸른 나비를 찾아라」\@라는 말은 이걸 말하는 것이었으리라.
+		PRINTFORMW %조사처리(CALLNAME:MASTER, "는")% 결심을 내리고 \@FLAG:SHOPコマンド == [[SHOP:벨벳룸]] ?문을 열었다#손을 뻗었다\@…
+		PRINTL 
+		PRINTFORMW \@FLAG:SHOPコマンド == [[SHOP:벨벳룸]] ?안에 들어간 즉시, #순식간에 이동한 \@푸른 방에는 기묘한 풍모의 몸집이 작은 남자가 기다리고 있었다…
+		PRINTFORMW 「어서 오십시오, 벨벳룸에. 이곳은 사람의 마음의 다양한 모양을 불러 깨우는 방…」
+		PRINTFORMW 「\@STRFLAG_EV("벨벳룸사용가능", , [[이벤트:페르소나]]) ?우리들의 주인, 필레몬 님의 명령으로 여러분들을 기다리고 있었습니다. # 아무래도 당신은 제 주인의 인도가 아니라 모종의 운명에 말려들어 이 방에 이르는 열쇠를 손에 넣은 모양이군요. \@ 제 이름은, 이고르라고 합니다」
+		PRINTFORMW 「당신과 함께 하는 동료들의 새로운 마음, 새로운 페르소나의 각성을 거\@STRFLAG_EV("벨벳룸사용가능", , [[이벤트:페르소나]]) ?들도록 분부를 받았습니#드는 사람입니\@다. 앞으로 잘 부탁드리지요・・・」
+		PRINTFORMW 「자, 그럼, 이 벨벳룸에서 할 수 있는 일에 대해 간단히 설명해드릴 수 있습니다만, 필요하실까요?」
+		CALL INPUT_YN
+		IF RESULT == 0
+			PRINTFORMW 「우선은 페르소나의 소환에 대해 설명해야겠지요」
+			PRINTFORMW 「페르소나는 무의식의 바다에서 잠자는 사람의 마음의 원형. 이것을 불러내려면 악마의 힘을 빌려야합니다」
+			PRINTFORMW 「당신이 계약하고 계신 악마를 매개로, 그 악마와 같은 페르소나를 불러내는 것이지요」
+			PRINTFORMW 「그 악마의 힘이 강력하면 강력할수록, 그 악마가 당신에게 심취해 더욱 강하게 힘을 빌려주고 싶다고 빌면 빌수록…」
+			PRINTFORMW 「더욱 강력한 페르소나를 소환할 수 있을 겁니다」
+			PRINTFORMW 「허나 소환에는 많은 힘을 사용해서 악마는 현세에 모습을 드러낼 만한 힘을 일시적이라고는 해도 잃고 맙니다」
+			PRINTFORMW 「이리되면 다시는 당신과 만날 수도 없어지겠지요」
+			PRINTFORMW 「그 점만은 주의하시기를」
+			PRINTFORMW 「소환한 페르소나는 페르소나 카드가 됩니다」
+			PRINTFORMW 「그리고 페르소나 카드는 많이 가지고만 있는 게 아니라 강마를 해야만 의미가 있습니다」
+			PRINTFORMW 「강마는 페르소나 구사자가 페르소나를 자신에게 내려 자신의 힘으로 삼는 행위지요」
+			PRINTFORMW 「페르소나 구사자는 본래 항상 자신과 함께 자란 페르소나를 강마하고 있습니다만」
+			PRINTFORMW 「페르소나 카드를 건네줌으로써 다른 페르소나를 강마할 수 있습니다」
+			PRINTFORMW 「원래 페르소나에 더하여, 최대로 3체까지 더 페르소나 카드를 들려줄 수 있으므로」
+			PRINTFORMW 「함께 싸울 경우에는 꼼꼼하게 페르소나 카드를 준비해드리면 좋을 것입니다」
+			PRINTFORMW 「또, 당신의 동료분들께 들려주지 않은 페르소나 카드는 제가 맡아두지요」
+			PRINTFORMW 「단, 동료분들께서 가지고 있는 페르소나와 합쳐서 10장까지밖에 저장해둘 수 없습니다」
+			PRINTFORMW 「이미 10장 있을 때에 새로운 페르소나를 바랄 경우에는 페르소나를 귀환시켜 여유를 확보하셔야 합니다」
+			PRINTFORMW 「당연히 귀환해 보편적 무의식의 바다로 돌아간 페르소나와는 두 번 다시 만날 수는 없겠습니다만」
+			PRINTFORMW 「자, 설명은 이쯤이면 괜찮겠지요」
+		ELSE
+			PRINTFORMW 「알겠습니다」
+		ENDIF
+
+	IF ITEM:계약자의열쇠 == 0
+		PRINTW 「용건을 여쭙기 전에 이걸 건네드리도록 하지요」
+		PRINTFORMW %CALLNAME:MASTER% 눈앞에 푸른 열쇠 하나가 나타났다…
+		PRINTW 「당신은 귀한 손님. 앞으로 벨벳룸에 들어올 수 있는 열쇠입니다」
+		PRINTW 계약자의 열쇠를 손에 넣었다
+		ITEM:계약자의열쇠 = 1
+	ENDIF
+		PRINTFORMW 「그럼 곧장 용건을 여쭙기로 할까요」
+		이벤트フラグ:5:0 = 2
+	ELSE
+		RESULT = 0
+		CALL VELVET_ROOM_EVENT
+		IF !RESULT
+			PRINTL 「여기는 의식과 무의식의 틈새에 존재하는 방」
+			PRINTW 「감성이 풍부한 사람만이 이곳으로 이어지는 문을 찾아냅니다…. 자, 용건을 여쭙기로 할까요」
+		ENDIF
+	ENDIF
+	DRAWLINE
+	$VELVET_ROOM_START
+	LOCAL:1 = 0
+	;전투可能な페르소나구사자がいる
+	FOR LOCAL, 0 , CHARANUM
+		SIF TALENT:LOCAL:페르소나구사자 == 0
+			CONTINUE
+		SIF CFLAG:LOCAL:전투참가불가능 && !CFLAG:LOCAL:매각가능 && !함락(LOCAL)
+			CONTINUE
+		SIF CFLAG:LOCAL:この場に居ないフラグ == 1
+			CONTINUE
+		LOCAL:1 = 1
+		BREAK
+	NEXT
+	IF !LOCAL:1
+		PRINTL 「이런, 당신에게 심취하신 페르소나 구사자가 계시지 않는 것 같군요
+		PRINTW 　안타깝습니다만 이래서는 저희가 도움이 될 수는 없겠지요」
+		PRINTW 「페르소나의 힘을 구사하는 분께서 동료가 되면, 다시 와주십시오」
+		RETURN 0
+	ENDIF
+	VARSET Q
+	PRINTL [0] 페르소나를 강마한다
+	PRINTL [1] 페르소나를 소환한다
+	PRINTL [2] 페르소나를 건네준다
+	PRINTL [3] 페르소나를 제외한다
+	PRINTL [4] 페르소나를 귀환시킨다
+	LOCAL:1 = 0
+	;용암의망치をスタートラインとして+30まで판정
+	FOR LOCAL, GETNUM(ITEM, "용암의망치"), GETNUM(ITEM, "용암의망치") + 30
+		SIF ITEM:LOCAL == 1
+			LOCAL:1 = 1
+	NEXT
+	PRINTL [5] 페르소나를 강화한다
+	SIF LOCAL:1
+		PRINTL [6] 마테리얼 카드를 사용한다
+	LOCAL:2 = 0
+	FOR LOCAL, 0, CHARANUM
+		SIF CFLAG:LOCAL:페르소나강화フラグ % 2 == 1
+			LOCAL:2 = 1
+	NEXT
+	SIF LOCAL:2
+		PRINTL [7] 특수한 소환을 한다
+	;LOCAL:3 = 0
+	;FOR LOCAL, 0, CHARANUM
+	;	SIF STRFLAG_EV("引継ぎ페르소나作成")
+	;		BREAK
+	;	SIF NO:LOCAL == MASTER
+	;		CONTINUE
+	;	SIF !TALENT:LOCAL:페르소나구사자 
+	;		CONTINUE
+	;	SIF 함락(LOCAL) < 3
+	;		CONTINUE
+	;	LOCAL:3 = 1
+	;	BREAK
+	;NEXT
+	;SIF LOCAL:3
+	;	PRINTL [8] 特別な페르소나カードを作成する
+
+	;2020/08/15
+	;[8]を残すメリットも感じられないが、今後復活すると困るので[9]を사용
+	;벨벳룸から入る조건は時間城初回か周回済みである事
+;	SIF STRFLAG_EV("時間城初回", 1) || FLAG:周回횟수 > 0
+		PRINTL [9] 스킬카드 관련
+	PRINTL [99] 페르소나의 스테이터스를 확인한다
+	PRINTL [100] 취소
+	$INPUT_LOOP
+	INPUT
+	IF RESULT == 0
+		CALL PERSONA_MASTER_LIST
+		IF RESULT < 0 || NO:RESULT < 0
+			GOTO VELVET_ROOM_START
+		ELSE
+			이벤트フラグ:5:0 = 3
+			CALL CHANGE_PERSONA(RESULT)
+			이벤트フラグ:5:0 = 2
+		ENDIF
+	ELSEIF RESULT == 1
+		CALL PERSONA_MAKE1
+		CALL REFRESH_POS
+	ELSEIF RESULT == 2
+		CALL PERSONA_EQUIP
+	ELSEIF RESULT == 3
+;---- EDIT 025 MOD -------------------------
+		CALL PERSONA_MASTER_LIST,2
+		IF RESULT < 0
+			GOTO VELVET_ROOM_START
+		ELSE
+			IF EQUIP:RESULT:소지페르소나1 == 0
+				PRINTFORML 이런, 해제할 수 있는 페르소나가 없군요
+				GOTO VELVET_ROOM_START
+			ELSE
+				LOCAL = RESULT
+				PRINTFORML 그럼 해제할 페르소나를 가르쳐주실 수 있을까요?
+				LOCAL:3 = -1
+				FOR LOCAL:2, GETNUM(EQUIP, "소지페르소나1"), GETNUM(EQUIP, "소지페르소나3")+1
+					SIF EQUIP:LOCAL:(LOCAL:2) == 0
+							BREAK
+					LOCAL:3 ++
+					CSVNAME DITEMTYPE:(EQUIP:LOCAL:(LOCAL:2)):1,0
+					IF EQUIP:LOCAL:(LOCAL:2) == EQUIP:LOCAL:장비페르소나
+						PRINT *
+					ELSE
+						PRINT  
+					ENDIF
+					PRINTFORML [{LOCAL:3}] %RESULTS%
+				NEXT
+				PRINTFORML [100] 돌아간다
+				$INPUT_LOOP1
+				INPUT
+				IF RESULT == 100
+					GOTO VELVET_ROOM_START
+				ELSEIF RESULT >= 0 && RESULT <= LOCAL:3
+					IF EQUIP:LOCAL:(GETNUM(EQUIP, "소지페르소나1")+RESULT) == EQUIP:LOCAL:장비페르소나
+						PRINTFORML 현재 장비하고 있는 페르소나는 해제하는 것이군요
+						PRINTFORMW 대신에 초기 페르소나를 강마시키므로 주의하시길
+					ENDIF
+					CALL PERSONA_UNEQUIPMENT(LOCAL, EQUIP:LOCAL:(GETNUM(EQUIP, "소지페르소나1")+RESULT))
+				ELSE
+					GOTO INPUT_LOOP1
+				ENDIF
+			ENDIF
+		ENDIF
+	ELSEIF RESULT == 4
+		CALL DEL_PERSONA
+	ELSEIF RESULT == 5
+	;ITEM:스킬카드1
+	;	CALL ADD_SKILL_PERSONA
+		CALL POWERUP_PERSONA
+	ELSEIF RESULT == 6 && LOCAL:1
+		CALL PERSONA_MAKE3
+	ELSEIF RESULT == 7 && LOCAL:2
+		CALL EVOLUTE_PERSONA
+	;ELSEIF RESULT == 8 && LOCAL:3
+	;	CALL MAKE_SPECIAL_PERSONA
+	;本来스킬카드は페르소나구사자以外にも有用なのでSHOP화면から行けても良いと思う
+	;ただ、原作に従うならば벨벳룸で生成するのが妥当なのでここに置く
+	ELSEIF RESULT == 9
+		CALL CASTLE_OF_WATCH
+	ELSEIF RESULT == 99
+		CALL PERSONA_STATUS_CHECK
+	ELSEIF RESULT == 100
+		PRINTW 「그럼, 작별이군요…」
+		;時間城内の台詞を이벤트フラグで差し替える　リセット
+		이벤트フラグ:5:2 = 0
+		RETURN 0
+	ELSE
+		GOTO INPUT_LOOP
+	ENDIF
+	GOTO VELVET_ROOM_START
+
+
+@PERSONA_MAKE1
+CALL INPUT_CHARA_LIST("협력해주시는 악마를 알려주세요", "CASTING_PERSONA_MAKE1")
+;SIF LOCAL:1 > -1
+;	PRINTFORML %CALLNAME:(LOCAL:1)%
+IF RESULT == 1000
+	RETURN 0
+ELSEIF CFLAG:RESULT:매각불가능 || CFLAG:RESULT:１体のみ || CFLAG:RESULT:페르소나化不可
+	PRINTFORMW 이런, %조사처리(CALLNAME:RESULT,"는")% 페르소나가 될 마음이 없는 것 같군요
+	RESTART
+ELSEIF ABL:RESULT:종족 == 43 || NO:RESULT == 3501 || NO:RESULT == 3502
+	PRINTFORMW 안타깝습니다만 %CALLNAME:RESULT%의 모습은 보편적 무의식의 바다에 존재하지 않는 것 같습니다
+	RESTART
+ENDIF
+FOR LOCAL,1,11
+	SIF DITEMTYPE:LOCAL:페르소나("NO") != NO:RESULT
+		CONTINUE
+	PRINTFORMW 이런, %조사처리(CALLNAME:RESULT,"는")% 벌써 소환되셨군요
+	RESTART
+NEXT
+LOCAL:1 = RESULT
+
+LOCAL:3 = 0
+FOR LOCAL:2, 1, 11
+;生成済み페르소나数を체크
+	SIF DITEMTYPE:(LOCAL:2):페르소나("장비상태") == 0
+		BREAK
+	LOCAL:3 ++
+NEXT
+;10個あった場合は入れ替える페르소나を選択させる
+IF LOCAL:3 == 10
+	DRAWLINE
+	PRINTFORML 이런, 이미 페르소나가 가득 찬 것 같군요
+	PRINTFORML 그럼 보편적 무의식의 바다로 귀환시킬 페르소나를 선택해주십시오
+	DRAWLINE
+	FOR LOCAL:3, 1, 11
+		;名前표시
+		PRINTFORM [{LOCAL:3-1}] %CSVNAME(DITEMTYPE:(LOCAL:3):페르소나("NO"), 0)%
+		IF DITEMTYPE:(LOCAL:3):페르소나("장비상태") == -1
+			PRINTFORML (소지중)
+		ELSEIF DITEMTYPE:(LOCAL:3):페르소나("장비상태") == -2
+			PRINTFORML (강마중)
+		ELSE
+			PRINTL 
+		ENDIF
+	NEXT
+	PRINTFORML [100] 돌아간다
+;生成数10個未満の場合は一番若い番号に페르소나を作る
+ELSE
+	LOCAL:2 -= 1
+	GOTO END
+ENDIF
+$INPUT_LOOP2
+INPUT
+IF RESULT == 100
+	RESTART
+ELSEIF RESULT >= 0 && RESULT < 10
+	LOCAL:2 = RESULT + 1
+	IF DITEMTYPE:(LOCAL:2):페르소나("장비상태") < 0
+		FOR LOCAL, 0, CHARANUM
+			SIF TALENT:LOCAL:페르소나구사자 == 0
+				CONTINUE
+			FOR LOCAL:3, 1, 4
+				LOCALS = 소지페르소나{LOCAL:3}
+				IF EQUIP:LOCAL:LOCALS == LOCAL:2
+					CALL PERSONA_UNEQUIPMENT(LOCAL, LOCAL:2)
+					BREAK
+				ENDIF
+			NEXT
+		NEXT
+	ENDIF
+ELSE
+	GOTO INPUT_LOOP2
+ENDIF
+$END
+CALL PERSONA_MAKE2(LOCAL:1, LOCAL:2)
+
+@CASTING_PERSONA_MAKE1(ARG)
+SIF ABL:ARG:종족 == 0
+	RETURN 0
+SIF ABL:ARG:종족 == 45
+	RETURN 0
+SIF CFLAG:ARG:この場に居ないフラグ == 1
+	RETURN 0
+;---- EDIT 025 ADD -------------------------
+SIF CFLAG:ARG:페르소나化不可
+	RETURN 0
+SIF CFLAG:ARG:合体불가
+	RETURN 0
+RETURN 1
+
+@PERSONA_MAKE2(ARG, ARG:1)
+#DIM LCOUNT
+	;ARG,대상の악마の登録番号
+	;ARG:1 페르소나ナンバー番号
+	;8番눈の스킬を取得している場合は捨てる스킬を1個選ぶ
+	;IF ABL:ARG:스킬8
+	;	DRAWLINE
+	;	PRINTFORML 페르소나は7つまでしか스킬を소지することができないのです
+	;	PRINTFORML 捨てる스킬をひとつお選びください
+	;	DRAWLINE
+	;	FOR LCOUNT, 0, 8
+	;		CALLFORM SKILL_NAME_{ABL:ARG:(60 + LCOUNT)}
+	;		PRINTFORML [{LCOUNT}] %RESULTS%
+	;	NEXT
+	;	PRINTL [100] 돌아간다
+	;;	INPUT
+	;	$INPUT_LOOP
+	;	LOCAL:2 = 0
+	;	IF RESULT >= 0 && RESULT <= 6
+	;;		;8番눈の스킬を引き継がない仕様なので8番눈と捨てる스킬を交換
+	;		SWAP ABL:ARG:(GETNUM(ABL, "스킬1") + RESULT), ABL:ARG:스킬8
+	;		LOCAL:2 = (GETNUM(ABL, "스킬1") + RESULT)
+	;	;8番눈を捨てるならそのまま
+	;	ELSEIF RESULT <= 7
+	;;	ELSEIF RESULT == 100
+	;		RETURN
+	;	ELSE
+	;		GOTO INPUT_LOOP
+	;	ENDIF
+	;ENDIF
+
+	;악마の소지스킬をフラグに引移して行く
+	FOR LOCAL, 0, 8
+		TRYCCALLFORM 적専用_{ABL:ARG:(GETNUM(ABL, "스킬1") + LOCAL)}
+			SIF RESULT
+				CONTINUE
+		CATCH
+		ENDCATCH
+		DITEMTYPE:(ARG:1):(LOCAL+페르소나("스킬1")) = ABL:ARG:(GETNUM(ABL, "스킬1") + LOCAL)
+	NEXT
+	FOR LOCAL, 0, 20
+		DITEMTYPE:(ARG:1):(LOCAL+페르소나("습득스킬1")) = ABL:ARG:(GETNUM(ABL, "습득스킬1") + LOCAL)
+		DITEMTYPE:(ARG:1):(LOCAL+페르소나("습득LV1")) = ABL:ARG:(GETNUM(ABL, "습득LV1") + LOCAL)
+	NEXT
+	;페르소나のキャラ番号を登録
+	DITEMTYPE:(ARG:1):페르소나("NO") = NO:ARG
+	;페르소나장비상태を登録
+	DITEMTYPE:(ARG:1):페르소나("장비상태") = 1
+
+	;악마の스테이터스を記録
+	FOR LOCAL, 0, 7
+		DITEMTYPE:(ARG:1):(페르소나("LV") + LOCAL) = (BASE:ARG:(GETNUM(BASE, "LV") + LOCAL))
+	NEXT
+	;---- EDIT 001 ADD START -------------------------
+	;相性を페르소나に記録し、持たせるように변경
+	;相性とCPを記録
+	CALL GET_CP_PERSONA, NO:ARG, ARG:1
+	;---- EDIT 001 ADD END -------------------------
+	DITEMTYPE:(ARG:1):페르소나("속성LD") = ABL:ARG:속성LD
+	DITEMTYPE:(ARG:1):페르소나("속성LC") = ABL:ARG:속성LC
+	;元악마の함락상태を記録
+	DITEMTYPE:(ARG:1):페르소나("함락") = 함락(ARG)
+	;CALL ADJUST_MAKE_PSTATUS(ARG:1)
+
+	;잠재능력
+	;악마の종족を見て対応する잠재능력を추가
+	;잠재능력	６潜在補助　１潜在회복　２潜在방어　３潜在復活　４잠재특수　５潜在공격
+	;潜在공격を持つ페르소나：이루루얀카슈　북두성군　두르가　스사노오　사탄　시바　루시퍼　비사문천
+	;↑악마が추가されたら추가
+	IF NO:ARG == 6 || NO:ARG == 1405 || NO:ARG == 1414 || NO:ARG == 1404
+		DITEMTYPE:(ARG:1):(페르소나("잠재능력")) = 5
+	ELSEIF (ABL:ARG:종족 >= 1 && ABL:ARG:종족 <= 3) || ABL:ARG:종족 == 13
+		DITEMTYPE:(ARG:1):(페르소나("잠재능력")) = 6
+	ELSEIF ABL:ARG:종족 == 4 || ABL:ARG:종족 == 5 || ABL:ARG:종족 == 16 || ABL:ARG:종족 == 18
+		DITEMTYPE:(ARG:1):(페르소나("잠재능력")) = 1
+	ELSEIF (ABL:ARG:종족 >= 6 && ABL:ARG:종족 <= 8) || ABL:ARG:종족 == 15
+		DITEMTYPE:(ARG:1):(페르소나("잠재능력")) = 2
+	ELSEIF (ABL:ARG:종족 >= 9 && ABL:ARG:종족 <= 11) || ABL:ARG:종족 == 32
+		DITEMTYPE:(ARG:1):(페르소나("잠재능력")) = 3
+	ELSEIF ABL:ARG:종족 == 42 || ABL:ARG:종족 == 44
+		DITEMTYPE:(ARG:1):(페르소나("잠재능력")) = 4
+	ENDIF
+
+	;---- EDIT 025 ADD START -------------------------
+	LOCAL = 4
+	SIF 함락(ARG)
+		LOCAL = 6
+	SIF 함락(ARG) > 1
+		LOCAL = 8
+	PRINTFORMW 흠, %CALLNAME:ARG%의 협력을 받아 페르소나를 불러낼 경우, 이와 같은 능력의 페르소나가 태어날 것 같군요
+	CALL PERSONA_STATUS(ARG:1)
+	PRINTL 정말로 소환해도 괜찮을까요？
+	PRINTL [0]소환한다　(악마 소멸)
+	PRINTFORML [1]소환한다　(악마 미소멸 스킬 [{LOCAL}]까지 계승습득스킬消滅)
+	PRINTL [2]소환하지 않는다
+	CALL INPUTINT(0, 1, 2)
+	;CALL INPUT_YN
+	IF RESULT == 2
+		PRINTFORMW 알겠습니다. 그럼 취소하지요
+		SIF LOCAL:2
+			SWAP ABL:ARG:(LOCAL:2), ABL:ARG:스킬8
+		FOR LOCAL,0, 40
+			DITEMTYPE:(ARG:1):LOCAL = 0
+		NEXT
+		RETURN 0
+	ENDIF
+	DITEMTYPE:(ARG:1):페르소나("페르소나소지자") = -1
+	IF RESULT == 1
+		FOR LCOUNT, LOCAL, 8
+			DITEMTYPE:(ARG:1):(LCOUNT+페르소나("스킬1")) = 0
+		NEXT
+		FOR LCOUNT, 0, 20
+			DITEMTYPE:(ARG:1):(LCOUNT+페르소나("습득스킬1")) = 0
+			DITEMTYPE:(ARG:1):(LCOUNT+페르소나("습득LV1")) = 0
+		NEXT
+		DITEMTYPE:(ARG:1):페르소나("함락") = 0
+		CFLAG:ARG:페르소나化不可 = 1
+		CALL AUTO_SKILL_ROCK_P, ARG:1
+	ELSEIF RESULT == 0
+		CALL キャラ삭제, ARG
+		CALL AUTO_SKILL_ROCK_P, ARG:1
+	ENDIF
+	;---- EDIT 025 ADD END -------------------------
+
+	@PERSONA_MAKE3
+	PRINTFORMW 「그럼 부리실 카드를 선택하십시오」
+	VARSET LOCAL
+	;용암의망치+α　30まで格納	  
+	FOR LOCAL, 0, 30
+		SIF ITEM:(LOCAL+GETNUM(ITEM, "용암의망치")) == 1
+			PRINTFORML [{LOCAL}] %ITEMNAME:(LOCAL+GETNUM(ITEM, "용암의망치"))%
+	NEXT
+	PRINTL [100] 돌아간다
+	$INPUT_LOOP
+	INPUT
+	LOCAL = RESULT + GETNUM(ITEM, "용암의망치")
+	SIF RESULT == 100
+		RETURN
+
+	SIF LOCAL < GETNUM(ITEM, "용암의망치") || GETNUM(ITEM, "용암의망치") + 30 <= LOCAL || ITEM:LOCAL <= 0
+		GOTO INPUT_LOOP
+	LOCAL:3 = 0
+	FOR LOCAL:2, 1, 11
+	;生成済み페르소나数を체크
+		SIF DITEMTYPE:(LOCAL:2):페르소나("장비상태") == 0
+			BREAK
+		LOCAL:3 ++
+	NEXT
+	;10個あった場合は入れ替える페르소나を選択させる
+	IF LOCAL:3 == 10
+		DRAWLINE
+		PRINTFORML 이런, 이미 페르소나가 가득 찬 것 같군요
+		PRINTFORML 그럼 보편적 무의식의 바다로 귀환시킬 페르소나를 선택해주십시오
+		DRAWLINE
+		FOR LOCAL:3, 1, 11
+			;名前표시
+			PRINTFORM [{LOCAL:3-1}] %CSVNAME(DITEMTYPE:(LOCAL:3):페르소나("NO"), 0)%
+			IF DITEMTYPE:(LOCAL:3):페르소나("장비상태") == -1
+				PRINTFORML (소지중)
+			ELSEIF DITEMTYPE:(LOCAL:3):페르소나("장비상태") == -2
+				PRINTFORML (강마중)
+			ELSE
+				PRINTL 
+			ENDIF
+		NEXT
+		PRINTFORML [100] 돌아간다
+	;生成数10個未満の場合は一番若い番号に페르소나を作る
+	ELSE
+		LOCAL:2 -= 1
+		GOTO END
+	ENDIF
+	$INPUT_LOOP2
+	INPUT
+	IF RESULT == 100
+		RESTART
+	ELSEIF RESULT >= 0 && RESULT < 10
+		LOCAL:2 = RESULT + 1
+		IF DITEMTYPE:(LOCAL:2):페르소나("장비상태") < 0
+			FOR LOCAL, 0, CHARANUM
+				SIF TALENT:LOCAL:페르소나구사자 == 0
+					CONTINUE
+				FOR LOCAL:3, 1, 4
+					LOCALS = 소지페르소나{LOCAL:3}
+					IF EQUIP:LOCAL:LOCALS == LOCAL:2
+						CALL PERSONA_UNEQUIPMENT(LOCAL, LOCAL:2)
+						BREAK
+					ENDIF
+				NEXT
+			NEXT
+		ENDIF
+	ELSE
+		GOTO INPUT_LOOP2
+	ENDIF
+	$END
+	CALL MAKE_MATERIALCARD(LOCAL, LOCAL:2)
+
+;---- EDIT 001 ADD START -------------------------
+;新規作成
+@GET_CP_PERSONA, ARG, ARG:1
+	;ARG 악마のNO
+	;ARG:1 페르소나のNO
+	LOCAL:1 = 15
+	FOR LOCAL, 0, FLAG:相性数
+		SELECTCASE CSVBASE(ARG, GETNUM(BASE, GET_TYPE(LOCAL)), 0)
+			CASE 999
+				LOCAL:1 += 25
+			CASE IS < 0
+				LOCAL:1 += 25
+			CASE 0
+				LOCAL:1 += 20
+			CASE IS > 199
+				LOCAL:1 -= 20
+			CASE IS > 100
+				LOCAL:1 -= 10
+			CASE IS <= 50
+				LOCAL:1 += 10
+			CASE IS < 100
+				LOCAL:1 += 5
+		ENDSELECT
+	NEXT
+	DITEMTYPE:(ARG:1):페르소나("CP") = MAX(1,LOCAL:1) + CSVCFLAG(ARG, GETNUM(CFLAG, "ＣＰ보정"), 0)
+;---- EDIT 001 ADD END -------------------------
+
+;@ADJUST_MAKE_PSTATUS(ARG)
+;仕様上、페르소나の스테이터스が飲まれすぎというか
+;P使いのステにひきずられる度合いが強くて、스테이터스面の변경が際立たないんで
+;페르소나の스테이터스は極端になるように調整してみる
+;최대の値のステは최저の値のステの40%加算し、同値を최저の値から減算する
+;同様に2番は5番눈と30%、3番눈は4番눈と20%の値を移動する
+
+;LOCAL:1~6に스테이터스格納
+;LOCALS:1~6に스테이터스名を格納
+;LOCAL:7は스테이터스の합계値
+;LOCAL:7 = 0
+;FOR LOCAL, 1 , 7
+;	LOCALS:LOCAL = %GET_BASESTATUS(LOCAL)%
+;	LOCAL:LOCAL = DITEMTYPE:ARG:페르소나(LOCALS:LOCAL)
+;	LOCAL:7 += LOCAL:LOCAL
+;NEXT
+;全ての스테이터스がフラットな値から、±2以内に収まっている場合はフラットが特徴ということで
+;스테이터스調整を行わない
+;FOR LOCAL, 1 , 7
+;	SIF ABS(LOCAL:7 / 6 - LOCAL:LOCAL) > 2
+;		BREAK
+;	RETURN 0
+;NEXT
+;LOCAL = 1
+;LOCAL:1~LOCAL:6及びLOCALS:1~LOCALS:6を大きい順に並べる。まぁ所詮6個だし、最も原始的なソート方でいくように
+;隣合う項を比較して、次の項が大きかったら入れ替えをちゃんと整列するまで何週も繰り返えす
+;WHILE (LOCAL:1 < LOCAL:2) || (LOCAL:2 < LOCAL:3) || (LOCAL:3 < LOCAL:4) || (LOCAL:4 < LOCAL:5) || (LOCAL:5 < LOCAL:6)
+;	IF LOCAL:LOCAL < LOCAL:(LOCAL + 1)
+;		SWAP LOCAL:LOCAL, LOCAL:(LOCAL + 1)
+;		SWAP LOCALS:LOCAL, LOCALS:(LOCAL + 1)
+;	ENDIF
+;	SIF ++LOCAL >= 6
+;		LOCAL = 1
+;WEND
+;DITEMTYPE:ARG:페르소나(LOCALS:1) += (LOCAL:6) * 40 / 100
+;DITEMTYPE:ARG:페르소나(LOCALS:6) -= (LOCAL:6) * 40 / 100
+;DITEMTYPE:ARG:페르소나(LOCALS:2) += (LOCAL:5) * 30 / 100
+;DITEMTYPE:ARG:페르소나(LOCALS:5) -= (LOCAL:5) * 30 / 100
+;DITEMTYPE:ARG:페르소나(LOCALS:3) += (LOCAL:4) * 20 / 100
+;DITEMTYPE:ARG:페르소나(LOCALS:4) -= (LOCAL:4) * 20 / 100
+
+@MAKE_MATERIALCARD, ARG, ARG:1
+;ARG = 
+;ARG:1 = 生成済み페르소나数
+	#LOCALSIZE 10
+	FOR LOCAL, 0, 100
+		DITEMTYPE:페르소나("ゲスト페르소나1"):LOCAL = 0
+	NEXT
+	LOCAL = ARG - GETNUM(ITEM, "용암의망치") + 1
+	;旧仕様ではゲスト페르소나は당신のLvを参照してしまうので、上限を設ける
+	IF LOCAL == 1
+		IF BASE:MASTER:LV < 35
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("LV") = BASE:MASTER:LV
+		ELSE
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("LV") = 35
+		ENDIF
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("NO") = [[キャラ:불카누스・개(페르소나)]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬1") = [[스킬:마하・라기]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬2") = [[스킬:아기라오]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬3") = [[스킬:트윈슬래시]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬1") = [[스킬:이검난무]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV1") = MAX(BASE:MASTER:LV+2,16)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬2") = [[스킬:타루・카쟈]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV2") = MAX(BASE:MASTER:LV+3,18)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬3") = [[스킬:펨파트라]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV3") = MAX(BASE:MASTER:LV+4,22)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬4") = [[스킬:마하・라기온]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV4") = MAX(BASE:MASTER:LV+1,24)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬5") = [[스킬:아기다인]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV5") = MAX(BASE:MASTER:LV+5,30)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬6") = [[스킬:화염부스터]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV6") = MAX(BASE:MASTER:LV+7,40)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬7") = [[스킬:프로미넌스]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV7") = MAX(BASE:MASTER:LV+10,70)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("속성LD") = 1
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("속성LC") = 2
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("함락") = 1
+	ELSEIF LOCAL == 2
+		IF BASE:MASTER:LV < 35
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("LV") = BASE:MASTER:LV
+		ELSE
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("LV") = 35
+		ENDIF
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("NO") = [[キャラ:에로스・개(페르소나)]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬1") = [[스킬:디아라마]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬2") = [[스킬:마하・마그나]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬3") = [[스킬:마그나스]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬1") = [[스킬:마하・마그나스]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV1") = MAX(BASE:MASTER:LV+1,11)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬2") = [[스킬:마린카린]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV2") = MAX(BASE:MASTER:LV+2,12)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬3") = [[스킬:연속사격]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV3") = MAX(BASE:MASTER:LV+3,24)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬4") = [[스킬:섹시댄스]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV4") = MAX(BASE:MASTER:LV+4,25)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬5") = [[스킬:마그다인]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV5") = MAX(BASE:MASTER:LV+5,30)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬6") = [[스킬:지변부스터]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV6") = MAX(BASE:MASTER:LV+7,40)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬7") = [[스킬:티타노마키아]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV7") = MAX(BASE:MASTER:LV+10,70)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("속성LD") = 2
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("속성LC") = 2
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("함락") = 1
+	ELSEIF LOCAL == 3
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("NO") = [[キャラ:마이아・개(페르소나)]]
+		IF BASE:MASTER:LV < 35
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("LV") = BASE:MASTER:LV
+		ELSE
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("LV") = 35
+		ENDIF
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬1") = [[스킬:메・디아라마]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬2") = [[스킬:부후라]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬3") = [[스킬:마하・아쿠에스]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬1") = [[스킬:마한마]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV1") = MAX(BASE:MASTER:LV+1,11)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬2") = [[스킬:리캄]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV2") = MAX(BASE:MASTER:LV+2,12)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬3") = [[스킬:자장가]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV3") = MAX(BASE:MASTER:LV+3,14)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬4") = [[스킬:멀티디멘션]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV4") = MAX(BASE:MASTER:LV+4,16)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬5") = [[스킬:부후다인]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV5") = MAX(BASE:MASTER:LV+5,28)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬6") = [[스킬:빙결부스터]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV6") = MAX(BASE:MASTER:LV+7,40)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬7") = [[스킬:코큐토스]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV7") = MAX(BASE:MASTER:LV+10,70)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("속성LD") = 2
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("속성LC") = 2
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("함락") = 1
+	ELSEIF LOCAL == 4
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("NO") = [[キャラ:라다만티스(페르소나)]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("LV") = 15
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("힘") = 10
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("지혜") = 5
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("마력") = 5
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("인내력") = 12
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("속도") = 3
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("운") = 5
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("랭크") = 5
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬1") = [[스킬:아쿠에스]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬2") = [[스킬:일문자베기]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬3") = [[스킬:에이하]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬1") = [[스킬:마하무도]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV1") = MAX(BASE:MASTER:LV+1,15)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬2") = [[스킬:테트라쟈]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV2") = MAX(BASE:MASTER:LV+2,17)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬3") = [[스킬:강절단]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV3") = MAX(BASE:MASTER:LV+3,21)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬4") = [[스킬:마하・아쿠에스]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV4") = MAX(BASE:MASTER:LV+4,25)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬5") = [[스킬:아쿠아다인]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV5") = MAX(BASE:MASTER:LV+5,32)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬6") = [[스킬:수격부스터]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV6") = MAX(BASE:MASTER:LV+7,40)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬7") = [[스킬:스플래시레이]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV7") = MAX(BASE:MASTER:LV+10,70)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("속성LD") = 2
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("속성LC") = 1
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("함락") = 1
+	ELSEIF LOCAL == 5
+		;비슈누:검打＋火氷電＋파마＋스티티を습득していく。そのかわり素質なし
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("NO") = [[キャラ:비슈누(페르소나)]]
+		IF BASE:MASTER:LV < 50
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("LV") = BASE:MASTER:LV
+		ELSE
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("LV") = 50
+		ENDIF
+
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("함락") = 0
+		IF BASE:MASTER:LV < 20
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("LV") = 15
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬1") = [[스킬:일문자베기]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬2") = [[스킬:돌려차기]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬3") = [[스킬:메・디아]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬4") = [[스킬:마린카린]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬1") = [[스킬:부후라]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV1") = 20
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬2") = [[스킬:뇌정축]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV2") = 24
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬3") = [[스킬:파마의뇌광]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV3") = 26
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬4") = [[스킬:아카샤아츠]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV4") = 28
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬5") = [[스킬:메기도]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV5") = 32
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬6") = [[스킬:브라흐마스트라]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV6") = 85
+		ELSEIF BASE:MASTER:LV < 40
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("LV") = 40
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬1") = [[스킬:뇌정축]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬2") = [[스킬:아카샤아츠]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬3") = [[스킬:이검난무]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬4") = [[스킬:디아라마]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬1") = [[스킬:부후다인]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV1") = 41
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬2") = [[스킬:강절단]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV2") = 42
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬3") = [[스킬:빛의심판]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV3") = 44
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬4") = [[스킬:허공참파]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV4") = 46
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬5") = [[스킬:종언의푸름]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV5") = 48
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬6") = [[스킬:메기도라]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV6") = 50
+		ELSE
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬1") = [[스킬:기간피스트]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬2") = [[스킬:허공참파]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬3") = [[스킬:디아라한]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬4") = [[스킬:부후다인]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬1") = [[스킬:아카샤아츠]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV1") = 52
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬2") = [[스킬:종언의푸름]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV2") = 54
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬3") = [[스킬:극락떨구기]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV3") = 56
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬4") = [[스킬:선풍진]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV4") = 58
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬5") = [[스킬:티없는위광]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV5") = 62
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬6") = [[스킬:메기도라온]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV6") = 64
+		ENDIF
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬5") = [[스킬:갈]] + (BASE:MASTER:LV >= 20) + (BASE:MASTER:LV >= 40)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬6") = [[스킬:마그나]] + (BASE:MASTER:LV >= 20) + (BASE:MASTER:LV >= 40)
+		IF BASE:MASTER:LV < 20
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬8") = [[스킬:이검난무]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV8") = 22
+		ENDIF
+		IF BASE:MASTER:LV < 35
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬9") = [[스킬:기간피스트]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV9") = 35
+		ENDIF
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬10") = [[스킬:베어내기]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV10") = MAX(BASE:MASTER:LV + 2, 45)
+		IF BASE:MASTER:LV < 25
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬11") = [[스킬:마하・라기온]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV11") = 25
+		ENDIF
+		IF BASE:MASTER:LV < 60
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬12") = [[스킬:파사의광탄]]
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV12") = 30
+		ENDIF
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬7") = [[스킬:갓핸드]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV7") = MAX(BASE:MASTER:LV + 3, 65)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬13") = [[스킬:컨센트레이트]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV13") = MAX(BASE:MASTER:LV + 1, 47)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬14") = [[스킬:천경지폭단]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV14") = MAX(BASE:MASTER:LV + 4, 60)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬15") = [[스킬:불굴의투지]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV15") = MAX(BASE:MASTER:LV + 6, 40)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬16") = [[스킬:스티티]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV16") = MAX(BASE:MASTER:LV + 10, 80)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("속성LD") = 1
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("속성LC") = 2
+	ELSEIF LOCAL == 8 || LOCAL == 9
+		IF BASE:MASTER:LV < 80
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("LV") = BASE:MASTER:LV
+		ELSE
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("LV") = 80
+		ENDIF
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("NO") = LOCAL == 8 ? [[キャラ:오르페우스・개(페르소나)]] # [[キャラ:이자나기노오오카미(페르소나)]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬1") = [[스킬:아기다인]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬2") = [[스킬:부후다인]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬3") = [[스킬:갈다인]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬4") = [[스킬:지오다인]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬5") = [[스킬:메기도라]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬6") = [[스킬:데・카쟈]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬7") = [[스킬:데・쿤다]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬8") = [[스킬:승리의포효]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬1") = [[스킬:화염부스터]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV1") = MAX(BASE:MASTER:LV + 1, 30)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬2") = [[스킬:빙결부스터]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV2") = MAX(BASE:MASTER:LV + 2, 32)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬3") = [[스킬:질풍부스터]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV3") = MAX(BASE:MASTER:LV + 3, 34)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬4") = [[스킬:전격부스터]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV4") = MAX(BASE:MASTER:LV + 4, 36)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬5") = [[스킬:컨센트레이트]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV5") = MAX(BASE:MASTER:LV + 5, 40)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬6") = [[스킬:불굴의투지]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV6") = MAX(BASE:MASTER:LV + 6, 45)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬7") = [[스킬:메・디아라한]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV7") = MAX(BASE:MASTER:LV + 7, 47)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬8") = [[스킬:사마리캄]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV8") = MAX(BASE:MASTER:LV + 8, 49)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬9") = [[스킬:화염가드킬]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV9") = MAX(BASE:MASTER:LV + 9, 50)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬10") = [[스킬:빙결가드킬]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV10") = MAX(BASE:MASTER:LV + 10, 51)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬11") = [[스킬:질풍가드킬]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV11") = MAX(BASE:MASTER:LV + 11, 52)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬12") = [[스킬:전격가드킬]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV12") = MAX(BASE:MASTER:LV + 12, 53)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬13") = [[스킬:마술의소양]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV13") = MAX(BASE:MASTER:LV + 13, 64)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬14") = [[스킬:기공(대)]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV14") = MAX(BASE:MASTER:LV + 14, 66)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬15") = [[스킬:메기도라온]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV15") = MAX(BASE:MASTER:LV + 15, 68)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬16") = [[스킬:라그나로크]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV16") = MAX(BASE:MASTER:LV + 16, 79)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬17") = [[스킬:만물유전]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV17") = MAX(BASE:MASTER:LV + 17, 81)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬18") = [[스킬:니플헤임]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV18") = MAX(BASE:MASTER:LV + 18, 83)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬19") = [[스킬:진리의번개]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV19") = MAX(BASE:MASTER:LV + 19, 85)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬20") = [[스킬:영세의기도]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV20") = MAX(BASE:MASTER:LV + 20, 88)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("속성LD") = 2
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("속성LC") = 2
+	;---- EDIT 023 ADD START -------------------------
+	;事実上のＰ３ルートクリア特典　次の周回눈前の特典なので強すぎではない
+	;上のクリア特典페르소나二体と比べれば大分性能は마일드。ただし、Lv75まで育てると암리타/오라토리오が解禁される
+	ELSEIF LOCAL == 10
+		;암리타を오라토리오にする為だけにコンパチが生まれた
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("NO") = [[キャラ:메사이어・賊神（페르소나）]]
+		IF BASE:MASTER:LV < 50
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("LV") = BASE:MASTER:LV
+		ELSE
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("LV") = 50
+		ENDIF
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬1") = [[스킬:메기도라]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬2") = [[스킬:마한마온]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬3") = [[스킬:디아라한]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬1") = [[스킬:불굴의투지]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV1") = MAX(BASE:MASTER:LV+2,52)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬2") = [[스킬:메・디아라한]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV2") = MAX(BASE:MASTER:LV+6,56)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬3") = [[스킬:치유촉진(대)]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV3") = MAX(BASE:MASTER:LV+8,58)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬4") = [[스킬:기공(대)]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV4") = MAX(BASE:MASTER:LV+10,60)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬5") = [[스킬:메기도라온]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV5") = MAX(BASE:MASTER:LV+12,62)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬6") = [[스킬:오라토리오]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV6") = MAX(BASE:MASTER:LV+25,75)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("속성LD") = 2
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("속성LC") = 2
+;		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("함락") = 1
+	;---- EDIT 023 ADD END -------------------------
+
+	;まどマギＭＯＤ추가分	
+	ELSEIF LOCAL == 30
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("NO") = 4391;魔法소녀　원환의이치
+		IF BASE:MASTER:LV < 80
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("LV") = BASE:MASTER:LV
+		ELSE
+			DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("LV") = 80
+		ENDIF
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬1") = 2999; 피니투라・프레차
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬2") = [[스킬:티없는위광]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("스킬3") = [[스킬:고천열풍탄]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬1") = [[스킬:메기도라]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV1") = MAX(BASE:MASTER:LV+1,82)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬2") = [[스킬:마카카쟈오토]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV2") = MAX(BASE:MASTER:LV+2,83)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬3") = 2991; 구제의손
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV3") = MAX(BASE:MASTER:LV+3,84)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득스킬4") = [[스킬:만마의난무]]
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("습득LV4") = MAX(BASE:MASTER:LV+4,85)
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("함락") = 1
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("속성LD") = 1
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("속성LC") = 2
+	;まどマギＭＯＤ추가分ここまで
+	ENDIF
+	DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("장비상태") = 1
+	DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("랭크") = 10
+	DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("EXP") = 1000
+
+	FOR LOCAL,1, 11
+		IF DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("NO") == DITEMTYPE:페르소나(@"페르소나{LOCAL}"):페르소나("NO")
+			PRINTFORMW 이런, %CSVCALLNAME(DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("NO"), 0)%은(는) 이미 누군가 소환한 것 같군요
+			FOR LOCAL, 0, 100
+				DITEMTYPE:페르소나("ゲスト페르소나1"):LOCAL = 0
+			NEXT
+			RETURN 0
+		ENDIF
+	NEXT
+	;----------------------------------
+	;스테이터스決定
+	;----------------------------------
+;	DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("LV") = BASE:MASTER:LV
+	FOR LOCAL, 1, 7
+		LOCAL:LOCAL = CSVBASE(DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("NO"), GETNUM(BASE, GET_BASESTATUS(LOCAL)),0)
+	NEXT
+	LOCAL:7 = 100 * (BASE:MASTER:LV * 3 / 2 + 18) / SUMARRAY(LOCAL, 1, 7)
+	FOR LOCAL, 1, 7
+		LOCAL:LOCAL = LOCAL:LOCAL * LOCAL:7 / 100
+	NEXT
+	WHILE SUMARRAY(LOCAL, 1, 7) < BASE:MASTER:LV * 3 / 2 + 18
+		LOCAL:(LOCAL%6+1) += 1
+		LOCAL++
+	WEND
+	FOR LOCAL, 1, 7
+		DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나(GET_BASESTATUS(LOCAL)) = LOCAL:LOCAL
+	NEXT
+	;---- EDIT 001 ADD START -------------------------
+	;페르소나に相性を持たせる
+	CALL GET_CP_PERSONA, DITEMTYPE:페르소나("ゲスト페르소나1"):페르소나("NO"), 페르소나("ゲスト페르소나1")
+	;---- EDIT 002 ADD START -------------------------
+	;CALL ADJUST_MAKE_PSTATUS(페르소나("ゲスト페르소나1"))
+	PRINTFORMW 흠, %조사처리(ITEMNAME:ARG,"를")% 써서 페르소나를 불러낼 경우, 이와 같은 능력의 페르소나가 태어날 것 같군요
+	CALL PERSONA_STATUS(페르소나("ゲスト페르소나1"))
+	PRINTL 정말로 소환해도 괜찮을까요?
+	CALL INPUT_YN
+	SIF RESULT == 1
+		RETURN 0
+	FOR LOCAL, 0, 100
+		DITEMTYPE:(ARG:1):LOCAL = DITEMTYPE:페르소나("ゲスト페르소나1"):LOCAL
+		DITEMTYPE:페르소나("ゲスト페르소나1"):LOCAL = 0
+	NEXT
+	ITEM:ARG = -1
+	PRINTFORMW %조사처리(CSVCALLNAME((DITEMTYPE:(ARG:1):페르소나("NO")),0),"를")% 소환했습니다
+	DITEMTYPE:(ARG:1):페르소나("페르소나소지자") = -1
+
+@EVOLUTE_PERSONA
+	PRINTFORMW 「이런, 여러분께 힘을 빌려주겠다고 호소하는 페르소나가 있군요」
+	PRINTFORMW 「페르소나와 페르소나 구사자, 그 사이를 주선하도록 하지요」
+	CALL PERSONA_MASTER_LIST(1)
+	SIF RESULT < 0 || NO:RESULT < 0
+		RETURN
+	LOCAL = RESULT
+	LOCAL:1 = ABL:LOCAL:초기페르소나
+	ABL:LOCAL:초기페르소나 = CFLAG:LOCAL:페르소나강화フラグ == 1 ? ABL:LOCAL:초기페르소나2 # ABL:LOCAL:초기페르소나3
+	;구상があれば、구상を呼び出し
+	TRYCCALLFORM EVOLUTE_PERSONA_K{NO:RESULT}(LOCAL)
+	CATCH
+		PRINTFORMW %CALLNAME:LOCAL%의 %조사처리(CSVNAME(LOCAL:1,0),"가")% %조사처리(CSVNAME(ABL:LOCAL:초기페르소나,0),"로")% 변화했다
+	ENDCATCH
+	;강화フラグをふやす
+	CFLAG:LOCAL:페르소나강화フラグ += 1
+	CALL SYNC_STATUS, LOCAL
+
+@PERSONA_STATUS_CHECK
+	#DIM PERSONA, 1
+	#DIM NUM, 1
+	VARSET LOCAL
+;---- EDIT 025 MOD -------------------------
+	CALL PERSONA_LIST,1
+	PRINTFORML [100] 돌아간다
+	$INPUT_LOOP
+	INPUT
+	SIF RESULT == 100
+		RETURN -1
+	IF Q:RESULT == -1
+		CLEARLINE 1
+		GOTO INPUT_LOOP
+	ENDIF
+	NUM = RESULT
+	$PRINT_STATUS
+	PERSONA = Q:NUM
+	CALL PERSONA_STATUS(PERSONA)
+	IF (Q:(NUM-1) == -1) && (NUM <= 10 || Q:1 == -1)
+		PRINTFORMLC %" " * 16%
+	ELSE
+		PRINTFORMLC [101]이전 페르소나
+	ENDIF
+	PRINTFORMLC   [102]목록으로 돌아간다
+	IF (Q:(NUM+1) == -1) && (NUM > 10 || Q:11 == -1)
+		PRINTFORMLC %" " * 16%
+	ELSE
+		PRINTFORMLC [103]다음 페르소나
+	ENDIF
+	PRINTFORMLC   [104]해설을 본다
+	IF DITEMTYPE:PERSONA:페르소나("스킬1")
+		PRINTL 
+		PRINTFORMLC [105]스킬 정렬
+	ENDIF
+	$INPUT_LOOP5
+	INPUT
+	IF RANGE(RESULT, 1, 8)
+		SIF DITEMTYPE:PERSONA:(페르소나("스킬1") + RESULT - 1) == 0
+			GOTO INPUT_LOOP5
+		SIF FLAG:스킬속성표시설정 == 1
+			CALL SKILL_EXPLAIN_PERFORMANCE, DITEMTYPE:PERSONA:(페르소나("스킬1") + RESULT - 1), -1
+		TRYCCALLFORM SKILL_EXPLAIN_{DITEMTYPE:PERSONA:(페르소나("스킬1") + RESULT - 1)}
+			WAIT
+			GOTO PRINT_STATUS
+		CATCH
+			GOTO INPUT_LOOP5
+		ENDCATCH
+	ELSEIF RESULT == 100
+		RETURN -1
+	ELSEIF RESULT == 101
+		IF Q:(NUM-1) == -1
+			IF NUM == 11
+				FOR LOCAL, 10, 0, -1
+					SIF Q:LOCAL == -1
+						CONTINUE
+					NUM = LOCAL
+					BREAK
+				NEXT
+			ENDIF
+		ELSE
+			NUM--
+		ENDIF
+		GOTO PRINT_STATUS
+	ELSEIF RESULT == 102
+		RESTART
+	ELSEIF RESULT == 103
+		IF Q:(NUM+1) >= 0
+			NUM++
+		ELSE
+			SIF NUM < 11 && Q:11 >= 0
+				NUM = 11
+		ENDIF
+		GOTO PRINT_STATUS
+	ELSEIF RESULT == 104
+		FOR LOCAL, GETNUM(CSTR, "해설1"), GETNUM(CSTR, "해설20") + 1
+			PRINTFORML %CSVCSTR(DITEMTYPE:PERSONA:페르소나("NO"), LOCAL, 0)%
+		NEXT
+		WAIT
+		GOTO PRINT_STATUS
+	ELSEIF RESULT == 105 && DITEMTYPE:PERSONA:페르소나("스킬1")
+		$INPUT_LOOP_SKILLCHANGE
+		DRAWLINE
+		PRINTL 첫 번째 스킬을 선택하십시오
+		IF GETBIT (FLAG:カスタムゲーム화면,1)
+			PRINTL
+			FOR LOCAL:3, 0, FLAG:스킬数
+				LOCALS:2 = 스킬{LOCAL:3+1}
+				IF DITEMTYPE:PERSONA:페르소나(LOCALS:2)
+					CALLFORM SKILL_NAME_{DITEMTYPE:PERSONA:페르소나(LOCALS:2)}
+					PRINTFORM 　[{LOCAL:3+1}]%RESULTS,38,LEFT%
+				ENDIF
+				SIF LOCAL:3 % 2 == 1
+					PRINTL
+			NEXT
+		DRAWLINE
+		PRINTL 　　[9] 취소
+		ELSE
+			FOR LOCAL:3, 0, FLAG:스킬数
+				LOCALS:2 = 스킬{LOCAL:3+1}
+				IF DITEMTYPE:PERSONA:페르소나(LOCALS:2)
+					CALLFORM SKILL_NAME_{DITEMTYPE:PERSONA:페르소나(LOCALS:2)}
+					PRINTFORM 　[{LOCAL:3+1}]%RESULTS,20,LEFT%
+				ENDIF
+				SIF LOCAL:3 % 4 == 3
+					PRINTL
+			NEXT
+		PRINTL 　[9] 취소
+		ENDIF
+		INPUT
+		SIF RESULT == 9
+			GOTO PRINT_STATUS
+		SIF RESULT < 0 || RESULT > 9
+			GOTO INPUT_LOOP_SKILLCHANGE
+		LOCALS = 스킬{RESULT}
+		SIF DITEMTYPE:PERSONA:페르소나(LOCALS) <= 0
+			GOTO INPUT_LOOP_SKILLCHANGE
+		DRAWLINE
+		PRINTFORML 두 번째 스킬을 선택하십시오
+		IF GETBIT (FLAG:カスタムゲーム화면,1)
+			PRINTL
+			FOR LOCAL:3, 0, FLAG:스킬数
+				LOCALS:2 = 스킬{LOCAL:3+1}
+				SIF DITEMTYPE:PERSONA:페르소나(LOCALS) == DITEMTYPE:PERSONA:페르소나(LOCALS:2)
+					SETCOLOR 102,255,255
+				IF DITEMTYPE:PERSONA:페르소나(LOCALS:2)
+					CALLFORM SKILL_NAME_{DITEMTYPE:PERSONA:페르소나(LOCALS:2)},U
+					PRINTFORM 　[{LOCAL:3+1}]%RESULTS,38,LEFT%
+				ENDIF
+				RESETCOLOR
+				SIF LOCAL:3 % 2 == 1
+					PRINTL
+			NEXT
+		DRAWLINE
+		PRINTL 　　[9] 취소
+		ELSE
+			FOR LOCAL:3, 0, FLAG:스킬数
+				LOCALS:2 = 스킬{LOCAL:3+1}
+				SIF DITEMTYPE:PERSONA:페르소나(LOCALS) == DITEMTYPE:PERSONA:페르소나(LOCALS:2)
+					SETCOLOR 102,255,255
+				IF DITEMTYPE:PERSONA:페르소나(LOCALS:2)
+					CALLFORM SKILL_NAME_{DITEMTYPE:PERSONA:페르소나(LOCALS:2)},U
+					PRINTFORM 　[{LOCAL:3+1}]%RESULTS,20,LEFT%
+				ENDIF
+				RESETCOLOR
+				SIF LOCAL:3 % 4 == 3
+					PRINTL
+			NEXT
+		PRINTL 　[9] 취소
+		ENDIF
+		INPUT
+		SIF RESULT == 9
+			GOTO PRINT_STATUS
+		SIF RESULT < 0 || RESULT > 9
+			GOTO INPUT_LOOP_SKILLCHANGE
+		LOCALS:1 = 스킬{RESULT}
+		SIF DITEMTYPE:PERSONA:페르소나(LOCALS:1) <= 0
+			GOTO INPUT_LOOP_SKILLCHANGE
+		SWAP DITEMTYPE:PERSONA:페르소나(LOCALS), DITEMTYPE:PERSONA:페르소나(LOCALS:1)
+		IF GETBIT(DITEMTYPE:PERSONA:페르소나("スキルロック設定"),페르소나(LOCALS) - 10) != GETBIT(DITEMTYPE:PERSONA:페르소나("スキルロック設定"),페르소나(LOCALS:1) - 10)
+			INVERTBIT DITEMTYPE:PERSONA:페르소나("スキルロック設定"),페르소나(LOCALS) - 10
+			INVERTBIT DITEMTYPE:PERSONA:페르소나("スキルロック設定"),페르소나(LOCALS:1) - 10
+		ENDIF
+		GOTO PRINT_STATUS
+	ELSE
+		GOTO INPUT_LOOP5
+	ENDIF
+
+@PERSONA_STATUS(ARG)
+	#LOCALSIZE 5
+	#LOCALSSIZE 1
+	LOCAL = DITEMTYPE:ARG:페르소나("NO")
+	DRAWLINE
+	CSVABL LOCAL, GETNUM(ABL, "종족") , 0
+	CSVCSTR LOCAL, GETNUM(CSTR, "종족명"), 0
+	IF STRLENS(RESULTS)
+		PRINTFORM 종족:%RESULTS%　　
+	ELSE
+		PRINTFORM 종족:%STR:RESULT%　　
+	ENDIF
+	CSVCALLNAME LOCAL,0
+	PRINTFORM %RESULTS%　　
+	SIF ARG < 50
+		PRINTFORM 충성도:%AUTO_SPLIT("◯/◎/☆/★", "/", DITEMTYPE:ARG:페르소나("함락"))%　　
+	PRINTFORM 소지자:\@DITEMTYPE:ARG:페르소나("페르소나소지자") >= 0 ? %CALLNAME:FINDCHARA_ID(DITEMTYPE:ARG:페르소나("페르소나소지자"))% # 없음\@
+
+	PRINTL 
+	DRAWLINE
+	PRINTFORM 　　LV{DITEMTYPE:ARG:페르소나("LV"),3}({DITEMTYPE:ARG:페르소나("LV"),3})　　　
+	PRINTFORM Rank{DITEMTYPE:ARG:페르소나("랭크"),2}　　　Exp {DITEMTYPE:ARG:페르소나("EXP"),4}/{LIMIT(DITEMTYPE:ARG:페르소나("랭크") + 1, 0, 10) *LIMIT(DITEMTYPE:ARG:페르소나("랭크") + 1, 0, 10) * 10,4}　　　
+	IF ARG >= 50 && CSVABL(NO:FINDCHARA_ID(DITEMTYPE:ARG:페르소나("페르소나소지자")), GETNUM(ABL, "초기페르소나"), 0) > 0
+		PRINTFORM %GET_ALI1(CSVABL(NO:FINDCHARA_ID(DITEMTYPE:ARG:페르소나("페르소나소지자")), GETNUM(ABL,"속성LD"), 0)),7%/
+		PRINTFORML %GET_ALI2(CSVABL(NO:FINDCHARA_ID(DITEMTYPE:ARG:페르소나("페르소나소지자")), GETNUM(ABL,"속성LC"), 0)),7%
+	ELSE
+		PRINTFORM %GET_ALI1(DITEMTYPE:ARG:페르소나("속성LD")),7%/
+		PRINTFORML %GET_ALI2(DITEMTYPE:ARG:페르소나("속성LC")),7%
+	ENDIF
+	DRAWLINE
+	;LVによるStatus보정
+	;표시詐欺なので注意
+	FOR LOCAL:1 , 1, 7
+		;보정後がLOCAL:3
+		;보정前がLOCAL:4
+		LOCAL:3 = DITEMTYPE:ARG:(페르소나("LV")+LOCAL:1) * PRANK_COLLECTION_VALUE(-1, ARG) / 100
+		LOCAL:4 = DITEMTYPE:ARG:(페르소나("LV")+LOCAL:1) * 75 / 100
+		PRINTFORM %GET_BASESTATUS(LOCAL:1),4%{LOCAL:3,3}({LOCAL:4,3})　
+		FOR LOCAL:2, 0, 100, 2
+			SETCOLOR 0xe0e0e0
+			SIF LOCAL:4 <= LOCAL:2
+				SETCOLOR 0x9090E8
+			SIF LOCAL:3 <= LOCAL:2
+				SETCOLOR COLOR("gray") 
+			IF LOCAL:3 > LOCAL:2 || LOCAL:4 > LOCAL:2
+				PRINTFORM %UNICODE(0x258B)%
+			ELSE
+				PRINT  
+			ENDIF
+		NEXT
+		PRINTL 
+		RESETCOLOR
+	NEXT
+	DRAWLINE
+	PRINTL 전투相性
+	;---- EDIT 001 ADD START -------------------------
+	;相性を페르소나からとって표시するように
+	FOR LOCAL:1, 0, FLAG:相性数
+		LOCALS = %GET_TYPE(LOCAL:1)%
+		IF DITEMTYPE:ARG:페르소나("변경相性1") - 1 == LOCAL:1
+			LOCAL:2 = DITEMTYPE:ARG:페르소나("변경相性치1")
+		ELSE
+			LOCAL:2 = CSVBASE(DITEMTYPE:ARG:페르소나("NO"), GETNUM(BASE, LOCALS), 0)
+		ENDIF
+		CALL SET_AISYOU_COLOR, LOCAL:2
+		PRINTFORM %LOCALS%\@LOCAL:2 < 0 ? 흡수 # 　\@
+		PRINTFORM \@ LOCAL:2 != 999 ? {ABS(LOCAL:2),4}％ # %" " *2%반사 \@　
+		;PRINTFORM {ABS(MAXBASE:ARG:(GET_TYPE(LOCAL)),4}％
+		SIF LOCAL:1 % 6 == 5
+			PRINTL
+	NEXT
+	;---- EDIT 001 ADD END -------------------------
+	RESETCOLOR
+	DRAWLINE
+	IF GETBIT (FLAG:カスタムゲーム화면,1)
+		FOR LOCAL:1, 0, FLAG:스킬数
+			SIF DITEMTYPE:ARG:(페르소나("스킬1") + LOCAL:1) == 0
+				CONTINUE
+			CALLFORM SKILL_NAME_{DITEMTYPE:ARG:(페르소나("스킬1") + LOCAL:1)}
+			PRINTFORM 　[{LOCAL:1+1}]%RESULTS,38,LEFT%
+			SIF LOCAL:1 == 2 || LOCAL:1 == 5 || LOCAL:1 == 8
+				PRINTL
+		NEXT
+	ELSE
+		FOR LOCAL:1, 0, FLAG:스킬数
+			SIF DITEMTYPE:ARG:(페르소나("스킬1") + LOCAL:1) == 0
+				CONTINUE
+			CALLFORM SKILL_NAME_{DITEMTYPE:ARG:(페르소나("스킬1") + LOCAL:1)}
+			PRINTFORM 　[{LOCAL:1+1}]%RESULTS,20,LEFT%
+			SIF LOCAL:1 % 4 == 3
+				PRINTL
+		NEXT
+	ENDIF
+	;---- EDIT 025 ADD START -------------------------
+	LOCAL:2 = 0
+	LOCAL:3 = 0
+	FOR LOCAL:1, 1, 21
+		LOCALS = 습득LV{LOCAL:1}
+		IF DITEMTYPE:ARG:페르소나("LV") < DITEMTYPE:ARG:페르소나(LOCALS) && DITEMTYPE:ARG:페르소나(LOCALS) > 0 && (LOCAL:2 == 0 || LOCAL:3 > DITEMTYPE:ARG:페르소나(LOCALS))
+			LOCAL:2 = LOCAL:1
+			LOCAL:3 = DITEMTYPE:ARG:페르소나(LOCALS)
+		ENDIF
+	NEXT
+	IF LOCAL:2 > 0
+		SETCOLOR 0x666666
+		CALLFORM SKILL_NAME_{DITEMTYPE:ARG:(페르소나("습득스킬1") + LOCAL:2 -1)}
+		PRINTFORML 　NEXT[%RESULTS,20,LEFT%]　습득LV {DITEMTYPE:ARG:(페르소나("습득LV1") + LOCAL:2 -1)}
+		RESETCOLOR
+	ENDIF
+	;---- EDIT 025 ADD END -------------------------
+	SIF LINEISEMPTY() == 0
+		PRINTL
+	DRAWLINE
+	RETURN ARG
+
+@SHOW_PERSONA_MASTER_STATUS(ARG, ARG:1)
+	;引数は페르소나구사자と변경後の페르소나
+	;現在の페르소나を記憶し、페르소나を一時的に付け替える
+	LOCAL:10 = EQUIP:ARG:장비페르소나
+	EQUIP:ARG:장비페르소나 = ARG:1
+	;스테이터스一致
+	CALL SYNC_STATUS, ARG
+	;스테이터스呼び出し
+	;장비の表記を避けたかったのでそこだけ削りました
+	U = ARG
+	PRINTFORML %STR:(ABL:ARG:80)%　　%CALLNAME:U%　　
+	;1行눈に레벨・속성を표시
+	CALL PRINT_BASE_STATUS,ARG
+	;2行눈にHP・충성도を표시
+
+	PRINTFORML ＨＰ[{BASE:ARG:ＨＰ,4}/{MAXBASE:ARG:ＨＰ,4}]　　　　　충성도:{BASE:ARG:충성도,6}　　ＭＡＧ:{BASE:ARG:ＭＡＧ,6}
+
+
+	;3行눈にＭＰ・ＥＸＰを표시
+	PRINTFORM ＭＰ[{BASE:ARG:ＭＰ,4}/
+	PRINTFORML {MAXBASE:ARG:ＭＰ,4}]　　　　　ＥＸＰ：{BASE:ARG:ＥＸＰ,8}/{MAXBASE:ARG:ＥＸＰ,8}　　ＣＰ:{MAXBASE:ARG:CP,3}
+	;4行눈に通常공격の性能を표시
+	PRINTFORM 통상공격：%GET_TYPE(ABL:ARG:공격상성),6,LEFT%　{ABL:ARG:최저공격횟수,2}-{ABL:ARG:최대공격횟수,2}회　사거리
+	IF ABL:ARG:사거리 == 1
+		PRINT Ｓ
+	ELSEIF ABL:ARG:사거리 == 2
+		PRINT Ｍ
+	ELSEIF ABL:ARG:사거리 == 3
+		PRINT Ｌ
+	ENDIF
+	PRINTFORML  %GET_SPHERE(ABL:ARG:공격범위),4,LEFT%
+	IF ABL:ARG:추가효과 > 0
+		PRINTFORML 　　　　추가효과：%GET_STATE(ABL:ARG:추가효과),6,LEFT%　추가효과상성：%GET_TYPE(ABL:ARG:추가효과상성)%
+	ENDIF
+
+	;인간ならばここに총공격の性能と총공격힘・총명중を2行つかって표시
+	IF EQUIP:ARG:총 > 0
+		DRAWLINE
+		PRINTFORML 총：공격힘 {MAXBASE:ARG:총공격,4} 명중 {MAXBASE:ARG:총명중}
+		CALLFORM 최저공격횟수_{EQUIP:ARG:총}
+		PRINTFORM 공격횟수 {RESULT,2}-
+		CALLFORM 최대공격횟수_{EQUIP:ARG:총}
+		PRINTFORM {RESULT,2}
+		CALLFORM 사거리_{EQUIP:ARG:총}
+		PRINTFORM 　　사거리：
+		IF RESULT == 1
+			PRINT Ｓ
+		ELSEIF RESULT == 2
+			PRINT Ｍ
+		ELSEIF RESULT == 3
+			PRINT Ｌ
+		ENDIF
+		CALLFORM 공격범위_{EQUIP:ARG:총}
+		PRINTFORM 　　%GET_SPHERE(RESULT),4,LEFT%
+		PRINTL
+	ENDIF
+	DRAWLINE
+	;5〜10行눈に기본能力値と전투能力値を표시
+	;棒グラフを표시する処理を추가しました。
+	;ステ2Pにつき、1個の*があらわれ,최대で50個（ステ100）まで増え続ける
+	;ついでに조교や장비や페르소나の보정なんか加算されてるぶんは水色、減算されてるぶんは灰色になります。
+	FOR LOCAL:1, 0, 6
+		PRINTFORM %GET_BASESTATUS(LOCAL:1+1),4%{MAXBASE:ARG:(GET_BASESTATUS(LOCAL:1+1)),4}({BASE:ARG:(GET_BASESTATUS(LOCAL:1+1)),4})　
+		FOR LOCAL,0,100,2
+			IF CFLAG:ARG:PTフラグ > 0
+				SETCOLOR 0xe0e0e0
+				SIF BASE:ARG:(GET_BASESTATUS(LOCAL:1+1)) <= LOCAL
+					SETCOLOR 0x9090E8
+				SIF MAXBASE:ARG:(GET_BASESTATUS(LOCAL:1+1)) <= LOCAL
+					SETCOLOR COLOR("gray")
+			ENDIF
+			IF MAXBASE:ARG:(GET_BASESTATUS(LOCAL:1+1)) > LOCAL || BASE:ARG:(GET_BASESTATUS(LOCAL:1+1)) > LOCAL
+				PRINTFORM %UNICODE(0x258B)%
+			ELSE
+				PRINT  
+			ENDIF
+		NEXT
+		SIF CFLAG:ARG:PTフラグ > 0
+			RESETCOLOR
+		PRINT 　
+		PRINTFORM %GET_BATTLESTATUS(LOCAL:1),8,LEFT%
+		PRINTFORML {MAXBASE:ARG:(GET_BATTLESTATUS(LOCAL:1)),5} 
+	NEXT
+	DRAWLINE
+
+	;11、12行눈に被공격상성と継承可能표시
+	PRINTL 전투相性
+	FOR LOCAL,0,FLAG:相性数
+			CALL SET_AISYOU_COLOR, MAXBASE:ARG:(GET_TYPE(LOCAL))
+			PRINTFORM %GET_TYPE(LOCAL) %\@(MAXBASE:ARG:(GET_TYPE(LOCAL)) < 0) ? 吸 # 　\@
+			PRINTFORM \@ ((MAXBASE:ARG:(GET_TYPE(LOCAL)) != 999)) ? {ABS(MAXBASE:ARG:(GET_TYPE(LOCAL))),4}％ # %" " *2%반사 \@　
+			;PRINTFORM {ABS(MAXBASE:ARG:(GET_TYPE(LOCAL)),4}％
+		SIF LOCAL % 6 == 5
+			PRINTL
+	NEXT
+	RESETCOLOR
+	DRAWLINE
+	CALL PRINT_SKILL
+
+	EQUIP:ARG:100 = LOCAL:10
+	;스테이터스復帰
+	CALL SYNC_STATUS, ARG
+
+@CHANGE_PERSONA(ARG)
+	;ARGは付け替えるキャラの登録番号
+	DRAWLINE
+	IF 이벤트フラグ:5:0 == 3
+		PRINTFORMW 강마시킬 페르소나를 선택하십시오
+	ELSE
+		PRINTFORMW 강마시킬 페르소나를 선택하십시오
+	ENDIF
+	DRAWLINE
+	$INPUT_LOOP1
+	FOR LOCAL, 0, 3
+		LOCALS = 소지페르소나{LOCAL+1}
+		IF EQUIP:ARG:LOCALS
+			PRINTFORM [{LOCAL}]
+			IF EQUIP:ARG:장비페르소나 == EQUIP:ARG:LOCALS
+				PRINT *
+			ELSE
+				PRINT  
+			ENDIF
+			PRINTSL CSVNAME(DITEMTYPE:(EQUIP:ARG:(LOCALS)):페르소나("NO"),0)
+		ELSE
+			BREAK
+		ENDIF
+	NEXT
+	IF ABL:ARG:초기페르소나 > 0
+		PRINT [9]
+
+		IF EQUIP:ARG:장비페르소나
+			PRINT  
+		ELSE
+			PRINT *
+		ENDIF
+		PRINTFORML %CSVNAME(ABL:ARG:초기페르소나,0)%
+	ENDIF
+	PRINTL [99] 스테이터스를 확인한다
+	PRINTL [100] 돌아간다
+	$INPUT_LOOP
+	INPUT
+	IF RESULT >= 0 && RESULT <= LOCAL
+		LOCALS = 소지페르소나{RESULT+1}
+		;변경前と변경後で페르소나が一致している
+		IF EQUIP:ARG:LOCALS == EQUIP:ARG:장비페르소나
+			IF 이벤트フラグ:5:0 == 3
+				PRINTFORMW 이런, 그 페르소나는 이미 강마하고 계시는군요
+			ELSE
+				PRINTFORMW 그 페르소나는 이미 강마되어 있습니다
+			ENDIF
+			GOTO INPUT_LOOP1
+		ELSE
+			;페르소나を장비
+			EQUIP:ARG:장비페르소나 = EQUIP:ARG:LOCALS
+			PRINTFORM %CSVNAME(DITEMTYPE:(EQUIP:ARG:장비페르소나):페르소나("NO"),0)%
+			IF 이벤트フラグ:5:0 == 3
+				PRINTFORMW 을(를) 강마하셨습니다
+			ELSE
+				PRINTFORMW 을(를) 강마했습니다
+			ENDIF
+		ENDIF
+	ELSEIF RESULT == 9
+		SIF ABL:ARG:초기페르소나 == 0
+			GOTO INPUT_LOOP
+		IF EQUIP:ARG:장비페르소나 == 0
+			IF 이벤트フラグ:5:0 == 3
+				PRINTFORMW 이런, 그 페르소나는 이미 강마하고 계시는군요
+			ELSE
+				PRINTFORMW 그 페르소나는 이미 강마되어 있습니다
+			ENDIF
+			GOTO INPUT_LOOP1
+		ENDIF
+		DITEMTYPE:(EQUIP:ARG:장비페르소나):페르소나("장비상태") = -1
+		EQUIP:ARG:장비페르소나 = 0
+		EQUIP:ARG:전회페르소나 = 0
+		CALL SYNC_STATUS,ARG
+		PRINTFORM %CSVNAME(ABL:ARG:초기페르소나,0)%
+		IF 이벤트フラグ:5:0 == 3
+			PRINTFORMW 을(를) 강마하셨습니다
+		ELSE
+			PRINTFORMW 을(를) 강마했습니다
+		ENDIF
+		RETURN 0
+	ELSEIF RESULT == 99
+		LOCAL = 0
+		$INPUT_LOOP2
+		FOR LOCAL:1, 1, 4
+			LOCALS = 소지페르소나{LOCAL:1}
+			IF EQUIP:ARG:LOCALS
+				PRINTFORM [{LOCAL:1 - 1}]
+				IF EQUIP:ARG:장비페르소나 == EQUIP:ARG:LOCALS
+					PRINT *
+				ELSE
+					PRINT  
+				ENDIF
+				PRINTFORML %CSVNAME(DITEMTYPE:(EQUIP:ARG:LOCALS):페르소나("NO"),0)%(페르소나만)
+			ELSE
+				BREAK
+			ENDIF
+		NEXT
+		FOR LOCAL:1, 1, 4
+			LOCALS = 소지페르소나{LOCAL:1}
+			IF EQUIP:ARG:LOCALS
+				PRINTFORM [{LOCAL:1+2}]
+				IF EQUIP:ARG:장비페르소나 == EQUIP:ARG:LOCALS
+					PRINT *
+				ELSE
+					PRINT  
+				ENDIF
+				PRINTFORML %CSVNAME(DITEMTYPE:(EQUIP:ARG:LOCALS):페르소나("NO"),0)%(페르소나구사자＋페르소나)
+			ELSE
+				BREAK
+			ENDIF
+		NEXT
+		IF ABL:ARG:초기페르소나
+			PRINT [8]
+			IF EQUIP:ARG:장비페르소나
+				PRINT  
+			ELSE
+				PRINT *
+			ENDIF
+			PRINTFORML %CSVNAME(ABL:ARG:초기페르소나,0)%(페르소나)
+			PRINT [9]
+			IF EQUIP:ARG:장비페르소나
+				PRINT  
+			ELSE
+				PRINT *
+			ENDIF
+			PRINTFORML %CSVNAME(ABL:ARG:초기페르소나,0)%(페르소나구사자＋페르소나)
+		ENDIF
+		PRINTL [100] 돌아간다
+		$INPUT_LOOP3
+		INPUT
+		IF (RESULT >= 0 && RESULT <= LOCAL:1 - 1) || (RESULT >= 3 && RESULT <= LOCAL:1+2) || ((RESULT == 8 || RESULT == 9) && ABL:ARG:초기페르소나)
+			IF RESULT < 3 
+				CALL PERSONA_STATUS(EQUIP:ARG:(GETNUM(EQUIP, "소지페르소나1") + RESULT))
+			ELSEIF RESULT == 8 && ABL:ARG:초기페르소나
+				CALL PERSONA_STATUS(CFLAG:ARG:초기페르소나ナンバー)
+			ELSE
+				IF RESULT == 9 && ABL:ARG:초기페르소나
+					LOCAL = 0
+				ELSE
+					LOCAL = EQUIP:ARG:(RESULT + GETNUM(EQUIP, "소지페르소나1") - 3)
+				ENDIF
+				CALL SHOW_PERSONA_MASTER_STATUS(ARG, LOCAL)
+			ENDIF
+			GOTO INPUT_LOOP2
+		ELSEIF RESULT == 100
+			RESTART
+		ELSE
+			GOTO INPUT_LOOP3
+		ENDIF
+	ELSEIF RESULT == 100
+		RETURN 0
+	ELSE
+		GOTO INPUT_LOOP
+	ENDIF
+	;能力の同期化
+	CALL SYNC_STATUS,ARG
+	;장비상태フラグの更新
+	DITEMTYPE:(EQUIP:ARG:장비페르소나):페르소나("장비상태") = -2
+	DITEMTYPE:(EQUIP:ARG:전회페르소나):페르소나("장비상태") = -1
+	;전회장비페르소나として今回の페르소나を記録
+	EQUIP:ARG:전회페르소나 = EQUIP:ARG:장비페르소나
+
+@PERSONA_EQUIP
+	#LOCALSIZE 300
+	VARSET LOCAL
+	CALL PERSONA_MASTER_LIST
+	LOCAL = RESULT
+	SIF RESULT == -1
+		RETURN -1
+	DRAWLINE
+	PRINTFORML %조사처리(CALLNAME:LOCAL,"가")% 현재 소지하고 있는 페르소나
+	FOR LOCAL:1, 1, 4
+		LOCALS = 소지페르소나{LOCAL:1}
+		IF EQUIP:LOCAL:LOCALS
+			IF EQUIP:LOCAL:장비페르소나 == EQUIP:LOCAL:LOCALS
+				PRINT *
+			ELSE
+				PRINT  
+			ENDIF
+			PRINTSL CSVNAME(DITEMTYPE:(EQUIP:LOCAL:LOCALS):페르소나("NO"),0)
+			LOCAL:5 += 1
+		ELSE
+			BREAK
+		ENDIF
+	NEXT
+	DRAWLINE
+
+	PRINTFORML %CALLNAME:LOCAL%에게 소지하게 할 페르소나를 선택하십시오
+	FOR LOCAL:1, 1, 12
+		IF DITEMTYPE:(LOCAL:1):0 == 0
+			CONTINUE
+		ELSEIF DITEMTYPE:(LOCAL:1):페르소나("장비상태") > 0
+			PRINTFORML [{LOCAL:4}] %CSVNAME(DITEMTYPE:(LOCAL:1):페르소나("NO"),0)%
+			LOCAL:(LOCAL:4 + 10) = LOCAL:1
+			LOCAL:4 += 1
+		ENDIF
+	NEXT
+	PRINTL [100] 돌아간다
+	$INPUT_LOOP2
+	INPUT
+	IF RESULT == 100
+		RETURN 0
+	ELSEIF RESULT < 100 && RESULT >= 0 && LOCAL:(RESULT + 10)
+		LOCAL:6 = RESULT
+		CALL SHOW_PERSONA_MASTER_STATUS(LOCAL, LOCAL:(LOCAL:6 + 10))
+		CSVNAME DITEMTYPE:(LOCAL:(LOCAL:6 + 10)):페르소나("NO"), 0
+		PRINTFORML %조사처리(RESULTS,"를")% %CALLNAME:LOCAL%에게 강마시키면, 위와 같은 스테이터스가 됩니다
+		PRINTFORMW 정말로 건네주어도 되겠습니까?
+		
+		CALL INPUT_YN,"Yes","No",2
+
+		IF RESULT == 1
+			RETURN 0
+		ENDIF
+
+		;3個소지してる場合は入れ替える페르소나を選ぶ
+		IF LOCAL:5 == 2
+			;新しく소지させる페르소나
+			LOCAL:2 = LOCAL:(LOCAL:6 + 10)
+			PRINTFORML 바꿔넣을 페르소나를 선택하십시오
+			FOR LOCAL:1, 0, 2
+				LOCALS = 소지페르소나{LOCAL:1 + 1}
+				IF EQUIP:LOCAL:LOCALS == EQUIP:LOCAL:장비페르소나
+					PRINT *
+				ELSE
+					PRINT  
+				ENDIF
+				PRINTFORML [{LOCAL:1}] %CSVNAME(DITEMTYPE:(EQUIP:LOCAL:LOCALS):1, 0)%
+			NEXT
+			PRINTL [100] 돌아간다
+		ELSE
+			EQUIP:LOCAL:(LOCAL:5 + GETNUM(EQUIP, "소지페르소나1")) = LOCAL:(LOCAL:6 + 10)
+			DITEMTYPE:(LOCAL:(LOCAL:6 + 10)):페르소나("장비상태") = -1
+			DITEMTYPE:(LOCAL:(LOCAL:6 + 10)):페르소나("페르소나소지자") = CFLAG:LOCAL:キャラ固有の번호
+			RETURN 0
+		ENDIF
+	ELSE
+		GOTO INPUT_LOOP2
+	ENDIF
+	$INPUT_LOOP3
+	INPUT
+	IF RESULT <= LOCAL:1 && RESULT >= 0
+		LOCALS = 소지페르소나{RESULT + 1}
+		;外れた페르소나はストックへ
+		DITEMTYPE:(EQUIP:LOCAL:LOCALS):페르소나("장비상태") = 1
+		DITEMTYPE:(EQUIP:LOCAL:LOCALS):페르소나("페르소나소지자") = -1
+		;페르소나を入れ替える
+		EQUIP:LOCAL:LOCALS = LOCAL:2
+		;つけた페르소나は소지中に
+		DITEMTYPE:(LOCAL:2):페르소나("장비상태") = -1
+		DITEMTYPE:(LOCAL:2):페르소나("페르소나소지자") = CFLAG:LOCAL:キャラ固有の번호
+		;現在장비してる페르소나と入れ替える場合
+		IF EQUIP:LOCAL:LOCALS == EQUIP:LOCAL:장비페르소나
+			EQUIP:LOCAL:장비페르소나 = 0
+			;能力の同期化
+			CALL SYNC_STATUS, LOCAL
+		ENDIF
+	ELSEIF RESULT == 100
+		RETURN 0
+	ELSE
+		GOTO INPUT_LOOP3
+	ENDIF
+@PERSONA_UNEQUIPMENT(ARG, ARG:1)
+	;ARG 페르소나구사자
+	;ARG:1　外す페르소나
+	IF EQUIP:ARG:장비페르소나 == ARG:1
+		EQUIP:ARG:장비페르소나 = 0
+		EQUIP:ARG:전회페르소나 = 0
+	ENDIF
+	FOR LOCAL, 1, 4
+		IF EQUIP:ARG:("소지페르소나"+TOSTR(LOCAL)) == ARG:1
+			EQUIP:ARG:("소지페르소나"+TOSTR(LOCAL)) = 0
+			LOCAL:1 = LOCAL
+			BREAK
+		ENDIF
+	NEXT
+	DITEMTYPE:(ARG:1):페르소나("장비상태") = 1
+	DITEMTYPE:(ARG:1):페르소나("페르소나소지자") = -1
+	;番号をずらす
+	FOR LOCAL, LOCAL:1, 3
+		EQUIP:ARG:("소지페르소나"+TOSTR(LOCAL)) = EQUIP:ARG:("소지페르소나"+TOSTR(LOCAL+1))
+	NEXT
+	EQUIP:ARG:소지페르소나3 = 0
+	CALL SYNC_STATUS,ARG
+
+@DEL_PERSONA
+	#DIM 帰還아이템
+	PRINTFORML 기억의 바다로 귀환시킬 페르소나를 선택하십시오
+	;LOCAL:10~19に삭제候補페르소나を격납
+	FOR LOCAL, 1, 12
+		IF DITEMTYPE:LOCAL:0 == 0
+			BREAK
+		ELSE
+			PRINTFORM [{LOCAL-1}] %CSVNAME(DITEMTYPE:LOCAL:페르소나("NO"), 0)%
+			IF DITEMTYPE:LOCAL:페르소나("장비상태") == -1
+				PRINTFORML (소지중)
+			ELSEIF DITEMTYPE:LOCAL:페르소나("장비상태") == -2
+				PRINTFORML (강마중)
+			ELSE
+				PRINTL 
+			ENDIF
+		ENDIF
+	NEXT
+	PRINTFORML [100] 돌아간다
+	$INPUT_LOOP2
+	INPUT
+	IF  RESULT == 100
+		RETURN 0
+	ELSEIF RESULT > 10 || RESULT < 0
+		GOTO INPUT_LOOP2
+	ELSEIF DITEMTYPE:(RESULT+1):페르소나("장비상태")
+		;LOCAL:2は削除する페르소나番号
+		LOCAL:2 = RESULT + 1
+		IF DITEMTYPE:(LOCAL:2):페르소나("랭크") >= 5
+			PRINTFORML 불러 깨운 옛 마음의 형상
+			PRINTFORML %조사처리(CSVNAME(DITEMTYPE:(LOCAL:2):페르소나("NO"),0),"를")% 해방할 때가
+			PRINTFORMW 왔습니까…
+			PRINTFORML 허면 함께 싸울, 그 따로 있는 마음
+			PRINTFORML 카드로 바꾸어서,
+			PRINTFORMW 당신께 돌려드릴까요…
+			CALL MAKE_PERSONA_SKILLCARD(LOCAL:2)
+			SIF RESULT == -1
+				RETURN 0
+		ENDIF
+		;ここで이름をとっておく
+		PRINTFORMW %조사처리(CSVNAME(DITEMTYPE:(LOCAL:2):페르소나("NO"), 0),"를")% 보편적 무의식의 바다로 돌려보냈습니다
+
+		;帰還아이템입수処理
+		IF DITEMTYPE:(LOCAL:2):페르소나("랭크") >= 10 && DITEMTYPE:(LOCAL:2):페르소나("함락") > 0
+			;DITEMTYPEに新しく페르소나("帰還아이템")を作りたくないのでCSVからの読み込みオンリーにする
+			帰還아이템 = CSVABL(DITEMTYPE:(LOCAL:2):페르소나("NO"), GETNUM(ABL, "수태아이템"), 0)
+			;一つでも소지してるなら無効
+			IF 帰還아이템 > 0 && ITEM:帰還아이템 == 0
+				PRINTFORMW ＞%조사처리(ITEMNAME:(帰還아이템),"를")% 입수했다
+				ITEM:帰還아이템 = 1
+			ENDIF
+		ENDIF
+
+		CALL DEL_PERSONA2, LOCAL:2
+
+		IF DITEMTYPE:(LOCAL:2):페르소나("페르소나소지자") == -1
+			PRINTL 강마중인 페르소나를 귀환시켰기에
+			PRINTW 강마 중이던 페르소나 구사자는 자동적으로 초기 페르소나를 강마하므로 주의하시길
+		ENDIF
+		DRAWLINE
+	ELSE
+		GOTO INPUT_LOOP2
+	ENDIF
+
+@DEL_PERSONA2, ARG
+	;장비されている場合は外す処理
+	IF DITEMTYPE:ARG:페르소나("장비상태") < 0
+		LOCAL = FINDCHARA_ID(DITEMTYPE:ARG:페르소나("페르소나소지자"))
+		CALL PERSONA_UNEQUIPMENT(LOCAL, ARG)
+	ENDIF
+	FOR LOCAL, 0, CHARANUM
+		SIF TALENT:LOCAL:페르소나구사자 == 0
+			CONTINUE
+		;EQUIP:100~104で삭제する페르소나より번호が大きいものは-1
+		FOR LOCAL:1, GETNUM(EQUIP, "장비페르소나"), GETNUM(EQUIP, "전회페르소나") + 1
+			SIF EQUIP:LOCAL:(LOCAL:1) > ARG
+				EQUIP:LOCAL:(LOCAL:1) -= 1
+		NEXT
+	NEXT
+	;페르소나삭제作業
+	FOR LOCAL, ARG,10
+		FOR LOCAL:1, 0, 100
+			DITEMTYPE:LOCAL:(LOCAL:1) = DITEMTYPE:(LOCAL+1):(LOCAL:1)
+		NEXT
+	NEXT
+	FOR LOCAL:1, 0, 100
+		DITEMTYPE:10:(LOCAL:1) = 0
+	NEXT
+
+;---- EDIT 004 MOD START -------------------------
+;帰還時の소지스킬판정を수정
+;新処理추가して書きなおす
+@MAKE_PERSONA_SKILLCARD, ARG
+	#LOCALSIZE 10
+	#LOCALSSIZE 11
+	#DIM CARD, 20
+	#DIM CARDPRICE, 20
+	VARSET CARDPRICE
+	VARSET CARD
+	PRINTFORMW 그럼, 만들 카드를 선택하십시오
+	$START
+	DRAWLINE
+	FOR LOCAL, 1, 17
+		SELECTCASE LOCAL
+			CASE IS < 9
+				SIF LOCAL == 1
+					PRINTFORMDL 스킬카드
+				LOCALS = 스킬{LOCAL}
+				;스킬がない場合
+				SIF DITEMTYPE:ARG:페르소나(LOCALS) == 0
+					CONTINUE
+				;継承不能な스킬は除外
+				TRYCCALLFORM 継承不能_{DITEMTYPE:ARG:페르소나(LOCALS)}
+					SIF RESULT
+						CONTINUE
+				CATCH
+				ENDCATCH
+				CALLFORM SKILL_RANK_{DITEMTYPE:ARG:페르소나(LOCALS)}
+				SIF !RANGE(RESULT, 1, 15)
+					CONTINUE
+				CALLFORM SKILL_NAME_{DITEMTYPE:ARG:페르소나(LOCALS)}
+				SIF CARDPRICE:LOCAL
+					SETCOLOR COLOR("aqua")
+				PRINTFORML [{LOCAL}] %RESULTS%(필요EXP:300)
+				CARD:LOCAL = 10000 + DITEMTYPE:ARG:페르소나(LOCALS)
+			CASE 9
+				CONTINUE
+			CASE IS < 15
+				IF LOCAL == 10
+					DRAWLINE
+					PRINTFORMDL EXP카드
+				ENDIF
+				SIF CARDPRICE:LOCAL
+					SETCOLOR COLOR("aqua")
+				CARD:LOCAL = GETNUM(ITEM, "신아의카드")+LOCAL - 10
+				PRINTFORML [{LOCAL}] %ITEMNAME:(CARD:LOCAL)%(필요EXP:{(LOCAL-9)*200} 효과EXP:{ITEMPRICE:(CARD:LOCAL)})
+			CASE 15
+				IF LOCAL == 15
+					DRAWLINE
+					PRINTFORMDL 인센스카드
+				ENDIF
+				FOR LOCAL:1, 0, 6
+					IF DITEMTYPE:ARG:(페르소나("힘") + LOCAL:1) == MAX(DITEMTYPE:ARG:페르소나("힘"),DITEMTYPE:ARG:페르소나("인내력"),DITEMTYPE:ARG:페르소나("마력"),DITEMTYPE:ARG:페르소나("지혜"),DITEMTYPE:ARG:페르소나("속도"),DITEMTYPE:ARG:페르소나("운"))
+						SIF CARDPRICE:LOCAL
+							SETCOLOR COLOR("aqua")
+						CARD:LOCAL = GETNUM(ITEM, "STR인센스카드")+LOCAL:1
+						PRINTFORML [{LOCAL}] %ITEMNAME:(CARD:LOCAL)%(필요EXP:500)
+						BREAK
+					ENDIF
+				NEXT
+			CASE 16
+				FOR LOCAL:1, 0, 6
+					IF DITEMTYPE:ARG:(페르소나("힘") + LOCAL:1) == MIN(DITEMTYPE:ARG:페르소나("힘"),DITEMTYPE:ARG:페르소나("인내력"),DITEMTYPE:ARG:페르소나("마력"),DITEMTYPE:ARG:페르소나("지혜"),DITEMTYPE:ARG:페르소나("속도"),DITEMTYPE:ARG:페르소나("운"))
+						SIF CARDPRICE:LOCAL
+							SETCOLOR COLOR("aqua")
+						CARD:LOCAL = GETNUM(ITEM, "STR마이너스카드")+LOCAL:1
+						PRINTFORML [{LOCAL}] %ITEMNAME:(CARD:LOCAL)%(필요EXP:500)
+						BREAK
+					ENDIF
+				NEXT
+		ENDSELECT
+		RESETCOLOR
+	NEXT
+	DRAWLINE
+	PRINTFORML 남은 EXP {DITEMTYPE:ARG:페르소나("EXP") - SUMARRAY(CARDPRICE)}
+	DRAWLINE
+	PRINTL [99] 귀환시킨다
+	PRINTL [100] 페르소나를 귀환시키는 것을 그만둔다
+	DRAWLINE
+	$INPUT_LOOP
+	INPUT
+	IF RESULT == 100
+		RETURN -1
+	ELSEIF RESULT == 99
+		FOR LOCAL, 1, 17
+			SIF !CARDPRICE:LOCAL
+				CONTINUE
+			IF LOCAL < 9
+				CALLFORM SKILL_NAME_{DITEMTYPE:ARG:페르소나(@"스킬{LOCAL}")}
+				PRINTFORMW %RESULTS%의 카드를 입수했다
+			ELSE
+				PRINTFORMW %조사처리(ITEMNAME:(CARD:LOCAL),"를")% 입수했다
+			ENDIF
+			CALL GET_ITEM(CARD:LOCAL, 1)
+		NEXT
+		PRINTFORMW 그럼, 페르소나를 귀환시키겠습니다
+		RETURN 0
+	ELSEIF RESULT >= 1 && RESULT <= 16 && RESULT != 9 && CARD:RESULT
+		IF RESULT < 9
+			LOCAL = 300
+		ELSEIF RESULT < 15
+			LOCAL = 200 * (RESULT - 9)
+		ELSE
+			LOCAL = 500
+		ENDIF
+		IF CARDPRICE:RESULT
+			CARDPRICE:RESULT = 0
+		ELSEIF DITEMTYPE:ARG:페르소나("EXP") - SUMARRAY(CARDPRICE) >= LOCAL
+			CARDPRICE:RESULT = LOCAL
+		ELSE
+			GOTO INPUT_LOOP
+		ENDIF
+		GOTO START
+	ELSE
+		GOTO INPUT_LOOP
+	ENDIF
+;---- EDIT 004 MOD END -------------------------
+
+@ADD_SKILL_PERSONA, ARG
+	#DIM SKILL_COUNT;스킬数確認用
+	#DIM LINE
+	;DRAWLINE
+	;全페르소나を표시する
+	;FOR LOCAL:1, 1, 11
+	;	SIF DITEMTYPE:(LOCAL:1):0 == 0
+	;		BREAK
+	;	;이름표시
+	;	PRINTFORML [{LOCAL:1}] %CSVNAME(DITEMTYPE:(LOCAL:1):페르소나("NO"),0)%
+	;NEXT
+	;FOR LOCAL:1, 50, 100
+	;	SIF DITEMTYPE:(LOCAL:1):0 == 0
+	;		BREAK
+	;	;이름표시
+	;	PRINTFORML [{LOCAL:1}] %CSVNAME(DITEMTYPE:(LOCAL:1):페르소나("NO"),0)%
+	;NEXT
+	;PRINTL [100] 돌아간다
+	;$INPUT_LOOP
+	;INPUT
+	;페르소나を選択
+	;IF RESULT == 100
+	;	RETURN 0
+	;ELSEIF RESULT >= 1 && RESULT < 100 && DITEMTYPE:RESULT:페르소나("장비상태")
+	;	LOCAL:1 = RESULT
+	;ELSE
+	;	GOTO INPUT_LOOP
+	;ENDIF
+	;LOCAL:1は페르소나번호
+	PRINTL 소지 스킬
+	FOR LOCAL:2 ,1, 9
+		LOCALS = 스킬{LOCAL:2}
+		SIF DITEMTYPE:ARG:페르소나(LOCALS) == 0
+			BREAK
+		CALLFORM SKILL_NAME_{DITEMTYPE:ARG:페르소나(LOCALS)}
+		PRINTFORM 　%RESULTS,20,LEFT%
+		SIF LOCAL:2 == 4
+			PRINTL 
+	NEXT
+	SIF LOCAL:2 != 6
+		PRINTL 
+	DRAWLINE
+
+	$INPUT_LOOP2
+	PRINTL 사용 가능한 스킬 카드
+	;継承部位考えると、キャラ造らずに処理通すのはちょっと無理そげ
+	ADDCHARA DITEMTYPE:ARG:페르소나("NO")
+	IF ARG >= 50
+		CALLF STRFLAG_EV("초기페르소나스킬습득", 1, [[이벤트:페르소나]])
+	ELSE
+		CALLF STRFLAG_EV("초기페르소나스킬습득", -1, [[이벤트:페르소나]])
+	ENDIF
+	CALL SHOW_LEARN_SKILL, CHARANUM - 1
+	LOCAL = RESULT
+	LOCAL:5 = 2
+	;소질がない場合2倍になる
+	TRYCCALLFORM SKILL_TYPE_{LOCAL}
+		SIF TALENT:(CHARANUM - 1):GET_SUCCESSION(RESULT)
+			LOCAL:5 = 1
+	CATCH
+	ENDCATCH
+	;ここでキャラ삭제
+	;CALL キャラ삭제, CHARANUM - 1
+	DELCHARA CHARANUM -1
+	FOR LOCAL:2 ,1, 9
+		LOCALS = 스킬{LOCAL:2}
+		IF LOCAL && DITEMTYPE:ARG:페르소나(LOCALS) == LOCAL
+			CALLFORM SKILL_NAME_{LOCAL}
+			PRINTFORMW 「%조사처리(CSVNAME(DITEMTYPE:ARG:페르소나("NO"),0),"는")% 【%RESULTS%】%조사만처리(RESULTS,"를")% 이미 기억하고 있군요」
+			RESTART
+		ENDIF
+	NEXT
+	RESULT = LOCAL
+	SIF RESULT == 0
+		RETURN 0
+
+	;ELSEIF RESULT >= 0 && RESULT < 10 && RESULT < LOCAL && GETBIT(LOCAL:5, RESULT + 1)
+		;깨달음えさせる스킬
+		LOCAL = RESULT
+		LOCAL:3 = RESULT
+		CALLFORM SKILL_RANK_{LOCAL}
+		;필요한EXP
+		LOCAL:4 = (RESULT * 20 + 100 + MAX(RESULT * 50 - DITEMTYPE:ARG:페르소나("LV") * 10, 0)) * LOCAL:5 / 2
+		CALLFORM SKILL_NAME_{LOCAL}
+		LOCALS:1 = %RESULTS%
+		PRINTFORML %조사처리(RESULTS,"를")% 습득하기 위해선 EXP{LOCAL:4}가 필요합니다
+		IF LOCAL:4 > DITEMTYPE:ARG:페르소나("EXP")
+			PRINTFORMW EXP가 부족합니다
+			RETURN 0
+		ENDIF
+		PRINTFORML 스킬을 습득시키겠습니까? (현재 EXP {DITEMTYPE:ARG:페르소나("EXP")})
+		CALL INPUT_YN
+		IF RESULT
+			PRINTFORMW 스킬을 습득하는 걸 그만두었습니다
+			RETURN 0
+		ENDIF
+		
+		;스킬がすべて埋まっているか체크
+		SKILL_COUNT = 0
+		FOR LOCAL:2, 1, 9
+			LOCALS = 스킬{LOCAL:2}
+			IF DITEMTYPE:ARG:페르소나(LOCALS)
+				SKILL_COUNT +=1
+			ENDIF
+		NEXT
+		
+		;스킬が埋まってる
+		;IF DITEMTYPE:ARG:페르소나("스킬8")
+		IF SKILL_COUNT == 8
+			DRAWLINE
+			PRINTL 「이런, 스킬이 가득 찼군요」
+			PRINTW 「그러면 잊게 할 스킬을 선택하십시오」
+			LINE = LINECOUNT
+			$CHOICE
+			CLEARLINE LINECOUNT - LINE
+			FOR LOCAL:2 ,1, 9
+				LOCALS = 스킬{LOCAL:2}
+				IF DITEMTYPE:ARG:페르소나(LOCALS)
+					CALLFORM SKILL_NAME_{DITEMTYPE:ARG:페르소나(LOCALS)}
+					IF GETBIT(DITEMTYPE:ARG:페르소나("スキルロック設定"),LOCAL:2)
+						SETCOLOR COLOR("黄色")
+						PRINTFORM 　LOCK%RESULTS,20,LEFT%
+					ELSE
+						PRINTFORM 　[{LOCAL:2}]%RESULTS,20,LEFT%
+					ENDIF
+					RESETCOLOR
+				ENDIF
+				SIF LOCAL:2 % 4 == 0
+					PRINTL 
+			NEXT
+			PRINTL [100] 돌아간다 [200] 스킬 잠금 설정
+			$INPUT_LOOP3
+			INPUT
+			IF RESULT == 100
+				RETURN
+			ELSEIF RESULT == 200
+				CALL SKILL_ROCK_SETTING_P, ARG
+				GOTO CHOICE
+			ELSEIF RESULT > 0 && RESULT < 9 && !GETBIT(DITEMTYPE:ARG:페르소나("スキルロック設定"),RESULT)
+				LOCAL:2 = RESULT
+			ELSE
+				CLEARLINE 1
+				GOTO INPUT_LOOP3
+			ENDIF
+		ELSE
+			LOCAL:2 = 0
+			DO 
+				LOCAL:2++
+				LOCALS = 스킬{LOCAL:2}
+			LOOP DITEMTYPE:ARG:페르소나(LOCALS)
+		ENDIF
+		LOCALS = 스킬{LOCAL:2}
+		DITEMTYPE:ARG:페르소나(LOCALS) = LOCAL
+		CALL SP_SKILL_CHECK,LOCAL
+		SIF RESULT > 0
+			SETBIT DITEMTYPE:ARG:페르소나("スキルロック設定"),LOCAL:2
+		DITEMTYPE:ARG:페르소나("EXP") -= LOCAL:4
+		ITEM:(10000+LOCAL) -= 1
+		PRINTFORMW %CSVNAME(DITEMTYPE:ARG:페르소나("NO"),0)%에게 %조사처리(LOCALS:1,"를")% 습득시켰습니다
+	;ELSE
+	;	GOTO INPUT_LOOP2
+	;ENDIF
+
+;---- EDIT 001 ADD START -------------------------
+;引継ぎを放棄してるので処理を封印
+;@MAKE_SPECIAL_PERSONA
+;IF DITEMTYPE:페르소나("페르소나11"):페르소나("장비상태")
+;	PRINTFORMW 「ふむ…新たな페르소나と絆を結ぶことを望むのですかな？」
+;	PRINTFORMW 「しかし、この벨벳룸において特別な絆を結べる페르소나は一人のみ」
+;	PRINTFORMW 「新たな絆のためには古き絆を断たねばなりませんぞ」
+;	PRINTFORML 「それでもよろしいですかな？」
+;ELSE
+;	PRINTFORMW 「ふむ…貴方に対する페르소나구사자の強い思い…確かに感じますぞ」
+;	PRINTFORMW 「今ならば、その思いの힘を借りて、貴方と페르소나の間に特別な絆を結ぶことができましょう」
+;	PRINTFORMW 「それは세계を超えてつながる絆であり、운命…」
+;	PRINTFORMW 「例え、なにもかも変わろうと貴方の손元には一枚の페르소나カードが残る」
+;	PRINTFORMW 「そういった絆です」
+;	PRINTFORML 「どうでしょう？　特別な絆、結んでみますかな？」
+;ENDIF
+;CALL INPUT_YN
+;IF RESULT == 1
+;	PRINTFORMW 「わかりました。それでは…この話はなかったことにしましょう」
+;	RETURN 0
+;ENDIF
+;$INPUT_LOOP1
+;PRINTFORMW 「それでは絆を結ぶ페르소나をお選びください」
+;DRAWLINE
+;FOR LOCAL:1, 1, 11
+;	SIF DITEMTYPE:(LOCAL:1):0 == 0
+;		BREAK
+;	;이름표시
+;	PRINTFORML [{LOCAL:1}] %CSVNAME(DITEMTYPE:(LOCAL:1):페르소나("NO"),0)%
+;NEXT
+;DRAWLINE
+;PRINTFORML [100] 돌아간다
+;$INPUT_LOOP2
+;INPUT
+;IF RESULT == 100
+;	RETURN -1
+;ELSEIF RESULT > 0 && RESULT <= LOCAL:1
+;	LOCAL = RESULT
+;	CALL PERSONA_STATUS(LOCAL)
+;	DRAWLINE
+;	PRINTFORMW 「この페르소나でよろしいですかな？」
+;	CALL INPUT_YN
+;	SIF RESULT == 1
+;		GOTO INPUT_LOOP1
+;	FOR LOCAL:1, 0 ,50
+;;		DITEMTYPE:페르소나("페르소나11"):(LOCAL:1) = DITEMTYPE:LOCAL:(LOCAL:1)
+;	NEXT
+;	DITEMTYPE:페르소나("페르소나11"):페르소나("장비상태") = 1
+;	DITEMTYPE:페르소나("페르소나11"):페르소나("함락") = 3
+;	CALL DEL_PERSONA2, LOCAL
+;	PRINTW ………
+;	PRINTW ……
+;	PRINTW …
+;	PRINTW
+;	PRINTFORMW 「%RESULTS%との新たな絆、しっかりと結べましたぞ」
+;	PRINTFORMW 「それではこれをお受け取り下さい」
+;	CALLF STRFLAG_EV("引継ぎ페르소나作成", 1)
+;ELSE
+;	GOTO INPUT_LOOP2
+;ENDIF
+
+;---- EDIT 001 ADD END -------------------------
+
+;---- EDIT 025 MOD -------------------------
+@POWERUP_PERSONA,ARG = -1
+	#DIM PERSONA, 1
+	#DIM PMASTER, 1
+	#DIM NUM, 1
+	#DIM LINE, 3
+	#LOCALSIZE 5
+	LINE = LINECOUNT
+;---- EDIT 025 MOD START -------------------------
+	IF ARG > 0
+		PERSONA = ARG
+		PMASTER = FINDCHARA_ID(DITEMTYPE:PERSONA:페르소나("페르소나소지자"))
+		LINE:1 = LINECOUNT
+		GOTO START_POWERUP
+	ENDIF
+;---- EDIT 025 MOD END ---------------------------
+	PRINTFORML 그럼, 강화할 페르소나를 선택하십시오
+	PRINTL 
+	CALL PERSONA_LIST
+	PRINTFORML [100] 돌아간다
+	$INPUT_LOOP1
+	INPUT
+	SIF RESULT == 100
+		RETURN 0
+	SIF !RANGE(RESULT, 1, 100)
+		GOTO INPUT_LOOP1
+	NUM = RESULT
+	SIF Q:NUM == -1
+		GOTO INPUT_LOOP1
+	PERSONA = Q:NUM
+	PMASTER = FINDCHARA_ID(DITEMTYPE:PERSONA:페르소나("페르소나소지자"))
+	LINE:1 = LINECOUNT
+	$START_POWERUP
+	CLEARLINE LINECOUNT - LINE:1
+	DRAWLINE
+	PRINTFORML LV {DITEMTYPE:PERSONA:페르소나("LV")} %CSVNAME(DITEMTYPE:PERSONA:페르소나("NO"), 0)%
+	IF PERSONA < 50
+		PRINTFORM Rank{DITEMTYPE:PERSONA:페르소나("랭크")} 
+	ELSE
+;---- EDIT 018 ADD START -------------------------
+		PRINTFORM Rank{DITEMTYPE:(CFLAG:PMASTER:초기페르소나ナンバー):페르소나("랭크")} 
+;---- EDIT 018 ADD END   -------------------------
+	ENDIF
+	PRINTFORML EXP {DITEMTYPE:PERSONA:페르소나("EXP")} / 1000
+	PRINTFORML 강화가능횟수　{DITEMTYPE:PERSONA:페르소나("강화가능횟수")}회
+	DRAWLINE
+	LOCAL:1 = 0
+	FOR LOCAL, 페르소나("힘"), 페르소나("운") + 1
+		LOCAL:1++
+		PRINTFORM %GET_BASESTATUS(LOCAL:1),4% {DITEMTYPE:PERSONA:LOCAL,3}　
+		SIF LOCAL % 3 == 2
+			PRINTL 
+	NEXT
+	DRAWLINE
+	;---- EDIT 001 ADD START -------------------------
+	;相性を페르소나からとって표시するように
+	FOR LOCAL:1, 0, FLAG:相性数
+		LOCALS = %GET_TYPE(LOCAL:1)%
+		IF DITEMTYPE:PERSONA:페르소나("변경相性1") - 1 == LOCAL:1
+			LOCAL:2 = DITEMTYPE:PERSONA:페르소나("변경相性치1")
+		ELSE
+			LOCAL:2 = CSVBASE(DITEMTYPE:PERSONA:페르소나("NO"), GETNUM(BASE, LOCALS), 0)
+		ENDIF
+		CALL SET_AISYOU_COLOR, LOCAL:2
+		PRINTFORM %LOCALS%\@LOCAL:2 < 0 ? 흡수 # 　\@
+		PRINTFORM \@ LOCAL:2 != 999 ? {ABS(LOCAL:2),4}％ # %" " *2%반사 \@　
+		;PRINTFORM {ABS(MAXBASE:PERSONA:(GET_TYPE(LOCAL)),4}％
+		SIF LOCAL:1 % 6 == 5
+			PRINTL
+	NEXT
+	;---- EDIT 001 ADD END -------------------------
+	RESETCOLOR
+	DRAWLINE
+	;---- EDIT 024 ADD START -------------------------
+	IF (DITEMTYPE:PERSONA:페르소나("LV") < DITEMTYPE:PERSONA:페르소나("습득LV1")) && DITEMTYPE:PERSONA:페르소나("습득LV1") > 0
+		SETCOLOR 0x666666
+		CALLFORM SKILL_NAME_{DITEMTYPE:PERSONA:페르소나("습득스킬1")}
+		PRINTFORML 　NEXT[%RESULTS,20,LEFT%]　습득LV {DITEMTYPE:PERSONA:페르소나("습득LV1")}
+		RESETCOLOR
+
+	ELSEIF (DITEMTYPE:PERSONA:페르소나("LV") < DITEMTYPE:PERSONA:페르소나("습득LV2")) && DITEMTYPE:PERSONA:페르소나("습득LV2") > 0
+		SETCOLOR 0x666666
+		CALLFORM SKILL_NAME_{DITEMTYPE:PERSONA:페르소나("습득스킬2")}
+		PRINTFORML 　NEXT[%RESULTS,20,LEFT%]　습득LV {DITEMTYPE:PERSONA:페르소나("습득LV2")}
+		RESETCOLOR
+
+	ELSEIF (DITEMTYPE:PERSONA:페르소나("LV") < DITEMTYPE:PERSONA:페르소나("습득LV3")) && DITEMTYPE:PERSONA:페르소나("습득LV3") > 0
+		SETCOLOR 0x666666
+		CALLFORM SKILL_NAME_{DITEMTYPE:PERSONA:페르소나("습득스킬3")}
+		PRINTFORML 　NEXT[%RESULTS,20,LEFT%]　습득LV {DITEMTYPE:PERSONA:페르소나("습득LV3")}
+		RESETCOLOR
+
+	ELSEIF (DITEMTYPE:PERSONA:페르소나("LV") < DITEMTYPE:PERSONA:페르소나("습득LV4")) && DITEMTYPE:PERSONA:페르소나("습득LV4") > 0
+		SETCOLOR 0x666666
+		CALLFORM SKILL_NAME_{DITEMTYPE:PERSONA:페르소나("습득스킬4")}
+		PRINTFORML 　NEXT[%RESULTS,20,LEFT%]　습득LV {DITEMTYPE:PERSONA:페르소나("습득LV4")}
+		RESETCOLOR
+
+	ELSEIF (DITEMTYPE:PERSONA:페르소나("LV") < DITEMTYPE:PERSONA:페르소나("습득LV5")) && DITEMTYPE:PERSONA:페르소나("습득LV5") > 0
+		SETCOLOR 0x666666
+		CALLFORM SKILL_NAME_{DITEMTYPE:PERSONA:페르소나("습득스킬5")}
+		PRINTFORML 　NEXT[%RESULTS,20,LEFT%]　습득LV {DITEMTYPE:PERSONA:페르소나("습득LV5")}
+		RESETCOLOR
+
+	ELSEIF (DITEMTYPE:PERSONA:페르소나("LV") < DITEMTYPE:PERSONA:페르소나("습득LV6")) && DITEMTYPE:PERSONA:페르소나("습득LV6") > 0
+		SETCOLOR 0x666666
+		CALLFORM SKILL_NAME_{DITEMTYPE:PERSONA:페르소나("습득스킬6")}
+		PRINTFORML 　NEXT[%RESULTS,20,LEFT%]　습득LV {DITEMTYPE:PERSONA:페르소나("습득LV6")}
+		RESETCOLOR
+
+	ELSEIF (DITEMTYPE:PERSONA:페르소나("LV") < DITEMTYPE:PERSONA:페르소나("습득LV7")) && DITEMTYPE:PERSONA:페르소나("습득LV7") > 0
+		SETCOLOR 0x666666
+		CALLFORM SKILL_NAME_{DITEMTYPE:PERSONA:페르소나("습득스킬7")}
+		PRINTFORML 　NEXT[%RESULTS,20,LEFT%]　습득LV {DITEMTYPE:PERSONA:페르소나("습득LV7")}
+		RESETCOLOR
+
+	ELSEIF (DITEMTYPE:PERSONA:페르소나("LV") < DITEMTYPE:PERSONA:페르소나("습득LV8")) && DITEMTYPE:PERSONA:페르소나("습득LV8") > 0
+		SETCOLOR 0x666666
+		CALLFORM SKILL_NAME_{DITEMTYPE:PERSONA:페르소나("습득스킬8")}
+		PRINTFORML 　NEXT[%RESULTS,20,LEFT%]　습득LV {DITEMTYPE:PERSONA:페르소나("습득LV8")}
+		RESETCOLOR
+
+	ELSEIF (DITEMTYPE:PERSONA:페르소나("LV") < DITEMTYPE:PERSONA:페르소나("습득LV9")) && DITEMTYPE:PERSONA:페르소나("습득LV9") > 0
+		SETCOLOR 0x666666
+		CALLFORM SKILL_NAME_{DITEMTYPE:PERSONA:페르소나("습득스킬9")}
+		PRINTFORML 　NEXT[%RESULTS,20,LEFT%]　습득LV {DITEMTYPE:PERSONA:페르소나("습득LV9")}
+		RESETCOLOR
+
+	ELSEIF (DITEMTYPE:PERSONA:페르소나("LV") < DITEMTYPE:PERSONA:페르소나("습득LV10")) && DITEMTYPE:PERSONA:페르소나("습득LV10") > 0
+		SETCOLOR 0x666666
+		CALLFORM SKILL_NAME_{DITEMTYPE:PERSONA:페르소나("습득스킬10")}
+		PRINTFORML 　NEXT[%RESULTS,20,LEFT%]　습득LV {DITEMTYPE:PERSONA:페르소나("습득LV10")}
+		RESETCOLOR
+
+	ELSEIF (DITEMTYPE:PERSONA:페르소나("LV") < DITEMTYPE:PERSONA:페르소나("습득LV11")) && DITEMTYPE:PERSONA:페르소나("습득LV11") > 0
+		SETCOLOR 0x666666
+		CALLFORM SKILL_NAME_{DITEMTYPE:PERSONA:페르소나("습득스킬11")}
+		PRINTFORML 　NEXT[%RESULTS,20,LEFT%]　습득LV {DITEMTYPE:PERSONA:페르소나("습득LV11")}
+		RESETCOLOR
+
+	ELSEIF (DITEMTYPE:PERSONA:페르소나("LV") < DITEMTYPE:PERSONA:페르소나("습득LV12")) && DITEMTYPE:PERSONA:페르소나("습득LV12") > 0
+		SETCOLOR 0x666666
+		CALLFORM SKILL_NAME_{DITEMTYPE:PERSONA:페르소나("습득스킬12")}
+		PRINTFORML 　NEXT[%RESULTS,20,LEFT%]　습득LV {DITEMTYPE:PERSONA:페르소나("습득LV12")}
+		RESETCOLOR
+
+	ELSEIF (DITEMTYPE:PERSONA:페르소나("LV") < DITEMTYPE:PERSONA:페르소나("습득LV13")) && DITEMTYPE:PERSONA:페르소나("습득LV13") > 0
+		SETCOLOR 0x666666
+		CALLFORM SKILL_NAME_{DITEMTYPE:PERSONA:페르소나("습득스킬13")}
+		PRINTFORML 　NEXT[%RESULTS,20,LEFT%]　습득LV {DITEMTYPE:PERSONA:페르소나("습득LV13")}
+		RESETCOLOR
+
+	ELSEIF (DITEMTYPE:PERSONA:페르소나("LV") < DITEMTYPE:PERSONA:페르소나("습득LV14")) && DITEMTYPE:PERSONA:페르소나("습득LV14") > 0
+		SETCOLOR 0x666666
+		CALLFORM SKILL_NAME_{DITEMTYPE:PERSONA:페르소나("습득스킬14")}
+		PRINTFORML 　NEXT[%RESULTS,20,LEFT%]　습득LV {DITEMTYPE:PERSONA:페르소나("습득LV14")}
+		RESETCOLOR
+
+	ELSEIF (DITEMTYPE:PERSONA:페르소나("LV") < DITEMTYPE:PERSONA:페르소나("습득LV15")) && DITEMTYPE:PERSONA:페르소나("습득LV15") > 0
+		SETCOLOR 0x666666
+		CALLFORM SKILL_NAME_{DITEMTYPE:PERSONA:페르소나("습득스킬15")}
+		PRINTFORML 　NEXT[%RESULTS,20,LEFT%]　습득LV {DITEMTYPE:PERSONA:페르소나("습득LV15")}
+		RESETCOLOR
+
+	ELSEIF (DITEMTYPE:PERSONA:페르소나("LV") < DITEMTYPE:PERSONA:페르소나("습득LV16")) && DITEMTYPE:PERSONA:페르소나("습득LV16") > 0
+		SETCOLOR 0x666666
+		CALLFORM SKILL_NAME_{DITEMTYPE:PERSONA:페르소나("습득스킬16")}
+		PRINTFORML 　NEXT[%RESULTS,20,LEFT%]　습득LV {DITEMTYPE:PERSONA:페르소나("습득LV16")}
+		RESETCOLOR
+
+	ELSEIF (DITEMTYPE:PERSONA:페르소나("LV") < DITEMTYPE:PERSONA:페르소나("습득LV17")) && DITEMTYPE:PERSONA:페르소나("습득LV17") > 0
+		SETCOLOR 0x666666
+		CALLFORM SKILL_NAME_{DITEMTYPE:PERSONA:페르소나("습득스킬17")}
+		PRINTFORML 　NEXT[%RESULTS,20,LEFT%]　습득LV {DITEMTYPE:PERSONA:페르소나("습득LV17")}
+		RESETCOLOR
+
+	ELSEIF (DITEMTYPE:PERSONA:페르소나("LV") < DITEMTYPE:PERSONA:페르소나("습득LV18")) && DITEMTYPE:PERSONA:페르소나("습득LV18") > 0
+		SETCOLOR 0x666666
+		CALLFORM SKILL_NAME_{DITEMTYPE:PERSONA:페르소나("습득스킬18")}
+		PRINTFORML 　NEXT[%RESULTS,20,LEFT%]　습득LV {DITEMTYPE:PERSONA:페르소나("습득LV18")}
+		RESETCOLOR
+
+	ELSEIF (DITEMTYPE:PERSONA:페르소나("LV") < DITEMTYPE:PERSONA:페르소나("습득LV19")) && DITEMTYPE:PERSONA:페르소나("습득LV19") > 0
+		SETCOLOR 0x666666
+		CALLFORM SKILL_NAME_{DITEMTYPE:PERSONA:페르소나("습득스킬19")}
+		PRINTFORML 　NEXT[%RESULTS,20,LEFT%]　습득LV {DITEMTYPE:PERSONA:페르소나("습득LV19")}
+		RESETCOLOR
+
+	ELSEIF (DITEMTYPE:PERSONA:페르소나("LV") < DITEMTYPE:PERSONA:페르소나("습득LV20")) && DITEMTYPE:PERSONA:페르소나("습득LV20") > 0
+		SETCOLOR 0x666666
+		CALLFORM SKILL_NAME_{DITEMTYPE:PERSONA:페르소나("습득스킬20")}
+		PRINTFORML 　NEXT[%RESULTS,20,LEFT%]　습득LV {DITEMTYPE:PERSONA:페르소나("습득LV20")}
+		RESETCOLOR
+	ELSE
+		SETCOLOR 0x666666
+		PRINTFORML    NEXT[????????]  습득LV [無し]
+		RESETCOLOR
+	ENDIF
+	;---- EDIT 024 ADD END -------------------------
+	FOR LOCAL:1, 0, FLAG:스킬数
+		SIF DITEMTYPE:PERSONA:(페르소나("스킬1") + LOCAL:1) == 0
+			CONTINUE
+		CALLFORM SKILL_NAME_{DITEMTYPE:PERSONA:(페르소나("스킬1") + LOCAL:1)}
+		PRINTFORM 　[{LOCAL:1+1}]%RESULTS,20,LEFT%
+		SIF LOCAL:1 % 4 == 3
+			PRINTL
+	NEXT
+	PRINTL 
+	;---- EDIT 001 ADD START -------------------------
+	;내성강화の選択肢を추가
+	DRAWLINE
+	;필요경험値の산출
+	IF PERSONA >= 50
+		LOCAL = LIMIT((200 - MAX(BASE:PMASTER:LV - DITEMTYPE:PERSONA:페르소나("LV") - 10, 0) * 10) * MAX(100 - 함락(PMASTER)*10, 75) / 100, 50, 200) / 2
+		;;P3/4系페르소나구사자は반감
+		;SIF TALENT:PMASTER:페르소나구사자 == 2
+		;	LOCAL /= 2
+		SIF DITEMTYPE:PERSONA:페르소나("LV") >= BASE:PMASTER:LV
+			LOCAL = 0
+	ELSE
+		LOCAL = LIMIT((200 - MAX(BASE:MASTER:LV - DITEMTYPE:PERSONA:페르소나("LV") - 10, 0) * 10) * MAX(100 - DITEMTYPE:PERSONA:페르소나("함락") *10, 75) / 100, 50, 200) / 2
+		SIF DITEMTYPE:PERSONA:페르소나("LV") >= BASE:MASTER:LV
+			LOCAL = 0
+	ENDIF
+	LINE:2 = LINECOUNT
+	PRINTFORML [0] 레벨업 \@ LOCAL> 0 ? (필요EXP {LOCAL}) # (레벨업 불가)\@
+	PRINTL [1] 스테이터스를 강화
+	PRINTL [2] 스킬 카드를 사용
+	PRINTL [3] EXP 카드를 사용
+	PRINTL [4] 내성 강화
+	PRINTL [8] 다른 페르소나를 강화
+	PRINTL [9] 강화 종료
+	CALL INPUTINT(0, 1, 2, 3, 4, 8, 9)
+	IF RESULT == 0
+		IF !LOCAL
+			IF PERSONA < 50
+				PRINTW 페르소나의 레벨은 주인보다 높아질 수 없습니다
+			ELSE
+				PRINTW 초기 페르소나의 레벨은 페르소나 구사자보다 높아질 수 없습니다
+			ENDIF
+		;디버그용処理
+		;ELSEIF FLAG:DEBUG
+		;	DITEMTYPE:PERSONA:페르소나("강화가능횟수") += 1 + DITEMTYPE:PERSONA:페르소나("LV") % 2
+		;	DITEMTYPE:PERSONA:페르소나("LV") += 1
+		;	PRINTW 페르소나의 레벨이 올랐습니다
+		;	CALL EVENT_LEVELUP_P, PERSONA
+		ELSEIF DITEMTYPE:PERSONA:페르소나("EXP") >= LOCAL
+			DITEMTYPE:PERSONA:페르소나("EXP") -= LOCAL
+			DITEMTYPE:PERSONA:페르소나("강화가능횟수") += 1 + DITEMTYPE:PERSONA:페르소나("LV") % 2
+			DITEMTYPE:PERSONA:페르소나("LV") += 1
+			PRINTW 페르소나의 레벨이 올랐습니다
+			CALL EVENT_LEVELUP_P, PERSONA
+		ELSE
+			PRINTW EXP가 부족합니다
+		ENDIF
+	ENDIF
+	CLEARLINE LINECOUNT - LINE:2
+	;---- EDIT 001 ADD END -------------------------
+	IF RESULT == 9
+		RETURN 0
+	ELSEIF RESULT == 1
+		$UP_STATUS
+		CLEARLINE LINECOUNT - LINE:1
+		DRAWLINE
+;---- EDIT 019 MOD START -------------------------
+		IF SETTING_IS_VELVET_STATUS_UP()
+			PRINTFORML LV {DITEMTYPE:PERSONA:페르소나("LV")} %CSVNAME(DITEMTYPE:PERSONA:페르소나("NO"), 0)%
+			IF PERSONA < 50
+				PRINTFORM Rank {DITEMTYPE:PERSONA:페르소나("랭크")} / 10 
+			ELSE
+				PRINTFORM Rank {DITEMTYPE:(CFLAG:PMASTER:초기페르소나ナンバー):페르소나("랭크")} / 10 
+			ENDIF
+			PRINTFORML EXP {DITEMTYPE:PERSONA:페르소나("EXP")} / 1000
+			PRINTL
+
+			PRINTFORML %"  (능력치감소/강화횟수증가)   "%({DITEMTYPE:PERSONA:페르소나("강화가능횟수"),3}회)%"  (능력치증가/다른능력치감소)"%
+			{
+			LOCALS = <p align='left'><nobr>
+			<button title='특정 능력치를 내리는 대신 강화 가능 횟수가 증가합니다.' pos='200'>마이너스카드 </button>
+			<button>능력値</button>
+			<button title='페르소나 자체의 레벨업 등으로 증가합니다.'>강화횟수</button>
+			<button title='특정 능력치를 올리는 대신 다른 모든 능력치가 감소합니다.'>인센스카드</button>
+			<br>
+			}
+			HTML_PRINT LOCALS
+
+			LOCAL:1 = 0
+			FOR LOCAL, 페르소나("힘"), 페르소나("운") + 1
+			;---- EDIT 027 MOD START -------------------------
+;               LOCAL:1 ++ がループの最後に来ていたため表示が1つづつ前倒しになっていた。そのズレのためGET_BASESTATUSの引数に+1されたりALLマイナスカードの番号が18になったりしていた
+				LOCAL:1 ++
+				PRINTFORM %GET_BASESTATUS(LOCAL:1),4%%"  "%
+				PRINTFORM [{12+LOCAL:1,2}] -1({ITEM:(GETNUM(ITEM,"STR마이너스카드")+LOCAL:1),2}枚)
+				PRINTFORM {DITEMTYPE:PERSONA:LOCAL,6}%"   "%
+				PRINTFORM [{LOCAL:1,2}]%" +1   "%
+				PRINTFORM [{6+LOCAL:1,2}] +1({ITEM:(GETNUM(ITEM,"STR인센스카드")+LOCAL:1),2}枚)
+				PRINTL
+			NEXT
+			PRINTFORML %" ALL  "%[19] -1({ITEM:ALL마이너스카드,2}枚)
+			;---- EDIT 027 MOD END -------------------------
+		ELSE
+			PRINTFORML LV {DITEMTYPE:PERSONA:페르소나("LV")} %CSVNAME(DITEMTYPE:PERSONA:페르소나("NO"), 0)%
+			LOCAL:1 = 0
+			FOR LOCAL, 페르소나("힘"), 페르소나("운") + 1
+				LOCAL:1++
+				PRINTFORM %GET_BASESTATUS(LOCAL:1),4% {DITEMTYPE:PERSONA:LOCAL,3}　
+				SIF LOCAL % 3 == 2
+					PRINTL 
+			NEXT
+			IF PERSONA < 50
+				PRINTFORM Rank{DITEMTYPE:PERSONA:페르소나("랭크")} 
+			ELSE
+	;---- EDIT 018 ADD START -------------------------
+				PRINTFORM Rank{DITEMTYPE:(CFLAG:PMASTER:초기페르소나ナンバー):페르소나("랭크")} 
+	;---- EDIT 018 ADD END   -------------------------
+			ENDIF
+			PRINTFORML EXP {DITEMTYPE:PERSONA:페르소나("EXP")} / 1000
+			PRINTFORML 강화가능횟수　{DITEMTYPE:PERSONA:페르소나("강화가능횟수")}회
+			DRAWLINE
+			PRINTL 강화가능횟수を소비して강화する
+			PRINTL 
+			FOR LOCAL, 0 ,6
+				PRINTFORM [{LOCAL+1,2}] %GET_BASESTATUS(LOCAL+1),4%({DITEMTYPE:PERSONA:페르소나("강화가능횟수"),2}회)
+				SIF LOCAL % 3 == 2
+					PRINTL
+			NEXT
+			DRAWLINE
+			PRINTL インセンス카드を사용する
+			PRINTL 特定の스테이터스を増やす代わりに他のすべての스테이터스が減少します
+			PRINTL 
+			FOR LOCAL, 0 ,6
+				PRINTFORM [{LOCAL+7,2}] %GET_BASESTATUS(LOCAL+1),4%({ITEM:(GETNUM(ITEM,"STR인센스카드")+LOCAL),2}枚)
+				SIF LOCAL % 3 == 2
+					PRINTL
+			NEXT
+			DRAWLINE
+			PRINTL 마이ナス카드を사용する
+			PRINTL 特定の스테이터스を減らす代わりに강화가능횟수が증가します
+			PRINTL 
+			FOR LOCAL, 0 ,6
+				PRINTFORM [{LOCAL+13,2}] %GET_BASESTATUS(LOCAL+1),4%({ITEM:(GETNUM(ITEM,"STR마이너스카드")+LOCAL),2}枚)
+				SIF LOCAL % 3 == 2
+					PRINTL
+			NEXT
+			PRINTFORML [19]  ALL({ITEM:ALL마이너스카드,2}枚)
+		ENDIF
+		PRINTL [99] 돌아간다
+;---- EDIT 019 MOD END   -------------------------
+		DRAWLINE
+		INPUT
+		SIF RESULT == 99
+			GOTO START_POWERUP
+		SIF RESULT > 19 || RESULT < 1
+			GOTO UP_STATUS
+		CLEARLINE 1
+		LOCAL:4 = 0
+		SELECTCASE RESULT
+			CASE IS <= 6
+				IF DITEMTYPE:PERSONA:페르소나("강화가능횟수") == 0
+					PRINTW 강화가능 횟수가 0회입니다
+				ELSE
+					DITEMTYPE:PERSONA:(RESULT+2) += 1
+					DITEMTYPE:PERSONA:페르소나("강화가능횟수") -= 1
+					PRINTFORMW %GET_BASESTATUS(RESULT)% + 1
+					SIF DITEMTYPE:PERSONA:페르소나("강화가능횟수") == 0
+						PRINTW 강화가능 횟수가 0이 되었습니다
+				ENDIF
+			CASE IS <= 12
+				LOCAL:1 = RESULT - 7
+				LOCAL:2 = GETNUM(ITEM, "STR인센스카드") + RESULT - 7
+				IF ITEM:(LOCAL:2) == 0
+					PRINTFORMW %조사처리(ITEMNAME:(LOCAL:2),"가")% 없습니다
+				ELSE
+					FOR LOCAL:3, 0, 6
+						IF DITEMTYPE:PERSONA:(페르소나("힘")+LOCAL:3) > 1 && LOCAL:3 != LOCAL:1
+							PRINTFORML %GET_BASESTATUS(LOCAL:3+1)% - 1
+							DITEMTYPE:PERSONA:(페르소나("힘")+LOCAL:3) -= 1
+							LOCAL:4 += 1
+						ENDIF
+	 				NEXT
+	 				PRINTFORMW %GET_BASESTATUS(LOCAL:1+1)% + {LOCAL:4}
+	 				DITEMTYPE:PERSONA:(페르소나("힘")+LOCAL:1) += LOCAL:4
+	 				ITEM:(LOCAL:2) -= 1
+				ENDIF
+			CASE IS <= 18
+				LOCAL:1 = RESULT - 13
+				LOCAL:2 = GETNUM(ITEM, "STR마이너스카드") + RESULT - 13
+				IF ITEM:(LOCAL:2) == 0
+					PRINTFORMW %조사처리(ITEMNAME:(LOCAL:2),"가")% 없습니다
+				ELSEIF DITEMTYPE:PERSONA:(페르소나("힘")+LOCAL:1) < 3
+					PRINTFORMW %CSVNAME(DITEMTYPE:PERSONA:페르소나("NO"), 0)%의 %조사처리(GET_BASESTATUS(LOCAL:1+1),"는")% 이 이상 내릴 수 없습니다
+				ELSE
+					DITEMTYPE:PERSONA:(페르소나("힘")+LOCAL:1) -= 2
+					DITEMTYPE:PERSONA:페르소나("강화가능횟수") += 2
+	 				PRINTFORML %GET_BASESTATUS(LOCAL:1+1)% - 2
+	 				PRINTFORMW 강화가능횟수 + 2
+	 				ITEM:(LOCAL:2) -= 1
+				ENDIF
+			CASE 19
+				LOCAL:1 = RESULT - 7
+				IF ITEM:ALL마이너스카드 == 0
+					PRINTFORMW ALL 마이너스 카드가 없습니다
+				ELSE
+					FOR LOCAL:3, 0, 6
+						IF DITEMTYPE:PERSONA:(페르소나("힘")+LOCAL:3) > 1
+							PRINTFORML %GET_BASESTATUS(LOCAL:3+1)% - 1
+							DITEMTYPE:PERSONA:(페르소나("힘")+LOCAL:3) -= 1
+							LOCAL:4 += 1
+						ENDIF
+	 				NEXT
+	 				IF LOCAL:4
+		 				PRINTFORMW 강화가능횟수 + {LOCAL:4}
+		 				DITEMTYPE:PERSONA:페르소나("강화가능횟수") += LOCAL:4
+		 				ITEM:ALL마이너스카드 -= 1
+		 			ELSE
+		 				PRINTFORMW %CSVNAME(DITEMTYPE:PERSONA:페르소나("NO"), 0)%의 능력은 더 이상 내릴 수 없습니다
+		 			ENDIF
+				ENDIF
+		ENDSELECT
+		GOTO UP_STATUS
+	ELSEIF RESULT == 2
+		CALL ADD_SKILL_PERSONA, PERSONA
+	ELSEIF RESULT == 3
+		$EXPCARD
+		FOR LOCAL, 0, 5
+			LOCAL:1 = LOCAL+GETNUM(ITEM,"신아의카드") 
+			PRINTFORML [{LOCAL}] %ITEMNAME:(LOCAL:1)%(EXP:{ITEMPRICE:(LOCAL:1),3})　{ITEM:(LOCAL:1),2}매
+		NEXT
+		DRAWLINE
+		PRINTL [9] 돌아간다
+		CALL INPUTINT(0, 1, 2, 3, 4, 9)
+		IF RESULT < 5
+			LOCAL = RESULT+GETNUM(ITEM,"신아의카드")
+			IF !ITEM:(LOCAL)
+				PRINTW 카드가 없습니다
+				GOTO EXPCARD
+			ENDIF
+			ITEM:(LOCAL) -= 1
+			DITEMTYPE:PERSONA:페르소나("EXP") += ITEMPRICE:LOCAL
+			SIF DITEMTYPE:PERSONA:페르소나("EXP") > 1000
+				DITEMTYPE:PERSONA:페르소나("EXP") = 1000
+		ENDIF
+	;---- EDIT 001 ADD START -------------------------
+	;내성강화
+	ELSEIF RESULT == 4
+		;何故、페르소나장비者を簡가운に割り出せる様にしないのか？？？
+		CALL PERSONA_ENHANCE_DEFTYPE, PERSONA, PMASTER
+	ELSEIF RESULT == 8
+		CLEARLINE LINECOUNT - LINE
+		RESTART
+	ENDIF
+	;---- EDIT 001 ADD END -------------------------
+	;元々の랭크を記録
+	LOCAL = DITEMTYPE:PERSONA:페르소나("랭크")
+	LOCAL:1 = 0
+	WHILE 1
+		LOCAL:1 += 1
+		IF DITEMTYPE:PERSONA:페르소나("EXP") < LOCAL:1 * LOCAL:1 * 10
+			DITEMTYPE:PERSONA:페르소나("랭크") = LOCAL:1 - 1
+			BREAK
+		ENDIF
+	WEND
+	;랭크변화
+	SIF DITEMTYPE:PERSONA:페르소나("랭크") != LOCAL && PERSONA < 50
+		PRINTFORMW %CSVCALLNAME(DITEMTYPE:PERSONA:페르소나("NO"), 0)%의 랭크가 {DITEMTYPE:PERSONA:페르소나("랭크")}(이)가 되었습니다
+	GOTO START_POWERUP
+
+
+@EVENT_LEVELUP_P, ARG
+	FOR LOCAL,1,21
+		IF DITEMTYPE:ARG:페르소나(("습득스킬"+TOSTR(LOCAL))) > 0
+			IF DITEMTYPE:ARG:페르소나(("습득LV"+TOSTR(LOCAL))) <= DITEMTYPE:ARG:페르소나("LV")
+				CALL LEARN_SKILL_P, ARG, DITEMTYPE:ARG:페르소나(("습득스킬"+TOSTR(LOCAL)))
+				DITEMTYPE:ARG:페르소나(("습득스킬"+TOSTR(LOCAL))) = 0
+				DITEMTYPE:ARG:페르소나(("습득LV"+TOSTR(LOCAL))) = 0
+			ENDIF
+		ENDIF
+	NEXT
+
+@LEARN_SKILL_P,ARG,ARG:1
+	;ARG = 레벨アップした페르소나
+	;ARG:1 = 습득する스킬
+	;まず空の스킬枠を探す
+	LOCAL:1 = 0
+	LOCALS:1 = 
+	FOR LOCAL,1,FLAG:스킬数+1
+		LOCALS = 스킬{LOCAL}
+		;既に습득していたら関数を抜ける
+		SIF DITEMTYPE:ARG:페르소나(LOCALS) == ARG:1
+			RETURN 0
+		;적専用스킬も抜ける
+		TRYCCALLFORM 적専用_{ARG:1}
+			SIF RESULT
+				RETURN 0
+		CATCH
+		ENDCATCH
+		IF DITEMTYPE:ARG:페르소나(LOCALS) < 1
+			LOCAL:1 = LOCAL
+			LOCALS:1 = %LOCALS%
+			BREAK
+		ENDIF
+	NEXT
+	
+	;特定のキャラが取得すると変化する스킬の処理(CALLFORM SKILL_NAME〜)を通す為に一時的にキャラ作成
+	ADDCHARA DITEMTYPE:ARG:페르소나("NO")
+	IF ARG >= 50
+		CALLF STRFLAG_EV("초기페르소나스킬습득", 1, [[이벤트:페르소나]])
+	ELSE
+		CALLF STRFLAG_EV("초기페르소나스킬습득", -1, [[이벤트:페르소나]])
+	ENDIF
+	
+	IF LOCAL:1 > 0
+		;空の스킬枠があれば습득
+		;CALLFORM SKILL_NAME_{ARG:1},ARG
+		CALLFORM SKILL_NAME_{ARG:1}, -1
+		PRINTFORMW %조사처리(CSVCALLNAME(DITEMTYPE:ARG:페르소나("NO"),0),"는")% %조사처리(RESULTS,"를")% 습득했다.
+		DITEMTYPE:ARG:페르소나(LOCALS:1) = ARG:1
+		CALL SP_SKILL_CHECK,ARG:1
+		SIF RESULT > 0
+			SETBIT DITEMTYPE:ARG:페르소나("スキルロック設定"),LOCAL:1
+	ELSE
+		;無ければ스킬枠を選択して入れ替え
+		;CALLFORM SKILL_NAME_{ARG:1},ARG
+		CALLFORM SKILL_NAME_{ARG:1} ,-1
+		LOCALS:1 = %RESULTS%
+		PRINTFORML %조사처리(CSVCALLNAME(DITEMTYPE:ARG:페르소나("NO"),0),"가")% %조사처리(LOCALS:1,"를")% 습득하기에는 스킬이 가득 찼다.
+		PRINTW 파기할 스킬을 선택하십시오
+		$CHOICE
+		DRAWLINE
+		CALLFORM SKILL_SUCCESSION_TYPE_{ARG:1}
+		PRINTFORML 【%GET_SUCCESSION(RESULT)%】 %LOCALS:1%
+		SIF FLAG:스킬속성표시설정 == 1
+			CALL SKILL_EXPLAIN_PERFORMANCE, ARG:1, -1
+		CALLFORM SKILL_EXPLAIN_{ARG:1}
+		DRAWLINE
+		FOR LOCAL,1,FLAG:스킬数+1
+			LOCALS = 스킬{LOCAL}
+			IF DITEMTYPE:ARG:페르소나(LOCALS) > 0
+				;CALLFORM SKILL_NAME_{DITEMTYPE:ARG:페르소나(LOCALS)},ARG
+				CALLFORM SKILL_NAME_{DITEMTYPE:ARG:페르소나(LOCALS)}, -1
+				IF GETBIT(DITEMTYPE:ARG:페르소나("スキルロック設定"),LOCAL)
+					SETCOLOR COLOR("黄色")
+					PRINTFORML LOCK %RESULTS%
+				ELSE
+				PRINTFORML [{LOCAL}] %RESULTS%
+				ENDIF
+				RESETCOLOR
+			ENDIF
+		NEXT
+		DRAWLINE
+		PRINTFORML [0] %조사처리(LOCALS:1,"를")% 습득하지 않는다 [99] 스킬 잠금 설정
+		$INPUT_LOOP
+		INPUT
+		IF RESULT == 0
+			PRINTL 정말로 괜찮겠습니까?
+			CALL SP_SKILL_CHECK, ARG:1
+			SIF RESULT 
+				PRINTFORML ※%LOCALS:1%は特別なスキルです。
+			PRINTFORML [0] いいえ　[1] はい
+			INPUT
+			SIF RESULT == 0
+				GOTO CHOICE
+;---- EDIT 026 MOD START -------------------------
+			DELCHARA CHARANUM -1
+;---- EDIT 026 MOD END   -------------------------
+			RETURN 0
+		ELSEIF RESULT == 99
+			;スキルロック設定
+			CALL SKILL_ROCK_SETTING_P, ARG
+			GOTO CHOICE
+		ELSEIF RESULT >= 1 && RESULT <= FLAG:스킬数
+			LOCALS = 스킬{RESULT}
+			;CALLFORM SKILL_NAME_{ARG:1},ARG
+			CALLFORM SKILL_NAME_{ARG:1}, -1
+			DRAWLINE
+			CALLFORM SKILL_SUCCESSION_TYPE_{DITEMTYPE:ARG:페르소나(LOCALS)}
+			PRINTFORM 【%GET_SUCCESSION(RESULT)%】 
+			;CALLFORM SKILL_NAME_{DITEMTYPE:ARG:페르소나(LOCALS)}, ARG
+			CALLFORM SKILL_NAME_{DITEMTYPE:ARG:페르소나(LOCALS)}, -1
+			PRINTFORML %RESULTS%
+			SIF FLAG:스킬속성표시설정 == 1
+				CALL SKILL_EXPLAIN_PERFORMANCE, DITEMTYPE:ARG:페르소나(LOCALS), -1
+			TRYCALLFORM SKILL_EXPLAIN_{DITEMTYPE:ARG:페르소나(LOCALS)}
+			DRAWLINE
+			IF GETBIT(DITEMTYPE:ARG:페르소나("スキルロック設定"),페르소나(LOCALS) - 10)
+				PRINTFORMW %RESULTS%はロックされていて忘れられません。
+				GOTO CHOICE
+			ENDIF
+			PRINTFORML 정말 %조사처리(RESULTS,"를")% 잊고, %조사처리(LOCALS:1,"를")% 습득해도 되겠습니까?
+			CALL INPUT_YN
+			SIF RESULT == 1
+				GOTO CHOICE
+			PRINTFORMW %조사처리(CSVCALLNAME(DITEMTYPE:ARG:페르소나("NO"),0),"는")% %조사처리(LOCALS:1,"를")% 습득했다.
+			DITEMTYPE:ARG:페르소나(LOCALS) = ARG:1
+			CALL SP_SKILL_CHECK, ARG:1
+			SIF RESULT 
+				SETBIT DITEMTYPE:ARG:페르소나("スキルロック設定"),페르소나(LOCALS) - 10
+		ELSE
+			GOTO INPUT_LOOP
+		ENDIF
+	ENDIF
+	
+	;処理用のキャラを削除
+	DELCHARA CHARANUM -1
+
+;---- EDIT 001 ADD START -------------------------
+;新規作成
+@PERSONA_ENHANCE_DEFTYPE, ARG, ARG:1
+	;ARG　PERSONA = Q:NUM
+	;ARG:1　PMASTER = FINDCHARA_ID(DITEMTYPE:PERSONA:페르소나("페르소나소지자"))
+
+	LOCAL:3 = 20
+	LOCAL = ABS(DITEMTYPE:ARG:페르소나("CP") / 10 - 5)
+	WHILE LOCAL
+		LOCAL:3 = DITEMTYPE:ARG:페르소나("CP") / 10 > 5 ? LOCAL:3 * 4 / 3 # LOCAL:3 * 9 / 10
+		LOCAL--
+	WEND
+	;---- EDIT 002 ADD START -------------------------
+	;약점3個미만には변경できないように
+	LOCAL:10 = 0
+	FOR LOCAL, 0, FLAG:相性数
+		LOCALS = %GET_TYPE(LOCAL)%
+		SIF CSVBASE(DITEMTYPE:ARG:페르소나("NO"), GETNUM(BASE, LOCALS), 0) > 100 && CSVBASE(DITEMTYPE:ARG:페르소나("NO"), GETNUM(BASE, LOCALS), 0) < 999
+			LOCAL:10++
+	NEXT
+	;---- EDIT 002 ADD END   -------------------------
+	;---- EDIT 002 ADD START -------------------------
+	;페르소나구사자本人の함락度によって보정がかかるように변경
+	LOCAL:3 = ARG >= 50 ? MAX(LOCAL:3 / MAX(함락(FINDCHARA_ID(DITEMTYPE:ARG:페르소나("페르소나소지자")))*2, 1), 5) # MAX(LOCAL:3 / MAX(DITEMTYPE:ARG:페르소나("함락") * 2, 1), 5)
+	;---- EDIT 002 ADD END   -------------------------
+	;---- EDIT 025 ADD START -------------------------
+	;誰かの초기페르소나だと최저　무효に설정できるようにする
+	LOCAL:3 = ARG >= 50 && LOCAL:3 > 20 ? 20 # LOCAL:3
+	;---- EDIT 025 ADD END   -------------------------
+	PRINTFORML 필요EXP 통상:\@LOCAL:3 > 100 || LOCAL:10 <= 3 ? ×#{LOCAL:3 * 10}\@ 반감:\@LOCAL:3 > 40 ? ×#{LOCAL:3 * 25}\@ 무효:\@LOCAL:3 > 20 ? ×#{LOCAL:3 * 50}\@ 흡수:\@LOCAL:3 > 10 ? ×#{LOCAL:3 * 100}\@ 반사:\@LOCAL:3 > 10 ? ×#{LOCAL:3 * 100}\@  
+	IF DITEMTYPE:ARG:페르소나("변경相性1") > 0
+	PRINTFORM 현재 강화된 相性:%GET_TYPE(DITEMTYPE:ARG:페르소나("변경相性1")-1)% 
+		IF DITEMTYPE:ARG:페르소나("변경相性치1") == 999
+			PRINTFORML 반사
+		ELSEIF DITEMTYPE:ARG:페르소나("변경相性치1") == 0
+			PRINTFORML 무효
+		ELSE
+			PRINTFORML {DITEMTYPE:ARG:페르소나("변경相性치1")}％
+		ENDIF
+	ENDIF
+	PRINTFORML 
+	PRINTL 어느 내성을 변경하겠습니까?
+	FOR LOCAL, 0, FLAG:相性数 - 1
+		LOCALS = %GET_TYPE(LOCAL)%
+		IF DITEMTYPE:ARG:페르소나("변경相性1") - 1 == LOCAL
+			LOCAL:1 = DITEMTYPE:ARG:페르소나("변경相性치1")
+		ELSE
+			LOCAL:1 = CSVBASE(DITEMTYPE:ARG:페르소나("NO"), GETNUM(BASE, LOCALS), 0)
+		ENDIF
+		CALL SET_AISYOU_COLOR, LOCAL:1
+		PRINTFORM [{LOCAL,2}]%LOCALS%\@LOCAL:1 < 0 ? 흡수 # 　\@
+		PRINTFORM \@ LOCAL:1 != 999 ? {ABS(LOCAL:1),4}％ # %" " *2%반사 \@　
+		SIF LOCAL % 5 == 4
+			PRINTL
+	NEXT
+	RESETCOLOR
+	PRINTL
+	PRINTL [100]돌아간다
+	$INPUT_LOOP
+	INPUT
+	IF RESULT == 100
+		RETURN 0
+	ELSEIF RESULT < 0 || RESULT >= FLAG:相性数-1
+		GOTO INPUT_LOOP
+	ENDIF
+	LOCAL:1 = RESULT
+	DRAWLINE
+	PRINTFORML %GET_TYPE(LOCAL:1)%의 방어 상성을 어떻게 하겠습니까?
+	PRINTFORM 현재：
+	LOCAL:2 = LOCAL:1 == DITEMTYPE:ARG:페르소나("변경相性1") - 1? DITEMTYPE:ARG:페르소나("변경相性치1") # CSVBASE(DITEMTYPE:ARG:페르소나("NO"), GETNUM(BASE, GET_TYPE(LOCAL:1)), 0)
+	IF LOCAL:2 == 999
+		PRINTFORML 반사
+	ELSEIF LOCAL:2 == 0
+		PRINTFORML 무효
+	ELSE
+		PRINTFORML {LOCAL:2}％
+	ENDIF
+
+	PRINTL
+	;---- EDIT 002 ADD START -------------------------
+	;2020/08/16　옵션デメリットを해제した場合に내성を변경可能にした。
+	IF FLAG:페르소나구사자仕様설정 == 4
+		IF LOCAL:2 > 100 && LOCAL:2 != 999 && LOCAL:10 < 2
+			PRINTFORMW 약점의 수가 하나밖에 없는 페르소나는 약점의 상성을 변경할 수 없습니다
+			RETURN 0
+		ELSE
+			SIF LOCAL:2 > 100 && LOCAL:2 != 999 && LOCAL:3 <= 100
+				PRINTFORML [1]통상 필요ＥＸＰ：{10*LOCAL:3}
+			SIF LOCAL:2 > 50 && LOCAL:2 != 999 && LOCAL:3 <= 40
+				PRINTFORML [2]반감 필요ＥＸＰ：{25*LOCAL:3}
+			SIF LOCAL:2 != 0 && LOCAL:3 <= 20
+				PRINTFORML [3]무효 필요ＥＸＰ：{50*LOCAL:3}
+			SIF LOCAL:2 >= 0 && LOCAL:3 <= 10
+				PRINTFORML [4]흡수 필요ＥＸＰ：{100*LOCAL:3}
+			SIF LOCAL:2 != 999 && LOCAL:3 <= 10
+				PRINTFORML [5]반사 필요ＥＸＰ：{100*LOCAL:3}
+		ENDIF
+	ELSE
+		;약점3個미만には변경できない
+		IF LOCAL:2 > 100 && LOCAL:2 != 999 && LOCAL:10 <= 3
+			PRINTFORMW 약점의 수가 3개 이하인 페르소나는 약점의 상성을 변경할 수 없습니다
+			RETURN 0
+		ELSE
+			SIF LOCAL:2 > 100 && LOCAL:2 != 999 && LOCAL:3 <= 100
+				PRINTFORML [1]통상 필요ＥＸＰ：{10*LOCAL:3}
+			SIF LOCAL:2 > 50 && LOCAL:2 != 999 && LOCAL:3 <= 40
+				PRINTFORML [2]반감 필요ＥＸＰ：{25*LOCAL:3}
+			SIF LOCAL:2 != 0 && LOCAL:3 <= 20
+				PRINTFORML [3]무효 필요ＥＸＰ：{50*LOCAL:3}
+			SIF LOCAL:2 >= 0 && LOCAL:3 <= 10
+				PRINTFORML [4]흡수 필요ＥＸＰ：{100*LOCAL:3}
+			SIF LOCAL:2 != 999 && LOCAL:3 <= 10
+				PRINTFORML [5]반사 필요ＥＸＰ：{100*LOCAL:3}
+		ENDIF
+	ENDIF
+	;---- EDIT 002 ADD END   -------------------------
+	DRAWLINE
+	PRINTL [0] 돌아간다
+	$INPUT_LOOP_2
+	INPUT
+	IF RESULT == 0
+		RETURN 0
+	ELSEIF RESULT == 1 && LOCAL:2 > 100 && LOCAL:2 != 999 && DITEMTYPE:ARG:페르소나("EXP") >= 10*LOCAL:3
+		DITEMTYPE:ARG:페르소나("변경相性1") = LOCAL:1+1
+		DITEMTYPE:ARG:페르소나("변경相性치1") = 100
+		DITEMTYPE:ARG:페르소나("EXP") -= 10*LOCAL:3
+	ELSEIF RESULT == 2 && LOCAL:2 > 50 && LOCAL:2 != 999 && DITEMTYPE:ARG:페르소나("EXP") >= 25*LOCAL:3
+		DITEMTYPE:ARG:페르소나("변경相性1") = LOCAL:1+1
+		DITEMTYPE:ARG:페르소나("변경相性치1") = 50
+		DITEMTYPE:ARG:페르소나("EXP") -= 25*LOCAL:3
+	ELSEIF RESULT == 3 && LOCAL:2 != 0 && DITEMTYPE:ARG:페르소나("EXP") >= 50*LOCAL:3
+		DITEMTYPE:ARG:페르소나("변경相性1") = LOCAL:1+1
+		DITEMTYPE:ARG:페르소나("변경相性치1") = 0
+		DITEMTYPE:ARG:페르소나("EXP") -= 50*LOCAL:3
+	ELSEIF RESULT == 4 && LOCAL:2 >= 0 && DITEMTYPE:ARG:페르소나("EXP") >= 100*LOCAL:3
+		DITEMTYPE:ARG:페르소나("변경相性1") = LOCAL:1+1
+		DITEMTYPE:ARG:페르소나("변경相性치1") = -50
+		DITEMTYPE:ARG:페르소나("EXP") -= 100*LOCAL:3
+	ELSEIF RESULT == 5 && LOCAL:2 != 999 && DITEMTYPE:ARG:페르소나("EXP") >= 100*LOCAL:3
+		DITEMTYPE:ARG:페르소나("변경相性1") = LOCAL:1+1
+		DITEMTYPE:ARG:페르소나("변경相性치1") = 999
+		DITEMTYPE:ARG:페르소나("EXP") -= 100*LOCAL:3
+	ELSE
+		GOTO INPUT_LOOP_2
+	ENDIF
+;---- EDIT 001 ADD END -------------------------
+
+
+@PERSONA_MASTER_LIST, ARG = 0
+;引数が0なら、全員
+;1なら페르소나강화フラグもちだけ
+;2なら所持페르소나もちだけ
+Z = ARG
+CALL INPUT_CHARA_LIST("페르소나구사자를 고르십시오", "CASTING_PERSONA_MASTER_LIST")
+IF RESULT == 1000
+	RETURN -1
+ENDIF
+RETURN RESULT
+
+@CASTING_PERSONA_MASTER_LIST(ARG)
+SIF TALENT:ARG:페르소나구사자 == 0
+	RETURN 0
+SIF (Z == 0 || Z == 1) && CFLAG:ARG:전투참가불가능 > 0 && !CFLAG:ARG:매각가능 && !함락(ARG)
+	RETURN 0
+;---- EDIT 025 MOD -------------------------
+SIF Z == 2 && EQUIP:ARG:소지페르소나1 < 1
+	RETURN 0
+SIF CFLAG:ARG:この場に居ないフラグ == 1
+	RETURN 0
+SIF CFLAG:ARG:필터링フラグ
+	RETURN 0
+SIF Z == 1 && CFLAG:ARG:페르소나강화フラグ % 2 == 0
+	RETURN 0
+RETURN 1
+
+;----------------------------
+;페르소나の一覧
+;----------------------------
+@PERSONA_LIST,ARG = 0
+	VARSET Q, -1
+	;全페르소나を표시する
+	FOR LOCAL, 1, 11
+		SIF DITEMTYPE:(LOCAL):0 == 0
+			CONTINUE
+		;名前표시
+		PRINTFORML [{LOCAL,2}] %CSVNAME(DITEMTYPE:(LOCAL):페르소나("NO"),0),20,LEFT%　LV:{DITEMTYPE:LOCAL:페르소나("LV"),3}　EXP:{DITEMTYPE:LOCAL:페르소나("EXP"),4}　소지자:\@DITEMTYPE:(LOCAL):페르소나("페르소나소지자") >= 0 ? %CALLNAME:FINDCHARA_ID(DITEMTYPE:(LOCAL):페르소나("페르소나소지자"))% # %"없음",20,LEFT%\@
+		Q:LOCAL = LOCAL
+	NEXT
+	LOCAL:1 = 11
+	FOR LOCAL, 0, CHARANUM
+		SIF ABL:LOCAL:초기페르소나 == 0
+			CONTINUE
+		IF ARG == 0
+			SIF CFLAG:LOCAL:필터링フラグ
+				CONTINUE
+			SIF CFLAG:LOCAL:전투참가불가능 > 0
+				CONTINUE
+			SIF TALENT:LOCAL:Ａ잠재
+				CONTINUE
+			SIF CFLAG:LOCAL:この場に居ないフラグ == 1
+				CONTINUE
+;---- EDIT 025 MOD 스테이터스확인時、戦えないキャラの페르소나も見れるように(赤色になる)-------------------------
+		ELSEIF ARG == 1
+			SIF CFLAG:LOCAL:필터링フラグ
+				SETCOLOR COLOR("red")
+			SIF CFLAG:LOCAL:전투참가불가능 > 0
+				SETCOLOR COLOR("red")
+			SIF TALENT:LOCAL:Ａ잠재
+				SETCOLOR COLOR("red")
+			SIF CFLAG:LOCAL:この場に居ないフラグ == 1
+				SETCOLOR COLOR("red")
+		ENDIF
+		Q:(LOCAL:1) = CFLAG:LOCAL:초기페르소나ナンバー
+		PRINTFORML [{LOCAL:1}] %CSVNAME(DITEMTYPE:(CFLAG:LOCAL:초기페르소나ナンバー):페르소나("NO"),0),20,LEFT%　LV:{DITEMTYPE:(CFLAG:LOCAL:초기페르소나ナンバー):페르소나("LV"),3}　EXP:{DITEMTYPE:(CFLAG:LOCAL:초기페르소나ナンバー):페르소나("EXP"),4}　소지자:%CALLNAME:LOCAL,20,LEFT%
+		LOCAL:1++ 
+		RESETCOLOR
+	NEXT
+
+;==========================================
+;スキルロック設定
+;ARG	페르소나番号
+;==========================================
+@SKILL_ROCK_SETTING_P, ARG
+#DIM LINE
+
+PRINTFORML □%CSVNAME(DITEMTYPE:ARG:페르소나("NO"),0)%のスキルロック設定：
+	PRINTL 　※ロックするとスキルを削除しにくくなります
+LINE = LINECOUNT
+$PRINT_LIST
+CLEARLINE LINECOUNT - LINE
+
+FOR LOCAL,1,9
+	LOCALS = スキル{LOCAL}
+	SIF DITEMTYPE:ARG:페르소나(LOCALS) < 1
+		CONTINUE
+	SIF GETBIT(DITEMTYPE:ARG:페르소나("スキルロック設定"),LOCAL)
+		SETCOLOR COLOR("黄色")
+	PRINTFORM [{LOCAL,2}]
+	IF GETBIT(DITEMTYPE:ARG:페르소나("スキルロック設定"),LOCAL)
+		PRINT LOCK　
+	ELSE
+		PRINT 　　　
+	ENDIF
+	;CALLFORM SKILL_NAME_{DITEMTYPE:ARG:페르소나(LOCALS)},ARG
+	CALLFORM SKILL_NAME_{DITEMTYPE:ARG:페르소나(LOCALS)},-1
+	PRINTFORML %RESULTS%
+	
+	RESETCOLOR
+NEXT
+DRAWLINE
+PRINTL [0]戻る [99]自動ロック
+INPUT
+IF RESULT == 0
+	CLEARLINE LINECOUNT - LINE + 2
+	RETURN 0
+ENDIF
+SIF RESULT == 99
+	CALL AUTO_SKILL_ROCK_P,ARG
+LOCALS = スキル{RESULT}
+SIF RESULT >= 0 && RESULT <= 8 && DITEMTYPE:ARG:페르소나(LOCALS) > 0
+	INVERTBIT DITEMTYPE:ARG:페르소나("スキルロック設定"),RESULT
+GOTO PRINT_LIST
+
+;==========================================
+;スキルロック自動設定
+;ARG	キャラ番号
+;==========================================
+@AUTO_SKILL_ROCK_P, ARG
+	
+DITEMTYPE:ARG:페르소나("スキルロック設定") = 0
+FOR LOCAL,1,9
+	LOCALS = スキル{LOCAL}
+	
+	SIF DITEMTYPE:ARG:페르소나(LOCALS) < 1
+		CONTINUE
+	CALL SP_SKILL_CHECK,DITEMTYPE:ARG:페르소나(LOCALS)
+	SIF RESULT > 0
+		SETBIT DITEMTYPE:ARG:페르소나("スキルロック設定"),LOCAL
+NEXT
+
+@페르소나(ARGS)
+	#FUNCTION
+	SIF ARGS == "장비상태"
+		RETURNF 0
+	SIF ARGS == "NO"
+		RETURNF 1
+	SIF ARGS == "LV" || ARGS == "ＬＶ"
+		RETURNF 2
+	SIF ARGS == "힘"
+		RETURNF 3
+	SIF ARGS == "지혜"
+		RETURNF 4
+	SIF ARGS == "마력"
+		RETURNF 5
+	SIF ARGS == "인내력" || ARGS == "체력"
+		RETURNF 6
+	SIF ARGS == "속도"
+		RETURNF 7
+	SIF ARGS == "운"
+		RETURNF 8
+	SIF ARGS == "랭크"
+		RETURNF 9
+	SIF ARGS == "EXP"
+		RETURNF 10
+	SIF ARGS == "스킬1"
+		RETURNF 11
+	SIF ARGS == "스킬2"
+		RETURNF 12
+	SIF ARGS == "스킬3"
+		RETURNF 13
+	SIF ARGS == "스킬4"
+		RETURNF 14
+	SIF ARGS == "스킬5"
+		RETURNF 15
+	SIF ARGS == "스킬6"
+		RETURNF 16
+	SIF ARGS == "스킬7"
+		RETURNF 17
+	SIF ARGS == "스킬8"
+		RETURNF 18
+	;---- EDIT 001 ADD START -------------------------
+	;新規추가
+	SIF ARGS == "CP"
+		RETURNF 19
+	SIF ARGS == "변경相性1"
+		RETURNF 20
+	SIF ARGS == "변경相性치1"
+		RETURNF 21
+	SIF ARGS == "변경相性2"
+		RETURNF 22
+	SIF ARGS == "변경相性치2"
+		RETURNF 23
+	SIF ARGS == "변경相性3"
+		RETURNF 24
+	SIF ARGS == "변경相性치3"
+		RETURNF 25
+	;---- EDIT 001 ADD END -------------------------
+	SIF ARGS == "속성LD"
+		RETURNF 30
+	SIF ARGS == "속성LC"
+		RETURNF 31
+	SIF ARGS == "함락"
+		RETURNF 32
+	SIF ARGS == "페르소나소지자"
+		RETURNF 33
+	SIF ARGS == "강화가능횟수"
+		RETURNF 34
+	SIF ARGS == "습득스킬1"
+		RETURNF 40
+	SIF ARGS == "습득스킬2"
+		RETURNF 41
+	SIF ARGS == "습득스킬3"
+		RETURNF 42
+	SIF ARGS == "습득스킬4"
+		RETURNF 43
+	SIF ARGS == "습득스킬5"
+		RETURNF 44
+	SIF ARGS == "습득스킬6"
+		RETURNF 45
+	SIF ARGS == "습득스킬7"
+		RETURNF 46
+	SIF ARGS == "습득스킬8"
+		RETURNF 47
+	SIF ARGS == "습득스킬9"
+		RETURNF 48
+	SIF ARGS == "습득스킬10"
+		RETURNF 49
+	SIF ARGS == "습득스킬11"
+		RETURNF 50
+	SIF ARGS == "습득스킬12"
+		RETURNF 51
+	SIF ARGS == "습득스킬13"
+		RETURNF 52
+	SIF ARGS == "습득스킬14"
+		RETURNF 53
+	SIF ARGS == "습득스킬15"
+		RETURNF 54
+	SIF ARGS == "습득스킬16"
+		RETURNF 55
+	SIF ARGS == "습득스킬17"
+		RETURNF 56
+	SIF ARGS == "습득스킬18"
+		RETURNF 57
+	SIF ARGS == "습득스킬19"
+		RETURNF 58
+	SIF ARGS == "습득스킬20"
+		RETURNF 59
+	SIF ARGS == "습득LV1"
+		RETURNF 60
+	SIF ARGS == "습득LV2"
+		RETURNF 61
+	SIF ARGS == "습득LV3"
+		RETURNF 62
+	SIF ARGS == "습득LV4"
+		RETURNF 63
+	SIF ARGS == "습득LV5"
+		RETURNF 64
+	SIF ARGS == "습득LV6"
+		RETURNF 65
+	SIF ARGS == "습득LV7"
+		RETURNF 66
+	SIF ARGS == "습득LV8"
+		RETURNF 67
+	SIF ARGS == "습득LV9"
+		RETURNF 68
+	SIF ARGS == "습득LV10"
+		RETURNF 69
+	;---- EDIT 001 ADD START -------------------------
+	;番号ミスの修正
+	SIF ARGS == "습득LV11"
+		RETURNF 70
+	SIF ARGS == "습득LV12"
+		RETURNF 71
+	SIF ARGS == "습득LV13"
+		RETURNF 72
+	SIF ARGS == "습득LV14"
+		RETURNF 73
+	SIF ARGS == "습득LV15"
+		RETURNF 74
+	SIF ARGS == "습득LV16"
+		RETURNF 75
+	SIF ARGS == "습득LV17"
+		RETURNF 76
+	SIF ARGS == "습득LV18"
+		RETURNF 77
+	SIF ARGS == "습득LV19"
+		RETURNF 78
+	SIF ARGS == "습득LV20"
+		RETURNF 79
+	SIF ARGS == "변이판정フラグ"
+		RETURNF 98
+	SIF ARGS == "余剰EXP"
+		RETURNF 99
+	;---- EDIT 001 ADD END ------------------------
+
+	SIF ARGS == "잠재능력"
+		RETURNF 80
+	SIF ARGS == "スキルロック設定"
+		RETURNF 81
+
+	SIF ARGS == "페르소나1"
+		RETURNF 1
+	SIF ARGS == "페르소나2"
+		RETURNF 2
+	SIF ARGS == "페르소나3"
+		RETURNF 3
+	SIF ARGS == "페르소나4"
+		RETURNF 4
+	SIF ARGS == "페르소나5"
+		RETURNF 5
+	SIF ARGS == "페르소나6"
+		RETURNF 6
+	SIF ARGS == "페르소나7"
+		RETURNF 7
+	SIF ARGS == "페르소나8"
+		RETURNF 8
+	SIF ARGS == "페르소나9"
+		RETURNF 9
+	SIF ARGS == "페르소나10"
+		RETURNF 10
+	SIF ARGS == "페르소나11"
+		RETURNF 11
+	SIF ARGS == "ゲスト페르소나1"
+		RETURNF 21
+	SIF ARGS == "ゲスト페르소나2"
+		RETURNF 22
+	SIF ARGS == "ゲスト페르소나3"
+		RETURNF 23
+	SIF ARGS == "초기페르소나1"
+		RETURNF 50
+	;엘라ー落ちさせる
+	THROW "ARGSが이상です"

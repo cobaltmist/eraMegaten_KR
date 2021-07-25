@@ -1,0 +1,1064 @@
+﻿
+;=======================================================================
+;이계화빌딩
+;ボス・
+;던전ナンバー82
+;
+;
+;
+;フラグ
+;던전フラグ:82:1	쇼우지の상태（-1以下は救出済み、1-9:捕獲前、10-19:捕獲済み、20-29:윤간中（ボスいる）、30-39:윤간中（ボスいない）、40-49:붕괴マグロ化、50-59:변기化）
+;던전フラグ:82:2	쇼우지同行（0:してない、1:救出、2:입수）
+;던전フラグ:82:3	쇼우지を見たことあるか（0:ない、1:ある）
+;던전フラグ:82:4	쇼우지の場所（0:未설정、1:候補1(4F)、2:候補2(5F)、3:候補3(6F)、4:候補4(6F)、5:捕獲済み）
+;던전フラグ:82:5	クリアフラグ
+;던전フラグ:82:6	쇼우지救出時の상태（0:無事、1:Ｖ済み、2:ＶＡ済み、3:ＶＡフェラ済み、4:ＶＡフェラ윤간済み、5:ＶＡフェラ윤간、붕괴済み、6:ＶＡフェラ윤간、붕괴、肉변기）
+;던전フラグ:82:7	
+;던전フラグ:82:8	１Ｆにボスいないフラグ（0:いる、1:いない）
+;던전フラグ:82:9	의뢰状況（0:未달성、1:손に入れた）
+;던전フラグ:82:10	ボス악마状況（0:生存、1:倒した）
+;던전フラグ:82:11	雑물고기악마状況（0:生存、1:倒した）
+
+;CFLAG:이벤트加入のまとめ
+;0:無事、1:Ｖ済み、2:ＶＡ済み、3:ＶＡフェラ済み、4:ＶＡフェラ윤간済み、5:ＶＡフェラ윤간、붕괴済み、6:ＶＡフェラ윤간、붕괴、肉변기済み
+;=======================================================================
+
+;=======================================================================
+;攻略조건
+;=======================================================================
+@PREREQUISITE_DUNGEON_82
+;의뢰フラグ:29:0 = 1
+;의뢰を受けているか종료済み
+IF 의뢰フラグ:29:0 == 1 || 의뢰フラグ:29:0 == 2
+	RETURN 1
+ENDIF
+RETURN 0
+
+;=======================================================================
+;던전名
+;=======================================================================
+@GET_DUNGEON_NAME_82
+RESULTS = 이계화빌딩
+
+;=======================================================================
+;フ로어名표시
+;=======================================================================
+@FLOORNAME_82
+PRINT 이계화빌딩
+SELECTCASE FLAG:現M
+	CASE 0
+		PRINTL １Ｆ
+	CASE 1
+		PRINTL ２Ｆ
+	CASE 2
+		PRINTL ３Ｆ
+	CASE 3
+		PRINTL ４Ｆ
+	CASE 4
+		PRINTL ５Ｆ
+	CASE 5
+		PRINTL ６Ｆ
+	CASEELSE
+		PRINTL
+ENDSELECT
+
+;=======================================================================
+;スタート地点입력
+;=======================================================================
+@START_DUNGEON_82, ARG
+FLAG:現M = 0
+FLAG:現X = 8
+FLAG:現Y = 13
+;CALL AUTOMAP
+RETURN 0
+
+;=======================================================================
+;攻略開始時の이벤트
+;=======================================================================
+@EVENT_DUNGEON_START_82
+
+;쇼우지の상태
+IF 던전フラグ:82:1 > -1 && 의뢰フラグ:29:0 == 1
+	PRINTFORML 　
+	SELECTCASE DAY - STRFLAG_NUM_REQ("ビル내부状況변화" , , , , 29)
+		;要調整
+		;３日以内は捕獲前（本当は７日としたいがさすがにありえないので）
+		;０～３日눈
+		CASE IS <= 3
+			PRINTFORMW 이계화된 빌딩에 침입했다
+			PRINTFORMW 이 빌딩 어딘가에 쇼우지가 있다、그녀를 찾는 것이 의뢰 완수로 이어질 것이다……
+			
+			;쇼우지の상태、捕獲前へ
+			던전フラグ:82:1 = 1
+		;４日눈に捕獲されて레이프이벤트
+		CASE IS <= 4
+			PRINTFORMW 의뢰를 받고나서 상당히 시간이 지나고 말았다
+			PRINTFORMW 쇼우지는 어디에 있는 걸까？
+			
+			;쇼우지の상태、捕獲へ
+			던전フラグ:82:1 = 10
+			;１Ｆにボスいないフラグオンへ
+			던전フラグ:82:8 = 1
+		;５日눈に윤간される（ボスいる）
+		CASE IS <= 5
+			;쇼우지を見たことある
+			IF 던전フラグ:82:3 == 1
+				PRINTFORMW 이전에는 철수하고 말았지만、쇼우지는 어떻게 되어있을까？
+				PRINTFORMW 어떻게 해서든지 의뢰 품목은 찾아내야 한다……
+			ELSE
+				PRINTFORMW 의뢰를 받고나서 상당히 시간이 지나고 말았다
+				PRINTFORMW 쇼우지는 어디에 있는 걸까？
+			ENDIF
+			
+			;쇼우지の상태、윤간中１へ
+			던전フラグ:82:1 = 20
+			;１Ｆにボスいないフラグオンへ
+			던전フラグ:82:8 = 1
+		;６日に윤간される（ボスいない）
+		CASE IS <= 6
+			;쇼우지を見たことある
+			IF 던전フラグ:82:3 == 1
+				PRINTFORMW 전에는 철수하고 말았지만、쇼우지는 어떻게 되어있을까？
+				PRINTFORMW 어떻게 해서든지 의뢰 품목은 찾아내야 한다……
+			ELSE
+				PRINTFORMW 의뢰를 받고나서 상당히 시간이 지나고 말았다
+				PRINTFORMW 쇼우지는 어디에 있는 걸까？
+			ENDIF
+			
+			;쇼우지の상태、윤간中２へ
+			던전フラグ:82:1 = 30
+			;１Ｆにボスいないフラグオンへ
+			던전フラグ:82:8 = 1
+		;７、８日눈は붕괴윤간
+		CASE IS == 7
+			;쇼우지を見たことある
+			IF 던전フラグ:82:3 == 1
+				PRINTFORMW 전에는 철수하고 말았지만、쇼우지는 어떻게 되어있을까？
+				PRINTFORMW 어떻게 해서든지 의뢰 품목은 찾아내야 한다……
+			ELSE
+				PRINTFORMW 의뢰를 받고나서 상당히 시간이 지나고 말았다
+				PRINTFORMW 쇼우지는 어디에 있는 걸까？
+			ENDIF
+			
+			;쇼우지の상태、붕괴マグロ化へ
+			던전フラグ:82:1 = 40
+			;１Ｆにボスいないフラグオンへ
+			던전フラグ:82:8 = 1
+		;７、８日눈は붕괴윤간
+		CASE IS == 8
+			;쇼우지を見たことある
+			IF 던전フラグ:82:3 == 1
+				PRINTFORMW 전에는 철수하고 말았지만、쇼우지는 어떻게 되어있을까？
+				PRINTFORMW 어떻게 해서든지 의뢰 품목은 찾아내야 한다……
+			ELSE
+				PRINTFORMW 의뢰를 받고나서 상당히 시간이 지나고 말았다
+				PRINTFORMW 쇼우지는 어디에 있는 걸까？
+			ENDIF
+			
+			;７日눈に見てなければ쇼우지の상태、붕괴マグロ化へ
+			IF 던전フラグ:82:1 != 41
+				던전フラグ:82:1 = 40
+			ENDIF
+			;１Ｆにボスいないフラグオンへ
+			던전フラグ:82:8 = 1
+		;それ以後は변기化
+		CASEELSE
+			;쇼우지を見たことある
+			IF 던전フラグ:82:3 == 1
+				PRINTFORMW 전에는 철수하고 말았지만、쇼우지는 어떻게 되어있을까？
+				PRINTFORMW 어떻게 해서든지 의뢰 품목은 찾아내야 한다……
+			ELSE
+				PRINTFORMW 의뢰를 받고나서 상당히 시간이 지나고 말았다
+				PRINTFORMW 쇼우지는 어디에 있는 걸까？
+			ENDIF			
+			;쇼우지の상태、변기化へ
+			던전フラグ:82:1 = 50
+			;１Ｆにボスいないフラグオンへ
+			던전フラグ:82:8 = 1
+	ENDSELECT
+ENDIF
+
+;쇼우지の場所
+;던전進入時に候補場所に랜덤で配置、処理が面倒なために捕獲される場所は固定とする。
+;逃げてる상태か捕獲後で의뢰中
+IF (던전フラグ:82:1 > -1 && 던전フラグ:82:1 <= 50) && 의뢰フラグ:29:0 == 1
+	;捕獲される前
+	IF 던전フラグ:82:1 > -1 && 던전フラグ:82:1 < 10
+		IF RAND:4 == 0
+			;候補1(4F)
+			던전フラグ:82:4 = 1
+		ELSEIF RAND:3 == 0
+			;候補2(5F)
+			던전フラグ:82:4 = 2
+		ELSEIF RAND:2 == 0
+			;候補3(5F)
+			던전フラグ:82:4 = 3
+		ELSE
+			;候補4(6F)
+			던전フラグ:82:4 = 4
+		ENDIF
+	;捕獲後
+	ELSEIF 던전フラグ:82:1 >= 10 || 던전フラグ:82:1 < 50
+		;捕獲場所
+		던전フラグ:82:4 = 5
+		
+	;변기化後
+	ELSEIF 던전フラグ:82:1 == 50
+		;捕獲場所
+		던전フラグ:82:4 = 5
+		
+	ENDIF
+ENDIF
+
+;=======================================================================
+;탈출時の이벤트
+;=======================================================================
+@EVENT_DUNGEON_END_82
+PRINTFORML 　
+;쇼우지同行中なら同行を해제する
+IF 던전フラグ:82:2 == 1
+	PRINTFORML 　
+	PRINTFORMW 쇼우지를 안전한 장소까지 데려다 주었다
+	
+	
+	
+	
+	던전フラグ:82:2 = 0
+ELSEIF 던전フラグ:82:2 == 2
+	PRINTFORML 　
+	PRINTFORMW 데리고 온 쇼우지를 노예로 삼아 사무소에 감금했습니다
+	
+	던전フラグ:82:2 = 0
+ENDIF
+
+;던전탈출時、クリアフラグが立っておらず、의뢰品を입수済みならクリアフラグを立てて賞金と名声を得ます。
+IF 던전フラグ:82:5 == 0 && 던전フラグ:82:9 == 1
+	PRINTFORML 　
+	PRINTFORMW 의뢰를 완료함으로써、계좌에 ￥30000이 지급되고、명성 20을 얻었다
+	
+	MONEY += 30000
+	FLAG:名声 += 20
+	
+	;クリアフラグ
+	던전フラグ:82:5 = 1
+	;의뢰종료
+	의뢰フラグ:29:0 = 2
+ENDIF
+
+;=======================================================================
+;指定したマスに進入가능か
+;=======================================================================
+@CAN_ENTER_82, ARG, ARG:1
+SELECTCASE DA:ARG:(ARG:1)
+ENDSELECT
+CALL CAN_ENTER,ARG,ARG:1
+RETURN RESULT
+
+;=======================================================================
+;フ로어데이터
+;=======================================================================
+
+;0：壁　1：床또는通路　2：扉　3：宝箱　4：이벤트　5：罠　6：上り階段 7：下り階段　8：出입　9：그외特殊処理等
+;これらの内、3～9が代入されているマスに、個別の번호を与える処理を実行します。
+;この処理を行った後、これらのマスには 「マップ번호*1000 + そのマスがそのマップで左上から数えて何個눈のARG타입のマスか*10 + ARG」が代入されます
+;例えば 2003 であった場合、「2番のマップ＝３Ｆで、左上から数えて0個눈の3＝宝箱である」という事を意味しています
+;尚、0～2はどのマップにも大量に設置されるので、ここでは기본的に個別の번호を与えません。
+
+
+@MAKE_FLOOR_82
+SELECTCASE FLAG:現M
+	CASE 0
+	;１階
+		FLAG:최대X = 11 
+		FLAG:최대Y = 16 
+							;	  01234567890
+		CALL MAKE_FLOOR_LINE, 0, "           "
+		CALL MAKE_FLOOR_LINE, 1, "           "
+		CALL MAKE_FLOOR_LINE, 2, "  1111111  "
+		CALL MAKE_FLOOR_LINE, 3, "  2     2  "
+		CALL MAKE_FLOOR_LINE, 4, "  6 4 111  "
+		CALL MAKE_FLOOR_LINE, 5, "    1 2    "
+		CALL MAKE_FLOOR_LINE, 6, "  12111 1  "
+		CALL MAKE_FLOOR_LINE, 7, "  1     1  "
+		CALL MAKE_FLOOR_LINE, 8, "  1111111  "
+		CALL MAKE_FLOOR_LINE, 9, "        2  "
+		CALL MAKE_FLOOR_LINE,10, "  4111121  "
+		CALL MAKE_FLOOR_LINE,11, "  4     1  "
+		CALL MAKE_FLOOR_LINE,12, "  42E   1  "
+		CALL MAKE_FLOOR_LINE,13, "        8  "
+		CALL MAKE_FLOOR_LINE,14, "           "
+		CALL MAKE_FLOOR_LINE,15, "           "
+		
+		;ボス移動済み
+		CALL SET_TILE, 2 , 10 , 던전フラグ:82:8 , 1 , 1
+		CALL SET_TILE, 2 , 11 , 던전フラグ:82:8 , 1 , 1
+		CALL SET_TILE, 2 , 12 , 던전フラグ:82:8 , 1 , 1
+		
+		;ボス倒してる
+		CALL SET_TILE, 2 , 10 , 던전フラグ:82:10 , 1 , 1
+		CALL SET_TILE, 2 , 11 , 던전フラグ:82:10 , 1 , 1
+		CALL SET_TILE, 2 , 12 , 던전フラグ:82:10 , 1 , 1
+		
+	CASE 1
+	;２階
+		FLAG:최대X = 11 
+		FLAG:최대Y = 16 
+							;	  01234567890
+		CALL MAKE_FLOOR_LINE, 0, "           "
+		CALL MAKE_FLOOR_LINE, 1, "           "
+		CALL MAKE_FLOOR_LINE, 2, "  411 621  "
+		CALL MAKE_FLOOR_LINE, 3, "    1   1  "
+		CALL MAKE_FLOOR_LINE, 4, "  7 111 1  "
+		CALL MAKE_FLOOR_LINE, 5, "  2 1 2 1  "
+		CALL MAKE_FLOOR_LINE, 6, "  1 1 1 1  "
+		CALL MAKE_FLOOR_LINE, 7, "  1 2 1 2  "
+		CALL MAKE_FLOOR_LINE, 8, "  111 111  "
+		CALL MAKE_FLOOR_LINE, 9, "        2  "
+		CALL MAKE_FLOOR_LINE,10, "  1111111  "
+		CALL MAKE_FLOOR_LINE,11, "  1     1  "
+		CALL MAKE_FLOOR_LINE,12, "  12E 321  "
+		CALL MAKE_FLOOR_LINE,13, "           "
+		CALL MAKE_FLOOR_LINE,14, "           "
+		CALL MAKE_FLOOR_LINE,15, "           "
+		
+	CASE 2
+	;３階
+		FLAG:최대X = 11 
+		FLAG:최대Y = 16 
+							;	  01234567890
+		CALL MAKE_FLOOR_LINE, 0, "           "
+		CALL MAKE_FLOOR_LINE, 1, "           "
+		CALL MAKE_FLOOR_LINE, 2, "  11127 1  "
+		CALL MAKE_FLOOR_LINE, 3, "  1     1  "
+		CALL MAKE_FLOOR_LINE, 4, "  12111 1  "
+		CALL MAKE_FLOOR_LINE, 5, "      1 1  "
+		CALL MAKE_FLOOR_LINE, 6, "  126 121  "
+		CALL MAKE_FLOOR_LINE, 7, "  1     1  "
+		CALL MAKE_FLOOR_LINE, 8, "  1111111  "
+		CALL MAKE_FLOOR_LINE, 9, "  2     2  "
+		CALL MAKE_FLOOR_LINE,10, "  1211111  "
+		CALL MAKE_FLOOR_LINE,11, "  1   2 2  "
+		CALL MAKE_FLOOR_LINE,12, "  12E 1 4  "
+		CALL MAKE_FLOOR_LINE,13, "           "
+		CALL MAKE_FLOOR_LINE,14, "           "
+		CALL MAKE_FLOOR_LINE,15, "           "
+		
+	CASE 3
+	;４階
+		FLAG:최대X = 11 
+		FLAG:최대Y = 16 
+							;	  01234567890
+		CALL MAKE_FLOOR_LINE, 0, "           "
+		CALL MAKE_FLOOR_LINE, 1, "           "
+		CALL MAKE_FLOOR_LINE, 2, "  421 621  "
+		CALL MAKE_FLOOR_LINE, 3, "    1   1  "
+		CALL MAKE_FLOOR_LINE, 4, "  1111111  "
+		CALL MAKE_FLOOR_LINE, 5, "  2     1  "
+		CALL MAKE_FLOOR_LINE, 6, "  1 7 111  "
+		CALL MAKE_FLOOR_LINE, 7, "  1 2 2 1  "
+		CALL MAKE_FLOOR_LINE, 8, "  111 4 1  "
+		CALL MAKE_FLOOR_LINE, 9, "  2 1   2  "
+		CALL MAKE_FLOOR_LINE,10, "  1 12111  "
+		CALL MAKE_FLOOR_LINE,11, "  1   1 2  "
+		CALL MAKE_FLOOR_LINE,12, "  12E 1 3  "
+		CALL MAKE_FLOOR_LINE,13, "           "
+		CALL MAKE_FLOOR_LINE,14, "           "
+		CALL MAKE_FLOOR_LINE,15, "           "
+		
+		;쇼우지救出済み
+		CALL SET_TILE, 6 , 8 , 던전フラグ:82:1 , -1 , 1
+		
+	CASE 4
+	;５階
+		FLAG:최대X = 11 
+		FLAG:최대Y = 16 
+							;	  01234567890
+		CALL MAKE_FLOOR_LINE, 0, "           "
+		CALL MAKE_FLOOR_LINE, 1, "           "
+		CALL MAKE_FLOOR_LINE, 2, "  11127 4  "
+		CALL MAKE_FLOOR_LINE, 3, "  2 1   2  "
+		CALL MAKE_FLOOR_LINE, 4, "  6 11111  "
+		CALL MAKE_FLOOR_LINE, 5, "      2    "
+		CALL MAKE_FLOOR_LINE, 6, "  121 111  "
+		CALL MAKE_FLOOR_LINE, 7, "  1   1 2  "
+		CALL MAKE_FLOOR_LINE, 8, "  1111111  "
+		CALL MAKE_FLOOR_LINE, 9, "  2     2  "
+		CALL MAKE_FLOOR_LINE,10, "  1 11111  "
+		CALL MAKE_FLOOR_LINE,11, "  1   1    "
+		CALL MAKE_FLOOR_LINE,12, "  12E 124  "
+		CALL MAKE_FLOOR_LINE,13, "           "
+		CALL MAKE_FLOOR_LINE,14, "           "
+		CALL MAKE_FLOOR_LINE,15, "           "
+		
+		;쇼우지救出済み
+		CALL SET_TILE, 8 , 2 , 던전フラグ:82:1 , -1 , 1
+		CALL SET_TILE, 8 , 12 , 던전フラグ:82:1 , -1 , 1
+		
+	CASE 5
+	;６階
+		FLAG:최대X = 11 
+		FLAG:최대Y = 16 
+							;	  01234567890
+		CALL MAKE_FLOOR_LINE, 0, "           "
+		CALL MAKE_FLOOR_LINE, 1, "           "
+		CALL MAKE_FLOOR_LINE, 2, "  12111 1  "
+		CALL MAKE_FLOOR_LINE, 3, "      111  "
+		CALL MAKE_FLOOR_LINE, 4, "  7 121 1  "
+		CALL MAKE_FLOOR_LINE, 5, "  2 1   1  "
+		CALL MAKE_FLOOR_LINE, 6, "  1 1 421  "
+		CALL MAKE_FLOOR_LINE, 7, "  111   1  "
+		CALL MAKE_FLOOR_LINE, 8, "  1 12111  "
+		CALL MAKE_FLOOR_LINE, 9, "  2    2   "
+		CALL MAKE_FLOOR_LINE,10, "  1211111  "
+		CALL MAKE_FLOOR_LINE,11, "  1     1  "
+		CALL MAKE_FLOOR_LINE,12, "  12E 421  "
+		CALL MAKE_FLOOR_LINE,13, "           "
+		CALL MAKE_FLOOR_LINE,14, "           "
+		CALL MAKE_FLOOR_LINE,15, "           "
+		
+		;쇼우지救出済み
+		CALL SET_TILE, 6 , 6 , 던전フラグ:82:1 , -1 , 1
+		
+	CASE 10
+	CASEELSE
+ENDSELECT
+
+;=======================================================================
+;タイル調整
+;=======================================================================
+;ARG:1、ARG:2はそれぞれX座標とY座標
+;ARGはその座標に現在代入されている번호
+;0：壁　1：床또는通路　2：扉　3：宝箱　4：이벤트　5：罠　6：上り階段 7：下り階段　8：出입　9：그외特殊処理等
+;これらの内、3～9が代入されているマスに、個別の번호を与える処理を実行します。
+;この処理を行った後、これらのマスには 「マップ번호*1000 + そのマスがそのマップで左上から数えて何個눈のARG타입のマスか*10 + ARG」が代入されます
+;例えば 2003 であった場合、「2番のマップ＝３Ｆで、左上から数えて0個눈の3＝宝箱である」という事を意味しています
+;尚、0～2はどのマップにも大量に設置されるので、ここでは기본的に個別の번호を与えません。
+;
+;何個눈のARG타입のマスなのか、は左上の(0,0)から右まで探し、その後一つ下の段に移って同様に探す、というのを右下まで繰り返して数えます。
+@MAKE_FLOOR_LINE_COMMON_82, ARG, ARG:1, ARG:2
+#LOCALSIZE 10
+;LOCAL:0～9 それぞれ何個눈のARGなのかを記憶しています
+;LOCAL:3 宝箱→사용フラグは던전フラグ:70~74
+;指定された座標が(0,0)である場合、つまり新しいマップを読み込んだ時はLOCALを소거します
+SIF ARG:1 == 0 && ARG:2 == 0
+	VARSET LOCAL
+SELECTCASE ARG
+	CASE 3
+		;宝箱は多くの場合、開けたフラグが立っていると床を代入します
+		;そのマップでどの宝箱を開けたかは、そのマップの宝箱管理用変数の何番눈のビットが立っているかで判断します
+		IF GETBIT(던전フラグ:(FLAG:現던전):(FLAG:現M+70), LOCAL:3)
+			DA:(ARG:1):(ARG:2) = 1
+		ELSE
+			DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:3 * 10 + 3
+		ENDIF
+		LOCAL:3++
+	CASE 4 TO 9
+		DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:ARG * 10 + ARG
+		LOCAL:ARG++
+	
+ENDSELECT
+
+;=======================================================================
+;特殊タイル표시
+;TILE_MARK_COMMON_{FLAG:現던전}_X
+;=======================================================================
+;ARG:1、ARG:2がX座標とY座標
+;ARGはそこに代入されている値
+;RESULTSに代入した文字がマップに표시されますが、必ず全角1文字分になるようにしてください。そうでないと표시が崩れます。
+
+;이벤트タイル特殊표시
+;末꼬리の_4は이벤트であることを示す4
+@TILE_MARK_COMMON_82_4, ARG , ARG:1 , ARG:2
+SELECTCASE ARG / 10
+	;メッセンジャーを緑色で"ｍ"と표시
+	CASE 0 , 100 , 200 , 300
+		SETCOLOR 0x00ff00
+		RESULTS = ｍ
+	CASEELSE
+		;特に설정しない場合、"！"と표시されます
+		RETURN 1
+ENDSELECT
+
+;特殊タイルの표시
+;末꼬리の_9は特殊タイルであることを示す9
+@TILE_MARK_COMMON_82_9, ARG , ARG:1 , ARG:2
+SELECTCASE ARG / 10
+	;CASE 400
+		
+		
+	CASEELSE
+		;特に설정しない場合、"■"が표시されます
+		RETURN 1
+ENDSELECT
+
+;=======================================================================
+;[5]조사　実行時の이벤트
+;=======================================================================
+@EVENT_CHECK_DUNGEON_82
+
+;==========
+;出입の処理
+;==========
+IF DA:(FLAG:現X):(FLAG:現Y) == 8
+	CALL DUNGEON_EXIT
+	RETURN 1
+;========
+;宝の処理
+;========
+;% 10は10で割ったあまり、つまり下一桁がでてきます
+;그리고、下一桁はタイルの종류を表す
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 3
+	CALL TREASURE_82
+	RETURN RESULT
+;=======
+;階段
+;=======
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 6
+	CALL UPSTAIRS_82
+	RETURN RESULT
+
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 7
+	CALL DOWNSTAIRS_82
+	RETURN RESULT
+;========
+;이벤트
+;========
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 4
+	SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+		;１Ｆ이벤트
+		CASE 0
+			;オンナ악마達
+			CALL DUNGEON_82_ETC03
+		CASE 1
+			;１～３日눈、ボス
+			CALL DUNGEON_82_BOSS_1F_1
+		CASE 2
+			;１～３日눈、ボス
+			CALL DUNGEON_82_BOSS_1F_3
+		CASE 3
+			;１～３日눈、ボス
+			CALL DUNGEON_82_BOSS_1F_2
+		;２Ｆ이벤트
+		CASE 100
+			;オンナ악마、고풍
+			CALL DUNGEON_82_ETC04
+		;CASE 101
+			
+		;３Ｆ이벤트
+		CASE 200
+			;人の臭い
+			;マッド악마
+			CALL DUNGEON_82_ETC02
+		;４Ｆ이벤트
+		CASE 300
+			;食料庫
+			;若者とケダモノ
+			CALL DUNGEON_82_ETC01
+		CASE 301
+			;쇼우지の居場所候補1
+			;いる
+			IF 던전フラグ:82:4 == 1
+				CALL DUNGEON_82_SYOUZI
+				
+				;쇼우지同行中なら탈출する
+				IF 던전フラグ:82:2 == 1 || 던전フラグ:82:2 == 2
+					FLAG:탈출 = 1
+				ENDIF
+			ELSE
+				PRINTFORMW 아무도 없다……
+			ENDIF
+		;５Ｆ이벤트
+		CASE 400
+			;쇼우지の居場所候補2
+			;いる
+			IF 던전フラグ:82:4 == 2
+				CALL DUNGEON_82_SYOUZI
+				
+				;쇼우지同行中なら탈출する
+				IF 던전フラグ:82:2 == 1 || 던전フラグ:82:2 == 2
+					FLAG:탈출 = 1
+				ENDIF
+			ELSE
+				PRINTFORMW 아무도 없다……
+			ENDIF
+		CASE 401
+			;쇼우지の居場所候補3
+			;いる
+			IF 던전フラグ:82:4 == 3
+				CALL DUNGEON_82_SYOUZI
+				
+				;쇼우지同行中なら탈출する
+				IF 던전フラグ:82:2 == 1 || 던전フラグ:82:2 == 2
+					FLAG:탈출 = 1
+				ENDIF
+			ELSE
+				PRINTFORMW 아무도 없다……
+			ENDIF
+		;６Ｆ이벤트
+		CASE 500
+			;쇼우지の居場所候補4、捕獲場所
+			;いる
+			IF 던전フラグ:82:4 == 4
+				CALL DUNGEON_82_SYOUZI
+				
+				;쇼우지同行中なら탈출する
+				IF 던전フラグ:82:2 == 1 || 던전フラグ:82:2 == 2
+					FLAG:탈출 = 1
+				ENDIF
+			;捕獲
+			ELSEIF 던전フラグ:82:4 == 5
+				CALL DUNGEON_82_SYOUZI
+				
+				;쇼우지同行中なら탈출する
+				IF 던전フラグ:82:2 == 1 || 던전フラグ:82:2 == 2
+					FLAG:탈출 = 1
+				ENDIF
+			ELSE
+				PRINTFORMW 아무도 없다……
+			ENDIF
+		CASE 501
+			;ボスの部屋
+			CALL DUNGEON_82_BOSS_ROOM
+			
+	ENDSELECT
+ELSE
+	PRINTFORMW 何も無いようだ
+	RETURN 0
+ENDIF
+
+;=======================================================================
+;タイル進入時の이벤트
+;=======================================================================
+@EVENT_ENTER_DUNGEON_82,ARG
+;ARG = 進入時の向き　0の場合ワープなど
+;==========
+;出입の処理
+;==========
+IF DA:(FLAG:現X):(FLAG:現Y) % 10 == 8
+	CALL DUNGEON_EXIT
+	RETURN 1
+;========
+;宝の処理
+;========
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 3
+	CALL TREASURE_82
+	RETURN RESULT
+;=======
+;階段
+;=======
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 6
+	CALL UPSTAIRS_82
+	RETURN RESULT
+
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 7
+	CALL DOWNSTAIRS_82
+	RETURN RESULT
+
+;==========
+;扉の処理
+;==========
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 2
+	CALL DUNGEON_DOOR,ARG
+	RETURN 1
+
+;========
+;이벤트
+;========
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 4
+	SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+		;１Ｆ이벤트
+		CASE 0
+			;オンナ악마達
+			CALL DUNGEON_82_ETC03
+			RETURN 0
+		CASE 1
+			;１～３日눈、ボス
+			CALL DUNGEON_82_BOSS_1F_1
+			RETURN 0
+		CASE 2
+			;１～３日눈、ボス
+			CALL DUNGEON_82_BOSS_1F_3
+			RETURN 0
+		CASE 3
+			;１～３日눈、ボス
+			CALL DUNGEON_82_BOSS_1F_2
+			RETURN 0
+		;２Ｆ이벤트
+		CASE 100
+			;オンナ악마、고풍
+			CALL DUNGEON_82_ETC04
+			RETURN 0
+		;CASE 101
+			
+		;３Ｆ이벤트
+		CASE 200
+			;人の臭い
+			;아귀系、マッド악마
+			CALL DUNGEON_82_ETC02
+			RETURN 0
+		;４Ｆ이벤트
+		CASE 300
+			;食料庫
+			;若者とケダモノ
+			CALL DUNGEON_82_ETC01
+			RETURN 0
+		CASE 301
+			;쇼우지の居場所候補1
+			;いる
+			IF 던전フラグ:82:4 == 1
+				CALL DUNGEON_82_SYOUZI
+				
+				;쇼우지同行中なら탈출する
+				IF 던전フラグ:82:2 == 1 || 던전フラグ:82:2 == 2
+					FLAG:탈출 = 1
+				ENDIF
+			ELSE
+				PRINTFORMW 아무도 없다……
+			ENDIF
+			RETURN 0
+		;５Ｆ이벤트
+		CASE 400
+			;쇼우지の居場所候補2
+			;いる
+			IF 던전フラグ:82:4 == 2
+				CALL DUNGEON_82_SYOUZI
+				
+				;쇼우지同行中なら탈출する
+				IF 던전フラグ:82:2 == 1 || 던전フラグ:82:2 == 2
+					FLAG:탈출 = 1
+				ENDIF
+			ELSE
+				PRINTFORMW 아무도 없다……
+			ENDIF
+			RETURN 0
+		CASE 401
+			;쇼우지の居場所候補3
+			;いる
+			IF 던전フラグ:82:4 == 3
+				CALL DUNGEON_82_SYOUZI
+				
+				;쇼우지同行中なら탈출する
+				IF 던전フラグ:82:2 == 1 || 던전フラグ:82:2 == 2
+					FLAG:탈출 = 1
+				ENDIF
+			ELSE
+				PRINTFORMW 아무도 없다……
+			ENDIF
+			RETURN 0
+		;６Ｆ이벤트
+		CASE 500
+			;쇼우지の居場所候補4、捕獲場所
+			;いる
+			IF 던전フラグ:82:4 == 4
+				CALL DUNGEON_82_SYOUZI
+				
+				;쇼우지同行中なら탈출する
+				IF 던전フラグ:82:2 == 1 || 던전フラグ:82:2 == 2
+					FLAG:탈출 = 1
+				ENDIF
+			;捕獲
+			ELSEIF 던전フラグ:82:4 == 5
+				CALL DUNGEON_82_SYOUZI
+				
+				;쇼우지同行中なら탈출する
+				IF 던전フラグ:82:2 == 1 || 던전フラグ:82:2 == 2
+					FLAG:탈출 = 1
+				ENDIF
+			ELSE
+				PRINTFORMW 아무도 없다……
+			ENDIF
+			RETURN 0
+		CASE 501
+			;ボスの部屋
+			CALL DUNGEON_82_BOSS_ROOM
+			RETURN 0
+	ENDSELECT
+ENDIF
+RETURN 0
+
+;=======================================================================
+;エンカウント率
+;=======================================================================
+@ENCOUNT_RATE_82
+SELECTCASE FLAG:現M
+	CASE 0 , 1 , 2 , 3 , 4 , 5
+		FLAG:エンカウント率 = FLAG:未遭遇歩数 * 5
+	CASEELSE
+		FLAG:エンカウント率 = FLAG:未遭遇歩数 * 5
+ENDSELECT
+SIF FLAG:未遭遇歩数 < 5
+	FLAG:エンカウント率 = 0
+;=======================================================================
+;필요레벨눈安
+;권장LV 雑물고기최저LV 雑물고기最高LV ボスLV 
+;=======================================================================
+@GET_DUNGEON_LV_82
+RETURN 20, 20, 25, 35
+;=======================================================================
+;エンカウント処理
+;=======================================================================
+@CHECK_ENCOUNT_82
+IF RAND:100 < FLAG:エンカウント率
+	CALL ENEMY_TABLE
+	RETURN 1
+ELSE
+	FLAG:未遭遇歩数 += 1
+	RETURN 0
+ENDIF
+;=======================================================================
+;적の종족の종류数
+;RETURN X でXが종류の数になります
+;あまりいろんなのが混ざっているとCOOPがとりにくくなったり
+;적の공격속성が多くなる傾向にあるので、
+;종류の数は1・2종류を主体に時々3종류くらいを기본にするのが望ましいと思われます
+;=======================================================================
+@CLASS_NUM_82
+SELECTCASE FLAG:現M
+	CASE 0 , 1
+		SELECTCASE RAND:100
+			CASE IS < 50
+				RETURN 1
+			CASEELSE
+				RETURN 2
+		ENDSELECT
+	CASE 2 , 3
+		SELECTCASE RAND:100
+			CASE IS < 50
+				RETURN 1
+			CASEELSE
+				RETURN 2
+		ENDSELECT
+	CASE 4 , 5
+		SELECTCASE RAND:100
+			CASE IS < 35
+				RETURN 1
+			CASEELSE
+				RETURN 2
+		ENDSELECT
+ENDSELECT
+;=======================================================================
+;적の総数
+;ARGは出現する적の종류です
+;RAND(X, Y)はX～Y-1のうち중 하나になるRANDです
+;なお、ここで帰った数字は下限を종족数、上限を10として自動的に調整されます
+;=======================================================================
+@ENEMY_NUM_82, ARG
+SELECTCASE FLAG:現M
+	CASE 0
+		RETURN RAND(ARG, ARG*2+1)
+	CASE 1 , 2
+		RETURN RAND(ARG, ARG*2+2)
+	CASE 3 ,4 , 5
+		RETURN RAND(ARG, ARG*2+3)
+ENDSELECT
+;=======================================================================
+;적の종류
+;=======================================================================
+@ENEMY_82, ARG
+SELECTCASE FLAG:現M
+	CASE 0
+		SELECTCASE RAND:100
+			CASE IS < 30
+				RETURN [[キャラ:이리스]],15
+			CASE IS < 35
+				RETURN [[キャラ:이리스]],16
+			CASE IS < 65
+				RETURN [[キャラ:엠푸사]],17
+			CASE IS < 70
+				RETURN [[キャラ:엠푸사]],18
+			CASE IS < 80
+				RETURN [[キャラ:잇폰다타라]],15
+			CASE IS < 90
+				RETURN [[キャラ:잇폰다타라]],16
+			CASE IS < 95
+				RETURN [[キャラ:키요히메]],17
+			CASE IS < 100
+				RETURN [[キャラ:키요히메]],18
+		ENDSELECT
+	CASE 1
+		SELECTCASE RAND:100
+			CASE IS < 30
+				RETURN [[キャラ:이리스]],16
+			CASE IS < 35
+				RETURN [[キャラ:이리스]],17
+			CASE IS < 65
+				RETURN [[キャラ:엠푸사]],18
+			CASE IS < 70
+				RETURN [[キャラ:엠푸사]],19
+			CASE IS < 80
+				RETURN [[キャラ:잇폰다타라]],16
+			CASE IS < 90
+				RETURN [[キャラ:잇폰다타라]],17
+			CASE IS < 95
+				RETURN [[キャラ:키요히메]],18
+			CASE IS < 100
+				RETURN [[キャラ:키요히메]],19
+		ENDSELECT
+	CASE 2
+		SELECTCASE RAND:100
+			CASE IS < 15
+				RETURN [[キャラ:잇폰다타라]],17
+			CASE IS < 25
+				RETURN [[キャラ:잇폰다타라]],18
+			CASE IS < 40
+				RETURN [[キャラ:그르르]],19
+			CASE IS < 50
+				RETURN [[キャラ:그르르]],20
+			CASE IS < 65
+				RETURN [[キャラ:노즈치]],19
+			CASE IS < 75
+				RETURN [[キャラ:노즈치]],20
+			CASE IS < 90
+				RETURN [[キャラ:잭랜턴]],20
+			CASE IS < 100
+				RETURN [[キャラ:잭랜턴]],20
+		ENDSELECT
+	CASE 3
+		SELECTCASE RAND:100
+			CASE IS < 15
+				RETURN [[キャラ:잇폰다타라]],18
+			CASE IS < 25
+				RETURN [[キャラ:잇폰다타라]],19
+			CASE IS < 40
+				RETURN [[キャラ:그르르]],20
+			CASE IS < 50
+				RETURN [[キャラ:그르르]],21
+			CASE IS < 65
+				RETURN [[キャラ:노즈치]],20
+			CASE IS < 75
+				RETURN [[キャラ:노즈치]],21
+			CASE IS < 90
+				RETURN [[キャラ:잭랜턴]],20
+			CASE IS < 100
+				RETURN [[キャラ:잭랜턴]],21
+		ENDSELECT
+	CASE 4
+		SELECTCASE RAND:100
+			CASE IS < 10
+				RETURN [[キャラ:잇폰다타라]],19
+			CASE IS < 20
+				RETURN [[キャラ:잇폰다타라]],19
+			CASE IS < 30
+				RETURN [[キャラ:그르르]],21
+			CASE IS < 40
+				RETURN [[キャラ:그르르]],22
+			CASE IS < 50
+				RETURN [[キャラ:노즈치]],21
+			CASE IS < 60
+				RETURN [[キャラ:노즈치]],22
+			CASE IS < 70
+				RETURN [[キャラ:잭랜턴]],21
+			CASE IS < 80
+				RETURN [[キャラ:잭랜턴]],22
+			CASE IS < 90
+				RETURN [[キャラ:코파텐구]],19
+			CASE IS < 100
+				RETURN [[キャラ:코파텐구]],20
+		ENDSELECT
+	CASE 5
+		SELECTCASE RAND:100
+			CASE IS < 10
+				RETURN [[キャラ:잇폰다타라]],19
+			CASE IS < 20
+				RETURN [[キャラ:잇폰다타라]],19
+			CASE IS < 30
+				RETURN [[キャラ:그르르]],22
+			CASE IS < 40
+				RETURN [[キャラ:그르르]],23
+			CASE IS < 50
+				RETURN [[キャラ:노즈치]],22
+			CASE IS < 60
+				RETURN [[キャラ:노즈치]],23
+			CASE IS < 70
+				RETURN [[キャラ:잭랜턴]],22
+			CASE IS < 80
+				RETURN [[キャラ:잭랜턴]],23
+			CASE IS < 90
+				RETURN [[キャラ:코파텐구]],21
+			CASE IS < 100
+				RETURN [[キャラ:코파텐구]],22
+		ENDSELECT
+ENDSELECT
+
+;=======================================================================
+;宝箱の中身
+;=======================================================================
+@TREASURE_82
+#LOCALSIZE 3
+LOCAL = FLAG:現M + 70
+LOCAL:1 = (DA:(FLAG:現X):(FLAG:現Y) / 10) % 100
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+	;マップ번호*100+そのマップで何番눈の宝箱かを示す数値でどの宝箱かを判別します。
+	;例えば0の場合、0版のマップの0番눈の宝箱であることを表しています。
+	;２Ｆ
+	CASE 100
+		CALL GET_TREASURE, [[아이템:반혼향]] , 1 , FLAG:現던전, LOCAL , LOCAL:1
+	;４Ｆ
+	CASE 300
+		CALL GET_TREASURE_MONEY, 1 , 200 , FLAG:現던전, LOCAL , LOCAL:1
+ENDSELECT
+RETURN 1
+
+;=======================================================================
+;階段置き場
+;=======================================================================
+;上り階段処理
+@UPSTAIRS_82
+;SELECTCASE DA:(FLAG:現X):(FLAG:現Y) /10
+;	;IDで分岐
+;	;１Ｆ上り階段
+;	CASE 0
+;			;@DUNGEON_UPSTAIRS_ID , 階段を進んだ先のマップ번호 , 移動先のタイルのID
+;			;２Ｆ＝マップ번호1番の0番눈の下り階段 = 1 * 1000 + 0 * 10 + 7 = 1007へと飛ぶ
+;			CALL DUNGEON_UPSTAIRS_ID, 1 , 1007
+;	CASE 100
+;			CALL DUNGEON_UPSTAIRS_ID, 2 , 2007
+;	CASE 200
+;			CALL DUNGEON_UPSTAIRS_ID, 3 , 3007
+;	CASE 300
+;			CALL DUNGEON_UPSTAIRS_ID, 4 , 4007
+;	CASEELSE
+;ENDSELECT
+
+;入り組んだ던전で階段がたくさん入り乱れている상태であれば、上記のように階段毎に指定してあげる필요があります。
+;しかしこの에코빌딩は1つのマップに上り階段が１つ、下り階段が１つ、上の階に進む＝マップ번호が一つ増えるという구조になっています
+;なので、下記のように書けば一行で済みます
+CALL DUNGEON_UPSTAIRS_ID, FLAG:現M+1 , (FLAG:現M + 1) * 1000 + 7
+RETURN 1
+
+;下り階段処理
+@DOWNSTAIRS_82
+;上り階段同様に、에코빌딩は下り階段も1行で記述できます
+CALL DUNGEON_DOWNSTAIRS_ID, FLAG:現M-1 , (FLAG:現M - 1) * 1000 + 6
+RETURN 1
+;=======================================================================
+;エレベーター定義
+;=======================================================================
+;ARGはそのエレベーターのタイル
+@DUNGEON_ELEVATOR_82, ARG
+;RESULT:1～5にエレベータが存在するマップの번호を代入し、RESULTS:1～5には표시したい명칭を代入、RETURNでは-1を返しておく
+RESULT:1 = 0
+RESULT:2 = 1
+RESULT:3 = 2
+RESULT:4 = 3
+RESULT:5 = 4
+RESULT:6 = 5
+RESULTS:1 = １Ｆ
+RESULTS:2 = ２Ｆ
+RESULTS:3 = ３Ｆ
+RESULTS:4 = ４Ｆ
+RESULTS:5 = ５Ｆ
+RESULTS:6 = ６Ｆ
+RETURN -1
+;=======================================================================
+;윤간참가악마
+;=======================================================================
+@DUNGEON_RAPE_DEVIL_82
+;랜덤にどの악마が出るか決定
+;RETURN CSV번호 , 人数 , 레벨
+SELECTCASE RAND:3
+	CASE 0 , 1 
+		RETURN [[キャラ:아귀]] , 3 + RAND:10 , CSVBASE([[キャラ:아귀]] , GETNUM(BASE , "LV") , 0) + RAND:3
+	CASE 2 ,3 ,4 ,5 ,
+		RETURN [[キャラ:잭랜턴]] , 3 + RAND:10 , CSVBASE([[キャラ:잭랜턴]] , GETNUM(BASE , "LV") , 0) + RAND:3
+ENDSELECT

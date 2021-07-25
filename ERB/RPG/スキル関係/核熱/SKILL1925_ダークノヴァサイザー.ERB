@@ -1,0 +1,178 @@
+﻿;原作だと만능だけどまぁ
+;스킬名
+@SKILL_NAME_1925,ARG
+RESULTS = 다크노바사이저
+
+;　명중
+@SKILL_HITRATE_1925, ARG
+RETURN 100
+
+;　위력
+@SKILL_POWER_1925, ARG
+RETURN 515
+
+;　최저공격횟수
+@SKILL_MINATTACKNUMBER_1925,ARG
+RETURN 1
+
+;　최대공격횟수
+@SKILL_MAXATTACKNUMBER_1925,ARG
+RETURN 1
+
+;　ＨＰ2を支払うかＭＰ3を支払うか
+@SKILL_COSTTYPE_1925, ARG
+RETURN 3
+;소비なし＝1
+
+;　コストの量
+@SKILL_COST_1925,ARG
+RETURN 35
+
+;　相性 화염・타격・핵열・파마のうち、もっとも데미지が高くなるものになる
+@SKILL_TYPE_1925,ARG
+#LOCALSSIZE 5
+#LOCALSIZE 4
+SIF ARG < 0 || 스킬속성표시中
+	RETURN GET_TYPE_NUM("핵열")
+SIF CFLAG:ARG:ターゲット > 16 || CFLAG:ARG:ターゲット < 1
+	RETURN GET_TYPE_NUM("핵열")
+LOCAL = POS(CFLAG:ARG:ターゲット)
+SIF LOCAL < 0
+	RETURN GET_TYPE_NUM("핵열")
+	
+LOCAL:2 = -300
+;全部-400とかないとおもうけど、あったらあれなんで、핵열をいれとく
+LOCALS = 핵열
+LOCALS:1 = 타격
+LOCALS:2 = 핵열
+LOCALS:3 = 주살
+LOCALS:4 = 화염
+FOR LOCAL:1, 1, 5
+	;판정用に数値を仕舞う。반사は-200扱い
+	LOCAL:3 = MAXBASE:LOCAL:(LOCALS:(LOCAL:1)) == 999 ? -200 # MAXBASE:LOCAL:(LOCALS:(LOCAL:1))
+	LOCAL:3 = !(HAVE_SKILL(ARG,[[스킬:영세라이도우]]) || HAVE_SKILL(ARG,2947)) && CFLAG:LOCAL:(LOCALS:(LOCAL:1)+"무효화횟수") ? -5 # LOCAL:3
+	LOCAL:3 = CFLAG:LOCAL:(LOCALS:(LOCAL:1)+"가드킬") && LOCAL:3 < 100 ? 100 # LOCAL:3
+	SELECTCASE LOCAL:1
+		CASE 1
+			LOCAL:3 = CFLAG:LOCAL:물리반사フラグ ? -200 # LOCAL:3
+		CASE 2 TO 4
+			LOCAL:3 = CFLAG:LOCAL:마법반사フラグ ? -200 # LOCAL:3
+		CASEELSE
+	ENDSELECT
+	IF LOCAL:3 > LOCAL:2
+		LOCAL:2 = LOCAL:3
+		LOCALS = %LOCALS:(LOCAL:1)%
+	ENDIF
+NEXT
+RETURN GET_TYPE_NUM(LOCALS)
+;핵열
+
+;　1EXTRAか2MAGICか
+@SKILL_DECIDE_TYPE_1925, ARG
+RETURN 1
+;魔法
+
+;　1物理데미지で計算するか2魔法데미지で計算するか
+@SKILL_DAMAGETYPE_1925, ARG
+RETURN 1
+
+;　대상が1적か2아군か3場전체か4特殊か
+@SKILL_TARGET_1925
+RETURN 1
+
+;　사거리
+@SKILL_RANGE_1925,ARG
+RETURN 3
+
+;　範囲　11체　21열　3전체　4　적아군전체
+@SKILL_SPHERE_1925,ARG
+RETURN 1
+
+;　 効果の타입　1공격、2회복、3상태変化、4特殊、5상태회복
+@SKILL_EFECT_1925
+RETURN 1
+
+;　 特殊処理の有無、及び処理内容
+@SKILL_SPECIALEFECT_1925,ARG
+;ARG = 1だった場合は処理の有無を返します
+SIF ARG == 1
+	RETURN 0
+;以下に特殊な処理を記述します
+
+;계승타입,継承不能
+@SKILL_SUCCESSION_TYPE_1925
+RETURN 19
+
+@継承不能_1925
+RETURN 1
+;핵열
+
+;속도보정
+@SKILL_SPEED_1925, ARG = -1
+RETURN 0
+
+;　구상の표시とその타입
+@SKILL_MESSAGE_1925,ARG
+
+;전투時以外に사용できるか
+@SKILL_ACTIONABLE_FIELD_1925
+RETURN 0
+
+;스킬変化？用랭크
+@SKILL_RANK_1925
+RETURN 15
+
+@SKILL_RANKUP_1925
+RETURN 0
+
+;テンプレート用、추가효과シリーズ
+;추가효과스테이터스
+@SKILL_ADDTIONAL_STATE_1925,ARG
+RETURN 0
+
+;추가효과상성
+@SKILL_ADDTIONAL_TYPE_1925,ARG
+RETURN 0
+
+;추가효과기본부여확률
+@SKILL_ADDTIONAL_BASE_RATE_1925,ARG
+RETURN 0
+
+;추가효과부여확률上限
+@SKILL_ADDTIONAL_MAX_RATE_1925,ARG
+RETURN 0
+;====================================================
+;스킬及び行動の実行　882
+;物理計算だけど、마력の値で、보정をかける
+;힘と지혜と마력の間の差をみて、100% ~200%で変動
+;아폴로もたっちゃんもバランス志向だし、コマンド的に物理と魔法の融合って感じだし
+;====================================================
+@ACTION_1925, ARG, ARG:1
+;0除算회피に+1をつける
+LOCAL = MIN(MAXBASE:ARG:힘, MAXBASE:ARG:마력)
+SIF LOCAL <= 0
+	LOCAL = 1
+LOCAL = LOCAL * 64 / (MAXBASE:ARG:힘+MAXBASE:ARG:마력)
+CFLAG:ARG:공격강화 += LOCAL
+CALL ATTACK_SINGLE, ARG, POS(ARG:1), 1925
+CFLAG:ARG:공격강화 -= LOCAL
+
+
+;====================================================
+;実行内容ここまで
+;====================================================
+
+;　 説明文の표시
+@SKILL_EXPLAIN_1925
+PRINTL [후열] 적 １체에 복합속성(타격＋화염＋주살＋핵열) 초특대 물리데미지.
+;타격・화염・神聖・핵열のうちもっとも조건がいい相性になる
+
+;継承に필요な部位
+@継承部位_1925,ARG
+RETURN 1
+
+;사용조건
+@SKILL_SPECIAL_ACTIONABLE_1925,ARG
+RETURN 1
+;とくにない
+

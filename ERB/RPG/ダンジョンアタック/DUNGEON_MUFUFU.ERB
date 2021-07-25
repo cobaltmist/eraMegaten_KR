@@ -1,0 +1,1102 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:DUNGEON_MUFUFU.ERB
+;	Facility	:던전内성욕처리システム
+;
+;	Licence		:。
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		20XX/XX/XX		いろいろ				新規作成
+;	002		2012/12/02		ネトリス				PALAM:욕정から『CFLAG:던전内発情用욕정치』を参照にするように변경などなど
+;													『CFLAG:던전内発情用욕정치』の上限を설정、減少時の処理をすこし調整、표시方法も数値から記号と色の변화に변경
+;													질내と바기나に『불결:애액』がつくように
+;	003		2019/07/25		JK好き					LOCAL:4がリセットされていないために윤간されていないのに윤간경험が入る不具合を修正
+;													仲魔の子を임신時に父親が正しく표시されない不具合を修正
+;	004		2021/04/27		JK好き					280行目くらいから～中出し回数に応じてテキトーにCFLAG:子宮現在容量を加算
+;													CALL SHOW_ADD_EXPの後に獲得経験を使う計算をしていた部分をCALL SHOW_ADD_EXPの前に移動
+;	005		2021/06/01		JK好き					屋外輪姦時に対象が存在しない場合の処理を考慮していなかったバグの修正
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+
+;-----------------------------------------------------
+;성욕처리関連
+;-----------------------------------------------------
+;성욕처리の計算
+@성욕처리, ARG , ARG:1 = -1 , ARG:2 = -1
+#DIM CHARA , 1
+#DIM 元욕정 , 2
+#DIM LCOUNT
+;ARG = 処理するキャラ
+;ARG:1 = 相손
+;ARG:2 = プ레이内容（1:仲魔と섹스をする 2:仲魔に봉사してもらう 3:この場で자위をする 4:物陰で자위をしてくる 5:불결を落とす）
+;초기化
+FOR LOCAL , 0 , 1 + (ARG:1 > -1)
+	CFLAG:(ARG:LOCAL):挿入횟수 = 0
+	CFLAG:(ARG:LOCAL):本番횟수 = 0
+	CFLAG:(ARG:LOCAL):中出し횟수 = 0
+	CFLAG:(ARG:LOCAL):애널횟수 = 0
+	CFLAG:(ARG:LOCAL):펠라횟수 = 0
+	CFLAG:(ARG:LOCAL):클리자극횟수 = 0
+	CFLAG:(ARG:LOCAL):가슴責め횟수 = 0
+	NOWEX:(ARG:LOCAL):Ｃ절정 = 0
+	NOWEX:(ARG:LOCAL):Ｖ절정 = 0
+	NOWEX:(ARG:LOCAL):Ａ절정 = 0
+	NOWEX:(ARG:LOCAL):Ｂ절정 = 0
+	NOWEX:(ARG:LOCAL):사정 = 0
+	NOWEX:(ARG:LOCAL):분유 = 0
+	TCVAR:(ARG:LOCAL):획득자위경험 = 0
+	元욕정:LOCAL = CFLAG:(ARG:LOCAL):던전内発情用욕정치
+	DOWNBASE:(ARG:LOCAL):체력 = 0
+	DOWNBASE:(ARG:LOCAL):기력 = 0
+NEXT
+;プ레이횟수用
+LOCAL:1 = 0
+;애무횟수計算用
+LOCAL:2 = 0
+;윤간악마の번호격납用
+LOCAL:3 = 0
+;윤간人数
+LOCAL:4 = 0
+;CFLAG:던전内発情用욕정치の표시用
+LOCAL:5 = 0
+;プ레이횟수
+IF ARG:2 == 1
+	LOCAL:1 = 2 + (ABL:(ARG):기교 + ABL:(ARG:1):봉사정신)
+ELSEIF ARG:2 == 2
+	LOCAL:1 = 2 + (ABL:(ARG:1):기교 + ABL:(ARG:1):봉사정신) / 2
+ELSEIF ARG:2 == 3 || ARG:2 == 4
+	LOCAL:1 = 2 + ((ABL:(ARG):기교 + ABL:(ARG):노출증) / 2 + ABL:(ARG):자위중독) / 2
+ENDIF
+;절륜をもっている場合は횟수が増える
+LOCAL:1 += TALENT:ARG:절륜 * 2
+SIF ARG:1 > 0 && TALENT:(ARG:1):절륜
+	LOCAL:1 += 2
+;プ레이内容
+IF ARG:2 == 1
+	FOR LCOUNT , 0 , LOCAL:1
+		$AIBU
+		;前戯は3回まで
+		IF RAND:100 < 30 && LOCAL:2 < 3
+			FOR LOCAL , 0 , 2
+				IF HAVE_PENIS(ARG:LOCAL)
+					CFLAG:(ARG:(!LOCAL)):펠라횟수 += 1
+				ELSE
+					IF RAND:2 == 0
+						CFLAG:(ARG:LOCAL):가슴責め횟수 += 1
+					ELSE
+						CFLAG:(ARG:LOCAL):클리자극횟수 += 1
+					ENDIF
+				ENDIF
+			NEXT
+			LOCAL:2 += 1
+			GOTO AIBU
+		ELSEIF RAND:100 < 60
+			IF HAVE_PENIS(ARG) && HAVE_VAGINA(ARG:1)
+				CFLAG:(ARG:1):本番횟수 += 1
+				CFLAG:(ARG):挿入횟수 += 1
+			ELSEIF HAVE_PENIS(ARG)
+				CFLAG:(ARG:1):애널횟수 += 1
+				CFLAG:(ARG):挿入횟수 += 1
+			ELSEIF HAVE_PENIS(ARG:1)
+				CFLAG:(ARG):本番횟수 += 1
+				CFLAG:(ARG:1):挿入횟수 += 1
+			ELSE
+				CFLAG:(ARG:1):클리자극횟수 += 1
+			ENDIF
+		ELSEIF RAND:100 < 50
+			FOR LOCAL , 0 , 2
+				IF HAVE_PENIS(ARG:LOCAL)
+					CFLAG:(ARG:(!LOCAL)):펠라횟수 += 2
+				ELSE
+					CFLAG:(ARG:LOCAL):클리자극횟수 += 2
+				ENDIF
+			NEXT
+		ELSE
+			IF HAVE_PENIS(ARG)
+				CFLAG:(ARG:1):애널횟수 += 1
+				CFLAG:(ARG):挿入횟수 += 1
+			ELSEIF HAVE_PENIS(ARG:1)
+				CFLAG:(ARG):애널횟수 += 1
+				CFLAG:(ARG:1):挿入횟수 += 1
+			ELSE
+				CFLAG:(ARG:1):클리자극횟수 += 1
+				CFLAG:(ARG:1):가슴責め횟수 += 1
+				CFLAG:(ARG):가슴責め횟수 += 1
+				CFLAG:(ARG):클리자극횟수 += 1
+			ENDIF
+		ENDIF
+	NEXT
+	CFLAG:ARG:中出し횟수 = CFLAG:ARG:本番횟수
+	CFLAG:(ARG:1):中出し횟수 = CFLAG:(ARG:1):本番횟수
+ELSEIF ARG:2 == 2
+	IF HAVE_PENIS(ARG)
+		CFLAG:(ARG:1):펠라횟수 += LOCAL:1
+	ELSE
+		CFLAG:(ARG):클리자극횟수 = 1 + RAND:(MAX(1, LOCAL:1 - 1))
+		CFLAG:(ARG):가슴責め횟수 = LOCAL:1 - CFLAG:(ARG):가슴責め횟수
+	ENDIF
+ELSEIF ARG:2 == 3
+	TCVAR:ARG:획득자위경험 += LOCAL:1
+	CFLAG:ARG:클리자극횟수 = 1 + RAND:(MAX(1 , TCVAR:ARG:획득자위경험 - 1))
+	CFLAG:ARG:가슴責め횟수 = TCVAR:ARG:획득자위경험 - CFLAG:ARG:클리자극횟수
+ELSEIF ARG:2 == 4
+	PRINTFORML ・
+	PRINTFORML ・・
+	PRINTFORML ・・・
+	PRINTL 
+	;윤간확률
+	IF 위험일(ARG) >= 2
+		LOCAL:2 = 40
+	ELSEIF CFLAG:ARG:던전内発情用욕정치 >= 10000
+		LOCAL:2 = 20
+	ELSEIF CFLAG:ARG:던전内発情用욕정치 >= 5000
+		LOCAL:2 = 10
+	ELSE
+		LOCAL:2 = 1
+	ENDIF
+	;満月時やられやすくなる
+	SIF FLAG:月齢 == 8
+		LOCAL:2 += 10
+	;월하향머리장식を付けていると大幅アップ
+	SIF CFLAG:ARG:모자 == 30
+		LOCAL:2 += 50
+	TCVAR:ARG:획득자위경험 = LOCAL:2 / 10 + LOCAL:1
+	CFLAG:ARG:가슴責め횟수 = 1 + RAND:(TCVAR:ARG:획득자위경험 +1)
+	CFLAG:ARG:클리자극횟수 = TCVAR:ARG:획득자위경험 - CFLAG:ARG:가슴責め횟수
+	;던전内に설정がされている場合、악마に윤간される가능性がある
+	TRYCCALLFORM DUNGEON_RAPE_DEVIL_{FLAG:現던전}
+		IF RAND:100 < LOCAL:2 && !IS_LOOKSLIKE_MALE(ARG)
+			;윤간されちゃうかも판정へ
+			CALL 성욕처리_윤간, ARG , RESULT
+			LOCAL:3 = RESULT ;횟수
+			LOCAL:4 = RESULT:1 ;人数
+		ENDIF
+	CATCH
+	ENDCATCH
+ELSEIF ARG:2 == 5
+	PALAM:ARG:윤활 = 0
+	;질내以外의 불결を綺麗に
+	FOR LCOUNT, 0, 8
+		SIF LCOUNT == 6
+			CONTINUE
+		STAIN:ARG:LCOUNT = 0
+	NEXT
+	RETURN 0
+ENDIF
+
+FOR LOCAL , 0 , 1 + (ARG:1 > -1)
+	IF TALENT:(ARG:LOCAL):남자 == 0
+		CALL SET_STAIN("질내" , "애액" , (ARG:LOCAL))
+		CALL SET_STAIN("바기나" , "애액" , (ARG:LOCAL))
+		IF CFLAG:(ARG:LOCAL):本番횟수 > 0
+			CALL SET_STAIN("질내" , "정액" , (ARG:LOCAL))
+			CALL SET_STAIN("바기나" , "정액" , (ARG:LOCAL))
+		ENDIF
+		IF CFLAG:(ARG:LOCAL):펠라횟수 > 0
+			CALL SET_STAIN("입" , "정액" , (ARG:LOCAL))
+			CALL SET_STAIN("손" , "정액" , (ARG:LOCAL))
+			SIF TEQUIP:(ARG:LOCAL):유방노출
+				CALL SET_STAIN("가슴" , "정액" , (ARG:LOCAL))
+		ENDIF
+		IF CFLAG:(ARG:LOCAL):애널횟수 > 0
+			CALL SET_STAIN("애널" , "정액" , (ARG:LOCAL))
+		ENDIF
+		;윤간された場合は머리카락も불결る
+		SIF LOCAL:3 > 0
+			CALL SET_STAIN("머리카락" , "정액" , ARG)
+	ENDIF
+NEXT
+
+
+;誰が犯したか판정
+SIF LOCAL:3 > 0
+	ARG:1 = POS(14)
+
+FOR LOCAL , 0 , 1 + (ARG:1 > -1 && ARG:1 != POS(14))
+	TCVAR:(ARG:LOCAL):획득펠라경험 += CFLAG:(ARG:LOCAL):펠라횟수
+	SIF ARG:1 > -1 && ARG:1 != POS(14) && CFLAG:(ARG:LOCAL):함락キャラ == CFLAG:(ARG:(!LOCAL)):キャラ固有の번호
+		TCVAR:(ARG:LOCAL):획득봉사쾌락경험 += CFLAG:(ARG:LOCAL):펠라횟수
+	TCVAR:(ARG:LOCAL):획득Ｖ경험 += CFLAG:(ARG:LOCAL):本番횟수
+	TCVAR:(ARG:LOCAL):획득Ａ경험 += CFLAG:(ARG:LOCAL):애널횟수
+	TCVAR:(ARG:LOCAL):획득성교경험 += CFLAG:(ARG:LOCAL):本番횟수 + CFLAG:(ARG:LOCAL):애널횟수
+	SIF ARG:1 == POS(14)
+		TCVAR:(ARG:LOCAL):획득윤간경험 += (LOCAL:4 > 1 ? 1 # 0)
+	SIF ARG:1 > -1 && !(TALENT:(ARG:LOCAL):짐승 || TALENT:(ARG:LOCAL):새) && (TALENT:(ARG:(!LOCAL)):짐승 || TALENT:(ARG:(!LOCAL)):새)
+		TCVAR:(ARG:LOCAL):획득수간경험 += TCVAR:(ARG:LOCAL):획득성교경험
+	IF ARG:1 > -1 && !LOCAL:3
+		TCVAR:(ARG:LOCAL):획득성교경험 += CFLAG:(ARG:(!LOCAL)):本番횟수 + CFLAG:(ARG:(!LOCAL)):애널횟수
+	ENDIF
+	
+	;ソースの획득
+	IF ARG:1 > -1
+		SOURCE:(ARG:LOCAL):쾌Ｃ += CFLAG:(ARG:LOCAL):클리자극횟수 * (200)
+		SOURCE:(ARG:LOCAL):쾌Ｃ += (CFLAG:(ARG:(!LOCAL)):本番횟수 + CFLAG:(ARG:(!LOCAL)):애널횟수 + CFLAG:(ARG:(!LOCAL)):펠라횟수) * (250)
+		CUP:(ARG:LOCAL):쾌Ｃ += 300 * (CFLAG:(ARG:LOCAL):클리자극횟수 > 0)
+		SOURCE:(ARG:LOCAL):쾌Ｖ += CFLAG:(ARG:LOCAL):本番횟수 * (250 + ABL:(ARG:LOCAL):섹스중독 * 25)
+		CUP:(ARG:LOCAL):쾌Ｖ +=  + MIN(1 , CFLAG:(ARG:LOCAL):本番횟수) * 350
+		SOURCE:(ARG:LOCAL):쾌Ａ += CFLAG:(ARG:LOCAL):애널횟수 * (250 + ABL:(ARG:LOCAL):섹스중독 * 25)
+		CUP:(ARG:LOCAL):쾌Ａ +=  + MIN(1 , CFLAG:(ARG:LOCAL):애널횟수) * 350
+		SOURCE:(ARG:LOCAL):쾌Ｂ += CFLAG:(ARG:LOCAL):가슴責め횟수 * (225) + 300
+		CUP:(ARG:LOCAL):쾌Ｂ += 300 * (CFLAG:(ARG:LOCAL):가슴責め횟수 > 0)
+		SOURCE:(ARG:LOCAL):욕정 += (CFLAG:(ARG:LOCAL):펠라횟수 + CFLAG:(ARG:LOCAL):클리자극횟수 + CFLAG:(ARG:LOCAL):가슴責め횟수) * 25
+	;자위用
+	ELSEIF ARG:2 == 3
+		SOURCE:(ARG:LOCAL):쾌Ｃ += CFLAG:(ARG:LOCAL):클리자극횟수 * (25 * (10 + ABL:(ARG:LOCAL):자위중독 + ABL:(ARG:LOCAL):노출증))
+		CUP:(ARG:LOCAL):쾌Ｃ += 300 * (CFLAG:(ARG:LOCAL):가슴責め횟수 > 0)
+		SOURCE:(ARG:LOCAL):쾌Ｂ += CFLAG:(ARG:LOCAL):가슴責め횟수 * (25 * (10 + ABL:(ARG:LOCAL):자위중독 + ABL:(ARG:LOCAL):노출증))
+		CUP:(ARG:LOCAL):쾌Ｂ += 300 * (CFLAG:(ARG:LOCAL):가슴責め횟수 > 0)
+		SOURCE:(ARG:LOCAL):욕정 += (CFLAG:(ARG:LOCAL):클리자극횟수 + CFLAG:(ARG:LOCAL):가슴責め횟수 + ABL:(ARG:LOCAL):노출증) * 25
+	ELSEIF ARG:2 == 4
+		SOURCE:(ARG:LOCAL):쾌Ｃ += CFLAG:(ARG:LOCAL):클리자극횟수 * (25 * (ABL:(ARG:LOCAL):자위중독 + 10)) + 300 * (CFLAG:(ARG:LOCAL):클리자극횟수 > 0)
+		CUP:(ARG:LOCAL):쾌Ｃ += 300 * (CFLAG:(ARG:LOCAL):가슴責め횟수 > 0)
+		SOURCE:(ARG:LOCAL):쾌Ｂ += CFLAG:(ARG:LOCAL):가슴責め횟수 * (25 * (ABL:(ARG:LOCAL):자위중독 + 10)) + 300 * (CFLAG:(ARG:LOCAL):가슴責め횟수 > 0)
+		CUP:(ARG:LOCAL):쾌Ｂ += 300 * (CFLAG:(ARG:LOCAL):가슴責め횟수 > 0)
+		SOURCE:(ARG:LOCAL):욕정 += (CFLAG:(ARG:LOCAL):클리자극횟수 + CFLAG:(ARG:LOCAL):가슴責め횟수) * 25
+	ENDIF
+	
+	IF ARG:1 > -1
+		CALL TECHNIQUE_CHECK, ARG:(!LOCAL), ARG:LOCAL
+		TCVAR:(ARG:(!LOCAL)):획득조교경험 = 0
+	ELSE
+		CALL TECHNIQUE_CHECK, ARG:LOCAL, ARG:LOCAL
+		TCVAR:(ARG:LOCAL):획득조교경험 = 0
+		
+	ENDIF
+	CALL SOURCE_CHECK_DUNGEON , ARG:LOCAL
+NEXT
+
+IF LOCAL:3 > 0
+	TCVAR:(ARG):획득질사경험 += CFLAG:(ARG):中出し횟수
+	TCVAR:(ARG):획득정액경험 += CFLAG:(ARG):本番횟수 + CFLAG:(ARG):애널횟수 + CFLAG:(ARG):펠라횟수
+ELSEIF ARG:1 > -1
+	SIF CFLAG:(ARG):本番횟수
+		CFLAG:(ARG):中出し횟수 += NOWEX:(ARG:1):사정 * CFLAG:(ARG):本番횟수 / (CFLAG:(ARG):本番횟수 + CFLAG:(ARG):애널횟수 + CFLAG:(ARG):펠라횟수)
+	TCVAR:(ARG):획득질사경험 += CFLAG:(ARG):中出し횟수
+	SIF CFLAG:(ARG:1):本番횟수
+		CFLAG:(ARG:1):中出し횟수 += NOWEX:(ARG):사정 * CFLAG:(ARG:1):本番횟수 / (CFLAG:(ARG:1):本番횟수 + CFLAG:(ARG:1):애널횟수 + CFLAG:(ARG:1):펠라횟수)
+	TCVAR:(ARG:1):획득질사경험 += CFLAG:(ARG:1):中出し횟수
+ENDIF
+PRINTL 
+
+
+IF CFLAG:(ARG):中出し횟수
+	SELECTCASE CFLAG:(ARG):中出し횟수
+		CASE 1 TO 10
+			CFLAG:(ARG):子宮現在容量 += 10
+		CASE 11 TO 20
+			CFLAG:(ARG):子宮現在容量 += 20
+		CASE 21 TO 30
+			CFLAG:(ARG):子宮現在容量 += 30
+		CASE 31 TO 50
+			CFLAG:(ARG):子宮現在容量 += 50
+		CASEELSE
+			IF FLAG:ふたごちゃんフラグ > 0
+				CFLAG:(ARG):子宮現在容量 += 100 + RAND:(CFLAG:(ARG):中出し횟수)
+			ELSE
+				CFLAG:(ARG):子宮現在容量 += 100
+			ENDIF
+	ENDSELECT
+	;디버그용
+	DEBUGPRINTFORML %CALLNAME:(ARG)%中出し횟수{CFLAG:(ARG):中出し횟수}
+	DEBUGPRINTFORML %CALLNAME:(ARG)%子宮現在容量{CFLAG:(ARG):子宮現在容量}
+ENDIF
+
+IF ARG:1 > -1
+	IF CFLAG:(ARG:1):中出し횟수
+		SELECTCASE CFLAG:(ARG:1):中出し횟수
+			CASE 1 TO 10
+				CFLAG:(ARG:1):子宮現在容量 += 10
+			CASE 11 TO 20
+				CFLAG:(ARG:1):子宮現在容量 += 20
+			CASE 21 TO 30
+				CFLAG:(ARG:1):子宮現在容量 += 30
+			CASE 31 TO 50
+				CFLAG:(ARG:1):子宮現在容量 += 50
+			CASEELSE
+				IF FLAG:ふたごちゃんフラグ > 0
+					CFLAG:(ARG:1):子宮現在容量 += 100 + RAND:(CFLAG:(ARG:1):中出し횟수)
+				ELSE
+					CFLAG:(ARG:1):子宮現在容量 += 100
+				ENDIF
+		ENDSELECT
+		;디버그용
+		DEBUGPRINTFORML %CALLNAME:(ARG:1)%中出し횟수{CFLAG:(ARG:1):中出し횟수}
+		DEBUGPRINTFORML %CALLNAME:(ARG:1)%子宮現在容量{CFLAG:(ARG:1):子宮現在容量}
+	ENDIF
+ENDIF
+
+;妊娠判定用
+FOR LOCAL , 0 , 1 + (ARG:1 > -1 && !LOCAL:3)
+	IF PREGNANCY_ABLE((ARG:LOCAL)) && TCVAR:(ARG:LOCAL):획득질사경험
+		IF (ARG:(!LOCAL)) == MASTER
+			CFLAG:(ARG:LOCAL):主人の中出氏による임신판정 = TCVAR:(ARG:LOCAL):획득질사경험*2
+			CHARA = MASTER
+		ELSEIF !LOCAL:3 && (ARG:(!LOCAL)) == ASSI
+			CFLAG:(ARG:LOCAL):조수の中出氏による임신판정 = TCVAR:(ARG:LOCAL):획득질사경험*2
+			CHARA = (ARG:(!LOCAL))
+		ELSEIF !LOCAL:3 && (ARG:(!LOCAL)) == TARGET
+			CFLAG:(ARG:LOCAL):奴隷の中出氏による임신판정 = TCVAR:(ARG:LOCAL):획득질사경험*2
+			CHARA = (ARG:(!LOCAL))
+		ELSEIF !LOCAL:3 && CFLAG:(ARG:(!LOCAL)):PTフラグ == 2
+			CFLAG:(ARG:LOCAL):奴隷の中出氏による임신판정 = TCVAR:(ARG:LOCAL):획득질사경험*2
+			CHARA = (ARG:(!LOCAL))
+		ELSEIF !LOCAL:3
+			CFLAG:(ARG:LOCAL):顧客の中出氏による임신판정 = TCVAR:(ARG:LOCAL):획득질사경험*2
+			CHARA = (ARG:(!LOCAL))
+		ELSEIF LOCAL:3 > 0
+			CFLAG:(ARG:LOCAL):顧客の中出氏による임신판정 = TCVAR:(ARG:LOCAL):획득질사경험*2
+			CHARA = -1
+		ENDIF
+		CALL PREGNANCY_CHECK, (ARG:LOCAL)
+		;임신
+		IF RESULT && CHARA > -1
+			CALL SET_FATHERINFO, (ARG:LOCAL), NO:(ARG:(!LOCAL)), CFLAG:CHARA:キャラ固有の번호, CALLNAME:(ARG:(!LOCAL))
+		ELSEIF RESULT
+			CALL SET_FATHERINFO, (ARG:LOCAL), NO:(ARG:(!LOCAL)), CHARA, NAME:(ARG:(!LOCAL))
+		ENDIF
+	ENDIF
+NEXT
+FORCEWAIT
+
+;구상呼び出し
+SWAP TARGET , ARG:1
+SWAP PLAYER , ARG
+TFLAG:이벤트구상呼び出し用 = 78 + ARG:2
+IF TARGET > -1
+	IF LOCAL:3
+		TFLAG:이벤트구상呼び出し用 = 85
+		CALL KOJO_TALK, TARGET ,90
+	ELSE
+		CALL KOJO_MESSAGE_EVENT
+	ENDIF
+ENDIF
+SIF ARG:2 == 1
+	TFLAG:이벤트구상呼び出し用 = 83
+SIF ARG:2 == 2
+	TFLAG:이벤트구상呼び出し用 = 84
+SWAP TARGET , PLAYER
+SIF TARGET > -1
+	CALL KOJO_MESSAGE_EVENT
+SWAP TARGET , PLAYER
+
+
+SWAP TARGET , ARG:1
+SWAP PLAYER , ARG
+
+
+;경험の加算と표시
+
+
+FOR LOCAL , 0 ,1 + (ARG:1 > -1 && !LOCAL:3)
+	DRAWLINE
+	PRINTFORML ＲＥＳＵＬＴ(%CALLNAME:(ARG:LOCAL)%)
+	IF CFLAG:(ARG:LOCAL):本番횟수
+		IF TALENT:(ARG:LOCAL):처녀
+			IF LOCAL:3
+				CALL ADDS_ABNORMAL_EXP, "처녀상실（윤간）", ARG
+				TALENT:(ARG:LOCAL):처녀 = 0
+				DOWNBASE:(ARG:LOCAL):체력 += 500
+				DOWNBASE:(ARG:LOCAL):기력 += 500
+			ELSE
+				PRINTFORML 처녀 상실
+				TALENT:(ARG:LOCAL):처녀 = 0
+				DOWNBASE:(ARG:LOCAL):체력 += 200
+				DOWNBASE:(ARG:LOCAL):기력 += 100
+			ENDIF
+		ELSEIF TALENT:(ARG:LOCAL):재생처녀
+			PRINTFORML 재생처녀 상실
+			TALENT:(ARG:LOCAL):재생처녀 = 0
+			DOWNBASE:(ARG:LOCAL):체력 += 200
+			DOWNBASE:(ARG:LOCAL):기력 += 100
+		ENDIF
+	ENDIF
+	CALL SHOW_ADD_EXP, ARG:LOCAL
+	CALL SHOW_ABNORMAL_EXP, (ARG:LOCAL)
+;체력・기력소비
+	;던전内発情用욕정치は절정分減り、윤간された場合は増える、자위は少量減る
+	SIF ARG:2 < 3
+		CFLAG:(ARG:LOCAL):던전内発情用욕정치 -= LIMIT(SUMARRAY(NOWEX:(ARG:LOCAL):0, 0, 6) * 800, 0, 6000+(250*(RAND:8+1)))
+	IF LOCAL:3 > 0
+		CFLAG:(ARG:LOCAL):던전内発情用욕정치 +=SUMARRAY(NOWEX:(ARG:LOCAL):0, 0, 6) * 100
+	ELSEIF ARG:2 == 4 && LOCAL:3 == 0
+		CFLAG:(ARG:LOCAL):던전内発情用욕정치 -= LIMIT(SUMARRAY(NOWEX:(ARG:LOCAL):0, 0, 6) * 300, 0, 2000+(250*(RAND:4+1)))
+	ENDIF
+	
+	;남자の場合はCFLAG:던전内発情用욕정치は0に
+	SIF TALENT:(ARG:LOCAL):남자
+		CFLAG:(ARG:LOCAL):던전内発情用욕정치 = 0
+		
+	IF SUMARRAY(NOWEX:(ARG:LOCAL):0, 0, 6) && LOCAL:3 == 0
+		TIMES CFLAG:(ARG:LOCAL):던전内発情用욕정치 , 0.85
+	ENDIF
+	;CFLAG:던전内発情用욕정치の上限は15000
+	SIF CFLAG:(ARG:LOCAL):던전内発情用욕정치 > 15000
+		CFLAG:(ARG:LOCAL):던전内発情用욕정치 = 15000
+	SIF CFLAG:(ARG:LOCAL):던전内発情用욕정치 < 0
+		CFLAG:(ARG:LOCAL):던전内発情用욕정치 = 0
+	IF CFLAG:(ARG:LOCAL):던전内発情用욕정치 != 元욕정:LOCAL
+		PRINTFORM 욕정　
+		LOCAL:5 = MIN(15000 , 元욕정:LOCAL)
+		SETCOLOR 0x40 + (0xff - 0x40) * LOCAL:5 / 15000 , 0x40 - (0x40 * LOCAL:5 / 15000) , 0x40 + (0xff - 0x40) * LOCAL:5 / 15000
+		SETCOLOR 0xff * LOCAL:5 / 15000 , 0 , 0xff * LOCAL:5 / 15000
+		IF 元욕정:LOCAL >= 10000
+			PRINTFORM %ハート()%ＭＡＸ%ハート()%
+		ELSE
+			PRINTFORM %ハート()%
+		ENDIF
+		RESETCOLOR
+		PRINTFORM 　→　
+		LOCAL:5 = MIN(15000 , CFLAG:(ARG:LOCAL):던전内発情用욕정치)
+		SETCOLOR 0x40 + (0xff - 0x40) * LOCAL:5 / 15000 , 0x40 - (0x40 * LOCAL:5 / 15000) , 0x40 + (0xff - 0x40) * LOCAL:5 / 15000
+		SETCOLOR 0xff * LOCAL:5 / 15000 , 0 , 0xff * LOCAL:5 / 15000
+		IF CFLAG:(ARG:LOCAL):던전内発情用욕정치 >= 10000
+			PRINTFORML %ハート()%ＭＡＸ%ハート()%
+		ELSE
+			PRINTFORML %ハート()%
+		ENDIF
+		RESETCOLOR
+	ELSEIF CFLAG:(ARG:LOCAL):던전内発情用욕정치 >= 10000
+		PRINTFORML 욕정　
+		LOCAL:5 = MIN(15000 , CFLAG:(ARG:LOCAL):던전内発情用욕정치)
+		SETCOLOR 0x40 + (0xff - 0x40) * LOCAL:5 / 15000 , 0x40 - (0x40 * LOCAL:5 / 15000) , 0x40 + (0xff - 0x40) * LOCAL:5 / 15000
+		SETCOLOR 0xff * LOCAL:5 / 15000 , 0 , 0xff * LOCAL:5 / 15000
+		PRINTFORML %ハート()%ＭＡＸ%ハート()%
+		RESETCOLOR
+	ENDIF
+;		PRINTFORML 욕정(%CALLNAME:(ARG:LOCAL)%)　{元욕정:LOCAL , 6 , RIGHT}→{CFLAG:(ARG:LOCAL):던전内発情用욕정치 , 6 , RIGHT}
+	IF LOCAL:3
+		DOWNBASE:(ARG:LOCAL):체력 += (CFLAG:(ARG:LOCAL):本番횟수 + CFLAG:(ARG:LOCAL):애널횟수 + CFLAG:(ARG:LOCAL):펠라횟수) * 25
+		DOWNBASE:(ARG:LOCAL):기력 += (CFLAG:(ARG:LOCAL):本番횟수 + CFLAG:(ARG:LOCAL):애널횟수 + CFLAG:(ARG:LOCAL):펠라횟수) * 20 + CFLAG:(ARG:LOCAL):中出し횟수 * 40
+		CALL CONTROL_MAG, ARG , (CFLAG:ARG:本番횟수*2+CFLAG:ARG:애널횟수*2+CFLAG:ARG:펠라횟수*2+CFLAG:ARG:中出し횟수*5)*MAXBASE:(ARG:1):LV
+		;윤간중독があると軽減される
+		IF ABL:(ARG:LOCAL):윤간중독 > 0
+			DOWNBASE:(ARG:LOCAL):체력 -= DOWNBASE:(ARG:LOCAL):체력 / (5 * ABL:(ARG:LOCAL):윤간중독)
+			DOWNBASE:(ARG:LOCAL):기력 -= DOWNBASE:(ARG:LOCAL):기력 / (5 * ABL:(ARG:LOCAL):윤간중독)
+		ENDIF
+			
+	ELSEIF GROUPMATCH(ARG:2 , 1 , 2)
+		DOWNBASE:(ARG:LOCAL):체력 += (CFLAG:(ARG:LOCAL):本番횟수 + CFLAG:(ARG:LOCAL):애널횟수 + CFLAG:(ARG:LOCAL):펠라횟수 + CFLAG:(ARG:LOCAL):挿入횟수) * 15
+		DOWNBASE:(ARG:LOCAL):체력 += (CFLAG:(ARG:(!LOCAL)):클리자극횟수 + CFLAG:(ARG:(!LOCAL)):가슴責め횟수 + CFLAG:(ARG:(LOCAL)):펠라횟수) * 10
+		DOWNBASE:(ARG:LOCAL):체력 += (CFLAG:(ARG:(LOCAL)):클리자극횟수 + CFLAG:(ARG:(LOCAL)):가슴責め횟수 + CFLAG:(ARG:(!LOCAL)):펠라횟수) * 2
+		
+		DOWNBASE:(ARG:LOCAL):기력 += (CFLAG:(ARG:LOCAL):本番횟수 + CFLAG:(ARG:LOCAL):애널횟수 + CFLAG:(ARG:LOCAL):펠라횟수 + CFLAG:(ARG:LOCAL):挿入횟수) * 5
+		DOWNBASE:(ARG:LOCAL):기력 += (CFLAG:(ARG:(!LOCAL)):클리자극횟수 + CFLAG:(ARG:(!LOCAL)):가슴責め횟수 + CFLAG:(ARG:(LOCAL)):펠라횟수) * 5
+		DOWNBASE:(ARG:LOCAL):기력 += (CFLAG:(ARG:(LOCAL)):클리자극횟수 + CFLAG:(ARG:(LOCAL)):가슴責め횟수 + CFLAG:(ARG:(!LOCAL)):펠라횟수) * 1
+		
+		
+		;ＭＡＧ移動はめんどいのでとりあえず반영させない。主人の稼いだMAGをその場で回収できちゃうのもあるので。
+	ELSE
+		DOWNBASE:(ARG:LOCAL):체력 += 20 + SUMARRAY(NOWEX:(ARG:LOCAL):0, 0, 5) * 20
+		DOWNBASE:(ARG:LOCAL):기력 += 50 + SUMARRAY(NOWEX:(ARG:LOCAL):0, 0, 5) * 20
+	ENDIF
+	IF DOWNBASE:(ARG:LOCAL):기력 > BASE:(ARG:LOCAL):기력
+		DOWNBASE:(ARG:LOCAL):체력 += (DOWNBASE:(ARG:LOCAL):기력 - BASE:(ARG:LOCAL):기력) / 2
+		DOWNBASE:(ARG:LOCAL):기력 = BASE:(ARG:LOCAL):기력
+	ENDIF
+	PRINTFORML 체력(%CALLNAME:(ARG:LOCAL)%) {BASE:(ARG:LOCAL):체력} - {DOWNBASE:(ARG:LOCAL):체력}
+	PRINTFORML 기력(%CALLNAME:(ARG:LOCAL)%) {BASE:(ARG:LOCAL):기력} - {DOWNBASE:(ARG:LOCAL):기력}
+	BASE:(ARG:LOCAL):체력 -= DOWNBASE:(ARG:LOCAL):체력
+	BASE:(ARG:LOCAL):기력 -= DOWNBASE:(ARG:LOCAL):기력
+	
+	SIF BASE:(ARG:LOCAL):체력 < 0
+		BASE:(ARG:LOCAL):체력 = 0
+	SIF BASE:(ARG:LOCAL):기력 < 0
+		BASE:(ARG:LOCAL):기력 = 0
+	
+
+NEXT
+
+;ＮＴＲ가능な場合
+IF FLAG:ＮＴＲ기능 && LOCAL:3 > 0
+	;음란度上昇
+	;바람癖がある場合は음란度倍化
+	IF TALENT:ARG:바람기
+		CFLAG:ARG:음란度 += (CFLAG:ARG:本番횟수 + CFLAG:ARG:애널횟수 + SUMARRAY(NOWEX:ARG:0, 0, 4) * 2)*2
+	ELSE
+		CFLAG:ARG:음란度 += CFLAG:ARG:本番횟수 + CFLAG:ARG:애널횟수 + SUMARRAY(NOWEX:ARG:0, 0, 4) * 2
+	ENDIF
+	;호감도減少処理
+	CALL NTR_SHOOT , ARG , -1 , CFLAG:ARG:中出し횟수 * 3 + SUMARRAY(NOWEX:ARG:0, 0, 4) * 5
+ENDIF
+
+CALL DELENEMY
+WAIT
+
+@성욕처리_윤간, ARG , ARG:1
+CALL SET_ENEMY, 14, ARG:1 , RESULT:2
+
+;人数
+LOCAL:2 = RESULT:1
+;횟수
+LOCAL = LOCAL:2 * (1 + RAND:(3 + ABL:POS(14):욕망 + (TALENT:POS(14):절륜 * 3))) * (2 + ABL:POS(14):기교 * 2)
+
+;プ레이内容
+;천사は中出しのみ
+IF STR:(ABL:(POS(14)):종족) != "천사" || !HAVE_VAGINA(ARG)
+	CFLAG:ARG:가슴責め횟수 += LOCAL + RAND:LOCAL
+	CFLAG:ARG:클리자극횟수 = LOCAL + RAND:LOCAL
+	CFLAG:ARG:펠라횟수 = LOCAL + RAND:LOCAL
+	CFLAG:ARG:애널횟수 += LOCAL + RAND:LOCAL
+ELSE
+	CFLAG:ARG:本番횟수 += LOCAL*2 + RAND:(LOCAL*2)
+ENDIF
+SIF HAVE_VAGINA(ARG)
+	CFLAG:ARG:本番횟수 += LOCAL + RAND:LOCAL
+SIF TALENT:ARG:오토코노코
+	CFLAG:ARG:애널횟수 += LOCAL + RAND:LOCAL
+
+CFLAG:ARG:中出し횟수 += LIMIT(RAND:(1+CFLAG:ARG:本番횟수) , CFLAG:ARG:本番횟수/2, CFLAG:ARG:本番횟수)
+SIF STR:(ABL:(POS(14)):종족) != "천사"
+	CFLAG:ARG:中出し횟수 = CFLAG:ARG:本番횟수
+
+RETURN LOCAL , LOCAL:2
+
+
+
+;-------------------------------------------------------------
+;地の아야
+;-------------------------------------------------------------
+
+
+@EVENT_MESSAGE_79
+;섹스
+CALL EVENT_MESSAGE_COMMON_DUNGEONSEX
+@EVENT_MESSAGE_80
+;봉사
+CALL EVENT_MESSAGE_COMMON_DUNGEONSEX
+
+@EVENT_MESSAGE_85
+;윤간
+
+PRINTFORMW %타겟은()% 악마와 마주치고 말았다
+PRINTFORMW %CALLNAME:PLAYER% 무리가 벌이는 능욕의 연회가 시작되었다…
+PRINTL 
+PRINTFORML ・・・
+PRINTFORML ・・
+PRINTFORML ・
+PRINTL 
+PRINTFORMW %타겟이()% {RESULT:1}명의 %CALLNAME:PLAYER% 무리에게 범해졌다…
+
+CALL EVENT_MESSAGE_COMMON_DUNGEONSEX
+
+@EVENT_MESSAGE_81
+;その場で자위
+#DIM DYNAMIC 仲마인数
+#DIM 代表者
+FOR LOCAL , 1 , 7
+	IF POS(LOCAL) > -1
+		仲마인数 ++
+		SIF POS(LOCAL) != TARGET
+			代表者 = POS(LOCAL)
+	ENDIF
+NEXT
+SIF TARGET != MASTER
+	代表者 = MASTER
+PRINTFORML %조사처리(CALLNAME,"는")% 
+IF TALENT:음란 || TALENT:창부 || ABL:노출증 > 5
+	IF 仲마인数 > 1
+		PRINTFORML %CALLNAME:代表者%\@仲마인数 > 2 ? 들 # \@에게 과시하듯이 
+	ELSE
+		PRINTFORML 누구에게 발견될 지도 모른다는 스릴에 설렘을 느끼리면서 
+	ENDIF
+	IF TEQUIP:유방노출 == -1 && TEQUIP:음순노출 == -1
+		PRINTFORMW 드러난 젖가슴과 음핵을 그 자리에서 만지작거리기 시작했다…
+	ELSE
+		PRINTFORMW 걸치고 있던 옷을 한 장씩 벗고 그 자리에서 자신의 민감한 장소를 자극하기 시작했다…
+	ENDIF
+ELSE
+	IF 위험일(TARGET) >= 2
+		PRINTFORML 암컷의 냄새를 풍기는 비순을 손으로 필사적으로 억누르면서 참고 있었지만, 
+		PRINTFORM 참을 수 없어졌는지 그 자리에 털썩 주저앉아 
+	ELSE
+		SIF TEQUIP:유방노출 == -1 && TEQUIP:음순노출 == -1
+			PRINTFORML 드러난 유방과 비순을 손으로 필사적으로 가리고 있지만, 
+		PRINTFORM 갑자기 그 자리에 털썩 주저앉아 
+	ENDIF
+	IF TEQUIP:유방노출 == -1 && TEQUIP:음순노출 == -1
+		IF 위험일(TARGET)
+			PRINTFORML  드러난 유방과 비순을 감추지조차 못하고, 
+		ELSE
+			PRINTFORML  숨겨져있던 비소를 완전히 드러내고, 
+		ENDIF
+	ELSE
+		PRINTFORML , 옷을 벗는 것조차 답답한지 옷 위에서 직접 몸을 더듬으며、
+	ENDIF
+	
+	SIF 仲마인数 > 1
+		PRINTFORMW %CALLNAME:代表者%\@仲마인数 > 2 ? 들 # \@(이)가 보고 있는 것도 잊고, 
+		
+		PRINTFORMW 일심불란하게 자신의 성기를 애무했다…
+ENDIF
+PRINTL
+IF NOWEX:Ｂ절정 + NOWEX:Ｃ절정 > 0
+	PRINTFORM 그 후, 
+	SIF 仲마인数 > 1
+		PRINTFORML %CALLNAME:代表者%\@仲마인数 > 2 ? 들 # \@이 보는 중에 
+	SIF NOWEX:Ｂ절정 > 0
+		PRINTFORM 가슴으로 {NOWEX:Ｂ절정}회
+	SIF NOWEX:Ｃ절정 > 0
+		PRINTFORM , 클리토리스로 {NOWEX:Ｃ절정}회
+	PRINTFORMW  가버렸다
+ENDIF
+
+@EVENT_MESSAGE_82
+;物陰で자위
+#DIM DYNAMIC 仲마인数
+FOR LOCAL , 1 , 7
+	SIF POS(LOCAL) > -1
+		仲마인数 ++
+NEXT
+PRINTFORML %조사처리(CALLNAME,"는")% 
+SIF 위험일(TARGET) >= 2
+	PRINTFORM 얼굴을 새빨갛게 물들이면서 
+IF 仲마인数 > 1
+	PRINTFORML 동료마의 곁을 떠나 
+ELSE
+	PRINTFORML 진정될 것 같은 장소를 찾아 
+ENDIF
+IF TALENT:음란 || TALENT:창부 || ABL:노출증 > 5
+	PRINTFORML 누군가가 올지도 모른다는 기대에 가슴을 부풀리면서, 
+	PRINTFORMW 조금이라도 오랫동안 이 순간을 즐기기 위해, 자기 몸 이곳저곳을 정성들여 천천히 희롱했다……
+ELSEIF 위험일(TARGET) >= 2
+	IF TEQUIP:유방노출 == -1 && TEQUIP:음순노출 == -1
+		PRINTFORM 드러난 유방과 비순을 난폭하게 더듬고, 
+	ELSE
+		PRINTFORML 옷을 벗는 것조차 답답한지 옷 위에서 직접 몸을 더듬으며, 
+	ENDIF
+	PRINTFORMW 누군가에게 들릴 가능성은 생각도 않고 쾌락에 몸을 맡기고 교성을 지르면서, 달아오른 몸을 그저 위로했다……
+ELSE
+	IF TEQUIP:유방노출 == -1 && TEQUIP:음순노출 == -1
+		PRINTFORML 음란한 모습에 부끄러운 듯한 표정을 지으면서 완전히 드러난 비소에 조용히 손을 대고, 
+	ELSE
+		PRINTFORM 옷 안에 조용히 손을 집어넣고, 
+	ENDIF
+	PRINTFORMW 조금이라도 빨리 끝내기 위해 자신의 민감한 부분을 집중적으로 강하게 긁어올렸다…
+ENDIF
+PRINTL
+IF (NOWEX:Ｂ절정 + NOWEX:Ｃ절정) > 0
+	PRINTFORM 그 후, 
+	SIF NOWEX:Ｂ절정 > 0
+		PRINTFORM 가슴으로 {NOWEX:Ｂ절정}회
+	SIF NOWEX:Ｃ절정 > 0
+		PRINTFORM , 클리토리스로 {NOWEX:Ｃ절정}회
+	PRINTFORMW  가버렸다
+ENDIF
+
+@EVENT_MESSAGE_COMMON_DUNGEONSEX
+#DIM LINE
+;何回イったか표시
+IF GROUPMATCH(TFLAG:이벤트구상呼び出し用 , 79 , 80)
+	LOCAL:10 = 1 + RAND:5
+	LOCAL:11 = 11 + RAND:4
+	LOCAL:12 = 21 + RAND:4
+	LOCAL:13 = 31 + RAND:2
+	LOCAL:14 = 41 + RAND:4
+	LOCAL:15 = 51 + RAND:3
+	LOCAL:16 = 61 + RAND:3
+	IF TFLAG:이벤트구상呼び出し用 == 79
+		;가슴애무
+		IF NOWEX:TARGET:Ｂ절정 > 0
+			IF CFLAG:TARGET:가슴責め횟수 > 0
+				LOCALS:1 = 가슴을 {CFLAG:TARGET:가슴責め횟수}회 애무당해 
+				LOCALS:2 = 젖가슴을 손으로 {CFLAG:TARGET:가슴責め횟수}회 비벼져 
+				LOCALS:3 = 유두를 {CFLAG:TARGET:가슴責め횟수}회 손가락으로 꼬집혀져 
+				LOCALS:4 = 유두를 혀로 {CFLAG:TARGET:가슴責め횟수}회 굴려져 
+				LOCALS:5 = 유두를 {CFLAG:TARGET:가슴責め횟수}회 씹혀져 
+			ELSE
+				LOCALS:1 = 가슴을 애무당해 
+				LOCALS:2 = 젖가슴을 손으로 마구 비벼져 
+				LOCALS:3 = 유두를 손가락으로 꼬집혀져 
+				LOCALS:4 = 유두를 혀로 굴려져 
+				LOCALS:5 = 유두를 이빨에 살짝 씹혀져 
+			ENDIF
+		ELSEIF NOWEX:PLAYER:Ｂ절정 > 0
+			IF CFLAG:PLAYER:가슴責め횟수 > 0
+				LOCALS:1 = 가슴을 {CFLAG:PLAYER:가슴責め횟수}회 애무하여 
+				LOCALS:2 = 젖가슴을 손으로 {CFLAG:PLAYER:가슴責め횟수}회 주물러 
+				LOCALS:3 = 유두를 {CFLAG:PLAYER:가슴責め횟수}회손가락으로 꼬집어 
+				LOCALS:4 = 유두를 혀로 {CFLAG:PLAYER:가슴責め횟수}회 굴려 
+				LOCALS:5 = 유두를 {CFLAG:PLAYER:가슴責め횟수}회 살짝 깨물어 
+			ELSE
+				LOCALS:1 = 가슴을 애무하여 
+				LOCALS:2 = 젖가슴을 손으로 주물러 
+				LOCALS:3 = 유두를 손가락으로  꼬집어 
+				LOCALS:4 = 유두를 혀로 굴려 
+				LOCALS:5 = 유두를 이로 살짝 깨물어 
+			ENDIF
+		ENDIF
+		;클리애무
+		IF NOWEX:TARGET:Ｃ절정 > 0
+			IF CFLAG:TARGET:클리자극횟수 > 0
+				LOCALS:11 = 클리토리스를 {CFLAG:TARGET:클리자극횟수}회 꼬집혀 
+				LOCALS:12 = 클리토리스를 손가락 끝으로 {CFLAG:TARGET:클리자극횟수}회 퉁겨져 
+				LOCALS:13 = 음핵을 손가락 끝으로 {CFLAG:TARGET:클리자극횟수}회 문질러져 
+				LOCALS:14 = 클리토리스를 혀끝으로 {CFLAG:TARGET:클리자극횟수}회 돌려져 
+			ELSE
+				LOCALS:11 = 클리토리스를 꼬집혀 
+				LOCALS:12 = 클리토리스를 손가락 끝에 퉁겨져 
+				LOCALS:13 = 음핵을 손가락 끝으로 문질러져 
+				LOCALS:14 = 클리토리스를 혀끝으로 돌려져 
+			ENDIF
+		ELSEIF NOWEX:PLAYER:Ｃ절정 > 0
+			IF CFLAG:PLAYER:클리자극횟수 > 0
+				LOCALS:11 = 클리토리스를 {CFLAG:PLAYER:클리자극횟수}회 꼬집어 
+				LOCALS:12 = 클리토리스를 손가락 끝으로 {CFLAG:PLAYER:클리자극횟수}회 퉁겨서 
+				LOCALS:13 = 음핵을 손가락 끝으로 {CFLAG:PLAYER:클리자극횟수}회 문질러 
+				LOCALS:14 = 클리토리스를 혀끝으로 {CFLAG:PLAYER:클리자극횟수}회 돌려 
+			ELSE
+				LOCALS:11 = 클리토리스를 꼬집어 
+				LOCALS:12 = 클리토리스를 손가락 끝으로 퉁겨서 
+				LOCALS:13 = 음핵을 손가락 끝으로 문질러 
+				LOCALS:14 = 클리토리스를 혀끝으로 돌려 
+			ENDIF
+		ENDIF
+	ELSE
+		;가슴애무
+		IF NOWEX:PLAYER:Ｂ절정 > 0
+			IF CFLAG:PLAYER:가슴責め횟수 > 0
+				LOCALS:1 = 가슴을 {CFLAG:PLAYER:가슴責め횟수}회 애무하여 
+				LOCALS:2 = 젖가슴을 손으로 {CFLAG:PLAYER:가슴責め횟수}회 주물러 
+				LOCALS:3 = 유두를 {CFLAG:PLAYER:가슴責め횟수}회 손가락으로 꼬집어 
+				LOCALS:4 = 유두를 혀로 {CFLAG:PLAYER:가슴責め횟수}회 굴려 
+				LOCALS:5 = 유두를 {CFLAG:PLAYER:가슴責め횟수}회 살짝 깨물어 
+			ELSE
+				LOCALS:1 = 가슴을 애무하여 
+				LOCALS:2 = 젖가슴을 손으로 주물러 
+				LOCALS:3 = 유두를 손가락을 꼬집어 
+				LOCALS:4 = 유두를 혀로 굴려 
+				LOCALS:5 = 유두를 이빨로 살짝 깨물어 
+			ENDIF
+		ELSEIF NOWEX:TARGET:Ｂ절정 > 0
+			IF CFLAG:TARGET:가슴責め횟수 > 0
+				LOCALS:1 = 가슴을 {CFLAG:TARGET:가슴責め횟수}회 애무당해 
+				LOCALS:2 = 젖가슴을 손으로 {CFLAG:TARGET:가슴責め횟수}회 주물러져 
+				LOCALS:3 = 유두를 {CFLAG:TARGET:가슴責め횟수}회회 꼬집혀 
+				LOCALS:4 = 유두를 혀끝으로 {CFLAG:TARGET:가슴責め횟수}회 굴려져서 
+				LOCALS:5 = 유두를 {CFLAG:TARGET:가슴責め횟수}회 살짝 깨물려 
+			ELSE
+				LOCALS:1 = 가슴을 애무당해 
+				LOCALS:2 = 젖가슴을 손에게 주물러져 
+				LOCALS:3 = 유두를 손가락으로 꼬집혀 
+				LOCALS:4 = 유두를 혀끝으로 굴려져서 
+				LOCALS:5 = 유두를 살짝 깨물려 
+			ENDIF
+		ENDIF
+		;클리애무
+		IF NOWEX:PLAYER:Ｃ절정 > 0
+			IF CFLAG:PLAYER:클리자극횟수 > 0
+				LOCALS:11 = 클리토리스를 {CFLAG:PLAYER:클리자극횟수}회 꼬집어 
+				LOCALS:12 = 클리토리스를  손가락 끝으로 {CFLAG:PLAYER:클리자극횟수}회 튕겨 
+				LOCALS:13 = 음핵을 손가락 끝으로 {CFLAG:PLAYER:클리자극횟수}회 주물럭거려 
+				LOCALS:14 = 클리토리스를 혀끝으로 {CFLAG:PLAYER:클리자극횟수}회 굴려 
+			ELSE
+				LOCALS:11 = 클리토리스를 꼬집어 
+				LOCALS:12 = 클리토리스를 손가락 끝으로 튕겨서 
+				LOCALS:13 = 음핵을 손가락 끝으로 주물럭거려 
+				LOCALS:14 = 클리토리스를 혀끝으로 굴려 
+			ENDIF
+		ELSEIF NOWEX:TARGET:Ｃ절정 > 0
+			IF CFLAG:TARGET:클리자극횟수 > 0
+				LOCALS:11 = 클리토리스를 {CFLAG:TARGET:클리자극횟수}회회 꼬집혀 
+				LOCALS:12 = 클리토리스를 손가락 끝으로 {CFLAG:TARGET:클리자극횟수}회 튕겨져서 
+				LOCALS:13 = 음핵을 손가락 끝으로{CFLAG:TARGET:클리자극횟수}회 주물러져서 
+				LOCALS:14 = 클리토리스를 혀끝으로 {CFLAG:TARGET:클리자극횟수}회 굴려져서 
+			ELSE
+				LOCALS:11 = 클리토리스를 꼬집혀 
+				LOCALS:12 = 클리토리스를 손라락끝으로 튕겨져서 
+				LOCALS:13 = 음핵을 손가락 끝으로 주물러져서 
+				LOCALS:14 = 클리토리스를 혀끝으로 굴려져서 
+			ENDIF
+		ENDIF
+	ENDIF
+	;섹스
+	;PLAYER→TARGET
+	IF (TALENT:PLAYER:남자 == 1 && TALENT:TARGET:남자 == 0) || ((TALENT:PLAYER:남자 == 0 && (TALENT:PLAYER:후타나리 == 1 || TALENT:PLAYER:구현 == 1)) && TALENT:TARGET:남자 == 0)
+	;[남/오토코노코 → 여/후타나리/구현] or [후타나리/구현 → 여/후타나리/구현]
+		IF RAND:2 == 0
+		;정상위
+			IF CFLAG:TARGET:本番횟수
+				LOCALS:21 = 와(과) 얼싸안으며 {CFLAG:TARGET:本番횟수}회 어울려 
+				LOCALS:22 = 에게 질 안쪽을 자극하는 정상위로 {CFLAG:TARGET:本番횟수}회 괴롭혀져 
+				LOCALS:23 = 에게 껴안기면서 {CFLAG:TARGET:本番횟수}회、정을 나누어 
+				LOCALS:24 = 와(과) {CFLAG:TARGET:本番횟수}회 사랑을 나누어 
+			ELSEIF CFLAG:PLAYER:本番횟수
+				LOCALS:21 = 와(과) 끌어안은 채로 {CFLAG:PLAYER:本番횟수}회 범해져 
+				LOCALS:22 = 에게 공격받는 형태의 정상위로 {CFLAG:PLAYER:本番횟수}회 괴롭혀져 
+				LOCALS:23 = 는(은) %CALLNAME:TARGET%를 밀어넘어뜨리고 탐욕스럽게 {CFLAG:PLAYER:本番횟수}회、정을 주고받아 
+				LOCALS:24 = 와 {CFLAG:PLAYER:本番횟수}회 사랑을 주고받아 
+			ENDIF
+		ELSE
+		;후배위
+			IF CFLAG:TARGET:本番횟수
+				LOCALS:21 = 와(과) 얼싸안으며 {CFLAG:TARGET:本番횟수}회 어울려 
+				LOCALS:22 = 에게 질 안쪽을 자극하는 후배위로 {CFLAG:TARGET:本番횟수}회 괴롭혀져 
+				LOCALS:23 = 에게 껴안기면서 {CFLAG:TARGET:本番횟수}회、정을 나누어 
+				LOCALS:24 = 와(과) {CFLAG:TARGET:本番횟수}회 사랑을 나누어 
+			ELSEIF CFLAG:PLAYER:本番횟수
+				LOCALS:21 = 와(과) 끌어안은 채로 {CFLAG:PLAYER:本番횟수}회 범해져 
+				LOCALS:22 = 에게 공격받는 형태의 후배위로 {CFLAG:PLAYER:本番횟수}회 괴롭혀져 
+				LOCALS:23 = 는(은) %CALLNAME:TARGET%를 밀어넘어뜨리고 탐욕스럽게 {CFLAG:PLAYER:本番횟수}회、정을 주고받아 
+				LOCALS:24 = 와 {CFLAG:PLAYER:本番횟수}회 사랑을 주고받아 
+			ENDIF
+		ENDIF
+	ELSEIF TALENT:PLAYER:남자 == 0 && (TALENT:TARGET:남자 == 1 || (TALENT:TARGET:남자 == 0 && (TALENT:TARGET:후타나리 == 1 || TALENT:TARGET:구현 == 1)))
+	;[여/후타나리/구현 → 남/오토코노코/후타나리/구현]
+		IF CFLAG:TARGET:本番횟수
+			LOCALS:21 = 와(과) 얼싸안으며 {CFLAG:TARGET:本番횟수}회 어울려 
+			LOCALS:22 = 에게 질 안쪽을 자극하는 기승위로 {CFLAG:TARGET:本番횟수}회 괴롭혀져 
+			LOCALS:23 = 에게 껴안기면서 {CFLAG:TARGET:本番횟수}회、정을 나누어 
+			LOCALS:24 = 와(과) {CFLAG:TARGET:本番횟수}회 사랑을 나누어 
+		ELSEIF CFLAG:PLAYER:本番횟수
+			LOCALS:21 = 와(과) 끌어안은 채로 {CFLAG:PLAYER:本番횟수}회 범해져 
+			LOCALS:22 = 에게 공격받는 형태의 기승위로 {CFLAG:PLAYER:本番횟수}회 괴롭혀져 
+			LOCALS:23 = 는(은) %CALLNAME:TARGET%를 밀어넘어뜨리고 탐욕스럽게 {CFLAG:PLAYER:本番횟수}회、정을 주고받아 
+			LOCALS:24 = 와 {CFLAG:PLAYER:本番횟수}회 사랑을 주고받아 
+		ENDIF
+	ENDIF
+	;애널섹스
+ 	IF CFLAG:TARGET:애널횟수
+		LOCALS:31 = 에게 애널을 {CFLAG:TARGET:애널횟수}회 꿰뚫려 
+		LOCALS:32 = 에게 애널을 {CFLAG:TARGET:애널횟수}회 범해져 
+	ELSEIF CFLAG:PLAYER:애널횟수
+		LOCALS:31 = 에게 애널을 {CFLAG:PLAYER:애널횟수}회 꿰뚤려 
+		LOCALS:32 = 에게 애널을 {CFLAG:PLAYER:애널횟수}회 범해져 
+	ENDIF
+	;フェラ前文
+	;LOCALS:41 = 의 우뚝 선 페니스를 물고 
+	LOCALS:41 = 의 늠름하게 선 페니스를 삼키고 
+	LOCALS:42 = 를(을) 눈을 치켜떠 올려다보면서 페니스를 혀로 핥아 
+	LOCALS:43 = 의 페니스를 깊이 삼키고, 눈을 감고서 정성껏 
+	LOCALS:44 = 의 페니스를 물고、귀두를 혀로 핧아서 
+	;フェラ後文
+	LOCALS:51 = 봉사했다
+	LOCALS:52 = 입으로 봉사했다
+	LOCALS:53 = 구강봉사했다
+	;お掃除フェラ
+	IF CFLAG:TARGET:펠라횟수 > 0 && LOCAL == 1
+		LOCALS:61 = %타겟은()% %CALLNAME:(PLAYER)%의 페니스를 입에 물고、정성스럽게 정액을 핥아먹고 있다
+		LOCALS:62 = %타겟은()% %CALLNAME:(PLAYER)%의 페니스를 깨끗하게 핥고、더러운 것들을 기쁘게 삼켰다
+		LOCALS:63 = %타겟은()% %CALLNAME:(PLAYER)%의 페니스를 물고 요도에 남아있는 정액을 빨아올리며 맛있게 삼켰다
+	ELSEIF CFLAG:PLAYER:펠라횟수 > 0 && LOCAL == 1
+		LOCALS:61 = %조사처리(CALLNAME:PLAYER,"는")% %CALLNAME:(TARGET)%의 페니스를 입으로 삼키고、정성스럽게 정액을 빨아마시고 있다
+		LOCALS:62 = %조사처리(CALLNAME:PLAYER,"는")% %CALLNAME:(TARGET)%의 페니스에 남은 오탁액을 빨아마신 다음、기쁘게 삼켰다
+		LOCALS:63 = %조사처리(CALLNAME:PLAYER,"는")% %CALLNAME:(TARGET)%의 페니스를 삼키고 요도에 남은 정액까지 빨아낸 다음、맛있게 모두 마셨다
+	ENDIF
+	;절정（당신）
+	IF TFLAG:이벤트구상呼び出し用 == 79
+		LOCALS:71 = 아헤가오가 되었다
+		LOCALS:72 = 절정에 달했다
+		LOCALS:73 = 절정을 맞이했다
+		LOCALS:74 = 오르가즘에 달했다
+	ELSE
+		LOCALS:71 = 가게 만들었다
+		LOCALS:72 = 절정시켰다
+		LOCALS:73 = 엑스터시를 느끼게 했다
+		LOCALS:74 = 오르가즘에 도달하게 했다
+	ENDIF
+ELSE
+	LOCAL:10 = 1 + RAND:5
+	LOCAL:11 = 11 + RAND:4
+	LOCAL:12 = 21 + RAND:5
+	LOCAL:13 = 31
+	LOCAL:14 = 41 + RAND:5
+	LOCAL:15 = 51 + RAND:5
+	LOCAL:16 = 61 + RAND:3
+	;가슴애무（윤간）
+	LOCALS:1 = 젖가슴을 난폭하게 {CFLAG:TARGET:가슴責め횟수}회 비벼져 
+	LOCALS:2 = 유두를 {CFLAG:TARGET:가슴責め횟수}회 강하게 꼬집혀 
+	LOCALS:3 = 젖가슴을 {CFLAG:TARGET:가슴責め횟수}회 마음대로 농락당해 
+	LOCALS:4 = 유두를 손가락으로 끈덕지게 {CFLAG:TARGET:가슴責め횟수}회 굴려져 
+	LOCALS:5 = 젖가슴을 {CFLAG:TARGET:가슴責め횟수}회 강하게 빨려져 
+	;클리애무（윤간）
+	LOCALS:11 = 클리토리스를 {CFLAG:TARGET:클리자극횟수}회 꼬집혀 
+	LOCALS:12 = 클리토리스를 손가락 끝으로{CFLAG:TARGET:클리자극횟수}회 퉁겨져 
+	LOCALS:13 = 음핵을 손가락 끝으로 {CFLAG:TARGET:클리자극횟수}회 문질러져 
+	LOCALS:14 = 클리토리스를 손가락 끝으로 {CFLAG:TARGET:클리자극횟수}회 돌려져 
+	;섹스（윤간）
+	LOCALS:21 = 의 육봉으로 {CFLAG:TARGET:本番횟수}회 범해져 
+	LOCALS:22 = 에게 엉덩이를 뒤에서 난폭하게 잡힌 채로、짐승처럼 {CFLAG:TARGET:本番횟수}회 범해져 
+	LOCALS:23 = 의 육봉으로 질내를 {CFLAG:TARGET:本番횟수}회 유린당해 
+	LOCALS:24 = 에게 양다리를 벌려지면서 안아 올려진 채 {CFLAG:TARGET:本番횟수}회 욕보여져 
+	LOCALS:25 = 에게 억지로 끌어안겨、입술을 빼앗기며 {CFLAG:TARGET:本番횟수}회 희롱당해 
+	;애널섹스（윤간）
+	LOCALS:31 = 의 페니스로 애널을 {CFLAG:TARGET:애널횟수}회 범해져 
+	;フェラ前文
+	LOCALS:41 = 에게 페니스를 입 안에 비틀어 넣어져 
+	LOCALS:42 = 에게 펠라치오를 강요당해 
+	LOCALS:43 = 에게 딱딱하게 선 것을 목 안쪽까지 찔러넣어져 
+	LOCALS:44 = 의 페니스를 물고 눈물을 흘리면서 
+	LOCALS:45 = 에게 머리를 잡혀 흔들어지면서 
+	;フェラ後文
+	LOCALS:51 = 봉사하게 되었다
+	LOCALS:52 = 입 속을 능욕당했다
+	LOCALS:53 = 입 속을 범해졌다
+	LOCALS:54 = 목 안에 정액을 흘려넣어졌다
+	LOCALS:55 = 입 속에 사정당했다
+	;お掃除フェラ
+	LOCALS:61 = %타겟은()% %CALLNAME:(PLAYER)%의 정액으로 더러워진 육봉을 억지로 입으로 물게 되었다
+	LOCALS:62 = %조사처리(CALLNAME:(PLAYER),"가")% 방심 상태의 %CALLNAME:TARGET%의 입 안에 페니스를 쑤셔넣어、허리를 움직여 더러움을 떨쳐내고 있다
+	LOCALS:63 = %타겟은()% %CALLNAME:(PLAYER)%에게 청소 펠라를 강요 받고 있다
+	;절정（윤간）
+	LOCALS:71 = 가버렸다
+	LOCALS:72 = 절정에 달해버렸다
+	LOCALS:73 = 절정을 맞이해 쾌락으로 녹아내렸다
+	LOCALS:74 = 오르가즘에 달해 교성을 질렀다
+ENDIF
+
+
+PRINTL 
+LINE = LINECOUNT
+
+;PRINTFORML {CFLAG:TARGET:가슴責め횟수}
+;PRINTFORML TARGET:Ｂ절정 {NOWEX:TARGET:Ｂ절정}
+;PRINTFORML TARGET:Ｂ절정 {NOWEX:TARGET:Ｃ절정}
+;PRINTFORML PLAYER:Ｂ절정 {NOWEX:PLAYER:Ｂ절정}
+;PRINTFORML PLAYER:Ｂ절정 {NOWEX:PLAYER:Ｃ절정}
+;前戯
+SIF SUMARRAY(NOWEX:TARGET:0, 0, 4) > 0 || CFLAG:TARGET:中出し횟수 > 0 || CFLAG:TARGET:펠라횟수
+	PRINTFORM %타겟은()% 
+;PLAYER→TARGET
+IF (NOWEX:TARGET:Ｂ절정 + NOWEX:TARGET:Ｃ절정) > 0
+	PRINTFORM %CALLNAME:(PLAYER)%에게 
+	;どこで何回イッた
+	SIF NOWEX:TARGET:Ｂ절정 > 0
+		PRINTFORMW %LOCALS:(LOCAL:10)%、{NOWEX:TARGET:Ｂ절정}회 %LOCALS:(71+RAND:4)%
+	SIF NOWEX:TARGET:Ｂ절정 > 0 && NOWEX:TARGET:Ｃ절정 > 0
+		PRINTFORM 더해서, 
+	SIF NOWEX:TARGET:Ｃ절정 > 0
+		PRINTFORMW %LOCALS:(LOCAL:11)%、{NOWEX:TARGET:Ｃ절정}회 %LOCALS:(71+RAND:4)%
+;PLAYER←TARGET
+ELSEIF (NOWEX:PLAYER:Ｂ절정 + NOWEX:PLAYER:Ｃ절정) > 0
+	PRINTFORM %CALLNAME:(PLAYER)%의 
+	;どこで何回イッた
+	SIF NOWEX:PLAYER:Ｂ절정 > 0
+		PRINTFORMW %LOCALS:(LOCAL:10)%、{NOWEX:PLAYER:Ｂ절정}회 %LOCALS:(71+RAND:4)%
+	SIF NOWEX:PLAYER:Ｂ절정 > 0 && NOWEX:PLAYER:Ｃ절정 > 0
+		PRINTFORM 더욱이, 
+	SIF NOWEX:PLAYER:Ｃ절정 > 0
+		PRINTFORMW %LOCALS:(LOCAL:11)%、{NOWEX:PLAYER:Ｃ절정}회 %LOCALS:(71+RAND:4)%
+ENDIF
+
+;フェラ
+;PLAYER→TARGET
+IF CFLAG:TARGET:펠라횟수 > 0
+	LOCAL = 0
+	PRINTL 
+	SIF LINE < LINECOUNT - 1
+		PRINTFORM %타겟은()% 
+	;誰に
+	PRINTFORM %CALLNAME:PLAYER%%LOCALS:(LOCAL:14)%、
+	;お掃除フェラ分岐
+	IF CFLAG:TARGET:펠라횟수 >= 2 && RAND:2 == 0
+		PRINTFORMW {CFLAG:TARGET:펠라횟수-1}회 %LOCALS:(LOCAL:15)%
+		LOCAL = 1
+	ELSE
+		PRINTFORMW {CFLAG:TARGET:펠라횟수}회 %LOCALS:(LOCAL:15)%
+	ENDIF
+;PLAYER←TARGET
+ELSEIF CFLAG:PLAYER:펠라횟수 > 0
+	LOCAL = 0
+	PRINTL 
+	SIF LINE < LINECOUNT - 1
+		PRINTFORM %조사처리(CALLNAME:PLAYER,"는")% 
+	;誰に
+	PRINTFORM %CALLNAME:TARGET%%LOCALS:(LOCAL:14)%、
+	;お掃除フェラ分岐
+	IF CFLAG:PLAYER:펠라횟수 >= 2 && RAND:2 == 0
+		PRINTFORMW {CFLAG:PLAYER:펠라횟수-1}회 %LOCALS:(LOCAL:15)%
+		LOCAL = 1
+	ELSE
+		PRINTFORMW {CFLAG:PLAYER:펠라횟수}회 %LOCALS:(LOCAL:15)%
+	ENDIF
+ENDIF
+
+;本番
+;PLAYER→TARGET
+IF CFLAG:TARGET:本番횟수 || CFLAG:TARGET:애널횟수
+	PRINTL  
+	SIF LINE < LINECOUNT - 1
+		PRINTFORM 그 후, 
+	IF (NOWEX:TARGET:Ｖ절정 + NOWEX:TARGET:Ａ절정) > 0
+		;Ｖ절정
+		SIF NOWEX:TARGET:Ｖ절정 > 0
+		PRINTFORMW %CALLNAME:PLAYER%%LOCALS:(LOCAL:12)%, {NOWEX:TARGET:Ｖ절정}회 %LOCALS:(71+RAND:4)%
+		SIF LINE < LINECOUNT - 2 && NOWEX:TARGET:Ａ절정 > 0
+
+			PRINTFORM 나아가、
+		;Ａ절정
+		SIF NOWEX:TARGET:Ａ절정 > 0
+			PRINTFORMW %CALLNAME:PLAYER%%LOCALS:(LOCAL:13)%, {NOWEX:TARGET:Ａ절정}회 %LOCALS:(71+RAND:4)%
+	ELSEIF CFLAG:TARGET:本番횟수 && CFLAG:TARGET:애널횟수
+		PRINTFORMW %CALLNAME:PLAYER%%LOCALS:(LOCAL:12)%, 더해서 %CALLNAME:PLAYER%%LOCALS:(LOCAL:13)% 버렸다
+	ELSEIF CFLAG:TARGET:本番횟수
+		LOCAL:12 = 22 + RAND:3
+		PRINTFORMW %CALLNAME:PLAYER%%LOCALS:(LOCAL:12)% 버렸다
+	ELSEIF CFLAG:TARGET:애널횟수
+		PRINTFORMW %CALLNAME:PLAYER%%LOCALS:(LOCAL:13)% 버렸다 
+	ENDIF
+;PLAYER←TARGET
+ELSEIF CFLAG:PLAYER:本番횟수 || CFLAG:PLAYER:애널횟수
+	PRINTL  
+	SIF LINE < LINECOUNT - 1
+		PRINTFORM 그 후, 
+	IF (NOWEX:PLAYER:Ｖ절정 + NOWEX:PLAYER:Ａ절정) > 0
+		;Ｖ절정
+		SIF NOWEX:PLAYER:Ｖ절정 > 0
+		PRINTFORMW %CALLNAME:PLAYER%%LOCALS:(LOCAL:12)%, {NOWEX:PLAYER:Ｖ절정}회 %LOCALS:(71+RAND:4)%
+		SIF LINE < LINECOUNT - 2 && NOWEX:PLAYER:Ａ절정
+			PRINTFORM 게다가 
+		;Ａ절정
+		SIF NOWEX:PLAYER:Ａ절정 > 0
+		PRINTFORMW %CALLNAME:TARGET%%LOCALS:(LOCAL:13)%, {NOWEX:PLAYER:Ａ절정}회 %LOCALS:(71+RAND:4)%
+	ELSEIF CFLAG:PLAYER:本番횟수 && CFLAG:PLAYER:애널횟수
+		PRINTFORMW %CALLNAME:TARGET%%LOCALS:(LOCAL:12)%, 한층 더 %CALLNAME:TARGET%%LOCALS:(LOCAL:13)%다
+	ELSEIF CFLAG:PLAYER:本番횟수
+		LOCAL:12 = 22 + RAND:3
+		PRINTFORMW %CALLNAME:TARGET%%LOCALS:(LOCAL:12)%다
+	ELSEIF CFLAG:TARGET:애널횟수
+		PRINTFORMW %CALLNAME:TARGET%%LOCALS:(LOCAL:13)%다 
+	ENDIF
+ENDIF
+
+;事後中出し
+;PLAYER→TARGET
+IF CFLAG:TARGET:中出し횟수 > 0
+	PRINTFORML 
+	SIF LINE < LINECOUNT - 1
+		PRINTFORM 그리고 
+	IF CFLAG:PLAYER:PTフラグ
+		PRINTFORMW %CALLNAME:TARGET%의 질내가 %CALLNAME:PLAYER%의 정액으로 {CFLAG:TARGET:中出し횟수}번 채워졌다
+	ELSE
+		PRINTFORMW %CALLNAME:TARGET%의 질내에 %CALLNAME:PLAYER%의 씨앗이 {CFLAG:TARGET:中出し횟수}회 쏟아부어졌다
+	ENDIF
+;PLAYER←TARGET
+ELSEIF CFLAG:PLAYER:中出し횟수 > 0
+	PRINTFORML 
+	SIF LINE < LINECOUNT - 1
+		PRINTFORM 그리고 
+	IF CFLAG:PLAYER:PTフラグ
+		PRINTFORMW %CALLNAME:PLAYER%의 질내가 %CALLNAME:TARGET%의 정액으로 {CFLAG:PLAYER:中出し횟수}번 채워졌다
+	ELSE
+		PRINTFORMW %CALLNAME:PLAYER%의 질내에 %CALLNAME:TARGET%의 정액이 {CFLAG:PLAYER:中出し횟수}회 쏟아졌다
+	ENDIF
+ENDIF
+
+;事後お掃除
+IF CFLAG:TARGET:펠라횟수 > 0 && LOCAL == 1
+	PRINTL 
+	PRINTFORMW %LOCALS:(LOCAL:16)%
+;PLAYER←TARGET
+ELSEIF CFLAG:PLAYER:펠라횟수 > 0 && LOCAL == 1
+	PRINTL 
+	PRINTFORMW %LOCALS:(LOCAL:16)%
+ENDIF
+
+
+
+
+
+
+
+

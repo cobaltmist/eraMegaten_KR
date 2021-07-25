@@ -1,0 +1,139 @@
+﻿;-------------------------------------------------
+;조개젖히기
+;애무계コマンド、레벨2
+;-------------------------------------------------
+@ACT_COM9
+PRINTL 조개젖히기
+TSTR:0 = 조개젖히기
+;CALL KOJO_MESSAGE_COM
+;질내の정액量が2減少する
+TCVAR:TARGET:101 = MAX(TCVAR:TARGET:101 - 2, 0)
+;조교대상→조교대상
+TFLAG:28 = 4
+
+
+;-------------------------------------------------
+;ソース추가処理
+;-------------------------------------------------
+;소비체력、기력
+DOWNBASE:TARGET:체력 += 50
+DOWNBASE:TARGET:기력 += 90
+
+SOURCE:TARGET:쾌Ｃ = 43
+SOURCE:TARGET:달성 = 20
+SOURCE:TARGET:무서움 = 120
+SOURCE:TARGET:액체 = 10
+SOURCE:TARGET:노출 = 300
+SOURCE:TARGET:굴종 = 450
+SOURCE:TARGET:일탈 = 150
+SOURCE:TARGET:반감 = 150
+
+;ビデオ
+IF TEQUIP:28
+	SOURCE:TARGET:액체 += 50
+	SOURCE:TARGET:욕정 += 100
+	SOURCE:TARGET:반감 += 200
+ENDIF
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;억압、저항持ちには、억울ソース추가
+SIF TALENT:32 || TALENT:34
+	SOURCE:TARGET:울굴 += 150
+
+;처녀、정조관념
+IF TALENT:0
+	TIMES SOURCE:TARGET:무서움 , 1.20
+	TIMES SOURCE:TARGET:굴종 , 1.20
+	TIMES SOURCE:TARGET:반감 , 1.20
+	SOURCE:TARGET:노출 += 300
+	IF TALENT:30
+		TIMES SOURCE:TARGET:노출 , 2.00
+		TIMES SOURCE:TARGET:일탈 , 2.00
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+;불결の処理
+;-------------------------------------------------
+;奴隷のＶ⇔指の불결が移動
+CALL MOVE_STAIN("바기나", TARGET, "손", TARGET)
+
+;-------------------------------------------------
+;경험の処理
+;-------------------------------------------------
+;노출증Lv3이상で자위경험加算
+IF ABL:8 >= 3
+	CALL ADDS_EXP("자위경험", 1, TARGET)
+	;PRINTL 자위경험＋１
+ENDIF
+;공개オナニー時は이상경험付加
+IF TEQUIP:28
+	CALL ADDS_ABNORMAL_EXP("공개자위", TARGET)
+;	EXP:50 += 1
+;	PRINTL 이상경험＋１
+ENDIF
+
+A = 1
+IF IS_LESBIAN(TARGET,PLAYER)
+	CALL ADDS_EXP("레즈경험", A, TARGET)
+	CALL ADDS_EXP("레즈경험", A, PLAYER)
+ELSEIF IS_GAY(TARGET,PLAYER)
+	CALL ADDS_EXP("ＢＬ경험", A, TARGET)
+	CALL ADDS_EXP("ＢＬ경험", A, PLAYER)
+ENDIF
+
+;의존도ベクトル
+TFLAG:33 = 3
+
+;의존도보정値(복종で1、예속で2）
+IF TALENT:5 && ASSIPLAY == 0
+	TFLAG:30 += 1
+ELSEIF TALENT:8 && ASSIPLAY == 0
+	TFLAG:30 += 2
+ENDIF
+
+
+RETURN 1
+;-------------------------------------------------
+;実行판정処理
+;-------------------------------------------------
+@COM_ORDER_9, ARG, ARG:1
+IF TEQUIP:ARG:음문발동
+	CALL ADD_COM_ORDER, "판정無視", "음문 발동중"
+	RETURN 0
+ENDIF
+CALL ADD_COM_ORDER, "ABL", "욕망", 3, ARG, ARG:1
+CALL ADD_COM_ORDER, "ABL", "Ｖ감각", 2, ARG, ARG:1
+CALL ADD_COM_ORDER, "ABL", "봉사정신", 4, ARG, ARG:1
+CALL ADD_COM_ORDER, "ABL", "노출증", 3, ARG, ARG:1
+CALL ADD_COM_ORDER, "ABL", "자위중독", 3, ARG, ARG:1
+
+CALL ADD_COM_ORDER, "MARK", "쾌락각인", 3, ARG, ARG:1
+;PALAM:윤활（の不발）
+SIF PALAM:ARG:4 < PALAMLV:3
+	CALL ADD_COM_ORDER, "EXTRA", "윤활부족", -5, ARG, ARG:1
+CALL ADD_COM_ORDER, "PALAM", "욕정", 3, ARG, ARG:1
+CALL ADD_COM_ORDER, "TALENT", "부끄럼쟁이", -2, ARG, ARG:1
+SIF !TALENT:ARG:음란 && !TALENT:ARG:창부
+	CALL ADD_COM_ORDER, "TALENT", "쾌감을부정", -5, ARG, ARG:1
+;남성혐오（연모、친애で무효）
+SIF HATE(ARG, ARG:1)
+	CALL ADD_COM_ORDER, "TALENT", \@IS_MALE(PLAYER) ? 남성혐오 # 여성혐오 \@, -12, ARG, ARG:1
+CALL ADD_COM_ORDER, "TALENT", "처녀", -20, ARG, ARG:1
+SIF !TALENT:ARG:처녀 && EXP:ARG:Ｖ경험 < EXPLV:2
+	CALL ADD_COM_ORDER, "EXTRA", "Ｖ경험부족", -5, ARG, ARG:1
+CALL ADD_COM_ORDER, "TALENT", "후타나리", 4, ARG:1, ARG
+CALL ADD_COM_ORDER, "EXTRA", "미약", 6, ARG, ARG:1
+CALL ADD_COM_ORDER, "RELATION", , , ARG, ARG:1
+;-------------------------------------------------
+;実行値
+;-------------------------------------------------
+@COM_ORDER_NUM_9
+RETURN 18
+;===================================================
+;조교타입
+;===================================================
+@COMTYPE_9
+RETURN COMTYPE("애무계")

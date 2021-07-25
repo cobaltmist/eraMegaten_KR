@@ -1,0 +1,305 @@
+﻿;------------------------------------------------------------------------------------------------------------
+;引数해설
+;ARGS 				喋る人
+;ARGS:1 			메시지内容
+;区切り文字			메시지を区切る文字列
+;字幅 				1行の幅(설정値を越えてる行がある場合はその行にあわせる)
+;行数 				行数(생략した場合は自動で数をあわせる)
+;옵션			文字列で指定します。無記述のものは～しないという形になるので注意してください
+;					로그를 남기지 않는다/로그를 남긴다
+;							표시後。메시지を消すかどうかです。
+;							同一ウィンドウ内で文字が출력されてるように見せかけたい場合は残してください。あるいは재이용한다場合は着前のはログを消します
+;					버튼을 이용한다/버튼을 이용하지 않는다
+;							LOG/AUTO/CONFIGの3ボタンを표시し、実行できるようにするかどうか選びます
+;							それぞれのボタンは過去ログ閲覧・메시지표시後の自動送り・コンフィグ설정に対応しています
+;					재이용한다/재이용하지 않는다
+;							前の메시지欄からそのまま続いてるかのように表記します
+;							フェードインと타입を組み合わせるときなどにどうぞ
+;					NOWAIT
+;						最後にWAITをかけずにPRINTLのまま流します
+;					NOANIME
+;						アニメをせずに一気に표시します
+;位置				LEFT / CENTER / RIGHT
+;							枠の표시位置を調整します。
+;표시타입 		TYPE:타입風アニメ　FADE:フェードイン
+;フェード間隔 		フェードインの場合の、1行当たりの표시時間(*1/10sec)
+;終色 				フェードインの場合の最終的な文字色
+;文字列体裁			LEFT / CENTER / RIGHT
+;							中の文字列の枠内の표시位置を변경します
+;
+;コンフィグ			以下のフラグはFLAG.ｃsvで定義してください
+;					FLAG:オート送り
+;							オート送りのONOFFを保存します
+;					GLOBAL:메시지속도
+;							메시지속도を保存します。표시は0.1秒ごとですがその際の표시されていく文字数はこの値と等しくなります
+;					GLOBAL:오토일때웨이트
+;							オート送り時、全메시지표시後の待機時間を保存します
+;					GLOBAL:오른쪽클릭시웨이트
+;							右クリック時、全메시지표시後の待機時間を保存します
+;					GLOBAL:메시지애니메이션이용
+;							自動的に옵션に"/NOANIME"を추가します
+;------------------------------------------------------------------------------------------------------------
+@MESSAGE_WINDOW, ARGS, ARGS:1, 区切り文字 = "/" , 옵션 = "로그를 남기지 않는다/버튼을 이용한다/재이용하지 않는다" , 位置 , 字幅 = 72, 行数 = -1 , 표시타입 = "TYPE" , フェード間隔 = 10 , 終色 = -1 , 文字列体裁 = "LEFT"
+#LOCALSIZE 10
+#LOCALSSIZE 50
+#DIMS 保存文字列 , 50
+#DIM 色 , 3
+
+#DIMS 옵션
+#DIMS 区切り文字
+#DIMS 位置
+#DIM 字幅
+#DIM 行数
+#DIMS 표시타입
+#DIM 終色
+#DIMS 文字列体裁
+
+#DIMS 표시文字列
+#DIMS 전회ARGS
+#DIMS 전회発言者
+#DIM 전회字幅
+#DIM 전회行数
+#DIMS 전회位置
+#DIM LINE
+#DIM 速度
+#DIM ログ취득済み
+#DIM フェード間隔
+
+;ARG:5 
+LINE = LINECOUNT
+ログ취득済み = 0
+IF 표시타입 == "FADE"
+	速度 = 1
+ELSE
+	速度 = MAX(1, GLOBAL:메시지속도)
+ENDIF
+SIF 표시타입 == "FADE"
+	色:0 = GETCOLOR()
+SIF 표시타입 == "FADE" && 終色 == -1
+	色:1 = 色:0
+
+;이름部分の字数を偶数にする
+SIF STRLENS(ARGS) % 2
+	ARGS += " "
+;空文字列でない場合装飾を추가
+SIF ARGS != ""
+	ARGS = ┤%ARGS%├
+
+;GLOBAL:메시지애니메이션이용が立ってない場合、自動的に옵션に"/NOANIME"を추가する
+SIF GLOBAL:메시지애니메이션이용 == 0
+	옵션 += "/NOANIME"
+
+;옵션に재이용한다が入っている場合、전회の메시지ボックスの中身をそのまま使う
+IF STRCOUNT(옵션, "재이용한다")
+	SIF ARGS == ""
+		ARGS = %전회発言者%
+	SIF !行数
+		行数 = 전회行数
+	SIF 位置 == ""
+		位置 = %전회位置%
+	ARGS:1 = %전회ARGS%\@ARGS:1 != "" ? %区切り文字%%ARGS:1% # \@
+	字幅 = MAX(字幅 , 전회字幅)
+	IF 표시타입 == "TYPE"
+		LOCAL = LOCAL:3 - 速度
+	ELSEIF 표시타입 == "FADE"
+		LOCAL = LOCAL:4 * フェード間隔 -1
+	ENDIF
+	;전회のログを消す
+	CALL MESSAGE_WINDOW_LOG(, , , , , -1)
+ELSE
+	SIF 位置 == ""
+		位置 = LEFT
+	VARSET LOCALS , ""
+	LOCAL = - 1
+	;LOCAL:4 표시済みの行数
+	LOCAL:4 = 0
+	;LOCAL:5 前行までの文字列の長さ합계
+	LOCAL:5 = 0
+ENDIF
+VARSET 保存文字列
+SPLIT ARGS:1 , 区切り文字 , 保存文字列
+
+;文字幅計算
+FOR LOCAL:1 , 0 , 50
+	字幅 = MAX(字幅 , (STRLENS(保存文字列:(LOCAL:1))+1) / 2 * 2)
+NEXT
+
+
+;行数計算
+;ARGS:1内の区切り文字が有る個数+1が行になるはず
+LOCAL:2 = STRCOUNT(ARGS:1, 区切り文字)
+;引数として渡されている場合は변경なし
+SIF 行数 == -1
+	行数 = LOCAL:2 + 1
+
+;文字数計算
+LOCAL:3 = STRLENSU(ARGS:1) - STRLENSU(区切り文字) * LOCAL:2
+$START
+REDRAW 0
+CALL SET_ALIGNMENT, 位置
+;RESULTSにAがはいらない場合、アニメ停止となる
+RESULTS = \@STRCOUNT(옵션, "NOANIME") ? NOANIME # A\@
+WHILE LOCAL:3 + 速度 > LOCAL
+	LOCAL += 速度
+	IF 표시타입 == "TYPE"
+		WHILE LOCAL - LOCAL:5 >= STRLENSU(保存文字列:(LOCAL:4)) && LOCAL:4 < LOCAL:2+1
+			LOCALS:(LOCAL:4) = %保存文字列:(LOCAL:4)%
+			LOCAL:5 += STRLENSU(保存文字列:(LOCAL:4))
+			LOCAL:4 ++
+		WEND
+	ELSEIF 표시타입 == "FADE"
+		WHILE LOCAL >= (LOCAL:4+1) * フェード間隔
+			LOCAL:5 += STRLENSU(保存文字列:(LOCAL:4))
+			LOCAL:4 ++
+		WEND
+	ENDIF
+	CLEARLINE LINECOUNT - LINE
+	;右クリックorクリックorEnterを押していると残りも全部표시する
+	IF MESSKIP() || FLAG:ウィンドウ메시지スキップ || RESULTS != "A" || (GLOBAL:메시지속도 == 0 && 표시타입 == "TYPE" )
+		LOCAL = (표시타입 != "FADE" ? LOCAL:3 # (LOCAL:2+1) * フェード間隔 )
+		LOCAL:5 = LOCAL:3
+		LOCAL:4 = LOCAL:2+1
+		FOR LOCAL:1 , 0 , 行数
+			LOCALS:(LOCAL:1) = %保存文字列:(LOCAL:1)%
+		NEXT
+	ENDIF
+	;이름と上側を표시
+	PRINTFORM %"┌" + ARGS + "─" * ((字幅 - STRLENS(ARGS)+1) / 2) + "┐"%
+	PRINTL
+	
+	;最新の行の中身を입력
+	IF 표시타입 == "TYPE"
+		LOCALS:(LOCAL:4) = %SUBSTRINGU(保存文字列:(LOCAL:4) , 0 , LOCAL - LOCAL:5)%
+	ELSE
+		LOCALS:(LOCAL:4) = %保存文字列:(LOCAL:4)%
+	ENDIF
+	
+	;体裁整え+표시
+	FOR LOCAL:1, 0, 行数
+		PRINT │
+		IF 표시타입 == "FADE" && LOCAL:1 == LOCAL:4
+			色:2 = LOCAL - LOCAL:4 * MAX(フェード間隔 , 1)
+			SETCOLOR 色:1 / POWER(256 , 2) * 色:2 / MAX(フェード間隔 , 1) , 色:1 / 256 % 256 * 色:2 / MAX(フェード間隔 , 1) , 色:1 % 256 * 色:2 / MAX(フェード間隔 , 1)
+		ELSEIF 표시타입 == "FADE"
+			SETCOLOR 色:1
+		ENDIF
+
+		SELECTCASE 文字列体裁
+			CASE "RIGHT"
+				PRINTBUTTON @"%LOCALS:(LOCAL:1),字幅,RIGHT%", "0"
+			CASE "CENTER"
+				IF LOCAL:1 <= LOCAL:4
+					;LOCAL:7 LOCALS:(LOCAL:1)の左側のスペースを計算しておくもの
+					LOCAL:7 = (字幅 - STRLENS(保存文字列:(LOCAL:1)))/2
+					PRINTBUTTON " " * LOCAL:7 + LOCALS:(LOCAL:1) + " " * (字幅 - STRLENS(LOCALS:(LOCAL:1)) - LOCAL:7), "0"
+				ELSE
+					PRINTBUTTON " " * 字幅 , "0"
+				ENDIF
+			CASEELSE
+				PRINTBUTTON @"%LOCALS:(LOCAL:1),字幅,LEFT%" , "0"
+		ENDSELECT
+		SIF 표시타입 == "FADE"
+			SETCOLOR 色:0
+		PRINTL │
+	NEXT
+	;下표시
+	PRINTFORM └%"─"*(字幅/2-23)%
+	IF !STRCOUNT(옵션, "버튼을 이용하지 않는다")
+		;最後以外はログ・CONFIGボタンを作らない
+		IF LOCAL:3 > LOCAL + 速度
+			PRINTPLAINFORM [+] LOG
+			PRINTBUTTON @" [-] AUTO<\@FLAG:オート送り ?%" ON"%#OFF\@>", "-"
+			PRINTBUTTON @" [*] SKIP<\@FLAG:ウィンドウ메시지スキップ ?%" ON"%#OFF\@>", "*"
+			PRINTPLAINFORM  [/] CONFIG
+		ELSE
+			PRINTBUTTON "[+] LOG", "+"
+			PRINTBUTTON @" [-] AUTO<\@FLAG:オート送り ?%" ON"%#OFF\@>", "-"
+			PRINTBUTTON @" [*] SKIP<\@FLAG:ウィンドウ메시지スキップ ?%" ON"%#OFF\@>", "*"
+			PRINTBUTTON " [/] CONFIG", "/"
+		ENDIF
+	ELSE
+		PRINTFORM %"─"*23%
+	ENDIF
+	PRINTL ┘
+	;右クリックorクリックorEnterを押しているとここで抜ける
+	SIF MESSKIP() || FLAG:ウィンドウ메시지スキップ || RESULTS != "A" || (GLOBAL:메시지속도 == 0 && 표시타입 == "TYPE" )
+		BREAK
+	;입력関係
+	IF LOCAL:3 > LOCAL + 速度
+		TONEINPUTS 100, "A" , 0, ""
+		SIF RESULTS != ""
+			CLEARLINE 1
+	ENDIF
+	IF RESULTS == "-" && STRCOUNT(옵션, "버튼을 이용한다")
+		INVERTBIT FLAG:オート送り, 0
+		RESULTS = A
+	ELSEIF  RESULTS == "*" && STRCOUNT(옵션, "버튼을 이용한다")
+		INVERTBIT FLAG:ウィンドウ메시지スキップ, 0
+		RESULTS = A
+	ENDIF
+WEND
+CALL SET_ALIGNMENT, "PREV"
+SIF ログ취득済み++ == 0
+	CALL MESSAGE_WINDOW_LOG(ARGS, ARGS:1, 区切り文字, 行数, 字幅)
+전회ARGS = %ARGS:1%
+전회発言者 = %ARGS%
+전회字幅 = 字幅
+전회行数 = 行数
+전회位置 = %位置%
+;NOWAITモード時は止まらない
+IF !STRCOUNT(옵션, "NOWAIT") && !FLAG:ウィンドウ메시지スキップ
+	;マウススキップ時の挙動
+	IF MESSKIP()
+		;오른쪽클릭시웨이트が0なら止まらない
+		IF GLOBAL:오른쪽클릭시웨이트 && !STRCOUNT(옵션, "NOANIME")
+			REDRAW 2
+			TWAIT GLOBAL:오른쪽클릭시웨이트, 1
+		ENDIF
+	ELSE
+		IF STRCOUNT(옵션, "버튼을 이용한다")
+			;오토일때웨이트の挙動
+			IF FLAG:オート送り
+				;오토일때웨이트が0の場合は止まらない
+				SIF GLOBAL:오토일때웨이트
+					TONEINPUTS GLOBAL:오토일때웨이트, "A" , 0, ""
+			ELSE
+				ONEINPUTS
+			ENDIF
+			SIF RESULTS != ""
+				CLEARLINE 1
+			;ボタン選択
+			IF (GROUPMATCH(RESULTS, "+", "-", "/" , "*"))
+				;ログ閲覧
+				IF RESULTS == "+"
+					CALL MESSAGE_WINDOW_LOG(, , , , , 1)
+				;オート送りモード切替
+				ELSEIF RESULTS == "-"
+					INVERTBIT FLAG:オート送り, 0
+				;スキップモード切替
+				ELSEIF RESULTS == "*"
+					INVERTBIT FLAG:ウィンドウ메시지スキップ, 0
+				ELSEIF RESULTS == "/"
+					CALL MESSAGE_WINDOW_CONFIG
+				ENDIF
+				;最終표시になるようにして差し返す
+				LOCAL = LOCAL:3 + 速度 - 1 
+				CLEARLINE LINECOUNT - LINE
+				GOTO START
+			ENDIF
+		ELSE
+			;오토일때웨이트の挙動
+			IF FLAG:オート送り && !STRCOUNT(옵션, "NOANIME")
+				;오토일때웨이트が0の場合は止まらない
+				SIF GLOBAL:오토일때웨이트
+					TWAIT GLOBAL:오토일때웨이트, 0
+			ELSE
+				WAITANYKEY
+			ENDIF
+		ENDIF
+	ENDIF
+	;로그를 남긴다が入ってない場合は消す
+	SIF !STRCOUNT(옵션, "로그를 남긴다")
+		CLEARLINE LINECOUNT - LINE
+ENDIF
+REDRAW 1
+RETURN 1

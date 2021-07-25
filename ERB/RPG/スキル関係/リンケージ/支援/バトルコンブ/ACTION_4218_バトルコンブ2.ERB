@@ -1,0 +1,152 @@
+﻿;====================================================
+;스킬及び行動の実行
+;====================================================
+@ACTION_4218,ARG,ARG:1
+#LOCALSIZE 6
+#DIM 소재 , 4
+#DIM 完成品 , 2
+#DIM PCOUNT, 2
+
+	SIF FLAG:DEBUG
+		PRINTFORMW ARG가 {ARG}、ARG:1가 {ARG:1}、
+
+	IF CFLAG:(ARG):PTフラグ == 0
+		GOTO MISSED_BATTLECOMB
+	ELSE
+		LOCAL:1 = 7
+		LOCAL:2 = 17
+	ENDIF
+
+	SIF FLAG:DEBUG
+		PRINTFORMW PT플래그 없어짐
+
+	LOCAL:3 = -1
+	LOCAL:4 = -1
+	LOCAL:5 = -1
+	LOCAL = -1
+	FOR LOCAL,LOCAL:1,LOCAL:2
+		SIF POS(LOCAL) < 0
+			CONTINUE
+		;ボスが混じってたり変な종족がいたり소재のLVが사용者より高かったり解析率발りてなかったりそいつ死体なら即실패
+			SIF FLAG:DEBUG
+				PRINTFORML 보스？{CFLAG:POS(LOCAL):ボスフラグ} || 인간이하？{ABL:POS(LOCAL):종족 <= 0} || 종족45이상?{ABL:POS(LOCAL):종족 > 45} || LV차이{BASE:POS(LOCAL):LV} > {BASE:ARG:LV}와× || 해석률은？{FLAG:(20000+NO:POS(LOCAL)) < 100} || 시체？{GET_STATE(CFLAG:POS(LOCAL):ステート) == "DYING"}
+
+		SIF CFLAG:POS(LOCAL):ボスフラグ || ABL:POS(LOCAL):종족 <= 0 || ABL:POS(LOCAL):종족 > 45 || BASE:POS(LOCAL):LV > BASE:ARG:LV || FLAG:(20000+NO:POS(LOCAL)) < 100 || GET_STATE(CFLAG:POS(LOCAL):ステート) == "DYING"
+			GOTO MISSED_BATTLECOMB
+		;即死내성によっても확률로실패。이벤트戦対策はこれとする
+		SIF MAXBASE:POS(LOCAL):DYING + RAND:100 <= 0
+			GOTO MISSED_BATTLECOMB
+
+		;１번째をLOCAL:3に記録
+			SIF FLAG:DEBUG
+				PRINTFORMW １명째。LOCAL:3 = {POS(LOCAL)}
+		IF LOCAL:3 == -1
+			LOCAL:3 = POS(LOCAL)
+			CONTINUE
+		ENDIF
+		;２번째をLOCAL:4に記録
+			SIF FLAG:DEBUG
+				PRINTFORMW ２명째。LOCAL:4 = {POS(LOCAL)}
+		IF LOCAL:4 == -1
+			LOCAL:4 = POS(LOCAL)
+			CONTINUE
+		ENDIF
+		;ここまで抜けると３体눈がいるので실패
+			SIF FLAG:DEBUG
+				PRINTFORMW ３명째에 걸려서 실패
+
+		GOTO MISSED_BATTLECOMB
+	NEXT
+	
+	소재:1 = LOCAL:3
+	소재:2 = LOCAL:4
+	소재:3 = -1
+	;소재が발りてないならばアウトー
+	SIF 소재:1 < 0 || 소재:2 < 0
+		GOTO MISSED_BATTLECOMB
+	FLAG:合体予定악마1 = 소재:1
+	FLAG:合体予定악마2 = 소재:2
+	
+	CALL RESULT_FUSION,소재:1,소재:2,소재:3
+	LOCAL:5 = RESULT
+		SIF FLAG:DEBUG
+			PRINTFORMW 합체 결과를 {RESULT}
+	SIF LOCAL:5 <= 0
+		GOTO MISSED_BATTLECOMB
+
+	完成品 = CHARANUM
+	完成品:1 = CHARANUM+1
+	;SIF CSVCFLAG(LOCAL:5 , GETNUM(CFLAG,"１体のみ"),0) && FINDCHARA(NO,LOCAL:5) > -1
+	;	LOCAL:9 = 1
+	;一旦合体결과の악마をキャラ등록
+	CALL ADD_NEW_COMPANION,LOCAL:5,100, -1
+	;なんらかの理由でキャラ등록できない場合
+	IF RESULT == 0
+		GOTO MISSED_BATTLECOMB
+	ENDIF
+
+	CALL REMOVE_POSITION,CFLAG:(소재:1):포지션
+	CALL REMOVE_POSITION,CFLAG:(소재:2):포지션
+	CALL SYNC_STATUS,完成品
+
+	CALL SET_ENEMY,9, NO:完成品, BASE:(소재:1):LV+BASE:(소재:2):LV, 0, 0
+	完成品:1 = POS(9)
+	CALL SYNC_STATUS,完成品:1
+	BASE:(完成品:1):LV = MAX(BASE:完成品:LV,(BASE:(소재:1):LV+BASE:(소재:2):LV)/2)
+	CALL HEALTH_CHARA,完成品:1
+	CALL SYNC_STATUS,完成品:1
+	CFLAG:(完成品:1):PTフラグ = 0
+	CFLAG:(完成品:1):입력行動 = -1
+	CFLAG:(完成品:1):방어フラグ = 1
+	;---- EDIT 006 ADD START -------------------------
+	;特殊合体時専用処理があれば呼び出し
+	TRYCALLFORM FUSION_SPECIAL_PROCESS_{LOCAL:5}, 完成品:1, 소재:1, 소재:2 , 소재:3
+	;---- EDIT 006 ADD END -------------------------
+	;스킬継承
+	CALL SUCCESS_SKILL,完成品:1,소재:1,소재:2,소재:3,0
+
+	;---- EDIT 011 ADD START ----------------------
+	;라지엘의서장비中なら一部소질や랭크アップ先を변화
+	SIF EQUIP:MASTER:라지엘의서 && EXTRACHECK_DEVIL_CHILDREN(NO:(完成品:1))
+		CALL EXTRA_DEVIL_CHILDREN , 完成品:1
+	;---- EDIT 011 ADD END ------------------------
+	;스테이터스강화
+	CALL FUSION_ENHANCE_STATUS,完成品:1,소재:1,소재:2,소재:3
+
+	;----- 변신する악마向けというか主に東方ＭＯＤ用 はじめ -----
+	IF TALENT:(完成品:1):데빌시프터 || TALENT:(完成品:1):식노
+		FOR PCOUNT, 1, FLAG:스킬数 + 1
+			ABL:(完成品:1):@"인간시스킬{PCOUNT}" = ABL:(完成品:1):@"스킬{PCOUNT}"
+		NEXT
+	ENDIF
+	;----- 변신する악마向けというか主に東方ＭＯＤ用 결론 -----
+	CALL SYNC_STATUS,完成品:1
+	CALL HEALTH_CHARA,完成品:1
+
+	PRINTFORM %종족명(소재:1)%　　
+	PRINTFORM %CALLNAME:(소재:1)%　　를(을)
+	PRINTFORM %종족명(소재:2)%　　
+	PRINTFORM %CALLNAME:(소재:2)%　　와(과) 합체하여 
+	U = 完成品:1
+	PRINTFORM %종족명(U)%　　
+	PRINTFORML %CALLNAME:U%　　이(가) 나타났다！
+
+	CALL キャラ삭제,完成品
+
+	FLAG:合体予定악마1 = -1
+	FLAG:合体予定악마2 = -1
+
+RETURN 0
+
+
+IF (0)
+	$MISSED_BATTLECOMB
+	PRINTFORMW 그러나 마법은 실패했다
+	RETURN 0
+ENDIF
+
+
+;====================================================
+;実行内容ここまで
+;====================================================
+

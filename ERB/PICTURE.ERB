@@ -1,0 +1,262 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:PICTURE.ERB
+;	Facility	:표시したいものを一時的に保存し、さまざまな操作を行った後に一括で표시する関数
+;
+;	Licence		:ライセンスフリー
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		20XX/XX/XX		Ｎ鳥					新規作成。参考:eraWizなど
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;--------------------------------------------------------------------
+@SET_PICTURE, 입력, 行 = 0 , 표시 = "" , 표시行数 = -1
+;--------------------------------------------------------------------
+;입력文字列は「표시したい文字,色,フォント,ボタン」を_でブロック分けする
+;例えば"この文字は灰色です,0x404040_そして_この文字は白です,0xEEEEEE"
+;と第一引数に入れると、この文字は灰色ですそしてこの文字は白です
+;                               ↑この辺灰色　　　　↑この辺白
+;といった感じに표시される。
+;--------------------------------------------------------------------
+#DIMS 입력退避 , 100
+#DIMS 입력
+#DIMS LEFT
+#DIMS RIGHT
+#DIMS 표시
+#DIM 行
+#DIM 표시行数
+#DIMS ログ , 50
+#DIMS フォント , 2
+#DIM 色 , 2
+#DIM 開始位置
+#DIMS 挿入文字列
+#DIM 分割開始位置
+#DIM 分割종료位置
+#DIM 分割開始ブロック
+#DIM 分割종료ブロック
+#DIM 文字カウント
+#DIMS 分割用속성置場
+#DIMS 分割文字列 , 2
+#DIMS 左文字列
+#DIMS 右文字列
+#DIMS 行데이터 , 200
+;生成される描画데이터は、上書きされない左部分＋추가する文字列＋上書きされない右部分
+SELECTCASE 표시
+	CASE "소거"
+		VARSET ログ
+		VARSET 입력
+		RETURN 0
+	CASE "표시"
+		IF 표시行数 == -1
+			FOR LOCAL , 49 , -1 , -1
+				SIF ログ:LOCAL == ""
+					표시行数 = LOCAL
+			NEXT
+		ENDIF
+		フォント = %GETFONT()%
+		色 = GETCOLOR()
+		FOR LOCAL , 行 , 行 + 표시行数
+		
+			LOCAL:2 = STRCOUNT(ログ:LOCAL , "_") + 1
+			FOR LOCAL:1 , 0 , LOCAL:2
+				LOCALS = %AUTO_SPLIT(ログ:LOCAL , "_" , LOCAL:1)%
+				SIF AUTO_SPLIT(LOCALS , "," , 1) != ""
+					SETCOLOR TOINT(AUTO_SPLIT(LOCALS , "," , 1))
+				SIF AUTO_SPLIT(LOCALS , "," , 2) != ""
+					SETFONT AUTO_SPLIT(LOCALS , "," , 2)
+				IF AUTO_SPLIT(LOCALS , "," , 3) != ""
+					PRINTBUTTON AUTO_SPLIT(LOCALS , "," , 0) , AUTO_SPLIT(LOCALS , "," , 3)
+				ELSE
+					PRINTFORM %AUTO_SPLIT(LOCALS , "," , 0)%
+				ENDIF
+				SETCOLOR 色
+				;SETFONT フォント
+			NEXT
+			PRINTL
+		NEXT
+	;디버그용
+	CASE "WAIT"
+		WAIT
+	CASEELSE
+		IF 표시行数 == -1
+			ログ:行 += 입력 + "_"
+		ELSE
+			;作りかけ
+			開始位置 = 표시行数
+			IF ログ:行 == ""
+				ログ:行 = %" " * 開始位置 + 입력 + "_"%
+				;PRINTFORMW {開始位置}
+			ELSE
+				;SIF FLAG:DEBUG
+				;	PRINTW とい
+				LOCAL:3 = STRCOUNT(입력 , "_")+1
+				SPLIT 입력:0 , "_" , 입력退避
+				挿入文字列 = 
+				FOR LOCAL:2 , 0 , LOCAL:3
+					;挿入文字列
+					挿入文字列 += AUTO_SPLIT(입력退避:(LOCAL:2) , "," , 0)
+				NEXT
+					分割開始ブロック = -1
+					分割종료ブロック = -1
+					文字カウント = 0
+					左文字列 =
+					右文字列 =
+					LOCAL:1 = STRCOUNT(ログ:行 , "_") + 1
+					
+					FOR LOCAL , 0 , LOCAL:1
+					
+						IF AUTO_SPLIT(ログ:行 , "_" , LOCAL) == ""
+							IF LOCAL == LOCAL:1 - 1 && 分割開始ブロック == -1
+								;PRINTW 届かなかった
+								;開始位置まで届かなかった場合、開始位置-文字カウント分の空白を추가
+								;左文字列 += 
+								입력 = %" " * (開始位置 - 文字カウント) + "_" + 입력%
+								;PRINTFORMW {開始位置 - 文字カウント}
+							ENDIF
+							CONTINUE
+						ENDIF
+						LOCALS = %AUTO_SPLIT(ログ:行 , "_" , LOCAL)%
+						
+						IF 分割開始ブロック == -1
+							;これまでの文字列の文字数+今回の文字列の長さが開始位置よりも長い場合、そのブロックの途中から挿入を開始する
+							IF 文字カウント + STRLENS(AUTO_SPLIT( LOCALS , "," , 0)) > 開始位置
+								;分割する位置を特定
+								分割開始位置 = 開始位置 - 文字カウント
+								分割開始ブロック = LOCAL
+								LOCALS:1 = %AUTO_SPLIT(LOCALS , "," , 0)%
+								
+								;分割開始位置+挿入文字列の長さが今回の文字列の長さより以下ならば、このブロックで完結する
+								IF 分割開始位置 + STRLENS(挿入文字列) < STRLENS(LOCALS:1)
+								
+									分割종료位置 = 分割開始位置 + STRLENS(挿入文字列)
+									分割종료ブロック = LOCAL
+									;フォントや色の情報を保存
+									分割用속성置場 = %AUTO_SPLIT(LOCALS , LOCALS:1 , 1)%
+									
+									;当該ブロックの文字列を二つに分割
+									;左側は0～開始位置まで
+									分割文字列:0 = %SUBSTRING(LOCALS:1 , 0 , 分割開始位置)%
+									;２バイト（全角）文字を途中から書き換えようとした際の표시ズレを排除する処理
+									;左側の文字列の長さが開始位置よりも右に有る場合、左がわの文字の最後の一文字を半角スペースに変換する
+									SIF STRLENS(分割文字列:0) > 分割開始位置
+										分割文字列:0 = %SUBSTRING(分割文字列:0 , 0 , STRLENS(分割文字列:0) - 2) + " "% 
+									SIF 分割文字列:0 != ""
+										分割文字列:0 += 分割用속성置場
+									
+									;右側は分割종료位置～文字列の最後まで
+									分割文字列:1 = %SUBSTRING(LOCALS:1 , 分割종료位置)%
+									;２バイト（全角）文字の途中までを書き換えようとした際の표시ズレを排除する処理
+									;LOCALS:1の長さから分割文字列:1の長さを引いた物よりも分割종료位置の方が大きい場合、
+									;右側の文字列の最初の一文字を半角スペースに変換する
+									;PRINTW ここじょ
+									SIF STRLENS(LOCALS:1) > 分割종료位置 + STRLENS(分割文字列:1)
+										分割文字列:1 = %" " + SUBSTRING(分割文字列:1 , 0 , STRLENS(分割文字列:1))% 
+									SIF 分割文字列:1 != ""
+										分割文字列:1 += 分割用속성置場
+									左文字列 += 分割文字列:0+"_"
+									右文字列 = %分割文字列:1%_
+								
+								ELSEIF 分割開始位置 + STRLENS(挿入文字列) == STRLENS(LOCALS:1)
+									分割종료ブロック = LOCAL
+								;そうでなければ종료位置を探す為に続ける
+								
+								ELSE
+								
+									分割종료位置 = STRLENS(挿入文字列) - (STRLENS(LOCALS:1) - 分割開始位置)
+									
+									文字カウント += STRLENS(AUTO_SPLIT( LOCALS , "," , 0))
+									
+									;開始位置より後ろの文字列は削っておく（文字列数は既にカウント済みなのでもう用は無い）
+									LOCALS:1 = %SUBSTRING(LOCALS:1 , 0 , 分割開始位置)%
+									;２バイト（全角）文字を途中から書き換えようとした際の표시ズレを排除する処理
+									;左側の文字列の長さが開始位置よりも右に有る場合、左がわの文字の最後の一文字を半角スペースに変換する
+									IF STRLENS(LOCALS:1) > 分割開始位置
+										LOCALS:1 = %SUBSTRING(LOCALS:1 , 0 , STRLENS(LOCALS:1) - 2) + " "%
+										文字カウント --
+										;分割開始位置 --
+										;分割종료位置 --
+									ENDIF
+									左文字列 += CHANGE_SPLIT(LOCALS , "," , 0 , , LOCALS:1) + "_"
+									
+								ENDIF
+								
+							ELSEIF LOCAL == LOCAL:1 - 1
+								;PRINTW 届かなかった
+								;開始位置まで届かなかった場合、開始位置-文字カウント分の空白を추가
+								;左文字列 += 
+								입력 = %" " * (開始位置 - 文字カウント) + "_" + 입력%
+								;PRINTFORMW {開始位置 - 文字カウント}
+							ELSE
+								文字カウント += STRLENS(AUTO_SPLIT( LOCALS , "," , 0))
+								左文字列 += LOCALS + "_"
+								
+							ENDIF
+						ELSEIF 分割종료ブロック == -1
+							;分割종료位置がこのブロックの文字列の長さ以下の場合、分割종료位置よりも左を削って右文字列に代入する
+							IF 分割종료位置 <= STRLENS(AUTO_SPLIT( LOCALS , "," , 0))
+								分割종료ブロック = LOCAL
+								LOCALS:1 = %SUBSTRING(AUTO_SPLIT(LOCALS , "," , 0) , 分割종료位置)%
+								;２バイト（全角）文字の途中までを書き換えようとした際の표시ズレを排除する処理
+								;LOCALS:1の長さから分割文字列:1の長さを引いた物よりも分割종료位置の方が大きい場合、
+								;右側の文字列の最初の一文字を半角スペースに変換する
+								;PRINTW 515
+								SIF STRLENS(AUTO_SPLIT( LOCALS , "," , 0)) > 分割종료位置 + STRLENS(LOCALS:1)
+									LOCALS:1 = %" " + SUBSTRING(LOCALS:1 , 0 , STRLENS(LOCALS:1))% 
+								右文字列 = %CHANGE_SPLIT(LOCALS , "," , 0 , , LOCALS:1)%_
+								
+							ELSE
+								分割종료位置 -= STRLENS(AUTO_SPLIT( LOCALS , "," , 0))
+							ENDIF
+							
+						ELSE
+							;後は右文字列に残りを추가していく
+							右文字列 += LOCALS + "_"
+						ENDIF
+						
+					NEXT
+					ログ:行 = % 左文字列 + 입력 + "_" + 右文字列 %
+			ENDIF
+			
+			;統合処理予定地
+			;LOCAL:1 = STRCOUNT(ログ:行 , "_") + 1
+			;FOR LOCAL , 0 , LOCAL:1
+			;	SIF LOCAL:1 <= LOCAL +1
+			;		BREAK
+			;	LOCALS = %AUTO_SPLIT(ログ:行 , "_" , LOCAL)%
+			;	LOCALS:1 = %AUTO_SPLIT(LOCALS , "," , 0)%
+			;	LOCALS:2 = %AUTO_SPLIT(LOCALS , LOCALS:1 , 1)%
+			;	LOCALS:3 = %AUTO_SPLIT(ログ:行 , "_" , LOCAL+1)%
+			;	LOCALS:4 = %AUTO_SPLIT(LOCALS:3 , "," , 0)%
+			;	LOCALS:5 = %AUTO_SPLIT(LOCALS:3 , LOCALS:4 , 1)%
+			;	;PRINTW ここは？
+			;	IF LOCALS:2 != "" && LOCALS:2 == LOCALS:5
+			;		
+			;		;PRINTW 返還前
+			;		ログ:行 = %CHANGE_SPLIT(ログ:行 , "_" , LOCAL , , LOCALS:1+LOCALS:4+LOCALS:2)%
+			;		ログ:行 = %CHANGE_SPLIT(ログ:行 , "_" , LOCAL+1 , , "")%
+			;		;PRINTW じゃあここは？
+			;		LOCAL = 0
+			;		LOCAL:1 --
+			;		ログ:行 = %REPLACE(ログ:行 , "__" , "_")%
+			;		
+			;	ENDIF
+			;NEXT
+			;PRINTFORML {LOCAL:1}
+			;IF LOCAL:1
+			;	PRINTW hoge
+			;ENDIF
+			
+		ENDIF
+ENDSELECT
+
+
+
+
+
+
+
+
+
+
+

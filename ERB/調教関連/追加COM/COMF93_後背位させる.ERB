@@ -1,0 +1,371 @@
+﻿
+@CHECK_COM_ABLE93
+;후배위시킨다実行판정
+
+;조교者の바기나が使えないとダメ
+SIF !USE_VAGINA(PLAYER) 
+	RETURN 0
+	
+;조교대상の페니스が使えないとダメ
+SIF  !USE_PENIS(TARGET) && !USE_PBAND(TARGET)
+	RETURN 0
+
+;촉수조교中はダメ
+SIF TEQUIP:25
+	RETURN 0
+
+;밧줄・拘束中はダメ
+SIF TEQUIP:19
+	RETURN 0
+
+;삼각목마騎乗中はダメ
+SIF TEQUIP:41
+	RETURN 0
+
+;목욕탕플레이中は플레이매트が無いとダメ
+IF TEQUIP:31
+	SIF !EXIST_ITEM(20)
+		RETURN 0
+ENDIF
+
+RETURN 1
+
+
+@ACT_COM93
+;후배위시킨다
+PRINTL 후배위시킨다
+TSTR:0 = 후배위시킨다
+;-------------------------------------------------
+;実行決定
+;-------------------------------------------------
+;CALL KOJO_MESSAGE_COM
+
+;조교者←→조교대상
+TFLAG:28 = 3
+
+;-------------------------------------------------
+;ソースの計算
+;-------------------------------------------------
+LOSEBASE:0 += 50
+LOSEBASE:1 += 100
+
+SOURCE:0 = 450
+IF TALENT:PLAYER:유아체형
+	TIMES SOURCE:쾌Ｃ , 1.50
+	SOURCE:아픔 += 50
+ELSEIF TALENT:PLAYER:소인체형
+	TIMES SOURCE:쾌Ｃ , 2.50
+	SOURCE:아픔 += 100
+ENDIF
+IF TALENT:큰체형
+	TIMES SOURCE:쾌Ｃ , 1.50
+	SOURCE:아픔 += 50
+ELSEIF TALENT:거체
+	TIMES SOURCE:쾌Ｃ , 2.50
+	SOURCE:아픔 += 100
+ENDIF
+
+SOURCE:5 = 500
+SOURCE:6 = 1000
+SOURCE:17 = 500
+SOURCE:18 = 500
+SIF IS_MALE(TARGET) && (TALENT:쾌감을부정 == 0 || ABL:욕망 > 2)
+	SOURCE:18 /= 10
+
+;조교者に쾌Ｖ
+SOURCE:PLAYER:1 = 400
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;억압、저항持ちには、억울ソース추가
+SIF TALENT:32 || TALENT:34
+	SOURCE:16 += 700
+
+SIF (TALENT:PLAYER:0 == 1 || TALENT:PLAYER:1 == 1)
+	TFLAG:31 = 1
+	
+;조교者が처녀か재생처녀（이상경험は一回のみ）
+IF (TALENT:PLAYER:0 == 1 || TALENT:PLAYER:1 == 1)
+	TIMES SOURCE:13 , 20.00
+	TIMES SOURCE:14 , 3.00
+	PRINTFORM ＜%조사처리(CALLNAME:PLAYER,"는")% 
+	SIF TALENT:PLAYER:1 == 1
+		PRINT 재생
+	PRINTL 처녀를 잃었다＞
+	;TALENT:PLAYER:0 = 0
+	;TALENT:PLAYER:1 = 0
+
+	;이상경험추가
+	SIF !IS_MALE(TARGET)
+		CALL ADDS_ABNORMAL_EXP("처녀탈취（동성）", TARGET)
+	SIF !IS_MALE(TARGET)
+		CALL ADDS_ABNORMAL_EXP("처녀상실（동성）", PLAYER)
+ENDIF
+;-------------------------------------------------
+;사정체크
+;-------------------------------------------------
+
+;사정先타입の설정
+TCVAR:PLAYER:페니스사용대상 = TARGET
+TCVAR:PLAYER:사정箇所 = 14
+;사정先選択の可・
+TFLAG:704 = 0
+
+;-------------------------------------------------
+;불결の処理
+;-------------------------------------------------
+;사정に関係なく行われる処理はここから
+;질내に파과혈の불결を付加
+SIF TALENT:PLAYER:0 == 1 || TALENT:PLAYER:1 == 1
+	CALL SET_STAIN("질내", "파과혈", PLAYER)
+;奴隷の질내⇔조교者のＰの불결が移動
+CALL MOVE_STAIN("질내", TARGET, "페니스", PLAYER)
+
+;-------------------------------------------------
+;吸精処理
+;-------------------------------------------------
+IF CFLAG:PLAYER:ＭＡＧ非被흡수 == 0
+	LOCAL = (RAND:10+1) * BASE:LV
+	CALL DRAIN_MAG,PLAYER,LOCAL,TARGET
+ELSEIF CFLAG:TARGET:ＭＡＧ非被흡수 == 0
+	LOCAL = (RAND:10+1) * BASE:LV
+	CALL DRAIN_MAG,TARGET,LOCAL,PLAYER
+ENDIF
+
+;-------------------------------------------------
+;경험の処理
+;-------------------------------------------------
+;조교者のV경험
+CALL ADDS_EXP("Ｖ경험", 1, PLAYER)
+
+;PRINTFORML 봉사쾌락경험(조교자) + 1
+;EXP:PLAYER:봉사쾌락경험 += 1
+;PRINTFORML 성교경험(조교자) + 1
+;EXP:PLAYER:성교경험 += 1
+CALL ADDS_EXP("봉사쾌락경험", 1, PLAYER)
+CALL ADDS_EXP("성교경험", 1, PLAYER)
+;수간경험
+IF (TALENT:TARGET:짐승 || TALENT:TARGET:새) && !(TALENT:PLAYER:짐승 || TALENT:PLAYER:새)
+	CALL ADDS_EXP("수간경험", 1, PLAYER)
+	
+ENDIF
+
+;처녀で동성の場合이상경험
+IF TALENT:PLAYER:처녀 && !IS_MALE(TARGET)
+	CALL ADDS_ABNORMAL_EXP("처녀탈취（동성）", TARGET)
+	CALL ADDS_ABNORMAL_EXP("처녀상실（동성）", PLAYER)
+ENDIF
+
+;근친상간の場合이상경험부여
+IF 近親체크(PLAYER , TARGET)
+	CALL ADDS_ABNORMAL_EXP( @"근친상간（%RESULTS:0%）", PLAYER)
+	CALL ADDS_ABNORMAL_EXP( @"근친상간（%RESULTS:1%）", TARGET)
+ENDIF
+;레즈경험
+A = 4
+IF IS_LESBIAN(TARGET,PLAYER)
+;	PRINTFORML %EXPNAME:40%+{A}
+;	PRINTFORML %EXPNAME:40%(조교자)+{A}
+;	EXP:40 += A
+;	EXP:PLAYER:40 += A
+	CALL ADDS_EXP("레즈경험", A, TARGET)
+	CALL ADDS_EXP("레즈경험", A, PLAYER)
+ELSEIF IS_GAY(TARGET,PLAYER)
+;	PRINTFORML %EXPNAME:41%+{A}
+;	PRINTFORML %EXPNAME:41%(조교자)+{A}
+;	EXP:41 += A
+;	EXP:PLAYER:41 += A
+	CALL ADDS_EXP("ＢＬ경험", A, TARGET)
+	CALL ADDS_EXP("ＢＬ경험", A, PLAYER)
+	
+	
+ENDIF
+
+;의존도ベクトル
+TFLAG:33 = 1
+
+;의존도보정値(主人かつ연모、음란、복종で1。친애、창부、예속で2）
+IF (TALENT:3 || TALENT:4 || TALENT:5) && ASSIPLAY == 0
+	TFLAG:30 += 1
+ELSEIF (TALENT:6 || TALENT:7 || TALENT:8) && ASSIPLAY == 0
+	TFLAG:30 += 2
+ENDIF
+
+;봉사쾌락フラグ
+TFLAG:100 = 1
+
+RETURN 1
+
+@EQUIP_COM93
+PRINTL ＜후배위로 받아들이는중＞
+
+LOSEBASE:0 += 15
+LOSEBASE:1 += 50
+
+SOURCE:0 = 450
+IF TALENT:PLAYER:유아체형
+	TIMES SOURCE:쾌Ｃ , 1.50
+	SOURCE:아픔 += 25
+ELSEIF TALENT:PLAYER:소인체형
+	TIMES SOURCE:쾌Ｃ , 2.50
+	SOURCE:아픔 += 50
+ENDIF
+IF TALENT:큰체형
+	TIMES SOURCE:쾌Ｃ , 1.50
+	SOURCE:아픔 += 25
+ELSEIF TALENT:거체
+	TIMES SOURCE:쾌Ｃ , 2.50
+	SOURCE:아픔 += 50
+ENDIF
+
+SOURCE:5 = 250
+SOURCE:6 = 500
+SOURCE:17 = 250
+SOURCE:18 = 250
+SIF IS_MALE(TARGET) && (TALENT:쾌감을부정 == 0 || ABL:욕망 > 2)
+	SOURCE:18 /= 10
+
+;조교者に쾌Ｖ
+SOURCE:PLAYER:1 = 200
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;억압、저항持ちには、억울ソース추가
+SIF TALENT:32 || TALENT:34
+	SOURCE:16 += 350
+;-------------------------------------------------
+;사정체크
+;-------------------------------------------------
+
+;사정先타입の설정
+TCVAR:PLAYER:페니스사용대상 = TARGET
+TCVAR:PLAYER:사정箇所 = 14
+;사정先選択の可・
+TFLAG:704 = 0
+;-------------------------------------------------
+;吸精処理
+;-------------------------------------------------
+IF CFLAG:PLAYER:ＭＡＧ非被흡수 == 0
+	LOCAL = (RAND:10+1) * BASE:LV
+	CALL DRAIN_MAG,PLAYER,LOCAL,TARGET
+ELSEIF CFLAG:TARGET:ＭＡＧ非被흡수 == 0
+	LOCAL = (RAND:10+1) * BASE:LV
+	CALL DRAIN_MAG,TARGET,LOCAL,PLAYER
+ENDIF
+
+;-------------------------------------------------
+;경험の処理
+;-------------------------------------------------
+;조교者のV경험
+CALL ADDS_EXP("Ｖ경험", 1, PLAYER)
+
+;PRINTFORML 봉사쾌락경험(조교자) + 1
+;EXP:PLAYER:봉사쾌락경험 += 1
+;PRINTFORML 성교경험(조교자) + 1
+;EXP:PLAYER:성교경험 += 1
+CALL ADDS_EXP("봉사쾌락경험", 1, PLAYER)
+CALL ADDS_EXP("성교경험", 1, PLAYER)
+;수간경험
+IF (TALENT:TARGET:짐승 || TALENT:TARGET:새) && !(TALENT:PLAYER:짐승 || TALENT:PLAYER:새)
+	CALL ADDS_EXP("수간경험", 1, PLAYER)
+	
+ENDIF
+;레즈경험
+A = 4
+IF IS_LESBIAN(TARGET,PLAYER)
+;	PRINTFORML %EXPNAME:40%+{A}
+;	PRINTFORML %EXPNAME:40%(조교자)+{A}
+;	EXP:40 += A
+;	EXP:PLAYER:40 += A
+	CALL ADDS_EXP("레즈경험", A, TARGET)
+	CALL ADDS_EXP("레즈경험", A, PLAYER)
+ELSEIF IS_GAY(TARGET,PLAYER)
+;	PRINTFORML %EXPNAME:41%+{A}
+;	PRINTFORML %EXPNAME:41%(조교자)+{A}
+;	EXP:41 += A
+;	EXP:PLAYER:41 += A
+	CALL ADDS_EXP("ＢＬ경험", A, TARGET)
+	CALL ADDS_EXP("ＢＬ경험", A, PLAYER)
+	
+	
+ENDIF
+
+RETURN 1
+@MESSAGE_COM93
+	IF TEQUIP:주도권
+		PRINTFORM %타겟은()% %조사처리(CALLNAME:PLAYER,"를")% 납죽 엎드
+		;욕망で分岐
+		IF ABL:PLAYER:욕망 > 2
+			PRINTL 려 엉덩이를 내밀게 해서、
+		ELSE
+			PRINTL 리게해서、
+		ENDIF
+		
+		PRINTFORM 뒤에서부터 \@ TALENT:PLAYER:유아체형 || TALENT:PLAYER:소인체형 ? 실금# 비렬\@에 페니스를 대고
+		;「TARGETが真性の새드か」「새드끼持ちか」で分岐
+		IF (TALENT:새드 || ABL:새드끼 >= 5 || TALENT:영맹) && RAND:3 == 0
+			PRINT 몸으로 두드리듯이
+		ELSEIF TALENT:새드 || (ABL:새드끼 >= 4 && RAND:2 == 0)
+			PRINT 2、3 회 질구를 문지르고
+		ELSEIF RAND:2 == 0
+			PRINT 느긋하게
+		ENDIF
+		;「TARGETが真性の새드か」「새드끼持ちか」で分岐
+		IF (TALENT:새드 || ABL:새드끼 >= 5 || TALENT:영맹) && RAND:3 == 0
+			PRINT 안쪽까지 찔러넣어、
+		ELSEIF (ABL:새드끼 >= 3 || TALENT:영맹)&& RAND:2 == 0
+			PRINT 삽입해서、
+		ELSE
+			PRINT 넣어서、
+		ENDIF
+		;연모で추가
+		SIF (TALENT:연모 || TALENT:친애) && RAND:3 >= 1
+			PRINTFORM 쾌락에 몸부림치는 %조사처리(CALLNAME:PLAYER,"를")% 사랑스러운 듯이 바라보면서 
+		;「TARGETが真性の새드か」「새드끼持ちか」で分岐
+		IF (TALENT:새드 || ABL:새드끼 == 5 || TALENT:영맹) && RAND:3 == 0
+			PRINTFORMW 격렬하게 허리를 피스톤운동해 %CALLNAME:PLAYER%의 질내를 깊게 도려냈다…
+		ELSEIF TALENT:새드 || (ABL:새드끼 >= 3 && RAND:2 == 0) || (TALENT:영맹 && RAND:2 == 0)
+			PRINTFORMW 마른소리를 내며 허리를 쳐올렸다…
+		ELSE
+			PRINTFORMW 허리를 전후로 움직이기 시작했다…
+		ENDIF
+	ELSE
+		PRINTFORM %CALLNAME:PLAYER%는 %CALLNAME:TARGET%의 앞에 납죽 엎드려
+		SIF TALENT:PLAYER:음란 || ABL:PLAYER:욕망 > 2
+			PRINTFORM 음란하게 엉덩이를 내밀고
+		SIF EXP:PLAYER:Ｖ경험 == 0
+			PRINT 남자를 받아들인 적 없는
+		PRINTFORMW 자신의 바기나에 삽입을 졸랐다…
+		PRINTFORM %타겟은()% 
+		;음란
+		SIF ABL:욕망 >= 3
+			PRINTFORM 비렬에 페니스를 2、3회 문지르고서、
+		;연모で추가
+		SIF TALENT:연모 && RAND:3 >= 1
+			PRINT 몸을 딱 밀착시켜、
+		PRINTFORMW %CALLNAME:PLAYER%에게 삽입했다…
+	ENDIF
+;-------------------------------------------------
+;実行판정処理
+;정상위시킨다と同じ
+;-------------------------------------------------
+@COM_ORDER_93, ARG, ARG:1
+IF TEQUIP:ARG:음문발동
+	CALL ADD_COM_ORDER, "판정無視", "음문 발동중"
+	RETURN 0
+ENDIF
+CALL COM_ORDER_92, ARG, ARG:1
+;-------------------------------------------------
+;実行値
+;-------------------------------------------------
+@COM_ORDER_NUM_93
+RETURN 15
+;===================================================
+;조교타입
+;===================================================
+@COMTYPE_93
+RETURN COMTYPE("조교자봉사계")
+
+

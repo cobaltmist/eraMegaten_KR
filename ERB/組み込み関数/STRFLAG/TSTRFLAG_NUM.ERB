@@ -1,0 +1,80 @@
+﻿;-------------------------------------------------
+;@TSTRFLAG_NUM(ARGS, ARGS:1, ARG, ARG:1, ARG:2)　TSTRでFLAGを数値管理する関数
+;ARGSはフラグ名、ARGS:1は記号、ARGは판정用数値、ARG:1は代入用数値、ARG:2は사용するTSTR번호（생략時は1を사용）
+;符号は = += -= == > >= < <= != が入る
+;=はARGSの数値をARG:1にする、+=、-=は、ARGSの数値を±ARG:1する
+;==などは、フラグ内の数字が　== ARG, > ARG といった조건を満たしたとき、ARG:1を代入する
+;また、조건を満たしたときは1、満たさなかったときは0を返す
+;符号を생략した場合は中に入ってる数字を返す
+;
+;ややこしいので実例をしめすと
+;TSTRFLAG_NUM("フラグ1","==", 0,12,50)
+;これで、フラグ1が0のとき、1が帰ってきて、中には12が격납される
+;TSTRFLAG_NUM("フラグ1", "=", , 7)
+;この場合はフラグ1に7が入る
+;フラグを조건や式に使いたい場合はTSTRFLAG_NUM("フラグ1")とだけ記述すると、0や12や7が帰ってくるので その数値に== などを使える
+;TSTR内には /|フラグ1|12|/|フラグ3|7|/ のように격납される
+;
+;SPLITの仕様とLOCALSが100しかないので、최대で30フラグ程度しか定義できないので注意
+;-------------------------------------------------
+@TSTRFLAG_NUM(ARGS, ARGS:1, ARG, ARG:1, ARG:2 = 1)
+#FUNCTION
+#LOCALSSIZE 2
+SIF ARG:2 < 0 || ARG:2 > 99
+	THROW "TSTR 번호가 이상입니다"
+LOCAL = 0
+SPLIT TSTR:(ARG:2), "|", LOCALS
+FOR LOCAL:1, 0, RESULT + 1
+	IF LOCALS:(LOCAL:1) == ARGS
+		LOCAL = TOINT(LOCALS:(LOCAL:1 + 1))
+		BREAK
+	ENDIF
+NEXT
+IF ARGS:1 == "="
+	TSTR:(ARG:2) = %CHANGE_STRFLAG_NUM(TSTR:(ARG:2), ARGS, ARG:1)%
+	RETURNF 1
+ELSEIF ARGS:1 == "+="
+	TSTR:(ARG:2) = %CHANGE_STRFLAG_NUM(TSTR:(ARG:2), ARGS, LOCAL + ARG:1)%
+	RETURNF 1
+ELSEIF ARGS:1 == "-="
+	TSTR:(ARG:2) = %CHANGE_STRFLAG_NUM(TSTR:(ARG:2), ARGS, LOCAL - ARG:1)%
+	RETURNF 1
+ELSEIF ARGS:1 == "=="
+	IF LOCAL == ARG
+		TSTR:(ARG:2) = %CHANGE_STRFLAG_NUM(TSTR:(ARG:2), ARGS, ARG:1)%
+		RETURNF 1
+	ENDIF
+	RETURNF 0
+ELSEIF ARGS:1 == ">"
+	IF LOCAL > ARG
+		TSTR:(ARG:2) = %CHANGE_STRFLAG_NUM(TSTR:(ARG:2), ARGS, ARG:1)%
+		RETURNF 1
+	ENDIF
+	RETURNF 0
+ELSEIF ARGS:1 == ">="
+	IF LOCAL >= ARG
+		TSTR:(ARG:2) = %CHANGE_STRFLAG_NUM(TSTR:(ARG:2), ARGS, ARG:1)%
+		RETURNF 1
+	ENDIF
+	RETURNF 0
+ELSEIF ARGS:1 == "<"
+	IF LOCAL < ARG
+		TSTR:(ARG:2) = %CHANGE_STRFLAG_NUM(TSTR:(ARG:2), ARGS, ARG:1)%
+		RETURNF 1
+	ENDIF
+	RETURNF 0
+ELSEIF ARGS:1 == "<="
+	IF LOCAL <= ARG
+		TSTR:(ARG:2) = %CHANGE_STRFLAG_NUM(TSTR:(ARG:2), ARGS, ARG:1)%
+		RETURNF 1
+	ENDIF
+	RETURNF 0
+ELSEIF ARGS:1 == "!="
+	IF LOCAL != ARG
+		TSTR:(ARG:2) = %CHANGE_STRFLAG_NUM(TSTR:(ARG:2), ARGS, ARG:1)%
+		RETURNF 1
+	ENDIF
+	RETURNF 0
+ELSE
+	RETURNF LOCAL
+ENDIF

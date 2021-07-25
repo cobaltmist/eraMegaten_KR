@@ -1,0 +1,2240 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:ITEM.ERB
+;	Facility	:조교아이템구입に関する処理群
+;
+;	Licence		:ライセンスフリー。
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		20XX/XX/XX		----					新規作成
+;	002		2011/01/19		P						건강해지는약の処理변경及び스트레스による붕괴防止措置の추가
+;	003		2011/02/11		P						수태の仕様변경
+;	004		2011/03/07		P						수태の仕様변경
+;	005		2011/05/05		望崎					프롤락틴억제약をマスターに使えるように
+;	006		2012/03/01		ネトリス				オル키스の軟膏を추가
+;	007		2012/12/10		gata					전생의비약（이형）추가
+;	008		2014/06/08		Ｊ( 'ー`)し				유생고정／해제薬추가
+;	008		2014/12/30		ネトリス				바람癖소거用の夜菊の涙を추가
+;	010		2016/10/09		Ｊ( 'ー`)し				シャ세트マを추가
+;	011		2016/12/25		토트の人				変色薬をCFLAG管理に　ついでに緑肌を추가
+;	012		2017/06/29		ああああ				무지개색사탕等によるTSを汎用関数に변경
+;	012		2018/01/02		JK好き					전체からマジックナンバーを無くした
+;	013		2018/09/20		NEO						尻の大きさ素質、また、ウェストの설정について薬品を추가。BWHの설정。また、一部文章の改変。
+;	013		2018/10/21		JK好き					夜菊の涙に바람경험を0にする効果を추가
+;	014		2019/03/28		TR(SAYA)				바람꽃의이슬に호감도と음란度の반감効果、シャ세트マが3日持続する様に
+;	013		2019/07/02		JK好き					オル키스・유생고정・豊尻～食っちゃ寝사용時に소지金が減らない、減り方がおかしくなるのを修正
+;	016		2019/09/23		空気					전생의비약を이형化したマ스타に使えるように
+;	017		2020/05/19		がめら					NTR好感度処理をCDFLAGに변경
+;	018		2020/08/25		YOU_naka				調合知識購入フラグが説明と違っていたので修正
+;	019		2021/04/10		NEO						黄色のキャンディでの受胎アイテム入手処理を変更（リセットができるように）
+;	020		2021/04/18		タカヤ					豊根剤と縮根剤追加
+;	032		2021/04/18		Ｊ( 'ー`)し				ついでに光るように
+;	033		2021/05/25		JK好き					@LAY_EGGに子宮現在容量をリセットする処理を追加
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+
+
+@SHOPCOMABLE_113
+RESULT:1 = 3
+RESULTS = 조교아이템구입
+RETURN 1
+
+
+@SHOP_COM_113
+#DIM LINE, 2
+LINE = LINECOUNT
+REDRAW 0
+DRAWLINE
+PRINTL 구입할 아이템을 선택해주세요
+PRINTFORML 소지금:￥{MONEY}
+LOCAL:1 = 0
+DRAWLINE
+FOR LOCAL, 0, 122
+	IF GROUPMATCH(LOCAL, 40, 60, 70)
+		SIF LOCAL:1 % 2
+			PRINTL 
+		DRAWLINE
+		LOCAL:1 = 0
+	ENDIF
+	SELECTCASE LOCAL
+		CASE 0
+			PRINTFORM 【조교도구】　　　
+			PRINTBUTTON "[100]표시전환", 100
+			PRINTL 
+		CASE 40
+			PRINTFORM 【소모품】　　　　
+			PRINTBUTTON "[101]표시전환", 101
+			PRINTL 
+		CASE 60
+			PRINTFORM 【소질아이템】　　
+			PRINTBUTTON "[102]표시전환", 102
+			PRINTL 
+		CASE 70
+			PRINTFORM 【약품류】　　　　
+			PRINTBUTTON "[103]표시전환", 103
+			PRINTL 
+	ENDSELECT
+	SIF LOCAL < 40 && !GETBIT(FLAG:조교道具구입화면설정,0)
+		CONTINUE
+	SIF LOCAL >= 40 && LOCAL < 60 && !GETBIT(FLAG:조교道具구입화면설정,1)
+		CONTINUE
+	SIF LOCAL >= 60 && LOCAL < 70 && !GETBIT(FLAG:조교道具구입화면설정,2)
+		CONTINUE
+	SIF LOCAL >= 70 && !GETBIT(FLAG:조교道具구입화면설정,3)
+		CONTINUE
+	SIF LOCAL >= 100 && LOCAL <= 110
+		CONTINUE
+	SELECTCASE TRAINITEM_SALEABLE(LOCAL)
+		CASE -1
+			CONTINUE
+		CASE 0
+			SETCOLOR COLOR("gray")
+			SELECTCASE LOCAL
+				CASE IS < 40
+					PRINTFORM [{LOCAL,2}] %ITEMNAME:LOCAL,24,LEFT%%"(구입완료)",10,RIGHT%　
+				CASE IS < 60
+					PRINTFORM [{LOCAL,2}] %ITEMNAME:LOCAL+"(소지:"+@"{ITEM:LOCAL}"+")",24,LEFT%%"(소지한계)",10, RIGHT%　
+				CASE IS < 70
+					PRINTFORM [{LOCAL,2}] %ITEMNAME:LOCAL,24,LEFT%%"(습득완료)",10,RIGHT%　
+				CASEELSE
+					PRINTFORM [{LOCAL,2}] %ITEMNAME:LOCAL,24,LEFT%%"(대상없음)",10,RIGHT%　
+			ENDSELECT
+		CASE 1
+			SIF MONEY < ITEMPRICE:LOCAL
+				SETCOLOR COLOR("gray")
+			IF LOCAL >= 40 && LOCAL < 60
+				PRINTFORM [{LOCAL,2}] %ITEMNAME:LOCAL+"(소지:"+@"{ITEM:LOCAL}"+")",24,LEFT%%"￥"+@"{ITEMPRICE:LOCAL}",10, RIGHT%　
+			ELSE
+				PRINTFORM [{LOCAL,2}] %ITEMNAME:LOCAL,24,LEFT%%"￥"+@"{ITEMPRICE:LOCAL}",10, RIGHT%　
+			ENDIF
+	ENDSELECT
+	RESETCOLOR
+	SIF LOCAL:1 % 2 == 1
+		PRINTL 
+	LOCAL:1++
+NEXT
+SIF LOCAL:1 % 2
+	PRINTL 
+DRAWLINE
+PRINTL [999] 돌아간다
+$INPUT_LOOP
+INPUT
+LOCAL = RESULT
+SELECTCASE LOCAL
+	CASE 999
+		REDRAW 1
+		RETURN 0
+	CASE 100, 101, 102, 103
+		INVERTBIT FLAG:조교道具구입화면설정, LOCAL - 100
+	CASE IS < 0, IS > 122, 104 TO 109
+		CLEARLINE 1
+		GOTO INPUT_LOOP
+	CASEELSE
+		IF TRAINITEM_SALEABLE(LOCAL) < 1
+		ELSEIF MONEY < ITEMPRICE:LOCAL
+			PRINTW 돈이 부족합니다
+			CLEARLINE 2
+			GOTO INPUT_LOOP
+		ELSE
+			SIF LOCAL < 70
+				DRAWLINE
+			SELECTCASE LOCAL
+				;통상아이템
+				CASE IS < 40
+					PRINTFORML 정말로 %조사처리(ITEMNAME:LOCAL,"를")% 구입합니까？
+					CALL INPUT_YN,"구입한다","그만둔다"
+					IF RESULT == 0
+						PRINTFORMW ＜%조사처리(ITEMNAME:(LOCAL),"를")% 구입했습니다＞
+						ITEM:LOCAL += 1
+						MONEY -= ITEMPRICE:LOCAL
+					ELSE
+						PRINTW ＜구입을 취소했습니다＞
+					ENDIF
+				;消耗品
+				CASE IS < 60
+					PRINTFORML %조사처리(ITEMNAME:LOCAL,"를")% 얼마나 구입합니까？ (현재 {ITEM:LOCAL}개 소지)
+					CALL INPUT_MANY(0,MIN(MONEY/ITEMPRICE:LOCAL,999 - ITEM:LOCAL))
+					IF RESULT == 0
+						PRINTW ＜구입을 취소했습니다＞
+					ELSEIF RESULT == 1
+						PRINTFORMW ＜%조사처리(ITEMNAME:(LOCAL),"를")% 구입했습니다＞
+					ELSE
+						PRINTFORMW ＜%조사처리(ITEMNAME:(LOCAL),"를")% {RESULT}개 구입했습니다＞
+					ENDIF
+					ITEM:LOCAL += RESULT
+					MONEY -= ITEMPRICE:LOCAL*RESULT
+				CASE IS < 70
+					PRINTFORML 정말로 %조사처리(ITEMNAME:LOCAL,"를")% 몸에 익힙니까？
+					CALL INPUT_YN,"몸에 익힌다","그만둔다"
+					IF RESULT == 0
+						PRINTFORMW ＜%조사처리(ITEMNAME:LOCAL,"를")% 몸에 익혔습니다＞
+						SELECTCASE LOCAL
+							CASE 60
+								TALENT:MASTER:불결무시 = 1
+							CASE 61
+								TALENT:MASTER:조합지식 = 1
+							CASE 62
+								TALENT:MASTER:금단의지식 = 1
+							CASE 63
+								TALENT:MASTER:깨달음 = 1
+							CASE 64
+								TALENT:MASTER:촉수사역술 = 1
+						ENDSELECT
+						MONEY -= ITEMPRICE:LOCAL
+					ENDIF
+				CASEELSE
+					LINE:1 = LINECOUNT
+					$USE_DRUG
+					CLEARLINE LINECOUNT - LINE:1
+					SELECTCASE ITEMNAME:LOCAL
+						CASE "약의재료(후타)"
+							LOCALS =  %ITEMNAME:LOCAL%:후타나리가 됩니다
+						CASE "약의재료(소거)"
+							LOCALS =  %ITEMNAME:LOCAL%:후타나리를 제거합니다
+						CASE "파란사탕"
+							LOCALS =  %ITEMNAME:LOCAL%:모유체질이 됩니다
+						CASE "빨간사탕"
+							LOCALS =  %ITEMNAME:LOCAL%:처녀막이 재생됩니다
+						CASE "풍흉제"
+							LOCALS =  %ITEMNAME:LOCAL%:가슴을 크게 만듭니다
+						CASE "축흉제"
+							LOCALS =  %ITEMNAME:LOCAL%:가슴을 작게 만듭니다
+						CASE "프롤락틴억제약"
+							LOCALS =  %ITEMNAME:LOCAL%:모유가 나오지 않게 됩니다
+						CASE "３환계항우울제"
+							LOCALS =  %ITEMNAME:LOCAL%:오줌싸개 버릇이 낫습니다
+						CASE "황색사탕"
+							LOCALS =  %ITEMNAME:LOCAL%:강제적으로 산란하게 합니다。악마에 따라서、알에서 아이템을 입수할 수 있습니다。
+						CASE "전생의비약"
+							LOCALS =  %ITEMNAME:LOCAL%:인간형이 아닌 악마를 사람의 모습으로 다시 태어나게 합니다
+						CASE "무지개색사탕"
+							LOCALS =  %ITEMNAME:LOCAL%:성별을 반전시킵니다
+						CASE "오토코노코캔디"
+							LOCALS =  %ITEMNAME:LOCAL%:씩씩한 그 사람이 소녀 같이！사랑스러운 그 아이가 남자답게！
+						CASE "전생의비약(이형)"
+							LOCALS =  %ITEMNAME:LOCAL%:사람 형태의 악마를 사람 이외의 모습으로 다시 태어나게 합니다
+						CASE "체형변화(로리)"
+							LOCALS =  %ITEMNAME:LOCAL%:몸집이 작아집니다
+						CASE "체형변화약(성인)"
+							LOCALS =  %ITEMNAME:LOCAL%:몸집이 커집니다
+						CASE "기억소거약"
+							LOCALS =  %ITEMNAME:LOCAL%:조교의 기억을 소거합니다
+						CASE "배란유발제"
+							LOCALS =  %ITEMNAME:LOCAL%:하루만 임신확률을 상승시킵니다
+						CASE "자궁내피임결계"
+							LOCALS = %ITEMNAME:LOCAL%:하루만 질사경험의 증가를 막습니다
+						CASE "야생의사탕"
+							LOCALS = %ITEMNAME:LOCAL%:위험일에 발정하게 만듭니다
+						CASE "자제의캔디"
+							LOCALS = %ITEMNAME:LOCAL%:위험일에 발정하지 않게끔 됩니다
+						CASE "달의사탕"
+							LOCALS = %ITEMNAME:LOCAL%:위험일이 바뀝니다
+						CASE "바람꽃의이슬"
+							LOCALS = %ITEMNAME:LOCAL%:질내사정시에 자신 이외의 호감도를 크게 낮춥니다
+						CASE "유리와쑥의비약"
+							LOCALS =  %ITEMNAME:LOCAL%:복용자의 일부분을 처녀였던 시절로 되돌립니다 (부작용 있음)
+						CASE "건강해지는약"
+							LOCALS = %ITEMNAME:LOCAL%:스트레스가 증가하지만 체력을 회복할 수 있습니다
+						CASE "오르키스의연고"
+							LOCALS = %ITEMNAME:LOCAL%:바른 부분이 민감해집니다 (필요 : 대응 『쾌의 구슬』 30만 개)
+						CASE "유생고정／해제약"
+							LOCALS = %ITEMNAME:LOCAL%:아이의 신체적 성장을 고정한다. 또는 고정된 상태를 해제한다
+						CASE "변색약(하얀피부)"
+							LOCALS = %ITEMNAME:LOCAL%:피부 색을 변화시킨다
+						CASE "변색약(갈색피부)"
+							LOCALS = %ITEMNAME:LOCAL%:피부 색을 변화시킨다
+						CASE "변색약(붉은피부)"
+							LOCALS = %ITEMNAME:LOCAL%:피부 색을 변화시킨다
+						CASE "변색약(푸른피부)"
+							LOCALS = %ITEMNAME:LOCAL%:피부 색을 변화시킨다
+						CASE "변색약(녹색피부)"
+							LOCALS = %ITEMNAME:LOCAL%:피부 색을 변화시킨다
+						CASE "밤국화의눈물"
+							LOCALS = %ITEMNAME:LOCAL%:바림기가 소거됩니다
+						CASE "샤세트마"
+							LOCALS = %ITEMNAME:LOCAL%:삼일밤낮 동안 사정이 멈추지 않게 되는 묘약. 사정 후 재장전 시간이 0이 된다
+						CASE "풍고제"
+							LOCALS = %ITEMNAME:LOCAL%:엉덩이를 크게 합니다
+						CASE "축고제"
+							LOCALS = %ITEMNAME:LOCAL%:엉덩이를 작게 합니다
+						CASE "다이어트푸드"
+							LOCALS = %ITEMNAME:LOCAL%:웨스트 사이즈를 줄입니다
+						CASE "백수요괴의책"
+							LOCALS = %ITEMNAME:LOCAL%:웨스트 사이즈를 늘립니다
+						;한국개조추가
+						CASE "케우케켄의비약"
+							LOCALS = %ITEMNAME:LOCAL%:음모가 자라나게 한다
+						CASE "성로정"
+							LOCALS = %ITEMNAME:LOCAL%:음핵이 자라나게 한다
+						;한국개조여기까지
+					ENDSELECT
+					;リストに使えるのがグローバルな変数だけなのでZを送る
+					Z = LOCAL
+					CALL INPUT_CHARA_LIST, @"%LOCALS%　가격:{ITEMPRICE:LOCAL}　소지금:￥{MONEY}", "USE_DRUG_LIST"
+					IF RESULT == 1000
+						CLEARLINE LINECOUNT - LINE
+						RESTART
+					ENDIF
+					SELECTCASE ITEMNAME:LOCAL
+						CASE "건강해지는약"
+							;RESULT退避
+							LOCAL:1 = RESULT
+							PRINTL 사용할 갯수를 선택해주세요
+							PRINTFORML %NAME:(LOCAL:1)%
+							PRINTFORML 체력:{BASE:(LOCAL:1):체력}／{MAXBASE:(LOCAL:1):체력}
+							PRINTFORML 단가:￥{ITEMPRICE:LOCAL}(현재 ￥{MONEY})
+							CALL INPUT_MANY(0, MIN((MAXBASE:(LOCAL:1):체력-BASE:(LOCAL:1):체력)/100+1, MONEY/ITEMPRICE:LOCAL))
+							IF RESULT == 0
+								PRINTFORMW %조사처리(ITEMNAME:LOCAL,"를")% 사용하는 것을 그만두었다
+							ELSE
+								PRINTFORML ＜%NAME:(LOCAL:1)%의 체력이 회복되었다＞
+								PRINTFORMW ＜%NAME:(LOCAL:1)%의 스트레스가 증가했다＞
+								BASE:(LOCAL:1):체력 = MIN(MAXBASE:(LOCAL:1):체력, BASE:(LOCAL:1):체력 + 100 * RESULT)
+								;BASE:LOCAL:기력 += MIN(MAXBASE:LOCAL:기력, BASE:LOCAL:기력+300 * RESULT)
+								MONEY -= ITEMPRICE:LOCAL * RESULT
+								CFLAG:(LOCAL:1):스트레스치 += 5 + RESULT / 5
+							ENDIF
+							;RESULTを戻しておく
+							RESULT = LOCAL:1
+						CASE "약의재료(후타)"
+						PRINTFORML 약을 \@(ABL:RESULT:Ｃ감각 > 2) ? 마신 # 억지로 마신\@ %조사처리(CALLNAME:RESULT,"는")% 보지에 아픔과 동시에 맹렬히 타오르는 듯한 감각에 휩싸였다…….
+							PRINTW  
+							;IF ABL:RESULT:37 == 5
+							;	PRINT 더 기다리지 못하겠다는 듯 꿈지럭대고 있던 
+							;ELSEIF ABL:RESULT:37 > 2
+							;	PRINT 그 뜨거움조차 쾌감으로 느끼며 교성을 지르던 
+							;ELSE
+								PRINT 필사적으로 고통을 참던 
+							;ENDIF
+							PRINTFORM %조사처리(CALLNAME:RESULT,"가")% 
+							;SIF ABL:RESULT:37 < 3
+							;	PRINT 고대해 마지 않았다는 듯 
+							PRINTL 자신의 보지를 바라보자, 
+							PRINTW 클리토리스가 서서히 비대화를 시작하고 있었다…….
+							PRINTFORML 더더욱 비대화를 계속하던 %CALLNAME:RESULT%의 클리토리스는 
+							PRINTL 결국에는 훌륭한 육봉으로 모습을 바꾸었다…….
+							PRINTW
+							PRINTFORMW ＜%조사처리(CALLNAME:RESULT,"는")% 〔후타나리〕를 얻었다＞
+							;IF ABL:RESULT:37 == 5
+							;	PRINTFORMW %조사처리(CALLNAME:RESULT,"는")% 자신의 육봉을 보고 얼이 빠진 것 같다…….
+							;ELSEIF ABL:RESULT:37 > 2
+							;	PRINTFORMW %조사처리(CALLNAME:RESULT,"는")% 다리 사이에 느껴지는 위화감을 즐기고 있다…….
+							;ELSE
+								PRINTFORMW %조사처리(CALLNAME:RESULT,"는")% 다리 사이의 위화감에 곤혹스러워 하고 있다…….
+							;ENDIF
+							PRINTFORMW ＜%조사처리(CALLNAME:RESULT,"는")% 후타나리가 되었다＞
+							TALENT:RESULT:이상한뿌리 = 0
+							TALENT:RESULT:구현 = 0
+							TALENT:RESULT:후타나리 = 1
+							CFLAG:RESULT:스트레스치 += 2
+						CASE "약의재료(소거)"
+						PRINTFORML 약을 마시고 잠시 뒤에, %CALLNAME:RESULT%의 다리 사이에서 존재감을 과시하고 있던 단단한 봉이 
+							PRINTL 쪼그라들듯이 축소되었다…….
+							PRINTW  
+							PRINTFORML 조금 더 기다리자, %CALLNAME:RESULT%의 육봉은 모습을 감추고 
+							IF ABL:RESULT:Ｃ감각 > 3
+								PRINT 이제까지의 조교로 충분히 개발된 
+							ELSEIF ABL:Ｃ감각 > 1
+								PRINT 조금씩 쾌락의 맛을 깨우치기 시작한 
+							ELSE
+								PRINT 아직, 이거다 싶을 만큼 쾌락을 맛본 적 없는 
+							ENDIF
+							PRINTL 클리토리스로 돌아와 있었다…….
+							PRINTW  
+							PRINTFORMW ＜%조사처리(CALLNAME:RESULT,"는")% 〔후타나리〕를 잃었다＞
+							IF ABL:RESULT:노출증 >= 5
+								PRINTFORMW %조사처리(CALLNAME:RESULT,"는")% 자신의 보지를 서운하게 바라보고 있다…….
+							ELSEIF ABL:RESULT:노출증 > 2
+								PRINTFORMW %조사처리(CALLNAME:RESULT,"는")% 조금 아쉽다는 듯이 이쪽을 보고 있다…….
+							ELSE
+								PRINTFORMW %조사처리(CALLNAME:RESULT,"는")% 시원하다는 표정을 짓고 있다…….
+							ENDIF
+							PRINTFORMW ＜%조사처리(CALLNAME:RESULT,"는")% 후타나리가 아니게 되었다＞
+							
+							TALENT:RESULT:후타나리 = 0
+							CFLAG:RESULT:스트레스치 += 2
+						CASE "파란사탕"
+							PRINTFORMW ＜%조사처리(CALLNAME:RESULT,"는")% 모유가 나오게 되었다＞
+							TALENT:RESULT:모유체질 = 1
+							CFLAG:RESULT:스트레스치 += 2
+						CASE "빨간사탕"
+							PRINTFORMW ＜%CALLNAME:RESULT%의 처녀막이 재생되었다＞
+							TALENT:RESULT:재생처녀 = 1
+							CFLAG:RESULT:스트레스치 += 2
+						CASE "풍흉제"
+							LOCAL:1 = RESULT
+							;신장が설정してある場合、カップサイズなどを再計算する
+							;남자についてはスリーサイズの설정ができない（남자に풍흉제使う人もいないとは思うが、使えちゃうからね……）
+							IF BASE:(LOCAL:1):24 > 0 && !TALENT:(LOCAL:1):남자
+								CALL SET_INFO_BODYSIZE, (LOCAL:1), "豊가슴"
+								;情報표시
+								CALL SHOW_INFO_BODYSIZE((LOCAL:1))
+								PRINTFORML 약의 영향으로 인하여、체형이 이상의 값으로 변동하였습니다。
+								;変動後の素質に応じて메시지を표시する(SHOW_INFO_BODYSIZEで再計算される)
+								;절벽
+								IF TALENT:(LOCAL:1):절벽
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 가슴이 조금 부풀어 오른 듯 하다……＞
+								;빈유
+								ELSEIF TALENT:(LOCAL:1):빈유
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 가슴이 아주 조금 부풀어 올랐다＞
+								;거유
+								ELSEIF TALENT:(LOCAL:1):거유
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 가슴이 또 조금 풍만해졌다＞
+								;폭유
+								ELSEIF TALENT:(LOCAL:1):폭유
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 가슴이 또 다시 풍만해졌다＞
+								;魔乳
+								ELSEIF TALENT:(LOCAL:1):魔乳
+									PRINTFORM ＜%CALLNAME:(LOCAL:1)%의 가슴이 
+									IF ABL:(LOCAL:1):속성LC == 1 && ABL:(LOCAL:1):속성LD == 1
+										PRINTFORMW 더욱 성스러움을 더했다＞ 
+									ELSEIF ABL:(LOCAL:1):속성LD == 3 || ABL:(LOCAL:1):속성LC == 3
+										PRINTFORMW 보다 마성의 것으로 화했다＞
+									ELSE
+										PRINTFORMW 초월적인 발전을 이루었다＞
+									ENDIF
+								;普乳
+								ELSE
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 가슴이 조금 풍만해졌다＞
+								ENDIF
+							ELSE
+								;절벽→빈유
+								IF TALENT:(LOCAL:1):절벽
+								PRINTFORMW ＜%CALLNAME:RESULT%의 가슴이 아주 조금 부풀어 올랐다＞
+									TALENT:(LOCAL:1):절벽 = 0
+									TALENT:(LOCAL:1):빈유 = 1
+								;빈유→普乳
+								ELSEIF TALENT:(LOCAL:1):빈유
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 가슴이 보통으로 커졌다＞
+									TALENT:(LOCAL:1):빈유 = 0
+								;거유→폭유
+								ELSEIF TALENT:(LOCAL:1):거유
+									;유아체형、소인체형
+									IF TALENT:(LOCAL:1):유아체형 || TALENT:(LOCAL:1):소인체형
+										PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 가슴이 몸에 어울리지 않을 정도로 커졌다＞
+									;それ以外
+									ELSE
+										PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 가슴이 흘러넘칠 정도의 크기가 되었다＞
+									ENDIF
+									TALENT:RESULT:거유 = 0
+									TALENT:RESULT:폭유 = 1
+								;폭유→魔乳
+								ELSEIF TALENT:(LOCAL:1):폭유
+									PRINTFORM ＜%CALLNAME:(LOCAL:1)%의 가슴은 
+									IF ABL:(LOCAL:1):속성LC == 1 && ABL:(LOCAL:1):속성LD == 1
+										PRINTFORMW 성스러움 마져 넘치게 되었다＞ 
+									ELSEIF ABL:(LOCAL:1):속성LD == 3 || ABL:(LOCAL:1):속성LC == 3
+										PRINTFORMW 마성을 얻었다＞
+									ELSE
+										PRINTFORMW 초월적인 것이 되었다＞
+									ENDIF
+									TALENT:(LOCAL:1):폭유 = 0
+									TALENT:(LOCAL:1):魔乳 = 1
+								;既に魔乳
+								ELSEIF TALENT:(LOCAL:1):魔乳 == 1
+									PRINTFORM ＜%CALLNAME:(LOCAL:1)%의 가슴은 
+									IF ABL:(LOCAL:1):속성LC == 1 && ABL:(LOCAL:1):속성LD == 1
+										PRINTFORMW 성스러움 마져 넘치게 되었다＞ 
+									ELSEIF ABL:(LOCAL:1):속성LD == 3 || ABL:(LOCAL:1):속성LC == 3
+										PRINTFORMW 마성을 얻었다＞
+									ELSE
+										PRINTFORMW 초월적인 것이 되었다＞
+									ENDIF
+								;普乳→거유
+								ELSE
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 가슴이 풍만해졌다＞
+									TALENT:(LOCAL:1):거유 = 1
+								ENDIF
+							ENDIF
+							CFLAG:(LOCAL:1):스트레스치 += 2
+						CASE "축흉제"
+							LOCAL:1 = RESULT
+							;爆/魔乳→爆/魔乳
+							IF (TALENT:(LOCAL:1):폭유 || TALENT:(LOCAL:1):魔乳) && MARK:(LOCAL:1):폭유의취득내역 == 1
+								PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 너무나도 풍만한 가슴은 작아진 것 같이 보이지 않는다＞
+							;신장が설정してある場合、カップサイズなどを再計算する
+							;남자についてはスリーサイズの설정ができない
+							ELSEIF BASE:(LOCAL:1):24 > 0 && !TALENT:(LOCAL:1):남자
+								CALL SET_INFO_BODYSIZE, (LOCAL:1), "縮가슴"
+								;情報표시
+								CALL SHOW_INFO_BODYSIZE((LOCAL:1))
+								PRINTFORML 약의 영향으로 인하여、체형이 이상의 값으로 변동하였습니다。
+								;変動後の素質に応じて메시지を표시する(SHOW_INFO_BODYSIZEで再計算される)
+								;절벽
+								IF TALENT:(LOCAL:1):절벽
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 가슴이 한층 더 샤프해졌다……＞
+								;빈유
+								ELSEIF TALENT:(LOCAL:1):빈유
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 가슴이 더욱 납작해졌다＞
+								;거유
+								ELSEIF TALENT:(LOCAL:1):거유
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 가슴이 작아졌다＞
+								;폭유
+								ELSEIF TALENT:(LOCAL:1):폭유
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 가슴이 한결 작아졌다＞
+								;폭유→魔乳
+								ELSEIF TALENT:(LOCAL:1):魔乳
+									PRINTFORM ＜%CALLNAME:(LOCAL:1)%의 가슴은 아직 
+									IF ABL:(LOCAL:1):속성LC == 1 && ABL:(LOCAL:1):속성LD == 1
+										PRINTFORMW 성스러움을 띄고 있다……＞ 
+									ELSEIF ABL:(LOCAL:1):속성LD == 3 || ABL:(LOCAL:1):속성LC == 3
+										PRINTFORMW 마성을 띄고 있다……＞
+									ELSE
+										PRINTFORMW 초월적이다……＞
+									ENDIF
+								;普乳
+								ELSE
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 가슴이 조금 작아졌다＞
+								ENDIF
+							ELSE
+								;魔乳→폭유
+								IF TALENT:(LOCAL:1):魔乳
+									PRINTFORM ＜%CALLNAME:(LOCAL:1)%의 
+									IF ABL:(LOCAL:1):속성LC == 1 && ABL:(LOCAL:1):속성LD == 1
+										PRINTFORM 성스러움 마저 띄고 있던 
+									ELSEIF ABL:(LOCAL:1):속성LD == 3 || ABL:(LOCAL:1):속성LC == 3
+										PRINTFORM 마성을 가진 
+									ELSE
+										PRINTFORM 초월적이었던 
+									ENDIF
+									PRINTFORMW 가슴이 한결 작아졌다＞
+									TALENT:(LOCAL:1):魔乳 = 0
+									TALENT:(LOCAL:1):폭유 = 1
+								;폭유→거유
+								ELSEIF TALENT:(LOCAL:1):폭유
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 너무나도 풍만한 가슴이 한층 작아졌다＞
+									TALENT:(LOCAL:1):폭유 = 0
+									TALENT:(LOCAL:1):거유 = 1
+								;거유→普乳
+								ELSEIF TALENT:(LOCAL:1):거유
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 가슴이 보통으로 작아졌다＞
+									TALENT:(LOCAL:1):거유 = 0
+								;빈유→절벽
+								ELSEIF TALENT:(LOCAL:1):빈유
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 가슴이 극단적으로 평평해졌다＞
+									TALENT:(LOCAL:1):빈유 = 0
+									TALENT:(LOCAL:1):절벽 = 1
+									IF TALENT:(LOCAL:1):모유체질
+										PRINTFORMW ＜%조사처리(CALLNAME:(LOCAL:1),"는")% 모유가 나오지 않게 되었다＞
+										TALENT:(LOCAL:1):모유체질 = 0
+										CFLAG:(LOCAL:1):스트레스치 += 1
+									ENDIF
+								;既に절벽
+								ELSEIF TALENT:(LOCAL:1):절벽
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 가슴은 납작한 그대로다……＞
+								;普乳→빈유
+								ELSE
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 가슴이 작아졌다＞
+									TALENT:(LOCAL:1):빈유 = 1
+								ENDIF
+							ENDIF
+							MARK:(LOCAL:1):폭유의취득내역 = 0
+							CFLAG:(LOCAL:1):스트레스치 += 2
+						CASE "프롤락틴억제약"
+							PRINTFORMW ＜%조사처리(CALLNAME:RESULT,"는")% 모유가 나오지 않게 되었다＞
+							TALENT:RESULT:모유체질 = 0
+							CFLAG:RESULT:스트레스치 += 2
+						CASE "３환계항우울제"
+							PRINTFORMW ＜%CALLNAME:RESULT%의 오줌싸개버릇이 나았다＞
+							TALENT:RESULT:오줌싸개 = 0
+							EXP:RESULT:방뇨경험 = 0
+							CFLAG:RESULT:스트레스치 += 2
+						CASE "황색사탕"
+							CALL LAY_EGG, RESULT
+						CASE "전생의비약"
+							CFLAG:RESULT:스트레스치 += 2
+							CALL USE_DRUG_80,RESULT
+						CASE "무지개색사탕"
+							CFLAG:RESULT:스트레스치 += 2
+							CALL USE_DRUG_81,RESULT
+						CASE "오토코노코캔디"
+							IF TALENT:RESULT:오토코노코 == 0
+								PRINTFORMW ＜%조사처리(CALLNAME:RESULT,"는")% 사랑스러운 아가씨처럼 변했다＞
+								TALENT:RESULT:오토코노코 = 1
+							ELSE
+								PRINTFORMW ＜%CALLNAME:RESULT%의 얼굴과 몸이 씩씩해졌습니다＞
+								TALENT:RESULT:오토코노코 = 0
+							ENDIF
+						CASE "전생의비약(이형)"
+							CFLAG:RESULT:스트레스치 += 4
+							CALL USE_DRUG_82,RESULT
+						CASE "체형변화(로리)"
+							;거체→큰체형
+							IF TALENT:RESULT:거체
+								PRINTFORMW ＜%CALLNAME:RESULT%의 몸집이 한층 작아졌다＞
+								TALENT:RESULT:거체 = 0
+								TALENT:RESULT:큰체형 = 1
+							;큰체형→普通
+							ELSEIF TALENT:RESULT:큰체형
+								PRINTFORMW ＜%CALLNAME:RESULT%의 몸집이 일반적인 크기가 되었다＞
+								TALENT:RESULT:큰체형 = 0
+							;普通→小柄
+							ELSEIF TALENT:RESULT:유아체형 == 0
+								PRINTFORMW ＜%CALLNAME:RESULT%의 몸집이 아이 같아졌다＞
+								TALENT:RESULT:유아체형 = 1
+							ENDIF
+							CFLAG:RESULT:스트레스치 += 2
+						CASE "체형변화약(성인)"
+							;小柄→普通
+							IF TALENT:RESULT:유아체형
+								PRINTFORMW ＜%CALLNAME:RESULT%의 몸집이 일반적인 크기가 되었다＞
+								TALENT:RESULT:유아체형 = 0
+							;普通→큰체형
+							ELSEIF TALENT:RESULT:큰체형 == 0
+								PRINTFORMW ＜%CALLNAME:RESULT%의 몸집이 한층 커졌다＞
+								TALENT:RESULT:큰체형 = 1
+							;큰체형→거체
+							ELSEIF TALENT:RESULT:거체 
+								PRINTFORMW ＜%CALLNAME:RESULT%의 몸집이 거인 같아졌다＞
+								TALENT:RESULT:거체 = 0
+								TALENT:RESULT:거체 = 1
+							ENDIF
+							CFLAG:RESULT:스트레스치 += 2
+						CASE "기억소거약"
+							;処理及び効果に難点が色々あるので封印措置
+							;	ADDCHARA NO:RESULT
+							;	TARGET = CHARANUM-1
+							;	SIF TALENT:RESULT:0
+							;		TALENT:TARGET:0 = 1
+							;	SIF TALENT:RESULT:1
+							;		TALENT:TARGET:1 = 1
+							;	SIF TALENT:RESULT:139
+							;		TALENT:TARGET:139 = 1
+							;	SIF TALENT:RESULT:149
+							;		TALENT:TARGET:149 = 1
+							;	EXP:TARGET:0 = EXP:RESULT:0
+							;	EXP:TARGET:1 = EXP:RESULT:1
+							;	EXP:TARGET:2 = EXP:RESULT:2
+							;	EXP:TARGET:3 = EXP:RESULT:3
+							;	EXP:TARGET:4 = EXP:RESULT:4
+							;	EXP:TARGET:5 = EXP:RESULT:5
+							;	EXP:TARGET:10 = EXP:RESULT:10
+							;	EXP:TARGET:11 = EXP:RESULT:11
+							;	EXP:TARGET:20 = EXP:RESULT:20
+							;	EXP:TARGET:21 = EXP:RESULT:21
+							;	EXP:TARGET:22 = EXP:RESULT:22
+							;	EXP:TARGET:23 = EXP:RESULT:23
+							;	EXP:TARGET:30 = EXP:RESULT:30
+							;	EXP:TARGET:31 = EXP:RESULT:31
+							;	EXP:TARGET:32 = EXP:RESULT:32
+							;	EXP:TARGET:40 = EXP:RESULT:40
+							;	EXP:TARGET:50 = EXP:RESULT:50
+							;	EXP:TARGET:51 = EXP:RESULT:51
+							;	EXP:TARGET:52 = EXP:RESULT:52
+							;	EXP:TARGET:53 = EXP:RESULT:53
+							;	EXP:TARGET:54 = EXP:RESULT:54
+							;	EXP:TARGET:55 = EXP:RESULT:55
+							;	EXP:TARGET:56 = EXP:RESULT:56
+							;	EXP:TARGET:60 = EXP:RESULT:60
+							;	EXP:TARGET:61 = EXP:RESULT:61
+							;	EXP:TARGET:62 = EXP:RESULT:62
+							;	EXP:TARGET:63 = EXP:RESULT:63
+							;	EXP:TARGET:64 = EXP:RESULT:64
+							;	EXP:TARGET:70 = EXP:RESULT:70
+							;	ABL:TARGET:3 = ABL:RESULT:3
+							;	ABL:TARGET:4 = ABL:RESULT:4
+							;	ABL:TARGET:5 = ABL:RESULT:5
+							;	ABL:TARGET:6 = ABL:RESULT:6
+							;	PRINTFORMW ＜%조사처리(CALLNAME:RESULT,"는")% 조교의 기억을 잃었다＞
+							;	DELCHARA RESULT
+							;	TARGET = CHARANUM-1
+							;	CALL CLOTHES_INITIALIZE
+						CASE "배란유발제"
+							PRINTFORMW ＜%CALLNAME:RESULT%에게 배란유발제를 사용했다＞
+							CFLAG:RESULT:배란유발제 = 1
+						CASE "자궁내피임결계"
+							PRINTFORMW ＜%CALLNAME:RESULT%에게 자궁내 피임결계를 사용했다＞
+							CFLAG:RESULT:자궁내피임결계 = 1
+						CASE "야생의사탕"
+							PRINTFORMW ＜%조사처리(CALLNAME:RESULT,"는")% 발정하게 되었다＞
+							TALENT:RESULT:발정가능 = 1
+						CASE "자제의캔디"
+							PRINTFORMW ＜%조사처리(CALLNAME:RESULT,"는")% 발정하지 않게끔 되었다＞
+							TALENT:RESULT:발정가능 = 0
+						CASE "달의사탕"
+							PRINTFORMW ＜%CALLNAME:RESULT%의 월경주기가 １일 바뀌었다＞
+							IF FLAG:月齢ベクトル == 1
+								CFLAG:RESULT:위험일 --
+								SIF CFLAG:RESULT:위험일 < 0
+									CFLAG:RESULT:위험일 = 15
+							ELSE
+								CFLAG:RESULT:위험일 ++
+								SIF CFLAG:RESULT:위험일 > 15
+									CFLAG:RESULT:위험일 = 0
+							ENDIF
+						CASE "바람꽃의이슬"
+							PRINTFORMW ＜%CALLNAME:RESULT%에게 바람꽃의 이슬을 사용했다＞
+							CFLAG:RESULT:바람꽃의이슬 = 1
+							;음란度반감
+							CFLAG:RESULT:음란度 /= 2
+							;全員の호감도반감
+							FOR LOCAL:1, -MAX_NTR_CHARA, MAX_PLAYER_CHARA
+								CDFLAG:RESULT:キャラ間好感度:(100+LOCAL:1) /= 2
+							NEXT
+						CASE "유리와쑥의비약"
+							PRINTFORMW ＜%조사처리(CALLNAME:RESULT,"가")% 처녀가 됐습니다＞
+							TALENT:RESULT:처녀 = 1
+							ABL:RESULT:Ｖ감각 = 0
+							JUEL:RESULT:쾌Ｖ = 0
+							IF RAND:2 == 0
+								PRINTFORMW ＜%조사처리(CALLNAME:RESULT,"는")% 부작용으로 『남성혐오』가 됐습니다＞
+								TALENT:RESULT:남성혐오 = 1
+							ENDIF
+						CASE "변색약(하얀피부)"
+						    PRINTFORMW ＜%CALLNAME:RESULT%의 피부는 하얘졌다＞
+							CFLAG:RESULT:피부색깔 = 1
+						CASE "변색약(갈색피부)"
+						    PRINTFORMW ＜%CALLNAME:RESULT%의 피부는 갈색이 됐다＞
+							CFLAG:RESULT:피부색깔 = 2
+						CASE "변색약(붉은피부)"
+						    PRINTFORMW ＜%CALLNAME:RESULT%의 피부는 붉어졌다＞
+							CFLAG:RESULT:피부색깔 = 3
+						CASE "변색약(푸른피부)"
+						    PRINTFORMW ＜%CALLNAME:RESULT%의 피부는 파래졌다＞
+							CFLAG:RESULT:피부색깔 = 4
+						CASE "변색약(녹색피부)"
+							PRINTFORMW ＜%CALLNAME:RESULT%의 피부는 녹색이 됐다＞
+							CFLAG:RESULT:피부색깔 = 5
+						CASE "오르키스의연고"
+							LOCAL:1 = RESULT
+							SIF JUEL:(LOCAL:1):쾌Ｃ >= 300000 && !TALENT:(LOCAL:1):Ｃ민감 && TALENT:(LOCAL:1):남자 == 0 && !TALENT:(LOCAL:1):후타나리
+								PRINTFORML [1]클리토리스에 바른다
+							SIF JUEL:(LOCAL:1):쾌Ｃ >= 300000 && !TALENT:(LOCAL:1):Ｃ민감 && (TALENT:(LOCAL:1):남자 || TALENT:(LOCAL:1):후타나리)
+								PRINTFORML [1]페니스에 바른다
+							SIF JUEL:(LOCAL:1):쾌Ｖ >= 300000 && !TALENT:(LOCAL:1):Ｖ민감 && TALENT:(LOCAL:1):남자 == 0
+								PRINTFORML [2]바기나에 바른다
+							SIF JUEL:(LOCAL:1):쾌Ａ >= 300000 && !TALENT:(LOCAL:1):Ａ민감
+								PRINTFORML [3]애널에 바른다
+							SIF JUEL:(LOCAL:1):쾌Ｂ >= 300000 && !TALENT:(LOCAL:1):Ｂ민감
+								PRINTFORML [4]유방에 바른다
+							PRINTFORML [100]그만둔다
+							$INPUT_NURUBASYO
+							INPUT
+							PRINTFORML
+							IF RESULT == 1
+								;Ｃ둔감→普通
+								IF TALENT:(LOCAL:1):Ｃ둔감
+									SIF TALENT:(LOCAL:1):남자 == 0 && !TALENT:(LOCAL:1):후타나리
+										PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 클리토리스 감도가 보통 수준으로 변했다＞
+									SIF TALENT:(LOCAL:1):남자 || TALENT:(LOCAL:1):후타나리
+										PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 페니스 감도가 보통 수준으로 변했다＞
+									TALENT:(LOCAL:1):Ｃ둔감 = 0
+									JUEL:(LOCAL:1):쾌Ｃ -= 300000
+								;普通→Ｃ민감
+								ELSE
+									SIF TALENT:(LOCAL:1):남자 == 0 && !TALENT:(LOCAL:1):후타나리
+										PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 클리토리스가 민감해졌다＞
+									SIF TALENT:(LOCAL:1):남자 || TALENT:(LOCAL:1):후타나리
+										PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 페니스가 민감해졌다＞
+									TALENT:(LOCAL:1):Ｃ민감 = 1
+									JUEL:(LOCAL:1):쾌Ｃ -= 300000
+								ENDIF
+							ELSEIF RESULT == 2
+								;Ｖ둔감→普通
+								IF TALENT:(LOCAL:1):Ｖ둔감
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 바기나 감도가 보통 수준으로 변했다＞
+									TALENT:(LOCAL:1):Ｖ둔감 = 0
+									JUEL:(LOCAL:1):쾌Ｖ -= 300000
+								;普通→Ｖ민감
+								ELSE
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 바기나가 민감해졌다＞
+									TALENT:(LOCAL:1):Ｖ민감 =1
+									JUEL:(LOCAL:1):쾌Ｖ -= 300000
+								ENDIF
+							ELSEIF RESULT == 3
+								;Ａ둔감→普通
+								IF TALENT:(LOCAL:1):Ａ둔감
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 애널 감도가 보통 수준으로 변했다＞
+									TALENT:(LOCAL:1):Ａ둔감 = 0
+									JUEL:(LOCAL:1):쾌Ａ -= 300000
+								;普通→Ａ민감
+								ELSE
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 애널이 민감해졌다＞
+									TALENT:(LOCAL:1):Ａ민감 = 1
+									JUEL:(LOCAL:1):쾌Ａ -= 300000
+								ENDIF
+							ELSEIF RESULT == 4
+								;Ｂ둔감→普通
+								IF TALENT:(LOCAL:1):Ｂ둔감
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 유방 감도가 보통 수준으로 변했다＞
+									TALENT:(LOCAL:1):Ｂ둔감 = 0
+									JUEL:(LOCAL:1):쾌Ｂ -= 300000
+								;普通→Ｂ민감
+								ELSE
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 유방이 민감해졌다＞
+									TALENT:(LOCAL:1):Ｂ민감 = 1
+									JUEL:(LOCAL:1):쾌Ｂ -= 300000
+								ENDIF
+							ELSEIF RESULT == 100
+								RESTART
+							ELSE
+								GOTO INPUT_NURUBASYO
+							ENDIF
+							RESULT = (LOCAL:1)
+							;RESTART
+						CASE "유생고정／해제약"
+							LOCAL:1 = RESULT
+							IF TALENT:(LOCAL:1):유생고정
+								PRINTFORML [1]유생고정을 해제한다
+							ELSEIF TALENT:(LOCAL:1):유아／유아퇴행
+								PRINTFORML [1]유아로 고정한다
+							ELSEIF TALENT:(LOCAL:1):소년／소녀
+								PRINTFORML [1]소년／소녀로 고정한다
+							ENDIF
+							PRINTFORML [100]그만둔다
+							$INPUT_YOSEI_CHECK
+							INPUT
+							PRINTFORML
+							IF RESULT == 1
+								IF TALENT:(LOCAL:1):유생고정
+									TALENT:(LOCAL:1):유생고정 = 0
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 유생고정을 해제했습니다＞
+								ELSE
+									 TALENT:(LOCAL:1):유생고정 = 1
+									IF TALENT:(LOCAL:1):유아／유아퇴행
+										PRINTFORMW ＜%조사처리(CALLNAME:(LOCAL:1),"는")% 【유아】로 유생고정되었습니다＞
+									ELSEIF TALENT:(LOCAL:1):소년／소녀
+										IF HAVE_PENIS((LOCAL:1))
+											PRINTFORMW ＜%조사처리(CALLNAME:(LOCAL:1),"는")% 【소년】으로 유생고정되었습니다＞
+										ELSE
+											PRINTFORMW ＜%조사처리(CALLNAME:(LOCAL:1),"는")% 【소녀】로 유생고정되었습니다＞
+										ENDIF
+									ENDIF
+								ENDIF
+							ELSEIF RESULT == 100
+								RESTART
+							ELSE
+								GOTO INPUT_NURUBASYO
+							ENDIF
+							RESULT = (LOCAL:1)
+							;RESTART
+						CASE "샤세트마"
+							PRINTFORMW ＜%CALLNAME:RESULT%에게 샤세트마를 사용했다＞
+							CFLAG:RESULT:無限사정薬フラグ = 3
+						CASE "밤국화의눈물"
+							PRINTFORMW ＜%CALLNAME:RESULT%에게 밤국화의 눈물을 사용했다＞
+							IF TALENT:RESULT:바람기 == 1
+								TALENT:RESULT:바람기 = 0
+								EXP:RESULT:바람경험 = 0
+							ELSE
+								RESTART
+							ENDIF
+							;TFLAG:13 = 228
+							;CALL KOJO_MESSAGE_EVENT
+						CASE "풍고제"
+							LOCAL:1 = RESULT
+							;신장が설정してある場合、カップサイズなどを再計算する
+							;남자についてはスリーサイズの설정ができない（남자に풍흉제使う人もいないとは思うが、使えちゃうからね……）
+							IF BASE:(LOCAL:1):24 > 0 && !TALENT:(LOCAL:1):남자
+								CALL SET_INFO_BODYSIZE, (LOCAL:1), "豊尻"
+								;情報표시
+								CALL SHOW_INFO_BODYSIZE(LOCAL:1)
+								PRINTFORML 약의 영향으로 인하여、체형이 이상의 값으로 변동하였습니다。
+								;変動後の素質に応じて메시지を표시する(SHOW_INFO_BODYSIZEで再計算される)
+								;小尻
+								IF TALENT:(LOCAL:1):小尻
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 엉덩이가 약간 부풀어 올랐다＞
+								;並尻
+								ELSEIF TALENT:(LOCAL:1):並尻
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 엉덩이가 조금 풍만해졌다다＞
+								;巨尻
+								ELSEIF TALENT:(LOCAL:1):巨尻
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 엉덩이가 다시 조금 풍만해졌다＞
+								;爆尻
+								ELSEIF TALENT:(LOCAL:1):爆尻
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 엉덩이가 또 더욱 풍만해졌다＞
+								;魔尻
+								ELSEIF TALENT:(LOCAL:1):魔尻
+									PRINTFORM ＜%CALLNAME:(LOCAL:1)%의 엉덩이가 
+									IF ABL:(LOCAL:1):속성LC == 1 && ABL:(LOCAL:1):속성LD == 1
+										PRINTFORML 성스러움을 더했다＞ 
+									ELSEIF ABL:(LOCAL:1):속성LD == 3 || ABL:(LOCAL:1):속성LC == 3
+										PRINTFORML 마성을 더했다＞
+									ELSE
+										PRINTFORML 초월적인 발전을 이루었다＞
+									ENDIF
+								ELSE
+								ENDIF
+							ELSE
+								;小尻→並尻
+								IF TALENT:(LOCAL:1):小尻
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 엉덩이가 평범하게 커다래졌다＞
+									TALENT:(LOCAL:1):小尻 = 0
+									TALENT:(LOCAL:1):並尻 = 1
+								;並尻→巨尻
+								ELSEIF TALENT:(LOCAL:1):並尻
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 엉덩이가 풍만해졌다＞
+									TALENT:(LOCAL:1):並尻 = 0
+									TALENT:(LOCAL:1):巨尻 = 1
+								;巨尻→爆尻
+								ELSEIF TALENT:(LOCAL:1):巨尻
+									;유아체형、소인체형
+									IF TALENT:(LOCAL:1):유아체형 || TALENT:(LOCAL:1):소인체형
+										PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 엉덩이가 몸에 부조화스럽게 커졌다＞
+									;それ以外
+									ELSE
+										PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 엉덩이가 안지 못할정도의 크기가 되었다＞
+									ENDIF
+									TALENT:(LOCAL:1):巨尻 = 0
+									TALENT:(LOCAL:1):爆尻 = 1
+								;爆尻→魔尻
+								ELSEIF TALENT:(LOCAL:1):爆尻
+									PRINTFORM ＜%CALLNAME:(LOCAL:1)%의 엉덩이는 
+									IF ABL:(LOCAL:1):속성LC == 1 && ABL:(LOCAL:1):속성LD == 1
+										PRINTFORMW 성스러움 조차 띄게 되었다＞ 
+									ELSEIF ABL:(LOCAL:1):속성LD == 3 || ABL:(LOCAL:1):속성LC == 3
+										PRINTFORMW 마성을 얻었다＞
+									ELSE
+										PRINTFORMW 초월적인 것이 되었다＞
+									ENDIF
+									TALENT:(LOCAL:1):爆尻 = 0
+									TALENT:(LOCAL:1):魔尻 = 1
+								;既に魔尻
+								ELSEIF TALENT:(LOCAL:1):魔尻
+									PRINTFORM ＜%CALLNAME:(LOCAL:1)%의 엉덩이는 
+									IF ABL:(LOCAL:1):속성LC == 1 && ABL:(LOCAL:1):속성LD == 1
+										PRINTFORMW 더욱 성스러움을 더했다＞ 
+									ELSEIF ABL:(LOCAL:1):속성LD == 3 || ABL:(LOCAL:1):속성LC == 3
+										PRINTFORMW 더욱 마성의 그것으로 화했다＞
+									ELSE
+										PRINTFORMW 더욱 초월적인 것이 되었다＞
+									ENDIF
+								;並尻설정がなければ並尻→巨尻に
+								ELSE
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 엉덩이가 풍만해졌다＞
+									TALENT:(LOCAL:1):並尻 = 0
+									TALENT:(LOCAL:1):巨尻 = 1
+								ENDIF
+							ENDIF
+						CASE "축고제"
+							LOCAL:1 = RESULT
+							;신장が설정してある場合、カップサイズなどを再計算する
+							;남자についてはスリーサイズの설정ができない（남자に풍흉제使う人もいないとは思うが、使えちゃうからね……）
+							IF BASE:(LOCAL:1):24 > 0 && !TALENT:(LOCAL:1):남자
+								CALL SET_INFO_BODYSIZE, (LOCAL:1), "縮尻"
+								;情報표시
+								CALL SHOW_INFO_BODYSIZE(LOCAL:1)
+								PRINTFORML 약의 영향으로 인하여、체형이 이상의 값으로 변동하였습니다。
+								;変動後の素質に応じて메시지を표시する(SHOW_INFO_BODYSIZEで再計算される)
+								;小尻
+								IF TALENT:(LOCAL:1):小尻
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 엉덩이가 또 조금 작아졌다＞
+								;並尻
+								ELSEIF TALENT:(LOCAL:1):並尻
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 엉덩이가 조금 작아졌다＞
+								;巨尻
+								ELSEIF TALENT:(LOCAL:1):巨尻
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 엉덩이가 슬림해졌다＞
+								;爆尻
+								ELSEIF TALENT:(LOCAL:1):爆尻
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 엉덩이가 한결 작아졌다＞
+								;魔尻
+								ELSEIF TALENT:(LOCAL:1):魔尻
+									PRINTFORM ＜%CALLNAME:(LOCAL:1)%의 엉덩이는 아직도 
+									IF ABL:(LOCAL:1):속성LC == 1 && ABL:(LOCAL:1):속성LD == 1
+										PRINTFORMW 성스럽기 그지없다……＞ 
+									ELSEIF ABL:(LOCAL:1):속성LD == 3 || ABL:(LOCAL:1):속성LC == 3
+										PRINTFORMW 악마스러울 정도다……＞
+									ELSE
+										PRINTFORMW 초월적이다……＞
+									ENDIF
+								ELSE
+								ENDIF
+							ELSE
+								;既に小尻
+								IF TALENT:(LOCAL:1):小尻
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 엉덩이가 약간 야무져졌다＞
+								;並尻→小尻
+								ELSEIF TALENT:(LOCAL:1):並尻
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 엉덩이가 작아졌다＞
+									TALENT:(LOCAL:1):小尻 = 1
+									TALENT:(LOCAL:1):並尻 = 0
+								;巨尻→並尻
+								ELSEIF TALENT:(LOCAL:1):巨尻
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 엉덩이가 슬림해졌다＞
+									TALENT:(LOCAL:1):並尻 = 1
+									TALENT:(LOCAL:1):巨尻 = 0
+								;爆尻→巨尻
+								ELSEIF TALENT:(LOCAL:1):爆尻
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 엉덩이가 한결 작아졌다＞
+									TALENT:(LOCAL:1):巨尻 = 1
+									TALENT:(LOCAL:1):爆尻 = 0
+								;魔尻→爆尻
+								ELSEIF TALENT:(LOCAL:1):魔尻
+									PRINTFORM ＜%CALLNAME:(LOCAL:1)%의 엉덩이는 
+									IF ABL:(LOCAL:1):속성LC == 2 && ABL:(LOCAL:1):속성LD > 1
+										PRINTFORML 초월적인 것이 되었다＞
+									ELSEIF ABL:(LOCAL:1):속성LD == 3 || ABL:(LOCAL:1):속성LC == 3
+										PRINTFORML 마성을 얻었다＞
+									ELSE
+										PRINTFORML 성스러움 조차 띄게 되었다＞ 
+									ENDIF
+									TALENT:(LOCAL:1):爆尻 = 0
+									TALENT:(LOCAL:1):魔尻 = 1
+								;並尻설정がなければ並尻→小尻に
+								ELSE
+									PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 엉덩이가 작아졌다＞
+									TALENT:(LOCAL:1):並尻 = 0
+									TALENT:(LOCAL:1):小尻 = 1
+								ENDIF
+							ENDIF
+						CASE "다이어트푸드"
+							LOCAL:1 = RESULT
+							;신장が설정してある場合、カップサイズなどを再計算する
+							;남자についてはスリーサイズの설정ができない（남자に풍흉제使う人もいないとは思うが、使えちゃうからね……）
+							IF BASE:(LOCAL:1):24 > 0 && !TALENT:(LOCAL:1):남자
+								CALL SET_INFO_BODYSIZE, (LOCAL:1), "痩身"
+								;情報표시
+								CALL SHOW_INFO_BODYSIZE(LOCAL:1)
+								PRINTFORML 약의 영향으로 인하여、체형이 이상의 값으로 변동하였습니다。
+								PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 허리 둘레가 꽉 죄여졌다＞
+							ENDIF
+						CASE "백수요괴의책"
+							LOCAL:1 = RESULT
+							;신장が설정してある場合、カップサイズなどを再計算する
+							;남자についてはスリーサイズの설정ができない（남자に풍흉제使う人もいないとは思うが、使えちゃうからね……）
+							IF BASE:(LOCAL:1):24 > 0 && !TALENT:(LOCAL:1):남자
+								CALL SET_INFO_BODYSIZE, (LOCAL:1), "肥満"
+								;情報표시
+								CALL SHOW_INFO_BODYSIZE(LOCAL:1)
+								PRINTFORML 약의 영향으로 인하여、체형이 이상의 값으로 변동하였습니다。
+								PRINTFORMW ＜%CALLNAME:(LOCAL:1)%의 허리 둘레에 약간 살이 붙었다＞
+							ENDIF
+						CASE "풍근제"
+								;粗チン(1)→短小(2)
+								IF TALENT:RESULT:페니스사이즈 == 1
+									PRINTFORMW ＜%CALLNAME:RESULT%のペニスがほんの少しだけ大きくなった＞
+									TALENT:RESULT:페니스사이즈 = 2
+								;短小(2)→並根(3)
+								ELSEIF TALENT:RESULT:페니스사이즈 == 2
+									PRINTFORMW ＜%CALLNAME:RESULT%のペニスが人並みに大きくなった＞
+									TALENT:RESULT:페니스사이즈 = 3
+								;巨根(4)→馬並
+								ELSEIF TALENT:RESULT:페니스사이즈 == 4
+									;유아체형、소인체형
+									IF TALENT:RESULT:유아체형 || TALENT:RESULT:소인체형
+										PRINTFORMW ＜%CALLNAME:RESULT%のペニスが体に不釣合いなまでに大きくなった＞
+									;それ以外
+									ELSE
+										PRINTFORMW ＜%CALLNAME:RESULT%のペニスが目を見張るほどの大きさになった＞
+									ENDIF
+									TALENT:RESULT:페니스사이즈 = 5
+								;並根(3)→巨根(4) または 普通(0)→巨根(4)
+								ELSE
+									PRINTFORMW ＜%CALLNAME:RESULT%のペニスが大きくなった＞
+									TALENT:RESULT:페니스사이즈 = 4
+								ENDIF
+							CFLAG:RESULT:스트레스치 += 2
+						CASE "축근제"
+								;馬並(5)→巨根(4)
+								IF TALENT:RESULT:페니스사이즈 == 5
+									PRINTFORMW ＜%CALLNAME:RESULT%の大き過ぎるペニスが一回り小さくなった＞
+									TALENT:RESULT:페니스사이즈 = 4
+								;巨根(4)→並根(3)
+								ELSEIF TALENT:RESULT:페니스사이즈 == 4
+									PRINTFORMW ＜%CALLNAME:RESULT%のペニスが人並みに小さくなった＞
+									TALENT:RESULT:페니스사이즈 = 3
+								;短小(2)→粗チン(1)
+								ELSEIF TALENT:RESULT:페니스사이즈 == 2
+									PRINTFORMW ＜%CALLNAME:RESULT%のペニスが極端に小さくなった＞
+									TALENT:RESULT:페니스사이즈 = 1
+								;並根(3)→短小(2) または 普通(0)→短小(2)
+								ELSE
+									PRINTFORMW ＜%CALLNAME:RESULT%のペニスが小さくなった＞
+									TALENT:RESULT:페니스사이즈 = 2
+								ENDIF
+							CFLAG:RESULT:스트레스치 += 2
+						CASE "광근제"
+								;無灯(0)→点灯(1)
+								IF TALENT:RESULT:페니스발광도 == 0
+									PRINTFORMW ＜%CALLNAME:RESULT%のペニスが光るようになった＞
+									TALENT:RESULT:페니스발광도 = 1
+								;点灯(1)→ゲーミング(2)
+								ELSEIF TALENT:RESULT:페니스발광도 == 1
+									PRINTFORMW ＜%CALLNAME:RESULT%のペニスが七色に光るようになった＞
+									TALENT:RESULT:페니스발광도 = 2
+								;ゲーミング(2)→無灯(0)
+								ELSE
+									PRINTFORMW ＜%CALLNAME:RESULT%のペニスは光らなくなった＞
+									TALENT:RESULT:페니스발광도 = 0
+								ENDIF
+							CFLAG:RESULT:스트레스치 += 5
+						;한국개조추가
+						CASE "케우케켄의비약"
+							PRINTFORMW ＜%CALLNAME:RESULT%의 국부에 케우케켄의비약을 발랐다＞
+							PRINTFORMW ＜%조사처리(CALLNAME:RESULT,"는")% 음모가 나게 되었다＞
+							CFLAG:RESULT:음모성장 = 1
+						CASE "성로정"
+							PRINTFORMW ＜%CALLNAME:RESULT%에게 성로정을 삼키게 했다＞
+							PRINTFORMW ＜%CALLNAME:RESULT%의 음핵이 약간 부풀어 오른 느낌이 들었다……＞
+							BASE:RESULT:음핵 += (BASE:RESULT:음핵 == 0) ? 1 # RAND(1, 10)
+							;成長による特殊処理
+							SIF BASE:RESULT:음핵 >= 150 && TALENT:RESULT:비대음핵 == 0
+								CALL HUGE_CLITORIS, RESULT
+							SIF BASE:RESULT:음핵 > 200 && (CFLAG:RESULT:음핵성장 & 4) == 0
+								CALL GIGATORIS, RESULT
+						;한국개조여기까지
+						CASE ""
+					ENDSELECT
+					;충성도による붕괴防止措置を추가
+					;붕괴防止措置
+					IF CFLAG:RESULT:스트레스치 >= 100 && TALENT:RESULT:붕괴 == 0 && RESULT != MASTER
+						IF 함락(RESULT)
+							IF (CFLAG:RESULT:스트레스치 -99) * 100 <= BASE:RESULT:충성도
+								PRINTFORMW %조사처리(CALLNAME:RESULT,"는")% 심한 스트레스를 느끼고 있는 것 같다……
+								PRINTFORMW %CALLNAME:RESULT%의 충성도가 {(CFLAG:RESULT:스트레스치 -99) * 100}감소했다
+								BASE:RESULT:충성도 -= (CFLAG:RESULT:스트레스치 -99) * 100
+								CFLAG:RESULT:스트레스치 = 99
+							ENDIF
+						ELSE
+							IF (CFLAG:RESULT:스트레스치 -99) * 500 <= BASE:RESULT:충성도
+								PRINTFORMW %조사처리(CALLNAME:RESULT,"는")% 심한 스트레스를 느끼고 있는 것 같다……
+								PRINTFORMW %CALLNAME:RESULT%의 충성도가 {(CFLAG:RESULT:스트레스치 -99) * 500}감소했다
+								BASE:RESULT:충성도 -= (CFLAG:RESULT:스트레스치 -99) * 500
+								CFLAG:RESULT:스트레스치 = 99
+							ENDIF
+						ENDIF
+					ENDIF
+					SIF CFLAG:RESULT:스트레스치 >= 100 && TALENT:RESULT:붕괴 == 0 && RESULT != MASTER
+						CALL COLLAPSE_MIND_ITEM, RESULT
+					MONEY -= ITEMPRICE:LOCAL
+					SIF MONEY >= ITEMPRICE:LOCAL
+						GOTO USE_DRUG
+					PRINTW ＜돈이 모자라게 됐습니다＞
+				ENDSELECT
+		ENDIF
+ENDSELECT
+CLEARLINE LINECOUNT - LINE
+RESTART
+@USE_DRUG_LIST(ARG)
+SIF USE_DRUGABLE(Z, ARG)
+	RETURN 1
+RETURN 0
+@TRAINITEM_SALEABLE, ARG
+#FUNCTION
+;販売조건の체크
+;戻り値は1が販売、0が구입済みなどの理由で구입不能、-1が販売リストにのらない
+SIF ITEMPRICE:ARG <= 0
+	RETURNF -1
+SELECTCASE ITEMNAME:ARG
+	CASE "비디오테이프"
+		SIF !ITEM:비디오카메라
+			RETURNF -1
+	CASE "필름"
+		SIF !ITEM:카메라
+			RETURNF -1
+	CASE "【조합지식】"
+		;主人금단의지식を持っていて、기교が4以上かつ함락済みの조수が조합지식を持っている場合、조합지식が買えるようになる
+		SIF !TALENT:MASTER:금단의지식
+			RETURNF -1
+		LOCAL:1 = 0
+		FOR LOCAL, 1, CHARANUM
+			SIF !TALENT:LOCAL:조합지식
+				CONTINUE
+			SIF ABL:LOCAL:기교 < 4
+				CONTINUE
+			SIF !함락(LOCAL)
+				CONTINUE
+			SIF !ISASSI:LOCAL
+				CONTINUE
+			LOCAL:1 = 1
+			BREAK
+		NEXT
+		SIF !LOCAL:1
+			RETURNF -1
+	CASE "건강해지는약"
+		LOCAL:1 = 0
+		FOR LOCAL, 0, CHARANUM
+			SIF !TALENT:LOCAL:조합지식
+				CONTINUE
+			SIF LOCAL != MASTER && !ISASSI:LOCAL
+				CONTINUE
+			LOCAL:1 = 1
+			BREAK
+		NEXT
+		SIF !LOCAL:1
+			RETURNF -1
+	CASE "【촉수사역술】", "【서드・아이】", "파란사탕", "빨간사탕", "풍흉제", "축흉제", "프롤락틴억제약", "３환계항우울제", "황색사탕", "전생의비약", "무지개색사탕", "오토코노코캔디", "전생의비약(이형)", "체형변화(로리)", "체형변화약(성인)", "야생의사탕", "달의사탕", "자제의캔디", "샤세트마", "풍고제", "축고제"
+		LOCAL:1 = 0
+		FOR LOCAL, 0, CHARANUM
+			SIF !TALENT:LOCAL:금단의지식
+				CONTINUE
+			SIF LOCAL != MASTER && !ISASSI:LOCAL
+				CONTINUE
+			LOCAL:1 = 1
+			BREAK
+		NEXT
+		SIF !LOCAL:1
+			RETURNF -1
+	;外見・スリーサイズ関連아이템の場合(主に変色薬)
+	CASE "변색약(하얀피부)", "변색약(갈색피부)", "변색약(붉은피부)", "변색약(푸른피부)", "변색약(녹색피부)", "다이어트푸드", "백수요괴의책"
+		;外見・スリーサイズ설정が無効なら利用不可
+		SIF !SETTING_IS_3SIZE()
+			RETURNF -1
+		LOCAL:1 = 0
+		FOR LOCAL, 0, CHARANUM
+			SIF !TALENT:LOCAL:금단의지식
+				CONTINUE
+			SIF LOCAL != MASTER && !ISASSI:LOCAL
+				CONTINUE
+			LOCAL:1 = 1
+			BREAK
+		NEXT
+		SIF !LOCAL:1
+			RETURNF -1
+	CASE "약의재료(후타)", "약의재료(소거)"
+		LOCAL:1 = 0
+		FOR LOCAL, 0, CHARANUM
+			SIF LOCAL != MASTER && !ISASSI:LOCAL
+				CONTINUE
+			SIF !TALENT:LOCAL:금단의지식 && !TALENT:LOCAL:조합지식
+				CONTINUE
+			LOCAL:1 = 1	
+			BREAK
+		NEXT
+		SIF !LOCAL:1
+			RETURNF -1
+	CASE "유리와쑥의비약"
+		LOCAL:1 = 0
+		FOR LOCAL, 0, CHARANUM
+			SIF LOCAL != MASTER && !ISASSI:LOCAL
+				CONTINUE
+			SIF !TALENT:LOCAL:금단의지식 && !TALENT:LOCAL:조합지식
+				CONTINUE
+			SIF FLAG:연모人数 < 100
+				CONTINUE
+			LOCAL:1 = 1	
+			BREAK
+		NEXT
+		SIF !LOCAL:1
+			RETURNF -1
+	CASE "기억소거약"
+		RETURNF -1
+ENDSELECT
+SELECTCASE ARG
+	CASE IS < 40
+		SIF ITEM:ARG
+			RETURNF 0
+	CASE IS < 60
+		SIF ITEM:ARG >= 999
+			RETURNF 0
+	CASE 60
+		SIF TALENT:MASTER:불결무시
+			RETURNF 0
+	CASE 61
+		SIF TALENT:MASTER:조합지식
+			RETURNF 0
+	CASE 62
+		SIF TALENT:MASTER:금단의지식
+			RETURNF 0
+	CASE 63
+		SIF TALENT:MASTER:깨달음
+			RETURNF 0
+	CASE 64
+		SIF TALENT:MASTER:촉수사역술
+			RETURNF 0
+	CASEELSE
+		FOR LOCAL, 0, CHARANUM
+			SIF !USE_DRUGABLE(ARG, LOCAL)
+				CONTINUE
+			RETURNF 1
+		NEXT
+		RETURNF 0
+ENDSELECT
+RETURNF 1
+
+@USE_DRUGABLE, ARG, ARG:1
+#FUNCTION
+#LOCALSIZE 2
+;ARGが아이템、ARG:1がキャラ
+;노역中はダメ
+SIF CFLAG:(ARG:1):노역フラグ == 3
+	RETURNF 0
+;不在キャラは弾く
+SIF CFLAG:(ARG:1):この場に居ないフラグ
+	RETURNF 0
+;필터ーかかってるキャラも排除
+SIF CFLAG:(ARG:1):필터링フラグ
+	RETURNF 0
+SELECTCASE ITEMNAME:ARG
+	CASE "건강해지는약"
+		SIF ARG:1 == MASTER
+			RETURNF 0
+		SIF BASE:(ARG:1):체력 == MAXBASE:(ARG:1):체력
+			RETURNF 0
+	CASE "약의재료(후타)"
+		SIF TALENT:(ARG:1):후타나리
+			RETURNF 0
+		SIF IS_MALE(ARG:1)
+			RETURNF 0
+		;금단의지식がない場合、대상に조합지식か이상한뿌리か구현が필요
+		LOCAL:1 = 0
+		FOR LOCAL, 0, CHARANUM
+			SIF TALENT:LOCAL:금단의지식
+				CONTINUE
+			SIF LOCAL != MASTER && !ISASSI:LOCAL
+				CONTINUE
+			LOCAL:1 = 1
+			BREAK
+		NEXT
+		SIF !LOCAL:1 && !TALENT:(ARG:1):조합지식 && !TALENT:(ARG:1):구현 && !TALENT:(ARG:1):이상한뿌리 && !TALENT:MASTER:금단의지식
+			RETURNF 0
+	CASE "약의재료(소거)"
+		SIF !TALENT:(ARG:1):후타나리
+			RETURNF 0
+		SIF IS_MALE(ARG:1)
+			RETURNF 0
+	CASE "파란사탕"
+		SIF IS_MALE(ARG:1)
+			RETURNF 0
+		SIF TALENT:(ARG:1):모유체질
+			RETURNF 0
+	;止める方は男もとおすようにしておく
+	CASE "프롤락틴억제약"
+		SIF !TALENT:(ARG:1):모유체질
+			RETURNF 0
+	CASE "빨간사탕"
+		SIF IS_MALE(ARG:1)
+			RETURNF 0
+		SIF TALENT:(ARG:1):처녀
+			RETURNF 0
+		SIF TALENT:(ARG:1):재생처녀
+			RETURNF 0
+	CASE "풍흉제"
+		SIF TALENT:(ARG:1):魔乳 && !SETTING_IS_3SIZE()
+			RETURNF 0
+		SIF TALENT:(ARG:1):짐승
+			RETURNF 0
+		SIF TALENT:(ARG:1):새
+			RETURNF 0
+		SIF TALENT:(ARG:1):파충류
+			RETURNF 0
+		SIF TALENT:(ARG:1):물고기
+			RETURNF 0
+		SIF TALENT:(ARG:1):부정형
+			RETURNF 0
+;		SIF IS_MALE(ARG:1)
+;			RETURNF 0
+	CASE "축흉제"
+		SIF TALENT:(ARG:1):절벽 && !SETTING_IS_3SIZE()
+			RETURNF 0
+		SIF TALENT:(ARG:1):짐승
+			RETURNF 0
+		SIF TALENT:(ARG:1):새
+			RETURNF 0
+		SIF TALENT:(ARG:1):파충류
+			RETURNF 0
+		SIF TALENT:(ARG:1):물고기
+			RETURNF 0
+		SIF TALENT:(ARG:1):부정형
+			RETURNF 0
+;		SIF IS_MALE(ARG:1)
+;			RETURNF 0
+	CASE "３환계항우울제"
+		SIF !TALENT:(ARG:1):오줌싸개
+			RETURNF 0
+		SIF ARG:1 == MASTER
+			RETURNF 0
+	CASE "황색사탕"
+		SIF !TALENT:(ARG:1):임신
+			RETURNF 0
+		SIF BASE:(ARG:1):체력 < 1000
+			RETURNF 0
+	CASE "전생의비약"
+		;SIF ARG:1 == MASTER
+		;	RETURNF 0
+		SIF TALENT:(ARG:1):짐승 || TALENT:(ARG:1):새 || TALENT:(ARG:1):파충류 || TALENT:(ARG:1):물고기 || TALENT:(ARG:1):부정형 || TALENT:(ARG:1):이형
+			RETURNF 1
+		RETURNF 0
+	CASE "무지개색사탕"
+		RETURNF 1
+	CASE "오토코노코캔디"
+		SIF TALENT:(ARG:1):짐승
+			RETURNF 0
+		SIF TALENT:(ARG:1):새
+			RETURNF 0
+		SIF TALENT:(ARG:1):파충류
+			RETURNF 0
+		SIF TALENT:(ARG:1):물고기
+			RETURNF 0
+		SIF TALENT:(ARG:1):부정형
+			RETURNF 0
+		SIF TALENT:(ARG:1):남자 == 0
+			RETURNF 0
+	CASE "전생의비약(이형)"
+		SIF TALENT:(ARG:1):짐승 || TALENT:(ARG:1):새 || TALENT:(ARG:1):파충류 || TALENT:(ARG:1):물고기 || TALENT:(ARG:1):부정형
+			RETURNF 0
+	CASE "체형변화(로리)"
+		SIF TALENT:(ARG:1):유아체형
+			RETURNF 0
+		SIF TALENT:(ARG:1):소인체형
+			RETURNF 0
+	CASE "체형변화약(성인)"
+		SIF TALENT:(ARG:1):거체
+			RETURNF 0
+		SIF TALENT:(ARG:1):소인체형
+			RETURNF 0
+	CASE "배란유발제", "자궁내피임결계"
+		SIF IS_LOOKSLIKE_MALE(ARG:1)
+			RETURNF 0
+		SIF CFLAG:(ARG:1):배란유발제
+			RETURNF 0
+		SIF CFLAG:(ARG:1):자궁내피임결계
+			RETURNF 0
+		SIF TALENT:(ARG:1):임신
+			RETURNF 0
+		SIF TALENT:(ARG:1):육아중
+			RETURNF 0
+	CASE "야생의사탕"
+		SIF TALENT:(ARG:1):남자
+			RETURNF 0
+		SIF TALENT:(ARG:1):발정가능
+			RETURNF 0
+		RETURNF 1
+	CASE "자제의캔디"
+		SIF !TALENT:(ARG:1):발정가능
+			RETURNF 0
+		SIF IS_MALE(ARG:1)
+			RETURNF 0
+	CASE "달의사탕"
+		SIF TALENT:(ARG:1):남자
+			RETURNF 0
+		RETURNF 1
+	CASE "바람꽃의이슬"
+		SIF CFLAG:(ARG:1):바람꽃의이슬
+			RETURNF 0
+		RETURNF 1
+	CASE "유리와쑥의비약"
+		SIF GET_DEVIL(ARG:1)
+			RETURNF 0
+		SIF IS_MALE(ARG:1)
+			RETURNF 0
+		SIF TALENT:(ARG:1):처녀
+			RETURNF 0
+		SIF TALENT:(ARG:1):재생처녀
+			RETURNF 0
+	CASE "오르키스의연고"
+		SIF ABL:(ARG:1):종족 > 0
+			RETURNF 0
+		SIF 계약(ARG:1) == 0
+			RETURNF 0
+		SIF TALENT:(ARG:1):Ｃ민감 && TALENT:(ARG:1):Ｖ민감 && TALENT:(ARG:1):Ａ민감 && TALENT:(ARG:1):Ｂ민감
+			RETURNF 0
+		SIF JUEL:(ARG:1):쾌Ｃ >= 300000 && !TALENT:(ARG:1):Ｃ민감
+			RETURNF 1
+		SIF JUEL:(ARG:1):쾌Ｖ >= 300000 && !TALENT:(ARG:1):Ｖ민감
+			RETURNF 1
+		SIF JUEL:(ARG:1):쾌Ａ >= 300000 && !TALENT:(ARG:1):Ａ민감
+			RETURNF 1
+		SIF JUEL:(ARG:1):쾌Ｂ >= 300000 && !TALENT:(ARG:1):Ｂ민감
+			RETURNF 1
+		RETURNF 0
+	CASE "유생고정／해제약"
+		SIF MARK:(ARG:1):딸의성장기록 >= 1 && TALENT:(ARG:1):아이 && TALENT:(ARG:1):유아／유아퇴행
+			RETURNF 1
+		SIF MARK:(ARG:1):딸의성장기록 >= 1 && TALENT:(ARG:1):아이 && TALENT:(ARG:1):소년／소녀
+			RETURNF 1
+		RETURNF 0
+	CASE "변색약(하얀피부)"
+		SIF TALENT:(ARG:1):하얀피부
+			RETURNF 0
+		SIF TALENT:(ARG:1):갈색피부
+			RETURNF 0
+		SIF TALENT:(ARG:1):붉은피부
+			RETURNF 0
+		SIF TALENT:(ARG:1):푸른피부
+			RETURNF 0
+		SIF CFLAG:(ARG:1):피부색깔 > 0
+			RETURNF 0
+	CASE "변색약(갈색피부)"
+		SIF TALENT:(ARG:1):하얀피부
+			RETURNF 0
+		SIF TALENT:(ARG:1):갈색피부
+			RETURNF 0
+		SIF TALENT:(ARG:1):붉은피부
+			RETURNF 0
+		SIF TALENT:(ARG:1):푸른피부
+			RETURNF 0
+		SIF CFLAG:(ARG:1):피부색깔 > 0
+			RETURNF 0
+	CASE "변색약(붉은피부)"
+		SIF TALENT:(ARG:1):하얀피부
+			RETURNF 0
+		SIF TALENT:(ARG:1):갈색피부
+			RETURNF 0
+		SIF TALENT:(ARG:1):붉은피부
+			RETURNF 0
+		SIF TALENT:(ARG:1):푸른피부
+			RETURNF 0
+		SIF CFLAG:(ARG:1):피부색깔 > 0
+			RETURNF 0
+	CASE "변색약(푸른피부)"
+		SIF TALENT:(ARG:1):하얀피부
+			RETURNF 0
+		SIF TALENT:(ARG:1):갈색피부
+			RETURNF 0
+		SIF TALENT:(ARG:1):붉은피부
+			RETURNF 0
+		SIF TALENT:(ARG:1):푸른피부
+			RETURNF 0
+		SIF CFLAG:(ARG:1):피부색깔 > 0
+			RETURNF 0
+	CASE "변색약(녹색피부)"
+		SIF TALENT:(ARG:1):하얀피부
+			RETURNF 0
+		SIF TALENT:(ARG:1):갈색피부
+			RETURNF 0
+		SIF TALENT:(ARG:1):붉은피부
+			RETURNF 0
+		SIF TALENT:(ARG:1):푸른피부
+			RETURNF 0
+		SIF CFLAG:(ARG:1):피부색깔 > 0
+			RETURNF 0
+	CASE "밤국화의눈물"
+		SIF TALENT:(ARG:1):바람기 == 0
+			RETURNF 0
+		RETURNF 1
+	CASE "샤세트마"
+		SIF HAVE_PENIS(ARG:1) == 0
+			RETURNF 0
+		SIF CFLAG:(ARG:1):無限사정薬フラグ > 0
+			RETURNF 0
+	CASE "풍고제"
+		SIF TALENT:(ARG:1):魔尻 && !SETTING_IS_3SIZE()
+			RETURNF 0
+		SIF TALENT:(ARG:1):짐승
+			RETURNF 0
+		SIF TALENT:(ARG:1):새
+			RETURNF 0
+		SIF TALENT:(ARG:1):파충류
+			RETURNF 0
+		SIF TALENT:(ARG:1):물고기
+			RETURNF 0
+		SIF TALENT:(ARG:1):부정형
+			RETURNF 0
+;		SIF IS_MALE(ARG:1)
+;			RETURNF 0
+	CASE "축고제"
+		;外見・スリーサイズ설정が無効なら추가利用不可
+		SIF TALENT:(ARG:1):小尻
+			RETURNF 0
+		SIF TALENT:(ARG:1):짐승
+			RETURNF 0
+		SIF TALENT:(ARG:1):새
+			RETURNF 0
+		SIF TALENT:(ARG:1):파충류
+			RETURNF 0
+		SIF TALENT:(ARG:1):물고기
+			RETURNF 0
+		SIF TALENT:(ARG:1):부정형
+			RETURNF 0
+		;外見・スリーサイズ설정が無効なら利用不可
+		SIF !SETTING_IS_3SIZE()
+			RETURNF 1
+
+;		SIF IS_MALE(ARG:1)
+;			RETURNF 0
+	CASE "다이어트푸드"
+		;外見・スリーサイズ설정が無効なら利用不可
+		SIF !SETTING_IS_3SIZE()
+			RETURNF -1
+		;신장설정をしていない場合사용不可
+		SIF BASE:(ARG:1):24 == 0 
+			RETURNF 0
+		SIF TALENT:(ARG:1):짐승
+			RETURNF 0
+		SIF TALENT:(ARG:1):새
+			RETURNF 0
+		SIF TALENT:(ARG:1):파충류
+			RETURNF 0
+		SIF TALENT:(ARG:1):물고기
+			RETURNF 0
+		SIF TALENT:(ARG:1):부정형
+			RETURNF 0
+;		SIF IS_MALE(ARG:1)
+;			RETURNF 0
+	CASE "백수요괴의책"
+		SIF !SETTING_IS_3SIZE()
+			RETURNF -1
+		;신장설정をしていない場合사용不可
+		SIF BASE:(ARG:1):24 == 0 
+			RETURNF 0
+		SIF TALENT:(ARG:1):짐승
+			RETURNF 0
+		SIF TALENT:(ARG:1):새
+			RETURNF 0
+		SIF TALENT:(ARG:1):파충류
+			RETURNF 0
+		SIF TALENT:(ARG:1):물고기
+			RETURNF 0
+		SIF TALENT:(ARG:1):부정형
+			RETURNF 0
+;		SIF IS_MALE(ARG:1)
+;			RETURNF 0
+	CASE "풍근제"
+		IF TALENT:(ARG:1):남자 == 1
+		ELSEIF TALENT:(ARG:1):오토코노코 == 1
+		ELSEIF TALENT:(ARG:1):후타나리 == 1
+		ELSE
+			RETURNF 0
+		ENDIF
+		SIF TALENT:(ARG:1):페니스사이즈 == 5
+			RETURNF 0
+	CASE "축근제"
+		IF TALENT:(ARG:1):남자 == 1
+		ELSEIF TALENT:(ARG:1):오토코노코 == 1
+		ELSEIF TALENT:(ARG:1):후타나리 == 1
+		ELSE
+			RETURNF 0
+		ENDIF
+		SIF TALENT:(ARG:1):페니스사이즈 == 1
+			RETURNF 0
+	CASE "광근제"
+		IF TALENT:(ARG:1):남자 == 1
+		ELSEIF TALENT:(ARG:1):오토코노코 == 1
+		ELSEIF TALENT:(ARG:1):후타나리 == 1
+		ELSE
+			RETURNF 0
+		ENDIF
+	CASE "케우케켄의비약"
+		;효과가 나타나는 중엔 불가
+		SIF CFLAG:(ARG:1):음모성장 == 1
+	        RETURNF 0
+		;물고비, 부정형, 파충류, 이형의 경우 사용불가
+		SIF (TALENT:(ARG:1):파충류 || TALENT:(ARG:1):물고기 || TALENT:(ARG:1):부정형 || TALENT:(ARG:1):이형) && TALENT:(ARG:1):인간화 == 0
+			RETURNF 0
+	CASE "성로정"
+		;자지 달려 있으면 불가
+		SIF TALENT:(ARG:1):후타나리
+			RETURNF 0
+		SIF IS_MALE(ARG:1)
+			RETURNF 0
+		;비대음핵 이상 불가
+		SIF BASE:(ARG:1):음핵 > 200
+			RETURNF 0
+	CASEELSE
+		RETURNF 0
+ENDSELECT
+RETURNF 1
+
+
+;産卵이벤트　イメージとしては、非常にリスキーだが上손くやれば임신を無効にできる이벤트
+@LAY_EGG, ARG
+#DIM FATHER, 1
+;이벤트구상
+U = 0
+IF ASSI >= 0
+	SIF ASSI == ARG
+		U = 1
+ENDIF
+T = TARGET
+TARGET = ARG
+TFLAG:13 = 10
+CALL KOJO_MESSAGE_EVENT
+LOCAL = TARGET
+TARGET = T
+SIF U
+	ASSI = RESULT
+PRINTFORMW 알을 낳자마자 %NAME:LOCAL%의 배는 임신하기 전의 크기로 돌아왔다
+;수태아이템の입수
+PRINTFORMW %조사처리(NAME:LOCAL,"는")% [%TALENTNAME:153%]을 잃었다
+TALENT:LOCAL:임신 = 0
+CFLAG:LOCAL:発情임신 = 0
+;임신이벤트で減った체력の최대値が회복（少なめ）
+;MAXBASE:LOCAL:0 += 300
+;가슴の縮小処理を実行
+PRINTW 그리고 가슴의 크기도 작아진 것 같다
+;C = LOCAL:0
+CALL REVERSE_B_SIZE(LOCAL:0)
+
+CFLAG:(LOCAL:0):子宮現在容量 = 0
+
+RESULT = A
+LOCAL:1 = 0
+LOCAL:2 = 0
+;----------------------------------
+;수태아이템획득処理
+;----------------------------------
+IF TALENT:LOCAL:붕괴 == 0
+	IF ABL:LOCAL:수태아이템 >= 0 && LOCAL != MASTER && 함락(LOCAL) >= 1
+		LOCAL:1 = ABL:LOCAL:수태아이템 > 0 ? ABL:LOCAL:수태아이템 # CSVABL(NO:LOCAL, GETNUM(ABL, "수태아이템"), 0)
+		SIF LOCAL:1 > 0
+			ABL:LOCAL:수태아이템 = -1
+	ENDIF
+	;母親からの아이템がない場合、父親の판정にうつる
+	IF LOCAL:1 <= 0
+		FATHER = FINDCHARA_ID(CFLAG:LOCAL:父親の固有번호親)
+		IF FATHER >= 0 && ABL:FATHER:수태아이템 >= 0 && TALENT:FATHER:붕괴 == 0 && 함락(FATHER) >= 1 && FATHER != MASTER
+			LOCAL:1 = ABL:FATHER:수태아이템 > 0 ? ABL:FATHER:수태아이템 # CSVABL(NO:FATHER, GETNUM(ABL, "수태아이템"), 0)
+			SIF LOCAL:1 > 0
+				ABL:FATHER:수태아이템 = -1
+		ENDIF
+	ENDIF
+	IF LOCAL:1 > 0
+		SETCOLOR COLOR("aqua")
+		PRINTFORML 알에서、%조사처리(ITEMNAME:(LOCAL:1),"를")% 입수했다
+		CALL GET_ITEM,LOCAL:1,1
+		RESETCOLOR
+	ENDIF
+	;親を見る処置は撤廃
+	;	ELSEIF CFLAG:LOCAL:111 > -1 && CSVABL(CFLAG:LOCAL:111,GETNUM(ABL,"수태아이템"),0) > 0
+	;		PRINTFORML 卵から、%ITEMNAME:(CSVABL(CFLAG:LOCAL:111,GETNUM(ABL,"수태아이템"),0))%を입수した
+	;		CALL GET_ITEM,CSVABL(CFLAG:LOCAL:111,GETNUM(ABL,"수태아이템"),0),1
+	;未설정の場合は香を出す
+	;ELSE
+	;	LOCAL:2 = 1
+	;	FOR LOCAL:1, 2, 7
+	;		SIF MAXBASE:LOCAL:GET_BASESTATUS(LOCAL:2) < MAXBASE:LOCAL:GET_BASESTATUS(LOCAL:1)
+	;			LOCAL:2 = LOCAL:1
+	;	NEXT
+	;	CALL GET_ITEM, GETNUM(ITEM, GET_BASESTATUS(LOCAL:2) + "の香"), 1
+	;	PRINTFORML 卵から、%GET_BASESTATUS(LOCAL:2)%の香を입수した
+ENDIF
+
+;스트레스치の보정の決定
+;ABL:순종をみる
+IF ABL:LOCAL:0 == 0
+	A = 0
+ELSEIF ABL:LOCAL:0 == 1
+	A = 2
+ELSEIF ABL:LOCAL:0 == 2
+	A = 4
+ELSEIF ABL:LOCAL:0 == 3
+	A = 6
+ELSEIF ABL:LOCAL:0 == 4
+	A = 8
+ELSE
+	A = 10
+ENDIF
+IF TALENT:LOCAL:남자 == 0
+	;ABL:Ｖ감각をみる
+	IF ABL:LOCAL:4 == 0
+		B = 0
+	ELSEIF ABL:LOCAL:4 == 1
+		B = 2
+	ELSEIF ABL:LOCAL:4 == 2
+		B = 4
+	ELSEIF ABL:LOCAL:4 == 3
+		B = 6
+	ELSEIF ABL:LOCAL:4 == 4
+		B = 8
+	ELSE
+		B = 10
+	ENDIF
+
+	;EXP:Ｖ경험をみる
+	IF EXP:LOCAL:0 < EXPLV:1
+		C = 0
+	ELSEIF EXP:LOCAL:0 < EXPLV:2
+		C = 2
+	ELSEIF EXP:LOCAL:0 < EXPLV:3
+		C = 4
+	ELSEIF EXP:LOCAL:0 < EXPLV:4
+		C = 6
+	ELSEIF EXP:LOCAL:0 < EXPLV:5
+		C = 8
+	ELSE
+		C = 10
+	ENDIF
+ELSE
+	;ABL:Ａ감각をみる
+	IF ABL:LOCAL:5 == 0
+		B = 0
+	ELSEIF ABL:LOCAL:5 == 1
+		B = 2
+	ELSEIF ABL:LOCAL:5 == 2
+		B = 4
+	ELSEIF ABL:LOCAL:5 == 3
+		B = 6
+	ELSEIF ABL:LOCAL:5 == 4
+		B = 8
+	ELSE
+		B = 10
+	ENDIF
+
+	;EXP:Ａ경험をみる
+	IF EXP:LOCAL:1 < EXPLV:1
+		C = 0
+	ELSEIF EXP:LOCAL:1 < EXPLV:2
+		C = 2
+	ELSEIF EXP:LOCAL:1 < EXPLV:3
+		C = 4
+	ELSEIF EXP:LOCAL:1 < EXPLV:4
+		C = 6
+	ELSEIF EXP:LOCAL:1 < EXPLV:5
+		C = 8
+	ELSE
+		C = 10
+	ENDIF
+ENDIF
+
+;EXP:출산경험をみる
+IF EXP:LOCAL:60 < EXPLV:2
+	D = 100
+ELSEIF EXP:LOCAL:60 < EXPLV:4
+	D = 60
+ELSEIF EXP:LOCAL:60 < EXPLV:5
+	D = 40
+ELSE
+	D = 20
+ENDIF
+
+E = 100
+;함락素質を見る
+SIF TALENT:LOCAL:연모
+	E = 90
+SIF TALENT:LOCAL:연모 && CFLAG:LOCAL:임신確定後の父親の판정 == MASTER
+	E = 120
+SIF TALENT:LOCAL:음란
+	E = 80
+SIF TALENT:LOCAL:5
+	E = 60
+SIF TALENT:LOCAL:친애
+	E = 85
+SIF TALENT:LOCAL:6 && CFLAG:LOCAL:임신確定後の父親の판정 == MASTER
+	E = 135
+SIF TALENT:LOCAL:7
+	E = 60
+SIF TALENT:LOCAL:8
+	E = 40
+SIF TALENT:LOCAL:9
+	E = 0
+
+F = D*(100- A - B - C)*E/10000
+EXP:LOCAL:60 += 1
+IF TALENT:LOCAL:남자 == 0
+	PRINTL Ｖ경험＋５
+	PRINTL Ｖ확장경험＋１
+
+	EXP:LOCAL:0 += 5
+	EXP:LOCAL:52 += 1
+ELSE
+	PRINTL Ａ경험＋５
+	PRINTL Ａ확장경험＋１
+
+	EXP:LOCAL:Ａ경험 += 5
+	EXP:LOCAL:Ａ확장경험 += 1
+ENDIF
+PRINTL 출산경험＋１
+IF EXP:LOCAL:60 == 1 && EXP:LOCAL:52 == 1
+	EXP:LOCAL:50 += 3
+	PRINTFORML 이상경험＋3
+ELSEIF EXP:LOCAL:60 == 1
+	EXP:LOCAL:50 += 2
+	PRINTFORML 이상경험＋2
+ELSEIF EXP:LOCAL:52 == 1
+	EXP:LOCAL:50 += 1
+	PRINTFORML 이상경험＋1
+ENDIF
+CFLAG:LOCAL:스트레스치 += F
+BASE:LOCAL:0 = 10
+RESULT = LOCAL
+;C = LOCAL
+CALL CLEAR_FLAG(LOCAL)
+TWAIT 1, 1
+PRINTFORMW %조사처리(NAME:(LOCAL),"는")% 체력이 격렬하게 소모되었다
+RETURN ARG
+;PRINTFORMW 少し休ませたほうがよさそうだ
+;휴식フラグを立てる
+;FLAG:0 = 1
+;BEGIN TURNEND
+
+
+;아이템で【붕괴】を得た場合の이벤트
+@COLLAPSE_MIND_ITEM, ARG
+PRINTFORMW %CALLNAME:ARG%의 모습이 이상하다
+PRINTFORMW 투약의 영향 때문에 %조사처리(CALLNAME:ARG,"는")% 정신에 이상을 일으켜버린 것 같다
+PRINTFORMW %조사처리(NAME:ARG,"는")% 【붕괴】하고 말았다
+TALENT:ARG:붕괴 = 1
+IF 함락(ARG)
+	PRINTFORM %CALLNAME:ARG%は[
+	SIF TALENT:ARG:연모
+		PRINTFORM 연모
+	SIF TALENT:ARG:음란
+		PRINTFORM 음란
+	SIF TALENT:ARG:복종
+		PRINTFORM 복종
+	SIF TALENT:ARG:친애
+		PRINTFORM 친애
+	SIF TALENT:ARG:창부
+		PRINTFORM 창부
+	SIF TALENT:ARG:예속
+		PRINTFORM 예속
+	PRINTW ]을(를) 잃었다
+	TALENT:ARG:연모 = 0
+	TALENT:ARG:음란 = 0
+	TALENT:ARG:복종 = 0
+	TALENT:ARG:친애 = 0
+	TALENT:ARG:창부 = 0
+	TALENT:ARG:예속 = 0
+ENDIF
+
+;-------------------------------------------------
+;전생의비약(인간화)
+;-------------------------------------------------
+@USE_DRUG_80, ARG
+IF ARG == MASTER
+	PRINTFORML %조사처리(CALLNAME:MASTER,"는")% 〔전생의 비약〕을 복용했다……
+ELSE
+	PRINTFORML 〔전생의 비약〕을 %CALLNAME:ARG%에게 \@(ABL:ARG:순종 < 3) ? 강제로  # \@먹였다……
+ENDIF
+WAIT
+SIF TALENT:ARG:짐승
+	TALENT:ARG:동물귀 = 1
+TALENT:ARG:짐승 = 0
+TALENT:ARG:새 = 0
+TALENT:ARG:파충류 = 0
+TALENT:ARG:물고기 = 0
+TALENT:ARG:부정형 = 0
+TALENT:ARG:이형 = 0
+TALENT:ARG:인간화 = 1
+TALENT:ARG:머리 = 1
+TALENT:ARG:눈 = 1
+TALENT:ARG:입 = 1
+TALENT:ARG:팔 = 1
+TALENT:ARG:발 = 1
+
+TALENT:ARG:갈퀴발 = 0
+TALENT:ARG:갈퀴 = 0
+
+;회화타입諸々の処理
+SIF CFLAG:ARG:인간화時회화타입 == 0
+	CFLAG:ARG:인간화時회화타입 = ABL:ARG:회화타입
+SIF CFLAG:ARG:ＴＳ인간화時회화타입 == 0
+	CFLAG:ARG:ＴＳ인간화時회화타입 = CFLAG:ARG:ＴＳ時회화타입
+SWAP ABL:ARG:회화타입,CFLAG:ARG:인간화時회화타입
+SWAP CFLAG:ARG:ＴＳ時회화타입,CFLAG:ARG:ＴＳ인간화時회화타입
+
+;인간화時ＴＳフラグが立っているキャラは性転換処理
+IF CFLAG:ARG:인간화時ＴＳ && TALENT:ARG:남자 == CSVTALENT(NO:ARG,GETNUM(TALENT,"남자"),0)
+	PRINTW uuu
+	CALL ＴＳ処理,ARG
+
+	CALL ADDS_ABNORMAL_EXP , "ＴＳ" , ARG
+	CALL SHOW_ABNORMAL_EXP , ARG
+
+	PRINTL ＴＳ경험 + 1
+	EXP:ARG:ＴＳ경험 += 1
+ENDIF
+PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 인간의 \@ TALENT:ARG:남자 ? 남성 # 여성\@의 모습으로 반전되었다
+RETURN ARG
+;-------------------------------------------------
+;虹のキャン디무(性転換)
+;-------------------------------------------------
+@USE_DRUG_81, ARG
+;性別再反転時（元に戻る時）に필요な情報の保存
+;ここらへんはYM用性別反転コマンドから借用
+;初回時に元の性別をCFLAG:1995に保存
+;처녀の情報をCFLAG:1996に保存
+;가슴の大きさをCFLAG:1997に保存
+;0:설정なし,1절벽2빈유3普通4거유5폭유
+
+;후타나리の情報をCFLAG:1998に保存
+;모유체질の情報をCFLAG:1999に保存
+
+TRYCCALLFORM SPECIAL_TRANCE_SEXIAL_{NO:ARG}
+CATCH
+	IF ARG == MASTER
+		PRINTFORML %조사처리(CALLNAME:MASTER,"는")% 〔무지개색 사탕〕을 복용했다……
+	ELSE
+		PRINTFORML 〔무지개색 사탕〕을 %CALLNAME:ARG%에게 \@(ABL:ARG:순종 < 3) ? 강제로 # \@ 먹였다……
+	ENDIF
+	PRINTW  
+	PRINTW  
+	IF TALENT:ARG:남자
+		IF ARG != MASTER
+			PRINTFORML %CALLNAME:ARG%의 한마디로 남자다운, 다부진 몸이 점점 줄어들고、
+			PRINTL 그렇게 생각하고 있자、가슴이나 엉덩이는 조금씩 부풀어 오르더니、
+			PRINTFORML 마지막에는、%조사처리(CALLNAME:ARG,"는")% 완전히 여성다운 몸매가 되어 있었다……
+		ELSE
+			PRINTFORML %조사처리(CALLNAME:MASTER,"는")% 돌연 몸 전체가 빛에 둘러쌓이는 것 같은 감각을 느꼈다
+			PRINTW 그리고 의식이 멍해지더니、마치 빛의 바다에 잠겨있는 듯한 부유감에 싸였다……
+			PRINTL 잠시 후、몸에서 빛이 소실되었고、몸을 확인해보니
+			PRINTFORML %CALLNAME:MASTER%의 몸은 완전한 여성이 되어 있었다……
+		ENDIF
+		PRINTW  
+		PRINTFORMW ＜%조사처리(CALLNAME:ARG,"는")% 여성이 되었다＞
+	ELSE
+		IF ARG != MASTER
+			PRINTFORML %CALLNAME:ARG%의 가슴과 엉덩이가 점점 줄어들어가는 것과 동시에
+			PRINTL 목이 굵어지고、한층 더 몸 전체가 다부지게 변해갔다……
+			PRINTFORML 끝에는 %조사처리(CALLNAME:ARG,"는")% 완전히 남자다운 몸매가 되어 있었다……
+		ELSE
+			PRINTFORML %조사처리(CALLNAME:MASTER,"는")% 돌연 몸 전체가 빛에 둘러쌓이는 것 같은 감각을 느꼈다
+			PRINTW  그리고 의식이 멍해지더니、마치 빛의 바다에 잠겨있는 듯한 부유감에 싸였다……
+			PRINTL 잠시 후、몸에서 빛이 소실되었고、몸을 확인해보니
+			PRINTFORML %CALLNAME:MASTER%의 몸은 완전한 남성이 되어 있었다……
+		ENDIF
+		PRINTW  
+		PRINTFORMW ＜%조사처리(CALLNAME:ARG,"는")% 남성이 되었다＞
+	ENDIF
+ENDCATCH
+CALL ＴＳ処理,ARG
+CALL ADDS_ABNORMAL_EXP , "ＴＳ" , ARG
+CALL SHOW_ABNORMAL_EXP , ARG
+
+PRINTL ＴＳ경험 + 1
+EXP:ARG:ＴＳ경험 += 1
+CALL CHECK_IMG_TRANCE_SEXIAL,ARG
+RETURN ARG
+;-------------------------------------------------
+;전생의비약(이형)
+;-------------------------------------------------
+@USE_DRUG_82, ARG
+;0:짐승、１：새、2:파충류、３：물고기、4：부정형、5：랜덤になる
+$INPUT_LOOP_IGYO
+PRINTL 이하의 약 중 하나를 추가할 수도 있습니다. 어떻게 할까요?
+PRINTL [0]커시나민Ｃ  ￥25000
+PRINTL [1]필방링α    ￥20000
+PRINTL [2]웜나민７    ￥5000
+PRINTL [3]이소라비탄Ｄ    ￥5000
+PRINTL [4]슬라임테린    ￥15000
+PRINTL [5]추가하지 않는다
+CALL INPUTINT,0,1,2,3,4,5
+SELECTCASE RESULT
+	CASE 0
+		LOCAL:0 = 0 ;기본形状
+		LOCAL:1 = 1 - RAND:3 ;동물귀
+		LOCAL:2 = 1 ;머리
+		LOCAL:3 = 1 ;눈
+		LOCAL:4 = 1 ;입
+		LOCAL:5 = 0 ;팔
+		LOCAL:6 = 0 ;갈퀴
+		LOCAL:7 = 0 ;날개
+		LOCAL:8 = 1 ;발
+		LOCAL:9 = 0;갈퀴발
+		LOCAL:10 = 1 ;꼬리
+		LOCAL:11 = 1 ;모피
+		LOCAL:12 = 0 ;촉수
+		LOCAL:13 = 0 ;부리
+		LOCAL:14 = 25000 ;料金
+	CASE 1
+		LOCAL:0 = 1 ;기본形状
+		LOCAL:1 = 0 ;동물귀
+		LOCAL:2 = 1 ;머리
+		LOCAL:3 = 1 ;눈
+		LOCAL:4 = 1 ;입
+		LOCAL:5 = 0 ;팔
+		LOCAL:6 = 0 ;갈퀴
+		LOCAL:7 = 1 ;날개
+		LOCAL:8 = 0 ;발
+		LOCAL:9 = 1 ;갈퀴발
+		LOCAL:10 = 1 ;꼬리
+		LOCAL:11 = 0 ;모피
+		LOCAL:12 = 0 ;촉수
+		LOCAL:13 = 1 ;부리
+		LOCAL:14 = 20000 ;料金
+	CASE 2
+		LOCAL:0 = 2 ;기본形状
+		LOCAL:1 = 0 ;동물귀
+		LOCAL:2 = 1 ;머리
+		LOCAL:3 = 1 ;눈
+		LOCAL:4 = 1 ;입
+		LOCAL:5 = 0 ;팔
+		LOCAL:6 = 1 ;갈퀴
+		LOCAL:7 = 0 ;날개
+		LOCAL:8 = 1 ;발
+		LOCAL:9 = 0 ;갈퀴발
+		LOCAL:10 = 1 ;꼬리
+		LOCAL:11 = 0 ;모피
+		LOCAL:12 = 0 ;촉수
+		LOCAL:13 = 0 ;부리
+		LOCAL:14 = 5000 ;料金
+	CASE 3
+		LOCAL:0 = 3 ;기본形状
+		LOCAL:1 = 0 ;동물귀
+		LOCAL:2 = 1 ;머리
+		LOCAL:3 = 1 ;눈
+		LOCAL:4 = 1 ;입
+		LOCAL:5 = 0 ;팔
+		LOCAL:6 = 0 ;갈퀴
+		LOCAL:7 = 0 ;날개
+		LOCAL:8 = 0 ;발
+		LOCAL:9 = 0 ;갈퀴발
+		LOCAL:10 = 1 ;꼬리
+		LOCAL:11 = 0 ;모피
+		LOCAL:12 = 0 ;촉수
+		LOCAL:13 = 0 ;부리
+		LOCAL:14 = 5000 ;料金
+	CASE 4
+		LOCAL:0 = 4 ;기본形状
+		LOCAL:1 = 1 - RAND:6 ;동물귀
+		LOCAL:2 = 1 - RAND:3 ;머리
+		LOCAL:3 = 1 - RAND:3 ;눈
+		LOCAL:4 = 1 - RAND:3 ;입
+		LOCAL:5 = 1 - RAND:3 ;팔
+		LOCAL:6 = 1 - RAND:3 ;갈퀴
+		LOCAL:7 = 1 - RAND:3 ;날개
+		LOCAL:8 = 1 - RAND:3 ;발
+		LOCAL:9 = 1 - RAND:3 ;갈퀴발
+		LOCAL:10 = 1 - RAND:3 ;꼬리
+		LOCAL:11 = 1 - RAND:3 ;모피
+		LOCAL:12 = RAND:2 ;촉수
+		LOCAL:13 = 1 - RAND:3 ;부리
+		LOCAL:14 = 15000 ;料金
+	CASE 5
+		LOCAL:0 = RAND:4 ;기본形状
+		LOCAL:1 = 1 - RAND:6 ;동물귀
+		LOCAL:2 = RAND:2 ;머리
+		LOCAL:3 = RAND:2 ;눈
+		LOCAL:4 = RAND:2 ;입
+		LOCAL:5 = RAND:2 ;팔
+		LOCAL:6 = RAND:2 ;갈퀴
+		LOCAL:7 = RAND:2 ;날개
+		LOCAL:8 = RAND:2 ;발
+		LOCAL:9 = RAND:2 ;갈퀴발
+		LOCAL:10 = RAND:2 ;꼬리
+		LOCAL:11 = RAND:2 ;모피
+		LOCAL:12 = 1 - RAND:3 ;촉수
+		LOCAL:13 = RAND:2 ;부리
+		LOCAL:14 = 0 ;料金
+ENDSELECT
+IF MONEY < 25000 + LOCAL:14
+	PRINTW 돈이 부족합니다
+	CLEARLINE 2
+	GOTO INPUT_LOOP_IGYO
+ENDIF
+SIF ARG == MASTER
+	PRINTFORM %조사처리(CALLNAME:MASTER,"는")% 
+PRINTFORM 〔전생의비약(이형)〕
+SELECTCASE RESULT
+	CASE 0
+		PRINT 과 〔커시나민Ｃ〕를
+	CASE 1
+		PRINT 과 〔필방링α〕를
+	CASE 2
+		PRINT 과 〔웜나민７〕을
+	CASE 3
+		PRINT 과 〔이소라비탄Ｄ〕를
+	CASE 4
+		PRINT 과 〔슬라임테린〕을
+ENDSELECT
+IF ARG == MASTER
+	PRINTL  복용했다……
+ELSE
+	PRINTFORM %CALLNAME:ARG%에게 \@(ABL:ARG:순종 < 3) ? 강제로 # \@먹였다……
+ENDIF
+WAIT
+
+TALENT:ARG:머리 = 0
+TALENT:ARG:눈 = 0
+TALENT:ARG:입 = 0
+TALENT:ARG:팔 = 0
+TALENT:ARG:발 = 0
+TALENT:ARG:인간화 = 0
+
+SELECTCASE LOCAL:0
+	CASE 0
+		TALENT:ARG:짐승 = 1
+	CASE 1
+		TALENT:ARG:새 = 1
+	CASE 2
+		TALENT:ARG:파충류 = 1
+	CASE 3
+		TALENT:ARG:물고기 = 1
+	CASEELSE
+		TALENT:ARG:부정형 = 1
+ENDSELECT
+SIF LOCAL:1 > 0
+	TALENT:ARG:동물귀 = 1
+SIF LOCAL:2 > 0
+	TALENT:ARG:머리 = 1
+SIF LOCAL:3 > 0
+	TALENT:ARG:눈 = 1
+IF LOCAL:4 > 0
+	TALENT:ARG:입 = 1
+	SIF LOCAL:13 > 0
+		TALENT:ARG:부리 = 1
+ENDIF
+IF LOCAL:5 > 0
+	TALENT:ARG:팔 = 1
+	SIF LOCAL:6 > 0
+		TALENT:ARG:갈퀴 = 1
+ENDIF
+SIF LOCAL:7 > 0
+	TALENT:ARG:날개 = 1
+IF LOCAL:8 > 0
+	TALENT:ARG:발 = 1
+	SIF LOCAL:6 > 0
+		TALENT:ARG:갈퀴 = 1
+ENDIF
+SIF LOCAL:9 > 0
+	TALENT:ARG:갈퀴발 = 1
+SIF LOCAL:10 > 0
+	TALENT:ARG:꼬리 = 1
+SIF LOCAL:11 > 0
+	TALENT:ARG:모피 = 1
+SIF LOCAL:12 > 0
+	TALENT:ARG:촉수 = 1
+MONEY -= LOCAL:14
+
+;짐승の場合、まれに여우か、猫か、犬になる
+IF TALENT:ARG:짐승 == 1
+	LOCAL:15 = RAND:45
+	SELECTCASE LOCAL:15
+		CASE 0
+			TALENT:ARG:여우 = 1
+		CASE 1
+			TALENT:ARG:고양이혀 = 1
+			CSTR:ARG:相性グループ = 猫
+		CASE 2
+			CSTR:ARG:相性グループ = 犬
+	ENDSELECT
+ENDIF
+
+PRINTFORM %조사처리(CALLNAME:ARG,"는")% 
+SIF TALENT:ARG:머리 == 1
+	PRINT 「머리」
+SIF TALENT:ARG:눈 == 1
+	PRINT 「눈」
+IF TALENT:ARG:부리 == 1
+	PRINT 「부리」
+ELSEIF TALENT:ARG:입 == 1
+	PRINT 「입」
+ENDIF
+SIF TALENT:ARG:동물귀 == 1
+	PRINT 「동물귀」
+SIF TALENT:ARG:팔 == 1
+	PRINT 「팔」
+SIF TALENT:ARG:갈퀴 == 1
+	PRINT 「갈퀴」
+SIF TALENT:ARG:날개 == 1
+	PRINT 「날개」
+SIF TALENT:ARG:발 == 1
+	PRINT 「발」
+SIF TALENT:ARG:갈퀴발 == 1
+	PRINT 「갈퀴발」
+SIF TALENT:ARG:꼬리 == 1
+	PRINT 「꼬리」
+SIF TALENT:ARG:모피 == 1
+	PRINT 「모피」
+SIF TALENT:ARG:촉수 == 1
+	PRINT 「촉수」
+SIF TALENT:ARG:고양이혀 == 1
+	PRINT 「고양이혀」
+
+IF TALENT:ARG:머리 == 1||TALENT:ARG:눈 == 1||TALENT:ARG:부리 == 1||TALENT:ARG:입 == 1||TALENT:ARG:팔 == 1||TALENT:ARG:갈퀴 == 1||TALENT:ARG:날개 == 1||TALENT:ARG:발 == 1||TALENT:ARG:갈퀴발 == 1||TALENT:ARG:꼬리 == 1||TALENT:ARG:모피 == 1||TALENT:ARG:촉수 == 1
+	PRINT (을)를 갖게 됐다
+ELSE
+	PRINT 머리나 팔 같은 기관은 하나도 존재하지 않는다
+ENDIF
+IF TALENT:ARG:여우 == 1
+	PRINT 여우의 몸을 지닌 
+ELSEIF CSTR:ARG:相性グループ == "猫"
+	PRINT 고양이의 몸을 지닌 
+ELSEIF CSTR:ARG:相性グループ == "犬"
+	PRINT 개의 몸을 지닌 
+ELSEIF TALENT:ARG:짐승 == 1
+	PRINT 짐승의 몸을 지닌 
+ELSEIF TALENT:ARG:새 == 1
+	PRINT 새의 몸을 지닌 
+ELSEIF TALENT:ARG:파충류 == 1
+	PRINT 파충류의 몸을 지닌 
+ELSEIF TALENT:ARG:물고기 == 1
+	PRINT 물고기의 몸을 지닌 
+ELSEIF TALENT:ARG:부정형 == 1
+	PRINT 부정형의 몸을 지닌 
+ENDIF
+PRINTFORMW 、\@ TALENT:ARG:남자 ? 수컷 # 암컷\@의 모습으로 변모했다
+RETURN ARG

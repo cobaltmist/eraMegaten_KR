@@ -1,0 +1,247 @@
+﻿;==============================
+;비전투원을 이능자/식노/데빌시프터로 전직
+;==============================
+@APPRENTICE_AKUMA_LINKING
+#DIM DYNAMIC LSKILLS, 100
+#LOCALSIZE 6
+#LOCALSSIZE 2
+#DIM DYNAMIC SKILL_CHARA_NUMBER
+VARSET RESULT
+VARSET RESULTS
+VARSET LSKILLS
+
+IF (TALENT:TARGET:이능자 && !(ABL:TARGET:습득스킬1 > 0)) || ((TALENT:TARGET:식노 || TALENT:TARGET:데빌시프터) && !(CFLAG:TARGET:초기링크악마 > 0))
+	;---------------------------------------------
+	;참고할 캐릭견본 번호 지정(이능자만) --> 이능자가 아닐 경우엔 아무 스킬도 지정되지 않는다
+	;--> 또한 이미 csv내에 습득스킬이 존재하고 있을 경우, 이능 스킬트리를 부여하지 않는다
+	;---------------------------------------------
+	IF TALENT:TARGET:이능자 && !(ABL:TARGET:습득스킬1 > 0)
+		SELECTCASE RAND:7
+		;이능 스킬트리를 참고할 조직의 상여 캐릭번호를 지정
+			CASE 0
+				SKILL_CHARA_NUMBER = 4903
+			CASE 1
+				SKILL_CHARA_NUMBER = 4905
+			CASE 2
+				SKILL_CHARA_NUMBER = 4906
+			CASE 3
+				SKILL_CHARA_NUMBER = 4907
+			CASE 4
+				SKILL_CHARA_NUMBER = 4908
+			CASE 5
+				SKILL_CHARA_NUMBER = 4909
+			CASE 6
+				SKILL_CHARA_NUMBER = 4910
+		ENDSELECT
+	ENDIF
+	;---------------------------------------------
+	;링크악마 초기설정(식노/데빌시프터만)
+	;---------------------------------------------
+	IF (TALENT:TARGET:식노 || TALENT:TARGET:데빌시프터) && !(CFLAG:TARGET:초기링크악마 > 0)
+		CALL CHOOSE_AKUMA_TARGET
+		CFLAG:TARGET:초기링크악마 = RESULT
+		;링크악마의 공격설정을 대입
+		IF RESULT
+			ABL:TARGET:초기링크악마공격상성 = CSVABL(CFLAG:TARGET:초기링크악마, GETNUM(ABL, @"공격상성"), 0)
+			ABL:TARGET:초기링크악마최저공격횟수 = CSVABL(CFLAG:TARGET:초기링크악마, GETNUM(ABL, @"최저공격횟수"), 0)
+			ABL:TARGET:초기링크악마최대공격횟수 = CSVABL(CFLAG:TARGET:초기링크악마, GETNUM(ABL, @"최대공격횟수"), 0)
+			ABL:TARGET:초기링크악마사거리 = CSVABL(CFLAG:TARGET:초기링크악마, GETNUM(ABL, @"사거리"), 0)
+			ABL:TARGET:초기링크악마공격범위 = CSVABL(CFLAG:TARGET:초기링크악마, GETNUM(ABL, @"공격범위"), 0)
+		ENDIF
+	ENDIF
+	;-------------------------
+	;스킬
+	;LSKILLS배열에 스킬을 넣는다
+	;깨달음えられるか見て落としこむ
+	;-------------------------
+	LOCAL:1 = 0
+	;식노는 아래의 스킬을 넣는다
+	IF TALENT:TARGET:식노
+		LSKILLS = [[스킬:물고늘어지기]]
+		LSKILLS:1 = [[스킬:씹어흩뿌리기]]
+		LSKILLS:2 = [[스킬:대상제]]
+		LSKILLS:3 = [[스킬:최후의만찬]]
+		LOCAL:1 = 4
+	ENDIF
+	;이능자이지만 습득할 스킬이 없는 자만 스킬트리가 주어진다
+	IF TALENT:TARGET:이능자 && !(ABL:TARGET:습득스킬1 > 0)
+		CALLFORM RANDOMCHARA_{SKILL_CHARA_NUMBER}, "스킬", TARGET
+		LOCAL = 0
+		WHILE RESULT:LOCAL
+			LSKILLS:(LOCAL:1) = RESULT:LOCAL
+			LOCAL++
+			LOCAL:1++
+		WEND
+	ENDIF
+	;식노・시프터는 초기악마의 스킬을 넣는다
+	IF TALENT:TARGET:식노 || TALENT:TARGET:데빌시프터
+		FOR LOCAL, 1, FLAG:스킬数 + 1
+			LOCAL:2 = CSVABL(CFLAG:TARGET:초기링크악마, GETNUM(ABL, @"스킬{LOCAL}"), 0)
+			SIF !LOCAL:2
+				CONTINUE
+			TRYCCALLFORM 적専用_{LOCAL:2}
+				SIF RESULT
+					CONTINUE
+			CATCH
+			ENDCATCH
+			LSKILLS:(LOCAL:1) = LOCAL:2
+			LOCAL:1++
+		NEXT
+		FOR LOCAL, 1, 20
+			LOCAL:2 = CSVABL(CFLAG:TARGET:초기링크악마, GETNUM(ABL, @"습득스킬{LOCAL}"), 0)
+			SIF !LOCAL:2
+				CONTINUE
+			TRYCCALLFORM 적専用_{LOCAL:2}
+				SIF RESULT
+					CONTINUE
+			CATCH
+			ENDCATCH
+			LSKILLS:(LOCAL:1) = LOCAL:2
+			LOCAL:1++
+		NEXT
+	ENDIF
+	LOCAL = 0
+	LOCAL:3 = 1
+	;랭크가 낮은 순으로 정렬한다
+	WHILE LOCAL:1
+		IF LSKILLS:(LOCAL+1) == 0
+			LOCAL = 0
+			LOCAL:1--
+		ENDIF
+		LOCAL:3 = 0
+		CALLFORM SKILL_RANK_{LSKILLS:(LOCAL:1)}
+		LOCAL:4 = RESULT
+		CALLFORM SKILL_RANK_{LSKILLS:(LOCAL:1+1)}
+		SIF RESULT < LOCAL:4
+			SWAP LSKILLS:LOCAL, LSKILLS:(LOCAL:1+1)
+		LOCAL++
+	WEND
+	FOR LOCAL, 1, 4
+		IF LSKILLS:LOCAL
+			LOCALS = \@CFLAG:TARGET:초기링크악마 ? 초기변신악마# \@스킬{LOCAL}
+			ABL:TARGET:LOCALS = LSKILLS:LOCAL
+		ENDIF
+	NEXT
+	LOCAL:1 = BASE:TARGET:LV+RAND:4
+	FOR LOCAL, 1, 21
+		IF LSKILLS:(LOCAL + 3)
+			LOCALS = \@CFLAG:TARGET:초기링크악마 ? 초기변신악마# \@습득스킬{LOCAL}
+			LOCALS:1 = \@CFLAG:TARGET:초기링크악마 ? 초기변신악마# \@습득LV{LOCAL}
+			ABL:TARGET:LOCALS = LSKILLS:(LOCAL+3)
+			CALLFORM SKILL_RANK_{LSKILLS:(LOCAL+3)}
+			ABL:TARGET:(LOCALS:1) = MAX(RESULT * 4 + RAND:4, LOCAL:1 + RAND(1, 4))
+			LOCAL:1 = ABL:TARGET:(LOCALS:1)
+		ENDIF
+	NEXT
+ENDIF
+
+
+;==============================
+;링크악마를 지정
+;==============================
+@CHOOSE_AKUMA_TARGET
+IF TALENT:TARGET:남자 == 1
+	SELECTCASE RAND:20
+		CASE 0
+			RETURN [[キャラ:가름]]
+		CASE 1
+			RETURN [[キャラ:잭프로스트]]
+		CASE 2
+			RETURN [[キャラ:오니]]
+		CASE 3
+			RETURN [[キャラ:인큐버스]]
+		CASE 4
+			RETURN [[キャラ:이누가미]]
+		CASE 5
+			RETURN [[キャラ:미즈치]]
+		CASE 6
+			RETURN [[キャラ:오크]]
+		CASE 7
+			RETURN [[キャラ:카라스텐구]]
+		CASE 8
+			RETURN [[キャラ:누에]]
+		CASE 9
+			RETURN [[キャラ:아귀]]
+		CASE 10
+			RETURN [[キャラ:스쿠나히코나]]
+		CASE 11
+			RETURN [[キャラ:오르트로스]]
+		CASE 12
+			RETURN [[キャラ:에로스]]
+		CASE 13
+			RETURN [[キャラ:모코이]]
+		CASE 14
+			RETURN [[キャラ:탐・린]]
+		CASE 15
+			RETURN [[キャラ:로어]]
+		CASE 16
+			RETURN [[キャラ:예티]]
+		CASE 17
+			RETURN [[キャラ:모무노후]]
+		CASE 18
+			RETURN [[キャラ:가기손]]
+		CASE 19
+			RETURN [[キャラ:포르네우스]]
+	ENDSELECT
+ELSE
+	SELECTCASE RAND:12
+		CASE 0
+			RETURN [[キャラ:다크엘프]]
+		CASE 1
+			RETURN [[キャラ:픽시]]
+		CASE 2
+			RETURN [[キャラ:엘프]]
+		CASE 3
+			RETURN [[キャラ:서큐버스]]
+		CASE 4
+			RETURN [[キャラ:네코마타]]
+		CASE 5
+			RETURN [[キャラ:키쿠리히메]]
+		CASE 6
+			RETURN [[キャラ:이리스]]
+		CASE 7
+			RETURN [[キャラ:엔젤]]
+		CASE 8
+			RETURN [[キャラ:랴난시]]
+		CASE 9
+			RETURN [[キャラ:너구리의날것]]
+		CASE 10
+			RETURN [[キャラ:모・쇼보]]
+		CASE 11
+			RETURN [[キャラ:야크시니]]
+		CASE 12
+			RETURN [[キャラ:하나코]]
+		CASE 13
+			RETURN [[キャラ:카시마레이코]]
+		CASE 14
+			RETURN [[キャラ:페가수스]]
+		CASE 15
+			RETURN [[キャラ:요모츠시코메]]
+		CASE 16
+			RETURN [[キャラ:화백]]
+		CASE 17
+			RETURN [[キャラ:다프네]]
+		CASE 18
+			RETURN [[キャラ:후지무스메]]
+		CASE 19
+			RETURN [[キャラ:아메노우즈메]]
+	ENDSELECT
+ENDIF
+
+;==============================
+;습득스킬을 지우는 함수
+;==============================
+@REMOVE_WILL_LEARN_MAGIC
+#DIM DYNAMIC SKILL_ARRY_NUM ;스킬셋 번호
+
+SKILL_ARRY_NUM = 0
+
+;습득스킬을 지운다
+FOR SKILL_ARRY_NUM, 1, 21
+	ABL:TARGET:@"습득스킬{SKILL_ARRY_NUM}" = 0
+NEXT
+
+;습득레벨을 지운다
+FOR SKILL_ARRY_NUM, 1, 21
+	ABL:TARGET:@"습득LV{SKILL_ARRY_NUM}" = 0
+NEXT

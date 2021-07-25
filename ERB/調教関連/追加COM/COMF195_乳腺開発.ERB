@@ -1,0 +1,148 @@
+﻿@CHECK_COM_ABLE195
+;남자だとダメ
+SIF TALENT:남자
+	RETURN 0
+;모유체질じゃダメ
+SIF TALENT:모유체질
+	RETURN 0
+;조교者の기교が4以上じゃないとダメ
+SIF ABL:PLAYER:기교 < 4
+	RETURN 0
+;유두캡사용中は不可
+SIF TEQUIP:16
+	RETURN 0
+;착유기사용中は不可
+SIF TEQUIP:17
+	RETURN 0
+;유방전극装着中はダメ
+SIF TEQUIP:24
+	RETURN 0
+;밧줄사용中は不可
+;SIF TEQUIP:19
+;	RETURN 0
+;가슴が노출してないとダメ
+SIF TEQUIP:유방노출 != -1
+	RETURN 0
+;가슴が노출してないとダメ
+SIF TEQUIP:유두노출 != -1
+	RETURN 0
+;촉수조교中はダメ
+SIF TEQUIP:25
+	RETURN 0
+RETURN 1
+
+;-------------------------------------------------
+;유선개발
+;특수커맨드
+;-------------------------------------------------
+@ACT_COM195
+PRINTL 유선개발
+TSTR:0 = 유선개발
+;-------------------------------------------------
+;実行판정処理
+;-------------------------------------------------
+
+;-------------------------------------------------
+;実行決定
+;-------------------------------------------------
+IF ABL:PLAYER:기교 >= 5 || ABL:순종 >= 5
+	IF TALENT:Ｂ민감
+		TFLAG:유선개발실패 = RAND:2
+	ELSEIF TALENT:Ｂ둔감
+		TFLAG:유선개발실패 = RAND:6
+	ELSE
+		TFLAG:유선개발실패 = RAND:4
+	ENDIF
+	SIF TALENT:음유 && A > 0
+		TFLAG:유선개발실패 = RAND:2
+ELSE
+	TFLAG:유선개발실패 = RAND:8
+ENDIF
+SIF ITEM:14 && (TALENT:PLAYER:새드 || ABL:PLAYER:새드끼 > 2) && TFLAG:유선개발실패 > 0
+	TFLAG:유선개발실패 -= 1
+
+;CALL KOJO_MESSAGE_COM
+;-------------------------------------------------
+;ソース추가処理
+;-------------------------------------------------
+;소비체력、기력
+;소비체력、기력
+LOSEBASE:0 += 500
+LOSEBASE:1 += 3000
+
+IF ABL:PLAYER:기교 == 4
+	SOURCE:아픔 = 5000
+ELSEIF ABL:PLAYER:기교 >= 5
+	SOURCE:아픔 = 2000
+ENDIF
+
+;ABL:순종をみる
+IF ABL:순종 == 0
+	SOURCE:일탈 = 10000
+ELSEIF ABL:순종 == 1
+	SOURCE:일탈 = 8000
+ELSEIF ABL:순종 == 2
+	SOURCE:일탈 = 6000
+ELSEIF ABL:순종 == 3
+	SOURCE:일탈 = 4000
+ELSEIF ABL:순종 == 4
+	SOURCE:일탈 = 2000
+ELSE
+	SOURCE:일탈 = 500
+ENDIF
+
+;음유
+SIF TALENT:음유
+	SOURCE:욕정 = 300
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+
+IF TFLAG:유선개발실패 == 0 && TALENT:절벽 == 0
+	TALENT:모유체질 = 1
+	MAXBASE:모유 = 10000
+;		PRINTL 이상경험＋1
+;		EXP:50 += 1
+	CALL ADDS_ABNORMAL_EXP("유선개발", TARGET)
+ENDIF
+
+IF TALENT:남자 == 0 && TALENT:PLAYER:남자 == 0
+	PRINTFORML %EXPNAME:40%＋2
+	EXP:40 += 2
+ELSEIF TALENT:남자 && TALENT:PLAYER:남자
+	PRINTFORML %EXPNAME:41%＋2
+	EXP:41 += 2
+ENDIF
+
+
+RETURN 1
+
+;--------------------------------------------------
+;조교時메시지
+;--------------------------------------------------
+@MESSAGE_COM195
+
+PRINTL 
+PRINTFORM %조사처리(CALLNAME:PLAYER,"는")% 
+SIF ITEM:14 && (TALENT:PLAYER:새드 || ABL:PLAYER:새드끼 > 2)
+	PRINTFORM %ITEMNAME:14%을 이용해서
+PRINTFORMW %CALLNAME:TARGET%의 유선을 개발해、모유가 나오도록 시도했다
+PRINTL 
+IF TALENT:절벽
+	PRINTFORML 그러나 %CALLNAME:TARGET%의 유선을 개발하는 것은
+	PRINTW 지금의 가슴크기로는 무리가 있는 듯 하다……
+ELSEIF TFLAG:유선개발실패 == 0
+	PRINTFORMW 경락에 자극을 받는 사이에 %CALLNAME:TARGET%의 유선에서 모유가 흘러나오게 되었다
+ELSE
+	PRINTFORMW 기교가 부족한 것인지、%CALLNAME:TARGET%의 유선을 개발할 수 없었다……
+ENDIF
+
+;===================================================
+;조교타입
+;===================================================
+@COMTYPE_195
+RETURN COMTYPE("특수커맨드계")
+
+
+

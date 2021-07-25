@@ -1,0 +1,732 @@
+﻿;===========================================================
+;	조교메뉴登録パッチ Emuera対応版
+;===========================================================
+;変数の説明-------------------------------------------------
+;TFLAG:204…主に現在選択している조교コマンド番号の一時的な保存
+;FLAG:550…메뉴の長さ
+;FLAG:551～560…コマンド番号を保存
+;STR:20…조교메뉴の登録の際、行番号揃える為に一時的に사용、他で再사용OK
+
+;関数の説明-------------------------------------------------
+;@COMSEQ_REGISTER          USERCOMから呼び出される조교메뉴登録
+;@COMSEQ_SHOW              登録した조교메뉴を표시
+;@COMSEQ_TRAIN             USERCOMから조교메뉴実行
+;@MULTI_COMABLE            コマンドが実行可能かどうか調べる
+;@COMSEQSUB_PRINT_COMLIST  登録時のコマンドリスト표시
+;@COMSEQSUB_TRAIN_DO       조교메뉴実行の実体
+
+;-----------------------------------------------------------
+;조교메뉴の登録
+;破壊する変数 : A,B,TFLAG:204
+;LOCAL:0 … LCOUNTの内部操作に사용
+;LOCAL:1 … 繰り返し時動作に사용
+;COM	 … 登録コマンド
+;SET_COM … コマンド登録場所
+;CTM	 … キャラ個別조교메뉴コマンドリスト
+;-----------------------------------------------------------
+@COMSEQ_REGISTER
+#DIM COM, 1
+#DIM SET_COM, 1
+#DIM LINE, 2
+#DIM MODE, 1
+#DIM CTM, 30
+#DIMS CTMNAME, 3
+#DIM LCOUNT
+#LOCALSIZE 5
+#LOCALSSIZE 11
+LINE = LINECOUNT
+PRINTL 조교 메뉴 등록
+;個別조교메뉴格納変数の초기化
+VARSET CTM, 0
+VARSET CTMNAME, ""
+
+;個別조교메뉴の취득
+FOR LOCAL, 0, 3
+	VARSET LOCALS, ""
+	IF CSTR:(71+LOCAL) == ""
+		;個別조교메뉴未설정の場合、메뉴명칭のみ설정
+		CTMNAME:LOCAL = 개별조교메뉴{LOCAL+1}
+		;とりあえず초기설정を登録
+		CALL REGIST_CHARA_TRAIN_MENU,0,0,0,0,0,0,0,0,0,0,CTMNAME:LOCAL,LOCAL
+	ELSE
+		;個別조교메뉴설정済みの場合、CSTRに설정されている個別조교메뉴を취득
+		SPLIT CSTR:(71+LOCAL), "|", LOCALS
+		FOR LOCAL:1, 0, 10
+			;CTM:0～9を個別조교메뉴1用として사용
+			;CTM:10～19を個別조교메뉴2用として사용
+			;CTM:20～29を個別조교메뉴3用として사용
+			CTM:(LOCAL*10+LOCAL:1) = TOINT(AUTO_SPLIT(CSTR:(71+LOCAL),"|",LOCAL:1))
+		NEXT
+		CTMNAME:LOCAL = %AUTO_SPLIT(CSTR:(71+LOCAL),"|",10)%
+	ENDIF
+NEXT
+
+$START
+CLEARLINE LINECOUNT - LINE
+FOR LOCAL:1, 0, 8
+	SIF !GETBIT(CFLAG:조교메뉴표시설정, LOCAL:1)
+		CONTINUE
+	DRAWLINE
+	CALL SHOW_COMSEQ, LOCAL:1
+	PRINTFORML [{200+LOCAL:1}] %"명칭변경",20,LEFT% 　 [{210+LOCAL:1}] %"리셋",20,LEFT% 　 [{220+LOCAL:1}] %"커맨드 이력에서 등록",20,LEFT% 　 [{230+LOCAL:1}] %"연속등록",20,LEFT%
+NEXT
+DRAWLINE
+PRINTFORML 표시설정(%CALLNAME:TARGET%)
+FOR LOCAL, 0, 8
+	IF GETBIT(CFLAG:조교메뉴표시설정, LOCAL)
+		SETCOLOR COLOR("aqua")
+	ELSE
+		SETCOLOR COLOR("light-gray")
+	ENDIF
+	PRINTFORM [{100+LOCAL}] %\@GETBIT(CFLAG:조교메뉴표시설정, LOCAL) ? 표시 # 비표시\@,8,LEFT%
+	SIF LOCAL == 4
+		PRINTL 
+NEXT
+RESETCOLOR
+PRINTL
+PRINTFORML 표시설정(신규 가입 캐릭터의 디폴트값)
+FOR LOCAL, 0, 5
+	IF GETBIT(GLOBAL:9, LOCAL)
+		SETCOLOR COLOR("aqua")
+	ELSE
+		SETCOLOR COLOR("light-gray")
+	ENDIF
+	PRINTFORM [{110+LOCAL}] %\@GETBIT(GLOBAL:9, LOCAL) ? 표시 # 비표시\@,8,LEFT%
+NEXT
+RESETCOLOR
+PRINTL 
+DRAWLINE
+PRINTL [99] 등록종료
+INPUT
+IF RESULT == 99
+	SAVEGLOBAL
+	RETURN 0
+ELSEIF RANGE(RESULT, 100, 227)
+	LOCAL = RESULT % 10
+	IF RANGE(RESULT, 100, 107)
+		INVERTBIT CFLAG:조교메뉴표시설정, LOCAL
+	ELSEIF RANGE(RESULT, 110, 114)
+		INVERTBIT GLOBAL:9, LOCAL
+	ELSEIF RANGE(RESULT, 200, 204)
+		PRINTL 조교 메뉴 이름을 입력해주세요
+		INPUTS
+		IF RESULTS == ""
+			PRINTW 조교메뉴 이름이 입력되지 않아서 명칭변경을 중지합니다。
+		ELSE
+			GLOBALS:LOCAL = %RESULTS%
+		ENDIF
+	ELSEIF RANGE(RESULT, 205, 207)
+		;キャラ個別조교메뉴の명칭변경
+		LOCAL -= 5
+		PRINTL 조교 메뉴의 이름을 입력해 주세요("|"은 사용할 수 없습니다)
+		INPUTS
+		IF RESULTS == ""
+			PRINTW 조교 메뉴의 이름을 입력하지 않았기 때문에、명칭변경을 중지합니다。
+		ELSEIF STRFIND(RESULTS,"|") != -1
+			PRINTW 입력된 문자열에 "|"이 포함되었기 때문에、명칭변경을 중지합니다。
+		ELSE
+			CTMNAME:LOCAL = %RESULTS%
+			;現在の설정を登録
+			CALL REGIST_CHARA_TRAIN_MENU,CTM:(LOCAL*10),CTM:(LOCAL*10+1),CTM:(LOCAL*10+2),CTM:(LOCAL*10+3),CTM:(LOCAL*10+4),CTM:(LOCAL*10+5),CTM:(LOCAL*10+6),CTM:(LOCAL*10+7),CTM:(LOCAL*10+8),CTM:(LOCAL*10+9),CTMNAME:LOCAL,LOCAL
+		ENDIF
+	ELSEIF RANGE(RESULT, 210, 214)
+		FOR LOCAL:1, 0, 10
+			GLOBAL:(LOCAL:1+LOCAL*10+10) = -1
+		NEXT
+	ELSEIF RANGE(RESULT, 215, 217)
+		;キャラ個別조교메뉴のリセット
+		LOCAL -= 5
+		FOR LOCAL:1, 0, 10
+			CTM:(LOCAL:1+LOCAL*10) = -1
+		NEXT
+		;現在の설정を登録
+		CALL REGIST_CHARA_TRAIN_MENU,CTM:(LOCAL*10),CTM:(LOCAL*10+1),CTM:(LOCAL*10+2),CTM:(LOCAL*10+3),CTM:(LOCAL*10+4),CTM:(LOCAL*10+5),CTM:(LOCAL*10+6),CTM:(LOCAL*10+7),CTM:(LOCAL*10+8),CTM:(LOCAL*10+9),CTMNAME:LOCAL,LOCAL
+	ELSEIF RANGE(RESULT, 220, 224)
+		;派生コマンドは蹴る
+		LOCAL:2 = 0
+		LOCAL:3 = -1
+		FOR LOCAL:1, 0, 10
+			IF LOCAL:3 == -1 && PREVCOM:(9 - LOCAL:1) == -1
+				GLOBAL:(9-LOCAL:1+LOCAL*10+10) = -1
+			ELSE
+				LOCAL:3++
+				TRYCCALLFORM COMTYPE_{PREVCOM:(9 - LOCAL:1)}
+					IF RESULT == COMTYPE("派生系")
+						LOCAL:2 = 1
+						GLOBAL:(LOCAL:3+LOCAL*10+10) = -1
+						CONTINUE
+					ENDIF
+				CATCH
+				ENDCATCH
+				GLOBAL:(LOCAL:3+LOCAL*10+10) = PREVCOM:(9 - LOCAL:1)
+			ENDIF
+		NEXT
+		SIF LOCAL:2
+			PRINTW 파생 커맨드는 등록할 수 없습니다。대신에 ＥＭＰＴＹ가 들어가므로 주의해주세요
+	ELSEIF RANGE(RESULT, 225, 227)
+		;キャラ個別메뉴をコマンド履歴から登録
+		LOCAL -= 5
+		;派生コマンドは蹴る
+		LOCAL:2 = 0
+		LOCAL:3 = -1
+		FOR LOCAL:1, 0, 10
+			IF LOCAL:3 == -1 && PREVCOM:(9 - LOCAL:1) == -1
+				CTM:(9-LOCAL:1+LOCAL*10) = -1
+			ELSE
+				LOCAL:3++
+				TRYCCALLFORM COMTYPE_{PREVCOM:(9 - LOCAL:1)}
+					IF RESULT == COMTYPE("派生系")
+						LOCAL:2 = 1
+						CTM:(LOCAL:3+LOCAL*10) = -1
+						CONTINUE
+					ENDIF
+				CATCH
+				ENDCATCH
+				CTM:(LOCAL:3+LOCAL*10) = PREVCOM:(9 - LOCAL:1)
+			ENDIF
+		NEXT
+		SIF LOCAL:2
+			PRINTW 파생 커맨드는 등록할 수 없습니다。대신에 ＥＭＰＴＹ가 들어가므로 주의해주세요
+		;現在の설정を登録
+		CALL REGIST_CHARA_TRAIN_MENU,CTM:(LOCAL*10),CTM:(LOCAL*10+1),CTM:(LOCAL*10+2),CTM:(LOCAL*10+3),CTM:(LOCAL*10+4),CTM:(LOCAL*10+5),CTM:(LOCAL*10+6),CTM:(LOCAL*10+7),CTM:(LOCAL*10+8),CTM:(LOCAL*10+9),CTMNAME:LOCAL,LOCAL
+	ENDIF
+ELSEIF RANGE(RESULT, 1, 80) || RANGE(RESULT, 230, 237)
+	;조교메뉴の種別(共通/キャラ個別)判別用フラグの설정
+	;LOCAL:4には個別조교메뉴1なら"0"が、個別조교메뉴2なら"1"が
+	;個別조교메뉴3なら"2"が、共通조교메뉴なら"-1"が설정される
+	;LOCAL:2には단독登録の場合"-1"が、連続登録の場合
+	IF RANGE(RESULT, 51, 80)
+		LOCAL:4 = (RESULT - 51) / 10
+		LOCAL:2 = -1
+	ELSEIF RANGE(RESULT, 235, 237)
+		LOCAL:4 = RESULT - 235
+		LOCAL:2 = LOCAL:4 * 10
+	ELSE
+		LOCAL:4 = -1
+		LOCAL:2 = RANGE(RESULT, 1, 50) ? -1 # (RESULT % 10 +1) * 10
+	ENDIF
+
+	WHILE 1
+		;COMとSET_COMの설정
+		IF LOCAL:4 < 0
+			;共通조교메뉴
+			IF LOCAL:2 == -1
+				;단독登録
+				SET_COM = RESULT + 9
+			ELSE
+				;連続登録
+				SET_COM = LOCAL:2
+			ENDIF
+			COM = GLOBAL:SET_COM
+		ELSE
+			;キャラ個別조교메뉴
+			IF LOCAL:2 == -1
+				;단독登録
+				SET_COM = RESULT - 51
+			ELSE
+				;連続登録
+				SET_COM = LOCAL:2
+			ENDIF
+			COM = CTM:SET_COM
+		ENDIF
+
+		DRAWLINE
+		IF LOCAL:4 < 0
+			CALL SHOW_COMSEQ, (SET_COM  / 10) - 1, SET_COM % 10
+		ELSE
+			CALL SHOW_COMSEQ, (SET_COM / 10) + 5, SET_COM % 10
+		ENDIF
+		MODE = COM / 10000
+		LINE:1 = LINECOUNT
+		$SET_START
+		CLEARLINE LINECOUNT - LINE:1
+		DRAWLINE
+		LOCAL:1 = 0
+		FOR LOCAL, 0 , 1000
+			CALL MULTI_COMABLE, LOCAL + MODE * 10000
+			SIF RESULT == 0
+				CONTINUE
+			SIF COM%10000 == LOCAL
+				SETCOLOR COLOR("aqua")
+			PRINTFORM [{LOCAL, 3}] %TRAINNAME:LOCAL, 20, LEFT%
+			RESETCOLOR
+			SIF LOCAL:1 % 4 == 3
+				PRINTL 
+			LOCAL:1++
+		NEXT
+		IF LOCAL:2 == -1
+			PRINTFORM [900] %"ＥＭＰＴＹ",20,LEFT%
+			SIF LOCAL:1 % 4 == 3
+				PRINTL 
+			LOCAL:1++
+		ENDIF
+		IF LOCAL:2 == -1
+			PRINTFORM [901] %"ＰＵＳＨ",20,LEFT%
+			SIF LOCAL:1 % 4 == 3
+				PRINTL 
+			LOCAL:1++
+		ENDIF
+		IF LOCAL:2 == -1
+			PRINTFORM [902] %"ＤＥＬ",20,LEFT%
+			SIF LOCAL:1 % 4 == 3
+				PRINTL 
+			LOCAL:1++
+		ENDIF
+		SIF LOCAL:1 % 4 > 0
+			PRINTL 
+		DRAWLINE
+		SIF MODE == 0
+			SETCOLOR COLOR("aqua")
+		PRINTFORM [991] %"PLAYER",16,LEFT%
+		RESETCOLOR
+		SIF MODE == 1
+			SETCOLOR COLOR("aqua")
+		PRINTFORM [992] %"MASTER",16,LEFT%
+		RESETCOLOR
+		IF ASSI >= 0
+			SIF MODE == 2
+				SETCOLOR COLOR("aqua")
+			PRINTFORM [993] %"ASSI",16,LEFT%
+			RESETCOLOR
+		ENDIF
+		PRINTL 
+		PRINTFORM [999] %"돌아간다",16,LEFT%
+		IF LOCAL:2 >= 0
+			IF LOCAL:2 % 10
+				PRINTFORM [910] %"BACK",16,LEFT%
+			ELSE
+				PRINTFORM       %"",16,LEFT%
+			ENDIF
+			PRINTFORM [920] %"NEXT",16,LEFT%
+		ENDIF
+		SIF LOCAL:2 >= 0 && (LOCAL:2 % 10) > 0
+			PRINTFORM [930] %"반복",16,LEFT%
+		PRINTL 
+		$INPUT_LOOP_SET
+		INPUT
+		SIF RESULT == 999
+			GOTO START
+		IF GROUPMATCH(RESULT, 991, 992, 993)
+			SIF ASSI >= 0 || RESULT != 993
+				MODE = RESULT - 991
+			GOTO SET_START
+		ELSEIF RESULT == 900 && LOCAL:2 == -1
+			;EMPTY
+			IF LOCAL:4 < 0
+				GLOBAL:SET_COM = -1
+			ELSE
+				CTM:SET_COM = -1
+				CALL REGIST_CHARA_TRAIN_MENU,CTM:(LOCAL:4*10),CTM:(LOCAL:4*10+1),CTM:(LOCAL:4*10+2),CTM:(LOCAL:4*10+3),CTM:(LOCAL:4*10+4),CTM:(LOCAL:4*10+5),CTM:(LOCAL:4*10+6),CTM:(LOCAL:4*10+7),CTM:(LOCAL:4*10+8),CTM:(LOCAL:4*10+9),CTMNAME:(LOCAL:4),LOCAL:4
+			ENDIF
+		;PUSH
+		ELSEIF RESULT == 901 && LOCAL:2 == -1
+			LOCAL:1 = SET_COM / 10 * 10 + 9
+			FOR LOCAL, LOCAL:1, SET_COM - 1, -1
+				IF LOCAL:4 < 0
+					GLOBAL:LOCAL = GLOBAL:(LOCAL - 1)
+				ELSE
+					CTM:LOCAL = CTM:(LOCAL - 1)
+				ENDIF
+				IF SET_COM == LOCAL - 1
+					IF LOCAL:4 < 0
+						GLOBAL:SET_COM = -1
+					ELSE
+						CTM:SET_COM = -1
+					ENDIF
+					BREAK
+				ENDIF
+			NEXT
+			;キャラ個別조교메뉴の場合、編集内容を登録
+			SIF LOCAL:4 >= 0
+				CALL REGIST_CHARA_TRAIN_MENU,CTM:(LOCAL:4*10),CTM:(LOCAL:4*10+1),CTM:(LOCAL:4*10+2),CTM:(LOCAL:4*10+3),CTM:(LOCAL:4*10+4),CTM:(LOCAL:4*10+5),CTM:(LOCAL:4*10+6),CTM:(LOCAL:4*10+7),CTM:(LOCAL:4*10+8),CTM:(LOCAL:4*10+9),CTMNAME:(LOCAL:4),LOCAL:4
+		;DEL
+		ELSEIF RESULT == 902 && LOCAL:2 == -1
+			FOR LOCAL, 0, 10
+				IF LOCAL:4 < 0
+					GLOBAL:(LOCAL + SET_COM) = GLOBAL:(LOCAL + SET_COM+1)
+				ELSE
+					CTM:(LOCAL + SET_COM) = CTM:(LOCAL + SET_COM+1)
+				ENDIF
+				IF (LOCAL + SET_COM + 1) % 10 == 9
+					IF LOCAL:4 < 0
+						GLOBAL:(LOCAL + SET_COM+1) = -1
+					ELSE
+						CTM:(LOCAL + SET_COM+1) = -1
+					ENDIF
+					BREAK
+				ENDIF
+			NEXT
+			;キャラ個別조교메뉴の場合、編集内容を登録
+			SIF LOCAL:4 >= 0
+				CALL REGIST_CHARA_TRAIN_MENU,CTM:(LOCAL:4*10),CTM:(LOCAL:4*10+1),CTM:(LOCAL:4*10+2),CTM:(LOCAL:4*10+3),CTM:(LOCAL:4*10+4),CTM:(LOCAL:4*10+5),CTM:(LOCAL:4*10+6),CTM:(LOCAL:4*10+7),CTM:(LOCAL:4*10+8),CTM:(LOCAL:4*10+9),CTMNAME:(LOCAL:4),LOCAL:4
+		;BACK
+		ELSEIF RESULT == 910 && LOCAL:2 % 10
+			LOCAL:2 --
+			CONTINUE
+		;NEXT
+		ELSEIF RESULT == 920 && LOCAL:2 >= -1
+		;繰り返し
+		ELSEIF RESULT == 930 && (LOCAL:2 % 10) > 0
+			;조교메뉴の머리の部分を설정(1の位の部分を削除)
+			LOCAL = (LOCAL:2 / 10) * 10
+			;繰り返し元の最後
+			LOCAL:1 = LOCAL:2 - 1
+			WHILE 1
+				IF LOCAL:4 < 0
+					GLOBAL:(LOCAL:2) = GLOBAL:LOCAL
+				ELSE
+					CTM:(LOCAL:2) = CTM:LOCAL
+				ENDIF
+				SIF LOCAL:2 % 10 == 9
+					BREAK
+				LOCAL++
+				LOCAL:2++
+				SIF LOCAL > LOCAL:1
+					LOCAL = (LOCAL:2 / 10) * 10
+			WEND
+			SIF LOCAL:4 >= 0
+				CALL REGIST_CHARA_TRAIN_MENU,CTM:(LOCAL:4*10),CTM:(LOCAL:4*10+1),CTM:(LOCAL:4*10+2),CTM:(LOCAL:4*10+3),CTM:(LOCAL:4*10+4),CTM:(LOCAL:4*10+5),CTM:(LOCAL:4*10+6),CTM:(LOCAL:4*10+7),CTM:(LOCAL:4*10+8),CTM:(LOCAL:4*10+9),CTMNAME:(LOCAL:4),LOCAL:4
+		ELSE
+			LOCAL = RESULT
+			CALL MULTI_COMABLE, LOCAL + MODE * 10000
+			SIF RESULT == 0
+				GOTO INPUT_LOOP_SET
+			IF LOCAL:4 < 0
+				GLOBAL:SET_COM =  LOCAL + MODE * 10000
+			ELSE
+				CTM:SET_COM =  LOCAL + MODE * 10000
+				CALL REGIST_CHARA_TRAIN_MENU,CTM:(LOCAL:4*10),CTM:(LOCAL:4*10+1),CTM:(LOCAL:4*10+2),CTM:(LOCAL:4*10+3),CTM:(LOCAL:4*10+4),CTM:(LOCAL:4*10+5),CTM:(LOCAL:4*10+6),CTM:(LOCAL:4*10+7),CTM:(LOCAL:4*10+8),CTM:(LOCAL:4*10+9),CTMNAME:(LOCAL:4),LOCAL:4
+			ENDIF
+		ENDIF
+		SIF LOCAL:2 == -1 || LOCAL:2 % 10 == 9
+			BREAK
+		LOCAL:2++
+	WEND
+ENDIF
+GOTO START
+;FOR LCOUNT, 0, 10
+;	LOCAL:0 = LCOUNT
+;	$INPUT_LOOP
+;	CALL COMSEQSUB_PRINT_COMLIST
+;	SIF FLAG:550 > 0
+;		PRINTLC [998] リセットする
+;	SIF LOCAL:0 > 0
+;		PRINTLC [999] 繰り返し
+;	IF LOCAL:0 == 0 && FLAG:550 > 0
+;		PRINTLC [1000] 변경しないで戻る
+;	ELSEIF LOCAL:0 == 0
+;		PRINTLC [1000] 登録しないで戻る
+;	ELSE
+;		PRINTLC [1000] 登録する
+;	ENDIF
+;	PRINTL 
+;	DRAWLINE
+;	CALL COMSEQ_SHOW
+;	PRINTFORML 메뉴 {LOCAL:0+1} 
+;	INPUT
+;	IF RESULT == 1000 && LOCAL:0 == 0
+;		RETURN 0
+;	ELSEIF RESULT < 0 || RESULT > 999
+;		BREAK
+;	ENDIF
+;
+;	;リセットの処理
+;	IF RESULT == 998 && FLAG:550 > 0
+;		TFLAG:204 = 0
+;		LOCAL:0 = 0
+;		A = 550
+;		$RESET_MENU_LOOP
+;		FLAG:A = 0
+;		A += 1
+;		SIF A <= 560
+;			GOTO RESET_MENU_LOOP
+;		GOTO INPUT_LOOP
+;	;繰り返しの処理
+;	ELSEIF RESULT == 999 && LOCAL:0 > 0
+;		;現時点で何回눈まで登録してるかをとっておく
+;		LOCAL:1 = LOCAL:0
+;;		;二重REPEATはできない
+;		$COMSEQ_REPEAT
+;		;総数が10に達したらBREAK
+;		SIF LOCAL:0 > 9
+;			BREAK
+;		A = 551 + LOCAL:0
+;		B = 551 + (LOCAL:0 % LOCAL:1)
+;		FLAG:A = FLAG:B
+;		FLAG:550 += 1
+;		LOCAL:0 += 1
+;		GOTO COMSEQ_REPEAT
+;	ENDIF
+;
+;	;TFLAG:204に選んだ조교コマンドを代入
+;	TFLAG:204 = RESULT
+;	;TFLAG:204に選んだ조교コマンドが登録できるかを체크
+;	CALL MULTI_COMABLE
+;	IF RESULT == 0
+;		PRINTL 登録できません
+;		GOTO INPUT_LOOP
+;	ENDIF
+;	;登録できる番号が입력されたので登録
+;	A = 551 + LOCAL:0
+;	FLAG:A = TFLAG:204
+;	SIF LOCAL:0 == 0
+;		FLAG:550 = 0
+;	FLAG:550 += 1
+;	LCOUNT = LOCAL:0
+;NEXT
+
+;PRINTW 조교메뉴を登録しました
+;SIF RESULT == 999
+;	CALL COMSEQ_SHOW
+;TFLAG:204 = 0
+;RETURN 0
+
+
+;-----------------------------------------------------------
+;与えられたコマンド番号の조교コマンドが実行可能かどうか調べる
+;CSVからTRAINNAMEを취득してその文字列数が2以上(コメントアウトされていない)場合、
+;COM_ABLEを呼び出す
+;引数  一文字変数N,TFLAG:204,  : コマンド番号xxx
+;返値  1 コマンド番号xxxの조교コマンドが実行可能
+;      0 （封印されているとかそもそもそんなコマンドないとかで）불가능
+;内部でCOM_ABLExxxを呼び出すので，色々と変数が破壊されるかもしれない
+;-----------------------------------------------------------
+@MULTI_COMABLE, ARG
+#LOCALSIZE 3
+;명칭がないものはける
+SIF STRLENS(TRAINNAME:(ARG % 10000)) == 0
+	RETURN 0
+;派生コマンドは蹴る
+TRYCCALLFORM COMTYPE_{ARG % 10000}
+	SIF RESULT == COMTYPE("派生系")
+		RETURN 0
+CATCH
+ENDCATCH
+LOCAL++
+;필터は完全に無視させる
+LOCAL:1 = ASSIPLAY
+IF ARG >= 20000
+	SIF ASSI < 0
+		RETURN 0
+	ASSIPLAY = 1
+	PLAYER = ASSI
+ELSEIF ARG >= 10000
+	ASSIPLAY = 0
+	PLAYER = MASTER
+ENDIF
+LOCAL:2 = FLAG:필터토오루過설정
+FLAG:필터토오루過설정 = 0
+;COMABLEを체크
+CALL COM_ABLE_COMMON, ARG % 10000
+ASSIPLAY = LOCAL:1
+PLAYER = ASSIPLAY ? ASSI # MASTER
+FLAG:필터토오루過설정 = LOCAL:2
+RETURN RESULT
+;N = TFLAG:204
+;STRLENS TRAINNAME:N
+;CSVにない조교コマンド名なら不可
+;IF RESULT:0 == 0
+;	RETURN 0
+;RESULT = 1
+;COM_ABLExxxに分岐
+;ELSE
+;	TRYCALLFORM COM_ABLE_COMMON, N
+;	IF RESULT == 0
+;		RETURN 0
+;	ELSE
+;		RETURN 1
+;	ENDIF
+;ENDIF
+
+;-----------------------------------------------------------
+;조교메뉴の実行
+;破壊する変数 : A,N
+;-----------------------------------------------------------
+@COMSEQ_TRAIN, ARG
+#LOCALSIZE 3
+#DIM COM, 1
+#DIM LCOUNT
+SIF !GETBIT(CFLAG:조교메뉴표시설정, ARG)
+	RETURN 0
+DRAWLINE
+CALL SHOW_COMSEQ, ARG
+DRAWLINE
+LOCAL:1 = 0
+FOR LOCAL, 0, 10
+	IF ARG < 5
+		COM = GLOBAL:(ARG * 10 + LOCAL + 10)
+	ELSE
+		COM = TOINT(AUTO_SPLIT(CSTR:(66+ARG),"|",LOCAL))
+	ENDIF
+	IF COM == -1
+		IF LOCAL == 0
+			PRINTW 첫번째가 ＥＭＰＴＹ인 메뉴는 실행할 수 없습니다
+			RETURN 0
+		ELSE
+			LOCAL:1 = 1
+		ENDIF
+		BREAK
+	ENDIF
+	CALL MULTI_COMABLE, COM
+	IF !RESULT
+		PRINTFORMW 실행 할 수 없는 커맨드가 있으므로 조교 메뉴의 실행을 중지합니다
+		VARSET SELECTCOM, -1
+		RETURN 0
+	ELSE
+		SELECTCOM:(LOCAL+1) = COM
+	ENDIF
+NEXT
+PRINTL 조교 메뉴를 실행합니다
+SIF LOCAL:1
+	PRINTL ＥＭＰＴＹ에 도달한 시점에 처리가 멈추고、그 뒷부분부터는 실행되지 않으므로 주의해주세요
+WAIT
+RETURN 1
+;CALL COMSEQ_SHOW
+;조교메뉴実行中を表すTFLAGを설정する
+;TFLAG:204 = 555
+;메뉴の長さ回繰り返す
+;N = 0
+;PREVCOMを待避させておく
+;LOCAL = PREVCOM
+;FOR LCOUNT, 0, FLAG:550
+;	CALL COM_ABLE_COMMON, FLAG:(551 + LCOUNT)
+;	IF RESULT == 0
+;		N = 1
+;		BREAK
+;	ENDIF
+;	SELECTCOM:(LCOUNT + 1) = FLAG:(551 + LCOUNT)
+;	PREVCOM = FLAG:(551 + LCOUNT)
+;NEXT
+;IF N == 0
+;	TFLAG:CALLTRAIN = 1
+;	CALLTRAIN FLAG:550
+;ELSE
+;	PRINTL 実行できないコマンドがあったので実行をしませんでした。
+;ENDIF
+;PREVCOM = LOCAL
+;조교메뉴実行終了したのでTFLAGを초기化する
+;TFLAG:204 = 0
+;RETURN 0
+
+@SHOW_COMSEQ, ARG, ARG:1 = -1
+#DIM COM, 1
+#DIM TRAIN_MENU, 10
+#DIMS TRAIN_MENUS, 11
+#LOCALSIZE 2
+#LOCALSSIZE 1
+;조교메뉴をTRAIN_MENU変数に、조교메뉴명칭をLOCALS変数に移す。
+IF ARG < 5
+	;共通조교메뉴
+	FOR LOCAL, 0, 10
+		TRAIN_MENU:LOCAL = GLOBAL:(10 * ARG + LOCAL + 10)
+	NEXT
+	LOCALS = %GLOBALS:(ARG)%
+ELSE
+	;キャラ個別조교메뉴
+	LOCAL:1 = ARG - 4
+	SPLIT CSTR:(70+LOCAL:1), "|", TRAIN_MENUS
+	FOR LOCAL, 0, 10
+		TRAIN_MENU:LOCAL = TOINT(TRAIN_MENUS:LOCAL)
+	NEXT
+	LOCALS = %TRAIN_MENUS:10%
+ENDIF
+PRINTFORML %LOCALS%
+FOR LOCAL, 0 , 10
+	COM = TRAIN_MENU:LOCAL
+	IF COM == -1
+		LOCALS = ＥＭＰＴＹ
+	ELSE
+		LOCALS = %TRAINNAME:(COM%10000)%
+		IF COM / 10000 == 0
+			LOCALS += "(P)"
+		ELSEIF COM / 10000 == 1
+			LOCALS += "(M)"
+		ELSE
+			LOCALS += "(A)"
+		ENDIF
+	ENDIF
+	SIF ARG:1 == LOCAL
+		SETCOLOR COLOR("aqua") 
+	PRINTFORM [{LOCAL+1+ARG*10, 3}] %LOCALS, 20, LEFT%
+	RESETCOLOR
+	IF GROUPMATCH(LOCAL, 3 , 7, 9)
+		PRINTL 
+	ELSE
+		PRINT →　
+	ENDIF
+NEXT
+
+;==========================================================
+;@REGIST_CHARA_TRAIN_MENU
+;キャラ個別の조교메뉴を설정する。
+;<引数>
+;  ARG～ARG:9 - 조교메뉴のコマンドリスト
+;  ARGS       - 조교메뉴の명칭
+;  ARG:10     - 登録する個別조교메뉴の番号(0～2)
+;<戻り値>
+;  なし
+;==========================================================
+@REGIST_CHARA_TRAIN_MENU,ARG,ARG:1,ARG:2,ARG:3,ARG:4,ARG:5,ARG:6,ARG:7,ARG:8,ARG:9,ARGS,ARG:10
+#LOCALSIZE 1
+#LOCALSSIZE 1
+
+;ARG:10の値が0～2でない場合何もせずに戻る
+SIF ARG:10 < 0 || 2 < ARG:10
+	RETURN
+
+;ARG:10以外の引数を"|"区切りで結合してCSTR:71～73のどれかに설정
+CSTR:(71+ARG:10) = {ARG}|{ARG:1}|{ARG:2}|{ARG:3}|{ARG:4}|{ARG:5}|{ARG:6}|{ARG:7}|{ARG:8}|{ARG:9}|%ARGS%
+
+RETURN
+
+;-----------------------------------------------------------
+;조교메뉴の표시
+;破壊する変数 : A,B,N,TFLAG:204
+;-----------------------------------------------------------
+;@COMSEQ_SHOW
+;#DIM LCOUNT
+;PRINTL 現在登録されている조교메뉴を표시します
+;FOR LCOUNT, 0, FLAG:550
+;	A = 551 + LCOUNT
+;	TFLAG:204 = FLAG:A
+;	N = TFLAG:204
+;	PRINTFORM %TRAINNAME:N%
+;	;同コマンド連続実行を×で표시してみる
+;	LOCAL:0 = 1
+;	$TIMES_EXP_CHECK
+;	IF LCOUNT < FLAG:550 - 1
+;		LOCAL:1 = LCOUNT + 1
+;		B = 551 + LOCAL:1
+;		IF FLAG:B == FLAG:A
+;			LOCAL:0 += 1
+;			LCOUNT += 1
+;			GOTO TIMES_EXP_CHECK
+;		ENDIF
+;	ENDIF
+;	SIF LOCAL:0 > 1
+;		PRINTFORM ×{LOCAL:0}
+;	SIF LCOUNT < FLAG:550 - 1
+;		PRINT  → 
+;NEXT
+;PRINTL 
+;RETURN 0
+
+;-----------------------------------------------------------
+;実行可能なコマンドのリストを표시する
+;破壊する変数 : LCOUNT, TFLAG:204, STR:20
+;一文字変数 : N, コマンド番号
+;emueraのPRINTFORMCの仕様上複素数は対応できないため
+;-----------------------------------------------------------
+;@COMSEQSUB_PRINT_COMLIST
+;#DIM LCOUNT
+;FOR LCOUNT, 0, 1000
+;	TFLAG:204 = LCOUNT
+;	CALL MULTI_COMABLE
+;	IF RESULT == 1
+;		N = TFLAG:204
+;		;スペースとコマンド番号とTALENTNAMEを표시する
+;		PRINTFORMLC [{N, 3}] %TRAINNAME:N%
+;	ENDIF
+;	LCOUNT = TFLAG:204
+;NEXT
+;PRINTL 

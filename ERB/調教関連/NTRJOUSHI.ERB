@@ -1,0 +1,2113 @@
+﻿;--------
+;상사 습격
+;--------
+@JOUSHI_RAISYUU
+#LOCALSIZE 7
+#DIM リスト, 500
+;CFLAG:上司来襲持ち用
+#DIM 上司リスト, 500
+VARSET リスト, -1
+VARSET 上司リスト, -1
+LOCAL:1 = 0
+LOCAL:5 = 0
+LOCAL:6 = 0
+FOR LOCAL,1,CHARANUM
+	LOCAL:2 = 0
+	SIF CFLAG:LOCAL:この場に居ないフラグ == 1
+		CONTINUE
+	SIF TALENT:LOCAL:ＮＴＲ
+		CONTINUE
+	SIF !(TALENT:LOCAL:연모 || TALENT:LOCAL:친애)
+		CONTINUE
+	SIF TALENT:LOCAL:임신 || TALENT:LOCAL:육아중
+		CONTINUE
+	SIF CFLAG:LOCAL:노역フラグ > 0
+		CONTINUE
+	SIF (CFLAG:LOCAL:그외 == 1116 || CFLAG:LOCAL:그외2 == 1116 || CFLAG:LOCAL:그외3 == 1116 || CFLAG:LOCAL:그외4 == 1116 || CFLAG:LOCAL:그외5 == 1116 || CFLAG:LOCAL:그외6 == 1116)
+		CONTINUE
+	SIF TALENT:LOCAL:남자
+		CONTINUE
+	SIF TALENT:LOCAL:매력
+		LOCAL:2 += 10
+	SIF TALENT:LOCAL:거유 || TALENT:LOCAL:폭유
+		LOCAL:2 += 30
+	SIF TALENT:LOCAL:魔乳
+		LOCAL:2 += 40		
+	SIF TALENT:LOCAL:아내
+		LOCAL:2 += 30
+	SIF (CFLAG:LOCAL:그외 == 1117 || CFLAG:LOCAL:그외2 == 1117 || CFLAG:LOCAL:그외3 == 1117)
+		LOCAL:2 += 50
+	SIF (위험일(LOCAL)) > 0
+		LOCAL:2 += 40
+
+	IF CFLAG:LOCAL:上司이벤트進行度 > 0
+		上司リスト:(LOCAL:6) = LOCAL
+		LOCAL:5 = 1
+		LOCAL:6 ++
+	ELSEIF RAND:100 < 10 + LOCAL:2
+		リスト:(LOCAL:1) = LOCAL
+		LOCAL:1 ++
+	ENDIF
+NEXT
+;LOCAL:1 == 0の場合、女要求率０
+SIF LOCAL:1 == 0 && LOCAL:6 == 0
+	GOTO YOUKYUUNASHI
+;上司の餌食決定＞LOCAL
+;CFLAG:上司이벤트進行度がある場合は優先
+$LOOP_JOUSHILIST
+IF LOCAL:5 == 1
+	LOCAL = 上司リスト:(RAND:(LOCAL:6))
+ELSE
+	LOCAL = リスト:(RAND:(LOCAL:1))
+ENDIF
+;ありえないと思うけど念のため。LOCALがキャラ등록번호の범위外の場合なにもしない。
+;CFLAG:上司이벤트進行度持ちがいる場合はループする
+IF LOCAL < 1 && LOCAL >= CHARANUM
+	SIF LOCAL:5 == 1
+		GOTO LOOP_JOUSHILIST
+	RETURN 0
+ENDIF
+;女要求率
+LOCAL:2 = 100
+;要求金額倍率
+LOCAL:3 = 0
+;要求額
+LOCAL:4 = 0
+
+;金のみ（소지額の３分の一）か、金（소지額の半分）か彼女かの分岐
+;どちらかの소지金が목표金額の半分を超えると、選択肢に연모持ちの인간の女が加わる率が+40％
+SIF MONEY > (MONEY:2 / 2) || (MONEY:1 * 50) > (MONEY:2 / 2)
+	LOCAL:2 += 40
+;以下の소질が有ると+30％
+SIF TALENT:LOCAL:매력 || TALENT:LOCAL:거유 || TALENT:LOCAL:폭유 || TALENT:LOCAL:魔乳 || TALENT:LOCAL:아내
+	LOCAL:2 += 30
+;위험일は+40％
+SIF (위험일(LOCAL)) > 0
+	LOCAL:2 += 40
+;要求金額倍率（選択肢）決定
+IF RAND:100 < LOCAL:2
+	LOCAL:3 = 2
+ELSE
+	LOCAL:3 = 5
+ENDIF
+;LOCAL:1 == 0の場合、女要求率０
+$YOUKYUUNASHI
+SIF LOCAL:1 == 0 && LOCAL:6 == 0
+	LOCAL:3 = 5
+;마카（換金した値）が￥の2倍より多い場合は마카要求
+;최저要求額は￥１０万（2000마카）
+;金も女も無い様な所には来ない
+IF (MONEY:1 * 50) > MONEY * 2
+	LOCAL:4 = MONEY:1 / LOCAL:3
+	IF LOCAL:4 < 2000
+		LOCAL:4 = 2000
+		LOCAL:3 = 1
+		SIF LOCAL:1 == 0
+			RETURN 1
+	ENDIF
+ELSE
+	LOCAL:4 = MONEY / LOCAL:3
+	IF LOCAL:4 < 100000
+		LOCAL:4 = 100000
+		LOCAL:3 = 1
+		SIF LOCAL:1 == 0
+			RETURN 1
+	ENDIF
+ENDIF
+;CFLAG:LOCAL:上司이벤트進行度が6の場合は最終단계へ
+IF LOCAL:5 > 0
+	IF CFLAG:LOCAL:上司이벤트進行度 == 10
+		LOCAL:3 = 10
+	ENDIF
+ENDIF
+IF LOCAL:3 == 10
+	PRINTFORML 
+	PRINTFORML 
+	PRINTFORMW 팬텀 소사이어티의 간부남이 방문해왔다.
+	PRINTFORML 
+	PRINTFORML 『어제, 네놈이 조직의 정보를 외부로 흘리고 있다는 정보가 들어왔거든』
+	PRINTFORML 『네놈을 좋게 생각하지 않는 녀석들이 처리하라고 말하기 시작했다』
+	PRINTFORML 『나도 이런 시시한 일로 우수한 장기말을 잃고 싶지 않아서 말이지, 뒤처리를 맡아주지』
+	LOCAL:4 = MONEY
+	TIMES LOCAL:4,0.9
+	LOCAL:4 = LIMIT(LOCAL:4 , 1000000, LOCAL:4)
+	PRINTFORM 『뭐, 
+	SETCOLOR COLOR("RED")
+	PRINTFORM ￥{LOCAL:4} 
+	RESETCOLOR
+	PRINTFORMW 정도 있으면 충분하다만, 액수가 액수니』
+	PRINTFORM 『없다면… 
+	SETCOLOR COLOR("dark-pink")
+	PRINTFORM %CALLNAME:LOCAL%
+	RESETCOLOR
+	PRINTFORMW %조사만처리(CALLNAME:LOCAL,"를")% 조수로 빌려갈까』
+ELSE
+	PRINTFORML 
+	PRINTFORML 
+	PRINTFORMW 팬텀 소사이어티의 간부남이 방문해왔다.
+	PRINTFORML 
+	PRINTFORML 『흥, 변함없이 맘에 안 드는 낮짝을 하고 있구만.』
+	PRINTFORMW 『급하게, 재계쪽 사람을 대접하게 되어서 말이지, 네놈에게도 협력을 받게 되었다.』
+	PRINTFORML 
+	IF (MONEY:1 * 50) > MONEY * 2
+		PRINTFORM 『
+		SETCOLOR COLOR("RED")
+		PRINTFORM {LOCAL:4}마카 
+		RESETCOLOR
+		PRINTFORMW 정도, 납부해주실까』
+	ELSE
+		PRINTFORM 『
+		SETCOLOR COLOR("RED")
+		PRINTFORM ￥{LOCAL:4} 
+		RESETCOLOR
+		PRINTFORMW 정도, 납부해주실까』
+	ENDIF
+	IF LOCAL:3 < 5
+		PRINTFORML 『무리라면, 그렇군…』
+		PRINTFORMW 남자의 시선이 %CALLNAME:MASTER% 뒤쪽으로 돌아갔다.
+		PRINTFORML 
+		;눈をつけられた場合
+		IF CFLAG:LOCAL:上司이벤트進行度 > 0
+			PRINTFORM 『대신 
+			SETCOLOR COLOR("dark-pink")
+			PRINTFORM %CALLNAME:LOCAL%
+			RESETCOLOR
+			PRINTFORML %조사만처리(CALLNAME:LOCAL,"를")% 맡겨주지 않겠나』
+			PRINTFORMW 『저번에 호평이었거든, 큭큭큭』
+		;通常
+		ELSE
+			PRINTFORML 『대신 저 여자를 맡겨주지 않겠나』
+			PRINTFORM 히죽히죽 웃음을 띠면서 
+			SETCOLOR COLOR("dark-pink")
+			PRINTFORM %CALLNAME:LOCAL%
+			RESETCOLOR
+			PRINTFORML %조사만처리(CALLNAME:LOCAL,"를")% 핥듯이 쳐다보고 있다.
+			PRINTFORML 
+			PRINTFORML 『저 미모라면 분명 도움이 되겠지, 크크크』
+		ENDIF
+	ENDIF
+ENDIF
+PRINTFORML 
+IF LOCAL:3 == 2 || LOCAL:3 == 10
+	PRINTFORM 어찌할까?　　　소지금:￥{MONEY}　　{MONEY:1}마카　　　
+	PRINTFORM %CALLNAME:LOCAL%　
+	IF (위험일(LOCAL)) == 2
+		SETCOLOR 0xCC33FF
+		CALL HEARTB
+		PRINTFORM 발정중
+		CALL HEARTB
+		RESETCOLOR
+	ELSEIF (위험일(LOCAL)) == 1
+		SETCOLOR 0xCC33FF
+		CALL HEARTB
+		PRINTFORM 위험일
+		CALL HEARTB
+		RESETCOLOR
+	ELSE
+		PRINTFORM 
+	ENDIF
+	PRINTFORMW 
+ELSE
+	PRINTFORMW 어찌할까?　　　소지금:￥{MONEY}　　{MONEY:1}마카
+ENDIF
+
+IF LOCAL:3 == 10
+	IF MONEY < 1000000
+		CALL INPUT_SELECT(2, "여자를 넘긴다")
+	ELSE
+		CALL INPUT_SELECT(1, "지불한다",2, "여자를 넘긴다")
+	ENDIF
+ELSEIF LOCAL:3 == 2
+	CALL INPUT_SELECT(1, "지불한다",2, "여자를 넘긴다", 3, "거절한다")
+ELSEIF LOCAL:3 == 1
+	CALL INPUT_SELECT(2, "여자를 넘긴다", 3, "거절한다")
+ELSE
+	CALL INPUT_SELECT(1, "지불한다", 3, "거절한다")
+ENDIF
+SELECTCASE RESULT
+	CASE 1
+		IF (MONEY:1 * 50) > MONEY * 2
+			MONEY:1 -= LOCAL:4
+			PRINTFORMW {LOCAL:4}마카를 지불했다
+		ELSE
+			MONEY -= LOCAL:4
+			PRINTFORMW ￥{LOCAL:4}을 지불했다
+		ENDIF
+		IF LOCAL:3 == 10
+			PRINTFORML 『오오, 확실하게 받았다』
+			PRINTFORML 『뒤는 내게 맡겨둬라』
+			PRINTFORMW 남자는 입금을 확인하고, 조속히 떠나갔다.
+			FLAG:上司来襲率 = 0
+			CFLAG:LOCAL:上司이벤트進行度 = 0
+		ELSE
+			PRINTFORML 
+			PRINTFORML 『꽤 사리분별을 잘하는 녀석이군』
+			PRINTFORML 『앞으로도 네놈 나름대로 조직에 도움이 되도록』
+			PRINTFORMW 남자는 깔보면서 말을 툭던지고, 떠나갔다.
+			FLAG:上司来襲率 = FLAG:上司来襲率 / 3
+			;10％の확률로上司のターゲットから外れる
+			IF RAND:100 < 10 && LOCAL:3 == 2 && CFLAG:LOCAL:上司이벤트進行度 > 0
+				PRINTFORMW %조사처리(CALLNAME:LOCAL,"는")% %조사처리(CALLNAME:MASTER,"를")% 살짝 껴안고 위로하고 있다.
+				CFLAG:LOCAL:上司이벤트進行度 = 0
+			ENDIF
+			;CFLAG:上司이벤트進行度がある場合は10％の확률로3단계눈に移行する
+			IF RAND:100 < 10 && LOCAL:3 == 2 && CFLAG:LOCAL:上司이벤트進行度 < 7
+				PRINTFORMW %조사처리(CALLNAME:LOCAL,"는")% %조사처리(CALLNAME:MASTER,"를")% 걱정스럽게 바라보았다.
+				PRINTFORMW 그리고 간부남에게 은밀히 전달받은 메모를 꼬옥 쥐었다…
+				CFLAG:LOCAL:上司이벤트進行度 = 7
+			ENDIF
+		ENDIF
+	CASE 2
+		IF LOCAL:3 == 10
+			PRINTFORML 
+			PRINTFORML 『그러냐, 그럼 맡아두도록 하지… 조수로 말이야』
+			PRINTFORML 『사태의 수습은 하룻밤이면 충분하겠지』
+			PRINTFORML 『그럼… 기대해둬라』
+			PRINTFORMW %조사처리(CALLNAME:LOCAL,"는")% 슬픈 표정으로 남자를 따라갔다
+		ELSEIF CFLAG:LOCAL:上司이벤트進行度 > 3 && CFLAG:LOCAL:上司이벤트進行度 <= 6
+			PRINTFORML 
+			PRINTFORMW %조사처리(CALLNAME:MASTER,"가")% %조사처리(CALLNAME:LOCAL,"를")% 맡기겠다고 말하자, 남자는 히죽 뺨을 끌어올렸다
+			PRINTFORML 『크큭, 그럼 맡아주도록 하지』
+			PRINTFORML 『뭘, 내일 아침까지는 돌려보내주겠어』
+			PRINTFORMW 『그건 그렇고…』
+			IF TALENT:LOCAL:거유 || TALENT:LOCAL:폭유 || TALENT:LOCAL:魔乳
+				PRINTFORML 남자는 %CALLNAME:LOCAL% 뒤로 돌아가더니
+				PRINTFORML 풍만한 가슴을 만지기 시작하면서 %CALLNAME:LOCAL%의 가랑이에 손을 넣어 애무하기 시작했다…
+				PRINTFORML 남자의 격한 손가락놀림에 %조사처리(CALLNAME:LOCAL,"는")% 허리가 풀어지고, 다리는 지금이라도 무너질듯이 떨리고 있었다
+				PRINTFORMW 『하하하하, 변함없이 음란한 몸이군… 이건 이번 상대도 만족할 테지』
+			ELSE
+				PRINTFORML 남자는 %조사처리(CALLNAME:LOCAL,"를")% 끌어안고, %CALLNAME:LOCAL%의 입술에 키스를 하며
+				PRINTFORML %CALLNAME:LOCAL%의 가랑이를 희롱하기 시작했다…
+				PRINTFORML %조사처리(CALLNAME:LOCAL,"는")% 남자의 기교스런 손가락놀림에 농락당해, 황홀한 표정을 지으며 남자의 입술을 빨아들이고 있다
+				PRINTFORMW 『크큭, 여전히 감도 좋은 몸이군… 이건 이번 상대도 만족할 테지』
+			ENDIF
+			PRINTFORML 
+			PRINTFORMW %조사처리(CALLNAME:LOCAL,"는")% 쾌락으로 허리힘이 빠진 몸을 질질 끌어, 남자를 따라갔다
+		ELSEIF CFLAG:LOCAL:上司이벤트進行度 > 6
+			;섹스系
+			IF RAND:2 == 0
+				PRINTFORML 
+				PRINTFORMW %조사처리(CALLNAME:MASTER,"가")% %조사처리(CALLNAME:LOCAL,"를")% 맡기겠다고 말하자, 남자는 히죽 뺨을 끌어올렸다
+				PRINTFORML 『크큭, 그럼 맡아주도록 하지』
+				PRINTFORML 『뭘, 내일 아침까지는 돌려보내주겠어』
+				PRINTFORMW 『그건 그렇고…』
+				IF TALENT:LOCAL:거유 || TALENT:LOCAL:폭유 || TALENT:LOCAL:魔乳
+					PRINTFORML 남자는 %CALLNAME:LOCAL% 뒤로 돌아가서 지퍼를 내리고 페니스를 꺼내들어 
+					PRINTFORML %CALLNAME:LOCAL%의 풍만한 가슴을 만지작대며 %CALLNAME:LOCAL%의 속옷을 비껴 질 안에 삽입했다
+					PRINTFORML %조사처리(CALLNAME:LOCAL,"는")% 갑작스런 충격에 눈을 희번덕거리며 헐떡였다
+					PRINTFORMW 『하하하, 여전히 조임 좋은 구멍이군. 상대가 집착하는 것도 이해된다』
+					PRINTFORMW 
+					PRINTFORMW %조사처리(CALLNAME:LOCAL,"는")% 남자에게 뒤로 찔리며 풍만한 가슴을 크게 흔들면서 황홀한 표정을 띠고 있다
+					PRINTFORMW 남자가 한층 더 강하게 찌르고 %조사처리(CALLNAME:LOCAL,"가")% 환희의 비명을 지르자, 남자와 %CALLNAME:LOCAL%의 결합부에서 대량의 정액이 넘쳐나왔다…
+					PRINTFORMW 『어이쿠, 너무 기분 좋아서 그만 질내사정해버렸군』
+					PRINTFORMW 『뭐어, 딱히 임신해도 상관없잖아…?』
+					PRINTFORML 
+					PRINTFORMW 
+					PRINTFORMW 『크크큭, 조금 더 맛보고 싶다만 슬슬 가야겠군』
+					
+;						PRINTFORMW 『크크크, 아무래도 %조사처리(CALLNAME:LOCAL,"는")% 너무 기분 좋아서 허리가 빠져버린 모양이군』
+;						PRINTFORMW 『내가 이대로 오늘 회장까지 데려가주도록 하지』
+				ELSE
+					PRINTFORML 남자는 %조사처리(CALLNAME:LOCAL,"를")% 껴안고 입술을 훔치더니, 지퍼를 내려 페니스를 꺼내 %CALLNAME:LOCAL%의 비부에 들이밀어
+					PRINTFORML 키스에 취한 표정을 짓고 있는 %CALLNAME:LOCAL%의 비부를 아래에서 단번에 찔러올렸다
+					PRINTFORMW %조사처리(CALLNAME:LOCAL,"는")% 남자에게 껴안겨서 범해져, 멀쩡하지 않은 목소리를 내고 있다
+					PRINTFORMW 『역시 %CALLNAME:LOCAL%의 몸은 매력적이야. 무심코 네놈 앞에서 덮치고 말았군』
+					PRINTFORMW 
+					PRINTFORMW %조사처리(CALLNAME:LOCAL,"는")% 떨어지지 않도록 남자의 허리에 발을 휘감으면서 남자와 열렬한 키스를 나누고 있다
+					PRINTFORMW 남자는 여러번 격하게 찔러올린 다음, %조사처리(CALLNAME:LOCAL,"를")% 강하게 껴안은 자세로 사정하기 시작했다
+					PRINTFORMW %CALLNAME:LOCAL% 또한 팔을 남자의 목에 두르고 허리를 휘감고 있는 다리에 힘을 주었다
+					PRINTFORMW 여운에 잠긴 %조사처리(CALLNAME:LOCAL,"와")% 남자의 결합부에서 대량의 정액이 흘러내려 바닥에 하얀 웅덩이를 만들고 있다
+					PRINTFORML 
+					PRINTFORMW 
+					PRINTFORMW 『크크큭, 조금 더 맛보고 싶다만 슬슬 가야겠군』
+					
+;						PRINTFORMW 『크크크, 아무래도 %조사처리(CALLNAME:LOCAL,"는")% 너무 기분 좋아서 허리가 빠져버린 모양이군』
+;						PRINTFORMW 『내가 이대로 오늘 회장까지 데려가주도록 하지』
+				ENDIF
+				PRINTFORML 
+				PRINTFORMW 흐트러진 의상을 익숙한 손놀림으로 정돈하고, %조사처리(CALLNAME:LOCAL,"는")% %조사처리(CALLNAME:MASTER,"를")% 돌아보지도 않고, 남자를 따라 방을 나갔다
+				
+;					PRINTFORMW %조사처리(CALLNAME:LOCAL,"는")% 남자와 연인처럼 교접한 채 따라갔다
+			;봉사계
+			ELSE
+				PRINTFORML 
+				PRINTFORMW %조사처리(CALLNAME:MASTER,"가")% %조사처리(CALLNAME:LOCAL,"를")% 맡기겠다고 말하자, 남자는 히죽 뺨을 끌어올렸다
+				PRINTFORML 『크큭, 그럼 맡아주도록 하지』
+				PRINTFORMW 『뭘, 내일 아침까지는 돌려보내주겠어』
+				PRINTFORML 
+				PRINTFORMW 『그건 그렇고…』
+				PRINTFORML 『%CALLNAME:LOCAL%의 실력은 떨어지지 않았겠지?』
+				PRINTFORML 『크큭, 중요한 접대다… 실수가 있어서는…』
+				PRINTFORMW 일부러 말하는듯한 말과 함께 남자가 %CALLNAME:LOCAL%의 몸을 핥듯이 쳐다보았다
+				PRINTFORML 
+				IF RAND:2 == 0 && (TALENT:LOCAL:거유 || TALENT:LOCAL:폭유 || TALENT:LOCAL:魔乳)
+					PRINTFORMW 그것만으로 의도를 파악한 %조사처리(CALLNAME:LOCAL,"는")% 남자의 앞에 무릎 꿇고 능숙한 손놀림으로 페니스를 꺼내 물기 시작했다
+					PRINTFORML 『하하, 미안하군, %CALLNAME:LOCAL%』
+					PRINTFORMW 『오옷… 이 혀놀림, 상대가 집착하는 것도 무리가 아니군』
+					PRINTFORML 
+					PRINTFORMW %조사처리(CALLNAME:LOCAL,"는")% 입으로 봉사를 계속하면서 앞섬을 벌리고 당연한 듯 남자의 물건을 가슴으로 감쌌다
+					PRINTFORML 『오오… 가슴까지 쓸 줄이야…』
+					PRINTFORML 남자의 목소리를 듣고 있던 %조사처리(CALLNAME:LOCAL,"는")%, 풍만한 가슴과 입을 써서 봉사를 더욱 격렬히 해나갔다
+					PRINTFORMW 이윽고 남자가 신음소릴 내며 사정하기 시작하자 %조사처리(CALLNAME:LOCAL,"는")% 황홀한 표정으로 얼굴이나 가슴에 튄 정액을 핥아냈다
+					PRINTFORML 
+					PRINTFORMW 『크큭, 좋은 몸이다… 이거라면 문제는 없겠지… 하하하』
+					PRINTFORML 
+					PRINTFORMW 남자는 웃으면서 페니스를 집어넣고, 몸에 묻은 정액을 손가락으로 떼어내 핥고 있는 %조사처리(CALLNAME:LOCAL,"를")% 데리고 방에서 나갔다
+				ELSE
+					PRINTFORMW 그것만으로 의도를 파악한 %조사처리(CALLNAME:LOCAL,"는")% 남자의 앞에 무릎 꿇고 능숙한 손놀림으로 페니스를 꺼내 물기 시작했다
+					PRINTFORML 『하하, 미안하군, %CALLNAME:LOCAL%』
+					PRINTFORMW 『오옷… 이 혀놀림, 상대가 집착하는 것도 무리가 아니군』
+					PRINTFORML 
+					PRINTFORMW 남자의 물건을 입에 품고 핥는 것만으로도 봉사하는 %CALLNAME:LOCAL%의 얼굴이 황홀하게 녹은 표정으로 변해간다
+					PRINTFORML 이윽고, 남자가 신음소릴 내며 %CALLNAME:LOCAL%의 입 안에 정액을 뿜어내자
+					PRINTFORMW %조사처리(CALLNAME:LOCAL,"는")% 소리를 내며 마시고, 당연한 듯이 페니스를 빨아들여 입을 사용한 청소를 시작했다
+					PRINTFORML 
+					PRINTFORMW 『크큭, 뒤처리까지 하려고 하다니… 예의범절이 확실히 몸에 배어있군…』
+					PRINTFORMW 『이거라면 문제는 없겠지… 하하하』
+					PRINTFORML 
+					PRINTFORMW 남자는 웃으면서 페니스를 집어넣고, 아쉬운 듯이 입술에 묻은 정액을 핥고 있는 %조사처리(CALLNAME:LOCAL,"를")% 데리고 방에서 나갔다
+				ENDIF
+			ENDIF
+		ELSE
+			PRINTFORML 
+			PRINTFORMW %조사처리(CALLNAME:MASTER,"가")% %조사처리(CALLNAME:LOCAL,"를")% 맡기겠다고 말하자, 남자는 히죽 뺨을 끌어올렸다
+			PRINTFORML 『크큭, 그럼 맡아주도록 하지』
+			PRINTFORML 『뭘, 내일 아침까지는 돌려보내주겠어』
+			PRINTFORMW 『그건 그렇고…』
+			IF TALENT:LOCAL:거유 || TALENT:LOCAL:폭유 || TALENT:LOCAL:魔乳
+				PRINTFORML 남자는 %CALLNAME:LOCAL%의 풍만한 가슴을 손바닥 전체로 쥐었다
+				PRINTFORMW 『이 몸이라면 상대도 기뻐하겠지, 하하하하』
+			ELSE
+				PRINTFORML 남자는 %조사처리(CALLNAME:LOCAL,"를")% 끌어안고, 손가락으로 턱 끝을 들어올리고 %CALLNAME:LOCAL%의 얼굴을 끈적하게 쳐다보았다
+				PRINTFORMW 『크큭, 이거라면 상대도 만족하겠지』
+			ENDIF
+			PRINTFORML 
+			PRINTFORMW %조사처리(CALLNAME:LOCAL,"는")% 불안한 시선을 이쪽으로 보내면서, 남자를 따라갔다
+		ENDIF
+		FLAG:上司来襲率 = 0
+		;노역とパーティーを外す
+		SIF TARGET == LOCAL
+			TARGET = -1
+		SIF ASSI == LOCAL
+			ASSI = -1
+		CFLAG:LOCAL:この場に居ないフラグ = 1
+		CFLAG:LOCAL:노역フラグ = 0
+		IF CFLAG:LOCAL:劇場出演順番 != 0
+			DE:(49+(CFLAG:LOCAL:劇場出演順番)):(CFLAG:LOCAL:노역점포-1) = -1
+			DE:(59+(CFLAG:LOCAL:劇場出演順番)):(CFLAG:LOCAL:노역점포-1) = -1
+			CFLAG:LOCAL:노역フラグ = 0
+			CFLAG:LOCAL:劇場出演順番 = 0
+			CFLAG:LOCAL:노역점포 = 0
+		ENDIF
+		SIF CPOS(LOCAL) > 0
+			CALL REMOVE_POSITION,CPOS(LOCAL)
+		;これが付くとNTR요바이後に능욕描写、翌朝帰ってくる
+		CFLAG:LOCAL:上司来襲 = 1
+		;上司이벤트の進行度
+		SIF CFLAG:LOCAL:上司이벤트進行度 == 0
+			CFLAG:LOCAL:上司이벤트進行度 = 1
+	CASE 3
+		PRINTFORML 
+		PRINTFORMW 『이새끼…』
+		PRINTFORML 『이 일은 상부에 보고할거다！！』
+		PRINTFORML 남자는 문을 난폭히 닫고 떠나갔다
+		PRINTFORML 
+		PRINTFORMW 조직기여도가{(FLAG:組織貢献度 / 20)}떨어졌습니다
+		;断ると組織貢献度が20％減
+		FLAG:組織貢献度 -= FLAG:組織貢献度 / 20
+		FLAG:上司来襲率 += 5
+		SIF FLAG:上司来襲率 > 100
+			FLAG:上司来襲率 = 90
+		;10％の확률로上司のターゲットから外れる
+		IF RAND:100 < 10 && LOCAL:3 < 3 && CFLAG:LOCAL:上司이벤트進行度 > 0
+			SIF LOCAL:3 == 2
+				PRINTFORMW %조사처리(CALLNAME:LOCAL,"는")% %조사처리(CALLNAME:MASTER,"를")% 살짝 껴안고, 위로해주고 있다
+			SIF LOCAL:3 == 1
+				PRINTFORMW %조사처리(CALLNAME:LOCAL,"는")% 기쁘게 %CALLNAME:MASTER%에게 안겨들었다
+			CFLAG:LOCAL:上司이벤트進行度 = 0
+		ENDIF
+		;CFLAG:上司이벤트進行度がある場合は20％の확률로2단계눈に移行する
+		IF RAND:100 < 20 && LOCAL:3 == 2 && CFLAG:LOCAL:上司이벤트進行度 < 9
+				PRINTFORMW %조사처리(CALLNAME:LOCAL,"는")% %조사처리(CALLNAME:MASTER,"를")% 걱정스럽게 바라보고 있다
+				PRINTFORMW 그리고 간부남에게 은밀히 받은 메모를 꼬옥 쥐었다…
+					CFLAG:LOCAL:上司이벤트進行度 = 3
+		ENDIF
+ENDSELECT
+
+;女を渡した場合の夜or呼び出された夜
+@NTR_JOUSHI_1(ARG)
+#LOCALSIZE 4
+DRAWLINE
+PRINTFORML ・
+PRINTFORML ・・
+PRINTFORML ・・・
+;初回처녀
+IF TALENT:ARG:처녀
+	PRINTFORML %조사처리(CALLNAME:ARG,"는")% 간부남의 방에 따라갔다
+	PRINTFORM 『그 \@TALENT:MASTER:남자 == 0 ? 여자 # 남자\@도 멍청하군, 쉽게 
+	
+	IF TALENT:ARG:아내
+		PRINTFORMW 자기 아내를 넘기다니 말이야』
+		PRINTFORML 『어디, 회장에 가기 전에 『맛보기』를 해볼까』
+		PRINTFORMW 『상대에게 실례라도 하면 안 되니 말이지』
+		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 난폭하게 침대로 밀쳐져 쓰러졌다
+		PRINTFORML 
+		PRINTFORM %CALLNAME:MASTER%에게 바쳤어야 할 
+		SETCOLOR COLOR("dark-pink")
+		PRINTFORM %CALLNAME:ARG%의 순결
+		RESETCOLOR
+		PRINTFORM 은, 간부남에게 
+		SETCOLOR COLOR("RED")
+		PRINTFORMW 무참하게 깨져버렸다
+		RESETCOLOR
+		PRINTFORML 간부남은 아내로까지 삼은 여자가 처녀였다는 사실에 놀라면서 
+		PRINTFORMW %CALLNAME:ARG%의 질내를 추악한 남근으로 휘젓고 있다
+	ELSE
+		PRINTFORML 이런 좋은 여자를… 그것도, 처녀를 넘길 줄이야』
+		PRINTFORML 『크큭, 접대에 내보내기 전에 내가 남자의 맛을 가르쳐주겠다』
+		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 침대로 밀쳐져 쓰러졌다
+		PRINTFORML 
+		PRINTFORM %CALLNAME:MASTER%에게 바쳤어야 할 
+		SETCOLOR COLOR("dark-pink")
+		PRINTFORM %CALLNAME:ARG%의 순결
+		RESETCOLOR
+		PRINTFORM 은, 간부남에 의해서
+		SETCOLOR COLOR("RED")
+		PRINTFORM 무참하게 깨져버렸다
+		RESETCOLOR
+		PRINTFORMW 손을 타지  않은 좁은 질 안은 추악한 남근의 형태에 맞춰지도록 밀려 넓혀지고 있다
+	ENDIF
+	LOCAL:1 = 2 + RAND:4
+	LOCAL:2 = 0 + RAND:3
+	LOCAL:3 = 1 + RAND:3
+	PRINTFORML 
+	PRINTFORML 
+	PRINTFORML 
+	PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 간부남에게 강간 당한 쇼크가 낫기도 전에 회장에 향하여…
+	PRINTFORML 
+	PRINTFORMW 또 모르는 남자에게 범해졌다……
+	PRINTFORMW 갓 『여자』가 된 육체는, 머리가 벗겨진 남자에 의해서 교배 당하는 기쁨을 주입당했다
+	LOCAL:1 += 2 + RAND:6
+	LOCAL:2 += 0 + RAND:2
+	LOCAL:3 += 1 + RAND:3
+	;당신の호감도が半分になる
+	CFLAG:ARG:2100 /= 2
+
+;初回通常
+ELSEIF CFLAG:ARG:上司이벤트進行度 == 1
+	PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 간부남의 방에 따라갔다
+	PRINTFORMW 『어디, 회장에 가기 전에 『맛보기』를 해볼까』
+	PRINTFORMW 『상대에게 실례라도 하면 안되니까 말이지』
+	PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 난폭하게 침대로 밀쳐져 쓰러졌다
+	LOCAL:1 = 2 + RAND:6
+	LOCAL:2 = 0 + RAND:3
+	LOCAL:3 = 1 + RAND:3
+	PRINTFORML 
+	PRINTFORML 
+	PRINTFORML 
+	PRINTFORMW 간부남의 정액이 {(LOCAL:1 / 2)}회, %CALLNAME:ARG%의 안을 침범한 다음,
+	PRINTFORMW 차 안에서 페니스를 물린 채로 회장으로 향했다… 그리고 
+	PRINTFORML 
+	PRINTFORMW 또 모르는 남자에게 범해졌다……
+	PRINTFORMW 머리가 벗겨진 남자가 정력적인 허리놀림으로, %CALLNAME:ARG%의 몸을 맛보고 있다
+	LOCAL:1 += 2 + RAND:4
+	LOCAL:2 += 0 + RAND:3
+	LOCAL:3 += 1 + RAND:3
+
+;第二단계
+ELSEIF CFLAG:ARG:上司이벤트進行度 >= 2 && CFLAG:ARG:上司이벤트進行度 < 9
+	;上司이벤트進行度2～3
+	;第二단계を分割してみる
+	;上司이벤트進行度2.3
+	;少し절정경험を減らして進行を鈍らせてみる
+	IF CFLAG:ARG:上司이벤트進行度 >= 2 && CFLAG:ARG:上司이벤트進行度 <= 3
+		;幹部
+		IF RAND:2 == 0
+			PRINTFORMW 간부남은 접대 연습이라면서 %CALLNAME:ARG%의 『육체』를 맛보고 있다
+			PRINTFORML 
+			LOCAL:1 = 3 + RAND:6
+			LOCAL:2 = 0 + RAND:3
+			LOCAL:3 = 2 + RAND:3
+			IF CFLAG:ARG:上司이벤트進行度 > 4
+				LOCAL:1 = 4 + RAND:7
+				LOCAL:2 = 1 + RAND:4
+				LOCAL:3 = 3 + RAND:4
+			ENDIF
+			;위험일
+			IF (위험일(ARG)) == 1
+				LOCAL:1 += 3
+				IF RAND:2 == 0
+					PRINTFORML 남자는 %CALLNAME:ARG%의 봉사로 빳빳히 선 자지를 과시하듯이 손으로 훑으며
+					PRINTFORMW 피임을 애원하는 소리를 무시하며 덮쳤다
+					PRINTFORML 
+					PRINTFORMW 쿠퍼액이 스며든 페니스가 질육을 비벼갈라내는 감촉에 %CALLNAME:ARG%의 입에서 비통한 목소리가 흘러나왔다
+					PRINTFORML 
+					PRINTFORML 남자는 눈에 눈물을 글썽이며 싫어하는 %조사처리(CALLNAME:ARG,"를")% 상관도 하지 않고 격렬히 허리를 흔들고
+					PRINTFORMW 도망치려고 하는 몸을 억누르면서 질 안에 사정하기 시작했다
+					SETCOLOR COLOR("dark-pink")
+					PRINTFORML %CALLNAME:MASTER%의 것도 아닌 정액이, 자궁으로 주입되는 감촉에 %조사처리(CALLNAME:ARG,"는")% 눈을 크게 뜨고 눈물을 흘리고 있다
+					RESETCOLOR
+				;無理矢理기승위いいよね…
+				ELSE
+					PRINTFORML 위험일이란 것을 보고받은 남자는 악의가 담긴 미소를 띠면서 눕고는,
+					PRINTFORMW %CALLNAME:ARG%에게 스스로 넣어 움직이도록 명령했다
+					PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 오열을 흘리면서 남자의 위에 올라타, 천천히 허리를 내렸다
+					PRINTFORML 
+					PRINTFORM 남자는 자기 위에서 
+					;거유、폭유
+					IF TALENT:ARG:거유 || TALENT:ARG:폭유 || TALENT:ARG:魔乳
+						PRINTFORM 풍만한 가슴이 흔들리는 
+					ELSE
+						PRINTFORM 아름다운 몸이 움직이는 
+					ENDIF
+					PRINTFORMW 모습을 즐기면서, 예고 없이 질 안에 사정하기 시작했다
+					PRINTFORML 뱃속에서 떠는 페니스에 놀란 %조사처리(CALLNAME:ARG,"가")% 허리를 띄워서 떨어지려고 하자
+					PRINTFORMW 남자는 양손으로 허리를 끌어당겨 질의 깊숙한 곳으로 남은 정을 뿜어냈다
+					SETCOLOR COLOR("dark-pink")
+					PRINTFORML %CALLNAME:MASTER%의 것도 아닌 정액이, 도망치려고 발버둥치는 %CALLNAME:ARG%의 자궁으로 주입되었다
+					RESETCOLOR
+				ENDIF
+				;CFLAG:ARG:上司이벤트進行度 += 1
+			ELSE
+				PRINTFORM 남자는 %CALLNAME:ARG%
+				;거유、폭유
+				IF TALENT:ARG:거유 || TALENT:ARG:폭유 || TALENT:ARG:魔乳
+					PRINTFORM 의 풍만한 가슴을 써서
+				ELSE
+					PRINTFORM 에 입을 써서 잔뜩
+				ENDIF
+				PRINTFORML 봉사를 받은 다음
+				IF RAND:2 == 0
+					PRINTFORMW 삽입을 조르는 대사를 말하도록 시키면서 자지로 찔러 범하기 시작했다
+					PRINTFORML 
+					PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 남자에게 격렬히 찔려지면서, %조사처리(CALLNAME:MASTER,"를")% 떠올리고 눈물을 흘리고 있다
+				ELSE
+					PRINTFORMW 위에 올라타 스스로 움직이도록 명령했다
+					PRINTFORML 
+					PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 눈물을 글썽이며 남자의 위에서 허리를 움직이고 있다
+				ENDIF
+			ENDIF
+		;性接待
+		ELSEIF CFLAG:ARG:上司이벤트進行度 > 3
+			PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 호사로운 침대 위에서 모르는 남자에게 봉사하고 있다
+			PRINTFORML %조사처리(CALLNAME:ARG,"는")% 남자의 물건이 기운차게 된 것을 확인하고
+			PRINTFORMW 자신의 손으로 비부를 열고, 삽입을 졸랐다
+			PRINTFORML 
+			PRINTFORMW 남자가 호색한스런 미소를 띠며 자지를 질에 꽂아넣자, 고개를 돌린 %CALLNAME:ARG%의 눈에서 눈물이 번졌다
+			LOCAL:1 = 3 + RAND:6
+			LOCAL:2 = 0 + RAND:3
+			LOCAL:3 = 2 + RAND:3
+		;性接待
+		ELSE
+			PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 호사로운 침대 위에서 모르는 남자에게 안기고 있다
+		LOCAL:1 = 3 + RAND:6
+		LOCAL:2 = 0 + RAND:3
+		LOCAL:3 = 2 + RAND:3
+		ENDIF
+	;上司이벤트進行度4～6
+	ELSEIF CFLAG:ARG:上司이벤트進行度 >= 4 && CFLAG:ARG:上司이벤트進行度 <= 6
+		;幹部
+		IF RAND:3 == 0
+			PRINTFORMW 간부남의 접대 장소로 데려가는 일 없이, %CALLNAME:ARG%의 『육체』를 맛보고 있다
+			PRINTFORML 
+			LOCAL:1 = 3 + RAND:6
+			LOCAL:2 = 0 + RAND:3
+			LOCAL:3 = 2 + RAND:3
+			IF CFLAG:ARG:上司이벤트進行度 > 4
+				LOCAL:1 = 4 + RAND:7
+				LOCAL:2 = 1 + RAND:4
+				LOCAL:3 = 3 + RAND:4
+			ENDIF
+			;발정가능があると30％の확률로一発堕ち
+			IF (위험일(ARG)) == 2
+				LOCAL:1 += 3
+				TCVAR:ARG:획득절정경험 += 1
+				PRINTFORML %조사처리(CALLNAME:ARG,"는")% 고조되는 정욕에 거스르지 못하고, 남자의 정사에 빠져들고 말았다
+				PRINTFORM 암컷의 모습을 보이는 %CALLNAME:ARG%의 몸 안으로,
+				SETCOLOR COLOR("dark-pink")
+				PRINTFORML 타인의 농후한 씨앗이 퍼져나가버리고 말았다…
+				RESETCOLOR
+				IF RAND:100 < 30
+					PRINTFORML %조사처리(CALLNAME:ARG,"는")% 암컷의 본능 그대로 허리를 써서, 요염한 표정으로 남자에게 질내사정을 조르고 있다
+					PRINTFORM 남자의 불거진 자지에서 해방된 씨앗이 몸 안을 채울 때마다 암컷의 기쁨과 함께
+					SETCOLOR COLOR("dark-pink")
+					PRINTFORML 소중한 『무엇인가』가 무너져내리고 있었다
+					RESETCOLOR
+					CFLAG:ARG:上司이벤트進行度 = 15
+				ENDIF
+			ELSEIF (위험일(ARG)) == 1
+				LOCAL:1 += 3
+				TCVAR:ARG:획득절정경험 += 1
+				IF RAND:2 == 0
+					PRINTFORML 남자는 %CALLNAME:ARG%의 봉사로 빳빳히 선 자지를 과시하듯이 손으로 훑으며
+					PRINTFORMW 피임을 바라는 목소리를 무시하며 덮쳤다
+					PRINTFORML 
+					PRINTFORMW 쿠퍼액이 스며든 페니스가 질육을 비벼갈라내는 감촉에 %CALLNAME:ARG%의 입에서 무이식적으로 여린 목소리가 새어나왔다
+					PRINTFORML 
+					PRINTFORML 남자는 교묘한 허리놀림으로 질을 계속해서 자극한 다음
+					PRINTFORMW 쾌락에 흘러 신음소리를 내기 시작한 %CALLNAME:ARG%의 깊은 곳에 정을 쏟아냈다
+					SETCOLOR COLOR("dark-pink")
+					PRINTFORMW %조사처리(CALLNAME:ARG,"는")% %CALLNAME:MASTER% 말고 다른 이의 아이를 임신한다는 공포에, 순간적으로 제정신을 차리고 창백해졌다
+					RESETCOLOR
+				;無理矢理기승위いいよね…
+				ELSE
+					PRINTFORML 위험일이란 것을 보고받은 남자는 히죽히죽 웃으며 눕고는,
+					PRINTFORML %CALLNAME:ARG%에게 스스로 넣어 움직이도록 명령했다
+					PRINTFORML %조사처리(CALLNAME:ARG,"는")% 포기한 듯한 표정으로 남자의 위에 올라타고,
+					;거유、폭유
+					IF TALENT:ARG:거유 || TALENT:ARG:폭유 || TALENT:ARG:魔乳
+						PRINTFORM 가슴을 흔들면서
+					ELSE
+						PRINTFORM 리드미컬하게
+					ENDIF
+					PRINTFORMW 허리를 움직이기 시작했다
+					PRINTFORML 
+					PRINTFORMW 남자가 사정 예고를 하자, %조사처리(CALLNAME:ARG,"는")% 몸을 위아래로 흔들며 망설이는 표정을 보였다
+					SETCOLOR COLOR("dark-pink")
+					PRINTFORMW 그 한순간이 허무하게도 %CALLNAME:MASTER%의 것이 아닌 정액이, 위험일인 자궁으로 주입되어버렸다
+					RESETCOLOR
+				ENDIF
+				CFLAG:ARG:上司이벤트進行度 += 1
+			ELSE
+				PRINTFORM 남자는 %CALLNAME:ARG%
+				;거유、폭유
+				IF TALENT:ARG:거유 || TALENT:ARG:폭유 || TALENT:ARG:魔乳
+					PRINTFORM 의 풍만한 가슴을 써서 
+				ELSE
+					PRINTFORM 의 입을 써서 잔뜩 
+				ENDIF
+				PRINTFORML 봉사를 받은 다음 
+				IF RAND:2 == 0
+					PRINTFORMW 삽입을 조르는 대사를 말하게 하면서 자지로 범하기 시작했다
+					PRINTFORML 
+					PRINTFORMW 남자의 허리놀림에 %조사처리(CALLNAME:ARG,"는")% 시선을 피하면서, 목소리를 억누르고 있다
+				ELSE
+					PRINTFORMW 위로 올라타 스스로 움직이도록 명령했다
+					PRINTFORML 
+					PRINTFORMW %조사처리(CALLNAME:ARG,"는")%, 작게 신음소리를 내면서 남자 위에서 허리를 움직이고 있다
+				ENDIF
+			ENDIF
+		;性接待
+		ELSE
+			PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 호사스런 침대 위에서 모르는 남자에게 봉사를 하고 있다
+			PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 남자의 물건이 기운차게 된 것을 확인하고는
+			PRINTFORMW 자신의 손으로 비부를 열고, 교미를 졸랐다
+			PRINTFORML 
+			PRINTFORML 남자가 호색한스런 미소를 띠면서 자지를 질에 삽입하자, %조사처리(CALLNAME:ARG,"는")% 고개를 돌리고 슬픈 표정을 보였다
+			PRINTFORMW 하지만, 남자가 허리를 움직이기 시작하자, 금방 쾌락으로 덧씌워져 버렸다
+			LOCAL:1 = 3 + RAND:6
+			LOCAL:2 = 0 + RAND:3
+			LOCAL:3 = 2 + RAND:3
+		ENDIF
+	;上司이벤트進行度7～8
+	ELSE
+		;幹部
+		IF RAND:3 == 0
+			PRINTFORMW 간부남은 접대 장소로 데러가는 일 없이, %CALLNAME:ARG%의 『육체』를 맛보고 있다
+			PRINTFORML 
+			LOCAL:1 = 3 + RAND:6
+			LOCAL:2 = 0 + RAND:3
+			LOCAL:3 = 2 + RAND:3
+			IF CFLAG:ARG:上司이벤트進行度 > 4
+				LOCAL:1 = 4 + RAND:7
+				LOCAL:2 = 1 + RAND:4
+				LOCAL:3 = 3 + RAND:4
+			ENDIF
+			;위험일はCFLAG:上司이벤트進行度が+1～2
+			;발정가능があると50％の확률로一発堕ち
+			IF (위험일(ARG)) == 2
+				LOCAL:1 += 3
+				TCVAR:ARG:획득절정경험 += 1
+				PRINTFORML %조사처리(CALLNAME:ARG,"가")% 차오르는 정욕 그대로, 남자와의 정사에 푹 빠져있다	
+				PRINTFORM 암컷의 모습을 보이는 %CALLNAME:ARG%의 몸 안으로,
+				SETCOLOR COLOR("dark-pink")
+				PRINTFORML 타인의 농후한 씨앗이 퍼져나가버리고 말았다…
+				RESETCOLOR
+				IF RAND:100 < 50
+					;TCVAR:ARG:획득절정경험 += 1
+					PRINTFORML %조사처리(CALLNAME:ARG,"는")% 암컷의 본능 그대로 허리를 써서, 요염한 표정으로 남자에게 질내사정을 조르고 있다
+					PRINTFORM 남자의 불거진 자지에서 해방된 씨앗이 몸 안을 채울 때마다 암컷의 기쁨과 함께 
+					SETCOLOR COLOR("dark-pink")
+					PRINTFORML 소중한 『무엇인가』가 무너져내리고 있었다
+					RESETCOLOR
+					CFLAG:ARG:上司이벤트進行度 = 15
+				ENDIF
+			ELSEIF (위험일(ARG)) == 1
+				LOCAL:1 += 3
+				TCVAR:ARG:획득절정경험 += 1
+				IF RAND:2 == 0
+					PRINTFORML 남자는 %CALLNAME:ARG%의 봉사로 빳빳히 선 자지를 과시하듯이 손으로 훑으며
+					PRINTFORMW 피임을 바라는 목소리를 무시하며 덮쳤다
+					PRINTFORML 
+					PRINTFORMW 쿠퍼액이 스며든 페니스가 들어오는 감촉에%CALLNAME:ARG%의 입에서 달콤한 신음이 흘러나온다
+					PRINTFORML 
+					PRINTFORMW 남자는 교묘한 허리놀림으로 %조사처리(CALLNAME:ARG,"를")% 교성 지르게 만들고는 위험일인 질내에 정을 토해냈다.
+					SETCOLOR COLOR("dark-pink")
+					PRINTFORML %조사처리(CALLNAME:ARG,"는")% 임신을 꺼려하는 말을 꺼내면서도, 도망치려고도 하지 않고
+					PRINTFORMW %CALLNAME:MASTER%의 것도 아닌 정액을, 아이를 임신할 준비를 갖춘 자궁으로 받아들이고 있다
+					RESETCOLOR
+				;無理矢理기승위いいよね…
+				ELSE
+					PRINTFORML 위험일이란 것을 보고받은 남자는 히죽히죽 웃으며 눕고는,
+					PRINTFORML 스스로 넣어 움직이도록 명령했다
+					PRINTFORML %조사처리(CALLNAME:ARG,"는")% 기대와 불안이 섞인 표정을 띠우며 남자의 위에 올라타고는
+					;거유、폭유
+					IF TALENT:ARG:거유 || TALENT:ARG:폭유 || TALENT:ARG:魔乳
+						PRINTFORM 풍만한 가슴을 흔들면서
+					ELSE
+						PRINTFORM 남자의 몸에 손을 대고서
+					ENDIF
+					PRINTFORMW 허리를 움직이기 시작했다
+					PRINTFORML 
+					SETCOLOR COLOR("dark-pink")
+					PRINTFORML 능숙한 허리놀림에 남자가 사정 예고를 하자, %조사처리(CALLNAME:ARG,"는")% 임신을 꺼려하는 말을 중얼거렸다
+					PRINTFORMW 하지만 %조사처리(CALLNAME:ARG,"는")%, 그 말과는 다르게 남자의 위에서 음란하게 몸을 위아래로 흔드는 걸 계속했다
+					RESETCOLOR
+				ENDIF
+				CFLAG:ARG:上司이벤트進行度 += 1
+			ELSE
+				PRINTFORM 남자는 %CALLNAME:ARG%
+				;거유、폭유
+				IF TALENT:ARG:거유 || TALENT:ARG:폭유 || TALENT:ARG:魔乳
+					PRINTFORM 의 풍만한 가슴을 써서
+				ELSE
+					PRINTFORM 의 입을 써서 잔뜩
+				ENDIF
+				PRINTFORML 봉사를 받은 다음
+				IF RAND:2 == 0
+					PRINTFORMW 삽입을 조르는 대사를 말하게 시키면서 자지를 넣어 범하기 시작했다
+					PRINTFORML 
+					PRINTFORMW 남자가 허리를 흔들 때마다 %조사처리(CALLNAME:ARG,"는")% 황홀한 표정으로 신음소리를 내고 있다
+				ELSE
+					PRINTFORMW 위에 올라타 스스로 움직이도록 명령했다
+					PRINTFORML 
+					PRINTFORMW %조사처리(CALLNAME:ARG,"는")%, 신음소리를 내면서 남자 위에서 음란하게 허리를 움직이고 있다
+				ENDIF
+			ENDIF
+		;性接待
+		ELSE
+			PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 호사스런 침대 위에서 모르는 남자에게 봉사를 하고 있다
+			PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 남자의 물건이 기운차게 된 것을 확인하고는
+			PRINTFORMW 자신의 손으로 비부를 열고, 교미를 졸랐다
+			PRINTFORML 
+			PRINTFORML 남자가 호색한스런 미소를 띠우며 푹 젖은 질에 삽입하자, %조사처리(CALLNAME:ARG,"는")% 몸을 젖히며 교성을 질렀다
+			PRINTFORMW %CALLNAME:ARG%의 육단지는, 남자의 물건을 놓치지 않는다는 듯이 꽉 조이고 있다
+			LOCAL:1 = 3 + RAND:6
+			LOCAL:2 = 0 + RAND:3
+			LOCAL:3 = 2 + RAND:3
+		ENDIF
+	ENDIF
+;第三段階:女を渡した場合の夜
+ELSEIF CFLAG:ARG:上司이벤트進行度 == 9 && CFLAG:ARG:上司来襲 == 1
+	PRINTFORML 간부남은 %CALLNAME:ARG%의 질내에, 자신의 자지 형태를 가인시키려는 듯이 피스톤질을 반복했다
+	PRINTFORML 
+	LOCAL:1 = 3 + RAND:6
+	LOCAL:2 = 0 + RAND:3
+	LOCAL:3 = 2 + RAND:3
+	;위험일はCFLAG:上司이벤트進行度が+1～2
+	;발정가능があると50％の확률로一発堕ち
+	IF (위험일(ARG)) == 2
+		LOCAL:1 += 3
+		TCVAR:ARG:획득절정경험 += 1
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 차오르는 정욕 그대로, 남자와의 정사에 푹 빠져들었다	
+		PRINTFORM 암컷의 모습을 보이는 %CALLNAME:ARG%의 몸 안으로,
+		SETCOLOR COLOR("dark-pink")
+		PRINTFORML 타인의 농후한 씨앗이 퍼져나가고 말았다…
+		RESETCOLOR
+		CFLAG:ARG:上司이벤트進行度 += RAND:1
+		IF RAND:100 < 50
+			TCVAR:ARG:획득절정경험 += 1
+			PRINTFORML 
+			PRINTFORML %조사처리(CALLNAME:ARG,"는")% 암컷의 본능 그대로 허리를 써서, 요염한 표정으로 남자에게 질내사정을 조르고 있다
+			PRINTFORM 남자의 불거진 자지에서 해방된 씨앗이 몸 안을 채울 때마다 암컷의 기쁨과 함께 
+			SETCOLOR COLOR("dark-pink")
+			PRINTFORML 소중한 『무엇인가』가 무너져내리고 있었다
+			RESETCOLOR
+			CFLAG:ARG:上司이벤트進行度 = 15
+		ENDIF
+	ELSEIF (위험일(ARG)) == 1
+		LOCAL:1 += 3
+		TCVAR:ARG:획득절정경험 += 1
+		IF RAND:2 == 0
+			PRINTFORMW 남자는 빳빳히 선 자지를 과시하듯 손으로 훑고는, 삽입을 조르는 %조사처리(CALLNAME:ARG,"와")% 몸을 겹쳤다
+			PRINTFORML 
+			PRINTFORMW 쿠퍼액을 머금은 페니스가 들어오는 감촉에 %조사처리(CALLNAME:ARG,"는")% 몸을 활처럼 튕기며 교성을 지르고 있다
+			PRINTFORML 
+			PRINTFORMW 남자는 교모한 허리놀림으로 %CALLNAME:ARG%의 질을 자극하면서 위험일인 질 안에 정을 토해내기 시작했다
+			SETCOLOR COLOR("dark-pink")
+			PRINTFORML %CALLNAME:MASTER%의 것이 아닌 정액이, 아이를 임신할 준비를 갖춘 자궁으로 토해내져 오는 것에도 상관없이
+			PRINTFORMW %CALLNAME:ARG%의 유육은 남자의 물건을 꽉 물고 마지막 한방울까지 짜내려고 조이고 있다
+			RESETCOLOR
+		;無理矢理기승위いいよね…
+		ELSE
+			PRINTFORML 위험일이란 것을 보고받은 남자는 히죽히죽 웃으며 눕고는,
+			PRINTFORML 스스로 넣어 움직이도록 명령했다
+			PRINTFORML %조사처리(CALLNAME:ARG,"는")% 미소지으며 남자 위에 올라타고는
+			;거유、폭유
+			IF TALENT:ARG:거유 || TALENT:ARG:폭유 || TALENT:ARG:魔乳
+				PRINTFORM 풍만한 가슴을 흔들면서
+			ELSE
+				PRINTFORM 남자의 몸에 손을 대고서
+			ENDIF
+			PRINTFORMW 허리를 움직이기 시작했다
+			PRINTFORML 
+			SETCOLOR COLOR("dark-pink")
+			PRINTFORML 능숙한 허리놀림에 남자가 사정을 예고해도, %조사처리(CALLNAME:ARG,"는")% 음란하고 몸을 위아래로 흔드는 걸 계속했다
+			PRINTFORMW %CALLNAME:MASTER%의 것도 아닌 정액이, 아이를 임신할 준비를 갖춘 자궁으로 내동댕이 쳐지는 듯한 기세로 뿜어져나가고 있다
+			RESETCOLOR
+		ENDIF
+		CFLAG:ARG:上司이벤트進行度 += RAND:1
+	ELSE
+		;30％の확률로CFLAG:上司이벤트進行度+1
+		IF RAND:100 < 30
+			LOCAL:1 += 1
+			PRINTFORM 남자는 %CALLNAME:ARG%
+			;거유、폭유
+			IF TALENT:ARG:거유 || TALENT:ARG:폭유 || TALENT:ARG:魔乳
+				PRINTFORM 의 풍만한 가슴을 써서 
+			ELSE
+				PRINTFORM 의 입을 써서 잔뜩 
+			ENDIF
+			PRINTFORMW 봉사받은 다음, %조사처리(CALLNAME:ARG,"를")% 범하기 시작했다
+			PRINTFORML 
+			PRINTFORMW 남자는 교묘한 허리놀림으로 %CALLNAME:ARG%의 질 안쪽을 조금씩 찌르고 있다
+			TCVAR:ARG:획득절정경험 += 1
+			PRINTFORM 집요하게 이어지는 달콤한 공격에 %조사처리(CALLNAME:ARG,"는")% 신음소리를 내며 남자의 허리에 발을 휘감고,
+			SETCOLOR COLOR("dark-pink")
+			PRINTFORML 황홀한 표정으로 사정을 받아들이고 있다
+			RESETCOLOR
+			CFLAG:ARG:上司이벤트進行度 += 1
+		ELSE
+			PRINTFORM 남자는 %CALLNAME:ARG%
+			;거유、폭유
+			IF TALENT:ARG:거유 || TALENT:ARG:폭유 || TALENT:ARG:魔乳
+				PRINTFORM 의 풍만한 가슴을 써서
+			ELSE
+				PRINTFORM 의 입을 써서 잔뜩
+			ENDIF
+			PRINTFORML 봉사를 받은 다음,
+			IF RAND:2 == 0
+				PRINTFORMW 삽입을 조르는 대사를 말하도록 시키며 자지를 찔러 범하기 시작했다
+				PRINTFORML 
+				PRINTFORMW 남자가 허리를 움직일 때마다 %조사처리(CALLNAME:ARG,"는")% 황홀한 표정으로 신음소리를 내고 있다
+			ELSE
+				PRINTFORMW 위에 올라타 스스로 움직이도록 명령했다
+				PRINTFORML 
+				PRINTFORMW %조사처리(CALLNAME:ARG,"는")%, 신음소리를 내며 남자 위에서 음란하게 허리를 움직이고 있다
+			ENDIF
+		ENDIF
+	ENDIF
+;第三段階:呼び出された夜
+ELSEIF CFLAG:ARG:上司이벤트進行度 == 9 && CFLAG:ARG:上司来襲 == 2
+	PRINTFORML %조사처리(CALLNAME:ARG,"는")% 간부남에게 %CALLNAME:MASTER%의 입장을 지키는 대신에 몸을 요구받았다
+	PRINTFORML %조사처리(CALLNAME:ARG,"는")% %조사처리(CALLNAME:MASTER,"를")% 위해서라고 말하며 남자에게 몸을 허락했다
+	PRINTFORML 
+	LOCAL:1 = 3 + RAND:6
+	LOCAL:2 = 0 + RAND:3
+	LOCAL:3 = 2 + RAND:3
+	;위험일はCFLAG:上司이벤트進行度が+1～2
+	;발정가능があると50％の확률로一発堕ち
+	IF (위험일(ARG)) == 2
+		LOCAL:1 += 3
+		TCVAR:ARG:획득절정경험 += 1
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 차오르는 정욕 그대로, 남자와의 정사에 푹 빠져들었다	
+		PRINTFORM 암컷의 모습을 보이는 %CALLNAME:ARG%의 몸 안으로, 
+		SETCOLOR COLOR("dark-pink")
+		PRINTFORML 타인의 농후한 씨앗이 퍼져와버리고 말았다…
+		RESETCOLOR
+		CFLAG:ARG:上司이벤트進行度 += RAND:1
+		IF RAND:100 < 50
+			TCVAR:ARG:획득절정경험 += 1
+			PRINTFORML 
+			PRINTFORML %조사처리(CALLNAME:ARG,"는")% 암컷의 본능 그대로 허리를 써서, 요염한 표정으로 남자에게 질내사정을 조르고 있다
+			PRINTFORM 남자의 자지에서 뿜어져나온 씨앗이 뱃속을 채울 때마다 암컷의 기쁨과 함께 
+			SETCOLOR COLOR("dark-pink")
+			PRINTFORML 소중한 『무엇인가』가 무너져내리고 있었다
+			RESETCOLOR
+			CFLAG:ARG:上司이벤트進行度 = 15
+		ENDIF
+	ELSEIF (위험일(ARG)) == 1
+		LOCAL:1 += 3
+		TCVAR:ARG:획득절정경험 += 1
+		IF RAND:2 == 0
+			PRINTFORMW 남자는 빳빳히 선 자지를 과시하듯 손으로 훑고는, 삽입을 조르는 %조사처리(CALLNAME:ARG,"와")% 몸을 겹쳤다
+			PRINTFORML 
+			PRINTFORMW 쿠퍼액을 머금은 페니스가 들어오는 감촉에 %조사처리(CALLNAME:ARG,"는")% 몸을 활처럼 튕기며 교성을 지르고 있다
+			PRINTFORML 
+			PRINTFORMW 남자는 교모한 허리놀림으로 %CALLNAME:ARG%의 질을 자극하면서 위험일인 질 안에 정을 토해내기 시작했다
+			SETCOLOR COLOR("dark-pink")
+			PRINTFORML %CALLNAME:MASTER%의 것이 아닌 정액이, 아이를 임신할 준비를 갖춘 자궁으로 토해내져 오는 것에도 상관없이
+			PRINTFORMW %CALLNAME:ARG%의 유육은 남자의 물건을 꽉 물고 마지막 한방울까지 짜내려고 조이고 있다
+			RESETCOLOR
+		;無理矢理기승위いいよね…
+		ELSE
+			PRINTFORML 위험일이란 것을 보고받은 남자는 히죽히죽 웃으며 눕고는,
+			PRINTFORML 스스로 넣어 움직이도록 명령했다
+			PRINTFORML %조사처리(CALLNAME:ARG,"는")% 미소지으며 남자 위에 올라타고는
+			;거유、폭유
+			IF TALENT:ARG:거유 || TALENT:ARG:폭유 || TALENT:ARG:魔乳
+				PRINTFORM 풍만한 가슴을 흔들면서 
+			ELSE
+				PRINTFORM 남자의 몸에 손을 대고서 
+			ENDIF
+			PRINTFORMW 허리를 움직이기 시작했다
+			PRINTFORML 
+			SETCOLOR COLOR("dark-pink")
+			PRINTFORML 능숙한 허리놀림에 남자가 사정을 예고해도, %조사처리(CALLNAME:ARG,"는")% 음란하고 몸을 위아래로 흔드는 걸 계속했다
+			PRINTFORMW %CALLNAME:MASTER%의 것도 아닌 정액이, 아이를 임신할 준비를 갖춘 자궁으로 내동댕이 쳐지는 듯한 기세로 뿜어져나가고 있다
+			RESETCOLOR
+		ENDIF
+		CFLAG:ARG:上司이벤트進行度 += RAND:1
+	ELSE
+		;30％の확률로CFLAG:上司이벤트進行度+1
+		IF RAND:100 < 30
+			LOCAL:1 += 1
+			PRINTFORM 남자는 %CALLNAME:ARG%
+			;거유、폭유
+			IF TALENT:ARG:거유 || TALENT:ARG:폭유 || TALENT:ARG:魔乳
+				PRINTFORM 의 풍만한 가슴을 써서
+			ELSE
+				PRINTFORM 의 입을 써서 잔뜩
+			ENDIF
+			PRINTFORMW 봉사 받은 다음, %조사처리(CALLNAME:ARG,"를")% 범하기 시작했다
+			PRINTFORML 
+			PRINTFORMW 남자는 교묘한 허리놀림으로 %CALLNAME:ARG%의 질 안쪽을 조금씩 찌르고 있다
+			TCVAR:ARG:획득절정경험 += 1
+			PRINTFORM 집요하게 이어지는 달콤한 공격에 %조사처리(CALLNAME:ARG,"는")% 신음소리를 내며 남자의 허리에 발을 휘감고,
+			SETCOLOR COLOR("dark-pink")
+			PRINTFORML 황홀한 표정으로 사정을 받아들이고 있다
+			RESETCOLOR
+			CFLAG:ARG:上司이벤트進行度 += 1
+		ELSE
+			PRINTFORM 남자는 %CALLNAME:ARG%
+			;거유、폭유
+			IF TALENT:ARG:거유 || TALENT:ARG:폭유 || TALENT:ARG:魔乳
+				PRINTFORM 의 풍만한 가슴을 써서
+			ELSE
+				PRINTFORM 의 입을 써서 잔뜩
+			ENDIF
+			PRINTFORML 봉사를 받은 다음
+			IF RAND:2 == 0
+				PRINTFORMW 삽입을 조르는 대사를 말하도록 시키며 자지를 찔러 범하기 시작했다
+				PRINTFORML 
+				PRINTFORMW 남자가 허리를 움직일 때마다 %조사처리(CALLNAME:ARG,"는")% 황홀한 표정으로 신음소리를 내고 있다
+			ELSE
+				PRINTFORMW 위에 올라타 스스로 움직이도록 명령했다
+				PRINTFORML 
+				PRINTFORMW %조사처리(CALLNAME:ARG,"는")%, 신음소리를 내며 남자 위에서 음란하게 허리를 움직이고 있다
+			ENDIF
+		ENDIF
+	ENDIF
+
+;最終段階
+ELSEIF CFLAG:ARG:上司이벤트進行度 == 10 && CFLAG:ARG:上司来襲 == 1
+	PRINTFORML 간부남은 수상쩍은 약을 써서 %CALLNAME:ARG%의 연정을 깨부수려고 한다
+	PRINTFORML ・
+	PRINTFORML ・
+	PRINTFORML ・
+	;耐え切る：愛は奇跡だから低확률
+	IF RAND:100 < 5
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% %조사처리(CALLNAME:MASTER,"를")% 생각하는 마음만을 의지해, 끈질긴 조교에도 버티어냈다
+		CFLAG:ARG:上司이벤트進行度 = 11
+	;堕ちる：現実は厳しい？
+	ELSE
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 희열의 미소를 띠우면서, 남자 위에서 허리를 흔들고 있다
+		SETCOLOR COLOR("dark-pink")
+		PRINTFORML …그리고, 치명적인 일격이 %CALLNAME:ARG%의 안에 퍼져나갔다…
+		RESETCOLOR
+		PRINTFORML
+		PRINTFORML 간부남에게 자신의 암컷의 부분을 지배당한 %조사처리(CALLNAME:ARG,"는")%
+		PRINTFORML 더한 쾌락과 바꾸어 자신의 몸을 바쳐, 간부남에게 충성을 맹세해버린 모양이다…
+		CFLAG:ARG:上司이벤트進行度 = 12
+	ENDIF
+	LOCAL:1 = 6 + RAND:6
+	LOCAL:2 = 2 + RAND:3
+	LOCAL:3 = 4 + RAND:3
+;寝取られ後
+ELSEIF CFLAG:ARG:上司이벤트進行度 >= 13
+	;上司の性処理（위험일）
+	IF (위험일(ARG)) > 0
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 아무래도 감부남의 성욕처리를 위해서 불려나간 모양이다
+		PRINTFORMW 침대 위에서 시가를 피는 남자의 가랑이에 고개를 묻고, 남자의 페니스를 사랑스러운 듯이 봉사하고 있다
+		PRINTFORML
+		PRINTFORML 남자의 페니스가 기운차게 되는 걸 보고, 남자 위에 올라타 스스로 삽입하기 시작했다
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 질 안이 채워지는 감촉에 행복감을 떠올리면서, 사정을 재촉하듯이 일심불란하게 허리를 흔들기 시작했다
+		PRINTFORML 남자가 슬슬 사정할거 같다고 고하자, %조사처리(CALLNAME:ARG,"는")% 자신이 위험일이란 것을 말하고
+		PRINTFORMW 『수정시켜 주세요!』라고 질내사정을 간원했다
+		PRINTFORML
+		PRINTFORML 그 말을 들은 남자는 유쾌하단 표정을 띠고 %조사처리(CALLNAME:ARG,"를")% 강하게 찔러올렸다
+		PRINTFORML 자궁구에 귀두를 밀어붙이고, 자궁 안으로 직접 대량의 정액을 뿜어내자
+		PRINTFORMW 미처 받아들이지 못한 정액이, 두 사람의 접합부에서 흘러넘쳤다
+		PRINTFORML
+		SETCOLOR COLOR("dark-pink")
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 위험일인 자궁을 채우는 정액의 열에 침식당해, 흐트러진 절정 표정을 보이며 허리를 계속 흔들고 있다
+		PRINTFORML 그 하복부에는 유성매직으로 『수정 완료』라고 쓰여있다
+		RESETCOLOR
+		LOCAL:1 = 5 + RAND:5
+		LOCAL:2 = 2 + RAND:4
+		LOCAL:3 = 3 + RAND:4
+		CFLAG:ARG:(2080) += 50
+	;上司の性処理（ベッドの上で種付け）
+	ELSEIF RAND:10 == 0
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 아무래도 간부남의 성욕처리를 위해서 불려나간 모양이다
+		PRINTFORMW 침대 위에서 시가를 피는 남자의 가랑이에 고개를 묻고, 남자의 페니스를 사랑스러운 듯이 봉사하고 있다
+		PRINTFORML
+		PRINTFORML 남자의 페니스가 기운차게 되는 걸 보고, 남자 위에 올라타 스스로 삽입하기 시작했다
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 질 안이 채워지는 감촉에 행복감을 떠올리면서, 사정을 재촉하듯이 일심불란하게 허리를 흔들기 시작했다
+		PRINTFORMW 남자가 슬슬 사정할거 같다고 고하자, %조사처리(CALLNAME:ARG,"는")% 『수정시켜 주세요!』라고 질내사정을 간원했다
+		PRINTFORML
+		SETCOLOR COLOR("dark-pink")
+		PRINTFORML 자궁을 침범하는 남자의 정액 열에, 환희의 표정을 띠우는 %CALLNAME:ARG%의 배에는
+		PRINTFORML 유성매직으로 『교미 완료』라고 쓰여있다
+		RESETCOLOR
+		LOCAL:1 = 4 + RAND:4
+		LOCAL:2 = 1 + RAND:3
+		LOCAL:3 = 2 + RAND:3
+		CDFLAG:ARG:キャラ間好感度:(80) += 50
+
+
+	ELSEIF RAND:9 == 0
+		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 평소대로, 간부남의 성처리를 위해서 불려나갔다
+		PRINTFORML 
+		PRINTFORML 오피스의 책상 아래에 숨어, 남자의 페니스에 봉사를 하고 있다
+		PRINTFORML 끈적하게 혀로 페니스를 휘감아, 쥬르릅 하는 소리를 내면서 빨아들이고 있다
+		PRINTFORMW 때로는 뿌리까지 품고, 때로는 뺨에 비비면서 성심껏 애정을 담은 펠라치오를 계속하고 있다
+		PRINTFORML 
+		PRINTFORML 열심히 애무하자 이윽고 간부남은 한계를 맞이하고는
+		PRINTFORML %CALLNAME:ARG%의 머리를 쥐고, 난폭히 목 안까지 집어넣었다
+		PRINTFORML 그 행위에 드디어 발사되는 것을 안 %조사처리(CALLNAME:ARG,"는")%
+		PRINTFORMW 물기띤 눈동자로 남자를 치켜뜬 눈으로 올려다보며 그 순간을 기다리고 있다……
+		PRINTFORML 
+		PRINTFORML 그리고, 목 안으로 격렬히 정액이 내쳐졌다
+		PRINTFORMW 숨막힐듯한 냄새를 비강으로 느끼고, %조사처리(CALLNAME:ARG,"는")% 멍한 표정으로 받아들였다…
+		PRINTFORML 간부남은 %조사처리(CALLNAME:ARG,"가")% 꿀꺽 소리를 내면서 모두 삼키는 것을 지켜보고는
+		PRINTFORMW 겨우 페니스를 입에서 빼서, 누르고 있던 %조사처리(CALLNAME:ARG,"를")% 해방시켰다
+		PRINTFORML 
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 명령받기도 전에 스스로 다시 페니스에 달려들어서는
+		PRINTFORMW 남은 정액을 성심껏 핥아내고 있다……
+		TCVAR:ARG:획득펠라경험 = 4 + LOCAL:1
+
+	ELSEIF RAND:8 == 0
+		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 평소대로 간부남의 성처리를 위해서 불려나갔다
+		PRINTFORML 
+		PRINTFORML 호텔의 한 방에 끌려온 %조사처리(CALLNAME:ARG,"는")%
+		PRINTFORMW 실오라기 하나 걸치지 않은 모습으로 간부남에게 안겨, 몇 번이고 절정을 맛보고 있다
+		PRINTFORML 격렬히 찔릴 때마다 하복부에서 쾌락이 정수리로 파고들어가
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 스스로 간부남을 끌어안고서 더욱 강한 자극을 바라고 만다
+		PRINTFORMW 질은 질척질척하게 애액을 흘려, 남자의 페니스를 강하게 빨아들이며 놓아주려고 하지 않는다
+		PRINTFORML 
+		PRINTFORML 몇 번이고 남자의 정자를 몸으로 받아들여 열락의 기쁨을 전신으로 느끼며,
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 간부남에 대한 충성을 몽롱한 상태로 몇 번이고 맹세해,
+		PRINTFORMW 그 총애가 언제까지고 계속되도록 마음속으로 빌었다……
+		LOCAL:1 = 4 + RAND:4
+		LOCAL:2 = 1 + RAND:3
+		LOCAL:3 = 2 + RAND:3
+		CDFLAG:ARG:キャラ間好感度:(80) += 50
+
+
+	ELSEIF RAND:7 == 0
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 간부남에게 뒷골목으로 데려가지고
+		PRINTFORMW 그 자리에서 후배위로 삽입당했다
+		PRINTFORML 옥외에서, 누군가에게 보여질지도 모른다는 공포를 느끼면서도,
+		PRINTFORMW 스스로 바라며 기다려왔던 남자와의 행위에 몸을 떨며 기뻐하고 있다
+		PRINTFORML 
+		PRINTFORML 크고 요염한 교성이 흘러나오는 것을 참으며 간부남을 받아들이고 있었지만
+		PRINTFORML 남자는 집요하게 %CALLNAME:ARG%의 약점을 공략해, 귓가에서는 수치심을 부채질하는 말을 내뱉었다
+		PRINTFORML 공포와 수치가 더한 흥분을 일으켜, %조사처리(CALLNAME:ARG,"는")%
+		PRINTFORMW 목소리를 어떻게든 억누른 채로 몸을 몇 번이고 움찔움찔 떨면서 절정을 맛보았다
+		PRINTFORML 
+		PRINTFORML 행위 후, %조사처리(CALLNAME:ARG,"는")% 간부남에게 달라붙듯 팔짱을 끼고, 그 자리에서 떠났다
+		PRINTFORMW 대량으로 방출된 정액이, 질에서 허벅지로 전해 흘러나온다……
+		LOCAL:1 = 4 + RAND:4
+		LOCAL:2 = 1 + RAND:3
+		LOCAL:3 = 2 + RAND:3
+		CDFLAG:ARG:キャラ間好感度:(80) += 50
+
+	;上司の性処理(新薬実験）
+	ELSEIF RAND:6 == 0
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 아무래도 조직의 새로운 약의 실험을 위해 불려나간 모양이다
+		PRINTFORMW 약을 주사맞은 %조사처리(CALLNAME:ARG,"는")% 흰 눈을 드러내며, 침을 흘리면서 간부남에게 범해지고 있다
+		SETCOLOR COLOR("dark-pink")
+		PRINTFORML 간부남에게 자궁을 조금씩 찔릴 때마다 %조사처리(CALLNAME:ARG,"는")% 짐승처럼 신음소리를 질렀다…
+		RESETCOLOR
+		LOCAL:1 = 6 + RAND:4
+		LOCAL:2 = 4 + RAND:3
+		LOCAL:3 = 4 + RAND:3
+		CDFLAG:ARG:キャラ間好感度:(80) += 50
+	;上司の性処理(机の下で입봉사）
+	ELSEIF RAND:5 == 0
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 아무래도 간부남의 성욕처리를 위해서 불려나간 모양이다
+		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 책상에 앉아 일을 하고 있는 간부남의 페니스를 입으로 봉사하고 있다
+		PRINTFORML
+		PRINTFORML 기교를 총동원한 %CALLNAME:ARG%의 봉사에 그만 간부남이 사정하자
+		SETCOLOR COLOR("dark-pink")
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 한방울도 흘리지 않고 정액을 다 마시고
+		PRINTFORML 페니스에 들러붙은 정액을 핥아서 청소를 하고 있다
+		RESETCOLOR
+		TCVAR:ARG:획득펠라경험 = 4 + LOCAL:1
+	;上司のペットの성욕처리(ｳﾏｰ）
+	ELSEIF RAND:4 == 0
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 상사의 애완동물의 성욕처리를 위해서 불려나갔다
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 대형 말 모습의 악마의 발가에서 꿇어앉고는
+		PRINTFORMW 거대한 페니스를 혀로 훑고 있다
+		PRINTFORML
+		PRINTFORML 입을 크게 벌려서 페니스의 앞부분을 물고
+		PRINTFORML 양손으로 크게 흔들면서 얼굴을 앞뒤로 움직여 성심껏 봉사하기 시작했다
+		PRINTFORML 쑤컥, 쑤컥하고 소래를 내면서 봉사하는 %CALLNAME:ARG%의 입에서
+		PRINTFORMW 대량의 쿠퍼액이 흘러나오고 있다
+		PRINTFORML
+		PRINTFORML 말 악마가 %CALLNAME:ARG%에게 삽입하고 싶은듯이 행동하자
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 벽에 손을 대고 엉덩이를 내밀어서 삽입을 유도했다
+		PRINTFORML 말 악마가 참지 못하고 바로 %조사처리(CALLNAME:ARG,"를")% 덮쳐
+		PRINTFORML 충분히 젖은 여음부에 단번에 강직한 물건을 찔러세웠다
+		PRINTFORMW 상당한 충격에 %조사처리(CALLNAME:ARG,"는")% 몸을 활처럼 튕기며 절규하고 있다
+		PRINTFORML
+		PRINTFORML 말 악마가 자궁구를 찌를 때마다, %CALLNAME:ARG%의 하복부가 뒤틀린 형태로 변형되었다
+		PRINTFORML 말 악마가 음란하게 꿈틀대는 %CALLNAME:ARG%의 질내 감촉에 버티지 못하고 사정하자
+		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 흰자를 드러내고 혀를 내밀며 교성을 지르고 있다
+		SETCOLOR COLOR("dark-pink")
+		PRINTFORML %CALLNAME:ARG%의 배는 임신한 듯이 부풀어올라
+		PRINTFORML 결합부에서는 짐승 냄새가 강한 정액이 넘치고 있다.
+		RESETCOLOR
+		LOCAL:1 = 15 + RAND:7
+		LOCAL:2 = 8 + RAND:4
+		LOCAL:3 = 10 + RAND:5
+		TCVAR:ARG:획득수간경험 = LOCAL:1 + LOCAL:2
+	;部下達への慰安
+	ELSEIF RAND:3 == 0
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 간부남에 의해서 하급 서머너들의 위안에 사용되었다
+		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 무뢰한이나 다름없는 남자들의 욕망의 배출구가 되었다
+		PRINTFORML
+		PRINTFORML 어떠한 약이라도 주사한 것인지, 짐승같은 목소리를 내며 우는 %CALLNAME:ARG%의 팔에는 푸른 멍이 생겨있었고
+		PRINTFORMW 남자들의 발밑에는 몇 개인가 빈 주사기가 굴러다니고 있다…
+		SETCOLOR COLOR("dark-pink")
+		PRINTFORML 새로운 약을 주사당할 때마다 %조사처리(CALLNAME:ARG,"는")% 머리카락을 미친듯이 흔들며
+		PRINTFORML 올라타고 있는 남자의 정액을 모조리 짜내려는 듯이, 허리를 격렬히 움직였다
+		RESETCOLOR
+		LOCAL:1 = 12 + RAND:7
+		LOCAL:2 = 6 + RAND:4
+		LOCAL:3 = 8 + RAND:5
+		TCVAR:ARG:획득윤간경험 = 1
+	;接待の場で大型の악마（イメージは미노타우로스）との本番ショー（인간オナホ）
+	ELSEIF RAND:2 == 0
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 간부남에 의해서 접대 자리의 구경거리로 쓰였다
+		PRINTFORML 무대 위에선 대형 악마를 쓴 %조사처리(CALLNAME:ARG,"와")%의 교미 쇼가 행해지고 있다
+		PRINTFORML 대형 악마는 %CALLNAME:ARG%의 몸을 마치 오나홀처럼 써서 자신의 강직한 물건을 비비고 있다
+		PRINTFORMW 대형 악마에게 찔릴 때마다 %CALLNAME:ARG%의 배가 거대한 물건 형태로 변형되고 있다
+		PRINTFORML
+		PRINTFORML 격렬한 교미에 %조사처리(CALLNAME:ARG,"는")% 정신을 잃은 모양이지만
+		PRINTFORML 대형 악마는 그런건 신경도 안 쓰는 듯 %CALLNAME:ARG%의 몸으로 물건을 자극하면서
+		PRINTFORMW 자궁구를 찌르는 감촉을 즐기고 있다
+		PRINTFORML
+		PRINTFORML 대형 악마가 포효를 지르며 사정하자,
+		PRINTFORMW %CALLNAME:ARG%의 배는 대량의 정액으로 임산부처럼 되었다…
+		PRINTFORML
+		SETCOLOR COLOR("dark-pink")
+		PRINTFORML 통나무처럼 꼿꼿한 물건에 찔린 %CALLNAME:ARG%의 질 안에서는
+		PRINTFORML 다 받아들이지 못한 정액이 폭포수처럼 흘러내리고 있다…
+		RESETCOLOR
+		LOCAL:1 = 15 + RAND:7
+		LOCAL:2 = 8 + RAND:4
+		LOCAL:3 = 10 + RAND:5
+		TCVAR:ARG:획득수간경험 = LOCAL:1 + LOCAL:2
+		
+	;接待の場でザコ악마との本番ショー
+	ELSE
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 접대 자리에서 구경거리로 쓰였다
+		PRINTFORMW 무대 위에선 하급 악마를 쓴 %조사처리(CALLNAME:ARG,"와")%의 교미쇼가 행해지고 있다
+		PRINTFORML
+		PRINTFORML 하급악마의 정액이 질 안을 채울 때마다 %조사처리(CALLNAME:ARG,"는")%
+		PRINTFORMW 인간에게서 주어지는 것과는 비교도 할 수 없는 쾌락에 머릿속이 새하얗게 되어버렸다…
+		PRINTFORML
+		PRINTFORML 하급 악마의 사정은 30분 이상 이어져, 사정이 끝났을 즈음에는
+		SETCOLOR COLOR("dark-pink")
+		PRINTFORML %CALLNAME:ARG%의 배는 하급 악마의 정액으로 풍선처럼 부풀어올라
+		PRINTFORML 질 안에서 젤리 형태의 정액이 넘쳐 떨어졌다…
+		RESETCOLOR
+		LOCAL:1 = 6 + RAND:4
+		LOCAL:2 = 5 + RAND:3
+		LOCAL:3 = 3 + RAND:5
+		TCVAR:ARG:획득수간경험 = LOCAL:1 + LOCAL:2
+	ENDIF
+
+ENDIF
+TARGET = ARG
+TFLAG:13 = 64
+PRINTFORML 
+CALL KOJO_MESSAGE_EVENT
+;구상の為に此処で処理してます
+SIF CFLAG:ARG:上司이벤트進行度 == 1
+	CFLAG:ARG:上司이벤트進行度 = 2
+
+;처녀상실処理
+PRINTFORML 
+CALL 처녀상실, ARG
+CALL 처녀상실이벤트, ARG
+
+TCVAR:ARG:획득Ｖ경험 += LOCAL:1
+TCVAR:ARG:획득Ａ경험 += LOCAL:2
+TCVAR:ARG:획득키스경험 += LOCAL:1
+TCVAR:ARG:획득펠라경험 += LOCAL:3
+TCVAR:ARG:획득정액경험 += (LOCAL:1 + LOCAL:2 + LOCAL:3) / 2
+TCVAR:ARG:획득봉사쾌락경험 += LOCAL:3
+TCVAR:ARG:획득성교경험 += LOCAL:1 + LOCAL:2
+TCVAR:ARG:획득질사경험 += LOCAL:1 / 2
+TCVAR:ARG:획득절정경험 += RAND:(LOCAL:1 + LOCAL:2 + 1)
+TCVAR:ARG:획득렌탈경험 += 1
+CFLAG:ARG:105 += LOCAL:1 + TCVAR:ARG:획득절정경험
+;ＮＴＲ前の場合
+;획득절정경험が6이상になるとCFLAG:ARG:上司이벤트進行度+1
+;上司이벤트進行度12の時に+1されて13になってしまってたぽいので수정
+IF TCVAR:ARG:획득절정경험 >= 6 && CFLAG:ARG:上司이벤트進行度 != 11 && CFLAG:ARG:上司이벤트進行度 != 12
+	SIF CFLAG:ARG:上司이벤트進行度 <= 9
+		CFLAG:ARG:上司이벤트進行度 += 1
+	;CFLAG:ARG:上司이벤트進行度が11にならないように
+	SIF CFLAG:ARG:上司이벤트進行度 >= 11 && !TALENT:ARG:ＮＴＲ
+		CFLAG:ARG:上司이벤트進行度 = 10
+ENDIF
+;호감도の増減：行為数*절정수+中出し횟수*1～4
+;数値は要検討
+CALL NTR_SHOOT, ARG, -20, ((TCVAR:ARG:획득성교경험 + TCVAR:ARG:획득봉사쾌락경험) * (TCVAR:ARG:획득절정경험 + 1) + TCVAR:ARG:획득질사경험 * (RAND:4 + 1))
+PRINTFORML 
+CALL SHOW_ADD_EXP, ARG
+DRAWLINE
+
+;女を渡した場合の翌日
+@NTR_JOUSHI_2(ARG)
+#LOCALSIZE 3
+LOCAL:1 = 1 + RAND:3
+LOCAL:2 = RAND:100 + 1
+IF CFLAG:ARG:上司이벤트進行度 >= 13
+	LOCAL:1 += 1 + RAND:3
+ENDIF
+DRAWLINE
+
+;조교に耐え切る
+IF CFLAG:ARG:上司이벤트進行度 == 11 && CFLAG:ARG:上司来襲 == 1
+	;임신時は上司も煽りにやってくる
+	IF TALENT:ARG:임신
+		PRINTFORMW 간부남이 %조사처리(CALLNAME:ARG,"를")% 데리고 찾아왔다
+		PRINTFORMW 『여어, 예의 건은 만사 오케이다. 너에 대한 의심은 풀렸어, 기뻐해라.』
+		PRINTFORMW 『%조사처리(CALLNAME:ARG,"가")% 열심히 한 덕분에, 꽤 도움이 됐어』
+		PRINTFORMW 『그런데 말이지, 말하기 좀 힘들지만 %조사처리(CALLNAME:ARG,"는")% 임신해버린 거 같아』
+		PRINTFORMW 『네 녀석을 지키기 위해서 여러 가지 일을 했거든…, 크큭』
+		PRINTFORML 
+		PRINTFORMW 히죽히죽 웃으면서 설명하는 남자 뒤에서 %조사처리(CALLNAME:ARG,"는")% 눈물을 머금고 미소 짓고 있다
+	ELSE
+		PRINTFORML %조사처리(CALLNAME:ARG,"가")% 혼자서 돌아왔다
+		PRINTFORML 건네받은 편지에는 모든 게 잘 되었다는 글이 휘갈겨 써져있었다
+		PRINTFORML 
+		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% %조사처리(CALLNAME:MASTER,"를")% 껴안고, 그 온기에 눈물을 흘렸다
+	ENDIF
+	
+	;리셋ってのもアレだから第二단계最終まで戻す
+	CFLAG:ARG:上司이벤트進行度 = 7
+	;CFLAG:ARG:上司이벤트進行度 = 0
+
+;ＮＴＲ
+ELSEIF CFLAG:ARG:上司이벤트進行度 == 12 && CFLAG:ARG:上司来襲 == 1 || CFLAG:ARG:上司이벤트進行度 == 15
+	;通常
+	IF CFLAG:ARG:上司이벤트進行度 == 12 && CFLAG:ARG:上司来襲 == 1
+		PRINTFORML 간부남이 %조사처리(CALLNAME:ARG,"를")% 데리고 찾아왔다
+		PRINTFORML 『여어, 예의 건은 만사 오케이다. 너에 대한 의심은 풀렸어, 기뻐해라.』
+		PRINTFORML 『그래서, %CALLNAME:ARG%에 대해서 말인데…, 조수를 계속하고 싶다고 말을 해서 말이지』
+		PRINTFORML 『뭐어, 네놈을 위해서라도… 그녀를 위하는 일도 되겠지만 말이야』
+		PRINTFORML 
+		PRINTFORML %CALLNAME:ARG%의 표정은 그림자가 드리워져 잘 보이지 않는다…
+		PRINTFORML 『계약기간은 그녀가 그만둔다고 할 때까지다』
+		PRINTFORML 『세세한 계약 내용은 여기에 쓰여 있다. 나중에 직접 봐 둬』
+		IF TALENT:ARG:임신
+			PRINTFORML 
+			PRINTFORML 『그리고 말이지, %CALLNAME:ARG% 말인데, 그녀는 임신해버린 거 같아』
+			PRINTFORMW 『네 녀석을 지키기 위해서 여러 가지 일을 했거든…, 크큭』
+			PRINTFORM 『그렇지, 내 조수라고는 해도 %조사처리(CALLNAME:ARG,"는")% 네놈의 
+			IF TALENT:LOCAL:아내
+				PRINTFORM 아내
+			ELSE
+				PRINTFORM 것이
+			ENDIF
+			PRINTFORMW 니까, 몸 관리 쪽은 맡기겠어』
+			PRINTFORMW 『언제든 사용할 수 있도록 해두라고… 하하, 하하하!』
+			PRINTFORMW 웃으면서 떠나는 남자에게 %조사처리(CALLNAME:ARG,"는")% 깊게 예를 표해 배웅하고 있다…
+		ELSE
+			PRINTFORMW 등을 돌린 남자에게 %조사처리(CALLNAME:ARG,"는")% 깊게 예를 표해 배웅하고 있다…
+		ENDIF
+	;発情一発:女を渡した場合
+	ELSEIF CFLAG:ARG:上司이벤트進行度 == 15 && CFLAG:ARG:上司来襲 == 1
+		PRINTFORML 간부남이 %조사처리(CALLNAME:ARG,"를")% 데리고 찾아왔다
+		PRINTFORML 『이야~, 이번 접대는 대성공이었어. %조사처리(CALLNAME:ARG,"는")% 실로 우수하구만』
+		PRINTFORML 『그래서… 그 우수한 %CALLNAME:ARG% 말이네만』
+		PRINTFORML 『내 조수로 일하고 싶다고 해서 말이지…』
+		PRINTFORML 『네놈을 위해서 여러 가지로 배우고 싶은 것이 있다고 하네』
+		PRINTFORML 
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 남자 뒤에서 미소짓고 있다…
+		PRINTFORML 『꽤나 사랑받고 있는 모양이잖냐, 큭큭큭』
+		PRINTFORML 『계약 기간은 그녀가 그만둔다고 할 때까지다』
+		PRINTFORML 『세세한 계약 내용은 여기에 적혀있다. 나중에 직접 봐 둬』
+		IF TALENT:ARG:임신
+			PRINTFORML 
+			PRINTFORML 『그리고 말이지, 이번 접대로 %조사처리(CALLNAME:ARG,"는")% 임신해버린 거 같아』
+			PRINTFORMW 『네 녀석을 위해서 열심히 한 결과니까, 혼내지 말아달라구, 크큭』
+			PRINTFORM 『그렇지, 내 조수라고는 해도 %조사처리(CALLNAME:ARG,"는")% 네놈의 
+			IF TALENT:LOCAL:아내
+				PRINTFORM 아내
+			ELSE
+				PRINTFORM 것이
+			ENDIF
+			PRINTFORMW 니까, 몸 관리 쪽은 맡기겠어』
+			PRINTFORMW 『언제든 사용할 수 있도록 해두라고… 하하, 하하하!』
+			PRINTFORMW 웃으면서 떠나는 남자에게 %조사처리(CALLNAME:ARG,"는")% 깊게 예를 표해 배웅하고 있다…
+		ELSE
+			PRINTFORMW 등을 돌린 남자에게 %조사처리(CALLNAME:ARG,"는")% 깊게 예를 표해 배웅하고 있다…
+		ENDIF
+	;発情一発:呼び出し
+	ELSEIF CFLAG:ARG:上司이벤트進行度 == 15 && CFLAG:ARG:上司来襲 == 2
+		PRINTFORML 어째선지 간부남이 %조사처리(CALLNAME:ARG,"를")% 데리고 찾아왔다
+		PRINTFORML 『갑자기 찾아와서 미안하군』
+		PRINTFORML 『어제, %조사처리(CALLNAME:ARG,"가")% 나에게 찾아와서 말이지』
+		PRINTFORML 『내 조수로 일하고 싶다고 꺼내잖아…』
+		PRINTFORML 『네놈을 위해서 여러 가지로 배우고 싶은 것이 있다고 하네』
+		PRINTFORML 
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 남자의 뒤에서 미소짓고 있다…
+		PRINTFORML 『꽤나 사랑받고 있는 모양이잖냐, 큭큭큭』
+		PRINTFORML 『계약기간은 그녀가 그만둔다고 할 때까지다』
+		PRINTFORML 『세세한 계약 내용은 여기에 적혀있다. 나중에 직접 봐 둬』
+		IF TALENT:ARG:임신
+			PRINTFORML 
+			PRINTFORML 『그리고 말이지, 이번 접대로 %조사처리(CALLNAME:ARG,"는")% 임신하고 있는 거 같아』
+			PRINTFORML 『어디서 남자를 물고왔는지 모르겠다만, 내 조수가 되는 거니까 착실히 해야 할텐데… 그치…? 크큭』
+			PRINTFORM 『그렇지, 내 조수라고는 해도 %조사처리(CALLNAME:ARG,"는")% 네놈의 
+			IF TALENT:LOCAL:아내
+				PRINTFORM 아내
+			ELSE
+				PRINTFORM 것이
+			ENDIF
+			PRINTFORMW 니까, 몸 관리 쪽은 맡기겠어』
+			PRINTFORMW 『언제든 사용할 수 있도록 해두라고… 하하, 하하하!ッ』
+			PRINTFORMW 웃으면서 떠나는 남자에게 %조사처리(CALLNAME:ARG,"는")% 깊게 예를 표해 배웅하고 있다…
+		ELSE
+			PRINTFORMW 등을 돌린 남자에게 %조사처리(CALLNAME:ARG,"는")% 깊게 예를 표해 배웅하고 있다…
+		ENDIF
+	ENDIF
+	IF CDFLAG:ARG:キャラ間好感度:(100) >= 3000
+		CDFLAG:ARG:キャラ間好感度:(80) = CDFLAG:ARG:キャラ間好感度:(100) * (-1)
+		CDFLAG:ARG:キャラ間好感度:(100) -= 3000
+		CFLAG:ARG:隷ＮＴＲ進行度 = 2
+	ELSEIF CDFLAG:ARG:キャラ間好感度:(100) < 3000
+		CDFLAG:ARG:キャラ間好感度:(80) = (CDFLAG:ARG:キャラ間好感度:(100) + 3000) * (-1)
+		CDFLAG:ARG:キャラ間好感度:(100) = 0
+		CFLAG:ARG:隷ＮＴＲ進行度 = 2
+	ENDIF
+	CALL NTR_CHECK , ARG , 1
+	PRINTFORML 
+	PRINTFORML 
+	PRINTFORML 
+	SETCOLOR COLOR("dark-pink")
+	;CFLAG:上司이벤트進行度の数値で区別する
+	;9は비전투원持ち、10は전투員
+	CFLAG:ARG:上司이벤트進行度 = 13
+	IF TALENT:ARG:비전투원 == 0 
+		PRINTFORML %조사처리(CALLNAME:ARG,"를")% 파티에 편입시킬 수 없게 되었습니다
+		TALENT:ARG:비전투원 = 1
+		CFLAG:ARG:上司이벤트進行度 = 14
+	ENDIF
+	PRINTFORML %조사처리(CALLNAME:ARG,"가")% 노역을 시킬 수 없게 되었습니다
+	;これで노역を弾きます
+	CFLAG:ARG:노역フラグ = 9
+	PRINTFORML %조사처리(CALLNAME:ARG,"를")% 매각할 수 없게 되었습니다
+	;これで매각と변기を弾きます
+	CFLAG:ARG:매각가능 = 0
+	RESETCOLOR
+	PRINTFORMW ＊ＮＴＲ이 떨어지면 해제됩니다＊
+ENDIF
+;呼び出し：寝取られ後
+IF CFLAG:ARG:上司이벤트進行度 >= 13 && CFLAG:ARG:上司来襲 == 2
+	MONEY:0 += LOCAL:2
+	IF RAND:10 == 0
+		IF RAND:2 == 0
+			PRINTFORML 간부남에게서 전화가 걸려왔다
+			PRINTFORML 『조금 일이 길어져서 말이지, 늦어지는 것도 미안하다 생각해서』
+			PRINTFORML 『지금 조직 소속인 발이 빠른 악마에게 %조사처리(CALLNAME:ARG,"를")% 데려다주라고 했다』
+			PRINTFORMW 『아아, 데려다주는 비용은 이미 지불해놨으니까, 거기서 뭔가 준비할 필요는 없다, 크크크』
+			PRINTFORML 마침 그 때, 악마의 포효가 들려왔다…
+			PRINTFORMW 『오오 도착한 모양이군, 얼른 맞이하러 가도록 해라』
+			PRINTFORML
+			PRINTFORML %조사처리(CALLNAME:MASTER,"가")% 밖으로 나가자, 거기엔 구부러진 뿔이 난 커다란 말 모습의 악마가 서 있었다
+			PRINTFORML 말 악마의 등에는 %CALLNAME:ARG%의 모습이 없어, 어디인가 찾아보니
+			PRINTFORML 말 악마의 배 아래에서 %CALLNAME:ARG%의 목소리 같은 게 들려왔다
+			PRINTFORMW %조사처리(CALLNAME:MASTER,"가")% 거기에 시선을 돌리자 말 악마의 배에 묶여져 있는 %CALLNAME:ARG%의 모습이 있었다
+			SETCOLOR COLOR("dark-pink")
+			PRINTFORML %CALLNAME:ARG%의 여음부에는 말 악마의 거대한 페니스가 찔러넣어져 있었고
+			PRINTFORMW 비부와 페니스간의 사이에서 전부 다 들어가지 못한 정액이 길에 흘러내리고 있었다
+			RESETCOLOR
+			PRINTFORML
+			PRINTFORML 『그 악마가, %조사처리(CALLNAME:ARG,"를")% 임신시키고 싶다고 요구해와서 말이지』
+			PRINTFORMW 『비용 대신 교미를 시켜줬다 이거야, 하하하하하!』
+			PRINTFORMW %조사처리(CALLNAME:MASTER,"가")% 서둘러서 %조사처리(CALLNAME:ARG,"를")% 묶고 있는 로프를 풀자
+			SETCOLOR COLOR("dark-pink")
+			PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 질구에서 대량의 정액을 뿌려내면서 쓰러졌다…
+			RESETCOLOR
+			PRINTFORML
+			PRINTFORML %CALLNAME:ARG% 옆에 떨어져있는 『급료』라고 쓰여진 봉투를 뜯자
+			PRINTFORMW 안에는 ￥{LOCAL:2}이 들어있었다…
+			PRINTFORML
+			PRINTFORML
+			TCVAR:ARG:획득수간경험 = 2 + LOCAL:1
+		ELSE
+			PRINTFORML 간부남에게서 전화가 걸려왔다
+			PRINTFORML 『조금 일이 길어져서 말이지, 늦어지는 것도 미안하다 생각해서』
+			PRINTFORML 『지금 조직 소속의 젊은 녀석에게 %조사처리(CALLNAME:ARG,"를")% 데려다주라고 했다』
+			PRINTFORMW 『아아, 데려다주는 비용은 이미 지불해놨으니까, 거기서 뭔가 준비할 필요는 없다, 크크크』
+			PRINTFORML 마침 그 때, 차의 경적 소리가 들려왔다…
+			PRINTFORMW 『오오 도착한 모양이군, 얼른 맞이하러 가도록 해라』
+			PRINTFORML
+			PRINTFORML %조사처리(CALLNAME:MASTER,"가")% 밖으로 나가자, 검게 칠해진 차가 한 대 세워져있었다
+			PRINTFORML 차 안은 커텐이 쳐져 안이 보이지 않았지만, 세워진 채로 이리저리 흔들리는 모습에 오한을 느끼고 문을 열자
+			PRINTFORML %조사처리(CALLNAME:ARG,"가")% 모르는 남자에게 찔려서, 여자답지 않은 교성을 지르는 모습이 눈에 확 들어왔다
+			PRINTFORMW 스스로 들러붙어 허리의 움직임을 남자에게 맞춰, 침을 흘리며 남자의 강직한 물건을 받아들이고 있었다
+			SETCOLOR COLOR("dark-pink")
+			PRINTFORML %CALLNAME:MASTER%의 시선을 깨닫고는 %조사처리(CALLNAME:ARG,"는")% 열락에 녹은 표정으로 남자와 연결된 채,
+			PRINTFORMW 들리도록 %CALLNAME:MASTER%의 눈앞에서 교미를 조르며 더욱 행위를 가속시키고 있었다…
+			RESETCOLOR
+			PRINTFORML
+			PRINTFORML 『그 남자가, %조사처리(CALLNAME:ARG,"를")% 임신시키고 싶다고 요구해와서 말이지』
+			PRINTFORMW 『비용 대신 교미를 시켜줬다 이거야, 하하하하하!』
+			PRINTFORMW 잠시 후에 차에서 내린 %조사처리(CALLNAME:ARG,"는")%, %조사처리(CALLNAME:MASTER,"와")%는 시선을 마주하지 않고 돌아갔다
+			SETCOLOR COLOR("dark-pink")
+			PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 질구에서 정액을 주르륵 흘리며, 허벅지에 흐르도록 하고 있다…
+			RESETCOLOR
+			PRINTFORML
+			PRINTFORML %CALLNAME:ARG% 옆에 떨어져있는 『급료』라고 쓰여진 봉투를 뜯자
+			PRINTFORMW 안에는 ￥{LOCAL:2}이 들어있었다…
+			PRINTFORML
+			PRINTFORML
+		ENDIF
+		TCVAR:ARG:획득Ｖ경험 = 2 + LOCAL:1
+		TCVAR:ARG:획득정액경험 = 2 + LOCAL:1
+		TCVAR:ARG:획득성교경험 = 2 + LOCAL:1
+		TCVAR:ARG:획득질사경험 = 2 + LOCAL:1
+		TCVAR:ARG:획득절정경험 = 1 + RAND:(LOCAL:1)
+	ELSEIF RAND:9 == 0
+		PRINTFORML 창 밖에서 간부남의 차가 멈추는 모습이, %CALLNAME:MASTER%의 시야 한구석에 들어왔다
+		PRINTFORMW %조사처리(CALLNAME:ARG,"를")% 데리고 온 모양이다
+		PRINTFORML 
+		PRINTFORML 차에서 내린 두 사람이 친밀한 모습으로 이별을 아쉬워하며,
+		PRINTFORML 뜨겁게 포옹하고 입맞춤을 나누고 있는 모습을
+		PRINTFORMW %조사처리(CALLNAME:MASTER,"는")% 시선을 돌리지도 못하고 지켜보고 말았다
+		PRINTFORML 
+		PRINTFORML %CALLNAME:MASTER%의 시선 끝에는, 두 사람의 포옹이 서로를 요구하는 격한 애무로 바뀌어
+		PRINTFORMW 입맞춤은 서로의 타액을 탐하는 격렬한 것으로 되어갔다…
+		PRINTFORML 
+		PRINTFORML 껴안은 채로 간부남이 %CALLNAME:ARG%의 귓가에 뭐라고 하자,
+		PRINTFORML 얼굴을 붉힌 %조사처리(CALLNAME:ARG,"가")% 작게 끄덕였다
+		PRINTFORML 밀착한 채로 두 사람은 다시 차로 들어가서,
+		PRINTFORMW %조사처리(CALLNAME:MASTER,"가")% 보고 있던 것을 모르는 듯이, 그대로 어디론가 가버렸다……
+		PRINTFORML 
+		PRINTFORML ・
+		PRINTFORML ・・
+		PRINTFORMW ・・・
+		PRINTFORML 듬뿍 3시간 이상을 보낸 다음, 다시 차가 멈추고 %조사처리(CALLNAME:ARG,"가")% 내려 돌아왔다
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 아무 일도 없었단 듯이 %CALLNAME:MASTER%에게 인사를 하고는,
+		PRINTFORMW 평소와 다름없는 발걸음으로 떠나갔다
+		PRINTFORML 
+		PRINTFORML 
+		TCVAR:ARG:획득Ｖ경험 = 2 + LOCAL:1
+		TCVAR:ARG:획득정액경험 = 2 + LOCAL:1
+		TCVAR:ARG:획득성교경험 = 2 + LOCAL:1
+		TCVAR:ARG:획득질사경험 = 2 + LOCAL:1
+		TCVAR:ARG:획득절정경험 = 1 + RAND:(LOCAL:1)
+
+
+	ELSEIF RAND:8 == 0
+		PRINTFORML 피곤한 표정으로 돌아온 %조사처리(CALLNAME:ARG,"는")%,
+		PRINTFORMW %조사처리(CALLNAME:MASTER,"와")% 시선을 마주하는 일 없이 떠나갔다
+		TCVAR:ARG:획득Ｖ경험 = 2 + LOCAL:1
+		TCVAR:ARG:획득정액경험 = 2 + LOCAL:1
+		TCVAR:ARG:획득성교경험 = 2 + LOCAL:1
+		TCVAR:ARG:획득질사경험 = 2 + LOCAL:1
+		TCVAR:ARG:획득절정경험 = 1 + RAND:(LOCAL:1)
+
+	ELSEIF RAND:7 == 0
+		PRINTFORML %CALLNAME:MASTER% 곁에 돌아와야만 하는 시간은 이미 지났지만
+		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 간부남에게 몸을 요구당해, 스스로도 적극적으로 응하고 있었다
+		PRINTFORML 몸을 포개는 일에 창피함도 죄악감도 이미 없어졌고,
+		PRINTFORMW 바라는 대로 안기는 일에, %조사처리(CALLNAME:ARG,"는")% 진심으로 기쁨을 느끼고 있었다
+		TCVAR:ARG:획득Ｖ경험 = 2 + LOCAL:1
+		TCVAR:ARG:획득정액경험 = 2 + LOCAL:1
+		TCVAR:ARG:획득성교경험 = 2 + LOCAL:1
+		TCVAR:ARG:획득질사경험 = 2 + LOCAL:1
+		TCVAR:ARG:획득절정경험 = 1 + RAND:(LOCAL:1)
+
+	ELSEIF RAND:6 == 0
+		PRINTFORML 돌아온 %조사처리(CALLNAME:ARG,"는")% 뭔가를 떠올린듯한 표정으로
+		PRINTFORML %조사처리(CALLNAME:MASTER,"를")% 지그시 바라보고 있다… 하지만,
+		PRINTFORMW 결국 아무 말도 하지 않고 떠나갔다
+
+	ELSEIF RAND:5 == 0
+		PRINTFORML %조사처리(CALLNAME:ARG,"가")% 돌아왔다
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 『급료』라고 쓰여진 봉투를 넘겨줬다
+		PRINTFORMW 안에는 ￥{LOCAL:2}이 들어있었다…
+		PRINTFORML 
+		PRINTFORML 그리고 그와는 달리, 직접 넘겨주라고 당부했다는 커다란 봉투를 넘기고는
+		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 시선을 내리깐 채 도망치듯 떠나갔다
+		PRINTFORML 
+		PRINTFORML 넘겨받은 봉투를 뜯자,
+		PRINTFORML 안에는 간부남에게 안기고 있는%CALLNAME:ARG%의 모습이 찍힌 사진이 여러 장 들어있었다
+		IF TALENT:LOCAL:아내
+			PRINTFORM 자신의 아내일 터인
+		ELSE
+			PRINTFORM 전부 알고 있었을 터인
+		ENDIF
+		PRINTFORML %CALLNAME:ARG%의 몸이 다른 남자에게 안겨있는 모습이, 계속해서 %CALLNAME:MASTER%의 시야에 들어온다
+		PRINTFORML 사진 안의 %조사처리(CALLNAME:ARG,"는")%, 만족한듯이 상스러운 웃음을 짓는 간부남 아래서,
+		PRINTFORMW 환희의, 열락의, 그리고 진심으로 안도하는 표정을 띠고 있다…
+		PRINTFORML
+		PRINTFORML
+		TCVAR:ARG:획득Ｖ경험 = 2 + LOCAL:1
+		TCVAR:ARG:획득정액경험 = 2 + LOCAL:1
+		TCVAR:ARG:획득성교경험 = 2 + LOCAL:1
+		TCVAR:ARG:획득질사경험 = 2 + LOCAL:1
+		TCVAR:ARG:획득절정경험 = 1 + RAND:(LOCAL:1)
+
+	ELSEIF RAND:4 == 0
+		PRINTFORML 간부남에게서 전화가 걸려왔다
+		PRINTFORML 『조금 일이 길어져서 말이지, 미안하다만 %조사처리(CALLNAME:ARG,"가")% 돌아가는 건 늦어질 거 같다』
+		PRINTFORML 용건을 말하는 간부남의 목소리에 뒤섞여, 침대가 삐걱이는 소리와 숨죽인 신음소리가 들려온다
+		PRINTFORMW 『걱정하지 않아도 오늘 내로 확실히 돌려보내주지. 확실히, 말이야!』
+		PRINTFORML
+		PRINTFORMW 간부남이 어미를 강조하고는, 전화에서 간부남이 흐트러진 숨을 쉬는 소리와 여성의 것으로 추정되는 교성이 들려왔다
+		SETCOLOR COLOR("dark-pink")
+		PRINTFORMW 그 여성의 목소리는 %조사처리(CALLNAME:ARG,"와")% 매우 비슷했다…
+		RESETCOLOR
+		PRINTFORML
+		PRINTFORML ・
+		PRINTFORML ・・
+		PRINTFORML ・・・
+		PRINTFORML 늦게나마 돌아온 %조사처리(CALLNAME:ARG,"는")% 『급료』라고 쓰여진 봉투를 건네주고는 방에서 나갔다
+		PRINTFORMW 안에는 ￥{LOCAL:2}이 들어있었다…
+		PRINTFORML
+		PRINTFORML
+		TCVAR:ARG:획득Ｖ경험 = 2 + LOCAL:1
+		TCVAR:ARG:획득정액경험 = 2 + LOCAL:1
+		TCVAR:ARG:획득성교경험 = 2 + LOCAL:1
+		TCVAR:ARG:획득질사경험 = 2 + LOCAL:1
+		TCVAR:ARG:획득절정경험 = 1 + RAND:(LOCAL:1)
+	ELSEIF RAND:3 == 0
+		PRINTFORML %CALLNAME:ARG%에게서 전화가 걸려왔다
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 달콤한 숨소리가 섞인 목소리로, 드문드문 용건을 전해왔다
+		PRINTFORMW 아무래도 오늘은 돌아오는 게 늦어지는 모양이다…
+		PRINTFORML
+		PRINTFORML 전화에서는 %CALLNAME:ARG%의 목소리와 함께, 남자의 것인듯한 숨소리와
+		PRINTFORML 『무언가』와 『무언가』가 부딪치는 듯한 리드미컬한 소리가 들려왔다
+		PRINTFORML 그 소리의 리듬이 빨라질 때마다 %CALLNAME:ARG%의 목소리는 더욱 드문드문 해졌고
+		PRINTFORML 한마디 말할 때마다 신음소리 같은 것이 섞이는 듯했다
+		PRINTFORMW %조사처리(CALLNAME:ARG,"가")% 숨이 끊어질듯이 『걱정하지 마』라고 말하자, 갑자기 전화가 끊어졌다
+		SETCOLOR COLOR("dark-pink")
+		PRINTFORMW 전화가 끊기기 직전, %조사처리(CALLNAME:ARG,"가")% 질내사정을 재촉하는 목소리가 들려온 듯한 기분이다…
+		RESETCOLOR
+		PRINTFORML
+		PRINTFORML ・
+		PRINTFORML ・・
+		PRINTFORML ・・・
+		PRINTFORML 늦게나마 돌아온 %조사처리(CALLNAME:ARG,"는")% 『급료』라고 쓰여진 봉투를 건네주고는 방에서 나갔다
+		PRINTFORMW 안에는 ￥{LOCAL:2}이 들어있었다…
+		PRINTFORML
+		PRINTFORML
+		TCVAR:ARG:획득Ｖ경험 = 2 + LOCAL:1
+		TCVAR:ARG:획득정액경험 = 2 + LOCAL:1
+		TCVAR:ARG:획득성교경험 = 2 + LOCAL:1
+		TCVAR:ARG:획득질사경험 = 2 + LOCAL:1
+		TCVAR:ARG:획득절정경험 = 1 + RAND:(LOCAL:1)
+	ELSEIF RAND:2 == 0
+		IF RAND:2 == 0
+			PRINTFORML 간부남에게서 전화가 걸려왔다
+			PRINTFORML 『바쁜 도중에 미안하군』
+			PRINTFORML 『%CALLNAME:ARG% 말인데, 오늘 일이 너무나도 힘들었는지, 잠들어버렸거든』
+			PRINTFORML 『깨우기도 미안하니까, 이쪽에서 거기로 보내줬어』
+			PRINTFORML 『이제 슬슬, 그쪽에 『배달』되지 않을까』
+			PRINTFORMW 간부남이 그렇게 말하는 것과 동시에 현관 벨이 울렸다
+			PRINTFORML
+			PRINTFORML 문을 열어보자, 택배원 남자가 커다란 골판지상자를 들고 왔다
+			PRINTFORMW %조사처리(CALLNAME:MASTER,"가")% 상자를 안으로 옮겨와 열어보자
+			SETCOLOR COLOR("dark-pink")
+			PRINTFORML 전신을 하얀 점액으로 더럽힌 %조사처리(CALLNAME:ARG,"가")% 사지가 묶인 채 들어있었다
+			RESETCOLOR
+			PRINTFORMW 『잘 배달되었겠지, 뭐 『망가진 물건』으로 주문했으니까 말이지, 크크크!』
+			SETCOLOR COLOR("dark-pink")
+			PRINTFORML %조사처리(CALLNAME:ARG,"는")% 공허한 눈으로 간부남에게 충성하는 말을 중얼거리고 있다…
+			RESETCOLOR
+		ELSE
+			PRINTFORML %조사처리(CALLNAME:ARG,"가")% 비틀거리는 발걸음으로 돌아왔다
+			PRINTFORML 옷은 갈갈이 찢겨져, 전신은 정액 투성이로 더럽혀져 있다.
+			PRINTFORML 바로 이전까지 많은 사람들에게서 범해진 듯 심한 몰골이었다.
+			PRINTFORML 
+			PRINTFORML %조사처리(CALLNAME:MASTER,"가")% 달려가 말을 걸어도 %조사처리(CALLNAME:ARG,"는")% 아무 말 없이,
+			SETCOLOR COLOR("dark-pink")
+			PRINTFORMW 공허한 눈으로 간부남에게 충성하는 말을 그저 반복하고 있다……
+			RESETCOLOR
+		ENDIF
+		
+		PRINTFORML 
+		PRINTFORML 
+		PRINTFORML %CALLNAME:ARG%에게 붙여져 있던 『급료』라고 쓰여진 봉투를 뜯자
+		PRINTFORMW 안에는 ￥{LOCAL:2}이 들어있었다…
+		PRINTFORML
+		PRINTFORML
+		TCVAR:ARG:획득Ｖ경험 = 2 + LOCAL:1
+		TCVAR:ARG:획득정액경험 = 2 + LOCAL:1
+		TCVAR:ARG:획득성교경험 = 2 + LOCAL:1
+		TCVAR:ARG:획득질사경험 = 2 + LOCAL:1
+		TCVAR:ARG:획득절정경험 = 1 + RAND:(LOCAL:1)
+	ELSE
+	;	LOCAL:2 = RAND:100 + 1
+		PRINTFORML %조사처리(CALLNAME:ARG,"가")% 돌아왔다
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 『급료』라고 쓰여진 봉투를 넘겨주고는 방에서 나갔다
+		PRINTFORMW 안에는 ￥{LOCAL:2}이 들어있었다…
+	ENDIF
+	
+;呼び出し：寝取られ前
+ELSEIF CFLAG:ARG:上司来襲 == 2
+	PRINTFORML %조사처리(CALLNAME:ARG,"가")% 돌아왔다
+	PRINTFORMW %조사처리(CALLNAME:ARG,"는")% %CALLNAME:MASTER%에게 살짝 키스하고는, 도망치듯 방에서 나갔다
+	
+;報告
+ELSEIF RAND:3 == 0 && CFLAG:ARG:上司이벤트進行度 <= 3 && CFLAG:ARG:上司来襲 == 1
+	PRINTFORMW 연락으로 들은 시간 대로, 간부남이 %조사처리(CALLNAME:ARG,"를")% 데리고 찾아왔다
+	PRINTFORMW 『이야~, 이번 접대는 대성공이야. 이걸로 또 조직의 영향력을 강하게 할 수 있었다』
+	PRINTFORML 『그렇지, 그녀도 열심히 했어. 칭찬해줘도 좋아』
+	PRINTFORMW 『상대가 무척 마음에 들해서 말이지, 크큭. 제법 놓아주려고 하지 않았다고』
+	PRINTFORML 
+	IF TALENT:ARG:임신
+		PRINTFORML %조사처리(CALLNAME:ARG,"가")% 비통한 표정으로 %CALLNAME:MASTER%에게 다가왔다
+		PRINTFORMW 그리고, %CALLNAME:MASTER%에게 껴안겨서 소리 높혀 울기 시작했다
+		PRINTFORML 
+		PRINTFORMW 『아아, 깜빡했네, %조사처리(CALLNAME:ARG,"는")% 임신해버린 모양이야』
+		PRINTFORMW 『크큭, 그만큼 사정당하면 말이지…』
+;		PRINTFORMW 『그렇지…, 내 고객 중에는 임신 좋아하는 사람은 없어서 말야』
+;		PRINTFORMW 『다음번까지 어떻게든 해주면 좋겠는데…　크크큭』
+		PRINTFORMW 그렇게 말하고 남자는 울면서 무너진 %조사처리(CALLNAME:ARG,"를")% 남기고 떠나갔다
+	ELSE
+		PRINTFORML %조사처리(CALLNAME:ARG,"가")% 아무 말 없이 %CALLNAME:MASTER%에게 안겨들었다
+		SETCOLOR COLOR("dark-pink")
+		PRINTFORMW 꽉 잡은 손은 조금씩 떨리고 있었다
+		RESETCOLOR
+	ENDIF
+ELSEIF RAND:3 == 0 && CFLAG:ARG:上司이벤트進行度 > 3 && CFLAG:ARG:上司이벤트進行度 <= 6 && CFLAG:ARG:上司来襲 == 1
+	PRINTFORMW 연락으로 들은 시간보다 살짝 늦게, 간부남이 %조사처리(CALLNAME:ARG,"를")% 데리고 찾아왔다
+	PRINTFORMW 『이야~, 이번 접대는 대성공이야. 이걸로 또 조직의 영향력을 강하게 할 수 있었다』
+	PRINTFORML 『%조사처리(CALLNAME:ARG,"는")% 여전히 열심히 해줬어, 널 위해 잔뜩 일해주더군』
+	PRINTFORMW 『상대가 %CALLNAME:ARG%에게 엄청 집착해서, 그녀를 임신시키려고 노력하던데』
+	PRINTFORML 
+	IF TALENT:ARG:임신
+		PRINTFORML 『그 결과, 임신해버린 거 같지만… 딱히 상관없겠지 크큭』
+		PRINTFORML 남자는 작게 웃으며 %조사처리(CALLNAME:ARG,"를")% %CALLNAME:MASTER%에게 밀쳐넘겼다
+		PRINTFORMW 멍한 표정인 %조사처리(CALLNAME:ARG,"가")% 비틀거리는 발걸음으로 %CALLNAME:MASTER% 곁으로 걸어왔다
+		PRINTFORML 
+		PRINTFORMW 『크큭, 나중에 %조사처리(CALLNAME:ARG,"를")% 칭찬해주도록 해』
+		PRINTFORMW 『임신하면서까지 널 위해서 노력했으니까…　크크큭』
+;		PRINTFORML 
+;		PRINTFORMW 『그렇지…, 내 고객 중에는 임신 좋아하는 사람은 없어서 말야』
+;		PRINTFORMW 『다음번까지 어떻게든 해주면 좋겠는데…　크크큭』
+;		PRINTFORML 
+		PRINTFORMW 남자가 웃으면서 말하는 도중 %CALLNAME:ARG%의 질에서 누르스름한 정액이 새어 허벅지를 더럽히고 있었다
+	ELSE
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 깊이 예를 표하며 간부남을 배웅했다
+		SETCOLOR COLOR("dark-pink")
+		PRINTFORML 간부남을 배웅하는 %CALLNAME:ARG%의 허벅지에서 누르스름한 정액이 흐르고 있었다
+		RESETCOLOR
+	ENDIF
+	TCVAR:ARG:획득Ｖ경험 = 2 + LOCAL:1
+	TCVAR:ARG:획득정액경험 = 2 + LOCAL:1
+	TCVAR:ARG:획득성교경험 = 2 + LOCAL:1
+	TCVAR:ARG:획득질사경험 = 2 + LOCAL:1
+	TCVAR:ARG:획득절정경험 = 1 + RAND:(LOCAL:1)
+ELSEIF RAND:3 == 0 && CFLAG:ARG:上司이벤트進行度 > 6 && CFLAG:ARG:上司이벤트進行度 <= 9 && CFLAG:ARG:上司来襲 == 1
+	PRINTFORMW 연락으로 들은 시간보다도 훨씬 늦게 간부남이 %조사처리(CALLNAME:ARG,"를")% 데리고 찾아왔다
+	PRINTFORMW 데리고 온 %조사처리(CALLNAME:ARG,"는")% 아무것도 입지 않은 채,
+	PRINTFORMW 배는 마치 임산부처럼 부풀어올라 있었고, 비부에는 극태 바이브를 삽입당해 음란한 소리를 내고 있었다
+	PRINTFORMW
+	PRINTFORMW 『이야~, 이번 접대는 대성공이야. 이걸로 또 조직의 영향력을 강하게 할 수 있었다』
+	PRINTFORML 『%조사처리(CALLNAME:ARG,"는")% 정말 일 열심이라, 이런 시간까지 잔업을 해주더군』
+	PRINTFORMW 『상대가 여전히 %CALLNAME:ARG%에게 집착해서 말이야』
+	PRINTFORMW 『정력증강제까지 먹고 %조사처리(CALLNAME:ARG,"를")% 임신시키려고 했어』
+	PRINTFORMW
+	PRINTFORML 간부남은 그렇게 말하고는, %CALLNAME:ARG%의 비부에 꽂혀져 있던 바이브를 뽑아냈다
+	PRINTFORML 벌컥하고 소리내며 %CALLNAME:ARG%의 질구에서 누르스름한 정액이 대량으로 분출되어, 마루에 커다란 웅덩이를 만들었다
+	IF TALENT:ARG:임신
+		PRINTFORML 『하하하, 이렇게나 사정 당했을 줄이야. 임신했을 테지…. 크크크』
+		PRINTFORML 『여기에 오기 전에 검사했다만, 자 보라구…』
+		PRINTFORMW 그렇게 말하며 남자는 %CALLNAME:MASTER%에게 사용이 끝난 임신검사약을 넘겨줬다
+		SETCOLOR COLOR("dark-pink")
+		PRINTFORMW 거기엔 확실하게 임신을 알리는 선이 떠올라있었다
+		RESETCOLOR
+		PRINTFORML 
+		SETCOLOR COLOR("dark-pink")
+		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 임신이라는 사실에 몸을 떨면서도
+		PRINTFORML 마루에 뿜어내어진 심하게 달라붇는 정액을 혀로 핥아내고 있다…
+		RESETCOLOR
+	ELSE
+		PRINTFORML 『하하하, 이렇게나 사정 당했을 줄이야. 이건 진짜 임신했을지도 모르겠는데…』
+		PRINTFORML 
+		SETCOLOR COLOR("dark-pink")
+		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 아직도 자궁에서 계속 역류하고 있는 정액의 감촉에 몸서리치면서
+		PRINTFORML 마루에 뿜어내어진 심하게 달라붇는 정액을 혀로 핥아내고 있다…
+		RESETCOLOR
+	ENDIF
+	TCVAR:ARG:획득Ｖ경험 = 3 + LOCAL:1 + RAND:(LOCAL:1)
+	TCVAR:ARG:획득정액경험 = 3 + LOCAL:1 + RAND:(LOCAL:1)
+	TCVAR:ARG:획득성교경험 = 3 + LOCAL:1 + RAND:(LOCAL:1)
+	TCVAR:ARG:획득질사경험 = 3 + LOCAL:1 + RAND:(LOCAL:1)
+	TCVAR:ARG:획득절정경험 = 2 + LOCAL:1
+;つまみ食いフェラ編
+ELSEIF RAND:2 == 0 && CFLAG:ARG:上司이벤트進行度 <= 3 && CFLAG:ARG:上司来襲 == 1
+	PRINTFORMW 연락으로 들은 시간 대로, 간부남이 %조사처리(CALLNAME:ARG,"를")% 데리고 찾아왔다
+	PRINTFORMW 『이야~, 이번 접대는 대성공이야. 이걸로 또 조직의 영향력을 강하게 할 수 있었다』
+	PRINTFORML 『그렇지, 그녀도 열심히 했어. 칭찬해줘도 좋아』
+	IF TALENT:ARG:임신
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 어두운 표정으로, 고개를 숙이고 있다
+		PRINTFORML 
+		PRINTFORMW 『상대가 너무나도 그녀의 봉사를 칭찬해줘서 말이지…』
+		PRINTFORMW 『여기 오기 전까지 조금 시험해 봤지만, 임산부의 봉사란 것도, 꽤… 크큭』
+		PRINTFORMW 『응? 아아… 깜빡했다만, %조사처리(CALLNAME:ARG,"는")% 임신해버린 모양이야』
+		PRINTFORMW 『하핫, 그만큼 사정당하면 말이지…』
+		PRINTFORMW 그렇게 말하고 남자는 울면서 무너진 %조사처리(CALLNAME:ARG,"를")% 남기고 떠나갔다
+		SETCOLOR COLOR("dark-pink")
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 배에 손을 댄 채로, 오열하고 있다
+		RESETCOLOR
+	ELSE
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 입을 누르고, 고개를 숙이고 있다
+		PRINTFORML 
+		PRINTFORMW 『상대가 너무나도 그녀의 봉사를 칭찬해줘서 말이지…』
+		PRINTFORMW 『여기 오기 전까지 조금 시험해봤어, 꽤나 잘 길들여놓은 모양이네』
+		PRINTFORML 『정액을 삼키는 모습같은 거도 꽤… 크크큭』
+		PRINTFORML 
+		SETCOLOR COLOR("dark-pink")
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 입을 가린 채로, 오열하고 있다
+		RESETCOLOR
+	ENDIF
+	TCVAR:ARG:획득펠라경험 = LOCAL:1
+	TCVAR:ARG:획득정액경험 = LOCAL:1
+	TCVAR:ARG:획득봉사쾌락경험 = LOCAL:1
+
+ELSEIF RAND:2 == 0 && CFLAG:ARG:上司이벤트進行度 > 3 && CFLAG:ARG:上司이벤트進行度 <= 6 && CFLAG:ARG:上司来襲 == 1
+	PRINTFORMW 연락으로 들은 시간보다 살짝 늦게, 간부남이 %조사처리(CALLNAME:ARG,"를")% 데리고 찾아왔다
+	PRINTFORMW 『이야~, 이번 접대는 대성공이야. 이걸로 또 조직의 영향력을 강하게 할 수 있었다』
+	PRINTFORML 『%조사처리(CALLNAME:ARG,"는")% 여전히 열심히 해줬어, 널 위해 잔뜩 일해주더군』
+	IF TALENT:ARG:임신
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 남자의 뒤에서 무표정으로 서 있다
+		PRINTFORML 
+		PRINTFORMW 『역시 그녀의 봉사는 평판이 좋아』
+		PRINTFORMW 『조금 더 사용했어』
+		PRINTFORML 『임신에 놀라면서도, 요도 안의 정액을 먹는 모습은… 크크큭』
+		PRINTFORMW 『응? 아아…깜빡했다만, %조사처리(CALLNAME:ARG,"는")% 임신해버린 모양이야』
+		PRINTFORMW 『하핫, 그만큼 사정당하면 말이지…』
+		PRINTFORML 간부남이 웃으면서 눈짓을 하자 %조사처리(CALLNAME:ARG,"는")% 남자의 뒤에서 한걸음 걸어왔다
+		SETCOLOR COLOR("dark-pink")
+		PRINTFORMW 고개를 숙이며 배에 손을 대고 있는 %CALLNAME:ARG%의 표정은 남자의 말이 사실이란 것을 나타내고 있었다
+		RESETCOLOR
+	ELSE
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 입 안에 『무언가』를 머금은 채 무표정으로 서 있었다
+		PRINTFORML 
+		PRINTFORMW 『역시 그녀의 봉사는 평판이 좋아』
+		PRINTFORMW 『조금 더 사용했어』
+		PRINTFORML 『요도 안의 정액까지 먹어치울 줄이야, 꽤 잘 길들인 모양이구만… 크크큭』
+		PRINTFORML 
+		SETCOLOR COLOR("dark-pink")
+		PRINTFORML 간부남이 눈짓을 하자 %조사처리(CALLNAME:ARG,"는")% 입 안의 『무언가』를 삼켰다
+		RESETCOLOR
+	ENDIF
+	TCVAR:ARG:획득펠라경험 = 2 + LOCAL:1
+	TCVAR:ARG:획득정액경험 = 2 + LOCAL:1
+	TCVAR:ARG:획득봉사쾌락경험 = 2 + LOCAL:1
+ELSEIF RAND:2 == 0 && CFLAG:ARG:上司이벤트進行度 > 6 && CFLAG:ARG:上司이벤트進行度 <= 9 && CFLAG:ARG:上司来襲 == 1
+	PRINTFORMW 연락으로 들은 시간보다도 훨씬 늦게, 간부남이 %조사처리(CALLNAME:ARG,"를")% 데리고 찾아왔다
+	PRINTFORMW 『이야~, 이번 접대는 대성공이야. 이걸로 또 조직의 영향력을 강하게 할 수 있었다』
+	PRINTFORML 『%조사처리(CALLNAME:ARG,"는")% 정말 일 열심이라, 이런 시간까지 잔업을 해주더군』
+	IF TALENT:ARG:임신
+		PRINTFORML 남자 옆에 선 %조사처리(CALLNAME:ARG,"는")% 배에 손을 대고, 왠지 황홀한듯한 모습으로 미소짓고 있다
+		PRINTFORML 
+		PRINTFORMW 『변함없이 %CALLNAME:ARG%의 혀놀림은 훌륭하네』
+		PRINTFORMW 『여기 올 때까지 몇 번이고 짜내여져버렸어』
+		PRINTFORML 『응? 아아, %CALLNAME:ARG%의 상태가 신경쓰이는 거지?』
+		PRINTFORML 『크크큭, 이건 상대쪽 노력의 결과거든…』
+		PRINTFORML 『어이쿠, 떠올렸더니 발기해버리고 말았네』
+
+		PRINTFORML 간부남은 지퍼를 내리고는, 바지에서 늠름히 발기한 육봉을 꺼내들었다
+		PRINTFORML 『%CALLNAME:ARG%, 미안하지만 또 처리해주지 않겠어?』
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 간부남에게 명령받자, 『봉사하겠습니다』라고 말하곤
+		PRINTFORMW 간부남에게 푹 숙여 인사를 한 다음, 페니스에 혀를 감고, 입으로 봉사를 시작했다…
+		PRINTFORML 
+		PRINTFORML 『질내사정을 조르는 %CALLNAME:ARG%에게 응한 결과, 임신해버리고 말았다만』
+		PRINTFORMW 『황홀한 표정으로 정액을 받아들이는 %CALLNAME:ARG%의 모습은… 오옷… 최고였어, 하하하!』
+		PRINTFORML 
+		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 올려다보면서, 기분 좋게 웃는 간부남의 페니스를 성심껏 봉사하고 있다
+		PRINTFORMW 그 봉사하는 모습은 %CALLNAME:MASTER%에게 하는 것 보다 열심인듯이 보였다…
+		PRINTFORMW
+		PRINTFORMW
+		SETCOLOR COLOR("dark-pink")
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 입안에 사정당한 정액을 %CALLNAME:MASTER%에게 보여준 뒤
+		PRINTFORML 맛을 음미하면서 삼키고, 『사용해주셔서 정말로 감사합니다』라고 말하고
+		PRINTFORML 간부남에게 푹 숙여 인사했다…
+		RESETCOLOR
+	ELSE
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 입 주변에 하얀 점액을 묻힌 채로 이쪽을 보고 미소짓고 있다
+		PRINTFORML 
+		PRINTFORMW 『변함없이 %CALLNAME:ARG%의 혀놀림은 훌륭하네』
+		PRINTFORMW 『여기 올 때까지 몇 번이고 짜내여져버렸어』
+		PRINTFORML 『어이쿠, 말하는 동안 또 발기해버린 거 같아』
+		PRINTFORML 
+		PRINTFORML 간부남은 지퍼를 내리고는, 바지에서 늠름히 발기한 육봉을 꺼내들었다
+		PRINTFORML 『%CALLNAME:ARG%, 미안하지만 또 처리해주지 않겠어?』
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 간부남에게 명령받자, 『봉사하겠습니다』라고 말하곤
+		PRINTFORMW 간부남에게 푹 숙여 인사를 한 다음, 페니스에 혀를 감고, 입으로 봉사를 시작했다…
+		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 올려다보면서 간부남의 페니스를 성심껏 봉사하고 있다
+		PRINTFORMW 그 봉사하는 모습은 %CALLNAME:MASTER%에게 하는 것보다 열심인 걸로 보였다…
+		PRINTFORMW
+		PRINTFORMW
+		SETCOLOR COLOR("dark-pink")
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 입안에 사정당한 정액을 %CALLNAME:MASTER%에게 보여준 뒤
+		PRINTFORML 맛을 음미하면서 삼키고, 『사용해주셔서 정말로 감사합니다』라고 말하고
+		PRINTFORML 간부남에게 푹 숙여 인사했다…
+		RESETCOLOR
+	ENDIF
+	TCVAR:ARG:획득펠라경험 = 4 + LOCAL:1
+	TCVAR:ARG:획득정액경험 = 4 + LOCAL:1
+	TCVAR:ARG:획득봉사쾌락경험 = 4 + LOCAL:1
+;つまみ食い本番編
+ELSEIF CFLAG:ARG:上司来襲 == 1 && CFLAG:ARG:上司이벤트進行度 <= 3
+	PRINTFORMW 연락으로 들은 시간 대로, 간부남이 %조사처리(CALLNAME:ARG,"를")% 데리고 찾아왔다
+	PRINTFORMW 『이야~, 이번 접대는 대성공이야. 이걸로 또 조직의 영향력을 강하게 할 수 있었다』
+	PRINTFORML 『그렇지, 그녀도 열심히 했어. 칭찬해줘도 좋아』
+	IF TALENT:ARG:임신
+		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 자기 자신을 껴안으면서 눈물을 흘리고 있다
+		PRINTFORML 
+		PRINTFORMW 『그녀의 평판이 꽤 좋아서 말이지…』
+		PRINTFORML 『여기 올 때까지 사용 좀 했어』
+		PRINTFORML 
+		PRINTFORML 『이번 접대에서 임신해버린 거 같아서 사양 않고 안에다 싸줬는데』
+		PRINTFORMW 『질내사정할 때마다의 그 조임은 꽤나…, 크크큭』
+		PRINTFORML 
+		SETCOLOR COLOR("dark-pink")
+		PRINTFORML 움찔하고 몸을 떠는 %CALLNAME:ARG%의 허벅지에서 하얀 점액이 흐르고 있다
+		RESETCOLOR
+	ELSE
+		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 자신을 안으면서 떨고 있다
+		PRINTFORML 
+		PRINTFORMW 『그녀의 평판이 꽤 좋아서 말이지…』
+		PRINTFORML 『여기 올 때까지 사용 좀 했어』
+		PRINTFORML 
+		PRINTFORML 『꽤나 좋은 구멍으로 조교해놨더구만, 실로 기분 좋은 감촉이었어』
+		PRINTFORMW 『질내사정할 때마다의 그 조임은 꽤나…, 크크큭』
+		PRINTFORML 
+		SETCOLOR COLOR("dark-pink")
+		PRINTFORML 움찔하고 몸을 떠는 %CALLNAME:ARG%의 허벅지에서 하얀 점액이 흐르고 있다
+		RESETCOLOR
+	ENDIF
+	TCVAR:ARG:획득Ｖ경험 = LOCAL:1
+	TCVAR:ARG:획득정액경험 = LOCAL:1
+	TCVAR:ARG:획득성교경험 = LOCAL:1
+	TCVAR:ARG:획득질사경험 = LOCAL:1
+	TCVAR:ARG:획득절정경험 = RAND:(LOCAL:1)
+	CFLAG:ARG:105 += LOCAL:1 + TCVAR:ARG:획득절정경험
+
+ELSEIF CFLAG:ARG:上司이벤트進行度 <= 6 && CFLAG:ARG:上司이벤트進行度 > 3 && CFLAG:ARG:上司来襲 == 1
+	PRINTFORMW 연락으로 들은 시간보다 살짝 늦게 간부남이 %조사처리(CALLNAME:ARG,"를")% 데리고 찾아왔다
+	PRINTFORMW 『이야~, 이번 접대는 대성공이야. 이걸로 또 조직의 영향력을 강하게 할 수 있었다』
+	PRINTFORML 『%조사처리(CALLNAME:ARG,"는")% 여전히 열심히 해줬어, 널 위해 잔뜩 일해주더군』
+	PRINTFORMW 데리고 온 %조사처리(CALLNAME:ARG,"는")% 군데군데 옷이 풀어헤쳐져 있었고
+	PRINTFORMW 얼굴은 상기되었고, 숨도 『왠지 격렬한 운동』을 한 뒤처럼 흐트러져 있다
+	IF TALENT:ARG:임신
+		PRINTFORML 
+		PRINTFORMW 『그건 그렇고, 또 %CALLNAME:ARG%의 구멍을 조금 사용했어』
+		PRINTFORML 『물론 그녀의 허가는 받았지』
+		PRINTFORML 
+		PRINTFORML 『임신하고 있는 데도 변함없이 도중부터 %CALLNAME:ARG%도 적극적으로 요구해와서 말이야…』
+		PRINTFORMW 『막 머물기 시작한 아기가 걱정이 되더라고, 하하, 하하하!』
+		PRINTFORML 
+		IF HAVE_PENIS(MASTER)
+			PRINTFORML 『응? 아아, 이번 접대로 %조사처리(CALLNAME:ARG,"는")% 임신해버렸단 말이지…』
+			PRINTFORMW 『앞으로는 너도 마음 편히 질내사정할 수 있겠어, 크크큭』
+		ELSE
+			PRINTFORML 『응? 아아, 이번 접대로 %조사처리(CALLNAME:ARG,"는")% 임신해버렸단 말이지…』
+			PRINTFORMW 『조직을 위해서인데, 노예의 임신 정도는 상관없잖아? 하하하!』
+		ENDIF
+		PRINTFORML 
+		SETCOLOR COLOR("dark-pink")
+		PRINTFORML 움찔하고 몸을 떠는 %CALLNAME:ARG%의 질에서 하얀 점액 덩어리가 흘러넘쳤다
+		RESETCOLOR
+	ELSE
+		PRINTFORML 
+		PRINTFORMW 『그건 그렇고, 또 %CALLNAME:ARG%의 구멍을 조금 사용했어』
+		PRINTFORML 『물론 그녀의 허가는 받았지』
+		PRINTFORML 
+;		PRINTFORML 『도중부터는 %CALLNAME:ARG%도 적극적으로 요구해와서 말이야… 마지막에는 질내사정을 조르더라고.』
+		PRINTFORML 『도중부터는 %CALLNAME:ARG%도 적극적으로 요구해와서 말이야…, 질내사정을 조르면서 발을 휘감아오는 모습은 꽤…』
+		PRINTFORMW 『나와 %조사처리(CALLNAME:ARG,"는")% 속궁합이 좋을지도 모르겠는데…, 크크크!』
+		PRINTFORML 
+		SETCOLOR COLOR("dark-pink")
+		PRINTFORML 움찔하고 몸을 떠는 %CALLNAME:ARG%의 질에서 하얀 점액 덩어리가 흘러넘쳤다
+		RESETCOLOR
+	ENDIF
+	TCVAR:ARG:획득Ｖ경험 = 2 + LOCAL:1
+	TCVAR:ARG:획득정액경험 = 2 + LOCAL:1
+	TCVAR:ARG:획득성교경험 = 2 + LOCAL:1
+	TCVAR:ARG:획득질사경험 = 2 + LOCAL:1
+	TCVAR:ARG:획득절정경험 = 1 + RAND:(LOCAL:1)
+	CFLAG:ARG:105 += LOCAL:1 + TCVAR:ARG:획득절정경험
+ELSEIF CFLAG:ARG:上司이벤트進行度 <= 9 && CFLAG:ARG:上司이벤트進行度 > 6 && CFLAG:ARG:上司来襲 == 1
+	IF TALENT:ARG:임신
+		PRINTFORMW 연락으로 들은 시간보다도 훨씬 늦게, 사무소 앞까지 데리러 오라고 간부남에게서 연락이 왔다
+		PRINTFORMW 밖으로 나가자 길 한구석에 부자연스럽게 흔들리는 간부남의 차가 있었다
+		PRINTFORMW 슬며시 엿본 차 안에서는 %조사처리(CALLNAME:ARG,"가")% 좌석에 앉은 남자에게 올라타 허리를 비비 꼬고 있었다
+		PRINTFORML 
+		PRINTFORMW 『하하하, 이런 모습이라 미안하네』
+		PRINTFORML 『훨씬 전에 도착은 했었는데, %조사처리(CALLNAME:ARG,"가")% 좀처럼 놔주질 않아서 말이야…』
+		PRINTFORML 『뭐어, 조금 있으면 끝나니까, 잠깐만 기다려달라구』
+		PRINTFORML 
+		PRINTFORML 간부남은 그렇게 말하곤 %CALLNAME:ARG%의 몸을 강하게 껴안고, 격렬히 움직이기 시작했다
+		PRINTFORML 간부남이 허리를 단번에 쳐올리자, %조사처리(CALLNAME:ARG,"는")% 등을 뒤로 튕기면서 절정에 달했다
+		PRINTFORML 『후우…, 정말이지, 성욕이 강한 노예를 가지면 큰일이라니까… 크큭』
+		PRINTFORMW 『사무소에서 기다리는 너에 대해 이야기해도 페니스에서 떨어지려고 안 하잖아, 하하하!』
+		PRINTFORMW 
+		PRINTFORML 『그렇지, 데리러 오라고 한 건 이유가 있어』
+		PRINTFORML 『이번 접대로 %조사처리(CALLNAME:ARG,"가")% 임신해버려서, 그걸 신경써서 그런거야』
+		PRINTFORMW 『내 상냥함에 감사하라구, 하하, 하하하!』
+		PRINTFORML 
+		SETCOLOR COLOR("dark-pink")
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 절정의 여운에 부들부들 떨면서 남자에게 들러붙어, 아직 부족한듯이 허리를 움직였다
+		RESETCOLOR
+	ELSE
+		PRINTFORMW 연락으로 들은 시간보다도 훨씬 늦게, 간부남이 %조사처리(CALLNAME:ARG,"를")% 데리고 찾아왔다
+		PRINTFORMW 『이야~, 이번 접대는 대성공이야. 이걸로 또 조직의 영향력을 강하게 할 수 있었다』
+		PRINTFORML 『%조사처리(CALLNAME:ARG,"는")% 정말 일 열심이라, 이런 시간까지 잔업을 해주더군』
+		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 대면좌위 자세로 간부남과 교접하면서 같이 온 모양이다
+		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 발을 휘감고 스스로 허리를 움직이면서, 간부남의 정액을 짜내려고 하고 있다
+		PRINTFORML 
+		PRINTFORMW 『하하하, 이런 모습이라 미안하네』
+		PRINTFORML 『또 %CALLNAME:ARG%의 구멍을 사용했는데 말이지』
+		PRINTFORML 『%조사처리(CALLNAME:ARG,"가")% 좀처럼 놔주질 않아서 말이야…』
+		PRINTFORML 『뭐어, 조금 있으면 끝나니까, 잠깐만 기다려달라구』
+		PRINTFORML 
+		PRINTFORML 간부남은 그렇게 말하곤 %CALLNAME:ARG%의 몸을 강하게 껴안고, 격렬히 움직이기 시작했다
+		PRINTFORML 간부남이 허리를 단번에 쳐올리자, %조사처리(CALLNAME:ARG,"는")% 등을 뒤로 튕기면서 절정에 달했다
+		PRINTFORML 『후우…, 정말이지, 성욕이 강한 노예를 가지면 큰일이라니까… 크큭』
+		PRINTFORMW 『그건 그렇고 바닥을 더럽히지 않으려고 안에다 싸버렸는데, 임신해버리면 미안하다, 하하하!』
+		PRINTFORMW  
+		PRINTFORML 
+		SETCOLOR COLOR("dark-pink")
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 질내에서 정액이 흘러내리지 않도록 스스로 극태 바이브를 삽입하여 자궁에 마개를 채웠다
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 바이브의 진동을 느끼면서 간부남의 페니스를 청소하고 있다
+		RESETCOLOR
+	ENDIF
+	TCVAR:ARG:획득Ｖ경험 = 3 + LOCAL:1
+	TCVAR:ARG:획득정액경험 = 3 + LOCAL:1
+	TCVAR:ARG:획득성교경험 = 3 + LOCAL:1
+	TCVAR:ARG:획득질사경험 = 3 + LOCAL:1
+	TCVAR:ARG:획득절정경험 = 2 + RAND:(LOCAL:1)
+	CFLAG:ARG:105 += LOCAL:1 + TCVAR:ARG:획득절정경험
+
+ENDIF
+IF  CFLAG:ARG:上司来襲 == 1 && !CFLAG:ARG:上司이벤트進行度 == 11
+	PRINTFORML 
+	PRINTFORML 『그럼 또 뭔가 있으면 연락을 하지. 조직을 위해서 몸이 가루가 되도록 일하라고』
+	PRINTFORMW 남자는 기분 좋게 떠나갔다
+	PRINTFORML 
+ENDIF
+CALL SHOW_ADD_EXP, ARG
+DRAWLINE
+
+;呼び出されていた場合、FLAG:上司来襲率-5
+SIF CFLAG:ARG:上司来襲 == 2
+	FLAG:上司来襲率 -= 0
+	
+;数値が마이ナスにならない様に
+SIF FLAG:上司来襲率 < 0
+	FLAG:上司来襲率 = 0
+
+CFLAG:ARG:上司来襲 = 0
+CFLAG:ARG:この場に居ないフラグ = 0
+SIF CFLAG:ARG:上司이벤트進行度 == 1
+	CFLAG:ARG:上司이벤트進行度 = 2
+
+;上司来襲
+@NTRJOUSHI
+#LOCALSIZE 4
+#DIM ＮＴＲリスト, 200
+#DIM LCOUNT
+VARSET ＮＴＲリスト, -1
+LOCAL:1 = 0
+;呼び出しの計算用
+LOCAL:2 = 0
+;上司が前日来ていたかどうかの판정用
+LOCAL:3 = 0
+IF GETBIT(FLAG:ＮＴＲ기능 , 63)
+	FOR LCOUNT, 0, CHARANUM
+		;女を渡した場合の翌日
+		IF CFLAG:LCOUNT:上司来襲 > 0
+			;上司が前日来ていたかどうか
+			SIF CFLAG:LCOUNT:上司来襲 == 2
+				LOCAL:3 = 1
+			CALL NTR_JOUSHI_2(LCOUNT)
+		ENDIF
+	NEXT
+	;CFLAG:上司이벤트進行度が7이상의 キャラがいる場合
+	;20％の확률로呼び出される
+	LOCAL:2 = FLAG:上司来襲率 - 30
+	LOCAL:2 = LIMIT(LOCAL:2 , 0, 30)
+	IF RAND:100 < 20 + LOCAL:2
+		FOR LOCAL,1,CHARANUM
+			SIF TALENT:LOCAL:임신 || TALENT:LOCAL:육아중
+				CONTINUE
+			SIF CFLAG:LOCAL:노역フラグ == 3
+				CONTINUE
+			SIF (CFLAG:LOCAL:그외 == 1116 || CFLAG:LOCAL:그외2 == 1116 || CFLAG:LOCAL:그외3 == 1116 || CFLAG:LOCAL:그외4 == 1116 || CFLAG:LOCAL:그외5 == 1116 || CFLAG:LOCAL:그외6 == 1116)
+				CONTINUE
+			SIF CFLAG:LOCAL:上司이벤트進行度 < 7
+				CONTINUE
+			SIF CFLAG:LOCAL:上司이벤트進行度 == 10
+				CONTINUE
+			ＮＴＲリスト:(LOCAL:1) = LOCAL
+			LOCAL:1 ++
+		NEXT
+		SIF LOCAL:1 == 0
+			RETURN 0
+		LOCAL = ＮＴＲリスト:(RAND:(LOCAL:1))
+		SIF LOCAL < 1 && LOCAL >= CHARANUM
+			RETURN 0
+		;CFLAG:上司来襲が２の場合は呼び出しに分岐
+		CFLAG:LOCAL:上司来襲 = 2
+		;노역とパーティーを外す
+		SIF TARGET == LOCAL
+			TARGET = -1
+		SIF ASSI == LOCAL
+			ASSI = -1
+		CFLAG:LOCAL:この場に居ないフラグ = 1
+		CFLAG:LOCAL:노역フラグ = 0
+		IF CFLAG:LOCAL:劇場出演順番 != 0
+			DE:(49+(CFLAG:LOCAL:劇場出演順番)):(CFLAG:LOCAL:노역점포-1) = -1
+			DE:(59+(CFLAG:LOCAL:劇場出演順番)):(CFLAG:LOCAL:노역점포-1) = -1
+			CFLAG:LOCAL:노역フラグ = 0
+			CFLAG:LOCAL:劇場出演順番 = 0
+			CFLAG:LOCAL:노역점포 = 0
+		ENDIF
+		SIF CPOS(LOCAL) > 0
+			CALL REMOVE_POSITION,CPOS(LOCAL)
+		SETCOLOR COLOR("RED")
+		IF CFLAG:LOCAL:上司이벤트進行度 >= 13
+			PRINTFORMW %조사처리(CALLNAME:LOCAL,"는")% 어딘가 나간 모양이다
+		ELSE
+			PRINTFORMW %조사처리(CALLNAME:LOCAL,"는")% %CALLNAME:MASTER%에게 미소를 짓고는, 뭔가를 결의한 표정으로 나갔다
+		ENDIF
+		RESETCOLOR
+	;上司が来るかどうかの판정
+	ELSEIF RAND:60 < FLAG:上司来襲率 && !LOCAL:3 == 1
+		CALL JOUSHI_RAISYUU
+
+	ENDIF
+	;上司の来る확률は최대100％
+	FLAG:上司来襲率 += RAND:6
+	SIF FLAG:上司来襲率 > 100
+		FLAG:上司来襲率 = 100
+ENDIF
+
+

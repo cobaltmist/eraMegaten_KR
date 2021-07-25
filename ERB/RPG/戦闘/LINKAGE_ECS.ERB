@@ -1,0 +1,543 @@
+﻿
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:LINKAGE_ECS.ERB
+;	Facility	:エクスリンケージ用関数置き場
+;
+;	Licence		:ライセンスフリー。
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		20XX/XX/XX		----					新規作成
+;	002		2021/04/22		Rsp暇人 				WAIT表示が誰のリンケージ参加中かわかるようにするための変更に対応
+
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;=================================================
+;合体スキル用関数置き場
+;================================================
+
+
+;---- EDIT 023 ADD START ---------------------------
+;=================================================
+;입력結果：ＥＣＳＬＩＮＫＡＧＥ
+;=================================================
+;링케이지の内容コピって別に立てたる
+@INPUT_COM_19,ARG
+#DIM 元링케이지 , 1
+#DIM 元人数 , 1
+;LOCAL:1-5 참가予定者
+FOR LOCAL,1,6
+	LOCAL:LOCAL = -1
+NEXT
+元링케이지 = CFLAG:ARG:사용링케이지
+IF 元링케이지 < 4000
+	TRYCALLFORM 참가人数_{元링케이지}
+	FOR LOCAL, RESULT+1, 6
+		;PRINTFORML %CALLNAME:(CFLAG:ARG:(1253+LOCAL)%링케이지참가해제
+		CFLAG:ARG:("링케이지참가자"+ TOSTR(LOCAL)) = -1
+	NEXT
+ENDIF
+;元참가予定者
+FOR LOCAL,11,16
+	LOCAL:LOCAL = -1
+	IF CFLAG:ARG:("링케이지참가자"+ TOSTR(LOCAL-10)) > -1 && CFLAG:ARG:("링케이지참가자"+ TOSTR(LOCAL-10)) < CHARANUM && CFLAG:ARG:링케이지발동
+		IF CFLAG:(CFLAG:ARG:("링케이지참가자"+ TOSTR(LOCAL-10))):PTフラグ == 2
+			CFLAG:(CFLAG:ARG:("링케이지참가자"+ TOSTR(LOCAL-10))):링케이지참가 = 0
+			LOCAL:LOCAL = CFLAG:ARG:("링케이지참가자"+ TOSTR(LOCAL-10))
+			CFLAG:ARG:("링케이지참가자"+ TOSTR(LOCAL-10)) = -1
+		ENDIF
+	ENDIF
+NEXT
+;まず、Ｓに使える링케이지を立てる
+VARSET S , 0
+FOR LOCAL,4000,5000
+	TRYCCALLFORM LINKAGE_{LOCAL}
+		SIF RESULT == 0
+			CONTINUE
+	CATCH
+		CONTINUE
+	ENDCATCH
+	CALL ACTIONABLE_ECSLINKAGE,LOCAL,ARG
+	SIF RESULT == 1
+		S:(LOCAL-4000) = 1
+NEXT
+
+;표시
+$PRINT_ECSLINKAGE
+;LOCAL:20 = 0
+FOR LOCAL,4000,5000
+	IF S:(LOCAL-4000) == 1
+		CALLFORM SKILL_NAME_{LOCAL},ARG
+		PRINTFORM [{LOCAL}] %RESULTS,20,LEFT%
+		CALLFORM SKILL_EXPLAIN_{LOCAL}
+		PRINTL 발동자 　
+		CALLFORM SKILL_COSTTYPE_{LOCAL}, ARG
+		IF RESULT == 2
+			CALLFORM SKILL_COST_{LOCAL}, ARG
+			PRINTFORM ＨＰ{RESULT,3}％　
+		ELSE
+			CALLFORM SKILL_COST_{LOCAL}, ARG
+			PRINTFORM ＭＰ{RESULT,3}　　
+		ENDIF
+		CALLFORM 참가人数_{LOCAL}
+		LOCAL:32 = RESULT + 1
+		FOR LOCAL:31, 1, LOCAL:32
+			PRINTFORM 참가자{LOCAL:31}　
+			CALLFORM 링케이지コスト타입_{LOCAL}, LOCAL:31
+			IF RESULT == 2
+				CALLFORM 링케이지コスト_{LOCAL}, LOCAL:31
+				PRINTFORM ＨＰ{RESULT,3}％　
+			ELSE
+				CALLFORM 링케이지コスト_{LOCAL}, LOCAL:31
+				PRINTFORM ＭＰ{RESULT,3}　　
+			ENDIF
+			IF LOCAL:31 == LOCAL:32 - 1
+				PRINTL 
+			ELSEIF LOCAL:31 == 2
+				PRINTL 
+				PRINTFORM %" "* 27%
+			ENDIF
+		NEXT
+;		LOCAL:20 += 1
+;		SIF LOCAL:20 % 2 == 0 && LOCAL:20 > 0
+;			PRINTL
+	ENDIF
+NEXT
+PRINTL
+DRAWLINE
+PRINTL [1000]ＣＡＮＣＥＬ [999]ＲＥＰＥＡＴ [1001] ＡＮＡＬＹＺＥ
+
+$INPUT_LOOP1
+INPUT
+IF RESULT == 1000
+	;참가予定者関係を元に戻す
+	FOR LOCAL,11,16
+		IF LOCAL:LOCAL > -1
+			;PRINTFORML LOCAL:{LOCAL} = {LOCAL:LOCAL}
+			CFLAG:ARG:("링케이지참가자"+ TOSTR(LOCAL-10)) = LOCAL:LOCAL
+			;---- EDIT 002 MOD START ---------------------------
+			CFLAG:(LOCAL:LOCAL):링케이지참가 = ARG+1
+			;---- EDIT 002 MOD END ---------------------------
+		ENDIF
+		LOCAL:LOCAL = -1
+	NEXT
+	RETURN -1
+ELSEIF RESULT == 999
+	SIF CFLAG:ARG:사용링케이지 < 4000
+		GOTO INPUT_LOOP1
+	;전회사용したメンバーで사용できるか체크
+	LOCAL:7 = CFLAG:ARG:사용링케이지
+	CALL CHECK_ACTIONABLE,ARG,LOCAL:7
+	SIF RESULT == 0
+		GOTO INPUT_LOOP1
+	CALLFORM 참가人数_{LOCAL:7}
+	LOCAL:8 = RESULT
+	FOR LOCAL , 1 , LOCAL:8+1
+		SIF RANGE(LOCAL:(10+LOCAL), 0 , CHARANUM) == 0
+			GOTO INPUT_LOOP1
+		CALLFORM 참가者조건_{LOCAL:7}, LOCAL:(10+LOCAL) , LOCAL
+		SIF RESULT == 0
+			GOTO INPUT_LOOP1
+		CALL ACTIONABLE_CHARA,LOCAL:(10+LOCAL)
+		SIF RESULT == 0
+			GOTO INPUT_LOOP1
+		SIF CFLAG:(LOCAL:(10+LOCAL)):PTフラグ < 2
+			GOTO INPUT_LOOP1
+	NEXT
+	
+	;ここまで通ったら、LOCAL:1-6にLOCAL:11-16を投げてPRINT_MENEへ
+	FOR LOCAL, 1 , 7
+		LOCAL:LOCAL = LOCAL:(10+LOCAL)
+	NEXT
+	GOTO PRINT_MENE
+ELSEIF RESULT == 1001
+	CALL SHOW_LINKAGE
+	GOTO PRINT_ECSLINKAGE
+ELSEIF RESULT < 4000 || RESULT > 5000 || S:(RESULT-4000) == 0
+	GOTO INPUT_LOOP1
+ENDIF
+;LOCLA:7の스킬を사용
+LOCAL:7 = RESULT
+;発動者が사용できるか체크
+CALL CHECK_ACTIONABLE,ARG,LOCAL:7
+SIF RESULT == 0
+	GOTO INPUT_LOOP1
+;참가者표시
+$PRINT_MENE
+DRAWLINE
+CALLFORM 참가人数_{LOCAL:7}
+LOCAL:8 = RESULT
+;---- EDIT 010 MOD START -------------------------
+	CALLFORM SKILL_EXPLAIN_{LOCAL:7}
+;---- EDIT 010 MOD END   -------------------------
+
+FOR LOCAL,1,LOCAL:8+1
+	PRINTFORM [{LOCAL}]
+	IF LOCAL:LOCAL == -1
+		SETCOLOR 0x404040
+		PRINTFORM ＥＭＰＴＹ　　　　　：
+		RESETCOLOR
+	ELSE
+		PRINTFORM %CALLNAME:(LOCAL:LOCAL),20,LEFT%：
+	ENDIF
+	CALLFORM 참가조건표시_{LOCAL:7},LOCAL
+	PRINTL
+	PRINTL ↓
+NEXT
+PRINTFORM [{LOCAL:8+1}]%CALLNAME:ARG,20,LEFT%
+CALLFORM 참가조건표시_{LOCAL:7},LOCAL:8+1
+PRINTL 
+DRAWLINE
+PRINTL [0]ＯＫ      [10]ＣＡＮＣＥＬ
+
+$INPUT_LOOP2
+INPUT
+IF RESULT == 10
+	FOR LOCAL, 1, 6
+		LOCAL:LOCAL = -1
+	NEXT
+	GOTO PRINT_ECSLINKAGE
+ELSEIF RESULT == 0
+	;全部埋まってないと駄눈
+	IF MATCH(LOCAL,-1,1,LOCAL:8+1)
+		PRINTFORMW 참가자가 부족합니다
+		CLEARLINE 2
+		GOTO INPUT_LOOP2
+	ENDIF
+	;ターゲット決定＋行動입력
+	
+	CALLFORM SELECT_SKILL_TARGET,LOCAL:7,ARG
+	SIF RESULT == -1
+		GOTO PRINT_ECSLINKAGE
+
+
+	;--- ここから엑스링케이지実行
+	CFLAG:(ARG):ターゲット = RESULT
+	CFLAG:(ARG):입력行動 = LOCAL:7
+	CFLAG:ARG:사용링케이지 = LOCAL:7
+	CFLAG:ARG:링케이지발동 = 1
+
+	FOR LOCAL,1, 6
+		IF LOCAL > LOCAL:8
+			CFLAG:ARG:("링케이지참가자"+ TOSTR(LOCAL)) = -1
+		ELSE
+			;PRINTFORML %CALLNAME:(LOCAL:LOCAL)%が참가者 {LOCAL:LOCAL}
+			CFLAG:ARG:("링케이지참가자"+ TOSTR(LOCAL)) = LOCAL:LOCAL
+			;---- EDIT 002 MOD START ---------------------------
+			CFLAG:(LOCAL:LOCAL):링케이지참가 = ARG+1
+			;---- EDIT 002 MOD END ---------------------------
+		ENDIF
+	NEXT
+
+	;--- こっからbattleturnstartのほぼコピ
+	CALL SHOW_NOW_FORMATION_E,0,2, -2
+	DRAWLINE
+	CALL SHOW_NOW_FORMATION_P,0,2
+	DRAWLINE
+
+	SETCOLOR 0x33ffcc
+	PRINTFORML ┏>CHARA━━━━━━━━━━┓　┏>ACT━━━━━━━━━━━━━━━━━━┓
+	PRINTFORM ┃[{CFLAG:ARG:포지션,2}] %CALLNAME:ARG,21,LEFT%┃　┃
+	CALLFORM SKILL_NAME_{CFLAG:ARG:입력行動},ARG
+	PRINTFORML %RESULTS,40,LEFT%┃
+	PRINTFORMW ┗━━━━━━━━━━━━━┛　┗━━━━━━━━━━━━━━━━━━━━┛
+	
+	IF FLAG:RPG구상
+		SKIPDISP 1
+	ENDIF
+	;TARGET保存
+	LOCAL:11 = TARGET
+	TARGET = ARG
+	IF CFLAG:(ARG):PTフラグ == 0
+		TRYCCALLFORM ENEMY_BATTLE_MESSAGE_K{NO:(ARG)},ARG
+		CATCH
+		ENDCATCH
+	ELSE
+	;전투行動対応충성도上昇から呼び出すように변경
+	;	TRYCCALLFORM BATTLE_MESSAGE_K{NO:(ARG)},ARG
+	;	CATCH
+	;		TRYCALLFORM BATTLE_MESSAGE_PUB{ABL:(ARG):회화타입},ARG
+	;	ENDCATCH
+		;性格素質に応じて충성도が増える
+;		CALL 전투行動対応충성도上昇,ARG _|_|バグるのでオミット
+		IF TALENT:(ARG):페르소나구사자
+			RESULT = 0
+			TRYCALLFORM 참가人数_{CFLAG:(ARG):입력行動}
+			;페르소나구사자は공격참가で2の페르소나経験値を得る(링케이지の場合は참가人数*2)
+			CALL INCREASE_PERSONA_EXP, ARG, (RESULT+1)*2, CFLAG:(ARG):ターゲット
+		ENDIF
+	ENDIF
+	TARGET = LOCAL:11
+	SKIPDISP 0
+	RESETCOLOR
+
+	CALL PAY_COST, ARG, CFLAG:(ARG):입력行動
+
+	CALLFORM ACTION_{CFLAG:(ARG):입력行動}, ARG, CFLAG:(ARG):ターゲット
+	RESULT = 0
+
+	SIF ARG >= 0 && CFLAG:(ARG):입력行動 >= 0
+		CALLFORM SKILL_EFECT_{CFLAG:(ARG):입력行動}
+	SIF RESULT == 1
+		CALL BATTLE_EVENT_ATTACK
+	;기합・集中フラグの終了
+	IF CFLAG:(ARG):입력行動 > -1
+		RESULT = 0
+		TRYCALLFORM SKILL_DAMAGETYPE_{CFLAG:(ARG):입력行動}, ARG
+		IF RESULT == 1
+			CFLAG:(ARG):기합フラグ = 0
+			CFLAG:(ARG):베어내기フラグ = 0
+			CFLAG:(ARG):방어반감フラグ = 0
+		ELSEIF RESULT == 2
+			CFLAG:(ARG):集中フラグ = 0
+			CFLAG:(ARG):마법효과반감フラグ = 0
+		ENDIF
+	ENDIF
+	;HP흡수処理
+	SIF CFLAG:(ARG):ステート == GET_STATE_NUM("BRAND") && CFLAG:(ARG):HP흡수量 > 0
+		CFLAG:(ARG):HP흡수量 = 1
+	SIF CFLAG:(ARG):회복不能フラグ && CFLAG:(ARG):HP흡수量 > 0
+		CFLAG:(ARG):HP흡수量 = 0
+	IF CFLAG:(ARG):HP흡수量 != 0
+		PRINTL
+		PRINTFORM 　ATTACKER:[{CPOS(ARG),2}] %CALLNAME:(ARG),20,LEFT%
+		IF CFLAG:(ARG):HP흡수量 > 0
+			PRINTFORM 　흡수>>　{CFLAG:(ARG):HP흡수量}회복
+			CALL VAR_HP((ARG), CFLAG:(ARG):HP흡수量, 3)
+			PRINTL
+			PRINTW
+		ELSE
+			;2021/5/24
+			PRINTFORM 　반동>>　{-CFLAG:(ARG):HP흡수量}데미지
+			CALL VAR_HP((ARG), CFLAG:(ARG):HP흡수量, -1)
+			PRINTL
+			PRINTW
+		ENDIF
+	ENDIF
+	CFLAG:(ARG):HP흡수量 = 0
+	
+	;무효화횟수を減らす処理
+	FOR LOCAL:10,0,CHARANUM
+		FOR LOCAL:11,0,FLAG:相性数
+			IF CFLAG:(LOCAL:10):(GET_TYPE(LOCAL:11) + "被弾")
+				CFLAG:(LOCAL:10):(GET_TYPE(LOCAL:11) + "무효화횟수") -= 1
+				CFLAG:(LOCAL:10):(GET_TYPE(LOCAL:11) + "被弾") = 0
+			ENDIF
+		NEXT
+		
+		FOR LOCAL:11,0,FLAG:ステート数
+			IF CFLAG:(LOCAL:10):(GET_STATE(LOCAL:11) + "被弾")
+				CFLAG:(LOCAL:10):(GET_STATE(LOCAL:11) + "무효화횟수") -= 1
+				CFLAG:(LOCAL:10):(GET_STATE(LOCAL:11) + "被弾") = 0
+			ENDIF
+		NEXT
+		
+		IF CFLAG:(LOCAL:10):バステ被弾
+			CFLAG:(LOCAL:10):バステ被弾 = 0
+			CFLAG:(LOCAL:10):バステ무효화횟수 -= 1
+		ENDIF
+	NEXT
+	
+	;마이ト化による爆発フラグが立っているキャラが居たら爆発する
+	SIF FINDCHARA(CFLAG:BOMB引火フラグ,1) != -1
+		CALL BOMB_BANG
+	
+	SIF CFLAG:(ARG):도주フラグ
+		CALL REMOVE_POSITION, CPOS(ARG)
+
+
+	;行動終了後이벤트呼び出し
+;	CALLFORM EVENT_BATTLE_ACTEND バグりそうなので外す
+	
+
+	;ここまで
+	
+	CFLAG:ARG:방어フラグ = 1
+	CFLAG:ARG:입력行動 = CFLAG:(ARG):ＲＥＰＥＡＴ行動
+	CFLAG:ARG:ターゲット = CFLAG:(ARG):ＲＥＰＥＡＴターゲット
+	CFLAG:ARG:던전内発情用욕정치 /= 4
+	BASE:ARG:체력 -= 100
+	BASE:ARG:기력 -= 100
+
+	;참가予定者関係を元に戻す
+	FOR LOCAL,1,6
+		IF CFLAG:ARG:("링케이지참가자" + TOSTR(LOCAL)) > -1
+			CFLAG:(CFLAG:ARG:("링케이지참가자" + TOSTR(LOCAL))):입력行動 = -1
+			CFLAG:(CFLAG:ARG:("링케이지참가자" + TOSTR(LOCAL))):방어フラグ = 1
+			CFLAG:(CFLAG:ARG:("링케이지참가자" + TOSTR(LOCAL))):링케이지참가 = 0
+			CFLAG:(CFLAG:ARG:("링케이지참가자" + TOSTR(LOCAL))):던전内発情用욕정치 /= 2
+			BASE:(CFLAG:ARG:("링케이지참가자" + TOSTR(LOCAL))):체력 -= 100
+			BASE:(CFLAG:ARG:("링케이지참가자" + TOSTR(LOCAL))):기력 -= 100
+			CFLAG:ARG:("링케이지참가자" + TOSTR(LOCAL)) = -1
+		ENDIF
+	NEXT
+
+	;勝敗を체크
+	CALL FIGHT_IT_OUT
+	
+	;敗北フラグ立ってたらゲームオーバー呼び出し
+	SIF FLAG:敗北フラグ == 1
+		CALL BATTLE_LOSE
+	;勝利フラグ立ってたら関数を抜ける
+	SIF FLAG:勝利フラグ == 1
+		RETURN 0
+
+	RETURN 0
+ELSEIF RESULT < 1 || RESULT > LOCAL:8
+	GOTO INPUT_LOOP2
+ENDIF
+;LOCAL:9番눈の참가者
+LOCAL:9 = RESULT
+
+CALL SHOW_NOW_FORMATION_P,0,2
+PRINTL [10]ＣＡＮＣＥＬ
+$INPUT_LOOP3
+INPUT
+IF RESULT == 10
+	GOTO PRINT_MENE
+ELSEIF RESULT < 1 || RESULT > 6 || POS(RESULT) == -1
+	GOTO INPUT_LOOP3
+ENDIF
+;LOCAL:10のキャラが참가
+LOCAL:10 = POS(RESULT)
+CALLFORM 참가者조건_{LOCAL:7}, LOCAL:10 , LOCAL:9
+SIF RESULT == 0
+	GOTO INPUT_LOOP3
+;ＣＨＡＮＧＥ대상は弾く
+SIF CFLAG:(LOCAL:10):ＣＨＡＮＧＥ대상フラグ
+	GOTO INPUT_LOOP3
+;既に他の링케이지に참가しているキャラは弾く
+SIF CFLAG:(LOCAL:10):링케이지참가
+	GOTO INPUT_LOOP3
+;発動者ははじく
+SIF ARG == LOCAL:10
+	GOTO INPUT_LOOP3
+;他の場所に入ってるキャラも弾く
+SIF MATCH(LOCAL,LOCAL:10,1,6)
+	GOTO INPUT_LOOP3
+;입력できないキャラも弾く
+CALL INPUTABLE_CHARA , LOCAL:10
+	
+LOCAL:(LOCAL:9) = LOCAL:10
+
+GOTO PRINT_MENE
+;---- EDIT 023 ADD END ---------------------------
+
+
+
+;=================================================
+;엑스링케이지사용可能판정
+;================================================
+@ACTIONABLE_ECSLINKAGE,ARG,ARG:1
+;まず옵션他が조건にあってなかったら帰る
+SIF !(FLAG:ムフフ전개) || !(EQUIP:MASTER:엑스링케이지)
+	RETURN 0
+;대상스킬がそもそも링케이지じゃなかったら帰る
+;この処理はより上の階層に逃がす予定
+TRYCCALLFORM LINKAGE_{ARG}
+	SIF RESULT == 0
+		RETURN 0
+CATCH
+	RETURN 0
+ENDCATCH
+;発動者が発情しておらず、체력기력が100以下だったら帰る
+SIF CFLAG:(ARG:1):던전内発情用욕정치 < 10000 || BASE:(ARG:1):체력 <= 100 || BASE:(ARG:1):기력 <= 100
+	RETURN 0
+
+;発動者が조건を満たしているか체크
+CALLFORM 発動者조건_{ARG},ARG:1
+SIF RESULT == 0
+	RETURN 0
+
+;참가者の人数を체크
+CALLFORM 참가人数_{ARG}
+LOCAL:1 = RESULT
+
+;조건を満たす참가者をDの枠に放り込む
+VARSET D , 0
+FOR LOCAL, 1 , LOCAL:1+1
+	FOR LOCAL:2 , 1 , 7
+		SIF POS(LOCAL:2) == -1
+			CONTINUE
+		;発動者は참가者になれない
+		SIF POS(LOCAL:2) == ARG:1
+			CONTINUE
+		;입력できない상태の人はそもそも無理
+		CALL INPUTABLE_CHARA , POS(LOCAL:2)
+		SIF RESULT == 0
+			CONTINUE
+		CALLFORM 참가者조건_{ARG},POS(LOCAL:2),LOCAL
+		SIF RESULT == 0
+			CONTINUE
+		;엑스링케이지は発情してかつ체력기력なきゃ참가者になれない
+		SIF CFLAG:POS(LOCAL:2):던전内発情用욕정치 < 10000 || BASE:POS(LOCAL:2):체력 <= 100 || BASE:POS(LOCAL:2):기력 <= 100
+			CONTINUE
+		D:LOCAL |= POWER(2,LOCAL:2)
+	NEXT
+NEXT
+
+;0があると駄눈
+SIF MINARRAY(D,1,LOCAL:1+1) == 0
+	RETURN 0
+
+
+
+;重複せずに全てが埋まる組み合わせがあるかを체크
+;どうすんだこれ
+VARSET E , 0
+
+;まずLOCAL番눈の조건を満たせるキャラが一人しか居ない場合、참가者LOCAL番눈はそのキャラに決定
+;FOR LOCAL , 1 , LOCAL:1+1
+;	SIF C:LOCAL > 0
+;		CONTINUE
+;	FOR LOCAL:2 , 1 , 7
+;		IF D:LOCAL = POWER(2,LOCAL:2)
+;			C:LOCAL = POWER(2,LOCAL:2)
+;			;全てのDからLOCAL:2番눈のビットを削除
+;			FOR LOCAL:3 , 1 , LOCAL:1+1
+;				D:(LOCAL:3) &= ~(POWER(2,LOCAL:2))
+;			NEXT
+;			GOTO LOOP
+;		ENDIF
+;	NEXT
+;NEXT
+
+FOR LOCAL:4 , 1 , 7
+	$LOOP1
+	;LOCAL番눈の조건をLOCAL:4人が満たしている場合、番号の若い順に当てはめ
+	;当てはめたらまた一人から체크
+	FOR LOCAL , 1 , LOCAL:1 + 1
+		SIF E:LOCAL > 0
+			CONTINUE
+		;人数を판정
+		LOCAL:3 = 0
+		FOR LOCAL:2 , 1 , 7
+			LOCAL:3 += GETBIT(D:LOCAL, LOCAL:2)
+		NEXT
+		;LOCAL:4人じゃなければ次へ
+		SIF LOCAL:3 != LOCAL:4
+			CONTINUE
+		FOR LOCAL:2 , 1 , 7
+			IF D:LOCAL & POWER(2,LOCAL:2)
+				E:LOCAL = POWER(2,LOCAL:2)
+				;全てのDからLOCAL:2番눈のビットを削除
+				FOR LOCAL:3 , 1 , LOCAL:1+1
+					D:(LOCAL:3) &= ~(POWER(2,LOCAL:2))
+				NEXT
+				LOCAL:4 = 0
+				GOTO LOOP1
+			ENDIF
+		NEXT
+	NEXT
+NEXT
+
+
+;Eに0が残ってたら駄눈
+
+SIF MINARRAY(E,1,LOCAL:1+1) == 0
+	RETURN 0
+SETBIT FLAG:(1202+ARG / 63), ARG % 63
+RETURN 1
+
+

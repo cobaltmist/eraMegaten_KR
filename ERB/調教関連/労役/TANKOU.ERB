@@ -1,0 +1,333 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:CONCERT.ERB
+;	Facility	:炭鉱での노역に関する関数群です。
+;
+;	Licence		:ライセンスフリー
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		20XX/XX/XX		----					新規作成
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+
+
+;炭鉱조건
+@CASTING_TANKOU(ARG)
+SIF CFLAG:ARG:この場に居ないフラグ == 1
+	RETURN 0
+SIF ARG != MASTER && !함락(ARG)
+	RETURN 0
+SIF BASE:ARG:체력 < 1000
+	RETURN 0
+RETURN 1
+
+@TANKOU
+;사용する一時変数の초기化
+A = 0
+B = 0
+S = 0
+V = 0
+C = 0
+D = 0
+G = 0
+
+CALL INPUT_CHARA_LIST("탄광에서 일할 노예를 선택하세요", "CASTING_TANKOU")
+SIF RESULT == 1000
+	RETURN 0
+A = RESULT
+
+;30,LV
+;31,힘
+;32,지혜
+;33,마력
+;34,인내력
+;35,속도
+;36,운
+
+;奴隷の레벨によって値段の基礎値が上昇
+IF BASE:A:LV > 98
+	S = 990
+ELSE
+	S = BASE:A:LV * 10
+ENDIF
+SIF S
+	PRINTFORML LV:{BASE:A:LV} +{S}
+;奴隷の能力値による倍率計算
+V = 100
+
+C = BASE:A:힘 * 10
+SIF C > 0
+	PRINTFORML 힘:{BASE:A:힘}　 +{C}％
+V += C
+
+C = BASE:A:인내력 * 10
+SIF C > 0
+	PRINTFORML 인내력:{BASE:A:인내력} +{C}％
+V += C
+
+C = BASE:A:속도 * 10
+SIF C > 0
+	PRINTFORML 속도:{BASE:A:속도} +{C}％
+V += C
+
+
+;보정値が0以下の場合は1にする
+SIF V <= 0
+	V = 1
+
+PRINTFORML 最終倍率 {V}％
+
+;보정値の適用
+S *= V
+S /= 100
+
+;붕괴,광기は利潤をかなり低くする（순종によって、80％まで회복）
+IF TALENT:A:9 || TALENT:A:141
+PRINTL 
+	IF TALENT:A:9
+		S *= ABL:A:0
+		TIMES S , 0.08
+		Z = ABL:A:0
+		Z *= 8
+		PRINTFORML %TALENTNAME:9% ×{Z}％
+	ELSEIF TALENT:A:141
+		S *= ABL:A:0
+		TIMES S , 0.08
+		Z = ABL:A:0
+		Z *= 8
+		PRINTFORML %TALENTNAME:141% ×{Z}％
+	ENDIF
+PRINTL 
+ENDIF
+
+
+;難易度処理
+;EASY
+IF FLAG:4 == 1
+	PRINTFORML 難易度:EASY ×120％
+	TIMES S , 1.20
+;NORMAL
+ELSEIF FLAG:4 == 2
+	TIMES S , 1.00
+;HARD
+ELSEIF FLAG:4 == 3
+	PRINTFORML 難易度:HARD ×80％
+	TIMES S , 0.80
+ENDIF
+
+;コンサートを実行するか？
+IF S > 0
+	PRINTFORMW 利潤は￥{S}程度が見込めます
+ELSE
+	PRINTFORMW 利潤が見込めないため、中止します
+	RETURN 0
+ENDIF
+PRINTFORML %조사처리(CALLNAME:A, "를")% 탄광에서 일하게 합니까?
+;---- EDIT INPUT_YN추가対応(2011/02/03) MOD START -------------------------
+CALL INPUT_YN, "일하게 한다", "그만둔다"
+;PRINTL [0] -   実行する
+;PRINTL [100] - やめる
+;$INPUT_LOOP_3
+;INPUT
+;---- EDIT INPUT_YN추가対応(2011/02/03) MOD END ---------------------------
+IF RESULT == 0
+	PRINTFORML %조사처리(CALLNAME:A, "는")% 탄광에 갔습니다
+	;評判판정
+	;F = 1
+	;Z = S
+	;TIMES Z , 0.05
+	;S += Z
+	;이벤트구상呼び出し
+	U = 0
+	IF ASSI >= 0
+		SIF ASSI == A
+			U = 1
+	ENDIF
+	T = TARGET
+	TARGET = A
+	TFLAG:13 = 93
+	CALL KOJO_MESSAGE_EVENT
+	TARGET = T
+	SIF U
+		ASSI = A
+	;奴隷の経験、能力処理
+	;	R = 8
+	;	Q = 5
+	BASE:A:0 -= BASE:A:0 / 2
+	;EXP:A:23 += 5
+	;EXP:A:64 += Q
+	;EXP:A:74 += 1
+	;JUEL:A:8 += R
+	;SIF CFLAG:A:10 > 0
+	;	CFLAG:A:10 -= 1
+	;G = (1 + RAND:(1 + ABL:A:14)) * (F + 1)
+	;PRINTFORML %EXPNAME:23%＋5
+	;PRINTFORML %EXPNAME:64%＋{Q}
+	;PRINTFORML %EXPNAME:74%＋1
+	;PRINTFORML %PALAMNAME:8%＋{R}
+
+	;IF F == 1
+	;	CFLAG:A:아이돌인기 += G
+	;	PRINTFORML 아이돌인기＋{G}
+	;ELSE
+	;	CFLAG:A:아이돌인기 -= G
+	;	PRINTFORML 아이돌인기－{G}
+	;ENDIF
+	PRINTFORMW 탄광에서 일한 결과、￥{S}의 이윤을 얻었습니다
+	MONEY += S
+	;CALL 帳簿閲覧_노역, A, S, 0, 6
+	
+;30,LV
+;31,힘
+;32,지혜
+;33,마력
+;34,인내력
+;35,속도
+;36,운
+	IF BASE:A:LV > 98
+		S = 5
+	ELSE
+		S = (BASE:A:LV / 20) + 1
+	ENDIF
+	
+	
+	C = BASE:A:지혜 * 2 / 3
+	V = C
+	
+	C = BASE:A:마력 * 2 / 3
+	V += C
+	
+	C = BASE:A:운 * 2 / 3
+	V += C
+	
+	SIF V > 80
+		V = 80
+	E = 1
+	FOR LOCAL,0,S
+		SIF RAND:100 < V
+			E += 1
+	NEXT
+	PRINTFORMW 온갖 방법으로 보석을 손에 넣었다
+	PRINTFORML ・
+	PRINTFORML ・・
+	PRINTFORML ・・・
+	VARSET LOCAL
+	FOR LOCAL,0,E
+		SELECTCASE RAND:24
+		;가넷
+		CASE 0,20
+			LOCAL:1 += 1
+		;아메지스트
+		CASE 1,21
+			LOCAL:2 += 1
+		;아쿠아마린
+		CASE 2
+			LOCAL:3 += 1
+		;다이아몬드
+		CASE 3
+			LOCAL:4 += 1
+		;에메랄드
+		CASE 4,22
+			LOCAL:5 += 1
+		;진주
+		CASE 5
+			LOCAL:6 += 1
+		;루비
+		CASE 6	
+			LOCAL:7 += 1
+		;오닉스
+		CASE 7	
+			LOCAL:8 += 1
+		;사파이어
+		CASE 8	
+			LOCAL:9 += 1
+		;오팔
+		CASE 9,23
+			LOCAL:10 += 1
+		;토파즈
+		CASE 10	
+			LOCAL:11 += 1
+		;터키석
+		CASE 11	
+			LOCAL:12 += 1
+			
+		CASE 12	
+			LOCAL:13 += 1
+		CASE 13	
+			LOCAL:14 += 1
+		CASE 14	
+			LOCAL:15 += 1
+		CASE 15	
+			LOCAL:16 += 1
+		CASE 16	
+			LOCAL:17 += 1
+		CASE 17	
+			LOCAL:18 += 1
+		CASE 18	
+			LOCAL:19 += 1
+		CASE 19	
+			LOCAL:20 += 1
+		ENDSELECT
+	NEXT
+	FOR LOCAL,0,20
+		IF LOCAL:(LOCAL + 1)
+			IF LOCAL < 12
+				ITEM:(274 + LOCAL) += LOCAL:(LOCAL + 1)
+				PRINTFORML %ITEMNAME:(274 + LOCAL)%を{LOCAL:(LOCAL + 1)}개 입수했다
+			ELSE
+				ITEM:(246 + LOCAL) += LOCAL:(LOCAL + 1)
+				PRINTFORML %ITEMNAME:(246 + LOCAL)%を{LOCAL:(LOCAL + 1)}개 입수했다
+			ENDIF
+		ENDIF
+	NEXT
+	WAIT
+	
+	;ＮＴＲ進行
+	$SKIP_NTR
+
+	DRAWLINE
+	;휴식フラグを立てる
+	;FLAG:0 += 1
+	;BEGIN TURNEND
+;---- EDIT INPUT_YN추가対応(2011/02/03) MOD START -------------------------
+;ELSEIF RESULT == 100
+;	RETURN 0
+ELSE
+;	GOTO INPUT_LOOP_3
+	RETURN 0
+;---- EDIT INPUT_YN추가対応(2011/02/03) MOD END ---------------------------
+ENDIF
+
+@NTR_TANKOU_SEX
+LOCAL:1 = 2 + RAND:3
+PRINTFORML Ｖ경험 ＋{LOCAL:1 * D}
+EXP:A:Ｖ경험 += LOCAL:1 * D
+PRINTFORML Ａ경험 ＋{(LOCAL:1 / 2) * D}
+EXP:A:Ａ경험 += (LOCAL:1 / 2) * D
+PRINTFORML 키스경험 ＋{LOCAL:1 * D}
+EXP:A:키스경험 += LOCAL:1 * D
+PRINTFORML 성교경험 ＋{(LOCAL:1 + LOCAL:1 / 2) * D}
+EXP:A:성교경험 += (LOCAL:1 + LOCAL:1 / 2) * D
+PRINTFORML 절정경험 ＋{((LOCAL:1 + LOCAL:1 / 2) / 3) * D}
+EXP:A:절정경험 += ((LOCAL:1 + LOCAL:1 / 2) / 3) * D
+PRINTFORML 질사경험 ＋{LOCAL:1 * D}
+EXP:A:질사경험 += LOCAL:1 * D
+PRINTFORML 펠라경험 ＋{(LOCAL:1 / 2) * D}
+EXP:A:펠라경험 += (LOCAL:1 / 2) * D
+PRINTFORMW 정액경험 ＋{(LOCAL:1 * 2) * D}
+EXP:A:정액경험 += (LOCAL:1 * 2) * D
+PRINTFORML 
+
+;처녀/재생처녀상실
+CALL 처녀상실, A
+CALL 처녀상실이벤트, A
+
+CFLAG:A:(2100+FAVORITE_1_ID(A)) += CFLAG:A:(2086)
+SIF CFLAG:A:함락キャラ == 2086
+	CFLAG:A:現ＮＴＲ進行度++
+;임신用
+IF CFLAG:A:108 == 0
+	SIF TALENT:A:남자 == 0
+		CFLAG:A:105 += LOCAL:1 * D + CFLAG:A:現ＮＴＲ進行度
+ENDIF

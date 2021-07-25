@@ -1,0 +1,200 @@
+﻿;
+
+;스킬名
+@SKILL_NAME_1423,ARG
+IF SKILL_CHANGE(ARG, [[キャラ:코우메]])
+	RESULTS = 블러디・페스타
+ELSE
+	RESULTS = 저주비문
+ENDIF
+
+;　명중
+@SKILL_HITRATE_1423, ARG
+RETURN 100
+
+;　위력
+@SKILL_POWER_1423, ARG
+RETURN 0
+
+;　최저공격횟수
+@SKILL_MINATTACKNUMBER_1423,ARG
+RETURN 1
+
+;　최대공격횟수
+@SKILL_MAXATTACKNUMBER_1423,ARG
+RETURN 1
+
+;　ＨＰ2を支払うかＭＰ3を支払うか
+@SKILL_COSTTYPE_1423, ARG
+RETURN 3
+;소비なし＝1
+
+;　コストの量
+@SKILL_COST_1423,ARG
+IF SKILL_CHANGE(ARG, [[キャラ:코우메]])
+	RETURN 25
+ELSE
+	RETURN 20
+ENDIF
+;　相性
+@SKILL_TYPE_1423,ARG
+RETURN 11
+;주살
+
+;　1EXTRAか2MAGICか
+@SKILL_DECIDE_TYPE_1423, ARG
+RETURN 1
+;魔法
+
+;　1物理데미지で計算するか2魔法데미지で計算するか
+@SKILL_DAMAGETYPE_1423, ARG
+RETURN 0
+
+
+;　대상が1적か2아군か3場전체か4特殊か
+@SKILL_TARGET_1423
+RETURN 1
+
+;　사거리
+@SKILL_RANGE_1423,ARG
+RETURN 3
+
+;　範囲　11체　21열　3전체　4　적아군전체
+@SKILL_SPHERE_1423,ARG
+RETURN 3
+
+;　 効果の타입　1공격、2회복、3상태変化、4特殊、5상태회복
+@SKILL_EFECT_1423
+RETURN 3
+
+;　 特殊処理の有無、及び処理内容
+@SKILL_SPECIALEFECT_1423,ARG
+;ARG = 1だった場合は処理の有無を返します
+SIF ARG == 1
+	RETURN 0
+;以下に特殊な処理を記述します
+
+;계승타입
+@SKILL_SUCCESSION_TYPE_1423
+RETURN 14
+;주살
+
+;속도보정
+@SKILL_SPEED_1423, ARG = -1
+RETURN 0
+
+;　구상の표시とその타입
+@SKILL_MESSAGE_1423,ARG
+
+
+;전투時以外に사용できるか
+@SKILL_ACTIONABLE_FIELD_1423
+RETURN 0
+
+;스킬変化？用랭크
+@SKILL_RANK_1423
+RETURN 9
+
+
+;テンプレート用、추가효과シリーズ
+;추가효과스테이터스
+@SKILL_ADDTIONAL_STATE_1423,ARG
+RETURN GET_STATE_NUM("CURSE")
+
+;추가효과상성
+@SKILL_ADDTIONAL_TYPE_1423,ARG
+RETURN 11
+
+;추가효과기본부여확률
+@SKILL_ADDTIONAL_BASE_RATE_1423,ARG
+RETURN 70
+
+;추가효과부여확률上限
+@SKILL_ADDTIONAL_MAX_RATE_1423,ARG
+RETURN 95
+;====================================================
+;스킬及び行動の実行
+;====================================================
+@ACTION_1423,ARG,ARG:1
+#LOCALSSIZE 1
+SIF SKILL_CHANGE(ARG, [[キャラ:코우메]])
+	PRINTFORMW ＞%CALLNAME:ARG%の周囲から、夥しい量の死霊の群が敵全体へと襲い掛かった！
+
+CALL FIELD_BADSTATE,ARG,ARG:1,1423
+
+;小梅の互換スキルとしての追加分(CURCE判定を抜けた相手に対し、スキルゲージを消費しての万能BIND)
+IF SKILL_CHANGE(ARG, [[キャラ:코우메]])
+	;疑似付与管理用のDゲージを取得。
+	LOCAL:3= (SKILLGAGE_D_GET(ARG,3622))
+	FOR LOCAL,7,17
+		;敵に疑似付与されている分の死霊カウンターを取得。
+		LOCAL:4 = LOCAL:3 / POWER(10,LOCAL-6)
+		LOCAL:4 = LOCAL:4 - ((LOCAL:4 / 10)*10)
+		SIF POS(LOCAL) < 0
+			CONTINUE
+		IF LOCAL:4 >= 5
+			PRINTFORML [{LOCAL,2}]追加判定発生
+			IF GET_STATE(CFLAG:(POS(LOCAL)):ステート) == "GOOD"
+				PRINTL 
+				PRINTFORMW ＞死霊の手が%CALLNAME:(POS(LOCAL))%に掴みかかる！
+				PRINTL 
+				PRINTFORM 　　TARGET:[{LOCAL}] %CALLNAME:(POS(LOCAL)),20,LEFT%　>>>>>>　
+				CALL ATTACK_BADSTATE,ARG,POS(LOCAL),GET_STATE_NUM("BIND"),17,100,100 ;万能属性100%付与
+				CALL SKILLGAGE_D_ADD,ARG,3622,-5 * POWER(10,LOCAL-6) ;対象の死霊カウンターの減少
+			ENDIF
+			PRINTFORML
+		ENDIF
+		;敵全体へのランダム1～3点死霊カウンター付与(完全ランダムではない)
+		IF GET_STATE(CFLAG:(POS(LOCAL)):ステート) != "DYING"
+			SELECTCASE RAND:100
+			CASE IS > 80
+				LOCAL:2 = 3
+			CASE 45 TO 80 
+				LOCAL:2 = 2
+			CASEELSE 
+				LOCAL:2 = 1
+			ENDSELECT
+			SIF LOCAL:4 + LOCAL:2 >= 10
+				LOCAL:2 = 9 - LOCAL:4
+			PRINTFORMW ＞%CALLNAME:(POS(LOCAL))%の周囲に、無数の死霊が纏わりついた！
+			CALL SKILLGAGE_D_ADD,ARG,3622,LOCAL:2 * POWER(10,LOCAL-6)
+		ENDIF
+	NEXT
+	CALL SKILLGAGE_H_ADD,ARG,3622,-5
+ENDIF
+
+
+
+
+;====================================================
+;実行内容ここまで
+;====================================================
+
+;　 説明文の표시
+@SKILL_EXPLAIN_1423
+
+IF U > 0 && U < CHARANUM && NO:U == [[キャラ:코우메]]
+	PRINTL 無数の死霊を敵全体に解き放つことで敵全体を呪い状態にし、更に死霊を纏わりつかせる。
+	PRINTL また、相手に死霊カウンターが既に5以上付与されており、呪い状態にならなかった場合は対象の死霊カウンターを5消費して金縛りにする。
+	PRINTL 死霊カウンターを5消費して発動する。
+ELSE
+	PRINTL [후열] 적 전체를 주살속성으로 저주한다. (높은 확률로 CURSE)
+ENDIF
+
+;継承に필요な部位
+@継承部位_1423,ARG
+RETURN 1
+
+;사용조건
+@SKILL_SPECIAL_ACTIONABLE_1423,ARG
+
+IF SKILL_CHANGE(ARG, [[キャラ:코우메]])
+;小梅が使用する場合は고유게이지が5以上ないと発動できない。
+	SIF SKILLGAGE_H_GET(ARG,3622) >= 5
+		RETURN 1
+RETURN 0
+ELSE	
+RETURN 1
+ENDIF
+;とくにない
+

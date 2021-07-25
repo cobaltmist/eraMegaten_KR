@@ -1,0 +1,121 @@
+﻿@EVENT_BATTLE_TURNEND_COLOSSEUM55
+CALL SKILL_2504_RESISTBREAK
+CALL 사탄相性セット(CHARANUM-1,FLAG:経過ターン数)
+
+;전투開始時、ターン종료시に呼び出される
+;eraMegaten仕様として화염と핵열、지변と중력、전격と질풍、빙결と수격はリンクさせる
+;ARG = 経過ターン数
+@사탄相性セット(ARG,ARG:1)
+SELECTCASE ARG:1 % 4
+CASE 0
+	;4n+1ターン눈 화염・빙결・전격반사　지변と충격と물리が有効
+	BASE:ARG:검격 = 100
+	BASE:ARG:화염 = 999
+	BASE:ARG:빙결 = 999
+	BASE:ARG:전격 = 999
+	BASE:ARG:충격 = 100
+	BASE:ARG:지변 = 100
+CASE 1
+	;4n+2ターン눈 빙결・전격・충격반사　화염と지변と물리が有効
+	BASE:ARG:검격 = 100
+	BASE:ARG:화염 = 100
+	BASE:ARG:빙결 = 999
+	BASE:ARG:전격 = 999
+	BASE:ARG:충격 = 999
+	BASE:ARG:지변 = 100
+CASE 2
+	;4n+3ターン눈 지변・전격・충격반사　화염と빙결と물리が有効
+	BASE:ARG:검격 = 100
+	BASE:ARG:화염 = 100
+	BASE:ARG:빙결 = 100
+	BASE:ARG:전격 = 999
+	BASE:ARG:충격 = 999
+	BASE:ARG:지변 = 999
+CASE 3
+	;4n+4ターン눈 물리반사　それ以外が有効	
+	BASE:ARG:검격 = 999
+	BASE:ARG:화염 = 100
+	BASE:ARG:빙결 = 100
+	BASE:ARG:전격 = 100
+	BASE:ARG:충격 = 100
+	BASE:ARG:지변 = 100
+ENDSELECT
+BASE:ARG:비구 = BASE:ARG:검격
+BASE:ARG:타격 = BASE:ARG:검격
+BASE:ARG:전술 = BASE:ARG:검격
+BASE:ARG:핵열 = BASE:ARG:화염
+BASE:ARG:수격 = BASE:ARG:빙결
+BASE:ARG:중력 = BASE:ARG:지변
+BASE:ARG:질풍 = BASE:ARG:전격
+FOR LOCAL,GETNUM(BASE,"검격"),GETNUM(BASE,"사이코")+1
+	MAXBASE:ARG:LOCAL = BASE:ARG:LOCAL
+NEXT
+
+;相손の약점を探す関数
+@SATAN_GET_WEAK(ARG,ARG:1)
+#DIM L_COUNT
+#DIM CHARA
+#DIM 相性
+#DIM L_PARTY,6
+VARSET L_COUNT
+VARSET L_PARTY
+VARSET 相性
+IF ARG:1 == 17
+	LOCAL:1 = 1
+	LOCAL:2 = 4
+ELSEIF ARG:1 == 18
+	LOCAL:1 = 4
+	LOCAL:2 = 7
+ELSEIF ARG:1 == 19
+	LOCAL:1 = 1
+	LOCAL:2 = 7
+ELSEIF ARG:1 == 20
+	LOCAL:1 = 7
+	LOCAL:2 = 12
+ELSEIF ARG:1 == 21
+	LOCAL:1 = 12
+	LOCAL:2 = 17
+ELSEIF ARG:1 == 22
+	LOCAL:1 = 7
+	LOCAL:2 = 17
+ELSEIF ARG:1 == 23
+	LOCAL:1 = 1
+	LOCAL:2 = 17
+ELSE
+	CHARA = POS(ARG:1)
+	GOTO SKIP_CHARASELECT
+ENDIF
+FOR LOCAL,LOCAL:1,LOCAL:2
+	SIF POS(LOCAL) < 0
+		CONTINUE
+	L_PARTY:(L_COUNT++) = POS(LOCAL)
+NEXT
+CHARA = L_PARTY:(RAND:L_COUNT)
+$SKIP_CHARASELECT
+PRINTFORM 약점감지：%CALLNAME:CHARA%　
+;파마・주살のうち내성が低い方
+RESULT:1 = 相性係数(CHARA,"파마") > 相性係数(CHARA,"주살") ? GET_TYPE_NUM("파마") # GET_TYPE_NUM("주살")
+PRINTFORM 약점１：%GET_TYPE(RESULT:1)%　
+;화염・빙결・전격・충격・지변のうち最も弱い相性의 
+;行動阻害を与えられる전격・빙결は若干出しやすい
+相性 = 相性係数(CHARA,"전격")
+RESULT:2 = GET_TYPE_NUM("전격")
+FOR LOCAL,1, 5
+	SELECTCASE LOCAL
+	CASE 1
+		LOCALS = 빙결
+	CASE 2
+		LOCALS = 화염
+	CASE 3
+		LOCALS = 충격
+	CASE 4
+		LOCALS = 지변
+	ENDSELECT
+	;よく通る속성に변경
+	IF 相性 < 相性係数(CHARA,LOCALS)
+		相性 = 相性係数(CHARA,LOCALS)
+		RESULT:2 = GET_TYPE_NUM(LOCALS)
+	ENDIF
+NEXT
+PRINTFORMW 약점２：%GET_TYPE(RESULT:2)%({相性})
+RETURN CHARA

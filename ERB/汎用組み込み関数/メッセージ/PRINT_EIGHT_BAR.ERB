@@ -1,0 +1,51 @@
+﻿;-------------------------------------------------
+;8分割カラーバー표시関数@PRINT_EIGHT_BAR
+;	引数0：バーの長さ（半角1/8文字가운位）
+;	引数1：バー전체の長さ（半角1/8文字가운位）
+;		なお、バーの長さが最長の数値(ARG:1*8-1)を超えている場合、표시は0に戻る
+;	引数2：バー始端の色（16進。RGBCOLOR関数사용가능。생략すると現在の文字色に）
+;	引数3：バー終端の色（同上。생략すると가운色バーに）
+;	引数4：始色比率（始端の色が濃くなる）
+;	引数5：終色比率（終端の色が濃くなる）
+;
+;独自形式の引数です。ご注意ください
+;@PRINT_EIGHT_BARの引数が独自形式なので、従来のBARの形式でも呼び出せるように用意しました。
+;半角の1/8刻みでバーを표시できますが、バーに使う文字を指定はできません。また、バーの背景色も使えません。
+;引数3・4を指定することでグラデーションができますが、この場合色の変わる가운位は半角１文字ごとになります。
+;-------------------------------------------------
+@PRINT_EIGHT_BAR(ARG, ARG:1 = 32, ARG:2 = -1, ARG:3 = -1, ARG:4 = 1, ARG:5 = 1)
+#DIM COLOR
+#DIM RED, 3
+#DIM BLUE, 3
+#DIM GREEN, 3
+#DIM 始色比率
+#DIM 終色比率
+始色比率 = ARG:4
+終色比率 = ARG:5
+COLOR = GETCOLOR()
+IF ARG:2  >= 0 && ARG:3 >= 0
+	RED:1 = ARG:2 / 256 / 256
+	GREEN:1 = ARG:2 / 256 % 256
+	BLUE:1 = ARG:2 % 256
+	RED:2 = ARG:3 / 256 / 256
+	GREEN:2 = ARG:3 / 256 % 256
+	BLUE:2 = ARG:3 % 256
+ELSEIF ARG:2 >= 0
+	SETCOLOR ARG:2
+ENDIF
+FOR LOCAL, 0, ARG:1
+	IF ARG:2 >= 0 && ARG:3 >= 0
+		RED = (RED:1 * (ARG:1 - LOCAL) * 始色比率 + RED:2 * LOCAL * 終色比率) / ((ARG:1 -LOCAL) * 始色比率 + LOCAL * 終色比率)
+		GREEN = (GREEN:1 * (ARG:1 - LOCAL) * 始色比率 + GREEN:2 * LOCAL * 終色比率) / ((ARG:1 -LOCAL) * 始色比率 + LOCAL * 終色比率)
+		BLUE = (BLUE:1 * (ARG:1 - LOCAL) * 始色比率 + BLUE:2 * LOCAL * 終色比率) / ((ARG:1 -LOCAL) * 始色比率 + LOCAL * 終色比率)
+		SETCOLOR RED, GREEN, BLUE
+	ENDIF
+	IF LOCAL < MAX((ARG % (ARG:1 * 8) / 8),0)
+		PRINTFORM %UNICODE(0x2588)%
+	ELSEIF LOCAL == MAX((ARG % (ARG:1 * 8) / 8),0)
+		PRINTFORM \@ARG % (ARG:1 * 8) % 8 ? %UNICODE(0x2588 + 8 - (ARG % (ARG:1 * 8) % 8))%# %" "%\@
+	ELSE
+		PRINTFORM  
+	ENDIF
+NEXT
+SETCOLOR COLOR

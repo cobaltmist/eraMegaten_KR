@@ -1,0 +1,397 @@
+﻿@BATTLE_EVENT_ATTACK, ARG , ARG:1 = -1, ARG:2, ARG:3
+#DIM 個別전투이벤트,16
+#DIM 個別キャラ番号,16
+#DIM 個別与데미지,16
+#DIM CHARA
+;TFLAG:戦闘イベントに以下の値を代入して、@EVENT_BATTLE_Kを呼び出す
+;範囲系は封印。吸収反射回避も単体でしかでない
+;11.与데미지(単体)
+;12.被데미지(単体)
+;13.与데미지(範囲・ランダム)
+;14.与데미지(範囲・ランダム 撃破あり)                                          14.被데미지(範囲・ランダム)
+;15.反射された
+;16.反射した
+;17.回避された
+;18.回避した
+;19,敵味方全体攻撃
+;20,반격を発動した
+;21,トリガーを発動した                                          21.味方に対して与데미지(単体)
+;22,バッドステータスになった                                    22.味方に対して被데미지(単体)
+;23,이악물기等で耐えた                                        23.味方に対して与데미지(範囲・ランダム)
+;24,回復してもらった                                          24.味方に対して被데미지(範囲・ランダム)
+;25,状態異常を直してもらった                                          25.味方に対して反射された
+;                                          26.味方に対して反射した
+;                                          27.味方に対して回避された
+;                                          28.味方に対して回避した
+
+;ARG 공격者
+;ARG:1 被공격者
+;ARG:2 데미지量
+;ARG:3 1の時、受け渡し用にLOCALを立てる,2の時はミスしたというフラグになる。-1は반사発生
+;　　　4の時バステを受けたとき、5이악물기で耐えたとき、6HP回復してもらったとき
+;　　　7の時バステを治して貰った時
+SIF FLAG:RPG구상
+	RETURN 0
+;とりあえず、範囲は仕様で悩むので封印しておく
+;特殊な스킬で変わったたーげっとが投げ込まれた場合に対処
+IF ARG:3
+	;IF CFLAG:ARG:ターゲット > 16
+	;	LOCAL = 0
+	;	LOCAL:1 = 0
+	;	LOCAL:2 = 0
+	;	LOCAL:3 = 0
+	;	RETURN 0
+	;ELSE
+	IF 1
+	;ARG != ARG:1
+		CHARA = FINDELEMENT(個別キャラ番号 , ARG:1)
+		IF CHARA < 0
+			CHARA = FINDELEMENT(個別キャラ番号 , -1)
+			SIF ARG != ARG:1
+				LOCAL:4 ++
+		ENDIF
+		;링케이지참가の場合はフラグ更新しない
+		SIF CFLAG:ARG:링케이지참가 || CHARA < 0
+			RETURN 0
+		LOCAL = ARG
+		LOCAL:1 = ARG:1
+		LOCAL:2 = ARG:2
+		個別キャラ番号:CHARA = ARG:1
+		個別与데미지:CHARA += ARG:2
+		;반사はSKILL_TEMP時点で-1をいれて、それからDAMAGE関数で3をいれる
+		IF 個別전투이벤트:CHARA == -1
+			LOCAL:3 = 3
+			個別전투이벤트:CHARA = 3
+		ELSE
+			LOCAL:3 = ARG:3
+			SIF 個別전투이벤트:CHARA != 5 || ARG:3 != 1
+				個別전투이벤트:CHARA = ARG:3
+			SIF 個別전투이벤트:CHARA == 7
+				個別与데미지:CHARA = ARG:2
+		ENDIF
+		
+	ENDIF
+	RETURN 0
+ENDIF
+;이상な수치が来てしまうのを회피
+IF LOCAL >= CHARANUM || LOCAL:1 >= CHARANUM || LOCAL == -1
+	LOCAL = -1
+	LOCAL:1 = 0
+	LOCAL:2 = 0
+	LOCAL:3 = 0
+	LOCAL:4 = 0
+	RETURN 0
+ENDIF
+
+;공격側메시지
+;적아군전체공격
+IF CFLAG:LOCAL:ターゲット == 23
+	TFLAG:전투이벤트 = 19
+;범위
+ELSEIF LOCAL:4 > 1
+	TFLAG:전투이벤트 = 13
+	LOCAL:5 = 0;死亡数
+	LOCAL:6 = 0;무효数
+	FOR CHARA,0,16
+		SIF 個別キャラ番号:CHARA < 0
+			BREAK
+		SIF 個別キャラ番号:CHARA >= CHARANUM
+			CONTINUE
+		SIF 個別キャラ番号:CHARA == LOCAL
+			CONTINUE
+		IF BASE:(個別キャラ番号:CHARA):ＨＰ < 1
+			TFLAG:전투이벤트 = 14
+			LOCAL:5 ++
+		ELSEIF 個別与데미지:CHARA < 1
+			LOCAL:6 ++
+		ENDIF
+	NEXT
+	LOCAL:1 = LOCAL:4
+	LOCAL:2 = LOCAL:6
+	SIF TFLAG:전투이벤트 == 14
+		LOCAL:2 = LOCAL:5
+;１체
+ELSEIF LOCAL:4 == 1
+	SIF FINDELEMENT(個別キャラ番号 , LOCAL:1)
+		LOCAL:2 = 個別与데미지:(FINDELEMENT(個別キャラ番号 , LOCAL:1))
+	IF LOCAL:3 == 1 || LOCAL:2 > 0
+		TFLAG:전투이벤트 = 11
+	;ミス
+	ELSEIF LOCAL:3 == 2
+		TFLAG:전투이벤트 = 17
+	;반사
+	ELSEIF LOCAL:3 == 3
+		TFLAG:전투이벤트 = 15
+	ENDIF
+	;SIF CFLAG:LOCAL:PTフラグ == CFLAG:(LOCAL:1):PTフラグ
+	;	TFLAG:전투이벤트 += 10
+ENDIF
+;TARGETを保存し、구상内でTARGETを使えるように
+LOCAL:99 = TARGET
+TARGET = LOCAL
+IF CFLAG:LOCAL:입력行動 > -1
+	IF CFLAG:LOCAL:PTフラグ == 0
+		SETCOLOR 0xff0033
+		CALL 구상呼び出し , "ENEMY_BATTLE_EVENT" , LOCAL , LOCAL , LOCAL:1 , LOCAL:2
+	ELSE
+		SETCOLOR 0x33ffcc
+		CALL 구상呼び出し , "BATTLE_EVENT" , LOCAL , LOCAL , LOCAL:1 , LOCAL:2
+	ENDIF
+ENDIF
+FOR CHARA,0,16
+	SIF 個別キャラ番号:CHARA < 0 || 個別キャラ番号:CHARA >= CHARANUM
+		CONTINUE
+	SIF 個別キャラ番号:CHARA == LOCAL
+		CONTINUE
+	TARGET = 個別キャラ番号:CHARA
+	;防御側メッセージ
+	;バッドステータスを受けた
+	IF 個別전투이벤트:CHARA == 4
+		TFLAG:전투이벤트 = 22
+	;이악물기等で耐えた
+	ELSEIF 個別전투이벤트:CHARA == 5 && BASE:TARGET:ＨＰ > 0
+		TFLAG:전투이벤트 = 23
+	;回復してもらった
+	ELSEIF 個別전투이벤트:CHARA == 6 && 個別与데미지:CHARA < 0
+		TFLAG:전투이벤트 = 24
+		個別与데미지:CHARA = -個別与데미지:CHARA
+	;状態異常を直してもらった
+	ELSEIF 個別전투이벤트:CHARA == 7 && 個別与데미지:CHARA > 0
+		TFLAG:전투이벤트 = 25
+	;単体
+	ELSEIF 個別전투이벤트:CHARA == 1 || 個別与데미지:CHARA > 0
+		TFLAG:전투이벤트 = 12
+	;ミス
+	ELSEIF 個別전투이벤트:CHARA == 2
+		TFLAG:전투이벤트 = 18
+	;反射
+	ELSEIF 個別전투이벤트:CHARA == 3
+		TFLAG:전투이벤트 = 16
+	ENDIF
+	;SIF CFLAG:LOCAL:PTフラグ == CFLAG:(LOCAL:1):PTフラグ
+	;	TFLAG:전투이벤트 += 10
+	;防御側
+	IF CFLAG:TARGET:PTフラグ == 0
+		SETCOLOR 0xff0033
+		;CALL 구상呼び出し , "ENEMY_BATTLE_EVENT" , LOCAL:1 , LOCAL:1 , LOCAL , LOCAL:2
+		CALL 구상呼び出し , "ENEMY_BATTLE_EVENT" , TARGET , TARGET , LOCAL , 個別与데미지:CHARA
+	ELSE
+		SETCOLOR 0x33ffcc
+		;CALL 구상呼び出し , "BATTLE_EVENT" , LOCAL:1 , LOCAL:1 , LOCAL , LOCAL:2
+		CALL 구상呼び出し , "BATTLE_EVENT" , TARGET , TARGET , LOCAL , 個別与데미지:CHARA
+	ENDIF
+	RESETCOLOR
+NEXT
+TFLAG:전투이벤트 = 0
+LOCAL = -1
+LOCAL:1 = 0
+LOCAL:2 = 0
+LOCAL:3 = 0
+LOCAL:4 = 0
+VARSET 個別전투이벤트,0
+VARSET 個別キャラ番号,-1
+VARSET 個別与데미지,0
+;TARGETを戻す
+TARGET = LOCAL:99
+
+
+;@전투行動対応충성도上昇,ARG
+;LOCAL:1 = 0
+;LOCAL:2 = 0
+;LOCAL:3 = 0
+;LOCAL:4 = 0
+;LOCAL:5 = 0
+;LOCAL:6 = 0
+;LOCAL:7 = -1
+;LOCAL:9 = 0
+;LOCAL:10 = 0
+;LOCAL:11 = 0
+;
+;;사용した스킬の타입等を調べる
+;;LOCAL:1 = 1공격、2회복、3상태変化、4特殊、5상태회복
+;CALLFORM SKILL_EFECT_{CFLAG:ARG:입력行動}
+;LOCAL:1 = RESULT
+;
+;;LOCAL:2 = 1物理、2魔法
+;CALLFORM SKILL_DAMAGETYPE_{CFLAG:ARG:입력行動}
+;LOCAL:2 = RESULT
+;
+;;LOCAL:3 = 相性（0검격〜17만능）
+;CALLFORM SKILL_TYPE_{CFLAG:ARG:입력行動},ARG
+;LOCAL:3 = RESULT
+;
+;;LOCAL:4 = 공격威힘
+;CALLFORM SKILL_POWER_{CFLAG:ARG:입력行動},ARG
+;LOCAL:4 = RESULT
+;
+;;LOCAL:5 = 平均공격횟수
+;CALLFORM SKILL_MINATTACKNUMBER_{CFLAG:ARG:입력行動},ARG
+;LOCAL:5 = RESULT
+;CALLFORM SKILL_MAXATTACKNUMBER_{CFLAG:ARG:입력行動},ARG
+;LOCAL:5 = (LOCAL:5 + RESULT) / 2
+;
+;;LOCAL:6 = 공격범위
+;CALLFORM SKILL_SPHERE_{CFLAG:ARG:입력行動},ARG
+;LOCAL:6 = RESULT
+;
+;;LOCAL:7 = 대상
+;SIF CFLAG:ARG:ターゲット > 0 && CFLAG:ARG:ターゲット < 17
+;	LOCAL:7 = POS(CFLAG:ARG:ターゲット)
+;
+;;LOCAL:8 = 대상の상태
+;RESULT = 1
+;SIF LOCAL:7 > 0
+;	CALL COOPABLE_CHARA,LOCAL:7
+;LOCAL:8 = RESULT
+;
+;;LOCAL:9 = 上昇する要因となった性格
+;;LOCAL:10 = 충성도上昇量
+;
+;SELECTCASE LOCAL:1
+;	CASE 1
+;		;物理데미지を与える行動で、영맹持ちの충성도が上昇
+;		SIF TALENT:ARG:영맹 && LOCAL:2 == 1
+;			LOCAL:9 = GETNUM(TALENT,"영맹")
+;
+;		;魔法데미지を与える行動で、교활持ちの충성도が上昇
+;		SIF TALENT:ARG:교활 && LOCAL:2 == 2
+;			LOCAL:9 = GETNUM(TALENT,"교활")
+;
+;		;高威힘の行動で、잔학持ちの충성도が上昇。物理공격と魔法공격の威힘差がパねぇ
+;		SIF TALENT:ARG:잔학 && LOCAL:2 == 1 && (LOCAL:4 * (MAX(LOCAL:5 + LOCAL:6 - 2,0) * 66 + 100) / 100) > BASE:ARG:LV + 100
+;			LOCAL:9 = GETNUM(TALENT,"잔학")
+;		SIF TALENT:ARG:잔학 && LOCAL:2 == 2 && (LOCAL:4 * (MAX(LOCAL:5 + LOCAL:6 - 2,0) * 33 + 100) / 100) > BASE:ARG:LV + 5
+;			LOCAL:9 = GETNUM(TALENT,"잔학")
+;
+;		;相손の弱点を付いた공격or行動不能な상태이상の적に対する공격で、현명持ちの충성도が上昇
+;		SIF TALENT:ARG:현명 && LOCAL:7 > -1 && ((MAXBASE:(LOCAL:7):(GET_TYPE(LOCAL:3)) > 100 && MAXBASE:(LOCAL:7):(GET_TYPE(LOCAL:3)) != 999) || LOCAL:8 == 0)
+;			LOCAL:9 = GETNUM(TALENT,"현명")
+;
+;		;파마相性の行動で、천사持ちの충성도が上昇
+;		SIF TALENT:ARG:천사 && LOCAL:3 == GET_TYPE_NUM("파마")
+;			LOCAL:9 = GETNUM(TALENT,"천사")
+;
+;		;주살相性の行動で、타천사持ちの충성도が上昇
+;		SIF TALENT:ARG:타천사 && LOCAL:3 == GET_TYPE_NUM("주살")
+;			LOCAL:9 = GETNUM(TALENT,"타천사")
+;
+;	CASE 2 , 5
+;	;회복・상태회복行動では우애持ちの충성도が上昇
+;		SIF TALENT:ARG:우애
+;			LOCAL:9 = GETNUM(TALENT,"우애")
+;
+;	CASE 3
+;	;상태変化では교만持ちの충성도が上昇
+;		SIF TALENT:ARG:교만
+;			LOCAL:9 = GETNUM(TALENT,"교만")
+;
+;	CASE 4
+;	;特殊では냉정持ちの충성도が上昇
+;		SIF TALENT:ARG:냉정
+;			LOCAL:9 = GETNUM(TALENT,"냉정")
+;ENDSELECT
+;
+;SIF LOCAL:9
+;	LOCAL:10 = 5
+;
+;;우둔・좀비持ちは主人とのLv差だけ충성도が上昇
+;IF (TALENT:ARG:우둔 || TALENT:ARG:좀비) && LOCAL:10 == 0
+;	LOCAL:9 = GETNUM(TALENT,"우둔")
+;	LOCAL:10 = LIMIT(BASE:MASTER:LV - BASE:ARG:LV,0,5)
+;ENDIF
+;
+;;허심持ちは최저２だけ충성도が上昇
+;IF TALENT:ARG:허심 && LOCAL:10 < 2
+;	LOCAL:9 = GETNUM(TALENT,"허심")
+;	LOCAL:10 = 2
+;ENDIF
+;
+;;대상キャラが악마で충성도が上がらなかった場合はボイコット計算をする
+;;허심の場合は5％の확률で入る
+;RESULT = 0
+;SIF (GET_DEVIL(ARG) && LOCAL:9 == 0) || (TALENT:ARG:허심 && RAND:100 < 5)
+;	CALL ボイコット計算, ARG
+;
+;;대상キャラが당신ならボイコットしない(たけし당신は除く)
+;SIF (NO:ARG == 0 || NO:ARG == 4999) && CFLAG:MASTER:73  != 9
+;CFLAG:ARG:ボイコットフラグ = 0
+;
+;;구상呼び出しとボイコットに対する旧処理
+;;CALL 구상呼び出し , "BATTLE_MESSAGE" , FLAG:行動順1 , FLAG:行動順1 , LOCAL:9
+;;CALL 구상呼び出し , "BATTLE_MESSAGE" , FLAG:行動順1 , FLAG:行動順1 , LOCAL:9 , RESULT
+;
+;;ボイコットした場合でもまれに충성도+ ただしインス토르ソフトで行動抑制の場合は-2
+;IF RESULT > 0
+;	CALL 구상呼び出し , "BATTLE_BOYCOTT_MESSAGE" , FLAG:行動順1 , FLAG:行動順1 , RESULT
+;	SIF EQUIP:MASTER:블랙컴퍼니 == 1
+;		LOCAL:10 -= 2
+;	SIF RAND:3 == 0
+;		LOCAL:10 += 1
+;;行動指示を聞いた場合は1/2で충성도+
+;ELSE
+;	CALL 구상呼び出し , "BATTLE_MESSAGE" , FLAG:行動順1 , FLAG:行動順1 , LOCAL:9
+;	SIF RAND:2 == 0
+;		LOCAL:10 += 1
+;ENDIF
+;
+;;BASE:ARG:충성도 += LOCAL:10
+;TCVAR:ARG:획득충성도 += LOCAL:10
+
+@BATTLE_EVENT, ARG
+;戦闘イベント全般の発生時に呼び出され、個別の戦闘口上を呼び出す関数
+;TFLAG:戦闘イベントの値は呼び出し側で事前にセットしておく必要あり
+;
+;ARG：イベント発生者の奴隷番号（ＣＳＶ番号でなく、現リスト内での通し番号）
+
+;TFLAG:전투이벤트
+;47.戦闘中イって행동불능にならず耐えた(ムフフ展開時のみ)
+;48.行動中イって행동불능になった(ムフフ展開時のみ 50%の確率でHAPPYに)
+;50.ターン終了時状態異常が自然回復した
+;51,ターン終了時の自分の状態の口上
+;52.ターン終了時ORGYがHEATになった(機械の乙女専用)
+;53.ターン終了時エクスリンケージ装備時のイベント口上(ムフフ展開時のみ)
+;53.ターン終了時エクスリンケージ装備時のイベント口上2(ムフフ展開時のみ)
+
+;90.バトルに勝利した
+;91,レベルアップした
+;92.도주に成功した
+;93,도주に失敗した
+;94,戦闘開始時
+;95,バックアタックを受けた
+;96,敵の先制攻撃を受けた
+;100,リンケージに参加した
+IF CFLAG:ARG:PTフラグ
+	;아군の場合
+	CALL 구상呼び出し , "BATTLE_EVENT" , ARG , ARG
+ELSE
+	;적の場合
+	CALL 구상呼び出し , "ENEMY_BATTLE_EVENT" , ARG , ARG
+ENDIF
+
+
+;@ボイコット計算, ARG
+;#DIM LCOUNT
+;;簡易式ボイコット処理
+;LOCAL:1 = 0
+;;충성도/10が저항値（최저1000、最高7000（함락次第で10000まで上がる））
+;;LOCAL = LIMIT(BASE:ARG:충성도 / 100, 10, 70 + 함락(ARG) * 10)
+;;(충성도*相性)/10が저항値（최저1000、最高7000（함락次第で10000まで上がる））
+;LOCAL = LIMIT( ( BASE:ARG:충성도*GET_RELATION(ARG, MASTER) )/10, 1000, 7000 + 함락(ARG) * 1000)
+;
+;IF RAND:10000 > LOCAL
+;	FOR LCOUNT, 0, 9
+;		SIF TALENT:ARG:(201+LCOUNT) == 0
+;			CONTINUE
+;		LOCAL:1 = (201+LCOUNT)
+;		CFLAG:ARG:ボイコットフラグ = 1
+;
+;		;ボイコットに対する抑制処理
+;		;嫌がってても指示を聞く(1/3) または インス토르ソフトでボイコット抑制
+;		SIF RAND:3 == 0 || EQUIP:MASTER:블랙컴퍼니 == 1
+;			CFLAG:ARG:ボイコットフラグ = 0
+;
+;		BREAK
+;	NEXT
+;ENDIF
+;RETURN LOCAL:1
+

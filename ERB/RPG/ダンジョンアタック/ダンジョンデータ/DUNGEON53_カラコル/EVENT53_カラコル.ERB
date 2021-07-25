@@ -1,0 +1,1251 @@
+﻿;=======================================================================
+;던전突入時の이벤트
+;=======================================================================
+@START_DUNGEON_53, ARG
+IF !STRFLAG_D("初回", 1)
+	PRINTW ＞총성이 들린다
+	PRINTL ＞정말로 라스트 바탈리온의 병사가 와서、
+	PRINTW ＞누군가와 교전하고 있는 것 같다
+	PRINTW ＞카라콜의 입구를 찾자
+ENDIF
+FLAG:現M = 0
+FLAG:現X = 2
+FLAG:現Y = 10
+;=======================================================================
+;[5]조사　実行時の이벤트
+;=======================================================================
+@EVENT_CHECK_DUNGEON_53
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y)% 10
+	;========
+	;宝の処理
+	;========
+	CASE 3
+		CALL TREASURE_53
+		RETURN 1
+	;========================
+	;이벤트
+	;========================
+	CASE 4
+		CALL EVENT_53
+		RETURN 1
+	;=======
+	;ワープゾーン
+	;=======
+	CASE 6,7
+		CALL WORP_53
+		RETURN 1
+	;=======
+	;メッセンジャー
+	;=======
+	CASE 8
+		CALL MESSAGE_53, 0
+		RETURN 1
+	;=======
+	;特殊タイル
+	;=======
+	CASE 9
+		CALL SPECIAL_53
+		RETURN 1
+	;=======
+	;ダークゾーン
+	;=======
+	CASE -1
+		IF DA:(FLAG:現X):(FLAG:現Y) < -10
+			CALL DARK_53
+			RETURN 1
+		ENDIF
+	CASEELSE
+	PRINTW 아무 것도 없는 것같다
+	RETURN 0
+ENDSELECT
+;=======================================================================
+;タイル進入時の이벤트
+;=======================================================================
+@EVENT_ENTER_DUNGEON_53,ARG
+;ARG = 進入時の向き　0の場合ワープなど
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y) % 10
+	;==========
+	;扉の処理
+	;==========
+	CASE 2
+		CALL DUNGEON_DOOR,ARG
+		RETURN 1
+;========
+;宝の処理
+;========
+	CASE 3
+		CALL TREASURE_53
+		RETURN 1
+;========================
+;이벤트
+;========================
+	CASE 4
+		CALL EVENT_53, 1
+		RETURN 0
+;=======
+;ワープゾーン
+;=======
+	CASE 6,7
+		CALL WORP_53
+		RETURN 1
+;=======
+;メッセンジャー
+;=======
+	CASE 8
+		CALL MESSAGE_53, 1
+		RETURN 1
+;=======
+;特殊タイル
+;=======
+	CASE 9
+		CALL SPECIAL_53
+		RETURN 1
+;=======
+;ダークゾーン
+;=======
+	CASE -1
+		CALL DARK_53, 1
+		RETURN 1
+ENDSELECT
+;=======
+;主に扉
+;=======
+;扉のタイル표시
+@TILE_MARK_COMMON_53_2, ARG, ARG:1, ARG:2
+SELECTCASE ARG / 10
+	CASEELSE
+		RESULTS = 문
+ENDSELECT
+@CAN_ENTER_53, ARG, ARG:1
+SELECTCASE DA:ARG:(ARG:1)
+	CASE 9012
+		IF !STRFLAG_D("조커撃破")
+			PRINTW ＞안에서 시끄러운 소리가 난다
+			PRINTW ＞방 안으로 들어가겠습니까?
+			CALL INPUT_YN
+			SIF RESULT == 1
+				RETURN 0
+		ENDIF
+	CASE 12012
+		IF !STRFLAG_D("M12ドアオープン")
+			IF ARG:1 > FLAG:現Y
+				PRINTW ＞문은 열리지 않는다.
+				PRINTW ＞반대 쪽에서 자물쇠로 잠겨 있는 것 같다.
+				RETURN 0
+			ELSE
+				PRINTW ＞문의 자물쇠를 풀었다.
+				CALLF STRFLAG_D("M12ドアオープン", 1)
+			ENDIF
+		ENDIF
+	CASE 12022
+		IF !STRFLAG_D("성창騎士団撃破")
+			PRINTW ＞안에 누군가 있는 것 같다
+			PRINTW ＞방 안으로 들어가겠습니까?
+			CALL INPUT_YN
+			SIF RESULT == 1
+				RETURN 0
+		ENDIF
+	CASE 15012
+		IF !STRFLAG_D("M15ドアオープン")
+			IF ARG:1 > FLAG:現Y
+				PRINTW ＞문은 열리지 않는다.
+				PRINTW ＞반대 쪽에서 자물쇠로 잠겨 있는 것 같다.
+				RETURN 0
+			ELSE
+				PRINTW ＞문의 자물쇠를 풀었다.
+				CALLF STRFLAG_D("M15ドアオープン", 1)
+			ENDIF
+		ENDIF
+	CASE 18012
+		IF !STRFLAG_D("카라코르クリア")
+			PRINTW ＞여기가 최심부인 것 같다
+			PRINTW ＞방 안으로 들어가겠습니까?
+			CALL INPUT_YN
+			SIF RESULT == 1
+				RETURN 0
+		ENDIF
+ENDSELECT
+CALL CAN_ENTER,ARG,ARG:1
+RETURN RESULT
+
+@TILE_MARK_COMMON_53_9, ARG, ARG:1, ARG:2
+SELECTCASE ARG / 10
+	CASE 98
+		RESULTS = Ｃ
+	CASE 99
+		RESULTS = 출
+ENDSELECT
+
+@SPECIAL_53
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+	;ケーブルカー
+	CASE 98
+		PRINTW ＞케이블카가 있다
+		IF FLAG:現M == 8 && !STRFLAG_D("ケーブルカー起動", 1)
+			PRINTW ＞주위를 탐색하니 전원이 있어 기동시켰다
+			PRINTW ＞이것으로 이 다음부터는 케이블카를 사용할 수 있다
+		ENDIF
+		IF !STRFLAG_D("ケーブルカー起動")
+			PRINTW ＞그러나 전원이 공급되지 않아 움직이지 않는다
+		ELSE
+			PRINTL ＞케이블카를 타겠습니까?
+			CALL INPUT_YN
+			SIF RESULT == 0
+				CALL DUNGEON_WORP_ID, ABS(FLAG:現M - 8), 989, 1
+		ENDIF
+	;出입
+	CASE 99
+		CALL DUNGEON_EXIT
+ENDSELECT
+;=======
+;ELEVATOR定義
+;=======
+@DUNGEON_ELEVATOR_53, ARG
+RETURN 9, 12, 15
+@EVENT_53, ARG
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+	CASE 0
+		PRINTW ＞라스트 바탈리온의 병사가 있다.
+		PRINTW ＞그리고 그들의 발 밑에는 가면당원들이 쓰러져 있었다…
+		PRINTW ＞아무래도 라스트 바탈리온과 교전하고 있던 건 가면당원이었던 것 같다
+		PRINTL 
+		PRINTL 병사:
+		PRINTW 「큭, 서머너인가! 총통을 방해하게 두지 않겠다!」
+		PRINTW 「지크 하일!」
+		PRINTL 
+		WAIT
+		CALL SET_ENEMY,7, [[キャラ:Ｓ졸다트]], 45, 0
+		CALL SET_ENEMY,8, [[キャラ:Ｍ졸다트]], 45, 0
+		CALL SET_ENEMY,9, [[キャラ:Ｍ졸다트]], 45, 0
+		CALL SET_ENEMY,10, [[キャラ:Ｍ졸다트]], 45, 0
+		CALL SET_ENEMY,11, [[キャラ:Ｓ졸다트]], 45, 0
+		CALL SET_ENEMY,12, [[キャラ:Ｖ크래프트]], 45, 0
+		CALL SET_ENEMY,13, [[キャラ:Ｓ슛체]], 45, 0
+		CALL SET_ENEMY,14, [[キャラ:코만단트]], 45, 0
+		CALL SET_ENEMY,15, [[キャラ:Ｓ슛체]], 45, 0
+		CALL SET_ENEMY,16, [[キャラ:Ｖ크래프트]], 45, 0
+		CALL ADJUST_IMPERIAL
+		PRINTL ＞제국병 코만단트가 １체 나타났다！
+		PRINTL ＞제국병 마시넨졸다트가 3체 나타났다！
+		PRINTL ＞제국병 슈트르졸다트가가 2체 나타났다！
+		PRINTL ＞제국병 샤프슛체가 2체 나타났다！
+		PRINTL ＞제국병 빈스크래프트가 2체 나타났다！
+		CALL BATTLE_START
+		CUSTOMDRAWLINE =
+		PRINTW ＞병사들을 쓰러뜨렸다
+		DA:(FLAG:現X):(FLAG:現Y) = 1
+		CALLF STRFLAG_D("入り입제국병撃破", 1)
+	CASE 900
+		PRINTW ＞문 안에 많은 라스트 바탈리온 병사들이 쓰러져 있었다
+		PRINTW ＞그리고 그 중심에는 가면의 남자 조커가 있다…
+		PRINTL 
+		PRINTL 조커:
+		PRINTW 「크、네놈은…… 역시 온 건가」
+		PRINTL 「네 놈은 시발바를 부상시켜 소원을 이룰 권리도、
+		PRINTW 　여기에 올 권리도 없다고 했는데」
+		PRINTW 「그런데도、네 놈이 여기에 있는 건『빼앗는 자』이기 때문이다…！」
+		PRINTW 「하지만 『주는 자』인 내가 네 놈에게 꿈을 훼손 당할 수야 없지…！」
+		PRINTW 「여기서 마지막 선고를 내리겠다…！」
+		PRINTL 
+		PRINTW 페르소나 구사자 조커가 １체 나타났다！
+		CUSTOMDRAWLINE =
+		WAIT
+		FLAG:도주불가フラグ = 1
+		FLAG:회화불능フラグ = 1
+		FLAG:선제기습취소 = 1
+		CALL SET_ENEMY,9,[[キャラ:조커]],50,0,1
+		CALL ADJUST_KAMEN
+		CALL BATTLE_START
+		PRINTW 페르소나 사용자 조커를 쓰러뜨렸다
+		PRINTL 
+		PRINTL 조커:
+		PRINTW 「큭……나는……우아아…」
+		PRINTL 여자 목소리:
+		PRINTW 「너희들…！ 그 녀석을 멈춰！」
+		PRINTL 
+		PRINTW ＞갑자기 여자가 나타나 가면당원들을 부추겼다！
+		PRINTL 
+		PRINTL 여자:
+		PRINTW 「자、조커。이런 녀석은 내버려 두고 한시라도 빨리 안쪽으로」
+		PRINTL 조커:
+		PRINTW 「퀸、크..。어쩔 수 없다… 하지만 기억해 둬라。네 녀석은 내가 쓰러뜨린다！」
+		PRINTL 
+		PRINTW ＞조커는 이렇게 말하면서 퀸과 함께 방에서 나갔다
+		CALL SET_ENEMY, 7, [[キャラ:황소가면Ｒ]], 45, 0
+		CALL SET_ENEMY, 8, [[キャラ:사자가면Ｒ]], 45, 0
+		CALL SET_ENEMY, 10, [[キャラ:전갈가면Ｒ]], 45, 0
+		CALL SET_ENEMY, 11, [[キャラ:물병가면Ｒ]], 45, 0
+		CALL SET_ENEMY, 12, [[キャラ:황소가면Ｒ]], 45, 0
+		CALL SET_ENEMY, 13, [[キャラ:사자가면Ｒ]], 45, 0
+		CALL SET_ENEMY, 15, [[キャラ:전갈가면Ｒ]], 45, 0
+		CALL SET_ENEMY, 16, [[キャラ:물병가면Ｒ]], 45, 0
+		FOR LOCAL:1, 7 , 17
+			LOCAL = POS(LOCAL:1)
+			SIF LOCAL < 0
+				CONTINUE
+		LOCAL:2 = FLAG:전투난이도 - 3 > 0 ? 100 + (FLAG:전투난이도 - 3) * 20 # 100
+		CALL SET_BATTLE_STATUS(LOCAL, 12 * LOCAL:2, "ＨＰ")
+		CALL SET_BATTLE_STATUS(LOCAL, 5 * LOCAL:2, "ＭＰ")
+		CALL SYNC_STATUS, LOCAL
+		CALL HEALTH_CHARA, LOCAL
+		NEXT
+		CALL BATTLE_START
+		DA:(FLAG:現X):(FLAG:現Y) = 1
+		CALLF STRFLAG_D("조커撃破", 1)
+		FLAG:도주불가フラグ = 0
+		FLAG:회화불능フラグ = 0
+		FLAG:선제기습취소 = 0
+	CASE 1200
+		PRINTW ＞큰 방에 들어서자 조커와、그 옆에는 퀸이 있었다。
+		PRINTW ＞그리고 두 명의 성창기사단이 창을 들이대고 있었다。
+		PRINTL 
+		PRINTL 조커:
+		PRINTW 「큭、과거의 망령 따위가 날 방해하는가」
+		PRINTL 롱기누스８
+		PRINTW 「꿈을 내줄까 보냐。그러나 꽃따위 덧없는 것에 그런 힘이 있을까」
+		PRINTL 롱기누스９:
+		PRINTW 「큭큭큭…、망상에 놀아나는 불쌍한 마리오네트여」
+		PRINTW 「예전에 본 여자의 환영을 잊을 수 없다는 건가」
+		PRINTL 조커:
+		PRINTW 「큭… 어째서 그것을…」
+		PRINTL 롱기누스９:
+		PRINTW 「우리들은 뭐든 꿰뚫어 보고 있지…。그래、어째서 네 녀석이 여자의 환영에 매달리는지。사실은 무엇을 증오하고 있는지 조차도！」
+		PRINTL 퀸:
+		PRINTW 「조커를 당하게 놔두지 않겠어！」
+		PRINTL 
+		PRINTW ＞조커를 감싸며 퀸이 성창기사단 앞에 나선다。
+		PRINTL 
+		PRINTL 롱기누스１０:
+		PRINTW 「하하하、프라우 아쿠에리아스、이제와서 뮤터(독일어로 엄마)로서 행동할 생각인가？」
+		PRINTL 롱기누스８:
+		PRINTW 「네 놈이 원한 건 프로이라인이다。그리고 결과가 어떻게 되었는지 네 놈도 알텐데」
+		PRINTL 조커:
+		PRINTW 「뮤터…？ 내… 어머니는… 타츠야가… 우아아…」
+		PRINTL 퀸:
+		PRINTW 「조커、이런 녀석들의 이야기에 현혹되지 마세요！」
+		PRINTL 롱기누스１０:
+		PRINTW 「여기까지 와서도 속이려 드는거냐…」
+		PRINTL 롱기누스９
+		PRINTL 「휠 오브 포츈의 마리오네트여
+		PRINTW 　네 녀석을 대신해、우리가 이 여자를 심판해주마」
+		PRINTL 롱기누스８:
+		PRINTW 「하지만、아무래도 손님이 온 모양이군」
+		PRINTL 롱기누스１０:
+		PRINTW 「망가지기 시작한 마리오네트보다 즐길 수 있을까」
+		PRINTL 롱기누스９
+		PRINTW 「가라。망가졌다고는 해도、아직 춤출 순 있을 것이다」
+		PRINTW 「때는 돌고 도니、당신이 역할을 완수하면 좋겠군」
+		PRINTL 
+		PRINTFORMW ＞그러면서 성창기사단은 %CALLNAME:MASTER%에게 창을 겨눴다
+		PRINTL 
+		PRINTL 조커:
+		PRINTW 「크윽……이런……내가……」
+		PRINTL 퀸:
+		PRINTW 「어쨌든、가도록 해요… 여기서 시간을 낭비 할 순…」
+		PRINTL 조커：
+		PRINTW 「……알았다」
+		PRINTL 
+		PRINTW ＞조커 일행은 유적의 안쪽으로 사라져 갔다。
+		PRINTL 
+		PRINTL 롱기누스１０:
+		PRINTW 「서머너여。지금의 것은 꽤 볼만하지 않았나？」
+		PRINTL 롱기누스９：
+		PRINTW 「아니、그 놈들의 관계를 모르면 즐길 수 없을 것이다」
+		PRINTL 롱기누스８：
+		PRINTW 「그렇군。그러면 특별히 알려주기로 할까」
+		PRINTW 「어때。듣고 싶은가？」
+		CALL INPUT_YN
+		IF RESULT == 0
+			PRINTL 롱기누스８:
+			PRINTW 「녀석、프라우・아쿠에리아스는 조커의 뮤터(독일어로 엄마)다」
+			PRINTW 「그리고 그 가며 아래엔 젊고 아름다운 얼굴이 숨겨져 있다」
+			PRINTW 「그 여자가 조커에게 바라는 것이다」
+			PRINTW 「그래、 아름다운 여배우였다。그 여자는 무엇보다 그 젊음과 아름다움을 잃는 것을 두려워 했다」
+			PRINTW 「그 공포 때문에 자신의 킨토(아이)를 사랑하지 않았던 것이다」
+			PRINTW 「그런 뮤터를 킨토가 증오하는 것은 어쩔 수 없지 않나？」
+			PRINTL 롱기누스１０:
+			PRINTW 「뮤터 뿐만이 아니다。파타(아버지) 또한 킨토에게 자상한 파타가 아니었다」
+			PRINTW 「그래、한심하게도、뮤터에겐 아무 말도 하지 못하고、킨토를 돕지도 않았다.」
+			PRINTW 「킨토는 그런 파타를 증오하고 이상적인 아버지 상을 가슴에 품었다」
+			PRINTW 「그리고 그 이상에 따라 파타를 묵살했던 것이다」
+			PRINTL 롱기누스９:
+			PRINTW 「그 파타야말로、인・라케치를 적은 카시하라 아케나리인 것이다」
+			PRINTL 「그래…、파타에겐 참회를、뮤터에겐 단죄를…、
+			PRINTW 　그것이 네놈이 방해하려고 했던 것이란 말이다」
+			PRINTL 롱기누스１０:
+			PRINTW 「자、이제 됐다」
+			PRINTW 「네 녀석이 미치게 한 희극이 뭔지를 알았을 터이지」
+			PRINTW 「모처럼 온 마리오네트의 무대다」
+			PRINTW 「아우프・비다젠… 권한이 없는 손님은 무의식의 심연으로 돌아가라」
+		ELSE
+			PRINTL 롱기누스８:
+			PRINTW 「타인의 운명에는 흥미가 없다는 건가」
+			PRINTW 「큭큭큭、벌레답지 않구나」
+			PRINTL 롱기누스１０:
+			PRINTW 「그러면、됐다」
+			PRINTW 「모처럼 온 마리오네트의 무대다」
+			PRINTW 「아우프・비다젠… 권한이 없는 손님은 무의식의 심연으로 돌아가라」
+		ENDIF
+		FLAG:도주불가フラグ = 1
+		FLAG:회화불능フラグ = 1
+		FLAG:선제기습취소 = 1
+		CALL SET_ENEMY,8, [[キャラ:롱기누스１０]], 50, 0, 1
+		CALL SET_ENEMY,9, [[キャラ:롱기누스９]], 50, 0, 1
+		CALL SET_ENEMY,10, [[キャラ:롱기누스８]], 50, 0, 1
+		CALL ADJUST_IMPERIAL
+		PRINTL ＞성창기사단 롱기누스１０이 １체 나타났다！
+		PRINTL ＞성창기사단 롱기누스９이 １체 나타났다！
+		PRINTL ＞성창기사단 롱기누스８이 １체 나타났다！
+		CALL BATTLE_START
+		CUSTOMDRAWLINE =
+		WAIT
+		PRINTW ＞성창기사단은 힘이 다했다！
+		CALLF STRFLAG_D("성창騎士団撃破", 1)
+		DA:(FLAG:現X):(FLAG:現Y) = 1
+		FLAG:도주불가フラグ = 0
+		FLAG:회화불능フラグ = 0
+		FLAG:선제기습취소 = 0
+	IF STRFLAG_NUM_EV("나치스의 미인 비밀 병사의 소문", , , , [[이벤트:소문]]) == 2
+		PRINTL 
+		PRINTL ＞파괴한 성창기사단들은 부상당한 것 같지만 아직 숨은 붙어있다
+		PRINTW ＞방금 전 했던 큰소리를 반성시키기 위해 꼭두각시인형 취급해주는 것도 나쁘지 않을 것이다
+		PRINTW
+	ELSEIF STRFLAG_NUM_EV("나치스의 히든카드는 기계화 미녀 군단의 소문", , , , [[이벤트:소문]]) == 2
+		PRINTL 
+		PRINTL ＞파괴한 성창기사단의 상태를 조사한다
+		PRINTW ＞사람의 모습을 하면서 분명히 기계로 구성된 육체는 앞선 전투에서도 치명상을 면한 모양이다
+		PRINTL ＞타인을 꼭두각시인형이라고 불렀던 기계의처녀들을 앞으로 어떻게 취급할까 고민하면서、그녀들을 엄선하기 시작했다…
+		PRINTW
+	ENDIF
+		IF STRFLAG_NUM_EV("나치스의 미인 비밀 병사의 소문", , , , [[이벤트:소문]]) == 2 || STRFLAG_NUM_EV("나치스의 히든카드는 기계화 미녀 군단의 소문", , , , [[이벤트:소문]]) == 2
+			PRINTL ＞3명 중 어느 것을 데리고 돌아갈까
+
+			VARSET LOCAL
+			LOCAL = 1
+			IF GETCHARA([[キャラ:롱기누스１０]]) < 0
+				PRINTL ＞[1]롱기누스１０
+				LOCAL:(LOCAL++) = 1
+			ENDIF
+			IF GETCHARA([[キャラ:롱기누스９]]) < 0
+				PRINTL ＞[2]롱기누스９
+				LOCAL:(LOCAL++) = 2
+			ENDIF
+			IF GETCHARA([[キャラ:롱기누스８]]) < 0
+				PRINTL ＞[3]롱기누스８
+				LOCAL:(LOCAL++) = 3
+			ENDIF
+			PRINTL ＞[0]데리고 돌아가지 않는다
+			PRINTL
+			CALL INPUTINT,0,LOCAL:1,LOCAL:2,LOCAL:3
+
+			SELECTCASE RESULT
+			CASE 1
+			PRINTW ＞롱기누스１０을 손에 넣었다
+				CALL ADD_NEW_COMPANION,[[キャラ:롱기누스１０]],0,,,1
+				IF RESULT == 1
+					BASE:(RESULT:1):LV = 40
+					BASE:(RESULT:1):ＥＸＰ = 5*(BASE:(RESULT:1):LV - 1)*(BASE:(RESULT:1):LV)*(BASE:(RESULT:1):LV + 1)/3
+					BASE:(RESULT:1):지혜 -= 3
+					BASE:(RESULT:1):마력 -= 3
+					BASE:(RESULT:1):인내력 -= 2
+					BASE:(RESULT:1):속도 -= 3
+					BASE:(RESULT:1):운   -= 3
+					ABL:(RESULT:1):종족 = 0
+					BASE:(RESULT:1):검격 = 100
+					BASE:(RESULT:1):비구 = 100
+					BASE:(RESULT:1):타격 = 100
+					BASE:(RESULT:1):전술 = 100
+					BASE:(RESULT:1):화염 = 100
+					BASE:(RESULT:1):빙결 = 100
+					BASE:(RESULT:1):전격 = 100
+					BASE:(RESULT:1):충격 = 100
+					BASE:(RESULT:1):신경 = 100
+					BASE:(RESULT:1):정신 = 100
+					BASE:(RESULT:1):파마 = 100
+					BASE:(RESULT:1):주살 = 100
+					BASE:(RESULT:1):지변 = 100
+					BASE:(RESULT:1):수격 = 100
+					BASE:(RESULT:1):질풍 = 100
+					BASE:(RESULT:1):중력 = 100
+					BASE:(RESULT:1):핵열 = 100
+					BASE:(RESULT:1):만능 = 100
+					BASE:(RESULT:1):사이코 = 100
+					BASE:(RESULT:1):HAPPY = 0
+					BASE:(RESULT:1):SHOCK = 0
+					BASE:(RESULT:1):PANIC = 0
+					BASE:(RESULT:1):SLEEP = 0
+					BASE:(RESULT:1):FREEZE = 0
+					BASE:(RESULT:1):BIND = 0
+					BASE:(RESULT:1):CLOSE = 0
+					BASE:(RESULT:1):POISON = 0
+					BASE:(RESULT:1):CHARM = 0
+					BASE:(RESULT:1):PALYZE = 0
+					BASE:(RESULT:1):CURSE = 0
+					BASE:(RESULT:1):FLY = 0
+					BASE:(RESULT:1):STONE = 0
+					BASE:(RESULT:1):DYING = 0
+					MAXBASE:(RESULT:1):검격 = 100
+					MAXBASE:(RESULT:1):비구 = 100
+					MAXBASE:(RESULT:1):타격 = 100
+					MAXBASE:(RESULT:1):전술 = 100
+					MAXBASE:(RESULT:1):화염 = 100
+					MAXBASE:(RESULT:1):빙결 = 100
+					MAXBASE:(RESULT:1):전격 = 100
+					MAXBASE:(RESULT:1):충격 = 100
+					MAXBASE:(RESULT:1):신경 = 100
+					MAXBASE:(RESULT:1):정신 = 100
+					MAXBASE:(RESULT:1):파마 = 100
+					MAXBASE:(RESULT:1):주살 = 100
+					MAXBASE:(RESULT:1):지변 = 100
+					MAXBASE:(RESULT:1):수격 = 100
+					MAXBASE:(RESULT:1):질풍 = 100
+					MAXBASE:(RESULT:1):중력 = 100
+					MAXBASE:(RESULT:1):핵열 = 100
+					MAXBASE:(RESULT:1):만능 = 100
+					MAXBASE:(RESULT:1):사이코 = 100
+					MAXBASE:(RESULT:1):HAPPY = 0
+					MAXBASE:(RESULT:1):SHOCK = 0
+					MAXBASE:(RESULT:1):PANIC = 0
+					MAXBASE:(RESULT:1):SLEEP = 0
+					MAXBASE:(RESULT:1):FREEZE = 0
+					MAXBASE:(RESULT:1):BIND = 0
+					MAXBASE:(RESULT:1):CLOSE = 0
+					MAXBASE:(RESULT:1):POISON = 0
+					MAXBASE:(RESULT:1):CHARM = 0
+					MAXBASE:(RESULT:1):PALYZE = 0
+					MAXBASE:(RESULT:1):CURSE = 0
+					MAXBASE:(RESULT:1):FLY = 0
+					MAXBASE:(RESULT:1):STONE = 0
+					MAXBASE:(RESULT:1):DYING = 0
+					ABL:(RESULT:1):공격범위 = 1	
+					TALENT:(RESULT:1):이능자 = 1
+					ABL:(RESULT:1):스킬1 = 0
+					ABL:(RESULT:1):스킬2 = 0
+					ABL:(RESULT:1):스킬3 = 0
+					ABL:(RESULT:1):스킬4 = 0
+					ABL:(RESULT:1):스킬5 = 0
+					ABL:(RESULT:1):스킬1 = 513;트라프리
+					ABL:(RESULT:1):스킬2 = 510;토라에스트
+					ABL:(RESULT:1):스킬3 = 62;롱기누스카피（弱）
+					ABL:(RESULT:1):습득스킬1 = 515;도발
+					ABL:(RESULT:1):습득LV1 = 42
+					ABL:(RESULT:1):습득스킬2 = 2418;코칭
+					ABL:(RESULT:1):습득LV2 = 44
+					ABL:(RESULT:1):습득스킬3 = 123;도화일섬
+					ABL:(RESULT:1):습득LV3 = 46
+					ABL:(RESULT:1):습득스킬4 = 514;포효
+					ABL:(RESULT:1):습득LV4 = 48
+					ABL:(RESULT:1):습득스킬5 = 2419;어드바이스
+					ABL:(RESULT:1):습득LV5 = 50
+					ABL:(RESULT:1):습득스킬6 = 141;충의의총격
+					ABL:(RESULT:1):습득LV6 = 54
+					ABL:(RESULT:1):습득스킬7 = 2413;기공(대)
+					ABL:(RESULT:1):습득LV7 = 58
+					TALENT:(RESULT:1):남자 = 0
+					TALENT:(RESULT:1):처녀 = 1
+					TALENT:(RESULT:1):겁쟁이 = 1
+					TALENT:(RESULT:1):프라이드높음 = 1
+					TALENT:(RESULT:1):건방짐 = 1
+					TALENT:(RESULT:1):츤데레 = 1
+					TALENT:(RESULT:1):일선을넘지않음 = 1
+					TALENT:(RESULT:1):눈에띄고싶어함 = 1
+					TALENT:(RESULT:1):아픔에약함 = 1
+					TALENT:(RESULT:1):습득빠름 = 1
+					TALENT:(RESULT:1):부끄럼쟁이 = 1
+					TALENT:(RESULT:1):약독내성 = 1
+					TALENT:(RESULT:1):쾌감에솔직 = 1
+					TALENT:(RESULT:1):자위하기쉬움 = 1
+					TALENT:(RESULT:1):정조관념 = 1
+					TALENT:(RESULT:1):유아체형 = 1
+					TALENT:(RESULT:1):빈유 = 1
+					TALENT:(RESULT:1):영매체질 = 1
+					TALENT:(RESULT:1):오줌싸개 = 1
+					EXP:(RESULT:1):방뇨경험 += 5
+						IF STRFLAG_NUM_EV("나치스의 히든카드는 기계화 미녀 군단의 소문", , , , [[이벤트:소문]]) == 2
+							TALENT:(RESULT:1):기계의처녀 = 1
+							TALENT:(RESULT:1):Ｃ둔감 = 1
+							TALENT:(RESULT:1):Ｂ둔감 = 1
+							TALENT:(RESULT:1):Ａ둔감 = 1
+							TALENT:(RESULT:1):Ｖ둔감 = 1
+						ELSE
+							TALENT:(RESULT:1):Ｖ민감 = 1
+						ENDIF
+					CFLAG:(RESULT:1):모자 = 18;군모
+					CFLAG:(RESULT:1):옷 = 107;블라우스
+					CFLAG:(RESULT:1):하의 = 209;타이트미니스커트
+					CFLAG:(RESULT:1):전신복 = 316;군복
+					CFLAG:(RESULT:1):손 = 401;장갑
+					CFLAG:(RESULT:1):속옷（상） = 502;스포츠브라
+					CFLAG:(RESULT:1):속옷（하） = 617;줄무늬팬티
+					CFLAG:(RESULT:1):양말 = 806;팬티스타킹
+					CFLAG:(RESULT:1):신발 = 901;부츠
+					CFLAG:(RESULT:1):전투참가불가능 = 1
+					CSTR:(RESULT:1):종족명 = 성창기사
+					CSTR:(RESULT:1):タイトル = ドイツ軍人
+				ENDIF
+			CASE 2
+			PRINTW ＞롱기누스９을 손에 넣었다
+				CALL ADD_NEW_COMPANION,[[キャラ:롱기누스９]],0,,,1
+				IF RESULT == 1
+					BASE:(RESULT:1):LV = 40
+					BASE:(RESULT:1):ＥＸＰ = 5*(BASE:(RESULT:1):LV - 1)*(BASE:(RESULT:1):LV)*(BASE:(RESULT:1):LV + 1)/3
+					BASE:(RESULT:1):지혜 -= 3
+					BASE:(RESULT:1):마력 -= 3
+					BASE:(RESULT:1):인내력 -= 2
+					BASE:(RESULT:1):속도 -= 3
+					BASE:(RESULT:1):운   -= 3
+					ABL:(RESULT:1):종족 = 0
+					BASE:(RESULT:1):검격 = 100
+					BASE:(RESULT:1):비구 = 100
+					BASE:(RESULT:1):타격 = 100
+					BASE:(RESULT:1):전술 = 100
+					BASE:(RESULT:1):화염 = 100
+					BASE:(RESULT:1):빙결 = 100
+					BASE:(RESULT:1):전격 = 100
+					BASE:(RESULT:1):충격 = 100
+					BASE:(RESULT:1):신경 = 100
+					BASE:(RESULT:1):정신 = 100
+					BASE:(RESULT:1):파마 = 100
+					BASE:(RESULT:1):주살 = 100
+					BASE:(RESULT:1):지변 = 100
+					BASE:(RESULT:1):수격 = 100
+					BASE:(RESULT:1):질풍 = 100
+					BASE:(RESULT:1):중력 = 100
+					BASE:(RESULT:1):핵열 = 100
+					BASE:(RESULT:1):만능 = 100
+					BASE:(RESULT:1):사이코 = 100
+					BASE:(RESULT:1):HAPPY = 0
+					BASE:(RESULT:1):SHOCK = 0
+					BASE:(RESULT:1):PANIC = 0
+					BASE:(RESULT:1):SLEEP = 0
+					BASE:(RESULT:1):FREEZE = 0
+					BASE:(RESULT:1):BIND = 0
+					BASE:(RESULT:1):CLOSE = 0
+					BASE:(RESULT:1):POISON = 0
+					BASE:(RESULT:1):CHARM = 0
+					BASE:(RESULT:1):PALYZE = 0
+					BASE:(RESULT:1):CURSE = 0
+					BASE:(RESULT:1):FLY = 0
+					BASE:(RESULT:1):STONE = 0
+					BASE:(RESULT:1):DYING = 0
+					MAXBASE:(RESULT:1):검격 = 100
+					MAXBASE:(RESULT:1):비구 = 100
+					MAXBASE:(RESULT:1):타격 = 100
+					MAXBASE:(RESULT:1):전술 = 100
+					MAXBASE:(RESULT:1):화염 = 100
+					MAXBASE:(RESULT:1):빙결 = 100
+					MAXBASE:(RESULT:1):전격 = 100
+					MAXBASE:(RESULT:1):충격 = 100
+					MAXBASE:(RESULT:1):신경 = 100
+					MAXBASE:(RESULT:1):정신 = 100
+					MAXBASE:(RESULT:1):파마 = 100
+					MAXBASE:(RESULT:1):주살 = 100
+					MAXBASE:(RESULT:1):지변 = 100
+					MAXBASE:(RESULT:1):수격 = 100
+					MAXBASE:(RESULT:1):질풍 = 100
+					MAXBASE:(RESULT:1):중력 = 100
+					MAXBASE:(RESULT:1):핵열 = 100
+					MAXBASE:(RESULT:1):만능 = 100
+					MAXBASE:(RESULT:1):사이코 = 100
+					MAXBASE:(RESULT:1):HAPPY = 0
+					MAXBASE:(RESULT:1):SHOCK = 0
+					MAXBASE:(RESULT:1):PANIC = 0
+					MAXBASE:(RESULT:1):SLEEP = 0
+					MAXBASE:(RESULT:1):FREEZE = 0
+					MAXBASE:(RESULT:1):BIND = 0
+					MAXBASE:(RESULT:1):CLOSE = 0
+					MAXBASE:(RESULT:1):POISON = 0
+					MAXBASE:(RESULT:1):CHARM = 0
+					MAXBASE:(RESULT:1):PALYZE = 0
+					MAXBASE:(RESULT:1):CURSE = 0
+					MAXBASE:(RESULT:1):FLY = 0
+					MAXBASE:(RESULT:1):STONE = 0
+					MAXBASE:(RESULT:1):DYING = 0
+					ABL:(RESULT:1):공격범위 = 1	
+					TALENT:(RESULT:1):이능자 = 1
+					ABL:(RESULT:1):스킬1 = 0
+					ABL:(RESULT:1):스킬2 = 0
+					ABL:(RESULT:1):스킬3 = 0
+					ABL:(RESULT:1):스킬4 = 0
+					ABL:(RESULT:1):스킬1 = 1705;마하・갈라
+					ABL:(RESULT:1):스킬2 = 905;마하・지온가
+					ABL:(RESULT:1):스킬3 = 62;롱기누스카피（弱）
+					ABL:(RESULT:1):스킬4 = 1112;독가스브레스
+					ABL:(RESULT:1):습득스킬1 = 1134;신경가드브레이크
+					ABL:(RESULT:1):습득LV1 = 42
+					ABL:(RESULT:1):습득스킬2 = 520;포그브레스
+					ABL:(RESULT:1):습득LV2 = 44
+					ABL:(RESULT:1):습득스킬3 = 123;도화일섬
+					ABL:(RESULT:1):습득LV3 = 46
+					ABL:(RESULT:1):습득스킬4 = 1124;아라크노와이어
+					ABL:(RESULT:1):습득LV4 = 48
+					ABL:(RESULT:1):습득스킬5 = 141;충의의총격
+					ABL:(RESULT:1):습득LV5 = 54
+					ABL:(RESULT:1):습득스킬6 = 49;밤벚꽃의춤
+					ABL:(RESULT:1):습득LV6 = 64
+					TALENT:(RESULT:1):남자 = 0
+					TALENT:(RESULT:1):처녀 = 1
+					TALENT:(RESULT:1):꿋꿋함 = 1
+					TALENT:(RESULT:1):자제심 = 1
+					TALENT:(RESULT:1):일선을넘지않음 = 1
+					TALENT:(RESULT:1):부끄럼쟁이 = 1
+					TALENT:(RESULT:1):아픔에강함 = 1
+					TALENT:(RESULT:1):바늘다루기 = 1
+					TALENT:(RESULT:1):습득빠름 = 1
+					TALENT:(RESULT:1):약독내성 = 1
+					TALENT:(RESULT:1):쾌감을부정 = 1
+					TALENT:(RESULT:1):거유 = 1
+					TALENT:(RESULT:1):바이 = 1
+					ABL:(RESULT:1):기교 = 1
+						IF STRFLAG_NUM_EV("나치스의 히든카드는 기계화 미녀 군단의 소문", , , , [[이벤트:소문]]) == 2
+							TALENT:(RESULT:1):기계의처녀 = 1
+							TALENT:(RESULT:1):Ｃ둔감 = 1
+							TALENT:(RESULT:1):Ｂ둔감 = 1
+							TALENT:(RESULT:1):Ａ둔감 = 1
+							TALENT:(RESULT:1):Ｖ둔감 = 1
+						ELSE
+							TALENT:(RESULT:1):Ａ민감 = 1
+							TALENT:(RESULT:1):Ｂ민감 = 1
+						ENDIF
+					CFLAG:(RESULT:1):모자 = 18;군모
+					CFLAG:(RESULT:1):옷 = 107;블라우스
+					CFLAG:(RESULT:1):하의 = 209;타이트미니스커트
+					CFLAG:(RESULT:1):전신복 = 316;군복
+					CFLAG:(RESULT:1):손 = 412;수갑
+					CFLAG:(RESULT:1):속옷（상） = 507;브래지어(흑)
+					CFLAG:(RESULT:1):속옷（하） = 609;팬티(흑)
+					CFLAG:(RESULT:1):양말 = 806;팬티스타킹
+					CFLAG:(RESULT:1):신발 = 901;부츠
+					CFLAG:(RESULT:1):전투참가불가능 = 1
+					CFLAG:(RESULT:1):그외 = 1105;머플러
+					CSTR:(RESULT:1):종족명 = 성창기사
+					CSTR:(RESULT:1):タイトル = ドイツ軍人
+				ENDIF
+			CASE 3
+			PRINTW ＞롱기누스８을 손에 넣었다
+				CALL ADD_NEW_COMPANION,[[キャラ:롱기누스８]],0,,,1
+				IF RESULT == 1
+					BASE:(RESULT:1):LV = 40
+					BASE:(RESULT:1):ＥＸＰ = 5*(BASE:(RESULT:1):LV - 1)*(BASE:(RESULT:1):LV)*(BASE:(RESULT:1):LV + 1)/3
+					BASE:(RESULT:1):지혜 -= 3
+					BASE:(RESULT:1):마력 -= 3
+					BASE:(RESULT:1):인내력 -= 2
+					BASE:(RESULT:1):속도 -= 3
+					BASE:(RESULT:1):운   -= 3
+					ABL:(RESULT:1):종족 = 0
+					BASE:(RESULT:1):검격 = 100
+					BASE:(RESULT:1):비구 = 100
+					BASE:(RESULT:1):타격 = 100
+					BASE:(RESULT:1):전술 = 100
+					BASE:(RESULT:1):화염 = 100
+					BASE:(RESULT:1):빙결 = 100
+					BASE:(RESULT:1):전격 = 100
+					BASE:(RESULT:1):충격 = 100
+					BASE:(RESULT:1):신경 = 100
+					BASE:(RESULT:1):정신 = 100
+					BASE:(RESULT:1):파마 = 100
+					BASE:(RESULT:1):주살 = 100
+					BASE:(RESULT:1):지변 = 100
+					BASE:(RESULT:1):수격 = 100
+					BASE:(RESULT:1):질풍 = 100
+					BASE:(RESULT:1):중력 = 100
+					BASE:(RESULT:1):핵열 = 100
+					BASE:(RESULT:1):만능 = 100
+					BASE:(RESULT:1):사이코 = 100
+					BASE:(RESULT:1):HAPPY = 0
+					BASE:(RESULT:1):SHOCK = 0
+					BASE:(RESULT:1):PANIC = 0
+					BASE:(RESULT:1):SLEEP = 0
+					BASE:(RESULT:1):FREEZE = 0
+					BASE:(RESULT:1):BIND = 0
+					BASE:(RESULT:1):CLOSE = 0
+					BASE:(RESULT:1):POISON = 0
+					BASE:(RESULT:1):CHARM = 0
+					BASE:(RESULT:1):PALYZE = 0
+					BASE:(RESULT:1):CURSE = 0
+					BASE:(RESULT:1):FLY = 0
+					BASE:(RESULT:1):STONE = 0
+					BASE:(RESULT:1):DYING = 0
+					MAXBASE:(RESULT:1):검격 = 100
+					MAXBASE:(RESULT:1):비구 = 100
+					MAXBASE:(RESULT:1):타격 = 100
+					MAXBASE:(RESULT:1):전술 = 100
+					MAXBASE:(RESULT:1):화염 = 100
+					MAXBASE:(RESULT:1):빙결 = 100
+					MAXBASE:(RESULT:1):전격 = 100
+					MAXBASE:(RESULT:1):충격 = 100
+					MAXBASE:(RESULT:1):신경 = 100
+					MAXBASE:(RESULT:1):정신 = 100
+					MAXBASE:(RESULT:1):파마 = 100
+					MAXBASE:(RESULT:1):주살 = 100
+					MAXBASE:(RESULT:1):지변 = 100
+					MAXBASE:(RESULT:1):수격 = 100
+					MAXBASE:(RESULT:1):질풍 = 100
+					MAXBASE:(RESULT:1):중력 = 100
+					MAXBASE:(RESULT:1):핵열 = 100
+					MAXBASE:(RESULT:1):만능 = 100
+					MAXBASE:(RESULT:1):사이코 = 100
+					MAXBASE:(RESULT:1):HAPPY = 0
+					MAXBASE:(RESULT:1):SHOCK = 0
+					MAXBASE:(RESULT:1):PANIC = 0
+					MAXBASE:(RESULT:1):SLEEP = 0
+					MAXBASE:(RESULT:1):FREEZE = 0
+					MAXBASE:(RESULT:1):BIND = 0
+					MAXBASE:(RESULT:1):CLOSE = 0
+					MAXBASE:(RESULT:1):POISON = 0
+					MAXBASE:(RESULT:1):CHARM = 0
+					MAXBASE:(RESULT:1):PALYZE = 0
+					MAXBASE:(RESULT:1):CURSE = 0
+					MAXBASE:(RESULT:1):FLY = 0
+					MAXBASE:(RESULT:1):STONE = 0
+					MAXBASE:(RESULT:1):DYING = 0
+					ABL:(RESULT:1):공격범위 = 1	
+					TALENT:(RESULT:1):이능자 = 1
+					ABL:(RESULT:1):스킬1 = 0
+					ABL:(RESULT:1):스킬2 = 0
+					ABL:(RESULT:1):스킬3 = 0
+					ABL:(RESULT:1):스킬4 = 0
+					ABL:(RESULT:1):스킬5 = 0
+					ABL:(RESULT:1):스킬1 = 1005;마하・잔마
+					ABL:(RESULT:1):스킬2 = 905;마하・지온가
+					ABL:(RESULT:1):스킬3 = 62;롱기누스카피（弱）
+					ABL:(RESULT:1):습득스킬1 = 1032;충격가드브레이크
+					ABL:(RESULT:1):습득LV1 = 42
+					ABL:(RESULT:1):습득스킬2 = 502;스쿠・카쟈
+					ABL:(RESULT:1):습득LV2 = 44
+					ABL:(RESULT:1):습득스킬3 = 123;도화일섬
+					ABL:(RESULT:1):습득LV3 = 46
+					ABL:(RESULT:1):습득스킬4 = 1008;회오리
+					ABL:(RESULT:1):습득LV4 = 48
+					ABL:(RESULT:1):습득스킬5 = 141;충의의총격
+					ABL:(RESULT:1):습득LV5 = 54
+					ABL:(RESULT:1):습득스킬6 = 1007;림도라
+					ABL:(RESULT:1):습득LV6 = 64
+					TALENT:(RESULT:1):남자 = 0
+					TALENT:(RESULT:1):처녀 = 1
+					TALENT:(RESULT:1):솔직함 = 1
+					TALENT:(RESULT:1):호기심 = 1
+					TALENT:(RESULT:1):낙관적 = 1
+					TALENT:(RESULT:1):해방 = 1
+					TALENT:(RESULT:1):젖기쉬움 = 1
+					TALENT:(RESULT:1):헌신적 = 1
+					TALENT:(RESULT:1):아픔에강함 = 1
+					TALENT:(RESULT:1):습득빠름 = 1
+					TALENT:(RESULT:1):쾌감에솔직 = 1
+					TALENT:(RESULT:1):도착적 = 1
+					ABL:(RESULT:1):가창기능 = 2
+					EXP:(RESULT:1):가창경험 += 30
+						IF STRFLAG_NUM_EV("나치스의 히든카드는 기계화 미녀 군단의 소문", , , , [[이벤트:소문]]) == 2
+							TALENT:(RESULT:1):기계의처녀 = 1
+							TALENT:(RESULT:1):Ｃ둔감 = 1
+							TALENT:(RESULT:1):Ｂ둔감 = 1
+							TALENT:(RESULT:1):Ａ둔감 = 1
+							TALENT:(RESULT:1):Ｖ둔감 = 1
+						ELSE
+							TALENT:(RESULT:1):Ｖ민감 = 1
+						ENDIF
+
+					CFLAG:(RESULT:1):모자 = 18;군모
+					CFLAG:(RESULT:1):옷 = 107;블라우스
+					CFLAG:(RESULT:1):하의 = 209;타이트미니스커트
+					CFLAG:(RESULT:1):전신복 = 316;군복
+					CFLAG:(RESULT:1):손 = 401;장갑
+					CFLAG:(RESULT:1):속옷（상） = 507;브래지어(흑)
+					CFLAG:(RESULT:1):속옷（하） = 609;팬티(흑)
+					CFLAG:(RESULT:1):양말 = 806;팬티스타킹
+					CFLAG:(RESULT:1):신발 = 901;부츠
+					CFLAG:(RESULT:1):전투참가불가능 = 1
+					CFLAG:(RESULT:1):그외 = 1105;머플러
+					CSTR:(RESULT:1):종족명 = 성창기사
+					CSTR:(RESULT:1):タイトル = ドイツ軍人
+				ENDIF
+			ENDSELECT
+		PRINTW ＞여성과 부서진 성창기사단의 잔해로부터 롱기누스 1체를 구성 가능한 부품을 그러모았다
+		ENDIF
+	ITEM:롱기누스의잔해 += 5 
+	CASE 1800
+		;部屋をアナライズし표시更新
+		FOR LOCAL, 4, 15
+			FOR LOCAL:1, 2, 15
+				CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, LOCAL, LOCAL:1)
+			NEXT
+		NEXT
+		CALL SHOW_FLOOR
+		PRINTW ＞큰 방에는 조커와 퀸、거기에 성창기사단과 그들에게 둘러싸인 군복차림의 남자 퓌러가 있었다
+		PRINTL 
+		PRINTL 조커:
+		PRINTW 「역시、왔구나… 자격도 없는 것들이」
+		PRINTL 퓌러:
+		PRINTFORMW 「자격 없는 것이 올 수 있던 것은 윤게에 힘이 없었기 때문 아닌가？」
+		PRINTL 「그렇다면 윤게들은 자격이 없고、시발바를 부상시킬 자격을 가지는 것은 
+		PRINTW 　１２궁을 상징하는 우리 성창기사단뿐이다」
+		PRINTL 성창기사단:
+		PRINTW 「지크・하일！」
+		PRINTW 「지크・라이히！」
+		PRINTW 「하나의 국가、하나의 국민、하나의 총통！」
+		PRINTL 조커:
+		PRINTW 「훗…、소문에 의해 되살아난 과거의 망령이 이제와서 뭘 원하는 거냐？」
+		PRINTL 퓌러:
+		PRINTW 「휠・오브・포츈의 마리오네트와、 같은 것이여」
+		PRINTL 「인간 안에는 파멸과 진보…
+		PRINTW 　모순되는 바램이 항상 상존하고 있다」
+		PRINTW 「그것을 바라는 제군들의 우려와 기대가 나를 부른 것이다」
+		PRINTW 「부름에 응한 이상에는、대답해 주지 않으면 안 되지 않곘는가？」
+		PRINTL 조커:
+		PRINTW 「그래…하지만 그건 내 역할이다」
+		PRINTW 「노인네는 돌아가주실까」
+		PRINTW 「거기의 쓰레기들과 함께 말야…」
+		PRINTW 「그리고 네 녀석도다… 서머너」
+		PRINTW 「네 녀석은 인류를 이데아리안으로 승화시키는、이 고귀한 일을 정말이지 전혀 이해하지 못하고 있다…」
+		PRINTW 「네놈들이 인류의 꿈을 방해하게 할 수는 없다」
+		PRINTL 퓌러:
+		PRINTW 「그러하다… 무지하고 어리석은 인간은 적절한 지도를 못해 이러한 일이 벌어지는 것이다」
+		PRINTW 「대중에게는 모든 것을 결정해주는 지도자가 필요해 항상…」
+		PRINTL 조커:
+		PRINTW 「그래서 이 조커가 인류를 새로운 단계로 이끌겠다！！」
+		PRINTW 「잘 보도록 해라！」
+		PRINTW 「죽음과 재생의 날개。시발바를！！」
+		PRINTL 
+		PRINTW ＞조커가 손에 들고 있던 해골을 추켜들자 갑자기 큰 진동이 방을 덥쳤다！
+		PRINTL 
+		PRINTL 퓌러:
+		PRINTW 「훌륭하다…！！」
+		PRINTW 「이것이 진정한 총통의 도시…」
+		PRINTW 「퓌러・슈텟테에 걸맞는 위용이다！！」
+		PRINTL 조커:
+		PRINTW 「큭큭크… 아하하하하！！」
+		PRINTW 「봐라、아버지가 말했던 것은 사실이었다！！」
+		PRINTL 퀸:
+		PRINTW 「서、설마 사실이었다고는…」
+		PRINTL 조커:
+		PRINTW 「큭…！？」
+		PRINTW 「달라… 내가… 하고 싶었던 것은…」
+		PRINTW 「이런… 참혹한 일… 이 아니야…！」
+		PRINTL 
+		PRINTW ＞조커가 돌연 머리를 안고 웅크리며 앉는다
+		PRINTL 
+		PRINTL 퓌러:
+		PRINTW 「지금이다！ 해골을 빼앗아라！！」
+		PRINTL 
+		PRINTW ＞성창기사단이 조커에게 덤벼들어 일격을 가하고 해골을 빼앗았다！
+		PRINTL 
+		PRINTL 퓌러:
+		PRINTW 「크하하하핫！！」
+		PRINTW 「그것이 부상했으니 이런 장소는 쓸모가 없을거다！」
+		PRINTW 「곧 여기도 무너질테니 떠난다！」
+		PRINTW 「빨리 탈출하지 않으면 말려 들어가겠어！！」
+		PRINTL 
+		PRINTW ＞부웅 하는 모터 소리가 울려 퍼지더니、성창기사단은 퓌러를 따라 날아가 버렸다
+		PRINTFORMW ＞뒤에는 %플레이어와()% 정신을 잃은 조커、퀸이 남겨졌다…
+		PRINTL 
+		PRINTL 퀸:
+		PRINTW 「쥰이 당하도록 놔두지 않아…！」
+		PRINTL 
+		PRINTFORMW ＞퀸이 %CALLNAME:MASTER%의 앞을 가로막았다
+		PRINTFORMW ＞%CALLNAME:MASTER%도 무기를 들고 응전하려 하자
+		PRINTW ＞그 때 어디선가 익숙한 소리가 울렸다
+		PRINTL 
+		PRINTL 누군가의 목소리:
+		PRINTW 「힘을 원하는가…？ 원한다면 좋다」
+		PRINTL 퀸:
+		PRINTW 「뭐든지 좋다。쥰을 지킬수만 있다면…！」
+		PRINTW 「우…우 크、우아아아아아！！」
+		PRINTL 
+		PRINTW ＞퀸의 몸이 순식간에 엷은 먹색으로 빛나는 금속으로 변해갔다
+		PRINTW ＞가면당원 메탈・맘이 １체 나타났다！
+		FLAG:도주불가フラグ = 1
+		FLAG:회화불능フラグ = 1
+		FLAG:선제기습취소 = 1
+		CALL SET_ENEMY,9,[[キャラ:메탈・맘]],55,0,1
+		CALL ADJUST_KAMEN
+		CALL BATTLE_START
+		CUSTOMDRAWLINE =
+		WAIT
+		PRINTW ＞메탈・맘은 힘이 다했다
+		PRINTL 
+		PRINTL 조커:
+		PRINTW 「퀸…、젠장… 머리가……」
+		PRINTL 
+		PRINTW ＞조커가 머리를 부여안으며 일어선다…
+		PRINTW ＞그리고 갈라진 가면 사이로 보이는 여왕의 얼굴을 보고 그대로 굳어버렸다
+		PRINTL 
+		PRINTL 조커:
+		PRINTW 「설마…？」
+		PRINTW 「아니、어머니는… 이런 곳에 있을 리가…」
+		PRINTW 「게다가 어머님은 타츠야가 죽였다… 아니야、그 때 죽은 것은 누나…？」
+		PRINTW 「우아아아아」
+		PRINTL 
+		PRINTW ＞조커가 머리를 끌어안으며 격렬하게 몸부림친다
+		PRINTW ＞거기에 돌연 남자가 나타난다…
+		PRINTW ＞칠자매학원에서 만났던 남자다…
+		PRINTL 
+		PRINTL 남자:
+		PRINTW 「한심하다。가면당 우두머리 정도의 사람이 부하 하나를 잃은 정도로 당황하는건가？」
+		PRINTL 조커:
+		PRINTW 「아버지！ 하지만 어머니가！」
+		PRINTL 조커의 아버지:
+		PRINTW 「그게 뭐 어때서？ 너는 이 여자에게 무엇을 바랬던 거냐？」
+		PRINTL 조커:
+		PRINTW 「그、그것은…우우」
+		PRINTL 조커의 아버지:
+		PRINTW 「이렇게 심판 받은 건가？ 큭큭」
+		PRINTL 조커:
+		PRINTW 「아니、나는 그런 걸 바란 것은…아니、이것만이 아니다… 시발바도…」
+		PRINTL 조커의 아버지:
+		PRINTW 「무슨 말을 하는거냐？ 잘 떠올려 봐라、너는 누구지? 무엇 때문에 여기에 있지？」
+		PRINTL 조커:
+		PRINTL 「나는… 나는… 그래、조커다
+		PRINTW 　사람들에게 꿈을 주기 위해、그리고 소중한 것을 빼앗는 놈들을 심판하기 위해 여기에 있다…！」
+		PRINTL 조커의 아버지:
+		PRINTW 「맞아。그러기 위해서는 힘이 필요할 것이다」
+		PRINTW 「자、바래라…증오해라…・증오의 불길에 몸을 던져라…」
+		PRINTL 조커:
+		PRINTW 「힘을・・・원해요・・・！누구에게도 지지않을 힘을・・・！！」
+		PRINTL 조커의 아버지:
+		PRINTW 「소원은 이루어졌다… 바치도록 해라、제물은 너 자신…천사라 칭하던 너에게 그 힘을 주지…」
+		PRINTL 조커:
+		PRINTW 「아아아아아아아아…！？그…그만둬어어어어…！！」
+		PRINTL 
+		PRINTW ＞조커 뒤에 이형의 페르소나가 나타났다
+		PRINTW ＞그리고 순식간에 조커를 이형의 모습으로 바꿔나갔다
+		PRINTW ＞페르소나 사용자？ 엔젤조커가 １체 나타났다！
+
+		CALL SET_ENEMY,9,[[キャラ:엔젤조커]],60,0,1
+		CALL ADJUST_KAMEN
+		CALL BATTLE_START
+		CUSTOMDRAWLINE =
+		WAIT
+		FLAG:도주불가フラグ = 0
+		FLAG:회화불능フラグ = 0
+		FLAG:선제기습취소 = 0
+		PRINTW ＞엔젤조커는 힘이 다했다
+		PRINTL 
+		PRINTL 조커의 아버지:
+		PRINTW 「흠、역시 이 정도인가」
+		PRINTW 「그 쿠로스 쥰은 내 소중한 장난감이었지만」
+		PRINTW 「이제 와서야 어쩔 수 없지。운명의 바퀴에서 벗어났다고 해두자」
+		PRINTW 「아니、이제 운명 그 자체로군。네 덕분에 쓸모 없어졌어」
+		PRINTW 「시발바로 오게」
+		PRINTW 「거기서 너의 힘을 고대하고 있겠네」
+		PRINTL 
+		PRINTW ＞남자가 그렇게 말하자 눈앞이 새하얀 빛으로 감싸였다
+		PRINTL 
+		PRINTW ……………… 
+		PRINTW ………… 
+		PRINTW ……
+		PRINTW 
+		PRINTW ＞정신을 차려보니 사무소의 방이다…
+		PRINTW ＞발 밑에는 조커、쿠로스 쥰이라 불렸던 소년이 쓰러져 있었다
+		PRINTW ＞쿠로스 쥰을 손에 넣었다
+		PRINTW ＞팬텀 소사이어티에서 라스트 바탈리온을 지상에서 추방한 보상을 지급했다
+		PRINTW ＞￥100000을 손에 넣었다
+		CALL ADD_NEW_COMPANION, [[キャラ:쥰]], 100
+		MONEY += 100000
+		CALLF STRFLAG_NUM_EV("罪ルート進行", "=", , 11, [[이벤트:페르소나２]])
+		FLAG:탈출 = 1
+ENDSELECT
+
+@TREASURE_53
+#LOCALSIZE 3
+#LOCALSSIZE 2
+LOCAL:2 = (DA:(FLAG:現X):(FLAG:現Y) / 10) % 100
+;個数,-1のとき、마카・0の時、\となる
+LOCAL = 1
+LOCALS:1 = 
+;IDは現M*100＋X個눈の宝箱の法則でふられている
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+	CASE 100
+		LOCALS = ￥
+		LOCAL = 3555
+	CASE 200
+		LOCALS = 벼랑끝분말
+		LOCAL = 3
+	CASE 201
+		LOCALS = 지혜의향
+	CASE 300
+		LOCALS = ￥
+		LOCAL = 6120
+	CASE 500
+		LOCALS = 봉마의방울
+		LOCAL = 3
+	CASE 600
+		LOCALS = 은의마니샤
+	CASE 700
+		LOCALS = 마석
+		LOCAL = 3
+	CASE 900
+		LOCALS = 극한의곡옥
+		LOCAL = 2
+	CASE 901
+		LOCALS = POISON
+		LOCAL = 100
+		LOCALS:1 = 신경
+	CASE 1000
+		LOCALS = 화염의곡옥
+		LOCAL = 3
+	CASE 1001
+		LOCALS = ＭＰ
+		LOCAL = 10
+	CASE 1002
+		LOCALS = 열화의곡옥
+		LOCAL = 2
+	CASE 1003
+		LOCALS = 격뢰의곡옥
+		LOCAL = 2
+	CASE 1100
+		LOCALS = ＭＰ
+		LOCAL = 10
+	CASE 1101
+		LOCALS = ＨＰ
+		LOCAL = 20
+	CASE 1102
+		LOCALS = ＭＰ
+		LOCAL = 10
+	CASE 1103
+		LOCALS = 마력의향
+	CASE 1104
+		LOCALS = ＨＰ
+		LOCAL = 20
+	CASE 1200
+		LOCALS = ＨＰ
+		LOCAL = 15
+	CASE 1201
+		LOCALS = ＨＰ
+		LOCAL = 15
+	CASE 1202
+		LOCALS = 스킬카드【빛의심판】
+	CASE 1203
+		LOCALS = 스킬카드【어둠의심판】
+	CASE 1300
+		LOCALS = PALYZE
+		LOCAL = 100
+		LOCALS:1 = 신경
+	CASE 1301
+		LOCALS = 스킬카드【티없는위광】
+	CASE 1302
+		LOCALS = 스킬카드【축시의참배】
+	CASE 1400
+		LOCALS = ＨＰ
+		LOCAL = 25
+	CASE 1401
+		LOCALS = 인내력의향
+	CASE 1402
+		LOCALS = ＨＰ
+		LOCAL = 25
+		LOCALS:1 = 신경
+	CASE 1600
+		LOCALS = 보옥
+		LOCAL = 3
+	CASE 1601
+		LOCALS = MAG
+		LOCAL = 27000
+	CASE 1602
+		LOCALS = ＭＰ
+		LOCAL = 20
+	CASE 1700
+		LOCALS = 보옥륜
+		LOCAL = 2
+	CASE 1800
+		LOCALS = MAG
+		LOCAL = 50000
+	CASE 1801
+		LOCALS = 메기도라스톤
+	CASE 1802
+		LOCALS = 개비의열매
+ENDSELECT
+IF LOCALS == "￥"
+	CALL GET_TREASURE_MONEY, 0, LOCAL, FLAG:現던전, FLAG:現M + 75, (DA:(FLAG:現X):(FLAG:現Y) / 10) % 10
+ELSEIF LOCALS == "마카"
+	CALL GET_TREASURE_MONEY, 1, LOCAL, FLAG:現던전, FLAG:現M + 75, (DA:(FLAG:現X):(FLAG:現Y) / 10) % 10
+ELSEIF LOCALS == "MAG"
+	CALL GET_TREASURE_MAG, 0, LOCAL, FLAG:現던전, FLAG:現M + 75, (DA:(FLAG:現X):(FLAG:現Y) / 10) % 10
+ELSEIF LOCALS == "ＨＰ" || LOCALS == "ＭＰ" || LOCALS == "POISON" || LOCALS == "PALYZE"
+	CALL GET_TREASURE_TRAP, LOCALS, LOCAL, GET_TYPE_NUM(LOCALS:1), FLAG:現던전, FLAG:現M + 75, (DA:(FLAG:現X):(FLAG:現Y) / 10) % 10
+ELSE
+	CALL GET_TREASURE, GETNUM(ITEM, LOCALS), LOCAL , FLAG:現던전, FLAG:現M + 75, (DA:(FLAG:現X):(FLAG:現Y) / 10) % 10
+ENDIF
+;=======
+;メッセンジャー(8)
+;ARGは進入時の時に真
+;ARGがの場合RETURNして打ち切る
+;=======
+@TILE_MARK_COMMON_53_8, ARG, ARG:1, ARG:2
+SETCOLOR 0x00ff00
+RESULTS = ｍ
+@MESSAGE_53, ARG
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+ENDSELECT
+;=======
+;ワープゾーン
+;=======
+@TILE_MARK_COMMON_53_6, ARG, ARG:1, ARG:2
+SELECTCASE ARG % 100
+	CASE 6
+		RESULTS = 승
+	CASE 16
+		RESULTS = →
+	CASE 26
+		RESULTS = ↓
+ENDSELECT
+
+@TILE_MARK_COMMON_53_7, ARG, ARG:1, ARG:2
+SELECTCASE ARG % 100
+	CASE 7
+		RESULTS = 강
+	CASE 17
+		RESULTS = ←
+	CASE 27
+		RESULTS = ↑
+ENDSELECT
+
+;=======
+;ワープゾーン
+;=======
+@WORP_53
+LOCAL = DA:(FLAG:現X):(FLAG:現Y)
+;直接指定
+SELECTCASE LOCAL % 100
+	CASE 6
+		CALL DUNGEON_UPSTAIRS_ID, FLAG:現M - 1, LOCAL - 999
+	CASE 7
+		CALL DUNGEON_DOWNSTAIRS_ID, FLAG:現M + 1, LOCAL + 999
+	CASE 16
+		CALL DUNGEON_WORP_ID, FLAG:現M+1, LOCAL+1001, 1
+		FLAG:現X += 1
+		SIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 2
+			FLAG:現X += 1
+	CASE 17
+		CALL DUNGEON_WORP_ID, FLAG:現M-1, LOCAL-1001, 1
+		FLAG:現X -= 1
+		SIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 2
+			FLAG:現X -= 1
+	;↓
+	CASE 26
+		CALL DUNGEON_WORP_ID, FLAG:現M-1, LOCAL-999, 1
+		FLAG:現Y += 1
+		SIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 2
+			FLAG:現Y += 1
+	;↑
+	CASE 27
+		CALL DUNGEON_WORP_ID, FLAG:現M+1, LOCAL+999, 1
+		FLAG:現Y -= 1
+		SIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 2
+			FLAG:現Y -= 1
+ENDSELECT
+;=======
+;ダークゾーン
+;=======
+@TILE_MARK_COMMON_53_D, ARG, ARG:1, ARG:2
+IF FLAG:라이트마 || EQUIP:MASTER:다크스캐너
+	SELECTCASE -ARG/10
+	ENDSELECT
+ENDIF
+SETCOLOR 0x202020
+RESULTS = □
+
+@DARK_53, ARG
+SELECTCASE -DA:(FLAG:現X):(FLAG:現Y)/10
+ENDSELECT
+
+
+@TRAIN_DUNGEON_53

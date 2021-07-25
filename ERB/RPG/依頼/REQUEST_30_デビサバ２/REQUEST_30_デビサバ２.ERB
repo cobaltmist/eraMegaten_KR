@@ -1,0 +1,1438 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:REQUEST_xxx.ERB
+;	Facility	:의뢰:030(데빌서바이버２)。
+;				 데빌서바이버２のメインシナリオ。
+;
+;	Licence		:ライセンスフリー。
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		2011/08/23		旅人					新規作成
+;	002		2011/09/16		旅人					二日눈作成
+;	003		2011/10/16		旅人					三日눈作成
+;	004		2011/11/27		旅人					四日눈作成
+;	005		2013/06/16		旅人					仮입수処理추가
+;	006		2014/12/12		セーロGUN				五日눈作成
+;	007		2014/01/15		セーロGUN				ロナウドルート作成
+;	008		2014/01/28		セーロGUN				ヤマトルート作成
+;	009		2015/02/28		セーロGUN				各ルートの조건を色々と변경。다이치ルート作成
+;	010		2015/12/29		セーロGUN				BRルート作成。목표はミヤコちゃんとイチャイチャする
+;
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+
+;-------------------------------------------------------------------------------
+; 【当ファイルについて】
+; 当ファイルは데빌서바이버２の이벤트をCALLするだけの、メインファイルである。
+; 詳細な処理は各サ부후ァイルに記載する。
+; （サ부후ァイルは日付ごとに１ファイル用意する）
+;
+;
+; 【フラグについて】
+; 데빌서바이버２の이벤트では、"FLAG:デビサバ２進行度"を사용している。
+; ３桁の数値が以下の仕様で설정される。
+;
+; ・３桁눈…日付区分。０～７
+; ・２桁눈…이벤트区分。０～９
+; ・１桁눈…이벤트詳細区分。０～９
+;
+; ◆例
+; 例えば一日눈の場合は、000～099を사용出来る。
+; この内이벤트ごとに、0～9の詳細区分を사용가능。
+; その為、例えば[두베戦]と[이오加入]の二つの이벤트を一日눈に入れたい場合、
+;
+;	・[두베戦] … 000～009
+;	・[이오加入] … 010～019
+;
+; といった形でフラグを사용出来る。
+; 具体的なフラグの割り振り方は、
+; 各日付ごとのサ부후ァイルを参照すれば詳細が확인出来る。
+;
+;-------------------------------------------------------------------------------
+
+;===============================================================================
+;  ◇記載関数一覧(記載順)
+;
+;		Module Name						Explanation
+;
+;	・ PLAYABLE_REQUEST_xxx				의뢰:조건
+;	・ EXPLAIN_REQUEST_xxx				의뢰:설명
+;	・ REQUEST_xxx						의뢰:メイン処理
+;	・ EVENT_BATTLE_TURNTOP_REQUESTxxx	의뢰:전투中処理(ターン開始時)
+;	・ EVENT_BATTLE_TURNEND_REQUESTxxx	의뢰:전투中処理(ターン종료시)
+;
+; *- 独自関数
+;
+;	・ REQUEST_30_FLAG_RESET			의뢰:フラグ리셋
+;	・ REQUEST_30_DAY_TITLE				의뢰:一日のタイトル
+;	・ REQUEST_30_DAY_END				의뢰:一日の종료
+;	・ REQUEST_30_TURN_END				의뢰:ターンの종료
+;	・ REQUEST_30_BASE_LV				의뢰:기초레벨
+;
+;===============================================================================
+
+;====================
+;조건
+;====================
+@PLAYABLE_REQUEST_30
+#DIM DYNAMIC L_FLAG_REQ
+#DIM DYNAMIC L_FLAG_EVENT_DIGIT
+
+;-----------------------------
+;- 共通체크
+;-----------------------------
+
+;- デバッグ
+IF FLAG:DEBUG
+	;OK
+
+;- 主人레벨30이상
+ELSEIF BASE:MASTER:LV >= 30
+	;OK
+
+;- 50日제한
+ELSEIF DAY < 51
+	;OK
+
+ELSE
+	;NG
+	RETURN 0
+ENDIF
+
+;-----------------------------
+;- 処理開始
+;-----------------------------
+
+;- フラグをセット
+L_FLAG_REQ = FLAG:デビサバ２進行度
+
+;- フラグをセット(이벤트フラグ:２桁눈)
+L_FLAG_EVENT_DIGIT = L_FLAG_REQ % 100
+
+
+SELECTCASE L_FLAG_REQ
+	;-----------------------------
+	;- [1ST DAY]
+	;-----------------------------
+	CASE 000 TO 099
+
+		;- CHK:이벤트フラグ
+		SELECTCASE L_FLAG_EVENT_DIGIT
+			; [00-09] 전투:두베
+			CASE 00 TO 09
+				RESULTS = 일본 정부조직의 비밀임무
+				RETURN 1
+			; [10-19] 이오加入
+			CASE 10 TO 19
+				RESULTS = 집스로 인재 회수（1ST DAY）
+				RETURN 1
+		ENDSELECT
+
+	;-----------------------------
+	;- [2ND DAY]
+	;-----------------------------
+	CASE 100 TO 199
+		;- CHK:이벤트フラグ
+		SELECTCASE L_FLAG_EVENT_DIGIT
+			; [00-09] 전투:ハッカー
+			CASE 00 TO 09
+				RESULTS = 집스의 의뢰（2ND DAY）
+				RETURN 1
+			; [10-19] 전투:메라크
+			CASE 10 TO 19
+				RESULTS = 집스의 의뢰（2ND DAY - 오사카）
+				RETURN 1
+		ENDSELECT
+
+
+	;-----------------------------
+	;- [3RD DAY]
+	;-----------------------------
+	CASE 200 TO 299
+		;- CHK:이벤트フラグ
+		SELECTCASE L_FLAG_EVENT_DIGIT
+			; [00-09] 전투:名古屋捜索
+			CASE 00 TO 09
+				RESULTS = 집스의 의뢰（3RD DAY）
+				RETURN 1
+			; [10-19] 전투:名古屋支局
+			CASE 10 TO 19
+				RESULTS = 집스의 의뢰（3RD DAY - 나고야）
+				RETURN 1
+		ENDSELECT
+
+	;-----------------------------
+	;- [4TH DAY]
+	;-----------------------------
+	CASE 300 TO 399
+		;- CHK:이벤트フラグ
+		SELECTCASE L_FLAG_EVENT_DIGIT
+			; [00-09] 메그레즈
+			CASE 00 TO 09
+				RESULTS = 집스의 의뢰（4TH DAY）
+				RETURN 1
+			; [10-19] 메그레즈対策会議
+			CASE 10 TO 19
+				RESULTS = 집스의 의뢰（4TH DAY - 메그레즈 대책회의）
+				RETURN 1
+			; [20-29] ニカイアの主
+			CASE 20 TO 29
+				RESULTS = 집스의 의뢰（4TH DAY - 도쿄）
+				RETURN 1
+			; [30-39] デルタ浮上戦
+			CASE 30 TO 39
+				RESULTS = 집스의 의뢰（4TH DAY - 델타 부상전）
+				RETURN 1
+		ENDSELECT
+	;-----------------------------
+	;- [5TH DAY]
+	;-----------------------------
+	CASE 400 TO 499
+		;- CHK:이벤트フラグ
+		SELECTCASE L_FLAG_EVENT_DIGIT
+			; [00-09] 黒い傷
+			CASE 00 TO 09
+				RESULTS = 로나우도의 호출（5TH DAY - 무의 세계）
+				RETURN 1
+			; [10-19] 撃墜のために
+			CASE 10 TO 19
+				RESULTS = 집스의 의뢰（5TH DAY - 격추를 위해）
+				RETURN 1
+			; [20-29] ビブロンス戦
+			CASE 20 TO 29
+				RESULTS = 예상치 못한 적대（5TH DAY）
+				RETURN 1
+			; [30-39] 巨大方陣
+			CASE 30 TO 39
+				RESULTS = 로나우도의 호출（5TH DAY - 거대방진）
+				RETURN 1
+			; [40-49] 오토메加入
+			CASE 40 TO 49
+				RESULTS = 인재 파견（5TH DAY）
+				RETURN 1
+			; [50-59] 미자르&알리오츠戦
+			CASE 50 TO 59
+				RESULTS = 집스의 의뢰5TH DAY - 결전 이대거두）
+				RETURN 1
+			; [60-69] 아이리の加入
+			CASE 60 TO 69
+				RESULTS = 집스에서 인재 회수（5TH DAY）
+				RETURN 1
+			; [70-79] 種の意思
+			CASE 70 TO 79
+				RESULTS = 종의 의사（5TH DAY）
+				RETURN 1
+		ENDSELECT
+
+	;-----------------------------
+	;- [6TH DAY ヤマトルート]
+	;-----------------------------
+	CASE 1000 TO 1099
+		
+		;大阪勢の面々が전투참가불가능になる또는매각とかされていなくなる
+		SIF L_FLAG_EVENT_DIGIT >= 10 && (GETCHARA([[キャラ:야마토]]) < 0 || GETCHARA([[キャラ:후미]]) < 0 || GETCHARA([[キャラ:케이타]]) < 0)
+			RETURN 0
+		SIF L_FLAG_EVENT_DIGIT >= 10 && (GETCHARA([[キャラ:마코토]]) < 0 || CFLAG:GETCHARA([[キャラ:마코토]]):전투참가불가능 > 0)
+			RETURN 0
+		
+		;- CHK:이벤트フラグ
+		SELECTCASE L_FLAG_EVENT_DIGIT
+			; [00-09] 다이치戦
+			CASE 00 TO 09
+				RESULTS = 야마토의 호출（6TH DAY）
+				RETURN 1
+			; [10-29] ロナウド戦
+			CASE 10 TO 29
+				RESULTS = 희언의 결말（6TH DAY）
+				RETURN 1
+			; [30-39] ベネちゃん
+			CASE 30 TO 39
+				RESULTS = 격파 수 7（6TH DAY）
+				RETURN 1
+			; [50-59] ラストバトル
+			CASE 40 TO 49
+				RESULTS = 올바른 내일로（7TH DAY）
+				RETURN 1
+		ENDSELECT
+	;-----------------------------
+	;- [6TH DAY ロナウドルート]
+	;-----------------------------
+	CASE 2000 TO 2099
+		
+		;名古屋勢の面々が전투참가불가능になる또는매각とかされていなくなる
+		SIF GETCHARA([[キャラ:아이리]]) < 0 || CFLAG:GETCHARA([[キャラ:아이리]]):전투참가불가능 > 0
+			RETURN 0
+		SIF GETCHARA([[キャラ:오토메]]) < 0 || CFLAG:GETCHARA([[キャラ:오토메]]):전투참가불가능 > 0
+			RETURN 0
+		SIF L_FLAG_EVENT_DIGIT >= 10 && (GETCHARA([[キャラ:죠]]) < 0 || CFLAG:(GETCHARA([[キャラ:죠]])):전투참가불가능 > 0)
+			RETURN 0
+		SIF L_FLAG_EVENT_DIGIT >= 10 && (GETCHARA([[キャラ:로나우도]]) < 0 || CFLAG:(GETCHARA([[キャラ:로나우도]])):전투참가불가능 > 0)
+			RETURN 0
+		
+		;- CHK:이벤트フラグ
+		SELECTCASE L_FLAG_EVENT_DIGIT
+			; [00-09] 다이치戦
+			CASE 00 TO 09
+				RESULTS = 로나우도의 호출（6TH DAY）
+				RETURN 1
+			; [10-19] 후미마코토ケイタ戦
+			CASE 10 TO 19
+				RESULTS = 미지의 위협（6TH DAY）
+				RETURN 1
+			; [20-29] ヤマト戦
+			CASE 20 TO 29
+				RESULTS = 강자와의 결착（6TH DAY）
+				RETURN 1
+			; [30-39] 베네트나쉬
+			CASE 30 TO 39
+				RESULTS = 격파 수 7（6TH DAY）
+				RETURN 1
+			; [40-49] ラストバトル
+			CASE 40 TO 49
+				RESULTS = 아직 보지 못한 내일로（7TH DAY）
+				RETURN 1
+		ENDSELECT
+	;-----------------------------
+	;- [6TH DAY 다이치ルート]
+	;-----------------------------
+	CASE 3000 TO 3099
+		
+		;이오と아이리がいなくなる
+		SIF GETCHARA([[キャラ:이오]]) < 0
+			RETURN 0
+		SIF GETCHARA([[キャラ:아이리]]) < 0 || CFLAG:GETCHARA([[キャラ:아이리]]):전투참가불가능 > 0
+			RETURN 0
+		;東京勢が仲間になった後、전투참가불가능になる또는매각とかされていなくなる
+		SIF L_FLAG_EVENT_DIGIT >= 10 && GETCHARA([[キャラ:데빌서바２주인공]]) < 0
+			RETURN 0
+		SIF L_FLAG_EVENT_DIGIT >= 10 && (GETCHARA([[キャラ:다이치]]) < 0 || CFLAG:GETCHARA([[キャラ:다이치]]):전투참가불가능 > 0)
+			RETURN 0
+		SIF L_FLAG_EVENT_DIGIT >= 10 && (GETCHARA([[キャラ:히나코]]) < 0 || CFLAG:GETCHARA([[キャラ:히나코]]):전투참가불가능 > 0)
+			RETURN 0
+		SIF L_FLAG_EVENT_DIGIT >= 10 && (GETCHARA([[キャラ:쥰고]]) < 0 || CFLAG:GETCHARA([[キャラ:쥰고]]):전투참가불가능 > 0)
+			RETURN 0
+		
+		;- CHK:이벤트フラグ
+		SELECTCASE L_FLAG_EVENT_DIGIT
+			; [00-09] 마코토戦
+			CASE 00 TO 09
+				RESULTS = 오사카 세력과의 싸움（6TH DAY）
+				RETURN 1
+			; [10-19] ロナウド戦
+			CASE 10 TO 19
+				RESULTS = 미지의 위협（6TH DAY）
+				RETURN 1
+			; [20-29] ヤマト戦
+			CASE 20 TO 29
+				RESULTS = 강자와의 결착（6TH DAY）
+				RETURN 1
+			; [30-49] 베네트나쉬戦
+			CASE 30 TO 49
+				RESULTS = 격파 수 7（6TH DAY）
+				RETURN 1
+		ENDSELECT
+	;-----------------------------
+	;- [6TH DAY 憂う者ルート]
+	;-----------------------------
+	CASE 4000 TO 4099
+		
+		;이오と아이리がいなくなる
+		SIF GETCHARA([[キャラ:이오]]) < 0
+			RETURN 0
+		SIF GETCHARA([[キャラ:아이리]]) < 0 || CFLAG:GETCHARA([[キャラ:아이리]]):전투참가불가능 > 0
+			RETURN 0
+		;東京勢とサダクが仲間になった後、전투참가불가능になる또는매각とかされていなくなる
+		SIF L_FLAG_EVENT_DIGIT >= 10 && GETCHARA([[キャラ:사다크]]) < 0
+			RETURN 0
+		SIF L_FLAG_EVENT_DIGIT >= 10 && GETCHARA([[キャラ:데빌서바２주인공]]) < 0
+			RETURN 0
+		SIF L_FLAG_EVENT_DIGIT >= 10 && ( GETCHARA([[キャラ:다이치]]) < 0 || CFLAG:GETCHARA([[キャラ:다이치]]):전투참가불가능 > 0)
+			RETURN 0
+		SIF L_FLAG_EVENT_DIGIT >= 10 && ( GETCHARA([[キャラ:히나코]]) < 0 || CFLAG:GETCHARA([[キャラ:히나코]]):전투참가불가능 > 0)
+			RETURN 0
+		SIF L_FLAG_EVENT_DIGIT >= 10 && ( GETCHARA([[キャラ:쥰고]]) < 0 || CFLAG:GETCHARA([[キャラ:쥰고]]):전투참가불가능 > 0)
+			RETURN 0
+		
+		;- CHK:이벤트フラグ
+		SELECTCASE L_FLAG_EVENT_DIGIT
+			; [00-09] 다이치戦
+			CASE 00 TO 09
+				RESULTS = 도쿄 세력과의 싸움（6TH DAY）
+				RETURN 1
+			; [10-19] 후미戦
+			CASE 10 TO 19
+				RESULTS = 오사카 탈환（6TH DAY）
+				RETURN 1
+			; [20-29] 마코토ケイタ戦
+			CASE 20 TO 29
+				RESULTS = 종말의 나팔수（6TH DAY）
+				RETURN 1
+			; [30-39] ロナウド戦
+			CASE 30 TO 39
+				RESULTS = 로나우도의 호출（6TH DAY - 信念の決着）
+				RETURN 1
+			; [40-49] 베네트나쉬戦
+			CASE 40 TO 49
+				RESULTS = 격파 수 7（6TH DAY）
+				RETURN 1
+			; [50-59] 新しき明日へ
+			CASE 50 TO 59 
+				LOCAL = GETCHARA([[キャラ:사다크]])
+				;サダクが함락してない
+				SIF !TALENT:LOCAL:3 && !TALENT:LOCAL:4 && !TALENT:LOCAL:5 && !TALENT:LOCAL:6 && !TALENT:LOCAL:7 && !TALENT:LOCAL:8
+					RETURN 0
+				
+				RESULTS = 새로운 내일로（7TH DAY）
+				RETURN 1
+		ENDSELECT
+	;-----------------------------
+	;- [7TH DAY 다이치ルート]
+	;-----------------------------
+	CASE 3100 TO 3199
+		
+		;東京勢と아이리が전투참가불가능になる또는매각とかされていなくなる
+		SIF GETCHARA([[キャラ:이오]]) < 0 || GETCHARA([[キャラ:데빌서바２주인공]]) < 0
+			RETURN 0
+		SIF GETCHARA([[キャラ:아이리]]) < 0 || CFLAG:GETCHARA([[キャラ:아이리]]):전투참가불가능 > 0
+			RETURN 0
+		SIF GETCHARA([[キャラ:다이치]]) < 0 || CFLAG:GETCHARA([[キャラ:다이치]]):전투참가불가능 > 0
+			RETURN 0
+		SIF GETCHARA([[キャラ:히나코]]) < 0 || CFLAG:GETCHARA([[キャラ:히나코]]):전투참가불가능 > 0
+			RETURN 0
+		SIF GETCHARA([[キャラ:쥰고]]) < 0 || CFLAG:GETCHARA([[キャラ:쥰고]]):전투참가불가능 > 0
+			RETURN 0
+		
+		;- CHK:이벤트フラグ
+		SELECTCASE L_FLAG_EVENT_DIGIT
+			; [00-09] 事件の元凶
+			CASE 00 TO 09
+				RESULTS = 사건의 원흉（7TH DAY）
+				RETURN 1
+			; [10-19] ルート分岐
+			CASE 10 TO 19
+				RESULTS = 보여진 길（7TH DAY）
+				RETURN 1
+			; [20-29] ポラリス撃破ルート
+			CASE 20 TO 29
+				RESULTS = 자유로운 내일로（7TH DAY）
+				RETURN 1
+			; [30-39] 세계回帰ルート
+			CASE 30 TO 39
+				;サダク以外のデビサバ２キャラが誰か一人でもいない
+				SIF GETCHARA([[キャラ:야마토]]) < 0 || GETCHARA([[キャラ:후미]]) < 0 || GETCHARA([[キャラ:케이타]]) < 0
+					RETURN 0
+				SIF GETCHARA([[キャラ:티코]]) < 0 || GETCHARA([[キャラ:코하루]]) < 0
+					RETURN 0
+				SIF GETCHARA([[キャラ:오토메]]) < 0 || CFLAG:GETCHARA([[キャラ:오토메]]):전투참가불가능 > 0
+					RETURN 0
+				SIF GETCHARA([[キャラ:로나우도]]) < 0 || CFLAG:GETCHARA([[キャラ:로나우도]]):전투참가불가능 > 0
+					RETURN 0
+				SIF GETCHARA([[キャラ:죠]]) < 0 || CFLAG:GETCHARA([[キャラ:죠]]):전투참가불가능 > 0
+					RETURN 0
+				SIF GETCHARA([[キャラ:마코토]]) < 0 || CFLAG:GETCHARA([[キャラ:마코토]]):전투참가불가능 > 0
+					RETURN 0
+				RESULTS = 나아가야 할 내일로（7TH DAY）
+				RETURN 1
+		ENDSELECT
+	;-----------------------------
+	;- [BR 火曜日]
+	;-----------------------------
+	CASE 5000 TO 5099
+		
+		;- CHK:이벤트フラグ
+		SELECTCASE L_FLAG_EVENT_DIGIT
+			; [0-09] デネボラ戦
+			CASE 0 TO 9
+				RESULTS = 사자의 분노（ TUES DAY ）
+				RETURN 1
+		ENDSELECT
+	;-----------------------------
+	;- [BR 水曜日]
+	;-----------------------------
+	CASE 5100 TO 5199
+		
+		;- CHK:이벤트フラグ
+		SELECTCASE L_FLAG_EVENT_DIGIT
+			; [0-9] 雑물고기戦１
+			CASE 0 TO 9
+				RESULTS = 동료를 찾고（ WEB DAY ）
+				RETURN 1
+			; [10-19] 스피카
+			CASE 10 TO 19
+				RESULTS = 다중 쌍성의 왕（ WEB DAY ）
+				RETURN 1
+			; [20-29] 雑물고기戦２
+			CASE 20 TO 29
+				RESULTS = 탈출지원（ WEB DAY ）
+				RETURN 1
+		ENDSELECT
+	;-----------------------------
+	;- 종료
+	;-----------------------------
+	CASE 10000
+		RETURN 0
+	;- 作成中
+	CASEELSE
+		RESULTS = 집스로부터 연락(대기 및 전달)
+		RETURN 1
+
+ENDSELECT
+
+;念の為
+RETURN 0
+
+;====================
+;설명
+;====================
+@EXPLAIN_REQUEST_30
+#DIM DYNAMIC L_FLAG_REQ
+#DIM DYNAMIC L_FLAG_EVENT_FIRST_DIGIT
+;- フラグをセット
+L_FLAG_REQ = FLAG:デビサバ２進行度
+
+;- フラグをセット(이벤트フラグ:１桁눈)
+L_FLAG_EVENT_FIRST_DIGIT = L_FLAG_REQ % 10
+
+SELECTCASE L_FLAG_REQ
+	;-----------------------------
+	;- 1ST DAY
+	;-----------------------------
+
+	;- 전투:두베
+	CASE 000 TO 009
+		PRINTL -메일이 도착했습니다-
+		PRINTL 
+		PRINTL ‥‥팬텀에서의 임무 의뢰다。
+		PRINTL 일본의 어떤 정부 조직에서 들어온 사건 의뢰인 모양이다。
+		PRINTL 
+		PRINTL 내용은 비밀。
+		PRINTL 
+		PRINTL 한마디로 비교적 위험한 부류의 임무라고 적혀있다。
+		PRINTL 우선 의뢰인을 만나고 임무의 내용을 들을 필요가 있을 것 같다。
+		PRINTL 
+		PRINTL 보수：￥30000
+
+	;- 回収:이오
+	CASE 010 TO 019
+		PRINTL -메일이 도착했습니다-
+		PRINTL 
+		PRINTL ‥‥집스로부터의 연락이다。
+		IF L_FLAG_EVENT_FIRST_DIGIT == 0
+			;初回
+			PRINTL 구조한 소녀의 회수가 가능해졌다고 한다。
+			PRINTL 
+			PRINTL 집스 도쿄 지국으로 소녀를 회수하러 가자。
+			PRINTL 
+			PRINTL 보수：구조한 소녀
+		ELSE
+			PRINTL 구조한 이오의 회수가 가능해졌다고 한다。
+			PRINTL 
+			PRINTL 집스 도쿄 지국으로 이오를 회수하러 가자。
+			PRINTL 
+			PRINTL 보수：이오
+		ENDIF
+
+	;-----------------------------
+	;- 2ND DAY
+	;-----------------------------
+
+	;- 전투:ハッカー
+	CASE 100 TO 109
+		PRINTL -메일이 도착했습니다-
+		PRINTL 
+		PRINTL ‥‥집스의 의뢰다。
+		PRINTL 
+		PRINTL 내용은 비밀。
+		PRINTL 
+		PRINTL 우선은 야마토를 만나 임무의 내용을 들을 필요가 있을 것 같다。
+		PRINTL 
+		PRINTL 보수：￥20000
+
+
+	;- 전투:메라크
+	CASE 110 TO 119
+		PRINTL -메일이 도착했습니다-
+		PRINTL 
+		PRINTL ‥‥집스의 의뢰다。
+		PRINTL 
+		PRINTL 이전에 받은 의뢰는 아직 완료하지 못했다。
+		PRINTL 우선 이전까지의 이력을 확인하자。
+		PRINTL 
+		PRINTL 보수：￥40000
+
+
+	;-----------------------------
+	;- 3RD DAY
+	;-----------------------------
+
+	;- 전투:보티스
+	CASE 200 TO 209
+		PRINTL -메일이 도착했습니다-
+		PRINTL 
+		PRINTL ‥‥집스의 의뢰다。
+		PRINTL 
+		PRINTL 내용은 비밀。
+		PRINTL 
+		PRINTL 우선은 야마토를 만나 임무의 내용을 들을 필요가 있을 것 같다。
+		PRINTL 
+		PRINTL  （ 주의：이 의뢰를 받으면, 하루가 끝납니다 ）
+		PRINTL 
+		PRINTL 보수：￥30000～50000
+
+
+	;- 전투:名古屋支局
+	CASE 210 TO 219
+		PRINTL -메일이 도착했습니다-
+		PRINTL 
+		PRINTL ‥‥집스의 의뢰다。
+		PRINTL 
+		PRINTL 내용은 비밀。
+		PRINTL 
+		PRINTL 우선은 야마토를 만나 임무의 내용을 들을 필요가 있을 것 같다。
+		PRINTL 
+		PRINTL  （ 주의：이 의뢰를 받으면 시간대가 하나 진행됩니다 ）
+		PRINTL 
+		PRINTL 보수：￥50000
+
+
+	;-----------------------------
+	;- 4TH DAY
+	;-----------------------------
+
+	;- 메그레즈
+	CASE 300 TO 309
+		PRINTL -메일이 도착했습니다-
+		PRINTL 
+		PRINTL ‥‥집스의 의뢰다。
+		PRINTL 
+		PRINTL 내용은 비밀。
+		PRINTL 
+		PRINTL 우선은 야마토를 만나 임무의 내용을 들을 필요가 있을 것 같다。
+		PRINTL 
+
+	;- 메그레즈対策会議
+	CASE 310 TO 319
+		PRINTL -메일이 도착했습니다-
+		PRINTL 
+		PRINTL ‥‥집스의 의뢰다。
+		PRINTL 
+		PRINTL 메그레즈의 대책 회의를 실시하는 것 같다。
+		PRINTL 
+		PRINTL 우선은 도쿄 지국으로 향할 필요가 있을 것 같다。
+		PRINTL 
+
+	;- ニカイアの主
+	CASE 320 TO 329
+		PRINTL -메일이 도착했습니다-
+		PRINTL 
+		PRINTL ‥‥집스의 의뢰다。
+		PRINTL 
+		PRINTL 각지의 메그레즈 새싹의 대처가 주요 임무 같다。
+		PRINTL 
+		PRINTL 도쿄 지국의 터미널을 이용하자…。
+
+	;- デルタ浮上戦
+	CASE 330 TO 339
+		PRINTL -메일이 도착했습니다-
+		PRINTL 
+		PRINTL ‥‥집스의 의뢰다。
+		PRINTL 
+		PRINTL 메그레즈 섬멸전을 실시하는 것 같다…。
+		PRINTL 
+		PRINTL 도쿄 지국의 터미널을 이용하자…。
+		PRINTL 
+		PRINTL 보수：￥50000
+	;-----------------------------
+	;- 5TH DAY
+	;-----------------------------
+
+	;- はれときどきどく
+	CASE 400 TO 409
+		PRINTL -메일이 도착했습니다-
+		PRINTL 
+		PRINTL ････팬텀・소사이어티로부터의 연락이다。
+		PRINTL 
+		PRINTL 이전의 보고에 관해, 전달할 일이 있는 모양이다。
+		PRINTL 
+
+	;- 撃墜のために
+	CASE 410 TO 419
+		PRINTL -메일이 도착했습니다-
+		PRINTL 
+		PRINTL ‥‥집스의 의뢰다。
+		PRINTL 
+		PRINTL 내용은 비밀。
+		PRINTL 
+		PRINTL 우선은 도쿄 지국으로 향할 필요가 있을 것 같다。
+		PRINTL 
+
+	
+	;- ビフロンス戦
+	CASE 420 TO 429
+		PRINTL -메일이 도착했습니다-
+		PRINTL 
+		PRINTL  （ 주의：이 의뢰를 받으면 시간대가 하나 진행됩니다 ）
+		PRINTL 
+		PRINTL 보수：￥0～60000
+	
+	;- 巨大方陣
+	CASE 430 TO 439
+		PRINTL -메일이 도착했습니다-
+		PRINTL 
+		PRINTL 로나우도로부터의 호출이다。
+		PRINTL 
+		PRINTL 보여주고 싶은게 있는것 같다。
+		PRINTL 
+		PRINTL 우선은 도쿄도청에 향할 필요가 있을것 같다。
+		PRINTL 
+	
+	;- 오토메の加入
+	CASE 440 TO 449
+	
+		PRINTL -메일이 도착했습니다-
+		PRINTL 
+		PRINTL ‥‥야마토로부터의 연락이다。
+		PRINTL 
+		PRINTL 오사카 본국에 와줬으면 하는 것 같다…。
+		PRINTL 
+	;- 決戦二大巨머리
+	CASE 450 TO 459
+		PRINTL -메일이 도착했습니다-
+		PRINTL 
+		PRINTL ‥‥집스의 의뢰다。
+		PRINTL 
+		PRINTL 알리오트 격추를 위한 작전이 시작되는것 같다。
+		PRINTL 
+		PRINTL 우선은 오사카 본국에 향할 필요가 있는듯 하다。
+		PRINTL 
+		PRINTL 
+		PRINTL  （ 주의：이 의뢰를 받으면, 하루가 끝납니다 
+		PRINTL  　또한 이오를 파티편생해둔 경우, 도중에 파티에서 제외됩니다 ）
+		PRINTL 
+		PRINTL 보수：￥80000
+	
+	;- 아이리の加入
+	CASE 460 TO 469
+		PRINTL -메일이 도착했습니다-
+		PRINTL 
+		PRINTL ‥‥집스로부터의 연락이다。
+		PRINTL 아이리의 회수가 가능해진 것 같다。
+		PRINTL 
+		PRINTL 집스 오사카 본국에, 아이리를 회수하러 가자。
+		PRINTL 
+		PRINTL 보수：아이리
+		
+	;- 種の意思
+	CASE 470 TO 479
+		PRINTL -메일이 도착했습니다-
+		PRINTL 
+		IF L_FLAG_EVENT_FIRST_DIGIT == 0
+			PRINTL ････야마토로부터의 호출이다。
+			PRINTL 
+			PRINTL 이야기 할게 있는것 같다。
+			PRINTL 
+			PRINTL 우선은 도쿄 지국으로 향할 필요가 있을 것 같다。
+			PRINTL 
+		ELSE
+			PRINTL ････각세력의 권유 메일이다。
+			PRINTL 
+			PRINTL 잘 생각하고 나서, 어느 세력에 붙을까 정하자。
+			PRINTL 
+		ENDIF
+	;-----------------------------
+	;- 6TH DAY
+	;-----------------------------
+	;--------------------------------------------
+	;ヤマトルート
+	;--------------------------------------------
+	;- 東京勢との争い
+	CASE 1000 TO 1009
+		PRINTFORML -메일이 도착했습니다-
+		PRINTFORML 
+		PRINTFORML ‥‥야마토의 연락이다。
+		PRINTFORML 
+		PRINTFORML 드디어 폴라리스 알현을 위한 작전을 개시한다는 것 같다。
+		PRINTFORML 
+		PRINTFORML 우선은 오사카 본국에 갈 필요가 있는 것 같다。
+		PRINTFORML 
+		PRINTFORML 
+		PRINTFORML  （ 주의：이 의뢰를 받으면 시간대가 하나 진행됩니다 ）
+		PRINTFORML 
+		PRINTFORML 보수：\100000
+	;- 戯言の結末
+	CASE 1010 TO 1029
+		PRINTFORML -메일이 도착했습니다-
+		PRINTFORML 
+		PRINTFORML ‥‥야마토의 연락이다。
+		PRINTFORML 
+		PRINTFORML 아무래도 로나우도와의 결착을 지을 생각인것 같다。
+		PRINTFORML 
+		PRINTFORML 우선은 오사카 본국에 향할 필요가 있는것 같다。
+		PRINTFORML 
+		PRINTFORML 
+		PRINTFORML  （ 주의：이 의뢰를 받으면 시간대가 하나 진행됩니다 ）
+		PRINTFORML 
+		PRINTFORML 보수：\100000
+	;- 撃破数７
+	CASE 1030 TO 1039
+		PRINTFORML -메일이 도착했습니다-
+		PRINTFORML 
+		PRINTFORML ‥‥야마토의 연락이다。
+		PRINTFORML 
+		PRINTFORML 우선은 오사카 본국에 갈 필요가 있는 것 같다。
+		PRINTFORML 
+		PRINTFORML 
+		PRINTFORML  （ 주의：이 의뢰를 받으면 하루가 끝납니다 ）
+		PRINTFORML 
+		PRINTFORML 보수：\150000
+	;- ラストバトル
+	CASE 1040 TO 1049
+		PRINTFORML -메일이 도착했습니다-
+		PRINTFORML 
+		PRINTFORML ‥‥야마토의 연락이다。
+		PRINTFORML 
+		PRINTFORML 저쪽은 이미 최후의 싸움에 임할 준비가 된 것 같다。
+		PRINTFORML 
+		PRINTFORML %CALLNAME:MASTER%의 준비가 되었다면,
+		PRINTFORML 오사카 본국의 터미널에 집합하도록, 이란 내용이다。
+		PRINTFORML 
+		PRINTFORML 
+		PRINTFORML 보수：실력주의사회
+	;--------------------------------------------
+	;ロナウドルート
+	;--------------------------------------------
+	;- 東京勢との争い
+	CASE 2000 TO 2009
+		PRINTFORML -메일이 도착했습니다-
+		PRINTFORML 
+		PRINTFORML ‥‥로나우도의 연락이다。
+		PRINTFORML 
+		PRINTFORML 이후의 방침에 관해 이야기하고 싶은듯 같다。
+		PRINTFORML 
+		PRINTFORML 우선은 나고야 지국에 갈 필요가 있는 것 같다。
+		PRINTFORML 
+		PRINTFORML 
+		PRINTFORML  （ 주의：이 의뢰를 받으면 시간대가 하나 진행됩니다 ）
+		PRINTFORML 
+		PRINTFORML 보수：1000마카
+	;- 未知の脅威
+	CASE 2010 TO 2019
+		PRINTFORML -메일이 도착했습니다-
+		PRINTFORML 
+		PRINTFORML ‥‥로나우도의 연락이다。
+		PRINTFORML 
+		PRINTFORML 급한 용건이 있는것같다。
+		PRINTFORML 
+		PRINTFORML 우선은 도쿄의 미야시타 공원에 갈 필요가 있을 것 같다。
+		PRINTFORML 
+		PRINTFORML 
+		PRINTFORML  （ 주의：이 의뢰를 받으면 시간대가 하나 진행됩니다 ）
+		PRINTFORML 
+		PRINTFORML 보수：1000마카
+	;- 強者との決着
+	CASE 2020 TO 2029
+		PRINTFORML 트럼페터는 야마토의 관할이라고 후미가 말했다.
+		PRINTFORML 그러면, 그의 본거지인 오사카 본국에 그 정보가 있을 가능성이 높을 것이다.
+		PRINTFORML
+		PRINTFORML 찾으러 간다면, 오사카 본국의 터미널을 이용하자.
+		PRINTFORML
+		PRINTFORML  （ 주의：이 의뢰를 받으면 시간대가 하나 진행됩니다 ）
+		PRINTFORML 
+		PRINTFORML 보수：1500마카
+	;- 撃破数７
+	CASE 2030 TO 2039
+		PRINTFORML -메일이 도착했습니다-
+		PRINTFORML 
+		PRINTFORML ‥‥로나우도의 연락이다。
+		PRINTFORML 
+		PRINTFORML 아무래도 베네트나쉬와의 결착을 지을 샘인것 같다。
+		PRINTFORML 
+		PRINTFORML 우선은 나고야 지국에 향할 필요가 있는 것 같다。
+		PRINTFORML 
+		PRINTFORML 
+		PRINTFORML  （ 주의：이 의뢰를 받으면 하루가 끝납니다 ）
+		PRINTFORML 
+		PRINTFORML 보수：2000마카
+	;- ラストバトル
+	CASE 2040 TO 2049
+		PRINTFORML -메일이 도착했습니다-
+		PRINTFORML 
+		PRINTFORML ‥‥로나우도의 연락이다。
+		PRINTFORML 
+		PRINTFORML 저쪽은 이미 최후의 싸움에 임할 준비가 된 것 같다。
+		PRINTFORML 
+		PRINTFORML %CALLNAME:MASTER%의 준비가 되었다면,
+		PRINTFORML 오사카 본국의 터미널에 집합하도록, 이란 내용이다。
+		PRINTFORML 
+		PRINTFORML 
+		PRINTFORML 보수：평등과 평화
+	;--------------------------------------------
+	;다이치ルート
+	;--------------------------------------------
+	;- 마코토戦
+	CASE 3000 TO 3009
+		PRINTFORML -메일이 도착했습니다-
+		PRINTFORML 
+		PRINTFORML ‥‥다이치의 연락이다。
+		PRINTFORML 
+		PRINTFORML 이후의 방침에 대해 이야기하고 싶은 것 같다。
+		PRINTFORML 
+		PRINTFORML 우선은 도쿄지국에 갈 필요가 있을 것 같다。
+		PRINTFORML 
+		PRINTFORML 
+		PRINTFORML  （ 주의：이 의뢰를 받으면 시간대가 하나 경과합니다 ）
+		PRINTFORML 
+		PRINTFORML 보수：1000마카
+
+	;- ロナウド戦
+	CASE 3010 TO 3019
+		PRINTFORML -메일이 도착했습니다-
+		PRINTFORML 
+		PRINTFORML ‥‥다이치의 연락이다。
+		PRINTFORML 
+		PRINTFORML 급히 미야시타 공원에 와줬으면 좋겠다고 한다。
+		PRINTFORML 
+		PRINTFORML 우선은 도쿄 터미날에 갈 필요가 있을것 같다。
+		PRINTFORML 
+		PRINTFORML 
+		PRINTFORML  （ 주의：이 의뢰를 받으면 시간대가 하나 경과합니다 ）
+		PRINTFORML 
+		PRINTFORML 보수：1000마카
+	;- ヤマト戦
+	CASE 3020 TO 3029
+		PRINTFORML -메일이 도착했습니다-
+		PRINTFORML 
+		PRINTFORML 야마토의 연락이다。
+		PRINTFORML 
+		PRINTFORML 통천각에서 기다린다는 것 하다。
+		PRINTFORML 
+		PRINTFORML 우선은 오사카 본국에 갈 필요가 있을것 같다。
+		PRINTFORML
+		PRINTFORML
+		PRINTFORML  （ 주의：이 의뢰를 받으면 시간대가 하나 경과합니다 ）
+		PRINTFORML 
+		PRINTFORML 보수：1500마카
+	;- 撃破数７
+	CASE 3030 TO 3049
+		PRINTFORML -메일이 도착했습니다-
+		PRINTFORML
+		PRINTFORML 다이치의 호출이다。
+		PRINTFORML
+		PRINTFORML 저쪽은 이미 베네트나쉬와 결전을 치를 준비가 되어있는 것 같다。
+		PRINTFORML
+		PRINTFORML 우선은 도쿄지국에 갈 필요가 있을 것 같다。
+		PRINTFORML
+		PRINTFORML
+		PRINTFORML  （ 주의：이 의뢰를 받으면 하루가 끝납니다 ）
+		PRINTFORML 
+		PRINTFORML 보수：2000마카
+	;--------------------------------------------
+	;憂う者ルート
+	;--------------------------------------------
+	;- 東京勢との争い
+	CASE 4000 TO 4009
+		PRINTFORML -메일이 도착했습니다-
+		PRINTFORML
+		PRINTFORML …그 소년으로부터의 호출이다.
+		PRINTFORMW 요전날 그와 만난 장소에서, %CALLNAME:MASTER%의 합류를 기다리는 것 같다….
+		PRINTFORMW 그와 합류하면, 폴라리스 타도에 향한 행동을 개시하는 일이 될 것이다….
+		PRINTFORML
+		PRINTFORML  （ 주의：이 의뢰를 받으면 시간대가 하나 진행됩니다 ）
+		PRINTFORML 
+		PRINTFORML 보수：1000마카
+	;- 大阪奪還
+	CASE 4010 TO 4019
+		PRINTFORML -알람이 울리고 있습니다-
+		PRINTL 
+		PRINTFORML 「…빛나는 자여。조금 이야기해도 될까？」
+		PRINTL 
+		PRINTFORML 돌아보자, 방안에 사다크가 있었다…。
+		PRINTFORML …어느새 들어온걸까。
+		PRINTL 
+		PRINTFORML 「……？이상한걸 묻는군, 나는 항상 그대의 곁에 있어」
+		PRINTFORML 「……」
+		PRINTFORML 「…아아, 실례했다。멋대로 그대의 방안에 나타나는건 좋지 않았네」
+		PRINTFORML 「이제부터는 노크 하고나서 나타나도록 하지…」
+		PRINTL 
+		PRINTFORML 「그것보다도, 빛나는 자여。곧, 제7의 셉텐트리온이 나타난다」
+		PRINTFORML 「제7의 셉텐트리온의 특성은 너희 인간들에게 있어서 그야말로 천적이라고 말해도 될 것이다」
+		PRINTFORML 「쓰러뜨리려면, 정보를 모을 필요가 있겠지」
+		PRINTFORML 「집스의 본거지인 오사카에는 악마들의 정보가 모이고 있을 터」
+		PRINTFORML 「７번째의 셉텐트리온을 요격하기 위해서도 여기로 쳐들어가야만 한다고 생각하지만…어떻게 할 건가？」
+		PRINTFORML 
+		PRINTFORML 
+		PRINTFORML  （ 주의：이 의뢰를 받으면 시간대가 하나 경과합니다 ）
+		PRINTFORML 
+		PRINTFORML 보수：￥12000
+	;- 終末のラッパ吹き
+	CASE 4020 TO 4029
+		PRINTFORML -방문이 노크되고 있습니다-
+		PRINTFORML
+		PRINTFORML 대답을 하자, 사다크가 들어왔다…。
+		PRINTFORML
+		PRINTFORML 「빛나는 자, 그대는 확실히 트럼페터를 찾고있었지？」
+		PRINTFORML 「좀전에, 집스 오사카 본국에서 해당하는 악마의 소재정보를 발견해왔다」
+		PRINTFORML
+		PRINTFORML 「이거다, 봐줘。이 서류의 말미근처에, 트럼페터라는 이름이 있다」
+		PRINTFORML 「봉인장소는 히비야공원이라는 곳이다。거기에다…해제 코드라고 하는것도, 여기에 있는것 같네」
+		PRINTFORML 「아아, 럭키ー。…자아, 이게 코드인거네, 그대가 가지고 있으면 괜찮겠지」
+		PRINTFORML
+		PRINTFORML 「하지만, 안심하는건 빨라。트럼페터로 대항할거라면, 하나 문제가 있다」
+		PRINTFORML 「…트럼페터의 나팔은, 베네트나쉬에게만 효력을 발휘하는건 아닌거야」
+		PRINTFORML 「그 음파는 광범위하게 퍼져, 서서히 하지만 확실히…。주변 일대에 효과를 미친다」
+		PRINTFORML 「물론, 우리들도 예외가 아냐。악마소환 프로그램이나 소환 어플리케이션에도 장해가 발생하겠지, 그걸 피할 기술은 없다」
+		PRINTFORML 「즉 우리들도, 악마를 소환하는 일이 이루어지지 않게 된다」
+		PRINTFORML 「나팔의 효력이 침투하기 전에, 악마를 불러두면 좋지만…。그 후의 재소환은 불가능하다」
+		PRINTFORML 「이 디메리트마저 받아들이면, 트럼페터의 이용은 유효한 대책으로서 기능하겠지」
+		PRINTFORML 「즉, 이 방안은…우리들에게 있어서도 양날의 검에 해당한다。생각이 필요하지만…」
+		PRINTFORML
+		PRINTFORML 「원래, 트럼페터는 호츠인 야마토가 관리하고 있었다。호츠인 야마토가, 이 악마의 능력을 알고 있을 가능성은 높다」
+		PRINTFORML 「아마도, 그들도 트럼페터의 이용을 베네트나쉬에 대항할 수단의 하나로서 생각하고 있겠지」
+		PRINTFORML 「호츠인 야마토의 손에 트럼페터가 들어가기 전에, 서둘러야 한다고 생각하지만…어떻게 할 건가？」
+		PRINTFORML
+		PRINTFORML 
+		PRINTFORML  （ 주의：이 의뢰를 받으면 시간대가 하나 진행됩니다 ）
+		PRINTFORML 
+		PRINTFORML 보수：1000마카
+	;- 信念の決着
+	CASE 4030 TO 4039
+		PRINTFORML -메일이 도착했습니다-
+		PRINTFORML 
+		PRINTFORML 로나우도의 호출이다。
+		PRINTFORML 
+		PRINTFORML 미야시타 공원에서 기다린다는 것 같다。
+		PRINTFORML 
+		PRINTFORML 우선은 도쿄 지국으로 향할 필요가 있을 것 같다。
+		PRINTFORML 
+		PRINTFORML 
+		PRINTFORML  （ 주의：이 의뢰를 받으면 시간대가 하나 진행됩니다 ）
+		PRINTFORML 
+		PRINTFORML 보수：1000마카
+	;- 撃破数７
+	CASE 4040 TO 4049	
+		PRINTFORML -메일이 도착했습니다-
+		PRINTFORML 
+		PRINTFORML 동료들의 연락이다…。
+		PRINTFORML 저 편은 이미 베네트나쉬와의 결전의 준비를 한 것 같다.
+		PRINTFORML 도쿄 지국에서 기다리고 있는 것 같다.
+		PRINTFORML 
+		PRINTFORML 베네트나쉬는 그 능력으로 악마를 귀환시키고, 소환도 막는다。
+		PRINTFORML 그리고 인간에 의한 공격도, 자동효과스킬『인간불가침』에 의해 무효화 해 버린다。
+		PRINTFORML 그야말로 인류의 천적이라는 이름에 상응한 셉텐트리온일 것이다。
+		PRINTFORML 
+		PRINTFORML 후미가 맞다면, 트럼페터에 의해 악마의 송환만은 막을수 있을테지만…。
+		PRINTFORML 
+		PRINTFORML …%CALLNAME:MASTER%는 베네트나쉬와 싸울 준비가 되있는것인가？
+		PRINTFORML 
+		PRINTFORML 
+		PRINTFORML  （ 주의：이 의뢰를 받으면 하루가 끝납니다 ）
+		PRINTFORML 
+		PRINTFORML 보수：2000마카
+	;- 新しき明日へ
+	CASE 4050 TO 4059
+		PRINTFORML 
+		PRINTFORML 
+		PRINTFORML 어느샌가, 사다크가 방안에 서있었다。
+		PRINTFORML 하지만, %CALLNAME:MASTER%는 사다크를 이전처럼 책망하지 않았다。
+		PRINTFORML 사다크가 미소지으면서 지켜보고있다…。
+		PRINTFORML 
+		PRINTFORML 「여어…빛나는 자여。종말까지 앞으로 조금이다」
+		PRINTFORML 「길었다。정말로 길었다…」
+		PRINTFORML 「폴라리스까지의 도정…。이 결론에 이를 때 까지…, 유구한 시간이 흘러가버렸다」
+		PRINTFORML 
+		PRINTFORML 「…솔직히, 놀라고있어。그대들의 자유에를 추구하는 정신에。그리고 강함에」
+		PRINTFORML 「내가 도와주지 않더라도, 사람은 언젠가 섭리로부터 벗어날 존재였을지도 모르겠네」
+		PRINTFORML 
+		PRINTFORML 여기까지 인류를 도와준건 사다크 자신이다。
+		PRINTFORML 사다크 덕분이라고 생각하지만…。
+		PRINTFORML 
+		PRINTFORML 「후후…나는 씨를 뿌렸을 뿐이야。그걸 키운건, 그대들 스스로가 한 일이야」
+		PRINTFORML 
+		PRINTFORML 「폴라리스까지 앞으로 조금이다」
+		PRINTFORML 「손에 넣도록 하지…진정한 자유를」
+		PRINTFORML 「그리고 사람의, 사람의 손에 의한, 사람을 위한 역사를 펼쳐줬으면 한다」
+		PRINTFORML 「새로운 세계가 어떻게 될까, 전부 인간의 가능성에 달려있다」
+		PRINTFORML 「그대의 가능성을 가지고 하면, 그건 멋진 세계가 되겠지。그대라면 가능하다…%CALLNAME:MASTER%」
+		PRINTFORML 
+		PRINTFORML 
+		PRINTFORML 보수：자유
+
+	;-----------------------------
+	;- 7TH DAY
+	;-----------------------------
+	;--------------------------------------------
+	;다이치ルート
+	;--------------------------------------------
+	;- 事件の元凶
+	CASE 3100 TO 3109
+		PRINTL -메일이 도착했습니다-
+		PRINTL 
+		PRINTL ‥‥다이치의 연락이다。
+		PRINTL 
+		PRINTL 이후의 방침에 대해 말하고 싶다는 것 같다。
+		PRINTL 
+		PRINTL 우선은 도쿄지국에 향할 필요가 있는 것 같다。
+		PRINTL
+
+	;- 示された道
+	CASE 3110 TO 3119
+		PRINTL -메일이 도착했습니다-
+		PRINTL 
+		PRINTL ‥‥예의 소년의 연락이다。
+		PRINTL 
+		PRINTL 아카사카의 영빈관에서 기다린다는 듯 하다。
+		PRINTL 
+		PRINTL 우선은 도쿄 터미날에 갈 필요가 있을 것 같다。
+		PRINTL
+	;- 自由な明日へ
+	CASE 3120 TO 3129
+		PRINTL -메일이 도착했습니다-
+		PRINTL
+		PRINTL ‥‥다이치의 연락이다。
+		PRINTL
+		PRINTL 저쪽은 이미 최후의 싸움에 임할 준비가 된 것 같다。
+		PRINTL
+		PRINTL 준비가 되면 오사카 본국의 터미날로 집합, 이란 내용이다。
+		PRINTL
+		PRINTL
+		PRINTL  （ 주의：이 의뢰를 받으면 하루가 끝납니다  ）
+		PRINTL
+		PRINTL 보수：3000마카
+	;- 進むべき明日へ
+	CASE 3130 TO 3139
+		PRINTL -메일이 도착했습니다-
+		PRINTL 
+		PRINTL ‥‥다이치의 연락이다。
+		PRINTL 
+		PRINTL 저쪽은 이미 최후의 싸움에 임할 준비가 된 것 같다。
+		PRINTL 
+		PRINTL 준비가 되면 오사카 본국의 터미날로 집합, 이란 내용이다。
+		PRINTL 
+		PRINTL 
+		PRINTL 보수：복원된 세계	
+	
+	;-----------------------------
+	;- BR
+	;-----------------------------
+	;-----------------------------
+	;- 火曜日
+	;-----------------------------
+	;- 전투:데네볼라
+	CASE 5000 TO 5009
+		PRINTL 집스로부터의 의뢰는 아직 보류 상태다.
+		PRINTL 
+		PRINTL 받을 준비를 하면, 우선 도쿄 지국에 향하자
+		PRINTL
+		PRINTL 보수：￥40000
+	;-----------------------------
+	;- 水曜日
+	;-----------------------------
+	;- 전투:雑물고기１
+	CASE 5100 TO 5109
+		PRINTL ジプスからの連絡だ。
+		PRINTL 
+		PRINTL 捜索を의뢰していた仲間についての情報が入ったらしい。
+		PRINTL 
+		PRINTL まずは東京支局へ向かうとしよう。
+		PRINTL 
+		PRINTL 報酬：￥20000
+	;- 전투:스피카
+	CASE 5110 TO 5119
+		PRINTL 携오비端末が着信音を鳴らしている。
+		PRINTL 
+		PRINTL 마코토からの連絡のようだ。
+		PRINTL 
+		PRINTL 報酬：￥50000
+	;- 전투:스피카
+	CASE 5120 TO 5129
+		PRINTL 携오비端末が着信音を鳴らしている。
+		PRINTL 
+		PRINTL 마코토からの連絡のようだ。
+		PRINTL 
+		PRINTL ジプスに追われて、名古屋に도주しているのだという。
+		PRINTL 
+		PRINTL 名古屋に急ぐ필요がありそうだ。
+	;-----------------------------
+	;- 作成中
+	;-----------------------------
+	CASEELSE
+		PRINTL -메일이 도착했습니다-
+		PRINTL 
+		PRINTL ‥‥집스로부터 온 일의 연락인 것 같다。
+ENDSELECT
+
+;====================
+;内容
+;====================
+@REQUEST_30
+
+;-----------------------------
+;- 処理開始
+;-----------------------------
+
+PRINTL
+
+SELECTCASE FLAG:デビサバ２進行度
+	;-----------------------------
+	;- 1ST DAY
+	;-----------------------------
+	CASE 000 TO 099
+		;- 의뢰:メイン処理(1ST DAY)
+		CALL REQUEST_30_1
+
+	;-----------------------------
+	;- 2ND DAY
+	;-----------------------------
+	CASE 100 TO 199
+		;- 의뢰:メイン処理(2ND DAY)
+		CALL REQUEST_30_2
+
+	;-----------------------------
+	;- 3RD DAY
+	;-----------------------------
+	CASE 200 TO 299
+		;- 의뢰:メイン処理(3RD DAY)
+		CALL REQUEST_30_3
+
+	;-----------------------------
+	;- 4TH DAY
+	;-----------------------------
+	CASE 300 TO 399
+		;- 의뢰:メイン処理(4TH DAY)
+		CALL REQUEST_30_4
+
+	;-----------------------------
+	;- 5TH DAY
+	;-----------------------------
+	CASE 400 TO 499
+		;- 의뢰:メイン処理(5TH DAY)
+		CALL REQUEST_30_5
+
+	;-----------------------------
+	;- FINAL DAY
+	;-----------------------------
+	CASE 1000 TO 1099
+		;- 의뢰:メイン処理(6TH DAYヤマトルート)
+		CALL REQUEST_30_10
+	CASE 2000 TO 2099
+		;- 의뢰:メイン処理(6TH DAYロナウドルート)
+		CALL REQUEST_30_20
+	CASE 3000 TO 3099
+		;- 의뢰:メイン処理(6TH DAY다이치ルート)
+		CALL REQUEST_30_30
+	CASE 3100 TO 3199
+		;- 의뢰:メイン処理(7TH DAY다이치ルート)
+		CALL REQUEST_30_31
+	CASE 4000 TO 4099
+		;- 의뢰:メイン処理(6TH DAY憂う者ルート)
+		CALL REQUEST_30_40
+	;-----------------------------
+	;- 火曜日
+	;-----------------------------
+	CASE 5000 TO 5099
+		;- 의뢰:メイン処理(TR-1)
+		CALL REQUEST_30_50
+	CASE 5100 TO 5199
+		;- 의뢰:メイン処理(TR-2)
+		CALL REQUEST_30_51
+	;CASE 5200 TO 5299
+	;	;- 의뢰:メイン処理(TR-3)
+	;	CALL REQUEST_30_52
+	CASEELSE
+;------------------------------------------------------------------------------- 
+;------------------------------------------------------------------------------- 
+;		PRINTFORMW ＞자택의 어떤 방。
+;		PRINTFORMW ＞의뢰를 확인했지만、아무래도 아직 그 다음은 나타나지 않은 것 같다。
+;		PRINTFORMW ＞이어지는 것이 생성되면 의뢰 제목도 바뀔 것이다。
+;		PRINTFORMW ＞…느긋하게 기다리기로 하자。
+;		PRINTFORMW ＞………
+;		PRINTFORMW ＞……
+;		PRINTFORMW ＞…
+		;- 의뢰:仮입수
+		CALL REQUEST_30_TEMP_GET
+
+ENDSELECT
+
+;--------------------------------------------------
+;추가部分
+;=================================================
+;   sub EVENT_BATTLE_START_REQUESTxxx
+;=================================================
+;   의뢰:전투中処理(전투開始時)
+;-------------------------------------------------
+;   CALL先でフラグを설정
+;-------------------------------------------------
+@EVENT_BATTLE_START_REQUEST30
+#DIM DYNAMIC L_FLAG_DAYS_DIGIT
+
+;- フラグをセット(３桁눈)
+L_FLAG_DAYS_DIGIT = 1 + FLAG:デビサバ２進行度 / 100
+
+;-----------------------------
+;- 処理開始
+;-----------------------------
+
+;- 存在する場合だけ呼び出し
+TRYCALLFORM EVENT_BATTLE_START_REQUEST30_{L_FLAG_DAYS_DIGIT}
+;----------------------------------------------------
+;추가部分ここまで
+;----------------------------------------------------
+
+;=================================================
+;   sub EVENT_BATTLE_TURNTOP_REQUESTxxx
+;=================================================
+;   의뢰:전투中処理(ターン開始時)
+;-------------------------------------------------
+;   CALL先でフラグを설정
+;-------------------------------------------------
+@EVENT_BATTLE_TURNTOP_REQUEST30
+#DIM DYNAMIC L_FLAG_DAYS_DIGIT
+
+;- フラグをセット(３桁눈)
+L_FLAG_DAYS_DIGIT = 1 + FLAG:デビサバ２進行度 / 100
+
+;-----------------------------
+;- 処理開始
+;-----------------------------
+
+;- 存在する場合だけ呼び出し
+TRYCALLFORM EVENT_BATTLE_TURNTOP_REQUEST30_{L_FLAG_DAYS_DIGIT}
+
+
+;=================================================
+;   sub EVENT_BATTLE_TURNEND_REQUESTxxx
+;=================================================
+;   의뢰:전투中処理(ターン종료시)
+;-------------------------------------------------
+;   CALL先でフラグを설정
+;-------------------------------------------------
+@EVENT_BATTLE_TURNEND_REQUEST30
+#DIM DYNAMIC L_FLAG_DAYS_DIGIT
+IF FLAG:デビサバ２進行度 < 1000 || FLAG:デビサバ２進行度 >= 5000
+	;- フラグをセット(３桁눈)
+	L_FLAG_DAYS_DIGIT = 1 + FLAG:デビサバ２進行度 / 100
+ELSEIF FLAG:デビサバ２進行度 < 5000
+	L_FLAG_DAYS_DIGIT = 6
+ENDIF
+;-----------------------------
+;- 処理開始
+;-----------------------------
+
+;- 存在する場合だけ呼び出し
+TRYCALLFORM EVENT_BATTLE_TURNEND_REQUEST30_{L_FLAG_DAYS_DIGIT}
+
+
+;-------------------------------------------------------------------------------
+;   独自関数
+;-------------------------------------------------------------------------------
+
+;=================================================
+;   sub REQUEST_30_FLAG_RESET
+;=================================================
+;   의뢰:フラグ리셋
+;-------------------------------------------------
+;   MENU화면で「의뢰出現」が出る様、
+;   의뢰등록フラグを리셋する
+;-------------------------------------------------
+@REQUEST_30_FLAG_RESET
+#DIM DYNAMIC L_REQUEST_NO
+
+L_REQUEST_NO = 30
+
+;- フラグがONの場合、クリアしてOFFに변경
+SIF GETBIT(FLAG:의뢰出現1,L_REQUEST_NO)
+	CLEARBIT  FLAG:의뢰出現1,L_REQUEST_NO
+
+
+;=================================================
+;   sub REQUEST_30_DAY_TITLE
+;=================================================
+;   의뢰:一日のタイトル
+;-------------------------------------------------
+;   フォーマットは下記
+;
+;   1ST DAY
+;   우울의 제 1일
+;-------------------------------------------------
+; Input:
+;  ARGS:0				日付
+;  ARGS:1				タイトル
+;-------------------------------------------------
+@REQUEST_30_DAY_TITLE(ARGS:0,ARGS:1)
+
+CUSTOMDRAWLINE =
+ALIGNMENT CENTER
+PRINTFORML
+PRINTFORML
+PRINTFORML %ARGS:0%
+PRINTFORML %ARGS:1%
+PRINTFORML
+PRINTFORML
+ALIGNMENT LEFT
+CUSTOMDRAWLINE =
+WAIT
+
+;=================================================
+;   sub REQUEST_30_SECTION_TITLE
+;=================================================
+;   의뢰:各セクションのタイトル
+;-------------------------------------------------
+;   フォーマットは下記
+;
+;   수수께끼의해커
+;-------------------------------------------------
+; Input:
+;  ARGS:0				日付
+;  ARGS:1				タイトル
+;-------------------------------------------------
+@REQUEST_30_SECTION_TITLE(ARGS:0)
+
+CUSTOMDRAWLINE =
+ALIGNMENT CENTER
+PRINTFORML
+PRINTFORML %ARGS:0%
+PRINTFORML
+ALIGNMENT LEFT
+CUSTOMDRAWLINE =
+WAIT
+
+;=================================================
+;   sub REQUEST_30_DAY_END
+;=================================================
+;   의뢰:一日の종료
+;-------------------------------------------------
+@REQUEST_30_DAY_END
+PRINTFORMW 하루가 끝났습니다。
+
+;- 朝になる処理
+FLAG:휴식フラグ = 3
+BEGIN TURNEND
+RETURN
+
+;=================================================
+;   sub REQUEST_30_TURN_END
+;=================================================
+;   의뢰:ターンの종료
+;-------------------------------------------------
+@REQUEST_30_TURN_END
+;- 1ターン経過
+FLAG:휴식フラグ = 1
+BEGIN TURNEND
+RETURN
+
+;=================================================
+;   sub REQUEST_30_BASE_LV
+;=================================================
+;   의뢰:기초레벨
+;-------------------------------------------------
+;   経過日数を基に、기초레벨を返す
+;-------------------------------------------------
+; Input:
+;  ARG					経過日数
+; Output:
+;  RETURNF				기초레벨
+;-------------------------------------------------
+@REQUEST_30_BASE_LV(ARG=1)
+#FUNCTION
+RETURNF 30 + (3*(ARG - 1))

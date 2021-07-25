@@ -1,0 +1,121 @@
+﻿;-------------------------------------------------
+;아이마스크
+;SM系コマンド、레벨1
+;-------------------------------------------------
+@COMNAME105
+RESULTS = 아이마스크
+SIF TEQUIP:18
+	RESULTS = 아이마스크해제
+@ACT_COM105
+PRINTL 아이마스크
+TSTR:0 = 아이마스크
+;CALL KOJO_MESSAGE_COM
+
+;着脱の処理
+IF TEQUIP:18 == 0
+	TEQUIP:18 = 1
+ELSE
+	TEQUIP:18 = 0
+ENDIF
+
+;조교者→조교대상
+TFLAG:28 = 2
+;-------------------------------------------------
+;ソース추가処理
+;-------------------------------------------------
+;소비체력、기력
+DOWNBASE:TARGET:체력 += 0
+DOWNBASE:TARGET:기력 += 80
+
+SOURCE:TARGET:무서움 = 700
+SOURCE:TARGET:노출 = 100
+SOURCE:TARGET:일탈 = 300
+SOURCE:TARGET:반감 = 600
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;긴박경험が高いと소비減少
+IF EXP:51 < EXPLV:3
+	TIMES DOWNBASE:TARGET:기력 , 1.00
+ELSEIF EXP:51 < EXPLV:4
+	TIMES DOWNBASE:TARGET:기력 , 0.90
+ELSE
+	TIMES DOWNBASE:TARGET:기력 , 0.70
+ENDIF
+
+;-------------------------------------------------
+;경험の処理
+;-------------------------------------------------
+CALL ADDS_EXP("긴박경험", 2, TARGET)
+;PRINTL 긴박경험＋２
+
+A = 1
+IF IS_LESBIAN(TARGET,PLAYER)
+	PRINTFORML %EXPNAME:40%+{A}
+	CALL ADDS_EXP("레즈경험", A, TARGET)
+ELSEIF IS_GAY(TARGET,PLAYER)
+	PRINTFORML %EXPNAME:41%+{A}
+	CALL ADDS_EXP("ＢＬ경험", A, TARGET)
+ENDIF
+
+;의존도ベクトル
+TFLAG:33 = 3
+
+;의존도보정値(복종で1、예속で2）
+IF TALENT:5 && ASSIPLAY == 0
+	TFLAG:30 += 1
+ELSEIF TALENT:8 && ASSIPLAY == 0
+	TFLAG:30 += 2
+ENDIF
+
+
+RETURN 1
+
+
+;-------------------------------------------------
+;装着継続の処理
+;-------------------------------------------------
+@EQUIP_COM105
+PRINTL ＜아이마스크착용중＞
+
+;-------------------------------------------------
+;ソース추가処理
+;-------------------------------------------------
+DOWNBASE:TARGET:체력 += 0
+DOWNBASE:TARGET:기력 += 40
+
+SOURCE:TARGET:무서움 += 350
+SOURCE:TARGET:노출 += 50
+SOURCE:TARGET:일탈 += 150
+SOURCE:TARGET:반감 += 300
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;긴박경험が高いと소비減少
+A = 40
+IF EXP:51 < EXPLV:3
+	TIMES A , 1.00
+ELSEIF EXP:51 < EXPLV:4
+	TIMES A , 0.90
+ELSE
+	TIMES A , 0.70
+ENDIF
+DOWNBASE:TARGET:기력 += A
+
+;-------------------------------------------------
+;경험の処理
+;-------------------------------------------------
+CALL ADDS_EXP("긴박경험", 1, TARGET)
+;PRINTL 긴박경험＋１
+
+RETURN 1
+
+;===================================================
+;조교타입
+;===================================================
+@COMTYPE_105
+RETURN COMTYPE("ＳＭ계")
+
+

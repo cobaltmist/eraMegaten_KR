@@ -1,0 +1,473 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:PRINT_STATE.ERB
+;
+;	Licence		:ライセンスフリー。
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		20XX/XX/XX		----					新規作成
+;	002		2011/04/22		黒天					SHOW_INFO_PALAM関数に引数を추가
+;													被조교者だけでなく조교者の상태も표시できるよう변경
+;	003		2011/04/24		P						PALAM표시のバーを변경
+;													PALAMの数値표시を、前の레벨があがったところからいくつかに변경
+;	004		2011/04/25		P						上記の処理をさらに변경し、色を調整&옵션で표시形式を選べるように
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+
+;@ARRANGE_CHARANAME
+;;이름の표시の後の文字を揃えるための空白調整、Str.csvにて処理している
+;C = NO:COUNT + 200
+;PRINTS STR:C
+
+;==========================================================
+;<関数名>
+; SHOW_INFO_PALAM
+;<関数の설명>
+; 대상の現在のパラメータ状況を표시する。
+;<引数>
+; [ARG] 표시する대상の번호(초기値:-1)
+;       -1    : 被조교者(TARGET)
+;       -1以外: 조교者(당신 or 조수)
+;<戻り値>: なし
+;==========================================================
+@SHOW_INFO_PALAM, ARG=-1
+#DIM PLV, 1
+#LOCALSIZE 5
+;LOCAL 조교者/被조교者判別用
+SIF ARG < 0
+	ARG = TARGET
+LOCAL:4 = 0
+FOR LOCAL, 0, 15
+	LOCALS = %AUTO_SPLIT("쾌Ｃ/쾌Ｖ/쾌Ａ/쾌Ｂ/윤활/복종/욕정/굴복/습득/치정/고통/공포/반감/불쾌/억울", "/", LOCAL)%
+	SIF ARG == PLAYER && !GROUPMATCH(LOCALS, "쾌Ｃ", "쾌Ｖ", "쾌Ａ", "쾌Ｂ", "윤활", "욕정")
+		CONTINUE
+	PRINTFORM %LOCALS%
+	PLV = GETPALAMLV(PALAM:ARG:LOCALS, 17)
+	SELECTCASE PLV
+		CASE IS < 10
+			PRINTFORM Lv{PLV}
+		CASE 10
+			PRINT LvA
+		CASE 11
+			PRINT LvB
+		CASE 12
+			PRINT LvC
+		CASE 13
+			PRINT LvD
+		CASE 14
+			PRINT LvE
+		CASE 15
+			PRINT LvF
+		CASE 16
+			PRINT LvG
+		CASE 17
+			PRINT ???
+	ENDSELECT
+	PRINT  
+	SELECTCASE FLAG:PALAM표시설정
+		CASE 0
+			LOCAL:1 = PALAM:ARG:LOCALS
+			LOCAL:2 = PALAM:ARG:LOCALS-PALAMLV:PLV
+			LOCAL:3 = PALAMLV:(PLV+1)-PALAMLV:PLV
+		CASE 1
+			LOCAL:1 = PALAM:ARG:LOCALS
+			LOCAL:2 = PALAM:ARG:LOCALS
+			LOCAL:3 = PALAMLV:(PLV+1)
+		CASE 2
+			LOCAL:1 = PALAM:ARG:LOCALS - PALAMLV:PLV
+			LOCAL:2 = PALAM:ARG:LOCALS - PALAMLV:PLV
+			LOCAL:3 = PALAMLV:(PLV+1)-PALAMLV:PLV
+	ENDSELECT
+	IF PLV == 17 || (LOCALS == "윤활" && PLV >= 5)
+		CALL PRINT_COLORBAR, 0, 1, 8, UNICODE(0x2584), UNICODE(0x2584), BARCOLORSET("青"), RESULT:1
+		PRINT  ( MAX!!) 
+	ELSE
+		CALL PRINT_COLORBAR, LOCAL:2, LOCAL:3, 8, UNICODE(0x2584), UNICODE(0x2584), BARCOLORSET("青"), RESULT:1
+		PRINT  (
+		;桁数を취득
+		LOCAL:2 = 1
+		WHILE 1
+			SIF PALAM:ARG:LOCALS / POWER(10, LOCAL:2) == 0
+				BREAK
+			LOCAL:2++
+		WEND
+		SELECTCASE LOCAL:2
+			CASE IS < 7
+				PRINTFORM {LOCAL:1, 6}
+			CASE IS < 11
+				PRINTFORM {LOCAL:1 / POWER(10, 3),5}K
+			CASE IS < 14
+				PRINTFORM {LOCAL:1 / POWER(10, 3),5}M
+			CASE IS < 17
+				PRINTFORM {LOCAL:1 / POWER(10, 3),5}G
+			CASE IS < 20
+				PRINTFORM {LOCAL:1 / POWER(10, 3),5}P
+		ENDSELECT
+		PRINT ) 
+	ENDIF
+	SIF ++(LOCAL:4) % FLAG:조교パラメータを並べる数 == 0
+		PRINTL 
+NEXT
+SIF LOCAL:4 % 3 > 0
+	PRINTL 
+RETURN 0
+@SHOW_INFO_ABL
+#DIM LCOUNT
+S = 0
+FOR LCOUNT, 0, 20
+	;표시概要
+	;　　　　 0,순종 　　　　 1,욕망 　　　　 2,기교 　　　 3,Ｃ감각
+	;　　　 4,Ｖ감각 　　　 5,Ａ감각 　　　 6,Ｂ감각 　　 7,봉사정신
+	;　　　 8,노출증 　　 9,마조끼 　　10,새드끼 　　11,레즈끼
+	;　　12,요리기능 　　13,촬영기능 　　14,가창기능 　　15,자위중독
+	;　　16,정액중독 　　17,레즈중독 18,섹스중독 　　19,분유중독
+	;　　20,ＢＬ끼 　　21,ＢＬ중독
+	
+	IF ABL:T:LCOUNT > 0
+		;표시位置あわせ
+		IF LCOUNT == 7 || LCOUNT == 9 || LCOUNT == 10 || LCOUNT == 11 || LCOUNT == 12 || LCOUNT == 13 || LCOUNT == 14 || LCOUNT == 15 || LCOUNT == 16 || LCOUNT == 17 || LCOUNT == 19 || LCOUNT == 20 || LCOUNT == 21
+			PRINT 　　
+		ELSEIF LCOUNT == 3 || LCOUNT == 4 || LCOUNT == 5 || LCOUNT == 6 || LCOUNT == 8
+			PRINT 　　　
+		ELSEIF LCOUNT == 0 || LCOUNT == 1 || LCOUNT == 2
+			PRINT 　　　　
+		ENDIF
+		
+		;표시
+		PRINTFORM %ABLNAME:LCOUNT%:LV
+		;数字の표시位置をそろえる
+		SIF ABL:T:LCOUNT < 10
+			PRINT  
+		PRINTFORM {ABL:T:LCOUNT}
+		S += 1
+		;改行するのか？ 続けて출력するのか？
+		IF S == 4
+			PRINTL 
+			S = 0
+		ELSE
+			PRINT 　
+		ENDIF
+	ENDIF
+NEXT
+PRINTL 
+
+;=============================================================================
+;PRINT_TALENT （素質）との入れ替え
+@SHOW_INFO_TALENT
+#DIM LCOUNT
+U = 0
+;リピート횟수-1 の번호までの소질が표시される
+;リピート횟수をあらかじめ大きめに설정（최대1000）しておくと、
+;소질の최대번호が増えたときに書き換える손間が減るが、
+;増やしすぎると処理速度に影響するので要注意
+FOR LCOUNT, 0, 200
+	IF TALENT:T:LCOUNT
+		PRINTFORM [%TALENTNAME:LCOUNT%] 
+		
+		;改行するのか？ 続けて출력するのか？
+		U += 1
+		SIF U%6 == 0
+			PRINTL 
+	ENDIF
+NEXT
+;最後のループで改行してなかったら、ここで改行しておく
+SIF U%6 != 0
+	PRINTL 
+
+
+;=============================================================================
+;PRINT_MARK （각인）との入れ替え
+@SHOW_INFO_MARK
+#DIM LCOUNT
+FOR LCOUNT, 0, 4
+	PRINTFORM %MARKNAME:LCOUNT%:LV{MARK:T:LCOUNT} 
+	BAR MARK:T:LCOUNT, 3, 3
+
+	
+	;最後のループ以外では間隔をあける
+	SIF LCOUNT < 3
+		PRINT 　
+NEXT
+PRINTL 
+
+;=============================================================================
+;PRINT_EXP （경험）との入れ替え
+@SHOW_INFO_EXP
+#DIM LCOUNT
+X = 0
+S = 0
+FOR LCOUNT, 0, 42
+	;표시概要
+	;　　　 0.Ｖ경험　　　 1.Ａ경험　　 2.절정경험　　 3.사정경험
+	;　　 4.성교경험　　 5.질사경험 　　6.키스경험	　10.자위경험
+	;11.조교자위경험	20.정액경험21.봉사쾌락경험　22.펠라경험
+	;　　23.애정경험30.고통쾌락경험　　31.방뇨경험32.가학쾌락경험
+	;33.야외노출경험　　40.레즈경험　　41.ＢＬ경험　　50.이상경험
+	;　　51.긴박경험　52.Ｖ확장경험　53.Ａ확장경험　　54.분유경험
+	;　　55.촉수경험　　56.흡혈경험　　57.수간경험　　60.출산경험
+	;　　61.가사경험　　62.촬영경험　　63.피사경험　　64.가창경험
+	;　　65.훈련경험　　70.조교경험    80.ＴＳ경험　　82.윤간경험
+	;    84.바람경험71.외식노역경험　　72.매춘경험73.렌탈경험
+	;　74.라이브경험　　75.변기경험
+	
+	IF LCOUNT == 0
+		X = 0
+	ELSEIF LCOUNT == 1
+		X = 1
+	ELSEIF LCOUNT == 2
+		X = 2
+	ELSEIF LCOUNT == 3
+		X = 3
+		
+	ELSEIF LCOUNT == 4
+		X = 4
+	ELSEIF LCOUNT == 5
+		X = 5
+	ELSEIF LCOUNT == 6
+		X = 6
+	ELSEIF LCOUNT == 7
+		X = 10
+	ELSEIF LCOUNT == 8
+		X = 11
+		
+	ELSEIF LCOUNT == 9
+		X = 20
+	ELSEIF LCOUNT == 10
+		X = 21
+	ELSEIF LCOUNT == 11
+		X = 22
+	ELSEIF LCOUNT == 12
+		X = 23
+		
+	ELSEIF LCOUNT == 13
+		X = 30
+	ELSEIF LCOUNT == 14
+		X = 31
+	ELSEIF LCOUNT == 15
+		X = 32
+	ELSEIF LCOUNT == 16
+		X = 33
+		
+	ELSEIF LCOUNT == 17
+		X = 40
+	ELSEIF LCOUNT == 18
+		X = 41
+		
+	ELSEIF LCOUNT == 19
+		X = 50
+	ELSEIF LCOUNT == 20
+		X = 51
+	ELSEIF LCOUNT == 21
+		X = 52
+	ELSEIF LCOUNT == 22
+		X = 53
+		
+	ELSEIF LCOUNT == 23
+		X = 54
+	ELSEIF LCOUNT == 24
+		X = 55
+	ELSEIF LCOUNT == 25
+		X = 56
+	ELSEIF LCOUNT == 26
+		X = 57
+	ELSEIF LCOUNT == 27
+		X = 60
+		
+	ELSEIF LCOUNT == 28
+		X = 61
+	ELSEIF LCOUNT == 29
+		X = 62
+	ELSEIF LCOUNT == 30
+		X = 63
+	ELSEIF LCOUNT == 31
+		X = 64
+		
+	ELSEIF LCOUNT == 32
+		X = 65
+	ELSEIF LCOUNT == 33
+		X = 70
+	ELSEIF LCOUNT == 34
+		X = 71
+	ELSEIF LCOUNT == 35
+		X = 72
+		
+	ELSEIF LCOUNT == 36
+		X = 73
+	ELSEIF LCOUNT == 37
+		X = 74
+	ELSEIF LCOUNT == 38
+		X = 75
+	ELSEIF LCOUNT == 39
+		X = 80
+	ELSEIF LCOUNT == 40
+		X = 82
+	ELSEIF LCOUNT == 41
+		X = 84
+	ENDIF
+	
+	IF EXP:T:X > 0
+		STRLENS EXPNAME:X
+		IF FLAG:カスタムゲーム화면
+			PRINTFORM %EXPNAME:X%
+			SIF RESULT == 12
+				PRINT 　:
+			SIF RESULT == 10
+				PRINT 　　:
+			SIF RESULT == 8
+				PRINT 　　　:
+			SIF RESULT == 6
+				PRINT 　　　　:
+			IF EXP:T:X < 10
+				PRINT        
+			ELSEIF EXP:T:X < 100
+				PRINT       
+			ELSEIF EXP:T:X < 1000
+				PRINT      
+			ELSEIF EXP:T:X < 10000
+				PRINT     
+			ELSEIF EXP:T:X < 100000
+				PRINT    
+			ELSEIF EXP:T:X < 1000000
+				PRINT   
+			ELSEIF EXP:T:X < 10000000
+				PRINT  
+			ENDIF
+		ELSE
+			;표시位置あわせ
+			SIF RESULT == 10
+				PRINT 　
+			SIF RESULT == 8
+				PRINT 　　
+			SIF RESULT == 6
+				PRINT 　　　
+				PRINTFORM %EXPNAME:X%
+			;표시位置そろえる
+			IF EXP:T:X < 10
+				PRINT      
+			ELSEIF EXP:T:X < 100
+				PRINT     
+			ELSEIF EXP:T:X < 1000
+				PRINT    
+			ELSEIF EXP:T:X < 10000
+				PRINT   
+			ELSEIF EXP:T:X < 100000
+				PRINT  
+			ENDIF
+		ENDIF
+		PRINTFORM {EXP:T:X}
+		S += 1
+		
+		;改行するのか？ 続けて출력するのか？
+		IF S == 4
+			PRINTL 
+			S = 0
+		ELSE
+			SIF FLAG:カスタムゲーム화면
+				PRINT 　
+			PRINT 　
+		ENDIF
+	ENDIF
+NEXT
+PRINTL 
+DRAWLINE
+;=============================================================================
+;SHOW_JUEL 의 구슬표시部分を独立した関数に
+@SHOW_INFO_JUEL
+#DIM LCOUNT
+U = 0
+X = 0
+FOR LCOUNT, 0, 12
+	;표시順
+	; 0,쾌Ｃ　 1,쾌Ｖ　 2,쾌Ａ　 3,쾌Ｂ
+	; 5,복종　 6,욕정　 7,굴복　 8,습득
+	; 9,치정　10,고통　11,공포 100,부정
+	IF LCOUNT == 0
+		X = 0
+	ELSEIF LCOUNT == 1
+		X = 1
+	ELSEIF LCOUNT == 2
+		X = 2
+	ELSEIF LCOUNT == 3
+		X = 3
+		
+	ELSEIF LCOUNT == 4
+		X = 5
+	ELSEIF LCOUNT == 5
+		X = 6
+	ELSEIF LCOUNT == 6
+		X = 7
+	ELSEIF LCOUNT == 7
+		X = 8
+		
+	ELSEIF LCOUNT == 8
+		X = 9
+	ELSEIF LCOUNT == 9
+		X = 10
+	ELSEIF LCOUNT == 10
+		X = 11
+	ELSEIF LCOUNT == 11
+		X = 100
+		
+	ENDIF
+	
+	PRINTFORM 　%PALAMNAME:X%의 구슬:
+	
+	;표시位置そろえる
+	IF FLAG:カスタムゲーム화면
+		IF JUEL:T:X < 10
+			PRINT        
+		ELSEIF JUEL:T:X < 100
+			PRINT       
+		ELSEIF JUEL:T:X < 1000
+			PRINT      
+		ELSEIF JUEL:T:X < 10000
+			PRINT     
+		ELSEIF JUEL:T:X < 100000
+			PRINT    
+		ELSEIF JUEL:T:X < 1000000
+			PRINT   
+		ELSEIF JUEL:T:X < 10000000
+			PRINT  
+		ENDIF
+	ELSE
+		IF JUEL:T:X < 10
+			PRINT      
+		ELSEIF JUEL:T:X < 100
+			PRINT     
+		ELSEIF JUEL:T:X < 1000
+			PRINT    
+		ELSEIF JUEL:T:X < 10000
+			PRINT   
+		ELSEIF JUEL:T:X < 100000
+			PRINT  
+		ENDIF
+	ENDIF
+	PRINTV JUEL:T:X
+	
+	;改行or표시位置あけ
+	U += 1
+	IF U%4 == 0
+		PRINTL 
+	ELSE
+		SIF FLAG:カスタムゲーム화면
+			PRINT 　
+		PRINT  
+	ENDIF
+NEXT
+
+;最後のループで改行してなかったら、ここで改行しておく
+SIF U%4 != 0
+	PRINTL 
+
+@SHOW_INFO_CLOTHES
+FOR LOCAL,0,12
+	IF CFLAG:GET_CLOTHESNAME(LOCAL)
+		PRINTFORM %GET_CLOTHESNAME(LOCAL),12,LEFT%:
+		CALL CLOTHES_NAME,LOCAL,T
+		PRINTL 
+	ENDIF
+NEXT
+
+
+

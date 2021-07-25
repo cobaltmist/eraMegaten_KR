@@ -1,0 +1,116 @@
+﻿;반발각인を消してみるテスト
+;使う場合は↓をABL.ERBの「PRINTL [100] 능력値アップの종료」の前に挿入すること
+;PRINTFORML [99]%MARKNAME:3%-{MARK:3}LV
+;
+;TRACHECK.ERBも弄ると再度반발각인が付いたりしないので吉
+;●改変前
+;IF A >= 500 && A < 1200 && MARK:3 <= 0
+;	MARK:3 = 1
+;●改変後
+;IF A >= 500 && A < 1200 && MARK:4 <= 0
+;	MARK:3 = 1
+;	MARK:4 = 1
+;●이상의 内容を3LVの3箇所にすること
+;上記の解らないor解ってもやらない場合に再度반발각인付いた場合の弊害は保証しかねます
+
+
+@ISABLUP99
+IF MARK:3 <= 0
+	RETURN 0
+ENDIF
+
+CALL DECIDE_ABLUP99
+
+IF Z == 0
+	RETURN 0
+ELSE
+	RETURN 1
+ENDIF
+
+
+@ABLUP99
+DRAWLINE
+IF MARK:3 <= 0
+	PRINTW 반발각인은 없습니다
+	RETURN 0
+ENDIF
+
+CALL DECIDE_ABLUP99
+
+
+;반발각인Lvと同じLvの굴복각인が필요
+PRINTS MARKNAME:2
+PRINTV MARK:3
+PRINTL LV이상、그리고
+
+;반발각인Lvと同じLvの순종が필요
+PRINTS ABLNAME:0
+PRINTV MARK:3
+PRINTL LV이상、그리고
+
+PRINTFORM [0] - %PALAMNAME:7%의 구슬×{A}……
+IF I == 0
+	PRINT ＯＫ
+ELSE
+	SIF I & 1
+		PRINT 珠부족 
+	SIF I & 2
+		PRINT 각인부족 
+	SIF I & 4
+		PRINT 능력부족 
+ENDIF
+PRINTL 
+
+PRINTL [100] - 그만둔다
+
+INPUT
+IF RESULT != 0 && RESULT != 100
+	RESTART
+ELSEIF I != 0 && RESULT == 0
+	PRINTL 조건을 채우고 있지 않습니다
+	RESTART
+ELSEIF RESULT == 100
+	RETURN 0
+ENDIF
+
+MARK:3 -= 1
+
+JUEL:7 -= A
+
+PRINTS MARKNAME:3
+PRINT 의 레벨이 
+PRINTV MARK:3
+PRINTFORMW %조사만처리(MARK:99,"가")% 되었습니다
+
+
+;
+@DECIDE_ABLUP99
+;조건別にＯＫかダメかを記録する
+I = 0
+;능력アップ가능なら1にする
+Z = 0
+
+IF MARK:3 == 1
+	A = 1000
+ELSEIF MARK:3 == 2
+	A = 3000
+ELSEIF MARK:3 == 3
+	A = 5000
+ENDIF
+
+;반발각인Lvと同じLvの굴복각인が필요
+SIF MARK:3 > MARK:2
+	I |= 2
+
+;반발각인Lvと同じLvの순종が필요
+SIF MARK:3 > ABL:0
+	I |= 4
+
+;굴복의 구슬で減らす
+SIF JUEL:7 < A
+	I |= 1
+
+IF I == 0
+	Z = 1
+ENDIF
+

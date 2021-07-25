@@ -1,0 +1,779 @@
+﻿;==========================================================================
+;소재の충성도による소질변경
+;==========================================================================
+@MAKE_TALENT,ARG,ARG:1
+#DIM LCOUNT
+;コピー作成
+ADDVOIDCHARA
+FOR LCOUNT, 0, 200
+		TALENT:(CHARANUM-1):LCOUNT = TALENT:ARG:LCOUNT
+NEXT
+
+;ARG:1から포인트を취득
+LOCAL = ARG:1/200
+PRINTFORML {LOCAL}포인트의 범위내로 소질을 바꿔넣을 수 있습니다。
+SIF ABL:ARG:종족 != 45
+	PRINTL ※사용한만큼 합체후에는 충성도가 저하됩니다
+WAIT
+CUSTOMDRAWLINE =
+LOCAL:1 = 0
+$PRINT
+PRINTFORML %STR:(ABL:ARG:종족)% %NAME:ARG% 
+PRINTFORML 앞으로 {LOCAL}포인트
+U = ARG
+CALL NEW_PRINT_TALENT
+DRAWLINE
+
+CALLFORM PRINT_TALENT_{LOCAL:1},ARG
+PRINTL
+DRAWLINE
+
+PRINTFORMLC [1007] \@ LOCAL:1 == 0 ? 육체・기술・버릇계소질 # 정신계소질 \@
+PRINTLC [1000] 종료
+PRINTLC [1009] 리셋
+$INPUT_LOOP
+INPUT
+IF RESULT == 1000
+	IF TALENT:ARG:남자 == 1 && TALENT:ARG:처녀 == 1
+		TALENT:ARG:처녀 = 0
+		LOCAL += 5
+	ENDIF
+	IF TALENT:ARG:처녀 && CSVTALENT(NO:ARG,0,0) == 0
+		EXP:ARG:성교경험 -= EXP:ARG:Ｖ경험
+		EXP:ARG:Ｖ경험 = 0
+		EXP:ARG:질사경험 = 0
+		EXP:ARG:Ｖ확장경험 = 0
+		EXP:ARG:출산경험 = 0
+		ABL:ARG:Ｖ감각 = 0
+	ELSEIF TALENT:ARG:처녀 == 0 && EXP:ARG:Ｖ경험 == 0 && CSVTALENT(NO:ARG,0,0)
+		EXP:ARG:성교경험 += 1
+		EXP:ARG:Ｖ경험 += 1
+	ENDIF
+	DELCHARA CHARANUM-1
+	RETURN (ARG:1 - ((ARG:1/200 -LOCAL)*200))
+ELSEIF RESULT == 1007
+	IF LOCAL:1 == 0
+		LOCAL:1 = 1
+	ELSE
+		LOCAL:1 = 0
+	ENDIF
+	GOTO PRINT
+ELSEIF RESULT == 1009
+	FOR LCOUNT, 0, 200
+		TALENT:ARG:LCOUNT = TALENT:(CHARANUM-1):LCOUNT
+;		TALENT:ARG:LCOUNT = 0
+;		SIF CSVTALENT(NO:ARG,LCOUNT,0)
+;			TALENT:ARG:LCOUNT = 1
+	NEXT
+	DELCHARA CHARANUM-1
+	RESTART
+ELSEIF RESULT < 200  && RESULT >= 0 && T:RESULT > -100
+	IF T:RESULT > LOCAL
+		PRINTW 포인트가 부족합니다
+		CLEARLINE 1
+		GOTO INPUT_LOOP
+	ENDIF
+	IF TALENT:ARG:RESULT
+		PRINTFORMW %조사처리(TALENTNAME:RESULT,"를")% 소거했습니다。
+		TALENT:ARG:RESULT = 0
+		LOCAL -= T:RESULT
+		GOTO PRINT
+	ELSE
+		PRINTFORMW %조사처리(TALENTNAME:RESULT,"를")% 얻었습니다。
+		TALENT:ARG:RESULT = 1
+		LOCAL -= T:RESULT
+		GOTO PRINT
+	ENDIF
+ELSE
+	CLEARLINE 1
+	GOTO INPUT_LOOP
+ENDIF
+
+;===========================
+;정신계소질표시
+;===========================
+@PRINT_TALENT_0,ARG
+PRINTFORML □정신계소질
+
+VARSET T,-100
+
+;표시
+
+IF TALENT:ARG:겁쟁이
+	PRINTLC [ 10] 【겁쟁이】소거　　　　( 4P)　　
+	T:10 = 4
+ELSE
+	PRINTLC [ 10] 【겁쟁이】추가　　　　( 6P)　　
+	T:10 = 6
+ENDIF
+
+IF TALENT:ARG:반항적
+	PRINTLC [ 11] 【반항적】소거　　　　(10P)　　
+	T:11 = 10
+ELSE
+	PRINTLC [ 11] 【반항적】추가　　　　( 4P)　　
+	T:11 = 4
+ENDIF
+
+IF TALENT:ARG:꿋꿋함
+	PRINTLC [ 12] 【꿋꿋함】소거　　　　　(16P)　　
+	T:12 = 16
+ELSE
+	PRINTLC [ 12] 【꿋꿋함】추가　　　　　( 4P)　　
+	T:12 = 4
+ENDIF
+
+IF TALENT:ARG:솔직함
+	PRINTLC [ 13] 【솔직함】소거　　　　( 4P)　　
+	T:13 = 4
+ELSE
+	PRINTLC [ 13] 【솔직함】추가　　　　(10P)　　
+	T:13 = 10
+ENDIF
+
+IF TALENT:ARG:얌전함
+	PRINTLC [ 14] 【얌전함】소거　　　　( 4P)　　
+	T:14 = 4
+ELSE
+	PRINTLC [ 14] 【얌전함】추가　　　　( 8P)　　
+	T:14 = 8
+ENDIF
+
+IF TALENT:ARG:프라이드높음
+	PRINTLC [ 15] 【프라이드높음】소거　　(10P)　　
+	T:15 = 10
+ELSEIF TALENT:ARG:프라이드높음 == 0 && TALENT:ARG:프라이드낮음 == 0
+	PRINTLC [ 15] 【프라이드높음】추가　　( 4P)　　
+	T:15 = 4
+ENDIF
+
+IF TALENT:ARG:건방짐
+	PRINTLC [ 16] 【건방짐】소거　　　　( 8P)　　
+	T:16 = 8
+ELSE
+	PRINTLC [ 16] 【건방짐】추가　　　　( 2P)　　
+	T:16 = 2
+ENDIF
+
+IF TALENT:ARG:프라이드낮음
+	PRINTLC [ 17] 【프라이드낮음】소거　( 4P)　　
+	T:17 = 4
+ELSEIF TALENT:ARG:프라이드높음 == 0 && TALENT:ARG:프라이드낮음 == 0
+	PRINTLC [ 17] 【프라이드낮음】추가　( 6P)　　
+	T:17 = 6
+ENDIF
+
+IF TALENT:ARG:츤데레
+	PRINTLC [ 18] 【츤데레】소거　　　　　(10P)　　
+	T:18 = 10
+ELSE
+	PRINTLC [ 18] 【츤데레】추가　　　　　( 8P)　　
+	T:18 = 8
+ENDIF
+
+IF TALENT:ARG:자제심
+	PRINTLC [ 20] 【자제심】소거　　　　(16P)　　
+	T:20 = 16
+ELSE
+	PRINTLC [ 20] 【자제심】추가　　　　( 6P)　　
+	T:20 = 6
+ENDIF
+
+IF TALENT:ARG:무관심
+	PRINTLC [ 21] 【무관심】소거　　　　(12P)　　
+	T:21 = 12
+ELSE
+	PRINTLC [ 21] 【무관심】추가　　　　(-6P)　　
+	T:21 = -6
+ENDIF
+
+IF TALENT:ARG:감정결핍
+	PRINTLC [ 22] 【감정결핍】소거　　　　(12P)　　
+	T:22 = 12
+ELSE
+	PRINTLC [ 22] 【감정결핍】추가　　　　(-6P)　　
+	T:22 = -6
+ENDIF
+
+IF TALENT:ARG:호기심
+	PRINTLC [ 23] 【호기심】소거　　　　(-5P)　　
+	T:23 = -5
+ELSEIF TALENT:ARG:보수적 == 0 && TALENT:ARG:호기심 == 0
+	PRINTLC [ 23] 【호기심】추가　　　　( 5P)　　
+	T:23 = 5
+ENDIF
+
+IF TALENT:ARG:보수적
+	PRINTLC [ 24] 【보수적】소거　　　　( 7P)　　
+	T:24 = 7
+ELSEIF TALENT:ARG:보수적 == 0 && TALENT:ARG:호기심 == 0
+	PRINTLC [ 24] 【보수적】추가　　　　( 4P)　　
+	T:24 = 4
+ENDIF
+
+IF TALENT:ARG:낙관적
+	PRINTLC [ 25] 【낙관적】소거　　　　　(-5P)　　
+	T:25 = -5
+ELSEIF TALENT:ARG:비관적 == 0 && TALENT:ARG:낙관적 == 0
+	PRINTLC [ 25] 【낙관적】추가　　　　　( 5P)　　
+	T:25 = 5
+ENDIF
+IF TALENT:ARG:비관적
+	PRINTLC [ 26] 【비관적】소거　　　　( 8P)　　
+	T:26 = 8
+ELSEIF TALENT:ARG:비관적 == 0 && TALENT:ARG:낙관적 == 0
+	PRINTLC [ 26] 【비관적】추가　　　　(-4P)　　
+	T:26 = -4
+ENDIF
+
+IF TALENT:ARG:일선을넘지않음
+	PRINTLC [ 27] 【일선을넘지않음】소거(15P)　　
+	T:27 = 15
+ELSE
+	PRINTLC [ 27] 【일선을넘지않음】추가( 6P)　　
+	T:27 = 6
+ENDIF
+IF TALENT:ARG:눈에띄고싶어함
+	PRINTLC [ 28] 【눈에띄고싶어함】소거　(-4P)　　
+	T:28 = -4
+ELSE
+	PRINTLC [ 28] 【눈에띄고싶어함】추가　( 8P)　　
+	T:28 = 8
+ENDIF
+
+IF TALENT:ARG:정조관념
+	PRINTLC [ 30] 【정조관념】소거　　　( 6P)　　
+	T:30 = 6
+ELSEIF TALENT:ARG:정조관념 == 0 && TALENT:ARG:정조관결여 == 0
+	PRINTLC [ 30] 【정조관념】추가　　　( 5P)　　
+	T:30 = 5
+ENDIF
+IF TALENT:ARG:정조관결여
+	PRINTLC [ 31] 【정조관결여】소거　　( 4P)　　
+	T:31 = 4
+ELSEIF TALENT:ARG:정조관념 == 0 && TALENT:ARG:정조관결여 == 0
+	PRINTLC [ 31] 【정조관결여】추가　　( 6P)　　
+	T:31 = 6
+ENDIF
+
+IF TALENT:ARG:억압
+	PRINTLC [ 32] 【억압】소거　　　　　　(18P)　　
+	T:32 = 18
+ELSEIF TALENT:ARG:억압 == 0 && TALENT:ARG:해방 == 0
+	PRINTLC [ 32] 【억압】추가　　　　　　(-8P)　　
+	T:32 = -8
+ENDIF
+IF TALENT:ARG:해방
+	PRINTLC [ 33] 【해방】소거　　　　　(-8P)　　
+	T:33 = -8
+ELSEIF TALENT:ARG:억압 == 0 && TALENT:ARG:해방 == 0
+	PRINTLC [ 33] 【해방】추가　　　　　(18P)　　
+	T:33 = 18
+ENDIF
+
+IF TALENT:ARG:저항
+	PRINTLC [ 34] 【저항】소거　　　　　(16P)　　
+	T:34 = 16
+ELSE
+	PRINTLC [ 34] 【저항】추가　　　　　(-6P)　　
+	T:34 = -6
+ENDIF
+
+IF TALENT:ARG:부끄럼쟁이
+	PRINTLC [ 35] 【부끄럼쟁이】소거　　　( 6P)　　
+	T:35 = 6
+ELSEIF TALENT:ARG:부끄럼쟁이 == 0 && TALENT:ARG:부끄럼없음 == 0
+	PRINTLC [ 35] 【부끄럼쟁이】추가　　　( 6P)　　
+	T:35 = 6
+ENDIF
+
+IF TALENT:ARG:부끄럼없음
+	PRINTLC [ 36] 【부끄럼없음】소거　　( 5P)　　
+	T:36 = 5
+ELSEIF TALENT:ARG:부끄럼쟁이 == 0 && TALENT:ARG:부끄럼없음 == 0
+	PRINTLC [ 36] 【부끄럼없음】추가　　( 7P)　　
+	T:36 = 7
+ENDIF
+
+IF TALENT:ARG:약점
+	PRINTLC [ 37] 【약점】소거　　　　　(-6P)　　
+	T:37 = -6
+ELSE
+	PRINTLC [ 37] 【약점】추가　　　　　(12P)　　
+	T:37 = 12
+ENDIF
+
+
+IF TALENT:ARG:헌신적
+	PRINTLC [ 63] 【헌신적】소거　　　　　(-5P)　　
+	T:63 = -5
+ELSE
+	PRINTLC [ 63] 【헌신적】추가　　　　　( 8P)　　
+	T:63 = 8
+ENDIF
+
+IF TALENT:ARG:소악마
+	PRINTLC [ 87] 【소악마】소거　　　　(-6P)　　
+	T:87 = -6
+ELSE
+	PRINTLC [ 87] 【소악마】추가　　　　(10P)　　
+	T:87 = 10
+ENDIF
+
+IF TALENT:ARG:광기
+	PRINTLC [141] 【광기】소거　　　　　(24P)　　
+	T:141 = 24
+ELSE
+	PRINTLC [141] 【광기】추가　　　　　(-12P)　　
+	T:141 = -12
+ENDIF
+IF TALENT:ARG:유치
+	PRINTLC [151] 【유치】소거　　　　　　(-5P)　　
+	T:151 = -5
+ELSE
+	PRINTLC [151] 【유치】추가　　　　　　(10P)　　
+	T:151 = 10
+ENDIF
+
+
+;===========================
+;肉体・技術・性癖계소질표시
+;===========================
+@PRINT_TALENT_1,ARG
+PRINTL □육체・기술・버릇소질
+
+IF TALENT:ARG:남자 == 0
+	IF TALENT:ARG:처녀
+		PRINTLC [  0] 【처녀】소거　　　　　(-5P)　　
+		T:0 = -5
+	ELSE
+		PRINTLC [  0] 【처녀】추가　　　　　(26P)　　
+		T:0 = 26
+	ENDIF
+ENDIF
+
+IF TALENT:ARG:아픔에약함
+	PRINTLC [ 40] 【아픔에약함】소거　　( 4P)　　
+	T:40 = 4
+ELSEIF TALENT:ARG:아픔에강함 == 0 && TALENT:ARG:아픔에약함 == 0
+	PRINTLC [ 40] 【아픔에약함】추가　　(10P)　　
+	T:40 = 10
+ENDIF
+IF TALENT:ARG:아픔에강함
+	PRINTLC [ 41] 【아픔에강함】소거　　(10P)　　
+	T:41 = 10
+ELSEIF TALENT:ARG:아픔에강함 == 0 && TALENT:ARG:아픔에약함 == 0
+	PRINTLC [ 41] 【아픔에강함】추가　　( 6P)　　
+	T:41 = 6
+ENDIF
+
+IF TALENT:ARG:젖기쉬움
+	PRINTLC [ 42] 【젖기쉬움】소거　　　(-6P)　　
+	T:42 = -6
+ELSEIF TALENT:ARG:젖기어려움 == 0 && TALENT:ARG:젖기쉬움 == 0
+	PRINTLC [ 42] 【젖기쉬움】추가　　　(12P)　　
+	T:42 = 12
+ENDIF
+IF TALENT:ARG:젖기어려움
+	PRINTLC [ 43] 【젖기어려움】소거　　(10P)　　
+	T:43 = 10
+ELSEIF TALENT:ARG:젖기어려움 == 0 && TALENT:ARG:젖기쉬움 == 0
+	PRINTLC [ 43] 【젖기어려움】추가　　(-6P)　　
+	T:43 = -6
+ENDIF
+
+;20210328追加：フレーバーに近い素質なので、ちょっと重めに調整
+IF TALENT:ARG:임신하기쉬움
+	PRINTLC [ 44] 【임신하기쉬움】消去　　　(-6P)　　
+	T:44 = -10
+ELSEIF TALENT:ARG:임신하기쉬움 == 0 && TALENT:ARG:임신하기쉬움 == 0
+	PRINTLC [ 44] 【임신하기쉬움】追加　　　(16P)　　
+	T:44 = 20
+ENDIF
+IF TALENT:ARG:임신하기어려움
+	PRINTLC [ 45] 【임신하기어려움】消去　　　(16P)　　
+	T:45 = 16
+ELSEIF TALENT:ARG:회복느림 == 0 && TALENT:ARG:회복빠름 == 0
+	PRINTLC [ 45] 【임신하기어려움】追加　　　(-8P)　　
+	T:45 = -8
+ENDIF
+
+IF TALENT:ARG:습득빠름
+	PRINTLC [ 50] 【습득빠름】소거　　　(-7P)　　
+	T:50 = -7
+ELSEIF TALENT:ARG:습득느림 == 0 && TALENT:ARG:습득빠름 == 0
+	PRINTLC [ 50] 【습득빠름】추가　　　(12P)　　
+	T:50 = 12
+ENDIF
+IF TALENT:ARG:습득느림
+	PRINTLC [ 51] 【습득느림】소거　　　( 8P)　　
+	T:51 = 8
+ELSEIF TALENT:ARG:습득느림 == 0 && TALENT:ARG:습득빠름 == 0
+	PRINTLC [ 51] 【습득느림】추가　　　(-6P)　　
+	T:51 = -6
+ENDIF
+
+IF TALENT:ARG:혀놀림
+	PRINTLC [ 52] 【혀놀림】소거　　　　(-6P)　　
+	T:52 = -6
+ELSE
+	PRINTLC [ 52] 【혀놀림】추가　　　　(11P)　　
+	T:52 = 11
+ENDIF
+
+IF TALENT:ARG:바늘다루기
+	PRINTLC [ 53] 【바늘다루기】소거　　(-6P)　　
+	T:53 = -6
+ELSE
+	PRINTLC [ 53] 【바늘다루기】추가　　(11P)　　
+	T:53 = 11
+ENDIF
+
+IF TALENT:ARG:고양이혀
+	PRINTLC [ 54] 【고양이혀】소거　　　( 9P)　　
+	T:54 = 9
+ELSE
+	PRINTLC [ 54] 【고양이혀】추가　　　(-4P)　　
+	T:54 = -4
+ENDIF
+
+IF TALENT:ARG:약독내성
+	PRINTLC [ 56] 【약독내성】소거　　　(20P)　　
+	T:56 = 20
+ELSE
+	PRINTLC [ 56] 【약독내성】추가　　　(-8P)　　
+	T:56 = -8
+ENDIF
+
+IF TALENT:ARG:오줌싸개
+	PRINTLC [ 57] 【오줌싸개】소거　　　(-4P)　　
+	T:57 = -4
+ELSE
+	PRINTLC [ 57] 【오줌싸개】추가　　　(10P)　　
+	T:57 = 10
+ENDIF
+
+IF TALENT:ARG:자위하기쉬움
+	PRINTLC [ 60] 【자위하기쉬움】소거　(-5P)　　
+	T:60 = -5
+ELSE
+	PRINTLC [ 60] 【자위하기쉬움】추가　(10P)　　
+	T:60 = 10
+ENDIF
+
+IF TALENT:ARG:악취둔감
+	PRINTLC [ 61] 【악취둔감】소거　　　( 5P)　　
+	T:61 = 5
+ELSEIF TALENT:ARG:악취둔감 == 0 && TALENT:ARG:악취민감 == 0
+	PRINTLC [ 61] 【악취둔감】추가　　　( 8P)　　
+	T:61 = 8
+ENDIF
+IF TALENT:ARG:악취민감
+	PRINTLC [ 62] 【악취민감】소거　　　( 5P)　　
+	T:62 = 5
+ELSEIF TALENT:ARG:악취둔감 == 0 && TALENT:ARG:악취민감 == 0
+	PRINTLC [ 62] 【악취민감】추가　　　( 8P)　　
+	T:62 = 8
+ENDIF
+
+IF TALENT:ARG:불결무시
+	PRINTLC [ 64] 【불결무시】소거　　　(-6P)　　
+	T:64 = -6
+ELSE
+	PRINTLC [ 64] 【불결무시】추가　　　( 6P)　　
+	T:64 = 6
+ENDIF
+
+
+IF TALENT:ARG:쾌감에솔직
+	PRINTLC [ 70] 【쾌감에솔직】소거　　( 6P)　　
+	T:70 = 6
+ELSEIF TALENT:ARG:쾌감에솔직 == 0 && TALENT:ARG:쾌감을부정 == 0
+	PRINTLC [ 70] 【쾌감에솔직】추가　　(12P)　　
+	T:70 = 12
+ENDIF
+IF TALENT:ARG:쾌감을부정
+	PRINTLC [ 71] 【쾌감을부정】소거　　(20P)　　
+	T:71 = 20
+ELSEIF TALENT:ARG:쾌감에솔직 == 0 && TALENT:ARG:쾌감을부정 == 0
+	PRINTLC [ 71] 【쾌감을부정】추가　　( 4P)　　
+	T:71 = 4
+ENDIF
+
+IF TALENT:ARG:중독되기쉬움
+	PRINTLC [ 72] 【중독되기쉬움】소거　(-6P)　　
+	T:72 = -6
+ELSE
+	PRINTLC [ 72] 【중독되기쉬움】추가　(10P)　　
+	T:72 = 10
+ENDIF
+
+IF TALENT:ARG:도착적
+	PRINTLC [ 80] 【도착적】소거　　　　(-4P)　　
+	T:80 = -4
+ELSE
+	PRINTLC [ 80] 【도착적】추가　　　　( 8P)　　
+	T:80 = 8
+ENDIF
+
+IF TALENT:ARG:바이
+	PRINTLC [ 81] 【바이】소거　　　　　(-6P)　　
+	T:81 = -6
+ELSEIF TALENT:ARG:남성혐오 == 0 && TALENT:ARG:여성혐오 == 0 && TALENT:ARG:바이 == 0
+	PRINTLC [ 81] 【바이】추가　　　　　( 7P)　　
+	T:81 = 7
+ENDIF
+
+IF TALENT:ARG:남성혐오
+	PRINTLC [ 82] 【남성혐오】소거　　　( 9P)　　
+	T:82 = 9
+ELSEIF TALENT:ARG:남성혐오 == 0 && TALENT:ARG:바이 == 0
+	PRINTLC [ 82] 【남성혐오】추가　　　(-3P)　　
+	T:82 = -3
+ENDIF
+
+IF TALENT:ARG:새드
+	PRINTLC [ 83] 【새드】소거　　　　( 6P)　　
+	T:83 = 6
+ELSE
+	PRINTLC [ 83] 【새드】추가　　　　( 4P)　　
+	T:83 = 4
+ENDIF
+
+IF TALENT:ARG:마조
+	PRINTLC [ 84] 【마조】소거　　　　(-2P)　　
+	T:84 = -2
+ELSE
+	PRINTLC [ 84] 【마조】추가　　　　( 6P)　　
+	T:84 = 6
+ENDIF
+
+
+IF TALENT:ARG:여성혐오
+	PRINTLC [ 88] 【여성혐오】소거　　　( 9P)　　
+	T:88 = 9
+ELSEIF TALENT:ARG:여성혐오 == 0 && TALENT:ARG:바이 == 0
+	PRINTLC [ 88] 【여성혐오】추가　　　(-3P)　　
+	T:88 = -3
+ENDIF
+
+IF ABL:ARG:종족 == 45
+	IF TALENT:ARG:여우
+		PRINTLC [ 90] 【여우】소거　　　　　　( 0P)　　
+		T:90 = 0
+	ELSE
+		PRINTLC [ 90] 【여우】추가　　　　　　( 3P)　　
+		T:90 = 3
+	ENDIF
+ENDIF
+
+;IF ABL:ARG:종족 == 45
+	IF TALENT:ARG:유아체형
+		PRINTLC [100] 【유아체형】소거　　　(20P)　　
+		T:100 = 20
+	ELSEIF (TALENT:ARG:유아체형 || TALENT:ARG:소인체형 || TALENT:ARG:큰체형 || TALENT:ARG:거체) == 0
+		PRINTLC [100] 【유아체형】추가　　　(20P)　　
+		T:100 = 20
+	ENDIF
+;ENDIF
+
+IF TALENT:ARG:Ｃ둔감
+	PRINTLC [101] 【Ｃ둔감】소거　　　　( 9P)　　
+	T:101 = 9
+ELSEIF TALENT:ARG:Ｃ둔감 == 0 && TALENT:ARG:Ｃ민감 == 0
+	PRINTLC [101] 【Ｃ둔감】추가　　　　(-4P)　　
+	T:101 = -4
+ENDIF
+IF TALENT:ARG:Ｃ민감
+	PRINTLC [102] 【Ｃ민감】소거　　　　(-8P)　　
+	T:102 = -8
+ELSEIF TALENT:ARG:Ｃ둔감 == 0 && TALENT:ARG:Ｃ민감 == 0
+	PRINTLC [102] 【Ｃ민감】추가　　　　(12P)　　
+	T:102 = 12
+ENDIF
+
+
+IF TALENT:ARG:Ｖ둔감
+	PRINTLC [103] 【Ｖ둔감】소거　　　　( 9P)　　
+	T:103 = 9
+ELSEIF TALENT:ARG:Ｖ둔감 == 0 && TALENT:ARG:Ｖ민감 == 0
+	PRINTLC [103] 【Ｖ둔감】추가　　　　(-4P)　　
+	T:103 = -4
+ENDIF
+IF TALENT:ARG:Ｖ민감
+	PRINTLC [104] 【Ｖ민감】소거　　　　(-8P)　　
+	T:104 = -8
+ELSEIF TALENT:ARG:Ｖ둔감 == 0 && TALENT:ARG:Ｖ민감 == 0
+	PRINTLC [104] 【Ｖ민감】추가　　　　(12P)　　
+	T:104 = 12
+ENDIF
+
+IF TALENT:ARG:Ａ둔감
+	PRINTLC [105] 【Ａ둔감】소거　　　　( 9P)　　
+	T:105 = 9
+ELSEIF TALENT:ARG:Ａ둔감 == 0 && TALENT:ARG:Ａ민감 == 0
+	PRINTLC [105] 【Ａ둔감】추가　　　　(-4P)　　
+	T:105 = -4
+ENDIF
+IF TALENT:ARG:Ａ민감
+	PRINTLC [106] 【Ａ민감】소거　　　　(-8P)　　
+	T:106 = -8
+ELSEIF TALENT:ARG:Ａ둔감 == 0 && TALENT:ARG:Ａ민감 == 0
+	PRINTLC [106] 【Ａ민감】추가　　　　(12P)　　
+	T:106 = 12
+ENDIF
+
+IF TALENT:ARG:Ｂ둔감
+	PRINTLC [107] 【Ｂ둔감】소거　　　　( 9P)　　
+	T:107 = 9
+ELSEIF TALENT:ARG:Ｂ둔감 == 0 && TALENT:ARG:Ｂ민감 == 0
+	PRINTLC [107] 【Ｂ둔감】추가　　　　(-4P)　　
+	T:107 = -4
+ENDIF
+IF TALENT:ARG:Ｂ민감
+	PRINTLC [108] 【Ｂ민감】소거　　　　(-8P)　　
+	T:108 = -8
+ELSEIF TALENT:ARG:Ｂ둔감 == 0 && TALENT:ARG:Ｂ민감 == 0
+	PRINTLC [108] 【Ｂ민감】추가　　　　(12P)　　
+	T:108 = 12
+ENDIF
+
+IF TALENT:ARG:빈유
+	PRINTLC [109] 【빈유】소거　　　　　( 1P)　　
+	T:109 = 1
+ELSEIF TALENT:ARG:빈유 == 0 && TALENT:ARG:절벽 == 0 && TALENT:ARG:거유 == 0 && TALENT:ARG:폭유 == 0 && TALENT:ARG:魔乳 == 0
+	PRINTLC [109] 【빈유】추가　　　　　( 1P)　　
+	T:109 = 1
+ENDIF
+IF TALENT:ARG:절벽
+	PRINTLC [110] 【절벽】소거　　　　　( 1P)　　
+	T:110 = 1
+ELSEIF TALENT:ARG:빈유 == 0 && TALENT:ARG:절벽 == 0 && TALENT:ARG:거유 == 0 && TALENT:ARG:폭유 == 0 && TALENT:ARG:魔乳 == 0
+	PRINTLC [110] 【절벽】추가　　　　　( 1P)　　
+	T:110 = 1
+ENDIF
+IF TALENT:ARG:거유
+	PRINTLC [111] 【거유】소거　　　　　( 1P)　　
+	T:111 = 1
+ELSEIF TALENT:ARG:빈유 == 0 && TALENT:ARG:절벽 == 0 && TALENT:ARG:거유 == 0 && TALENT:ARG:폭유 == 0 && TALENT:ARG:魔乳 == 0
+	PRINTLC [111] 【거유】추가　　　　　( 3P)　　
+	T:111 = 3
+ENDIF
+IF TALENT:ARG:폭유
+	PRINTLC [112] 【폭유】소거　　　　　( 1P)　　
+	T:112 = 1
+ELSEIF TALENT:ARG:빈유 == 0 && TALENT:ARG:절벽 == 0 && TALENT:ARG:거유 == 0 && TALENT:ARG:폭유 == 0 && TALENT:ARG:魔乳 == 0
+	PRINTLC [112] 【폭유】추가　　　　　( 2P)　　
+	T:112 = 2
+ENDIF
+IF TALENT:ARG:魔乳
+	PRINTLC [126] 【魔乳】소거　　　　　( 1P)　　
+	T:126 = 1
+ELSEIF TALENT:ARG:빈유 == 0 && TALENT:ARG:절벽 == 0 && TALENT:ARG:거유 == 0 && TALENT:ARG:폭유 == 0 && TALENT:ARG:魔乳 == 0
+	PRINTLC [126] 【魔乳】추가　　　　　( 2P)　　
+	T:126 = 2
+ENDIF
+
+	IF TALENT:ARG:큰체형
+		PRINTLC [113] 【큰체형】소거　　　　(20P)　　
+		T:113 = 20
+	ELSEIF (TALENT:ARG:유아체형 || TALENT:ARG:소인체형 || TALENT:ARG:큰체형 || TALENT:ARG:거체) == 0
+		PRINTLC [113] 【큰체형】추가　　　　(20P)　　
+		T:113 = 20
+	ENDIF
+	IF TALENT:ARG:거체
+		PRINTLC [114] 【거체】소거　　　　　(20P)　　
+		T:114 = 20
+	ELSEIF (TALENT:ARG:유아체형 || TALENT:ARG:소인체형 || TALENT:ARG:큰체형 || TALENT:ARG:거체) == 0
+		PRINTLC [114] 【거체】추가　　　　　(20P)　　
+		T:114 = 20
+	ENDIF
+
+IF TALENT:ARG:小尻
+	PRINTLC [121] 【小尻】소거　　　　　( 1P)　　
+	T:121 = 1
+ELSEIF TALENT:ARG:小尻 == 0 && TALENT:ARG:並尻 == 0 && TALENT:ARG:巨尻 == 0 && TALENT:ARG:爆尻 == 0 && TALENT:ARG:魔尻 == 0
+	PRINTLC [121] 【小尻】추가　　　　　( 1P)　　
+	T:121 = 1
+ENDIF
+IF TALENT:ARG:並尻
+	PRINTLC [122] 【並尻】소거　　　　　( 1P)　　
+	T:122 = 1
+ELSEIF TALENT:ARG:小尻 == 0 && TALENT:ARG:並尻 == 0 && TALENT:ARG:巨尻 == 0 && TALENT:ARG:爆尻 == 0 && TALENT:ARG:魔尻 == 0
+	PRINTLC [122] 【並尻】추가　　　　　( 1P)　　
+	T:122 = 1
+ENDIF
+IF TALENT:ARG:巨尻
+	PRINTLC [123] 【巨尻】소거　　　　　( 1P)　　
+	T:123 = 1
+ELSEIF TALENT:ARG:小尻 == 0 && TALENT:ARG:並尻 == 0 && TALENT:ARG:巨尻 == 0 && TALENT:ARG:爆尻 == 0 && TALENT:ARG:魔尻 == 0
+	PRINTLC [123] 【巨尻】추가　　　　　( 3P)　　
+	T:123 = 3
+ENDIF
+IF TALENT:ARG:爆尻
+	PRINTLC [124] 【爆尻】소거　　　　　( 1P)　　
+	T:124 = 1
+ELSEIF TALENT:ARG:小尻 == 0 && TALENT:ARG:並尻 == 0 && TALENT:ARG:巨尻 == 0 && TALENT:ARG:爆尻 == 0 && TALENT:ARG:魔尻 == 0
+	PRINTLC [124] 【爆尻】추가　　　　　( 2P)　　
+	T:124 = 2
+ENDIF
+IF TALENT:ARG:魔尻
+	PRINTLC [125] 【魔尻】소거　　　　　( 1P)　　
+	T:125 = 1
+ELSEIF TALENT:ARG:小尻 == 0 && TALENT:ARG:並尻 == 0 && TALENT:ARG:巨尻 == 0 && TALENT:ARG:爆尻 == 0 && TALENT:ARG:魔尻 == 0
+	PRINTLC [125] 【魔尻】추가　　　　　( 2P)　　
+	T:125 = 2
+
+ENDIF
+IF TALENT:ARG:회복빠름
+	PRINTLC [130] 【회복빠름】소거　　　(-6P)　　
+	T:130 = -6
+ELSEIF TALENT:ARG:회복느림 == 0 && TALENT:ARG:회복빠름 == 0
+	PRINTLC [130] 【회복빠름】추가　　　(16P)　　
+	T:130 = 16
+ENDIF
+IF TALENT:ARG:회복느림
+	PRINTLC [131] 【회복느림】소거　　　(16P)　　
+	T:131 = 16
+ELSEIF TALENT:ARG:회복느림 == 0 && TALENT:ARG:회복빠름 == 0
+	PRINTLC [131] 【회복느림】추가　　　(-8P)　　
+	T:131 = -8
+ENDIF
+
+IF ABL:ARG:종족 == 45
+	IF TALENT:ARG:후타나리
+		PRINTLC [139] 【후타나리】소거　　　( 0P)　　
+		T:139 = 0 
+	ELSE
+		PRINTLC [139] 【후타나리】추가　　　( 5P)　　
+		T:139 = 5
+	ENDIF
+
+	IF TALENT:ARG:남자
+		PRINTLC [140] 【남자】소거　　　　　( 0P)　　
+		T:140 = 0
+	ELSE
+		PRINTLC [140] 【남자】추가　　　　　( 1P)　　
+		T:140 = 1
+	ENDIF
+ENDIF
+
+	IF TALENT:ARG:소인체형
+		PRINTLC [142] 【소인체형】소거　　　(20P)　　
+		T:142 = 20
+	ELSEIF (TALENT:ARG:유아체형 || TALENT:ARG:소인체형 || TALENT:ARG:큰체형 || TALENT:ARG:거체) == 0
+		PRINTLC [142] 【소인체형】추가　　　(20P)　　
+		T:142 = 20
+	ENDIF
+
+
+IF ABL:ARG:종족 == 45
+	IF TALENT:ARG:동물귀
+		PRINTLC [143] 【동물귀】소거　　　　( 0P)　　
+		T:143 = 0
+	ELSE
+		PRINTLC [143] 【동물귀】추가　　　　( 12P)　　
+		T:143 = 12
+	ENDIF
+ENDIF
+

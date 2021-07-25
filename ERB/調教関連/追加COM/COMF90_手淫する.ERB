@@ -1,0 +1,121 @@
+﻿
+@CHECK_COM_ABLE90
+
+;수음한다実行판정
+;性器が불결ているとMASTERの場合펠라한다はできない（조교者が불결무시か애액、Ｐ、모유のよごれならＯＫ）
+;SIF STAIN:TARGET:2 >= 4 && (STAIN:TARGET:2 != 18 && STAIN:TARGET:2 != 19) && ASSIPLAY == 0 && TALENT:MASTER:64 == 0
+;	RETURN 0
+;性器が불결ており、악취민감で순종3以下のASSIの場合フェラはできない（조교者が불결무시か애액、Ｐ、모유のよごれならＯＫ）
+;IF STAIN:TARGET:2 >= 4 && (STAIN:TARGET:2 != 18 && STAIN:TARGET:2 != 19) && ASSIPLAY
+;	SIF ABL:ASSI:0 <= 3 && TALENT:ASSI:62 && TALENT:ASSI:64 == 0
+;		RETURN 0
+;ENDIF
+;남자か후타나리じゃないとダメ
+;SIF HAVE_CLITORIS(TARGET)
+;	RETURN 0
+
+;수음実行판정
+;オナホ着けている時は出来る
+IF TEQUIP:12 > 0
+	RETURN 1
+ENDIF
+SIF !USE_PENIS(TARGET,3)
+	RETURN 0
+SIF !USE_HAND(PLAYER)
+	RETURN 0
+;下半身下着をつけている、스커트以外の下半身겉옷を履いている、下の空いてない全身겉옷を着ているとダメ
+SIF TEQUIP:음순노출 != -1
+	RETURN 0
+;촉수조교中はダメ
+SIF TEQUIP:25
+	RETURN 0
+;삼각목마騎乗中はダメ
+SIF TEQUIP:41
+	RETURN 0
+RETURN 1
+
+@ACT_COM90
+;수음한다
+
+IF TEQUIP:12
+	PRINTL 오나홀수음
+	TSTR:0 = 오나홀수음
+ELSE
+	PRINTL 수음한다
+	TSTR:0 = 수음한다
+ENDIF
+
+;-------------------------------------------------
+;実行決定
+;-------------------------------------------------
+
+;CALL KOJO_MESSAGE_COM
+;조교者→조교대상
+TFLAG:28 = 2
+;-------------------------------------------------
+;ソース추가処理
+;-------------------------------------------------
+;소비체력、기력
+;소비체력、기력
+LOSEBASE:0 += 5
+LOSEBASE:1 += 50
+
+SOURCE:0 = 80
+SOURCE:13 = 15
+SOURCE:17 = 15
+SOURCE:18 = 20
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;억압、저항持ちには、억울ソース추가
+SIF TALENT:32 || TALENT:34
+	SOURCE:16 += 20
+
+
+;-------------------------------------------------
+;불결の処理
+;-------------------------------------------------
+;조교者の指⇔奴隷のＰの불결が移動
+IF HAVE_PENIS(TARGET)
+	CALL MOVE_STAIN("손", TARGET, "페니스", PLAYER)
+;奴隷の指⇔조교者のＶの불결が移動
+ELSE
+	CALL MOVE_STAIN("손", TARGET, "바기나", PLAYER)
+ENDIF
+
+;조교者が후타나리
+IF TALENT:PLAYER:후타나리
+	SOURCE:14 /= 2
+ENDIF
+
+;의존도ベクトル
+IF TALENT:PLAYER:140 == 1
+	TFLAG:33 = 3
+ELSE
+	TFLAG:33 = 2
+ENDIF
+
+RETURN 1
+
+;---- EDIT 002 촉수系コマンドを수정 DEL START ----
+;수정ついでにEVENT_Mに移動
+;@MESSAGE_COM90
+;IF TEQUIP:12
+;	PRINTFORMW %CALLNAME:PLAYER%는 오나홀을 씌운 %CALLNAME:TARGET%의 페니스를 훑고 있다…
+;ELSE
+;	IF TEQUIP:주도권
+;		PRINTFORMW %타겟은()% %CALLNAME:PLAYER%의 손을 잡고、자신의 페니스를 훑게 했다…
+;	ELSE
+;		PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% %CALLNAME:TARGET%의 페니스를 손으로 홅었다…
+;	ENDIF
+;ENDIF
+;---- EDIT 002 촉수系コマンドを수정 DEL END   ----
+
+;===================================================
+;조교타입
+;===================================================
+@COMTYPE_90
+RETURN COMTYPE("조교자봉사계")
+
+

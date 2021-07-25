@@ -1,0 +1,340 @@
+﻿;-------------------------------------------------
+;特殊な書式の文字列ARGSを読める文章に直す
+;行や命令は_で区切る事。そしてLOCALSは99までなので손加減してくれ
+;CASEを増やして、そのうち文字列を別作成しないで済むようにしたい
+;改行する時とWAITを付けて改行する時は、それぞれ以下のPRINT_STRL, PRINT_STRWを用いると間違いが少なくなるのでおすすめです
+;-------------------------------------------------
+@PRINT_STR, ARGS = "",ARG = -1
+#DIM LCOUNT
+#DIM 返し数
+#DIMS 返し文
+;FOR LCOUNT, 1, 3
+;	SIF ARGS:LCOUNT != ""
+;		ARGS = %ARGS%_%ARGS:LCOUNT%
+;NEXT
+SIF ARG == -1
+	ARG = TARGET
+LOCAL:2 = GETCOLOR()
+
+VARSET LOCALS
+
+;文字列を分解する
+SPLIT ARGS, "_", LOCALS
+LOCAL = 0
+LOCAL:1 = 0
+FOR LCOUNT, 0, 100
+	;特殊な操作
+	SELECTCASE LOCALS:LCOUNT
+	;CASE ""
+	;	BREAK
+	CASE "CALLNAME:TARGET","조교대상","被조교者"
+		PRINTFORM %CALLNAME:TARGET%
+		CONTINUE
+	CASE "CALLNAME:PLAYER","조교者"
+		PRINTFORM %CALLNAME:PLAYER%
+		CONTINUE
+	CASE "CALLNAME:ASSI","조수呼","조수"
+		IF ASSI > -1
+			PRINTFORM %CALLNAME:ASSI%
+		ENDIF
+	CASE "CALLNAME:MASTER","主人","主人公"
+		PRINTFORM %CALLNAME:MASTER%
+		CONTINUE
+	CASE "一人称"
+		PRINTFORM %CSTR:ARG:一人称%
+		CONTINUE
+	CASE "二人称"
+		IF ARG == TARGET && FLAG:SHOPコマンド == 100 && ASSIPLAY > 0 && ASSI > -1
+			PRINTFORM %CALLNAME:ASSI%
+		ELSE
+			PRINTFORM %CSTR:ARG:二人称%
+		ENDIF
+		CONTINUE
+	CASE "第三者"
+		IF ARG == TARGET && FLAG:SHOPコマンド == 100 && ASSIPLAY > 0
+			PRINTFORM %CSTR:ARG:二人称%
+		ELSEIF ASSI > -1
+			PRINTFORM %CALLNAME:ASSI%
+		ENDIF
+		CONTINUE
+	CASE "主人呼"
+		PRINTFORM %CSTR:ARG:二人称%
+		CONTINUE
+	CASE "呼び名"
+		PRINTFORM %CALLNAME:ARG%
+		CONTINUE
+	CASE "名前"
+		PRINTFORM %NAME:ARG%
+		CONTINUE
+	CASE "BUTTON"
+		;次の文字をボタンにする
+		LCOUNT += 1
+		PRINTBUTTON LOCALS:LCOUNT, LOCALS:LCOUNT
+		SETCOLOR LOCAL:2
+		CONTINUE
+	CASE "NOBUTTON"
+		;次の文字をボタンにしない
+		LCOUNT += 1
+		PRINTPLAINFORM %LOCALS:LCOUNT%
+		SETCOLOR LOCAL:2
+		CONTINUE
+	CASE "CALL"
+		;次の文字をCALLで呼び出す(引数なし)
+		LCOUNT += 1
+		CALLFORM %LOCALS:LCOUNT%
+		SETCOLOR LOCAL:2
+		CONTINUE
+	CASE "INPUT"
+		;INPUTを呼び出す
+		INPUT
+		返し数 = RESULT
+		LOCAL = 1
+		CONTINUE
+	CASE "INPUTS"
+		;INPUTSを呼び出す
+		INPUTS
+		返し文 = %RESULTS%
+		LOCAL:1 = 1
+		CONTINUE
+	CASE "-"
+		;次の文字に打消し線を引く
+		FONTSTYLE 4
+		CONTINUE
+	CASE "L","改行"
+		PRINTL 
+		CONTINUE
+	CASE "W"
+		PRINTW 
+		CONTINUE
+	CASE "WAIT"
+		WAIT
+		CONTINUE
+	CASE "FORCEWAIT"
+		FORCEWAIT
+		CONTINUE
+	CASE "H"
+		CALL HEARTMARK
+		CONTINUE
+	CASE "WH"
+		CALL WHITE_HEARTMARK
+		CONTINUE
+	CASE "BH"
+		CALL BIG_HEARTMARK
+		CONTINUE
+	CASE "PH"
+		SETCOLOR COLOR("ハートピンク")
+		CALL HEARTMARK
+		SETCOLOR LOCAL:2
+		CONTINUE
+	CASE "WPH"
+		SETCOLOR COLOR("ハートピンク")
+		CALL WHITE_HEARTMARK
+		SETCOLOR LOCAL:2
+		CONTINUE
+	CASE "BPH"
+		SETCOLOR COLOR("ハートピンク")
+		CALL BIG_HEARTMARK
+		SETCOLOR LOCAL:2
+		CONTINUE
+	CASE "／／／"
+		SETCOLOR COLOR("ハートピンク")
+		PRINT ///
+		SETCOLOR LOCAL:2
+		CONTINUE
+	;CASE "茶色", "ショッキングピンク", "ピンク", "ハートピンク", "붉은색", "紅", "黄色", "暗黄色", "イエロー", "緑", "青", "하늘색", "藍色", "暗灰色", "灰色", "明灰色", "白"
+	;	SETCOLOR COLOR(LOCALS:LCOUNT)
+	;	CONTINUE
+	ENDSELECT
+	STRLENS LOCALS:LCOUNT
+	IF RESULT > 5
+		SUBSTRING LOCALS:LCOUNT,0,5
+		IF RESULTS == "CALL "
+			SUBSTRING LOCALS:LCOUNT,5,RESULT
+			CALLFORM %RESULTS%
+			CONTINUE
+		ENDIF
+	ENDIF
+	RESULT = 0
+	IF COLOR(LOCALS:LCOUNT) > 0
+		SETCOLOR COLOR(LOCALS:LCOUNT)
+		CONTINUE
+	ENDIF
+	
+	PRINTFORM %LOCALS:LCOUNT%
+	SETCOLOR LOCAL:2
+	FONTSTYLE 0
+NEXT
+SIF LOCAL:1 > 0
+	RESULTS = %返し文%
+SIF LOCAL > 0
+	RETURN 返し数
+
+@PRINT_STR_F, ARGS = "",ARG = -1
+#FUNCTIONS
+#DIM LCOUNT
+#DIMS 返し文
+;FOR LCOUNT, 1, 3
+;	SIF ARGS:LCOUNT != ""
+;		ARGS = %ARGS%_%ARGS:LCOUNT%
+;NEXT
+SIF ARG == -1
+	ARG = TARGET
+
+返し文 = ""
+VARSET LOCALS
+
+;文字列を分解する
+SPLIT ARGS, "_", LOCALS
+
+FOR LCOUNT, 0, 100
+	;特殊な操作
+	SELECTCASE LOCALS:LCOUNT
+	;CASE ""
+	;	BREAK
+	CASE "CALLNAME:TARGET","조교대상","被조교者"
+		返し文 += CALLNAME:TARGET
+		CONTINUE
+	CASE "CALLNAME:PLAYER","조교者"
+		返し文 += CALLNAME:PLAYER
+		CONTINUE
+	CASE "CALLNAME:ASSI","조수呼","조수"
+		IF ASSI > -1
+			返し文 += CALLNAME:ASSI
+		ENDIF
+		CONTINUE
+	CASE "CALLNAME:MASTER","主人","主人公"
+		返し文 += CALLNAME:MASTER
+		CONTINUE
+	CASE "一人称"
+		返し文 += CSTR:ARG:一人称
+		CONTINUE
+	CASE "二人称"
+		IF ARG == TARGET && FLAG:SHOPコマンド == 100 && ASSIPLAY > 0 && ASSI > -1
+			返し文 += CALLNAME:ASSI
+		ELSE
+			返し文 += CSTR:ARG:二人称
+		ENDIF
+		CONTINUE
+	CASE "第三者"
+		IF ARG == TARGET && FLAG:SHOPコマンド == 100 && ASSIPLAY > 0
+			返し文 += CSTR:ARG:二人称
+		ELSEIF ASSI > -1
+			返し文 += CALLNAME:ASSI
+		ENDIF
+		CONTINUE
+	CASE "主人呼"
+		返し文 += CSTR:ARG:二人称
+		CONTINUE
+	CASE "呼び名"
+		返し文 += CALLNAME:ARG
+		CONTINUE
+	CASE "名前"
+		返し文 += NAME:ARG
+		CONTINUE
+	;CASE "BUTTON"
+	;	;次の文字をボタンにする
+	;	LCOUNT += 1
+	;	PRINTBUTTON LOCALS:LCOUNT, LOCALS:LCOUNT
+	;	RESETCOLOR
+	;	CONTINUE
+	;CASE "NOBUTTON"
+	;	;次の文字をボタンにしない
+	;	LCOUNT += 1
+	;	PRINTPLAINFORM %LOCALS:LCOUNT%
+	;	RESETCOLOR
+	;	CONTINUE
+	;CASE "CALL"
+	;	;次の文字をCALLで呼び出す(引数なし)
+	;	LCOUNT += 1
+	;	CALLFORM %LOCALS:LCOUNT%
+	;	RESETCOLOR
+	;	CONTINUE
+	;CASE "-"
+	;	;次の文字に打消し線を引く
+	;	FONTSTYLE 4
+	;	CONTINUE
+	;CASE "L","改行"
+	;	返し文 += "\n"
+	;	CONTINUE
+	CASE "H"
+		返し文 += UNICODE(0x2665)
+		CONTINUE
+	CASE "WH"
+		返し文 += UNICODE(0x2661)
+		CONTINUE
+	CASE "BH"
+		返し文 += UNICODE(0x2764)
+		CONTINUE
+	CASE "PH"
+		返し文 += UNICODE(0x2665)
+		CONTINUE
+	CASE "WPH"
+		返し文 += UNICODE(0x2661)
+		CONTINUE
+	CASE "BPH"
+		返し文 += UNICODE(0x2764)
+		CONTINUE
+	;CASE "／／／"
+	;	PRINT ///
+	;	CONTINUE
+	;CASE "茶色", "ショッキングピンク", "ピンク", "ハートピンク", "붉은색", "紅", "黄色", "暗黄色", "イエロー", "緑", "青", "하늘색", "藍色", "暗灰色", "灰色", "明灰色", "白"
+	;	SETCOLOR COLOR(LOCALS:LCOUNT)
+	;	CONTINUE
+	ENDSELECT
+
+	返し文 += LOCALS:LCOUNT
+NEXT
+RETURNF 返し文
+
+;-------------------------------------------------
+;PRINT_STRの最後の_Lと_Wを関数に織り込んだver
+;-------------------------------------------------
+@PRINT_STRL, ARGS = "",ARG = -1
+CALL PRINT_STR, ARGS , ARG
+PRINTL
+RETURN RESULT
+
+@PRINT_STRW, ARGS = "",ARG = -1
+CALL PRINT_STR, ARGS , ARG
+WAIT
+RETURN RESULT
+
+@PRINT_STR_INPUT, ARGS = "",ARG = -1
+CALL PRINT_STR, ARGS , ARG
+INPUT
+RETURN RESULT
+
+@PRINT_STR_INPUTS, ARGS = "",ARG = -1
+CALL PRINT_STR, ARGS , ARG
+INPUTS
+RETURN RESULT
+
+;-------------------------------------------------
+;ハートマークの出힘…구상テ키스トには組み込みにくいが、はっきりとしたハートマーク
+;-------------------------------------------------
+;Lucida Sans Unicode は大きめだが、下の文章をかなり消してしまうんですよねぇ
+@HEARTMARK
+GETFONT
+CHKFONT "Times New Roman"
+SIF RESULT
+	SETFONT "Times New Roman"
+PRINTFORM %UNICODE(0x2665)%
+SETFONT RESULTS
+
+;白抜きのハート
+@WHITE_HEARTMARK
+GETFONT
+CHKFONT "Times New Roman"
+SIF RESULT
+	SETFONT "Times New Roman"
+PRINTFORM %UNICODE(0x2661)%
+SETFONT RESULTS
+
+;大きめのハートマーク
+@BIG_HEARTMARK
+GETFONT
+CHKFONT "Times New Roman"
+SIF RESULT
+	SETFONT "Times New Roman"
+PRINTFORM %UNICODE(0x2764)%
+SETFONT RESULTS

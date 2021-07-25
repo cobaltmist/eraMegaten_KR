@@ -1,0 +1,795 @@
+﻿
+;仲魔同士、もしくは렌탈した악마・촉수・바이브と交わらせて마카を得る
+;仲間同士でＮＴＲなんてのもいいよね
+
+;Ｐ：소비増加小、必ず사용
+;Ｖ：소비増加中、페니스がある場合必ず使う
+;Ａ：소비増加大、Ｐの数がＶの数を越える多い場合(女性・오토코노코のみ)、あるいはＡ감각が高い場合(性別不問)。
+
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:SHOW_TENT.ERB
+;	Facility	:見世物小屋での노역に関する関数群です。
+;
+;	Licence		:ライセンスフリー
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		2013/01/11		TR						新規作成
+;	002		2019/03/27		TR						비전투원・ペルソナ使いの経験値獲得を修正 体力減少を微調整 取得おひねり計算式調整
+;	003		2021/04/27		JK好き					見世物小屋で多胎OP時でも妊娠するように修正
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+
+;==========================================================
+;==========================================================
+;@MANAGEMENT_SHOW_TENT
+; 見世物小屋の一日の活動報告処理
+;<引数>
+;	ARG - 점포番号
+;<戻り値>
+;	なし
+;==========================================================
+@MANAGEMENT_SHOW_TENT,ARG
+#LOCALSIZE 2
+#DIM C_ACT, 20			; 見世物番号リスト
+#DIM RES_ACT, 10		; 見世物番号リスト(リザルト표시用)
+#DIM COUNT_ACT,2		; 참가人数( 0:全員 1:仲魔のみ )
+#DIM COUNT_PENIS,1		; 竿の数
+#DIM COUNT_VAGINA,6,12	; Ｖ레벨
+#DIM COUNT_ANUS,6,12	; Ａ레벨
+#DIM COUNT_MOUSE,6,12	; 봉사레벨
+#DIM ACT,2				; 0:乱交コマンド実行者 1:대상
+#DIM ACTCOM,1			; 乱交コマンド番号
+#DIM ACTLIMIT,1			; 乱交コマンド周回횟수
+#DIM HEAT,2				; 0:盛り上がり 1:発生이벤트ビット( 0:촬영開始 1:악마乱入 )
+#DIM LINE,1				; 
+#DIM LEVEL,1			; 
+#DIM STRESS,1			; 스트레스증가치(リザルト표시用)
+#DIM CEXP,1				; EXP증가치(同上)
+#DIM CMAG,1				; MAG증가치(同上)
+#DIM COST,1				; 렌탈コスト
+#DIM 입수￥,1			; おひねり
+#DIM 입수마카,1			; 同上
+;참가者のリスト作成 及び　기본の観客数の설정
+VARSET LOCAL
+VARSET C_ACT,-1
+VARSET RES_ACT,-1
+VARSET HEAT
+VARSET COUNT_ACT
+HEAT = 점포("선전효과")
+VARSET COUNT_PENIS,0
+FOR LOCAL,0,5
+	FOR LOCAL:1,0,12
+		COUNT_VAGINA:LOCAL:(LOCAL:1) = 0
+		COUNT_ANUS:LOCAL:(LOCAL:1)   = 0
+		COUNT_MOUSE:LOCAL:(LOCAL:1)  = 0
+	NEXT
+NEXT
+LINE = LINECOUNT
+FOR ACT, 0 , CHARANUM
+	SIF CFLAG:ACT:노역フラグ != 10+ARG
+		CONTINUE
+	IF BASE:ACT:체력 < 500
+		PRINTFORML 체력부족 때문에 %CALLNAME:ACT%의 노역을 중지했습니다
+		CONTINUE
+	ENDIF
+	;#;PRINTFORM \@ GETBIT(VAR_점포リザルト,ARG+10) ? %CALLNAME:ACT% IS ENTRY\n # \@
+	VARSET TCVAR:ACT:0,0
+	VARSET EX:ACT:0,0
+	VARSET NOWEX:ACT:0,0
+	VARSET SOURCE:ACT:0,0
+	C_ACT:(COUNT_ACT) = ACT
+	RES_ACT:(COUNT_ACT) = ACT
+	DOWNBASE:ACT:체력 = 0
+	DOWNBASE:ACT:ＭＡＧ = 0
+	TCVAR:ACT:획득ＭＡＧ = 0
+	SIF HAVE_PENIS(ACT)
+		COUNT_PENIS++
+	;획득경험と절정횟수のリセット
+	CFLAG:ACT:노역中の中出氏による暫定父親 = -1
+
+	LEVEL = SHOW_TENT_VAGINA(ACT)
+	;COUNT_VAGINA:(Ｖ레벨):(その레벨の人数)にACTを入れる
+	SIF INRANGE(LEVEL,0,4)
+		COUNT_VAGINA:LEVEL:(COUNT_VAGINA:LEVEL:10++) = ACT
+
+	LEVEL = SHOW_TENT_MOUSE(ACT)
+	SIF INRANGE(LEVEL,0,4)
+		COUNT_MOUSE:LEVEL:(COUNT_MOUSE:LEVEL:10++) = ACT
+
+	LEVEL = SHOW_TENT_ANUS(ACT)
+	SIF INRANGE(LEVEL,0,4)
+		COUNT_ANUS:LEVEL:(COUNT_ANUS:LEVEL:10++) = ACT
+	
+	;기본観客数
+	COUNT_ACT++
+	COUNT_ACT:1++
+NEXT
+
+IF COUNT_ACT:1 < 1
+	PRINTFORMW 참가자가 없기 때문에 개원을 중지했습니다
+	RETURN
+ENDIF
+
+SIF LINE != LINECOUNT
+	WAIT
+
+COST = 0
+LINE = LINECOUNT
+;安い악마から順繰りに렌탈していく
+FOR LOCAL,0,5
+	SIF !렌탈악마:ARG:LOCAL
+		CONTINUE
+	IF MONEY:1 < COST + SHOW_TENT_RENTAL_COST(VAR_점포번호,LOCAL)
+		PRINTFORML	 자금이 부족하기 때문에、%SHOW_TENT_ACTNAME(-2-LOCAL)%를 렌탈할 수 없었습니다
+	ELSE
+		FOR LOCAL:1,0,렌탈악마:ARG:LOCAL
+			C_ACT:(COUNT_ACT++) = -2 - LOCAL
+		NEXT
+		COST += SHOW_TENT_RENTAL_COST(VAR_점포번호,LOCAL)
+	ENDIF
+NEXT
+SIF LINE != LINECOUNT
+	WAIT
+
+;デバック用だけどなんか엘라ー落ちするのでコメントアウト
+;;PRINTFORML 참가者の数:仲魔{COUNT_ACT:1}＋렌탈{COUNT_ACT-COUNT_ACT:1}
+;;PRINTFORML 페니스の数:{COUNT_PENIS}
+;;PRINTFORML Ｖの레벨:{COUNT_VAGINA:0:10}/{COUNT_VAGINA:1:10}/{COUNT_VAGINA:2:10}/{COUNT_VAGINA:3:10}/{COUNT_VAGINA:4:10}
+;;PRINTFORML Ａの레벨:{COUNT_ANUS:0:10}/{COUNT_ANUS:1:10}/{COUNT_ANUS:2:10}/{COUNT_ANUS:3:10}/{COUNT_ANUS:4:10}
+;;PRINTFORML 입の레벨:{COUNT_MOUSE:0:10}/{COUNT_MOUSE:1:10}/{COUNT_MOUSE:2:10}/{COUNT_MOUSE:3:10}/{COUNT_MOUSE:4:10}
+
+;開園메시지
+CALL EVENT_MESSAGE_SHOW_TENT , -10 , HEAT
+
+LOCAL = 0
+ACTLIMIT = 5
+DO
+	;#;PRINTFORM \@ GETBIT(VAR_점포リザルト,ARG+10) ? 【SHENE{LOCAL+1}】\n # \@
+	;인기が一定以上で촬영開始
+	IF HEAT >= 1000 && !GETBIT(HEAT:1,0)
+		CALL EVENT_MESSAGE_SHOW_TENT , -12 , HEAT
+		SETBIT HEAT:1,0
+	ENDIF
+	;인기が一定以上で延長
+	IF HEAT >= 3500 && !GETBIT(HEAT:1,1)
+		CALL EVENT_MESSAGE_SHOW_TENT , -13 , HEAT
+		SETBIT HEAT:1,1
+		ACTLIMIT = 10
+	ENDIF
+	;行動順を랜덤に並び替える
+	FOR LOCAL:1,0,COUNT_ACT
+		SWAP C_ACT:0,C_ACT:(RAND:COUNT_ACT)
+	NEXT
+	;仲魔の行動
+	FOR LOCAL:1,0,COUNT_ACT
+		ACT = C_ACT:(LOCAL:1)
+		SIF ACT == -1
+			CONTINUE
+		;#;IF GETBIT(VAR_점포リザルト,ARG+10)
+			;#;SETCOLOR 0xFF8080
+			;#;PRINTFORM TURN{LOCAL:1,2} %@"%SHOW_TENT_ACTNAME(ACT)%\@ ACT < 0 ? (렌탈) # \@",24,LEFT%
+		;#;ENDIF
+		IF GETBIT(HEAT:1,0) && ACT >= 0
+			TCVAR:ACT:획득피사경험 += 4
+		ENDIF
+		IF ACT >= 0 
+			;消耗した체력が최대기력を上回ったなら아무것도안한다　※기력減少は処理に入れてない為暫定処置
+			IF DOWNBASE:ACT:체력 > MAXBASE:ACT:기력
+				;#;IF GETBIT(VAR_점포リザルト,ARG+10)
+					;#;PRINTFORML 기력0で行動不能
+					;#;RESETCOLOR
+				;#;ENDIF
+				CONTINUE
+			ELSEIF !함락(ACT)
+				;#;IF GETBIT(VAR_점포リザルト,ARG+10)
+					;#;PRINTFORML 自主的行動を拒否(未함락)
+					;#;RESETCOLOR
+				;#;ENDIF
+				CONTINUE
+			ENDIF
+		ENDIF
+		LEVEL = 0
+		DO
+			;=====================================================
+			;根幹となる「誰が」「誰を」「どう犯すか」の処理部分
+			;事前に決定したVA입の評価(COUNT_XXX格納)が高い順に使う
+			;一度使ったキャラはカウントをずらされそのターンは使われない
+			;=====================================================
+			;Ｖを犯す、Ｃ애무、펠라치오
+			;=====================================================
+			;19/03/27追記部分
+			;事前に消耗の大きい仲間を判断しカウントをずらす
+			;WHILE関数初めて使った気がする
+			;=====================================================
+			;現레벨のキャラ登録されてが居る限りループ
+			WHILE ( COUNT_VAGINA:LEVEL:11 < COUNT_VAGINA:LEVEL:10 )
+				ACT:1 = COUNT_VAGINA:LEVEL:(COUNT_VAGINA:LEVEL:11)
+				;대상が実行者とは別のキャラで체력があったらそのキャラで決定
+				;限界量は체력-500または최대체력の75%の高い方
+				;체력2000を超えたあたりから노역外しが起きにくくなる筈
+				IF MAX(BASE:(ACT:1):체력-500,MAXBASE:(ACT:1):체력*3/4) > DOWNBASE:(ACT:1):체력 && ACT != ACT:1
+					BREAK
+				;違うならカウントをずらす
+				ELSE
+					COUNT_VAGINA:LEVEL:11++
+				ENDIF
+			WEND
+			IF COUNT_VAGINA:LEVEL:11 < COUNT_VAGINA:LEVEL:10 && ACT != ACT:1
+				IF SHOW_TENT_HAVE_PENIS(ACT)
+					ACTCOM = 1
+					COUNT_VAGINA:LEVEL:11++
+				ELSE
+					;애무やふぇらは何人でも出来るのでカウントはずらさない
+					ACTCOM = SHOW_TENT_HAVE_PENIS(ACT:1) ? 5 # 4
+				ENDIF
+				BREAK
+			ENDIF
+			;=====================================================
+			;Ａを犯す、Ａ애무
+			;=====================================================
+			WHILE ( COUNT_ANUS:LEVEL:11 < COUNT_ANUS:LEVEL:10 )
+				ACT:1 = COUNT_ANUS:LEVEL:(COUNT_ANUS:LEVEL:11)
+				;대상が実行者とは別のキャラで체력があったらそのキャラで決定
+				IF MAX(BASE:(ACT:1):0-500,MAXBASE:(ACT:1):0*3/4) > DOWNBASE:(ACT:1):0 && ACT != ACT:1
+					BREAK
+				;違うならカウントをずらす
+				ELSE
+					COUNT_ANUS:LEVEL:11++
+				ENDIF
+			WEND
+			IF  COUNT_ANUS:LEVEL:11 < COUNT_ANUS:LEVEL:10 && ACT!= ACT:1
+				IF SHOW_TENT_HAVE_PENIS(ACT)
+					ACTCOM = 2
+					COUNT_ANUS:LEVEL:11++
+				ELSE
+					;애무は何人でも出来るのでカウントはずらさない
+					ACTCOM = 6
+				ENDIF
+				BREAK
+			ENDIF
+			;=====================================================
+			;喉を犯す、키스
+			;=====================================================
+			WHILE ( COUNT_MOUSE:LEVEL:11 < COUNT_MOUSE:LEVEL:10 )
+				ACT:1 = COUNT_MOUSE:LEVEL:(COUNT_MOUSE:LEVEL:11)
+				;대상が実行者とは別のキャラで체력があったらそのキャラで決定
+				IF MAX(BASE:(ACT:1):체력-500,MAXBASE:(ACT:1):체력*3/4) > DOWNBASE:(ACT:1):체력 && ACT != ACT:1
+					BREAK
+				;違うならカウントをずらす
+				ELSE
+					COUNT_MOUSE:LEVEL:11++
+				ENDIF
+			WEND
+			IF COUNT_MOUSE:LEVEL:11 < COUNT_MOUSE:LEVEL:10 && ACT != ACT:1
+				IF SHOW_TENT_HAVE_PENIS(ACT)
+					ACTCOM = 3
+					COUNT_MOUSE:LEVEL:11++
+				ELSE
+					;키스は何人でも出来るのでカウントはずらさない
+					ACTCOM = 7
+				ENDIF
+				BREAK
+			ENDIF
+			ACTCOM = 0
+			ACT:1 = -1
+			LEVEL++
+		LOOP ( ACTCOM == 0 && LEVEL < 5 )
+		$ACT_SET
+		;コマンド実行に飛ぶ(内容はSHOW_TENT_FUNC.ERB参照)
+		;IF ACTCOM >= 0
+		;	PRINTFORML %SHOW_TENT_ACTCALLNAME(ACT)%が%SHOW_TENT_ACTCALLNAME(ACT:1)%に対して行動({ACTCOM})
+		;ELSE
+		;	PRINTFORML %SHOW_TENT_ACTCALLNAME(ACT)%は何してるんだっけコレ？자위？
+		;ENDIF
+		CALLFORM SHOW_TENT_COM{ACTCOM} , ACT , ACT:1
+		;月齢に応じてHEATにボーナス
+		SELECTCASE FLAG:月齢
+		CASE 8
+			RESULT += ABS(RESULT)/2
+		CASE 0
+			RESULT -= ABS(RESULT)/2
+		ENDSELECT
+		;#;IF GETBIT(VAR_점포リザルト,ARG+10)
+			;#;PRINTFORML  HEAT:{HEAT}+{RESULT}
+			;#;RESETCOLOR
+		;#;ENDIF
+		HEAT += RESULT
+	NEXT
+	;사용履歴を綺麗にしておく
+	FOR LOCAL:1,0,5
+		COUNT_VAGINA:(LOCAL:1):11 = 0
+		COUNT_ANUS:(LOCAL:1):11 = 0
+		COUNT_MOUSE:(LOCAL:1):11 = 0
+	NEXT
+LOCAL++
+LOOP ( LOCAL < ACTLIMIT )
+
+;경험보정と増加
+FOR LOCAL:1,0,COUNT_ACT:1
+	ACT = RES_ACT:(LOCAL:1)
+	SIF ACT < 0
+		BREAK
+	DRAWLINE
+	
+	PRINTFORML 結果：%CALLNAME:ACT%
+
+	SIF !GETBIT(VAR_점포リザルト,ARG)
+		CALL EVENT_MESSAGE_SHOW_TENT_RESULT , ACT
+
+	;各절정횟수にかける보정
+	SIF TALENT:ACT:Ｃ둔감
+		TIMES EX:ACT:0 , 0.66
+	SIF TALENT:ACT:Ｃ민감
+		TIMES EX:ACT:0 , 1.50
+	SIF TALENT:ACT:자위광
+		TIMES EX:ACT:0 , 2.00
+	SIF TALENT:ACT:Ｖ둔감
+		TIMES EX:ACT:1 , 0.66
+	SIF 위험일(ACT)
+		TIMES EX:ACT:1 , 1.50
+	SIF TALENT:ACT:Ｖ민감
+		TIMES EX:ACT:1 , 1.50
+	SIF TALENT:ACT:섹스광
+		TIMES EX:ACT:1 , 2.00
+	SIF TALENT:ACT:Ａ둔감
+		TIMES EX:ACT:2 , 0.66
+	SIF TALENT:ACT:Ａ민감
+		TIMES EX:ACT:2 , 1.50
+	SIF TALENT:ACT:애널광
+		TIMES EX:ACT:2 , 2.00
+	SIF TALENT:ACT:Ｂ둔감
+		TIMES EX:ACT:3 , 0.66
+	SIF TALENT:ACT:Ｂ민감
+		TIMES EX:ACT:3 , 1.50
+	SIF TALENT:ACT:음유
+		TIMES EX:ACT:3,2.00
+	TCVAR:ACT:획득절정경험 = SUMARRAY(EX:ACT:0,0,4)
+	;総절정횟수にかける보정
+	SIF TALENT:ACT:쾌감에솔직
+		TIMES TCVAR:ACT:획득절정경험,1.10
+	SIF 위험일(ACT) > 1
+		TIMES EX:ACT:3,2.00
+	SIF TALENT:ACT:즉각함락
+		TIMES TCVAR:ACT:획득절정경험,2.00
+	IF IS_BITCHY(ACT)
+		TCVAR:ACT:획득절정경험 = TCVAR:ACT:획득절정경험 * ( 10 + 함락(ACT)*5 ) / 10
+	ELSEIF !함락(ACT)
+		SIF TALENT:ACT:쾌감을부정
+			TIMES TCVAR:ACT:획득절정경험,0.50
+		SIF TALENT:ACT:자제심
+			TIMES TCVAR:ACT:획득절정경험,0.75
+	ENDIF
+	;
+	;이상경험関連
+	IF TCVAR:ACT:획득Ｖ경험
+		;처녀
+		IF TALENT:ACT:0 || TALENT:ACT:1
+			TALENT:ACT:0 = 0
+			TALENT:ACT:1 = 0
+			;竿役が複数居た場合
+			IF COUNT_PENIS > 1
+				CALL ADDS_ABNORMAL_EXP, "처녀상실（윤간）" , ACT
+			ENDIF
+			IF TCVAR:ACT:획득Ｖ확장경험 && TALENT:ACT:소인체형
+				CALL ADDS_ABNORMAL_EXP, "처녀상실（요정오나홀）" , ACT
+			ENDIF
+			;Ｖを使ったキャラに同性が含まれる場合(未実装)
+			;Ｖを使ったキャラに촉수が含まれる場合(未実装)
+			;客により촬영されてた場合
+			SIF TCVAR:ACT:획득피사경험
+				CALL ADDS_ABNORMAL_EXP, "처녀상실（촬영）" , ACT
+		ENDIF
+	ENDIF
+	;Ｖ절정が加算されていて元が男だった場合
+	SIF EXP:ACT:ＴＳ경험 % 2 == 1 && EX:ACT:1
+		CALL ADDS_ABNORMAL_EXP, "ＴＳＶ절정" , ACT
+	;IF TCVAR:ACT:획득성교경험
+		;근친상간で이상경험(未実装)
+		;女性でＶ挿入した相손が처녀だった場合(未実装)
+	;ENDIF
+	SIF TCVAR:ACT:획득자위경험
+		CALL ADDS_ABNORMAL_EXP, "공개자위" , ACT
+
+	;촉수경험を得た場合
+	SIF TCVAR:ACT:획득촉수경험 && !TALENT:ACT:촉수
+		CALL ADDS_ABNORMAL_EXP, "촉수첫경험" , ACT
+	
+	;STRESSの増加(기본値)
+	IF ACT != MASTER
+		STRESS = (SUMARRAY(EX:ACT:0,0,70)-TCVAR:ACT:획득이상경험) * (TCVAR:ACT:획득이상경험+1)
+		SIF TALENT:ACT:정조관념
+			STRESS += TCVAR:ACT:획득질사경험*5 + TCVAR:ACT:획득사정경험*2
+	ENDIF
+
+	;子宮現在容量加算
+	CFLAG:(LOCAL):子宮現在容量 += TCVAR:ACT:획득질사경험 * 10
+
+	CALL SHOW_ADD_EXP, ACT
+	CALL SHOW_ABNORMAL_EXP, ACT
+	
+	;MAG変化
+	SIF TALENT:ACT:영매체질
+		TCVAR:ACT:획득ＭＡＧ *= 5
+	CMAG = TCVAR:ACT:획득ＭＡＧ - DOWNBASE:ACT:ＭＡＧ
+	SIF !TALENT:ACT:비전투원
+		CMAG /= 2
+	SIF CMAG != 0
+		PRINTFORML ＭＡＧ \@ CMAG > 0 ? + # - \@{ABS(CMAG),7}
+	BASE:ACT:ＭＡＧ = LIMIT(BASE:ACT:ＭＡＧ+CMAG,0,MAXBASE:ACT:ＭＡＧ)
+	
+	IF ACT != MASTER
+		SIF DOWNBASE:ACT:체력 > BASE:ACT:체력
+			TIMES STRESS,1.50
+		STRESS *= MAX(0,3-함락(ACT) *2)
+		STRESS /= 1+ABL:ACT:순종+ABL:ACT:욕망+ABL:ACT:봉사정신+ABL:ACT:마조끼
+		PRINTFORML 스트레스 + {STRESS}
+		CFLAG:ACT:스트레스치 += STRESS
+	ENDIF
+	
+	;비전투원のEXP입수
+	IF TALENT:ACT:비전투원 || TALENT:ACT:페르소나구사자
+		;기본値=입수全경험の(5+순종+기교+욕망*2)%*레벨보정
+		CEXP = ( SUMARRAY(EX:ACT:0,0,70) * (5+ABL:ACT:순종+ABL:ACT:기교+ABL:ACT:욕망*2) / 10 * BASE:ACT:LV )
+		IF TALENT:ACT:비전투원
+			PRINTFORML EXP： +{CEXP*MIN(1,(1+BASE:ACT:LV/5))}
+			BASE:ACT:ＥＸＰ += CEXP*MIN(1,(1+BASE:ACT:LV/5))
+			;레벨アップ판정
+			CALL CHECK_LEVEL_UP,ACT
+		ENDIF
+		IF TALENT:ACT:페르소나구사자
+			CALL INCREASE_PERSONA_EXP, ACT, CEXP/10, -1 ,1
+			IF RESULT > 0
+				;新페르소나処理
+				IF BATTLE_SETTING_IS_PERSONA_NEW_FUNCTION()
+
+				;旧페르소나処理
+				ELSE
+					PRINTFORML 페르소나【\@EQUIP:ACT:장비페르소나 ? %CSVNAME(DITEMTYPE:(EQUIP:ACT:장비페르소나):페르소나("NO"), 0)% # %CSVNAME(ABL:ACT:초기페르소나, 0)%\@】　EXP：+{RESULT}
+				ENDIF
+			ENDIF
+		ENDIF
+	ENDIF
+
+	;主人の속성値変動
+	CALL INCREASE_LD,-3
+	CALL SYNC_STATUS,MASTER
+	
+	;노역ハズレ防止処理は色々考えたけどめんどうなので放置でい
+	PRINTFORM 체력(%CALLNAME:ACT%) -{DOWNBASE:ACT:체력}　
+	BASE:ACT:체력 -= DOWNBASE:ACT:체력
+	
+	SIF CFLAG:ACT:顧客の中出氏による임신판정 > 0 && !TALENT:ACT:임신
+		PRINTFORML %CALLNAME:ACT%의 \@ TALENT:ACT:오토코노코 ? 항문내 # 질내 \@에는 %SHOW_TENT_ACTNAME(CFLAG:ACT:노역中の中出氏による暫定父親)%의 정액이 고여 있다
+
+	;気絶しない筈だけど一応残しておく
+	CALL 気絶処理,ACT
+	
+	WAIT
+NEXT
+
+
+;閉演메시지
+DRAWLINE
+SIF !GETBIT(VAR_점포リザルト,ARG)
+	CALL EVENT_MESSAGE_SHOW_TENT , -11 , COUNT_ACT
+
+LOCAL = HEAT + 점포("인기",ARG) / 10
+입수￥ = MAX(0, LOCAL * RAND(70,90)/100)
+입수마카 = (LOCAL - 입수￥) / 10 + RAND:10
+MONEY += 입수￥ - SHOW_TENT_유지비(ARG)
+MONEY:1 += 입수마카 - COST
+;인기の情報
+HEAT = HEAT / 80
+CALL 점포演算("인기",ARG,HEAT,"+")
+
+PRINTL 
+PRINTL 【수지 보고】
+;마카
+
+PRINTFORML ￥   오히네리 +{입수￥,6}
+PRINTFORML    점포유지비 -{SHOW_TENT_유지비(ARG),6}
+LOCAL = 입수￥ - SHOW_TENT_유지비(ARG)
+PRINTFORML          합계 \@ LOCAL > 0 ? + # - \@{ABS(LOCAL),6}
+PRINTL 
+PRINTFORML 마카 오히네리 +{입수마카,6}
+IF COST
+	PRINTFORML    렌탈요금 -{ABS(COST),6}
+	LOCAL = 입수마카 - COST
+	PRINTFORML          합계 \@ LOCAL > 0 ? + # - \@{ABS(LOCAL),6}
+ENDIF
+PRINTL 
+PRINTFORML      점포인기 \@ HEAT > 0 ? + # - \@{ABS(HEAT),6}
+
+WAIT
+
+;==========================================================
+@EXTEND_MANAGEMENT_SHOW_TENT
+PRINTFORML 현재、이 점포의 ＬＶ은 {점포("규모",VAR_점포번호)}입니다。
+IF 점포("규모",VAR_점포번호) >= 10
+	PRINTFORMW 이 이상 확장할 수 없습니다。
+	RETURN
+ENDIF
+
+FOR LOCAL,점포("규모",VAR_점포번호)+1,11
+	LOCAL:LOCAL = 1000 * LOCAL
+	LOCAL:12 = SUMARRAY(LOCAL,점포("규모",VAR_점포번호)+1,LOCAL+1)
+	PRINTFORML [{LOCAL,2}] 규모를 {LOCAL-점포("규모",VAR_점포번호)}단계 확장 ￥{LOCAL:12}
+NEXT
+
+PRINTL [ 0] 취소
+INPUT
+LOCAL:11 = RESULT
+IF RESULT == 0
+	RETURN
+ELSEIF INRANGE(LOCAL:10,점포("규모",VAR_점포번호),10)
+	LOCAL:12 = SUMARRAY(LOCAL,점포("규모",VAR_점포번호)+1,LOCAL:11+1)
+	PRINTFORML 확장에는 ￥{LOCAL:12}가 필요합니다。확장하시겠습니까?
+	CALL INPUT_YN("YES","NO")
+	SIF RESULT == 1
+		RETURN
+ENDIF
+CALL 점포演算("규모",VAR_점포번호,LOCAL:11,"=")
+CALL 점포演算("접객고용",VAR_점포번호,LOCAL:11,"=")
+MONEY -= LOCAL:12
+
+;==========================================================
+;@SHOW_TENT_RENTALDEVIL
+;악마렌탈を설정する
+;==========================================================
+@SHOW_TENT_RENTALDEVIL
+#DIM LINE,1
+LINE = LINECOUNT
+DRAWLINE
+REDRAW 0
+$TOP
+LOCAL = 0
+FOR LOCAL:1,0,5
+	LOCAL += 렌탈악마:VAR_점포번호:(LOCAL:1)
+NEXT
+CUSTOMDRAWLINE =
+IF SUMARRAY(렌탈악마:VAR_점포번호:0,0,5)
+	PRINT 현재
+	SIF 렌탈악마:VAR_점포번호:0
+		PRINTFORM 、%SHOW_TENT_ACTNAME(-2)%×{렌탈악마:VAR_점포번호:0}
+	SIF 렌탈악마:VAR_점포번호:1
+		PRINTFORM 、%SHOW_TENT_ACTNAME(-3)%×{렌탈악마:VAR_점포번호:1}
+	SIF 렌탈악마:VAR_점포번호:2
+		PRINTFORM 、%SHOW_TENT_ACTNAME(-4)%×{렌탈악마:VAR_점포번호:2}
+	SIF 렌탈악마:VAR_점포번호:3
+		PRINTFORM 、%SHOW_TENT_ACTNAME(-5)%×{렌탈악마:VAR_점포번호:3}
+	SIF 렌탈악마:VAR_점포번호:4
+		PRINTFORM 、%SHOW_TENT_ACTNAME(-6)%×{렌탈악마:VAR_점포번호:4}
+	PRINTL 을(를) 렌탈하고 있습니다
+	PRINTFORML 현재의 총 렌탈비용：{SHOW_TENT_RENTAL_COST(VAR_점포번호)}마카
+ELSE
+	PRINTL 악마를 렌탈하고 있지 않습니다
+ENDIF
+DRAWLINE
+IF LOCAL < 10
+	PRINTFORML 어떤 악마를 렌탈하겠습니까?(앞으로 {10-LOCAL}마리까지)
+ELSE
+	PRINTL 이 이상 렌탈할 수 없습니다
+ENDIF
+DRAWLINE
+CALL SHOW_TENT_RENTAL_LIST(SHOW_TENT_ACTNAME(-2),1,10,LOCAL)
+CALL SHOW_TENT_RENTAL_LIST(SHOW_TENT_ACTNAME(-3),5,20,LOCAL)
+SIF 점포("규모",VAR_점포번호) >= 2
+	CALL SHOW_TENT_RENTAL_LIST(SHOW_TENT_ACTNAME(-4),20,30,LOCAL)
+SIF 점포("규모",VAR_점포번호) >= 4
+	CALL SHOW_TENT_RENTAL_LIST(SHOW_TENT_ACTNAME(-5),50,40,LOCAL)
+SIF 점포("규모",VAR_점포번호) >= 6
+	CALL SHOW_TENT_RENTAL_LIST(SHOW_TENT_ACTNAME(-6),100,50,LOCAL)
+PRINTL [ 9] 모두 해고한다
+PRINTL [ 0] 돌아간다
+INPUT
+LOCAL:1 = RESULT
+IF RESULT == 0
+	REDRAW 1
+	RETURN
+ELSEIF RESULT == 9
+	FOR LOCAL,0,5
+		렌탈악마:VAR_점포번호:LOCAL = 0
+	NEXT
+ELSEIF INRANGE(LOCAL:1/10-1,0,4) && INRANGE(LOCAL:1%10,0,3)
+	LOCAL:2 = LOCAL:1 / 10 - 1
+	SELECTCASE LOCAL:2
+	CASE 2 ; 이누가미の制限
+		SIF 점포("규모",VAR_점포번호) < 2
+			GOTO RETRY
+	CASE 3 ; 바포멧트の制限
+		SIF 점포("규모",VAR_점포번호) < 4
+			GOTO RETRY
+	CASE 4 ; 케르베로스の制限
+		SIF 점포("규모",VAR_점포번호) < 6
+			GOTO RETRY
+	ENDSELECT
+	SELECTCASE LOCAL:1 % 10
+	CASE 0
+		LOCAL:3 = -5
+	CASE 1
+		LOCAL:3 = -1
+	CASE 2
+		LOCAL:3 = 1
+	CASE 3
+		LOCAL:3 = 5
+	ENDSELECT
+	렌탈악마:VAR_점포번호:(LOCAL:2) = LIMIT(렌탈악마:VAR_점포번호:(LOCAL:2)+LOCAL:3,0,10-(LOCAL-렌탈악마:VAR_점포번호:(LOCAL:2)))
+ENDIF
+$RETRY
+CLEARLINE LINECOUNT-LINE
+GOTO TOP
+
+@SHOW_TENT_RENTAL_LIST(ARGS,ARG,ARG:1,ARG:2)
+IF ARG:2
+	PRINTBUTTON @"[{ARG:1,2}]-5 " , ARG:1
+	PRINTBUTTON @"[{ARG:1+1,2}]-1 " , ARG:1 + 1
+ELSE
+	SETCOLOR 0x808080
+	PRINTPLAINFORM [{ARG:1,2}]-5 
+	PRINTPLAINFORM [{ARG:1+1,2}]-1 
+	RESETCOLOR
+ENDIF
+IF ARG:2 < 10
+	PRINTBUTTON @"[{ARG:1+2,2}]+1 " , ARG:1+2
+	PRINTBUTTON @"[{ARG:1+3,2}]+5 " , ARG:1+3
+ELSE
+	SETCOLOR 0x808080
+	PRINTPLAINFORM [{ARG:1+2,2}]+1
+	PRINTPLAINFORM [{ARG:1+3,2}]+{ARG:2} 
+	RESETCOLOR
+ENDIF
+PRINTFORML %ARGS,14,LEFT%(\@ ARG ? 1体{ARG,3}마카 # %"      タダ"% \@) 
+
+;==========================================================
+;악마렌탈のコスト
+;ARG = 점포番号
+;ARG:1 = 参照キャラ( -1全員 0슬라임 1오크 2이누가미 3바포멧트 4케르베로스 )
+;슬라임     (1마카)        -- 譲渡MAG係数4
+;오크       (5마카)        -- 安い、譲渡MAG係数25(の2乗*4)
+;이누가미     (20마카)       -- 수간경험が入る、譲与MAG係数1000
+;바포멧트 (50마카)       -- 譲渡MAG係数10000
+;케르베로스   (100마카)      -- 수간경험が入る、譲与MAG係数40000
+;==========================================================
+@SHOW_TENT_RENTAL_COST(ARG,ARG:1=-1,ARG:2=-1)
+#FUNCTION
+LOCAL:0 = 렌탈악마:ARG:0
+LOCAL:1 = 렌탈악마:ARG:1*5
+LOCAL:2 = 렌탈악마:ARG:2*20
+LOCAL:3 = 렌탈악마:ARG:3*50
+LOCAL:4 = 렌탈악마:ARG:4*100
+RETURNF (ARG:1==-1) ? SUMARRAY(LOCAL,0,5) # LOCAL:(ARG:1)
+
+;==========================================================
+;見世物小屋におけるMAG譲渡係数(一度に渡せるMAGの限界値)
+;ARG = 参照キャラ( 0～仲魔 -2슬라임 -3오크 -4이누가미 -5바포멧트 -6케르베로스 )
+;==========================================================
+@SHOW_TENT_MAG_RATE(ARG,ARG:1)
+#FUNCTION
+SELECTCASE ARG
+CASE -2
+	RETURNF 4 * ARG:1 / 8
+CASE -3
+	RETURNF 100 * ARG:1 / 8
+CASE -4
+	RETURNF 1000 * ARG:1 / 8
+CASE -5
+	RETURNF 10000 * ARG:1 / 8
+CASE -6
+	RETURNF 40000 * ARG:1 / 8
+CASE IS >= 0
+	RETURNF MIN( BASE:ARG:ＭＡＧ+TCVAR:ARG:획득ＭＡＧ-DOWNBASE:ARG:ＭＡＧ , BASE:ARG:LV * (BASE:ARG:LV+20) * ARG:1 / 8)
+ENDSELECT
+
+;==========================================================
+;見世物小屋におけるMAG흡수係数(一度に흡수するMAGの限界値)
+;ARG = 参照キャラ
+;==========================================================
+@SHOW_TENT_MAG_DRAIN_RATE(ARG,ARG:1)
+#FUNCTION
+;렌탈は흡수しない
+SIF ARG < 0
+	RETURNF 0
+LOCAL = MAXBASE:ARG:ＭＡＧ - ( BASE:ARG:ＭＡＧ + TCVAR:ARG:획득ＭＡＧ - DOWNBASE:ARG:ＭＡＧ )
+LOCAL:1 = MAXBASE:ARG:LV * (20+MAXBASE:ARG:LV) * (5+MAX(ABL:ARG:순종,ABL:ARG:욕망,ABL:ARG:기교))* ARG:1 /5 
+RETURNF MIN(LOCAL,LOCAL:1)
+
+;==========================================================
+;見世物小屋におけるMAGのやりとり
+;ARG = 渡す側
+;ARG:1 = 渡される側
+;ARG:2 = 渡す횟수
+;ARG:3 = 譲渡係数( 키스1、애무3、フェラ7、애널8、바기나10 )
+;==========================================================
+@SHOW_TENT_MAG_EXCHANGE(ARG,ARG:1,ARG:2,ARG:3=10)
+LOCAL = POWER(ARG:3,2) * 100 * ARG:2
+LOCAL:1 = SHOW_TENT_MAG_RATE(ARG,ARG:2)
+LOCAL:2 = SHOW_TENT_MAG_DRAIN_RATE(ARG:1,ARG:2)
+LOCAL:3 = MIN( LOCAL , LOCAL:1 , LOCAL:2 ) * ARG:3 / 10
+;#;SIF !LINEISEMPTY()
+;#; PRINTL
+;#;PRINTFORML MAG譲渡 %SHOW_TENT_ACTNAME(ARG)%から%SHOW_TENT_ACTNAME(ARG:1)%にMIN({LOCAL * ARG:3 / 10},{LOCAL:1 * ARG:3 / 10},{LOCAL:2 * ARG:3 / 10})
+SIF ARG >= 0
+	DOWNBASE:ARG:ＭＡＧ -= LOCAL:3
+SIF ARG:1 >= 0
+	TCVAR:(ARG:1):획득ＭＡＧ += LOCAL:3
+
+;========================================================
+;참가者の番号に対応した名前
+;========================================================
+@SHOW_TENT_ACTNAME(ARG)
+#FUNCTIONS
+IF LOCAL == 0
+	LOCAL = 1
+	LOCALS:2 = %CSVCALLNAME(SHOW_TENT_ACTNO(-2),0)%
+	LOCALS:3 = %CSVCALLNAME(SHOW_TENT_ACTNO(-3),0)%
+	LOCALS:4 = %CSVCALLNAME(SHOW_TENT_ACTNO(-4),0)%
+	LOCALS:5 = %CSVCALLNAME(SHOW_TENT_ACTNO(-5),0)%
+	LOCALS:6 = %CSVCALLNAME(SHOW_TENT_ACTNO(-6),0)%
+ENDIF
+SELECTCASE ARG
+CASE IS < 0
+	RETURNF LOCALS:(ABS(ARG))
+CASEELSE
+	RETURNF CALLNAME:ARG
+ENDSELECT
+
+;========================================================
+;참가者の수간체크
+;========================================================
+@SHOW_TENT_수간(ARG)
+#FUNCTION
+SIF SHOW_TENT_TALENT(ARG,"짐승") || SHOW_TENT_TALENT(ARG,"새")
+	RETURNF 1
+RETURNF 0
+
+;========================================================
+;참가者の番号に対応したNO
+;========================================================
+@SHOW_TENT_ACTNO(ARG)
+#FUNCTION
+SELECTCASE ARG
+CASE -2
+	RETURNF [[キャラ:슬라임]]
+CASE -3
+	RETURNF [[キャラ:오크]]
+CASE -4
+	RETURNF [[キャラ:이누가미]]
+CASE -5
+	RETURNF [[キャラ:바포멧트]]
+CASE -6
+	RETURNF [[キャラ:케르베로스]]
+CASEELSE
+	RETURNF -1
+ENDSELECT
+
+;========================================================
+;참가者の番号に対応したNO
+;========================================================
+@SHOW_TENT_ACTCALLNAME(ARG)
+#FUNCTIONS
+SELECTCASE ARG
+CASE -1
+	RETURNF "？？？"
+CASE -2
+	RETURNF "슬라임"
+CASE -3
+	RETURNF "오크"
+CASE -4
+	RETURNF "이누가미"
+CASE -5
+	RETURNF "바포멧트"
+CASE -6
+	RETURNF "케르베로스"
+CASEELSE
+	RETURNF CALLNAME:ARG
+ENDSELECT
+
+@SHOW_TENT_HAVE_PENIS(ARG)
+#FUNCTION
+RETURNF ( SHOW_TENT_TALENT(ARG,"남자") || SHOW_TENT_TALENT(ARG,"후타나리") )
+
+@SHOW_TENT_유지비(ARG)
+#FUNCTION
+RETURNF 점포("규모",ARG) * 100

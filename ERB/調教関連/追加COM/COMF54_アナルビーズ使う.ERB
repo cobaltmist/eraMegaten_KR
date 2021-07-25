@@ -1,0 +1,149 @@
+﻿;-------------------------------------------------
+;애널비즈쓴다
+;道具사용コマンド、레벨3
+;-------------------------------------------------
+@CHECK_COM_ABLE54
+
+;애널비즈実行판정
+;촉수조교中はダメ
+SIF TEQUIP:25
+	RETURN 0
+
+;해제はいつでも가능
+SIF TEQUIP:PLAYER:15
+	RETURN 1
+;소인체형持ちは、双方が조교者と조교대상ならOK
+;それ以外の場合は主人が금단의지식持ちじゃないとダメ
+SIF TALENT:PLAYER:소인체형 && PLAYER != MASTER && TALENT:MASTER:144 == 0
+	RETURN 0
+
+;아이템を持っているか、아이템なし설정でないとダメ
+SIF !EXIST_ITEM(6)
+	RETURN 0
+
+SIF !USE_ANUS(PLAYER)
+	RETURN 0
+
+;새댁플레이中はダメ
+SIF TEQUIP:33
+	RETURN 0
+
+RETURN 1
+
+@ACT_COM54
+PRINTL 애널비즈쓴다
+TSTR:0 = 애널비즈쓴다
+;CALL KOJO_MESSAGE_COM
+
+;着脱の処理
+IF TEQUIP:PLAYER:15 == 0
+	TEQUIP:PLAYER:15 = 1
+ELSE
+	TEQUIP:PLAYER:15 = 0
+ENDIF
+
+;-------------------------------------------------
+;ソース추가処理
+;-------------------------------------------------
+;소비체력、기력
+LOSEBASE:0 += 10
+LOSEBASE:1 += 10
+
+SOURCE:4 = 10
+SOURCE:13 = 10
+SOURCE:17 = 10
+
+SOURCE:PLAYER:도구쾌Ａ = 150
+
+;装着時は쾌Aは下がる
+SIF TEQUIP:PLAYER:15 == 1
+	TIMES SOURCE:PLAYER:2 , 0.80
+
+;外す時は쾌Aは上がる
+SIF TEQUIP:PLAYER:15 == 0
+	TIMES SOURCE:PLAYER:2 , 3.00
+
+;-------------------------------------------------
+;경험の処理
+;-------------------------------------------------
+IF TEQUIP:PLAYER:19 == 0
+	;EXP:PLAYER:1 += 1
+	;PRINTL Ａ경험＋１(조교자)
+	CALL ADDS_EXP("Ａ경험", 2, PLAYER)
+ELSEIF TEQUIP:PLAYER:19 == 1
+	;EXP:PLAYER:1 += 2
+	;PRINTL Ａ경험＋２(조교자)
+	CALL ADDS_EXP("Ａ경험", 1, PLAYER)
+ENDIF
+
+A = 1
+;B = NO:PLAYER + 899
+IF IS_LESBIAN(TARGET,PLAYER)
+	;PRINTFORML %EXPNAME:40%+{A}
+	;EXP:40 += A
+	CALL ADDS_EXP("레즈경험", A, PLAYER)
+ELSEIF IS_GAY(TARGET,PLAYER)
+	CALL ADDS_EXP("ＢＬ경험", A, PLAYER)
+	;PRINTFORML %EXPNAME:41%+{A}
+	;EXP:41 += A
+ENDIF
+
+;의존도ベクトル
+TFLAG:33 = 0
+
+
+RETURN 1
+
+
+;-------------------------------------------------
+;装着継続の処理
+;-------------------------------------------------
+@EQUIP_COM54
+;애널비즈挿入中
+
+PRINTL ＜애널비즈삽입중(조교자)＞
+
+SOURCE:PLAYER:도구쾌Ａ += 75
+
+;-------------------------------------------------
+;경험の処理
+;-------------------------------------------------
+;EXP:PLAYER:1 += 1
+;PRINTL Ａ경험＋１(조교자)
+CALL ADDS_EXP("Ａ경험", 1, PLAYER)
+
+
+RETURN 1
+
+;-------------------------------------------------
+;조교時テ키스ト
+;-------------------------------------------------
+;54,애널비즈쓴다
+;-------------------------------------------------
+@MESSAGE_COM54
+IF TEQUIP:주도권
+;여자주도
+	;装着時
+	IF TEQUIP:PLAYER:15
+		PRINTFORMW %조사처리(CALLNAME:TARGET,"는")% %CALLNAME:PLAYER%의 애널에 애널비즈를 하나씩 하나씩 쑤셔넣었다……
+	;해제時
+	ELSE
+		PRINTFORMW %조사처리(CALLNAME:TARGET,"는")% %CALLNAME:PLAYER%의 애널에서 애널비즈를 기세좋게 뽑아냈다……
+	ENDIF
+ELSE
+;남자주도
+	;装着時
+	IF TEQUIP:PLAYER:15
+		PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% 애널에 애널비즈를 하나씩 하나씩 쑤셔넣었다……
+	;해제時
+	ELSE
+		PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% 애널에서 애널비즈를 기세좋게 뽑아냈다……
+	ENDIF
+ENDIF
+
+;===================================================
+;조교타입
+;===================================================
+@COMTYPE_54
+RETURN COMTYPE("대조교자도구계")
+

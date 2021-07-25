@@ -1,0 +1,885 @@
+﻿
+;=======================================================================
+;천체박물관
+;ボス・무위스（캐롤Ｊ）
+;던전ナンバー89
+;
+;
+;
+;フラグ
+;던전フラグ:89:1	クリア상태（0:未クリア、1:始末クリア、2:部下クリア、3:해방クリア、4:他人がクリア）
+;던전フラグ:89:2	カギフラグ（0:未설정、1:おひつじ座、2:かに座、3:やぎ座、4:입수した）
+;던전フラグ:89:3	カギ입수フラグ（0:손に入れてない、1:손に入れた）（未사용）
+;던전フラグ:89:4	施錠した서머너関係（0:施錠未확인、1:施錠확인済み、2:初回話した、3:カギ입수報告済み）
+;던전フラグ:89:5	報酬フラグ（0:貰ってない、1:貰い待ち、2:貰った）
+;던전フラグ:89:6	扉開錠フラグ（0:開いてない、1:開けた）
+
+;던전フラグ:89:7	캐롤Ｊ弾き語り、発展판정、発展度５が최대（0:初回、1:発展度１、2:発展度２、3:発展度３、4:発展度４,5:発展度５）
+;던전フラグ:89:8	캐롤Ｊ弾き語り、その日に話したか판정、던전탈출時に리셋する（0:話してない、1:話した）
+;던전フラグ:89:9	発展度５の캐롤Ｊに合った횟수、５回ごとに아이템もらえる가능性
+
+;時事系列的に천체박물관＞闘技場이벤트ってことにして、クリア前に闘技場で네밋사を仲間にすると의뢰が消え던전ボスは他の서머너に倒される。
+;우라베ク에스トに関係なくカツオ達は네밋사入りのＣＯＭＰを손に入れて서머너として活動している感じ。
+
+;네밋사加入済みの판정に闘技場CLOSSEUM_6_ＶＳ二人組の女.ERBの「투기장フラグ:6:0 == 1」フラグを
+;마요네加入済みの판정に이벤트EVENT_1_마요네님의포상.ERBの「이벤트フラグ:1:0 == 3」フラグを사용しています。
+;=======================================================================
+
+;=======================================================================
+;攻略조건
+;=======================================================================
+@PREREQUISITE_DUNGEON_89
+;의뢰フラグ:29:0 = 1
+;의뢰を受けていてるか、의뢰종료済み
+IF 의뢰フラグ:33:0 == 1 || 의뢰フラグ:33:0 == 2
+	RETURN 1
+ENDIF
+RETURN 0
+
+;=======================================================================
+;던전名
+;=======================================================================
+@GET_DUNGEON_NAME_89
+RESULTS = 천체박물관
+
+;=======================================================================
+;フ로어名표시
+;=======================================================================
+@FLOORNAME_89
+PRINT 천체박물관
+SELECTCASE FLAG:現M
+	CASE 0
+		PRINTL １Ｆ、로비
+	CASE 1
+		PRINTL ２Ｆ
+	CASE 2
+		PRINTL ３Ｆ
+	
+	CASEELSE
+		PRINTL
+ENDSELECT
+
+;=======================================================================
+;스타ト地点입력
+;=======================================================================
+@START_DUNGEON_89, ARG
+FLAG:現M = 0
+FLAG:現X = 9
+FLAG:現Y = 12
+;CALL AUTOMAP
+RETURN 0
+
+;=======================================================================
+;攻略開始時の이벤트
+;=======================================================================
+@EVENT_DUNGEON_START_89
+
+;네밋사加入していると던전内の이벤트が消える。
+;당신がクリア後でも네밋사が加入すると他人に殺されていたので수정
+IF 투기장フラグ:6:0 == 1 && !던전フラグ:89:1 < 1
+	;クリア상태、他人がクリアへ
+	던전フラグ:89:1 = 4
+ENDIF
+
+;カギの場所
+;네밋사加入しているか천체박물관クリア상태他人で扉開いてない
+IF (투기장フラグ:6:0 == 1 || 던전フラグ:89:1 == 4) && 던전フラグ:89:6 == 0
+	;扉開錠フラグ開けたへ
+	던전フラグ:89:6 = 1
+;カギフラグ未설정かつクリアフラグ立ってないで扉開いてない
+ELSEIF 던전フラグ:89:2 == 0 && 던전フラグ:89:1 == 0 && 던전フラグ:89:6 == 0
+	IF RAND:3 == 0
+		;カギの場所おひつじ座へ
+		던전フラグ:89:2 = 1
+	ELSEIF RAND:2 == 0
+		;カギの場所かに座へ
+		던전フラグ:89:2 = 2
+	ELSE
+		;カギの場所やぎ座へ
+		던전フラグ:89:2 = 3
+	ENDIF
+ENDIF
+
+;=======================================================================
+;탈출時の이벤트
+;=======================================================================
+@EVENT_DUNGEON_END_89
+PRINTFORML 　
+
+;던전탈출時、報酬フラグ貰い待ちだと賞金と名声を得ます。
+IF 던전フラグ:89:5 == 1
+	PRINTFORML 　
+	;クリア상태始末クリア
+	IF 던전フラグ:89:1 == 1 
+		PRINTFORMW 지령의 완료와 조직에 대한 충성을 인정받아、계좌에 ￥40000이 지급、명성 20을 얻었다
+		
+		MONEY += 40000
+		FLAG:名声 += 20
+	;クリア상태部下クリア
+	ELSEIF 던전フラグ:89:1 == 2
+		PRINTFORMW 지령을 완료하여、계좌에 ￥10000이 지급、명성 20을 얻었다
+		
+		MONEY += 10000
+		FLAG:名声 += 20
+	;クリア상태해방クリア
+	ELSEIF 던전フラグ:89:1 == 3
+		PRINTFORMW 지령을 완료하여、계좌에 ￥10000이 지급、명성 30을 얻었다
+		
+		MONEY += 10000
+		FLAG:名声 += 30
+	ENDIF
+	
+	
+	;報酬フラグ貰ったへ
+	던전フラグ:89:5 = 2
+	;의뢰종료
+	의뢰フラグ:33:0 = 2
+ENDIF
+
+;=======================================================================
+;指定したマスに進入가능か
+;=======================================================================
+@CAN_ENTER_89, ARG, ARG:1
+;SELECTCASE DA:ARG:(ARG:1)
+;ENDSELECT
+
+;カギ持ってない、扉開けてない
+IF FLAG:現M == 2 && ARG == 6 && ARG:1 == 6 && 던전フラグ:89:2 < 4 && 던전フラグ:89:6 == 0
+	PRINTFORMW 문은 잠겨있다……
+	RETURN 0
+;カギ持ってる、扉開けてない
+ELSEIF FLAG:現M == 2 && ARG == 6 && ARG:1 == 6 && 던전フラグ:89:2 == 4 && 던전フラグ:89:6 == 0
+	PRINTFORMW 가지고 있던 열쇠로 문을 열었다……
+	;扉開錠フラグ開けたへ
+	던전フラグ:89:6 = 1
+	RETURN 0
+ENDIF
+
+CALL CAN_ENTER,ARG,ARG:1
+RETURN RESULT
+
+;=======================================================================
+;フ로어데이터
+;=======================================================================
+
+;0：壁　1：床또는通路　2：扉　3：宝箱　4：이벤트　5：罠　6：上り階段 7：下り階段　8：出입　9：그외特殊処理等
+;これらの内、3～9が代入されているマスに、個別の번호を与える処理を実行します。
+;この処理を行った後、これらのマスには 「マップ번호*1000 + そのマスがそのマップで左上から数えて何個눈のARG타입のマスか*10 + ARG」が代入されます
+;例えば 2003 であった場合、「2番のマップ＝３Ｆで、左上から数えて0個눈の3＝宝箱である」という事を意味しています
+;尚、0～2はどのマップにも大量に設置されるので、ここでは기본的に個別の번호を与えません。
+
+
+@MAKE_FLOOR_89
+SELECTCASE FLAG:現M
+	CASE 0
+	;１階、ロビー
+		FLAG:최대X = 19 
+		FLAG:최대Y = 15 
+							;	  0123456789012345678
+		CALL MAKE_FLOOR_LINE, 0, "                   "
+		CALL MAKE_FLOOR_LINE, 1, "                   "
+		CALL MAKE_FLOOR_LINE, 2, "         6         "
+		CALL MAKE_FLOOR_LINE, 3, "  111111111411111  "
+		CALL MAKE_FLOOR_LINE, 4, "  111111111111111  "
+		CALL MAKE_FLOOR_LINE, 5, "  111111111111111  "
+		CALL MAKE_FLOOR_LINE, 6, "       4   4       "
+		CALL MAKE_FLOOR_LINE, 7, "     1 4 1 4 1     "
+		CALL MAKE_FLOOR_LINE, 8, "     111111111     "
+		CALL MAKE_FLOOR_LINE, 9, "     111111111     "
+		CALL MAKE_FLOOR_LINE,10, "     111111111     "
+		CALL MAKE_FLOOR_LINE,11, "       11111       "
+		CALL MAKE_FLOOR_LINE,12, "         8         "
+		CALL MAKE_FLOOR_LINE,13, "                   "
+		CALL MAKE_FLOOR_LINE,14, "                   "
+		
+		
+	CASE 1
+	;２階
+		FLAG:최대X = 28 
+		FLAG:최대Y = 22
+	
+							;	  0123456789012345678901234567
+		CALL MAKE_FLOOR_LINE, 0, "                           "
+		CALL MAKE_FLOOR_LINE, 1, "                           "
+		CALL MAKE_FLOOR_LINE, 2, "    1111     6     1111    "
+		CALL MAKE_FLOOR_LINE, 3, "   11111 1 11111 1 11111   "
+		CALL MAKE_FLOOR_LINE, 4, "  11   1 111111111 1   11  "
+		CALL MAKE_FLOOR_LINE, 5, "  1121 1 111   111 1 1211  "
+		CALL MAKE_FLOOR_LINE, 6, "  11   1 111 4 111 1   11  "
+		CALL MAKE_FLOOR_LINE, 7, "  111111   1 2 1   111111  "
+		CALL MAKE_FLOOR_LINE, 8, "  11   1 T 11111 1 1   11  "
+		CALL MAKE_FLOOR_LINE, 9, "  1121 1 2   2   2 1 3211  "
+		CALL MAKE_FLOOR_LINE,10, "  11   1111111111111   11  "
+		CALL MAKE_FLOOR_LINE,11, "   111111111111111111111   "
+		CALL MAKE_FLOOR_LINE,12, "   1                   2   "
+		CALL MAKE_FLOOR_LINE,13, "   1 4  4  4   4  4  4 1   "
+		CALL MAKE_FLOOR_LINE,14, "   111111111111111111111   "
+		CALL MAKE_FLOOR_LINE,15, "  11 4  4  4   4  4  4 11  "
+		CALL MAKE_FLOOR_LINE,16, "   2                   1   "
+		CALL MAKE_FLOOR_LINE,17, "   111111111411111111111   "
+		CALL MAKE_FLOOR_LINE,18, "    1111111111111111111    "
+		CALL MAKE_FLOOR_LINE,19, "             7             "
+		CALL MAKE_FLOOR_LINE,20, "                           "
+		CALL MAKE_FLOOR_LINE,21, "                           "
+		
+		
+	CASE 2
+	;３階
+		FLAG:최대X = 13 
+		FLAG:최대Y = 20 
+							;	  0123456789012
+		CALL MAKE_FLOOR_LINE, 0, "             "
+		CALL MAKE_FLOOR_LINE, 1, "             "
+		CALL MAKE_FLOOR_LINE, 2, "  111111111  "
+		CALL MAKE_FLOOR_LINE, 3, "  111141111  "
+		CALL MAKE_FLOOR_LINE, 4, "  111111111  "
+		CALL MAKE_FLOOR_LINE, 5, "  111111111  "
+		CALL MAKE_FLOOR_LINE, 6, "      2      "
+		CALL MAKE_FLOOR_LINE, 7, "  111111111  "
+		CALL MAKE_FLOOR_LINE, 8, "  1   1   1  "
+		CALL MAKE_FLOOR_LINE, 9, "  1 3 1   1  "
+		CALL MAKE_FLOOR_LINE,10, "  1 2 1   1  "
+		CALL MAKE_FLOOR_LINE,11, "  11111   1  "
+		CALL MAKE_FLOOR_LINE,12, "  1   1   1  "
+		CALL MAKE_FLOOR_LINE,13, "  1 3 1   1  "
+		CALL MAKE_FLOOR_LINE,14, "  1 2 1   1  "
+		CALL MAKE_FLOOR_LINE,15, "  111111111  "
+		CALL MAKE_FLOOR_LINE,16, "   1411111   "
+		CALL MAKE_FLOOR_LINE,17, "      7      "
+		CALL MAKE_FLOOR_LINE,18, "             "
+		CALL MAKE_FLOOR_LINE,19, "             "
+		
+		
+	CASE 10
+	CASEELSE
+ENDSELECT
+
+;=======================================================================
+;タイル調整
+;=======================================================================
+;ARG:1、ARG:2はそれぞれX座標とY座標
+;ARGはその座標に現在代入されている번호
+;0：壁　1：床또는通路　2：扉　3：宝箱　4：이벤트　5：罠　6：上り階段 7：下り階段　8：出입　9：그외特殊処理等
+;これらの内、3～9が代入されているマスに、個別の번호を与える処理を実行します。
+;この処理を行った後、これらのマスには 「マップ번호*1000 + そのマスがそのマップで左上から数えて何個눈のARG타입のマスか*10 + ARG」が代入されます
+;例えば 2003 であった場合、「2番のマップ＝３Ｆで、左上から数えて0個눈の3＝宝箱である」という事を意味しています
+;尚、0～2はどのマップにも大量に設置されるので、ここでは기본的に個別の번호を与えません。
+;
+;何個눈のARG타입のマスなのか、は左上の(0,0)から右まで探し、その後一つ下の段に移って同様に探す、というのを右下まで繰り返して数えます。
+@MAKE_FLOOR_LINE_COMMON_89, ARG, ARG:1, ARG:2
+#LOCALSIZE 10
+;LOCAL:0～9 それぞれ何個눈のARGなのかを記憶しています
+;LOCAL:3 宝箱→사용フラグは던전フラグ:70~74
+;指定された座標が(0,0)である場合、つまり新しいマップを読み込んだ時はLOCALを소거します
+SIF ARG:1 == 0 && ARG:2 == 0
+	VARSET LOCAL
+SELECTCASE ARG
+	CASE 3
+		;宝箱は多くの場合、開けたフラグが立っていると床を代入します
+		;そのマップでどの宝箱を開けたかは、そのマップの宝箱管理用変数の何番눈のビットが立っているかで判断します
+		IF GETBIT(던전フラグ:(FLAG:現던전):(FLAG:現M+70), LOCAL:3)
+			DA:(ARG:1):(ARG:2) = 1
+		ELSE
+			DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:3 * 10 + 3
+		ENDIF
+		LOCAL:3++
+	CASE 4 TO 9
+		DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:ARG * 10 + ARG
+		LOCAL:ARG++
+	
+ENDSELECT
+
+;=======================================================================
+;特殊タイル표시
+;TILE_MARK_COMMON_{FLAG:現던전}_X
+;=======================================================================
+;ARG:1、ARG:2がX座標とY座標
+;ARGはそこに代入されている値
+;RESULTSに代入した문자がマップに표시されますが、必ず全角1문자分になるようにしてください。そうでないと표시が崩れます。
+
+
+@TILE_MARK_COMMON_89_4, ARG , ARG:1 , ARG:2
+SELECTCASE ARG / 10
+	CASE 2 , 4
+		RESULTS = ↑
+	CASE 1 , 3
+		RESULTS = ↓
+		
+	;メッセンジャーを緑色で"ｍ"と표시
+	CASE 0 , 113 , 201
+		SETCOLOR 0x00ff00
+		RESULTS = ｍ
+	CASEELSE
+		;特に설정しない場合、"！"と표시されます
+		RETURN 1
+ENDSELECT
+
+
+;이벤트タイル特殊표시
+;末꼬리の_4は이벤트であることを示す4
+;@TILE_MARK_COMMON_89_4, ARG , ARG:1 , ARG:2
+;SELECTCASE ARG / 10
+	;メッセンジャーを緑色で"ｍ"と표시
+	;CASE 0 TO 2 , 100 , 101 , 300
+	;	SETCOLOR 0x00ff00
+	;	RESULTS = ｍ
+;	CASEELSE
+		;特に설정しない場合、"！"と표시されます
+;		RETURN 1
+;ENDSELECT
+
+;特殊タイルの표시
+;末꼬리の_9は特殊タイルであることを示す9
+@TILE_MARK_COMMON_89_9, ARG , ARG:1 , ARG:2
+SELECTCASE ARG / 10
+	;CASE 400
+		
+		
+	CASEELSE
+		;特に설정しない場合、"■"が표시されます
+		RETURN 1
+ENDSELECT
+
+;=======================================================================
+;[5]조사　実行時の이벤트
+;=======================================================================
+@EVENT_CHECK_DUNGEON_89
+
+;==========
+;出입の処理
+;==========
+IF DA:(FLAG:現X):(FLAG:現Y) == 8
+	CALL DUNGEON_EXIT
+	RETURN 1
+;========
+;宝の処理
+;========
+;% 10は10で割ったあまり、つまり下一桁がでてきます
+;그리고、下一桁はタイルの종류を表す
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 3
+	CALL TREASURE_89
+	RETURN RESULT
+;=======
+;階段
+;=======
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 6
+	CALL UPSTAIRS_89
+	RETURN RESULT
+
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 7
+	CALL DOWNSTAIRS_89
+	RETURN RESULT
+;========
+;이벤트
+;========
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 4
+	SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+		;１Ｆ이벤트
+		CASE 0
+			;プラネタリウムを閉鎖した서머너
+			CALL DUNGEON_89_Summoner01
+		CASE 1
+			CALL SHOW_FORCEMOVE, "DD", "D", , ,  "下りの에스カレーターだ……"
+		CASE 2
+			CALL SHOW_FORCEMOVE, "U", "D", , ,  "上りの에스カレーターだ/こちらからは下りることはできない……"
+		CASE 3
+			CALL SHOW_FORCEMOVE, "D", "D", , ,  "下りの에스カレーターだ/こちらからは上ることはできない……"
+		CASE 4
+			CALL SHOW_FORCEMOVE, "UU", "D", , ,  "上りの에스カレーターだ……"
+			
+		;２Ｆ이벤트
+		CASE 100
+			PRINTFORMW 「오늘 천체박물관에 방문해주셔서 감사합니다。」
+			PRINTFORMW 「부디 천천히 즐겨주십시오……。」
+			PRINTFORMW 박물관 안내방송이 흐르고 있다……
+			
+		CASE 101
+			PRINTFORML 양자리　aries
+			PRINTFORML 물고기자리의 동쪽　황소자리의 서쪽에 있다
+			PRINTFORMW 황도의 제 ２궁　가을의 별자리
+			;カギの場所おひつじ座の時
+			IF 던전フラグ:89:2 == 1
+				PRINTFORML 
+				PRINTFORMW 발 밑에 뭔가 떨어져 있다！
+				PRINTFORMW 플라네타리움의 열쇠를 손에 넣었다
+				;カギフラグ손に入れたへ
+				던전フラグ:89:2 = 4
+			ENDIF
+		CASE 102
+			PRINTFORML 황소자리　taurus
+			PRINTFORML 양자리의 동쪽　쌍둥이자리의 서쪽에 있다
+			PRINTFORMW 황도의 제 ３궁　겨울의 별자리
+		CASE 103
+			PRINTFORML 쌍둥이자리　gemini
+			PRINTFORML 황소자리의 동쪽　게자리의 서쪽에 있다
+			PRINTFORMW 황도의 제 ４궁　겨울의 별자리
+		CASE 104
+			PRINTFORML 게자리　cancer
+			PRINTFORML 쌍둥이자리의 동쪽　사자자리의 서쪽에 있다
+			PRINTFORMW 황도의 제 ５궁　봄의 별자리
+			;カギの場所게자리の時
+			IF 던전フラグ:89:2 == 2
+				PRINTFORML 
+				PRINTFORMW 발 밑에 뭔가 떨어져 있다！
+				PRINTFORMW 플라네타리움의 열쇠를 손에 넣었다
+				;カギフラグ손に入れたへ
+				던전フラグ:89:2 = 4
+			ENDIF
+		CASE 105
+			PRINTFORML 사자자리　leo
+			PRINTFORML 처녀자리의 서쪽에 있다
+			PRINTFORMW 황도의 제 ６궁　봄의 별자리
+		CASE 106
+			PRINTFORML 처녀자리　virgo
+			PRINTFORML 사자자리의 동쪽　천칭자리의 서쪽에 있다
+			PRINTFORMW 황도의 제 ７궁　봄의 별자리
+
+
+		CASE 107
+			PRINTFORML 천칭자리　libra
+			PRINTFORML 처녀자리와 전갈자리의 사이에 있다
+			PRINTFORMW 황도의 제 ８궁　여름의 별자리
+		CASE 108
+			PRINTFORML 전갈자리　scorpius
+			PRINTFORML 천칭자리의 동쪽　궁수자리의 서쪽에 있다
+			PRINTFORMW 황도의 제 ９궁　여름의 별자리
+		CASE 109
+			PRINTFORML 궁수자리　sagittarius
+			PRINTFORML 전갈자리와 염소자리의 사이에 있다
+			PRINTFORMW 황도의 제 １０궁　여름의 별자리
+		CASE 110
+			PRINTFORML 염소자리　capricornus
+			PRINTFORML 궁수자리의 동쪽　물병자리의 서쪽에 있다
+			PRINTFORMW 황도의 제 １１궁　가을의 별자리
+			;カギの場所やぎ座の時
+			IF 던전フラグ:89:2 == 3
+				PRINTFORML 
+				PRINTFORMW 발 밑에 뭔가 떨어져 있다！
+				PRINTFORMW 플라네타리움의 열쇠를 손에 넣었다
+				;カギフラグ손に入れたへ
+				던전フラグ:89:2 = 4
+			ENDIF
+		CASE 111
+			PRINTFORML 물병자리　aquarius
+			PRINTFORML 염소자리의 동쪽　물고기자리의 서쪽에 있다
+			PRINTFORMW 황도의 제 １２궁　가을의 별자리
+		CASE 112
+			PRINTFORML 물고기자리　pisces
+			PRINTFORML 물병자리의 동쪽　양자리의 서쪽에 있다
+			PRINTFORMW 황도의 제 １궁　가을의 별자리
+		CASE 113
+			;見物人서머너
+			CALL DUNGEON_89_Summoner02
+			
+		;３Ｆ이벤트
+		CASE 200
+			;ボス
+			CALL DUNGEON_89_Boss
+			
+		CASE 201
+			;成長する서머너
+			CALL DUNGEON_89_Summoner03
+			
+	ENDSELECT
+ELSE
+	PRINTFORMW 何も無いようだ
+	RETURN 0
+ENDIF
+
+;=======================================================================
+;タイル進入時の이벤트
+;=======================================================================
+@EVENT_ENTER_DUNGEON_89,ARG
+;ARG = 進入時の向き　0の場合ワープなど
+;==========
+;出입の処理
+;==========
+IF DA:(FLAG:現X):(FLAG:現Y) % 10 == 8
+	CALL DUNGEON_EXIT
+	RETURN 1
+;========
+;宝の処理
+;========
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 3
+	CALL TREASURE_89
+	RETURN RESULT
+;=======
+;階段
+;=======
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 6
+	CALL UPSTAIRS_89
+	RETURN RESULT
+
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 7
+	CALL DOWNSTAIRS_89
+	RETURN RESULT
+
+;==========
+;扉の処理
+;==========
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 2
+	CALL DUNGEON_DOOR,ARG
+	RETURN 1
+
+;========
+;이벤트
+;========
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 4
+	SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+		;１Ｆ이벤트
+		CASE 0
+			;プラネタリウムを閉鎖した서머너
+			CALL DUNGEON_89_Summoner01
+			
+			RETURN 0
+		CASE 1
+			CALL SHOW_FORCEMOVE, "DD", "D", , ,  "下りの에스カレーターだ……"
+			RETURN 0
+		CASE 2
+			CALL SHOW_FORCEMOVE, "U", "D", , ,  "上りの에스カレーターだ/こちらからは下りることはできない……"
+			RETURN 0
+		CASE 3
+			CALL SHOW_FORCEMOVE, "D", "D", , ,  "下りの에스カレーターだ/こちらからは上ることはできない……"
+			RETURN 0
+		CASE 4
+			CALL SHOW_FORCEMOVE, "UU", "D", , ,  "上りの에스カレーターだ……"
+			RETURN 0
+		;２Ｆ이벤트
+		CASE 100
+			PRINTFORMW 「오늘 천체박물관에 방문해주셔서 감사합니다。」
+			PRINTFORMW 「부디 천천히 즐겨주십시오……。」
+			PRINTFORMW 박물관 안내방송이 흐르고 있다……
+			
+			RETURN 0
+		CASE 101
+			PRINTFORML 양자리　aries
+			PRINTFORML 물고기자리의 동쪽　황소자리의 서쪽에 있다
+			PRINTFORMW 황도의 제 ２궁　가을의 별자리
+			;カギの場所양자리の時
+			IF 던전フラグ:89:2 == 1
+				PRINTFORML 
+				PRINTFORMW 발 밑에 뭔가 떨어져 있다！
+				PRINTFORMW 플라네타리움의 열쇠를 손에 넣었다
+				;カギフラグ손に入れたへ
+				던전フラグ:89:2 = 4
+			ENDIF
+			RETURN 0
+		CASE 102
+			PRINTFORML 황소자리　taurus
+			PRINTFORML 양자리의 동쪽　쌍둥이자리의 서쪽에 있다
+			PRINTFORMW 황도의 제 ３궁　겨울의 별자리
+			RETURN 0
+		CASE 103
+			PRINTFORML 쌍둥이자리　gemini
+			PRINTFORML 황소자리의 동쪽　게자리의 서쪽에 있다
+			PRINTFORMW 황도의 제 ４궁　겨울의 별자리
+			RETURN 0
+		CASE 104
+			PRINTFORML 게자리　cancer
+			PRINTFORML 쌍둥이자리의 동쪽　사자자리의 서쪽에 있다
+			PRINTFORMW 황도의 제 ５궁　봄의 별자리
+			;カギの場所게자리の時
+			IF 던전フラグ:89:2 == 2
+				PRINTFORML 
+				PRINTFORMW 발 밑에 뭔가 떨어져 있다！
+				PRINTFORMW 플라네타리움의 열쇠를 손에 넣었다
+				;カギフラグ손に入れたへ
+				던전フラグ:89:2 = 4
+			ENDIF
+			RETURN 0
+		CASE 105
+			PRINTFORML 사자자리　leo
+			PRINTFORML 처녀자리의 서쪽에 있다
+			PRINTFORMW 황도의 제 ６궁　봄의 별자리
+			RETURN 0
+		CASE 106
+			PRINTFORML 처녀자리　virgo
+			PRINTFORML 사자자리의 동쪽　천칭자리의 서쪽에 있다
+			PRINTFORMW 황도의 제 ７궁　봄의 별자리
+			RETURN 0
+
+		CASE 107
+			PRINTFORML 천칭자리　libra
+			PRINTFORML 처녀자리와 전갈자리의 사이에 있다
+			PRINTFORMW 황도의 제 ８궁　여름의 별자리
+			RETURN 0
+		CASE 108
+			PRINTFORML 전갈자리　scorpius
+			PRINTFORML 천칭자리의 동쪽　궁수자리의 서쪽에 있다
+			PRINTFORMW 황도의 제 ９궁　여름의 별자리
+			RETURN 0
+		CASE 109
+			PRINTFORML 궁수자리　sagittarius
+			PRINTFORML 전갈자리와 염소자리의 사이에 있다
+			PRINTFORMW 황도의 제 １０궁　여름의 별자리
+			RETURN 0
+		CASE 110
+			PRINTFORML 염소자리　capricornus
+			PRINTFORML 궁수자리의 동쪽　물병자리의 서쪽에 있다
+			PRINTFORMW 황도의 제 １１궁　가을의 별자리
+			;カギの場所やぎ座の時
+			IF 던전フラグ:89:2 == 3
+				PRINTFORML 
+				PRINTFORMW 발 밑에 뭔가 떨어져 있다！
+				PRINTFORMW 플라네타리움의 열쇠를 손에 넣었다
+				;カギフラグ손に入れたへ
+				던전フラグ:89:2 = 4
+			ENDIF
+			RETURN 0
+		CASE 111
+			PRINTFORML 물병자리　aquarius
+			PRINTFORML 염소자리의 동쪽　물고기자리의 서쪽에 있다
+			PRINTFORMW 황도의 제 １２궁　가을의 별자리
+			RETURN 0
+		CASE 112
+			PRINTFORML 물고기자리　pisces
+			PRINTFORML 물병자리의 동쪽　양자리의 서쪽에 있다
+			PRINTFORMW 황도의 제 １궁　가을의 별자리
+			RETURN 0
+		CASE 113
+			;見物人서머너
+			CALL DUNGEON_89_Summoner02
+			
+			RETURN 0
+		;３Ｆ이벤트
+		CASE 200
+			;ボス
+			CALL DUNGEON_89_Boss
+			
+			RETURN 0
+		CASE 201
+			;成長する서머너
+			CALL DUNGEON_89_Summoner03
+			
+			RETURN 0
+	ENDSELECT
+ENDIF
+RETURN 0
+
+;=======================================================================
+;エンカウント率
+;=======================================================================
+@ENCOUNT_RATE_89
+SELECTCASE FLAG:現M
+	CASE 0 , 1 , 2 , 3 , 4 , 5
+		FLAG:エンカウント率 = FLAG:未遭遇歩数 * 5
+	CASEELSE
+		FLAG:エンカウント率 = FLAG:未遭遇歩数 * 5
+ENDSELECT
+SIF FLAG:未遭遇歩数 < 5
+	FLAG:エンカウント率 = 0
+;=======================================================================
+;필요레벨눈安
+;권장LV 雑물고기최저LV 雑물고기最高LV ボスLV 
+;=======================================================================
+@GET_DUNGEON_LV_89
+RETURN 20, 20, 25, 35
+;=======================================================================
+;エンカウント処理
+;=======================================================================
+@CHECK_ENCOUNT_89
+IF RAND:100 < FLAG:エンカウント率
+	CALL ENEMY_TABLE
+	RETURN 1
+ELSE
+	FLAG:未遭遇歩数 += 1
+	RETURN 0
+ENDIF
+;=======================================================================
+;적の종족の종류数
+;RETURN X でXが종류の数になります
+;あまりいろんなのが混ざっているとCOOPがとりにくくなったり
+;적の공격속성が多くなる傾向にあるので、
+;종류の数は1・2종류を主体に時々3종류くらいを기본にするのが望ましいと思われます
+;=======================================================================
+@CLASS_NUM_89
+SELECTCASE FLAG:現M
+	CASE 0 , 1
+		SELECTCASE RAND:100
+			CASE IS < 50
+				RETURN 1
+			CASEELSE
+				RETURN 2
+		ENDSELECT
+	CASE 2 , 3
+		SELECTCASE RAND:100
+			CASE IS < 50
+				RETURN 1
+			CASEELSE
+				RETURN 2
+		ENDSELECT
+	CASE 4 , 5
+		SELECTCASE RAND:100
+			CASE IS < 35
+				RETURN 1
+			CASEELSE
+				RETURN 2
+		ENDSELECT
+ENDSELECT
+;=======================================================================
+;적の総数
+;ARGは出現する적の종류です
+;RAND(X, Y)はX～Y-1のうち중 하나になるRANDです
+;なお、ここで帰った数字は下限を종족数、上限を10として自動的に調整されます
+;=======================================================================
+@ENEMY_NUM_89, ARG
+SELECTCASE FLAG:現M
+	CASE 0
+		RETURN RAND(ARG, ARG*2+1)
+	CASE 1 , 2
+		RETURN RAND(ARG, ARG*2+2)
+	CASE 3 ,4 , 5
+		RETURN RAND(ARG, ARG*2+3)
+ENDSELECT
+;=======================================================================
+;적の종류
+;=======================================================================
+@ENEMY_89, ARG
+SELECTCASE FLAG:現M
+	CASE 0
+		SELECTCASE RAND:100
+			CASE IS < 30
+				RETURN [[キャラ:하피]],9
+			CASE IS < 35
+				RETURN [[キャラ:하피]],10
+			CASE IS < 65
+				RETURN [[キャラ:아즈미]],8
+			CASE IS < 70
+				RETURN [[キャラ:아체리]],9
+			CASE IS < 80
+				RETURN [[キャラ:아체리]],12
+			CASE IS < 90
+				RETURN [[キャラ:아체리]],13
+			CASE IS < 95
+				RETURN [[キャラ:세에레]],10
+			CASE IS < 100
+				RETURN [[キャラ:세에레]],12
+		ENDSELECT
+	CASE 1
+		SELECTCASE RAND:100
+			CASE IS < 30
+				RETURN [[キャラ:하피]],11
+			CASE IS < 35
+				RETURN [[キャラ:하피]],12
+			CASE IS < 65
+				RETURN [[キャラ:아즈미]],11
+			CASE IS < 70
+				RETURN [[キャラ:아즈미]],12
+			CASE IS < 80
+				RETURN [[キャラ:아체리]],13
+			CASE IS < 90
+				RETURN [[キャラ:아체리]],14
+			CASE IS < 95
+				RETURN [[キャラ:세에레]],12
+			CASE IS < 100
+				RETURN [[キャラ:세에레]],13
+		ENDSELECT
+	CASE 2
+		SELECTCASE RAND:100
+			CASE IS < 15
+				RETURN [[キャラ:하피]],13
+			CASE IS < 25
+				RETURN [[キャラ:하피]],14
+			CASE IS < 40
+				RETURN [[キャラ:아즈미]],13
+			CASE IS < 50
+				RETURN [[キャラ:아즈미]],14
+			CASE IS < 65
+				RETURN [[キャラ:아체리]],14
+			CASE IS < 75
+				RETURN [[キャラ:아체리]],16
+			CASE IS < 90
+				RETURN [[キャラ:세에레]],13
+			CASE IS < 100
+				RETURN [[キャラ:세에레]],15
+		ENDSELECT
+ENDSELECT
+
+;=======================================================================
+;宝箱の中身
+;=======================================================================
+@TREASURE_89
+#LOCALSIZE 3
+;宝箱のフラグ管理用変数の번호
+LOCAL = FLAG:現M + 70
+;そのマップの何番눈の宝箱か
+LOCAL:1 = (DA:(FLAG:現X):(FLAG:現Y) / 10) % 100
+
+;/10はIDを10で割る。つまり、下一桁をなくして、二桁눈と三桁눈を二桁の数字として取り出している
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+	;マップ번호*100+そのマップで何番눈の宝箱かを示す数値でどの宝箱かを判別します。
+	;例えば0の場合、0版のマップの0番눈の宝箱であることを表しています。
+	;２Ｆ
+	CASE 100
+		CALL GET_TREASURE_MAG, , 1000 , FLAG:現던전, LOCAL , LOCAL:1
+	;３Ｆ
+	CASE 200
+		CALL GET_TREASURE, [[아이템:힘의향]] , 1 , FLAG:現던전, LOCAL , LOCAL:1
+	CASE 201
+		CALL GET_TREASURE, [[아이템:챠크라포트]] , 1 , FLAG:現던전, LOCAL , LOCAL:1
+ENDSELECT
+RETURN 1
+
+
+
+;=======================================================================
+;階段置き場
+;=======================================================================
+;上り階段処理
+@UPSTAIRS_89
+;SELECTCASE DA:(FLAG:現X):(FLAG:現Y) /10
+;	;IDで分岐
+;	;１Ｆ上り階段
+;	CASE 0
+;			;@DUNGEON_UPSTAIRS_ID , 階段を進んだ先のマップ번호 , 移動先のタイルのID
+;			;２Ｆ＝マップ번호1番の0番눈の下り階段 = 1 * 1000 + 0 * 10 + 7 = 1007へと飛ぶ
+;			CALL DUNGEON_UPSTAIRS_ID, 1 , 1007
+;	CASE 100
+;			CALL DUNGEON_UPSTAIRS_ID, 2 , 2007
+;	CASE 200
+;			CALL DUNGEON_UPSTAIRS_ID, 3 , 3007
+;	CASE 300
+;			CALL DUNGEON_UPSTAIRS_ID, 4 , 4007
+;	CASEELSE
+;ENDSELECT
+
+;入り組んだ던전で階段がたくさん入り乱れている상태であれば、上記のように階段毎に指定してあげる필요があります。
+;しかしこの에코빌딩は1つのマップに上り階段が１つ、下り階段が１つ、上の階に進む＝マップ번호が一つ増えるという구조になっています
+;なので、下記のように書けば一行で済みます
+CALL DUNGEON_UPSTAIRS_ID, FLAG:現M+1 , (FLAG:現M + 1) * 1000 + 7
+RETURN 1
+
+;下り階段処理
+@DOWNSTAIRS_89
+;上り階段同様に、에코빌딩は下り階段も1行で記述できます
+CALL DUNGEON_DOWNSTAIRS_ID, FLAG:現M-1 , (FLAG:現M - 1) * 1000 + 6
+RETURN 1
+;=======================================================================
+;エレベーター定義
+;=======================================================================
+;ARGはそのエレベーターのタイル
+@DUNGEON_ELEVATOR_89, ARG
+;RESULT:1～5にエレベータが存在するマップの번호を代入し、RESULTS:1～5には표시したい명칭を代入、RETURNでは-1を返しておく
+RESULT:1 = 0
+RESULT:2 = 1
+RESULT:3 = 2
+RESULT:4 = 3
+RESULT:5 = 4
+RESULT:6 = 5
+RESULTS:1 = １Ｆ
+RESULTS:2 = ２Ｆ
+RESULTS:3 = ３Ｆ
+RESULTS:4 = ４Ｆ
+RESULTS:5 = ５Ｆ
+RESULTS:6 = ６Ｆ
+RETURN -1
+;=======================================================================
+;윤간참가악마
+;=======================================================================
+@DUNGEON_RAPE_DEVIL_89
+;랜덤にどの악마が出るか決定
+;RETURN CSV번호 , 人数 , 레벨
+SELECTCASE RAND:3
+	CASE 0 , 1 ,2
+		RETURN [[キャラ:세에레]] , 3 + RAND:10 , CSVBASE([[キャラ:세에레]] , GETNUM(BASE , "LV") , 0) + RAND:3
+ENDSELECT

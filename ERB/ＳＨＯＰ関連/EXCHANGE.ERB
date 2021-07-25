@@ -1,0 +1,557 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		20xx/xx/xx		----					新規作成
+;	002		2011/01/02		旅人					複数화면に纏め買い対応
+;	003		2011/02/04		P						衣装구입にマヌカンを配置
+;	004		2013/11/30		ひみつ					스킬속성표시の適用範囲拡大
+;	005		2016/05/02		ネトリス				結界石の交換処理を추가
+;	006		2017/05/16		ネトリス				インス토르ソフト：セカンドハローの処理を추가
+;	007		2018/06/21		JK好き					도리カドモンの소지数が分かるように추가
+;	008		2019/05/29		名無し					ジャンクポイント関連추가(MONEY:4)
+;	009		2019/01/13		Jガン					장비구입時に스테이터스を比較できるように
+;	010		2020/03/XX		マウス専用版アイテム交換CALL処理追加
+;	011		2021/05/20		Jガン					マッカによるCOMP容量増加をしやすくするため新しいフラグを追加
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+; 特記:
+;  メモが필요な変数一覧
+;  M:0		SHOP_RPG_2.ERB内の『화면モード関連』にある説明を参照
+;  M:1		同上
+;-------------------------------------------------
+
+;==========================================================================
+;마카の使い道を考える会
+;==========================================================================
+
+@SHOPCOMABLE_114
+;---- EDIT 002 ADD START -------------------------
+;初回訪問フラグ:초기化
+;M:1 = 0
+;---- EDIT 002 ADD END ---------------------------
+RESULT:1 = 3
+RESULTS = 마카교환
+;SIF MONEY:1 == 0
+;	RETURN 0
+RETURN 1
+
+@SHOP_COM_114
+DRAWLINE
+PRINTFORML 현재 {MONEY:1}마카가 있습니다. 어떻게 하겠습니까?
+PRINTFORML ※￥으로 교환 외의 선택지로 마카를 소비하면 정크 포인트를 얻을 수 있습니다(JP:소비마카*2)
+DRAWLINE
+
+;---- EDIT 002 ADD START -------------------------
+;화면モード:初回訪問時
+;CALL RPG_SHOP_SCREENMODE_DEFAULT
+
+;화면モード:표시
+IF !MouseUIStore_Enable
+	CALL RPG_SHOP_SCREENMODE_PRINT
+	SIF FLAG:SHOP화면モード설정 == 0
+		PRINTFORML 장비자비교설정[802]\@ GETBIT(FLAG:정크숍설정,0) ? ON # OFF \@
+PRINTL ("아이템과 교환"화면에 적용됩니다)
+	PRINTL 
+ENDIF
+
+;---- EDIT 002 ADD END ---------------------------
+;---- EDIT 011 ADD START -------------------------
+;安くならないように
+SIF FLAG:魔貨によるＣ容量増加 < 1
+	FLAG:魔貨によるＣ容量増加 = MAX(1,FLAG:ＣＯＭＰ용량 - 7)
+;---- EDIT 011 ADD END ---------------------------
+
+PRINTL [1] ￥으로 교환
+PRINTL [2] 아이템과 교환
+PRINTL [3] 인스톨 소프트와 교환
+;ADD 011
+PRINTFORML [4] ＣＯＭＰ의 용량을 확장 (필요 마카：{POWER(FLAG:魔貨によるＣ容量増加,2)*100})
+PRINTL [5] 의상과 교환
+PRINTFORML [6] 도리・카드몬과 교환（필요 마카：500）({ITEM:도리・카드몬}개)
+PRINTFORML [7] 결계석과 교환（필요 마카：1000）({ITEM:결계석}/3)
+;PRINTL [7] 후생의토령과 교환（필요 마카：1000）
+DRAWLINE
+PRINTL [0] 돌아간다
+
+$INPUT_LOOP
+INPUT
+
+;---- EDIT 002 ADD START -------------------------
+;初回訪問フラグ:訪問済み
+;M:1 = 1
+;---- EDIT 002 ADD END ---------------------------
+
+IF RESULT == 0
+	RETURN 0
+;---- EDIT 002 ADD START -------------------------
+ELSEIF RESULT == 800
+	;화면モード:변경
+	CALL RPG_SHOP_SCREENMODE_CHANGE
+	RESTART
+;---- EDIT 002 ADD END ---------------------------
+ELSEIF RESULT == 802
+	INVERTBIT FLAG:정크숍설정,0
+ELSEIF RESULT == 1
+	CALL EXCHANGE_MONEY
+	RESTART
+ELSEIF RESULT == 2
+;---- EDIT 002 MOD START -------------------------
+;	CALL EXCHANGE_ITEM
+;-------------------------------------------------
+	IF MouseUIStore_Enable
+		CALL MouseUIStore("MACCA")
+		RESTART
+	ENDIF
+;-------------------------------------------------
+	IF FLAG:SHOP화면モード설정 == 0
+		CALL EXCHANGE_ITEM
+	ELSE
+		;아이템구입:通常 (1:마카교환)
+		CALL RPG_SHOP_NOMAL,FLAG:SHOP화면モード설정,1
+	ENDIF
+;---- EDIT 002 MOD END ---------------------------
+	RESTART
+ELSEIF RESULT == 3
+	CALL EXCHANGE_SOFT
+	RESTART
+ELSEIF RESULT == 4
+	;IF POWER(FLAG:ＣＯＭＰ용량 - 7,2)*100 > MONEY:1
+	IF POWER(FLAG:魔貨によるＣ容量増加,2)*100 > MONEY:1;011
+		REUSELASTLINE 마카가 부족합니다
+		GOTO INPUT_LOOP
+	ENDIF
+	;---- EDIT 011 ADD START -------------------------
+	;MONEY:1 -= POWER(FLAG:ＣＯＭＰ용량 - 7,2)*100
+	;MONEY:4 += POWER(FLAG:ＣＯＭＰ용량 - 7,2)*200
+	MONEY:1 -= POWER(FLAG:魔貨によるＣ容量増加,2)*100
+	MONEY:4 += POWER(FLAG:魔貨によるＣ容量増加,2)*200
+	FLAG:魔貨によるＣ容量増加 += 1
+	;---- EDIT 011 ADD END ---------------------------
+	FLAG:ＣＯＭＰ용량 += 1
+	PRINTFORML 사용중인 ＣＯＭＰ의 용량이 {FLAG:ＣＯＭＰ용량}이 되었습니다。
+	RESTART
+ELSEIF RESULT == 5
+	CALL EXCHANGE_CLOTHES
+	RESTART
+ELSEIF RESULT == 6
+	IF MONEY:1 < 500
+		PRINTW 마카가 부족합니다
+		CLEARLINE 1
+		GOTO INPUT_LOOP
+	ENDIF
+	MONEY:1 -= 500
+	MONEY:4 += 1000
+	ITEM:도리・카드몬 += 1
+	PRINTFORMW 조마의 양식、『도리・카드몬』을 손에 넣었다
+;結界石交換
+ELSEIF RESULT == 7
+	IF MONEY:1 < 1000
+		PRINTW 마카가 부족합니다
+		CLEARLINE 1
+		GOTO INPUT_LOOP
+	ELSEIF ITEM:결계석 == 3
+		PRINTW 결계석은 3개까지 소유할 수 있습니다
+		CLEARLINE 1
+		GOTO INPUT_LOOP
+	ENDIF
+	MONEY:1 -= 1000
+	MONEY:4 += 2000
+	ITEM:결계석 += 1
+	PRINTFORMW 『결계석』을 손에 넣었다
+;ELSEIF RESULT == 7
+;	IF MONEY:1 < 1000
+;		PRINTW 마카が발りません
+;		CLEARLINE 1
+;		GOTO INPUT_LOOP
+;	ENDIF
+;	MONEY:1 -= 1000
+;	ITEM:후생의토령 += 1
+;	PRINTFORMW 『후생의토령』を손に入れた
+ELSE
+	GOTO INPUT_LOOP
+ENDIF
+RESTART
+
+@EXCHANGE_MONEY
+; 마카レート変動설정が有効
+IF SETTING_IS_MAKKA_RATE()
+	;レートが0の場合は30に修正し、他のレートも再설정する
+	IF FLAG:마카レート1 == 0
+		FLAG:마카レート1 = 30
+		FLAG:마카レート2 = 10+RAND:51
+		FLAG:마카レート3 = 10+RAND:51
+	ENDIF
+	PRINTFORML 몇 마카를 ￥으로 교환합니까？(1마카＝￥{FLAG:마카レート1})
+	CALL INPUT_MANY(0,MONEY:1)
+	IF RESULT == 0
+		RETURN 0
+	ELSE
+		PRINTFORMW {RESULT}마카를 ￥{RESULT*FLAG:마카レート1}으로 교환했다。
+		MONEY += RESULT*FLAG:마카レート1
+		MONEY:1 -= RESULT
+	ENDIF
+; 마카レート変動설정が無効(通常)
+ELSE
+	PRINTL 몇 마카를 ￥으로 교환합니까？(1마카＝￥50)
+	CALL INPUT_MANY(0,MONEY:1)
+	IF RESULT == 0
+		RETURN 0
+	ELSE
+		PRINTFORMW {RESULT}마카를 ￥{RESULT*50}으로 교환했다。
+		MONEY += RESULT*50
+		MONEY:1 -= RESULT
+	ENDIF
+ENDIF
+
+@EXCHANGE_SOFT
+
+DRAWLINE
+PRINTFORML 현재 {MONEY:1}마카가 있습니다.
+DRAWLINE
+LOCAL:1 = 0
+
+FOR LOCAL,500,600
+	SIF !SOFT_SELLABLE(LOCAL)
+		CONTINUE
+	IF ITEMPRICE:LOCAL > 0 && ITEM:LOCAL == 0
+		PRINTFORM [{LOCAL}] %ITEMNAME:LOCAL,20,LEFT% {ITEMPRICE:LOCAL,7}마카　　
+		ITEMSALES:LOCAL = 1
+		LOCAL:1 += 1
+	ELSE
+		ITEMSALES:LOCAL = 0
+	ENDIF
+	IF LOCAL:1 == 2
+		PRINTL
+		LOCAL:1 = 0
+	ENDIF
+NEXT
+PRINTL
+DRAWLINE
+PRINTL [100] 돌아간다
+$INPUT_LOOP
+INPUT
+
+IF RESULT == 100
+	RETURN 0
+ELSEIF RESULT > -1 && RESULT < VARSIZE("ITEMSALES") && ITEMSALES:RESULT == 1 
+	LOCAL = RESULT
+	DRAWLINE
+	PRINTFORML %ITEMNAME:LOCAL%
+	TRYCALLFORM SOFT_EXPLAIN_{LOCAL}
+	DRAWLINE
+	IF ITEMPRICE:LOCAL > MONEY:1
+		PRINTW 마카가 부족합니다.
+		RESTART
+	ENDIF
+	PRINTL 구입하겠습니까? 
+
+	CALL INPUT_YN,"Yes","No",2
+
+	SELECTCASE RESULT
+		CASE 0
+			PRINTFORMW %조사처리(ITEMNAME:LOCAL,"를")% 구입했다
+			MONEY:1 -= ITEMPRICE:LOCAL
+			MONEY:4 += ITEMPRICE:LOCAL * 2
+			ITEM:LOCAL = 1
+			ITEMSALES:LOCAL = 0
+		CASE 1
+			RESTART
+	ENDSELECT
+
+ELSE
+	GOTO INPUT_LOOP
+ENDIF
+RESTART
+
+
+
+@EXCHANGE_ITEM
+#DIM 比較者
+DRAWLINE
+PRINTFORML 현재 {MONEY:1}마카가 있습니다.
+PRINTL 무엇과 교환하겠습니까?
+DRAWLINE
+
+FOR LOCAL,0,8
+	PRINTFORML [{LOCAL}] %GET_EQUIP(LOCAL)%
+NEXT
+PRINTL [8] 아이템
+DRAWLINE
+PRINTL [100] 그만둔다
+
+
+$INPUT_LOOP
+INPUT
+
+IF RESULT == 100
+	RETURN 0
+ELSEIF RESULT >= 0 && RESULT < 9
+	LOCAL = RESULT
+	CALL MAKE_EXCHANGEITEMLIST,RESULT
+	LOCAL:1 = RESULT
+ELSE
+	GOTO INPUT_LOOP
+ENDIF
+P = 0
+$PRINT_LIST
+DRAWLINE
+IF GETBIT(FLAG:정크숍설정,0) && LOCAL < 7
+	CALL PRINT_RPGITEMLIST_2,LOCAL:1,LOCAL,比較者
+ELSE
+	CALL PRINT_EXCHANGEITEMLIST,LOCAL:1
+ENDIF
+$INPUT_LOOP2
+INPUT
+LOCAL:2 = RESULT
+IF RESULT == 0
+	RESTART
+ELSEIF RESULT == 2 && GETBIT(FLAG:정크숍설정,0) && LOCAL < 7
+	P:1 = P
+	P = P:2
+	CALL INPUT_CHARA_LIST("비교할 캐릭터를 고르십시오", "CASTING_EQUIPMENT")
+	SIF RESULT != 1000
+		比較者 = RESULT
+	P:2 = P
+	P = P:1
+ELSEIF RESULT == 3 && GETBIT(FLAG:정크숍설정,0) && LOCAL < 7
+	比較者 = -1
+ELSEIF RESULT == 7 && P > 0
+	P -= 1
+	GOTO PRINT_LIST
+ELSEIF RESULT == 9 && P < LOCAL:1/10 && GETBIT(FLAG:정크숍설정,0) && LOCAL < 7
+	P += 1
+	GOTO PRINT_LIST
+ELSEIF RESULT == 9 && P < LOCAL:1/20
+	P += 1
+	GOTO PRINT_LIST
+ELSEIF MATCH(아이템リスト,RESULT,0)> 0
+	DRAWLINE
+	IF LOCAL < 7
+		CALL 장비설명,LOCAL:2
+		LOCAL:3 = 999
+		IF ITEM:(LOCAL:2) >= 999
+			PRINTW 더 이상 가질 수 없습니다
+			GOTO PRINT_LIST
+		ENDIF
+	ELSEIF LOCAL == 7
+		CALLFORM 장비해설_{LOCAL:2}
+		PRINTL
+		LOCAL:3 = 999
+		IF ITEM:(LOCAL:2) >= 999
+			PRINTW 더 이상 가질 수 없습니다
+			GOTO PRINT_LIST
+		ENDIF
+	ELSE
+		CALLFORM 최대소지수_{COUNT_ITEMMAX(LOCAL:2)}
+		LOCAL:3 = RESULT
+		PRINTFORML %ITEMNAME:(LOCAL:2),20,LEFT%   소지数：{ITEM:(LOCAL:2)}/{LOCAL:3}
+		SIF FLAG:스킬속성표시설정 == 1
+			CALL SKILL_EXPLAIN_PERFORMANCE, LOCAL:2 + 2000, -1
+		TRYCALLFORM SKILL_EXPLAIN_{LOCAL:2+2000}
+		DRAWLINE
+		IF ITEM:(LOCAL:2) >= LOCAL:3
+			PRINTW 더 이상 가질 수 없습니다
+			GOTO PRINT_LIST
+		ENDIF
+	ENDIF
+
+	IF MONEY:1 < ITEMPRICE:(LOCAL:2)
+		PRINTW 마카가 부족합니다
+		GOTO PRINT_LIST
+	ELSE
+		PRINTFORML 몇 개 구입하겠습니까? (현재 {ITEM:(LOCAL:2)}개 소지)
+		CALL INPUT_MANY(0,MIN(MONEY:1/ITEMPRICE:(LOCAL:2),LOCAL:3 - ITEM:(LOCAL:2)))
+		IF RESULT == 0
+			GOTO PRINT_LIST
+		ELSE
+			MONEY:1 -= (RESULT * ITEMPRICE:(LOCAL:2))
+			MONEY:4 += (RESULT * ITEMPRICE:(LOCAL:2) * 2)
+			IF RESULT == 1
+				PRINTFORMW ＜%조사처리(ITEMNAME:(LOCAL:2),"를")% 구입했습니다＞
+			ELSE
+				PRINTFORMW ＜%조사처리(ITEMNAME:(LOCAL:2),"를")% {RESULT}개 구입했습니다＞
+			ENDIF
+			CALL GET_ITEM,LOCAL:2,RESULT
+			IF GETBIT(FLAG:정크숍설정,0) && LOCAL < 7 && 比較者 > -1 && 比較者 < CHARANUM
+				RESULT = 0
+				TRYCALLFORM 장비조건_{LOCAL:2},比較者
+				IF RESULT > 0
+					PRINTFORMW %CALLNAME:比較者%에게 장비합니까？　[0]네　[1]아니요
+					INPUT
+					SIF RESULT == 0
+						CALL 장비변경 , 比較者 , LOCAL , LOCAL:2
+				ENDIF
+			ENDIF
+			GOTO PRINT_LIST
+		ENDIF
+	ENDIF
+ELSE
+	GOTO INPUT_LOOP2
+ENDIF
+GOTO PRINT_LIST
+
+
+
+
+
+@MAKE_EXCHANGEITEMLIST,ARG
+VARSET 아이템リスト,-1
+LOCAL:1 = 0
+IF ARG < 8
+	FOR LOCAL,2000,VARSIZE("ITEM")
+		SIF ITEMPRICE:LOCAL == 0
+			CONTINUE
+		RESULT = 12
+		TRYCCALLFORM 장비箇所_{LOCAL}
+			IF RESULT == ARG
+				RESULT = 0
+				TRYCALLFORM EQUIP_EXCHANGE_{LOCAL}
+				SIF RESULT == 0
+					CONTINUE
+				아이템リスト:(LOCAL:1) = LOCAL
+				LOCAL:1 += 1
+			ENDIF
+		CATCH
+		ENDCATCH
+	NEXT
+ELSE
+	FOR LOCAL,1001,2000
+		SIF ITEMPRICE:LOCAL == 0
+			CONTINUE
+		RESULT = 0
+		TRYCALLFORM ITEM_EXCHANGE_{LOCAL+2000}
+		SIF RESULT == 0
+			CONTINUE
+		아이템リスト:(LOCAL:1) = LOCAL
+		LOCAL:1 += 1
+	NEXT
+ENDIF
+RETURN LOCAL:1
+
+@PRINT_EXCHANGEITEMLIST,ARG
+PRINTFORML 교환할 아이템을 선택해주세요　＜page.{P + 1}＞
+PRINTFORML {MONEY:1}마카 소지중
+DRAWLINE
+FOR LOCAL,P*20,MIN(P*20+20,ARG)
+	PRINTFORM [{아이템リスト:LOCAL}] %ITEMNAME:(아이템リスト:LOCAL),20,LEFT% {ITEMPRICE:(아이템リスト:LOCAL),7} 마카　　
+	SIF LOCAL % 2 == 1
+		PRINTL
+NEXT
+PRINTL
+DRAWLINE
+PRINTFORMLC \@(P <= 0) ? %" " * 13% # [7]이전 페이지\@
+PRINTLC [0]돌아간다
+PRINTFORMLC \@(P >= ARG / 20) ? %" " * 13% # [9]다음 페이지\@
+
+
+
+@EXCHANGE_CLOTHES
+#DIM LCOUNT
+CUSTOMDRAWLINE =
+PRINTL 마네킹：
+PRINTL 「어서오세요. 본점에 있는 것은 아름다운 옷뿐. 지금이라면 특별히 키스마크를 찍어서 팔아드릴게요」
+DRAWLINE
+PRINTL
+PRINTL
+DRAWLINE
+FOR LCOUNT, 0, 12
+	PRINTL
+NEXT
+DRAWLINE
+PRINTL
+TWAIT 2000,0
+CLEARLINE 19
+$START
+PRINTL 「어때요? 아름다운 옷뿐이죠? 어느 것도 평범한 사람이 입기엔 아까운 물건이랍니다?」
+DRAWLINE
+PRINTFORML 현재 {MONEY:1}마카가 있습니다.
+PRINTL 무엇과 교환하겠습니까?
+DRAWLINE
+
+FOR LOCAL,0,12
+	PRINTFORML [{LOCAL}] %GET_CLOTHESNAME(LOCAL)%
+NEXT
+DRAWLINE
+PRINTL [100] 그만둔다
+
+
+$INPUT_LOOP
+INPUT
+IF RESULT == 100
+	CUSTOMDRAWLINE =
+	PRINTL 마네킹：
+	PRINTL 「당신은 좀 더 센스를 붙이는 게 좋겠네. 다음에 천천히 교육해줄게요. 잘 가요」
+	DRAWLINE
+	PRINTL
+	PRINTL
+	DRAWLINE
+	FOR LCOUNT, 0, 12
+		PRINTL
+	NEXT
+	DRAWLINE
+	PRINTL
+	TWAIT 2000,0
+	RETURN 0
+ELSEIF RESULT >= 0 && RESULT < 12
+	LOCAL = RESULT
+	CALL MAKE_CLOTHESLIST,RESULT
+	LOCAL:1 = RESULT
+ELSE
+	GOTO INPUT_LOOP
+ENDIF
+P = 0
+$PRINT_LIST
+DRAWLINE
+CALL PRINT_EXCHANGEITEMLIST,LOCAL:1
+$INPUT_LOOP2
+INPUT
+LOCAL:2 = RESULT
+IF RESULT == 0
+	CUSTOMDRAWLINE =
+	PRINTL 마네킹：
+	GOTO START
+ELSEIF RESULT == 7 && P > 0
+	P -= 1
+	GOTO PRINT_LIST
+ELSEIF RESULT == 9 && P < LOCAL:1/20
+	P += 1
+	GOTO PRINT_LIST
+ELSEIF MATCH(아이템リスト,RESULT,0)> 0
+	DRAWLINE
+	IF MONEY:1 < ITEMPRICE:(LOCAL:2)
+		PRINTW 마카가 부족합니다
+		GOTO PRINT_LIST
+	ELSE
+		PRINTFORMW %조사처리(ITEMNAME:(LOCAL:2),"를")% 구입했습니다
+		MONEY:1 -= (ITEMPRICE:(LOCAL:2))
+		MONEY:4 += (ITEMPRICE:(LOCAL:2)) * 2
+		ITEM:(LOCAL:2) += 1
+		CALL MAKE_CLOTHESLIST,LOCAL
+		LOCAL:1 = RESULT
+		GOTO PRINT_LIST
+	ENDIF
+ELSE
+	GOTO INPUT_LOOP2
+ENDIF
+GOTO PRINT_LIST
+
+
+@MAKE_CLOTHESLIST,ARG
+VARSET 아이템リスト,-1
+LOCAL:1 = 0
+	FOR LOCAL,6001,VARSIZE("ITEM")
+		SIF ITEMPRICE:LOCAL == 0
+			CONTINUE
+		SIF ITEM:LOCAL > 0
+			CONTINUE
+		RESULT = 12
+		TRYCCALLFORM CLOTHES_PART_{LOCAL-6000}
+			IF RESULT == ARG
+				아이템リスト:(LOCAL:1) = LOCAL
+				LOCAL:1 += 1
+			ENDIF
+		CATCH
+		ENDCATCH
+	NEXT
+RETURN LOCAL:1

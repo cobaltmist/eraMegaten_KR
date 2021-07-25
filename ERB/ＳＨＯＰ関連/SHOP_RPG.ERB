@@ -1,0 +1,1389 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		20xx/xx/xx		----					新規作成
+;	002		2010/12/28		旅人					纏め買い対応
+;	   		2011/01/02		旅人					複数화면に纏め買い対応
+;	003		2013/11/30		ひみつ					스킬속성표시の適用範囲拡大
+;	004		2019/05/29		名無し					ジャンクポイント関連추가(MONEY:4)
+;	005		2019/07/11		名無し					現金사용でしあわせチケットが貰えるように
+;	006		2019/01/13		Jガン					장비구입時に스테이터스を比較できるように
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+; 特記:
+;  メモが필요な変数一覧
+;  M:0		SHOP_RPG_2.ERB内の『화면モード関連』にある説明を参照
+;  M:1		同上
+;-------------------------------------------------
+
+
+@SHOPCOMABLE_115
+;---- EDIT 002 ADD START -------------------------
+;初回訪問フラグ:초기化
+M:1 = 0
+;---- EDIT 002 ADD END ---------------------------
+RESULT:1 = 3
+RESULTS = 정크숍
+RETURN 1
+
+
+@SHOP_COM_115
+;マウスUISHOPが有効
+IF MouseUIStore_Enable == 1
+	CALL MouseUIStore("JUNK")
+	RETURN RESULT
+ENDIF
+
+SIF ITEM:클리캡
+	ITEM:클리캡【착】 = 1
+SIF ITEM:유두캡
+	ITEM:유두캡【착】 = 1
+SIF ITEM:바이브
+	ITEM:바이브【착】 = 1
+SIF ITEM:애널바이브
+	ITEM:Ａ바이브【착】 = 1
+SIF ITEM:로터
+	ITEM:클리로터【착】 = 1
+	ITEM:유두로터【착】 = 1
+	ITEM:로터【착】 = 1
+	ITEM:애널로터【착】 = 1
+SIF ITEM:개목걸이	
+	ITEM:개목걸이【착】 = 1
+RESULT = 0
+CUSTOMDRAWLINE =
+PRINTL 점주：
+PRINTFORML 「뭐야 손님인가」
+DRAWLINE
+PRINTL
+PRINTL
+PRINTL
+DRAWLINE
+;ALIGNMENT CENTER
+PRINTL [CLICK]
+;ALIGNMENT LEFT
+TWAIT 2000,0
+CLEARLINE 8
+$SHOP_START
+PRINTL 점주：
+PRINTFORML \@ RESULT ? 「아직 무슨 볼 일이 더 있나?」#「무슨 용무지?」\@
+DRAWLINE
+;---- EDIT 002 ADD START -------------------------
+;화면モード:初回訪問時
+;CALL RPG_SHOP_SCREENMODE_DEFAULT
+
+;화면モード:표시
+CALL RPG_SHOP_SCREENMODE_PRINT
+;---- EDIT 002 ADD END ---------------------------
+IF FLAG:SHOP화면モード설정 == 0
+	PRINTFORML 장비자비교설정[802]\@ GETBIT(FLAG:정크숍설정,0) ? ON # OFF \@
+ELSE
+	PRINTL 
+ENDIF
+IF FLAG:ジャンクポイント不사용 == 0;+1
+	PRINTL JP사용  [801]전환
+ELSE
+	PRINTL JP비사용[801]전환
+ENDIF
+	
+PRINTL [1] 아이템 구입
+PRINTL [2] 아이템 매각
+PRINTL [9] 행복티켓 사용
+PRINTL 
+PRINTL [10] JP (정크포인트)라는건？
+DRAWLINE
+PRINTL [0] 가게를 나간다
+CALL INPUTINT(0,1,2,9,10,800,801,802)
+;---- EDIT 002 ADD START -------------------------
+;初回訪問フラグ:訪問済み
+M:1 = 1
+;---- EDIT 002 ADD END ---------------------------
+;---- EDIT 002 ADD START -------------------------
+IF RESULT == 0
+	CLEARLINE 14
+	PRINTL 점주：
+	PRINTL 「냉큼 돌아가」
+	DRAWLINE
+	PRINTL
+	PRINTL
+	PRINTL
+	DRAWLINE
+	PRINTL
+	TWAIT 2000,0
+	RETURN 0
+ELSEIF RESULT == 800
+	;화면モード:변경
+	CALL RPG_SHOP_SCREENMODE_CHANGE
+	RESULT = -1
+;---- EDIT 002 ADD END ---------------------------
+ELSEIF RESULT == 801
+	FLAG:ジャンクポイント不사용 = !FLAG:ジャンクポイント不사용
+	CUSTOMDRAWLINE =
+	GOTO SHOP_START
+ELSEIF RESULT == 802
+	INVERTBIT FLAG:정크숍설정,0
+	CUSTOMDRAWLINE =
+	GOTO SHOP_START
+ELSEIF RESULT == 1
+;---- EDIT 002 MOD START -------------------------
+;	CALL BUY_RPG
+
+	IF FLAG:SHOP화면モード설정 == 0
+		CALL BUY_RPG
+	ELSE
+		;아이템구입:通常 (0:ジャンクSHOP)
+		CALL RPG_SHOP_NOMAL,FLAG:SHOP화면モード설정,0
+	ENDIF
+;---- EDIT 002 MOD END ---------------------------
+ELSEIF RESULT == 2
+	CALL SALE_RPG
+ELSEIF RESULT == 9
+	CALL SIAWASE_TICKET
+ELSEIF RESULT == 10
+	PRINTL 점주：
+	PRINTW 「그건 여기서만 사용할 수 있는 포인트야」
+	PRINTW 「돈을 쓰거나 마카로 물건을 사면 쌓이지」
+	PRINTW 「팬텀에는 늘 신세를 지고 있으니까」
+	PRINTW 「우리 가게물건을 살때 포인트를 사용하면 그만큼은 깍아주도록 하마」
+	PRINTW 「물론 포인트가 모자란 만큼은 현금을 받을꺼지만」
+	PRINTW 「그리고 우리 가게에서 파는 물건을 다시 팔때는 정크포인트로 받게 될꺼야」
+	PRINTW 「팔던 물건을 다시 사들이면 우리가 돈을 못버니까 말이지」
+	CUSTOMDRAWLINE =
+	GOTO SHOP_START
+ELSE
+	CLEARLINE 1
+ENDIF
+IF RESULT == 0
+	DRAWLINE
+	PRINTL
+	PRINTL 점주：
+	PRINTL 「냉큼 돌아가」
+	DRAWLINE
+	PRINTL
+	PRINTL
+	PRINTL
+	DRAWLINE
+	PRINTL
+	TWAIT 2000,0
+	RETURN 0
+ENDIF
+IF RESULT == -1
+	CUSTOMDRAWLINE =
+	GOTO SHOP_START
+ENDIF
+
+@BUY_RPG
+#DIM 比較者
+PRINTFORML 무엇을 구입하겠습니까？		소지금 ￥{MONEY} \@!FLAG:ジャンクポイント不사용 ? 정크포인트 JP{MONEY:4} # \@
+DRAWLINE
+FOR LOCAL,0,8
+	PRINTFORML [{LOCAL}] %GET_EQUIP(LOCAL)%
+NEXT
+PRINTL [8] 아이템
+PRINTL [99] 돌아간다
+PRINTL [100] 가게를 나간다　[101]정렬조건변경
+
+$INPUT_LOOP
+INPUT
+
+IF RESULT == 99
+	RETURN -1
+ELSEIF RESULT == 100
+	RETURN 0
+ELSEIF RESULT == 101
+	CALL CHANGE_CONDITION_EQUIP_SORT
+	CALL EQUIP_SORT
+	RESTART
+ELSEIF RESULT >= 0 && RESULT < 9
+	LOCAL = RESULT
+	CALL MAKE_RPGITEMLIST,RESULT
+	LOCAL:1 = RESULT
+ELSE
+	GOTO INPUT_LOOP
+ENDIF
+P = 0
+$PRINT_LIST
+DRAWLINE
+IF GETBIT(FLAG:정크숍설정,0) && LOCAL < 7
+	CALL PRINT_RPGITEMLIST_2,LOCAL:1,LOCAL,比較者
+ELSE
+	CALL PRINT_RPGITEMLIST,LOCAL:1
+ENDIF
+$INPUT_LOOP2
+INPUT
+LOCAL:2 = RESULT
+IF RESULT == 0
+	RESTART
+ELSEIF RESULT == 1
+	CALL CHANGE_CONDITION_EQUIP_SORT
+	CALL EQUIP_SORT
+	GOTO PRINT_LIST
+ELSEIF RESULT == 2 && GETBIT(FLAG:정크숍설정,0) && LOCAL < 7
+	P:1 = P
+	P = P:2
+	CALL INPUT_CHARA_LIST("비교할 캐릭터를 선택하십시오", "CASTING_EQUIPMENT")
+	SIF RESULT != 1000
+		比較者 = RESULT
+	P:2 = P
+	P = P:1
+ELSEIF RESULT == 3 && GETBIT(FLAG:정크숍설정,0) && LOCAL < 7
+	比較者 = -1
+ELSEIF RESULT == 7 && P > 0
+	P -= 1
+	GOTO PRINT_LIST
+ELSEIF RESULT == 9 && P < (LOCAL:1-1)/10 && GETBIT(FLAG:정크숍설정,0) && LOCAL < 7
+	P += 1
+	GOTO PRINT_LIST
+ELSEIF RESULT == 9 && P < (LOCAL:1-1)/20
+	P += 1
+	GOTO PRINT_LIST
+ELSEIF MATCH(아이템リスト,RESULT,0)> 0
+	DRAWLINE
+	IF LOCAL < 7
+		CALL 장비설명,LOCAL:2
+		LOCAL:3 = 999
+		IF ITEM:(LOCAL:2) >= 999
+			PRINTW 더 이상 가질 수 없습니다
+			GOTO PRINT_LIST
+		ENDIF
+	ELSEIF LOCAL == 7
+		CALLFORM 장비해설_{LOCAL:2}
+		PRINTL
+		LOCAL:3 = 999
+		IF ITEM:(LOCAL:2) >= 999
+			PRINTW 더 이상 가질 수 없습니다
+			GOTO PRINT_LIST
+		ENDIF
+	ELSE
+		CALLFORM 최대소지수_{COUNT_ITEMMAX(LOCAL:2)}
+		LOCAL:3 = RESULT
+		PRINTFORML %ITEMNAME:(LOCAL:2),20,LEFT%   소지 수：{ITEM:(LOCAL:2)}/{LOCAL:3}
+		SIF FLAG:스킬속성표시설정 == 1
+			CALL SKILL_EXPLAIN_PERFORMANCE, LOCAL:2 + 2000, -1
+		TRYCALLFORM SKILL_EXPLAIN_{LOCAL:2+2000}
+		DRAWLINE
+		IF ITEM:(LOCAL:2) >= LOCAL:3
+			PRINTW 더 이상 가질 수 없습니다
+			GOTO PRINT_LIST
+		ENDIF
+	ENDIF
+	LOCAL:10 = MONEY
+	IF !FLAG:ジャンクポイント不사용
+		IF (MONEY + MONEY:4) < ITEMPRICE:(LOCAL:2)
+			PRINTW 돈이 부족합니다
+			GOTO PRINT_LIST
+		ELSE
+			PRINTFORML 몇 개 구입합니까? (현재 {ITEM:(LOCAL:2)}개 소지)
+			CALL INPUT_MANY(0,MIN((MONEY + MONEY:4)/ITEMPRICE:(LOCAL:2),LOCAL:3 - ITEM:(LOCAL:2)))
+			IF RESULT == 0
+				GOTO PRINT_LIST
+			ELSE
+				MONEY:4 -= (RESULT * ITEMPRICE:(LOCAL:2))
+				IF MONEY:4 < 0
+					MONEY += MONEY:4
+					MONEY:4 = 0
+				ENDIF
+				IF RESULT == 1
+					PRINTFORMW ＜%조사처리(ITEMNAME:(LOCAL:2),"를")% 구입했습니다＞
+				ELSE
+					PRINTFORMW ＜%조사처리(ITEMNAME:(LOCAL:2),"를")% {RESULT}개 구입했습니다＞
+				ENDIF
+				CALL GET_ITEM,LOCAL:2,RESULT
+				IF GETBIT(FLAG:정크숍설정,0) && LOCAL < 7 && 比較者 > -1 && 比較者 < CHARANUM
+					RESULT = 0
+					TRYCALLFORM 장비조건_{LOCAL:2},比較者
+					IF RESULT > 0
+						PRINTFORMW %CALLNAME:比較者%에 장비합니까？　[0]네　[1]아니요
+						INPUT
+						SIF RESULT == 0
+							CALL 장비변경 , 比較者 , LOCAL , LOCAL:2
+					ENDIF
+				ENDIF
+				IF LOCAL:10 - MONEY > 1000
+					ITEM:361 += (LOCAL:10 - MONEY)/1000
+					PRINTFORML {(LOCAL:10 - MONEY)/1000}매의 행복티켓을 손에 넣었다
+				ENDIF
+				GOTO PRINT_LIST
+			ENDIF
+		ENDIF
+	ELSE
+		IF MONEY < ITEMPRICE:(LOCAL:2)
+			PRINTW 돈이 부족합니다
+			GOTO PRINT_LIST
+		ELSE
+			PRINTFORML 몇 개 구입합니까？ (현재 {ITEM:(LOCAL:2)}개 소지)
+			CALL INPUT_MANY(0,MIN(MONEY/ITEMPRICE:(LOCAL:2),LOCAL:3 - ITEM:(LOCAL:2)))
+			IF RESULT == 0
+				GOTO PRINT_LIST
+			ELSE
+				MONEY -= (RESULT * ITEMPRICE:(LOCAL:2))
+				IF RESULT == 1
+					PRINTFORMW ＜%조사처리(ITEMNAME:(LOCAL:2),"를")% 구입했습니다＞
+				ELSE
+					PRINTFORMW ＜%조사처리(ITEMNAME:(LOCAL:2),"를")% {RESULT}개 구입했습니다＞
+				ENDIF
+				CALL GET_ITEM,LOCAL:2,RESULT
+				IF GETBIT(FLAG:정크숍설정,0) && LOCAL < 7 && 比較者 > -1 && 比較者 < CHARANUM
+					RESULT = 0
+					TRYCALLFORM 장비조건_{LOCAL:2},比較者
+					IF RESULT > 0
+						PRINTFORMW %CALLNAME:比較者%에 장비합니까？　[0]네　[1]아니요
+						INPUT
+						SIF RESULT == 0
+							CALL 장비변경 , 比較者 , LOCAL , LOCAL:2
+					ENDIF
+				ENDIF
+				IF LOCAL:10 - MONEY > 1000
+					ITEM:361 += (LOCAL:10 - MONEY)/1000
+					PRINTFORML {(LOCAL:10 - MONEY)/1000}매의 행복티켓을 손에 넣었다
+				ENDIF
+				GOTO PRINT_LIST
+			ENDIF
+		ENDIF
+	ENDIF
+ELSE
+	GOTO INPUT_LOOP2
+ENDIF
+GOTO PRINT_LIST
+
+
+@MAKE_RPGITEMLIST,ARG
+VARSET 아이템リスト,-1
+LOCAL:1 = 0
+IF ARG < 8
+	FOR LOCAL,2000,VARSIZE("ITEM")
+		SIF ITEMPRICE:LOCAL == 0
+			CONTINUE
+		RESULT = 12
+		TRYCCALLFORM 장비箇所_{LOCAL}
+			IF RESULT == ARG
+				TRYCCALLFORM 구입조건_{LOCAL}
+					IF RESULT == 1
+						아이템リスト:(LOCAL:1) = LOCAL
+						LOCAL:1 += 1
+					ENDIF
+				CATCH
+					CONTINUE
+				ENDCATCH
+			ENDIF
+		CATCH
+		ENDCATCH
+	NEXT
+ELSE
+	FOR LOCAL,1001,2000
+		SIF ITEMPRICE:LOCAL == 0
+			CONTINUE
+		TRYCCALLFORM 道具구입조건_{LOCAL+2000}
+			IF RESULT == 1
+				아이템リスト:(LOCAL:1) = LOCAL
+				LOCAL:1 += 1
+			ENDIF
+		CATCH
+			CONTINUE
+		ENDCATCH
+	NEXT
+ENDIF
+CALL EQUIP_SORT
+RETURN LOCAL:1
+
+@PRINT_RPGITEMLIST,ARG
+PRINTFORML 구입할 아이템을 선택하십시오　＜page.{P + 1}＞
+PRINTFORML 소지금 ￥{MONEY} \@!FLAG:ジャンクポイント不사용 ? 정크포인트 JP{MONEY:4} # \@
+DRAWLINE
+LOCAL:1 = 0
+FOR LOCAL,P*20,MIN(P*20+20,ARG)
+	PRINTFORM [{아이템リスト:LOCAL}] %ITEMNAME:(아이템リスト:LOCAL),20,LEFT% %"￥" + TOSTR(ITEMPRICE:(아이템リスト:LOCAL)),9 %　　
+	SIF LOCAL:1 % 2 == 1
+		PRINTL 
+	LOCAL:1 += 1
+NEXT
+SIF LOCAL:1 % 2 == 1
+	PRINTL 
+;PRINTL
+DRAWLINE
+PRINTFORMLC \@(P <= 0) ? %" " * 13% # [7]이전 페이지\@
+PRINTLC [0]돌아간다  [1]정렬조건변경
+PRINTFORMLC \@(P >= (ARG-1) / 20) ? %" " * 13% # [9]다음 페이지\@
+
+@PRINT_RPGITEMLIST_2,ARG,ARG:1,ARG:2,ARG:3 = 0
+#DIM 元パラメータ,65
+#DIM 比較結果,65
+#DIM 元스킬,33
+#DIM 元장비스킬,3
+#DIM 比較스킬,3
+;LOCAL:0 くり返し用1
+GETCOLOR
+;0	HP
+;1	MP
+;3~10	공격〜총명중
+;11~28	속성내성
+;29~50	이상내성
+;51~54	검情報
+;55 空き（검상태이상）
+;56~61	총情報
+;62 空き（총상태이상）
+;63 검종류
+;64 총종류
+SIF ARG:2 >= CHARANUM
+	ARG:2 = -1
+IF FLAG:SHOPコマンド == 115
+	PRINTFORML 구입할 아이템을 선택하십시오　＜page.{P + 1}＞
+	PRINTFORML 소지금 ￥{MONEY} \@!FLAG:ジャンクポイント不사용 ? 정크포인트 JP{MONEY:4} # \@
+ELSEIF FLAG:SHOPコマンド == 114
+	PRINTFORML 교환할 아이템을 선택하십시오　＜page.{P + 1}＞
+	PRINTFORML {MONEY:1}마카소지중
+ELSE
+	PRINTFORML 장비할 아이템을 선택하십시오　＜page.{P + 1}＞
+ENDIF
+PRINTFORML 비교자 \@ (ARG:2 >= 0) && (ARG:2 < CHARANUM) ? %CALLNAME:(ARG:2)% # 없음 \@
+;CALL SET_PICTURE , , , "소거"
+IF ARG:2 >= 0
+	CALL SYNC_STATUS(ARG:2)
+	元パラメータ:0 = MAXBASE:(ARG:2):ＨＰ
+	元パラメータ:1 = MAXBASE:(ARG:2):ＭＰ
+	FOR LOCAL,0,8
+		元パラメータ:(LOCAL + 3) = MAXBASE:(ARG:2):(GET_BATTLESTATUS(LOCAL))
+	NEXT
+	FOR LOCAL,0,18
+		元パラメータ:(LOCAL + 11) = MAXBASE:(ARG:2):(GET_TYPE(LOCAL))
+	NEXT
+	FOR LOCAL,0,21
+		元パラメータ:(LOCAL + 29) = MAXBASE:(ARG:2):(GET_STATE(LOCAL))
+	NEXT
+	元パラメータ:51 = ABL:(ARG:2):공격상성
+	元パラメータ:52 = ABL:(ARG:2):사거리
+	LOCAL:4 = (ABL:(ARG:2):최저공격횟수 + ABL:(ARG:2):최대공격횟수) * 5
+	元パラメータ:53 = LOCAL:4 * 10000 + ABL:(ARG:2):최대공격횟수 * 100 + ABL:(ARG:2):최저공격횟수
+	元パラメータ:54 = ABL:(ARG:2):공격범위
+	元パラメータ:55 = 0
+	SIF ABL:(ARG:2):추가효과 > 0 && ABL:(ARG:2):추가효과명중률 > 0
+		元パラメータ:55 = ABL:(ARG:2):추가효과명중률 * 10000 + ABL:(ARG:2):추가효과상성 * 100 + ABL:(ARG:2):추가효과
+		
+	CALLFORM 공격상성_{EQUIP:(ARG:2):총},ARG:2
+	元パラメータ:56 = RESULT
+	CALLFORM 사거리_{EQUIP:(ARG:2):총},ARG:2
+	元パラメータ:57 = RESULT
+	CALLFORM 최저공격횟수_{EQUIP:(ARG:2):총},ARG:2
+	LOCAL:4 = RESULT
+	CALLFORM 최대공격횟수_{EQUIP:(ARG:2):총},ARG:2
+	元パラメータ:58 = (LOCAL:4 + RESULT) * 10 / 2 * 10000 + RESULT * 100 + LOCAL:4
+	CALLFORM 공격범위_{EQUIP:(ARG:2):총},ARG:2
+	元パラメータ:59 = RESULT
+	RESULT = 0
+	TRYCALLFORM GUN_RANDOMTARGET_{EQUIP:(ARG:2):총}
+	SIF RESULT
+		元パラメータ:59 = 元パラメータ:59 * 10 + 1
+	RESULT = 0
+	TRYCALLFORM 특수탄창_{EQUIP:(ARG:2):총},ARG:2
+	元パラメータ:60 = RESULT
+	元パラメータ:60 = MIN(元パラメータ:60 , 6)
+	RESULT = 0
+	TRYCALLFORM 속도보정_{EQUIP:(ARG:2):총}
+	元パラメータ:61 = RESULT
+	
+	元パラメータ:62 = 0
+	TRYCCALLFORM 추가효과_{EQUIP:(ARG:2):총}
+		IF RESULT > 0
+			LOCAL:4 = RESULT
+			TRYCCALLFORM 추가효과명중률_{EQUIP:(ARG:2):총}
+				IF RESULT > 0
+					LOCAL:5 = RESULT
+					TRYCALLFORM 추가효과상성_{EQUIP:(ARG:2):총}
+					元パラメータ:62 = LOCAL:5 * 10000 + RESULT * 100 + LOCAL:4
+				ENDIF
+			CATCH
+			ENDCATCH
+		ENDIF
+	CATCH
+	ENDCATCH
+	
+	TRYCCALLFORM 검타입_{EQUIP:(ARG:2):검}
+		元パラメータ:63 = RESULT
+	CATCH
+		元パラメータ:63 = 0
+	ENDCATCH
+	TRYCCALLFORM 검타입_{EQUIP:(ARG:2):검}
+		元パラメータ:63 = RESULT
+	CATCH
+		元パラメータ:63 = 0
+	ENDCATCH
+	TRYCCALLFORM 총타입_{EQUIP:(ARG:2):총}
+		元パラメータ:64 = RESULT
+	CATCH
+		元パラメータ:64 = 0
+	ENDCATCH
+	
+	LOCAL:5 = 8
+	SIF TALENT:(ARG:2):이능자 || TALENT:(ARG:2):달인 || TALENT:(ARG:2):인수라
+		LOCAL:5 = 12
+	FOR LOCAL:4,0,12
+		LOCALS = 스킬{LOCAL:4 + 1}
+		元스킬:(LOCAL:4) = ABL:(ARG:2):LOCALS
+		SIF LOCAL:4 >= LOCAL:5
+			元스킬:(LOCAL:4) = 0
+	NEXT
+	FOR LOCAL:4,0,21
+		LOCALS = 장비스킬{LOCAL:4 + 1}
+		元스킬:(LOCAL:4 + 12) = ABL:(ARG:2):LOCALS
+	NEXT
+	FOR LOCAL:4,0,3
+		RESULT = 0
+		TRYCALLFORM 장비추가스킬_{아이템リスト:LOCAL},LOCAL:4,ARG:2
+		元장비스킬:(LOCAL:4) = RESULT
+	NEXT
+	LOCAL:2 = EQUIP:(ARG:2):(GET_EQUIP(ARG:1))
+	LOCAL:10 = 1
+ELSE
+	VARSET 元パラメータ,0
+	VARSET 元스킬,0
+	VARSET 元장비스킬,0
+	FOR LOCAL,0,18
+		元パラメータ:(LOCAL + 11) = 100
+	NEXT
+	LOCAL:10 = 0
+ENDIF
+IF FLAG:SHOPコマンド == 115
+	LOCALS = ￥値段
+ELSE
+	LOCALS = 마카　
+ENDIF
+VARSET A,-1
+LOCAL:3 = 0
+IF FLAG:SHOPコマンド != 114 && FLAG:SHOPコマンド != 115 && ARG:1 == 0
+		A:(LOCAL:3 ++) = 3
+		A:(LOCAL:3 ++) = 4
+		A:(LOCAL:3 ++) = 7
+		A:(LOCAL:3 ++) = 8
+		A:(LOCAL:3 ++) = 51
+		A:(LOCAL:3 ++) = 53
+		A:(LOCAL:3 ++) = 54
+		A:(LOCAL:3 ++) = 52
+		A:(LOCAL:3 ++) = 63
+		A:(LOCAL:3 ++) = 55
+		A:(LOCAL:3 ++) = 5
+		A:(LOCAL:3 ++) = 6
+		A:(LOCAL:3 ++) = 9
+		A:(LOCAL:3 ++) = 10
+		A:(LOCAL:3 ++) = 200
+		A:(LOCAL:3 ++) = 0
+		A:(LOCAL:3 ++) = 1
+		A:(LOCAL:3 ++) = 90
+		A:(LOCAL:3 ++) = 201
+		A:(LOCAL:3 ++) = 11
+		A:(LOCAL:3 ++) = 29
+		PRINTL 　　　　　　　　　　　　　　|공격|명중|마위|마효|속성|공격횟수 |범위|거리|종류|이상부여　　　|방어|회피|총공|총명|
+		PRINTL 　　　　　　　　　　　　　　|ＨＰ|ＭＰ|스킬１　　　　　　|스킬２　　　　　　|스킬３　　　　　　|
+		PRINTL 　　　　　　　　　　　　　　|공격내성　　　　　　　　　　　　　　|상태이상내성　　　　　　　　　　　|
+ELSEIF FLAG:SHOPコマンド != 114 && FLAG:SHOPコマンド != 115 && ARG:1 == 1
+		A:(LOCAL:3 ++) = 9
+		A:(LOCAL:3 ++) = 10
+		A:(LOCAL:3 ++) = 56
+		A:(LOCAL:3 ++) = 58
+		A:(LOCAL:3 ++) = 59
+		A:(LOCAL:3 ++) = 57
+		A:(LOCAL:3 ++) = 64
+		A:(LOCAL:3 ++) = 62
+		A:(LOCAL:3 ++) = 3
+		A:(LOCAL:3 ++) = 4
+		A:(LOCAL:3 ++) = 5
+		A:(LOCAL:3 ++) = 6
+		A:(LOCAL:3 ++) = 7
+		A:(LOCAL:3 ++) = 8
+		A:(LOCAL:3 ++) = 200
+		A:(LOCAL:3 ++) = 60
+		A:(LOCAL:3 ++) = 61
+		A:(LOCAL:3 ++) = 0
+		A:(LOCAL:3 ++) = 1
+		A:(LOCAL:3 ++) = 90
+		A:(LOCAL:3 ++) = 201
+		A:(LOCAL:3 ++) = 11
+		A:(LOCAL:3 ++) = 29
+		PRINTL 　　　　　　　　　　　　　　|총공|총명|속성|공격횟수 |범위|거리|종류|이상부여　　　|공격|명중|방어|회피|마위|마효|
+		PRINTL 　　　　　　　　　　　　　　|탄창|속도|ＨＰ|ＭＰ|스킬１　　　　　　|스킬２　　　　　　|스킬３　　　　　　|
+		PRINTL 　　　　　　　　　　　　　　|공격내성　　　　　　　　　　　　　　|상태이상내성　　　　　　　　　　　|
+ELSEIF FLAG:SHOPコマンド != 114 && FLAG:SHOPコマンド != 115
+		A:(LOCAL:3 ++) = 5
+		A:(LOCAL:3 ++) = 6
+		A:(LOCAL:3 ++) = 8
+		A:(LOCAL:3 ++) = 0
+		A:(LOCAL:3 ++) = 1
+		A:(LOCAL:3 ++) = 3
+		A:(LOCAL:3 ++) = 4
+		A:(LOCAL:3 ++) = 7
+		A:(LOCAL:3 ++) = 9
+		A:(LOCAL:3 ++) = 10
+		A:(LOCAL:3 ++) = 200
+		A:(LOCAL:3 ++) = 90
+		A:(LOCAL:3 ++) = 201
+		A:(LOCAL:3 ++) = 11
+		A:(LOCAL:3 ++) = 29
+		PRINTL 　　　　　　　　　　　　　　|방어|회피|마효|ＨＰ|ＭＰ|공격|명중|마위|총공|총명|
+		PRINTL 　　　　　　　　　　　　　　|스킬１　　　　　　|스킬２　　　　　　|스킬３　　　　　　|
+		PRINTL 　　　　　　　　　　　　　　|공격내성　　　　　　　　　　　　　　|상태이상내성　　　　　　　　　　　|
+ELSEIF ARG:1 == 0
+		A:(LOCAL:3 ++) = 3
+		A:(LOCAL:3 ++) = 4
+		A:(LOCAL:3 ++) = 7
+		A:(LOCAL:3 ++) = 8
+		A:(LOCAL:3 ++) = 51
+		A:(LOCAL:3 ++) = 53
+		A:(LOCAL:3 ++) = 54
+		A:(LOCAL:3 ++) = 52
+		A:(LOCAL:3 ++) = 63
+		A:(LOCAL:3 ++) = 55
+		A:(LOCAL:3 ++) = 100
+		IF ARG:2 >= 0
+			A:(LOCAL:3 ++) = 120
+			A:(LOCAL:3 ++) = 0
+			A:(LOCAL:3 ++) = 1
+		ELSE
+			A:(LOCAL:3 ++) = 112
+			A:(LOCAL:3 ++) = 2
+		ENDIF
+		A:(LOCAL:3 ++) = 5
+		A:(LOCAL:3 ++) = 6
+		A:(LOCAL:3 ++) = 9
+		A:(LOCAL:3 ++) = 10
+		PRINTL 　　　　　　　　　　　　　　|공격|명중|마위|마효|속성|공격횟수 |범위|거리|종류|이상부여　　　|
+		IF ARG:2 >= 0
+			PRINTFORML 　　　　　　　　　　　　　　|소지수|%LOCALS%|　　　　　　　　　　|ＨＰ|ＭＰ|방어|회피|총공|총명|
+		ELSE
+			PRINTFORML 　　　　　　　　　　　　　　|소지수|%LOCALS%|　　　　　　|힘|지|마|인|속|운|방어|회피|총공|총명|
+		ENDIF
+		;　　　[2000]아이うえお아이うえお　|공격|명중|마위|마효|상성| 9-10 9.5|범위|거리|종류|FREEZE 10 빙결||||||||||||||
+		;　　　　　　　　　　　　　　　　　|100|1.000.000|　　　　　　　　　　|ＨＰ|ＭＰ|방어|회피|총공|총명||||||||||||||||
+		;　　　　　　　　　　　　　　　　　|100|1.000.000|　　　　　　|힘|지|마|인|속|운|방어|회피|총공|총명||||||||||||||||
+ELSEIF ARG:1 == 1
+		A:(LOCAL:3 ++) = 9
+		A:(LOCAL:3 ++) = 10
+		A:(LOCAL:3 ++) = 56
+		A:(LOCAL:3 ++) = 58
+		A:(LOCAL:3 ++) = 59
+		A:(LOCAL:3 ++) = 57
+		A:(LOCAL:3 ++) = 60
+		A:(LOCAL:3 ++) = 61
+		A:(LOCAL:3 ++) = 64
+		A:(LOCAL:3 ++) = 62
+		A:(LOCAL:3 ++) = 100
+		IF ARG:2 >= 0
+			A:(LOCAL:3 ++) = 110
+			A:(LOCAL:3 ++) = 0
+			A:(LOCAL:3 ++) = 1
+		ELSE
+			A:(LOCAL:3 ++) = 102
+			A:(LOCAL:3 ++) = 2
+		ENDIF
+		A:(LOCAL:3 ++) = 3
+		A:(LOCAL:3 ++) = 4
+		A:(LOCAL:3 ++) = 5
+		A:(LOCAL:3 ++) = 6
+		A:(LOCAL:3 ++) = 7
+		A:(LOCAL:3 ++) = 8
+		PRINTL 　　　　　　　　　　　　　　|총공|총명|상성|공격횟수 |범위|거리|탄창|속도|종류|이상부여　　　|
+		IF ARG:2 >= 0
+			PRINTFORML 　　　　　　　　　　　　　　|소지수|%LOCALS%|　　　　　|ＨＰ|ＭＰ|공격|명중|마위|마효|방어|회피|
+		ELSE
+			PRINTFORML 　　　　　　　　　　　　　　|소지수|%LOCALS%|　|힘|지|마|인|속|운|공격|명중|마위|마효|방어|회피|
+		ENDIF
+ELSE
+		A:(LOCAL:3 ++) = 5
+		A:(LOCAL:3 ++) = 6
+		A:(LOCAL:3 ++) = 8
+		A:(LOCAL:3 ++) = 3
+		A:(LOCAL:3 ++) = 4
+		A:(LOCAL:3 ++) = 7
+		A:(LOCAL:3 ++) = 101
+		A:(LOCAL:3 ++) = 9
+		
+		A:(LOCAL:3 ++) = 11
+		A:(LOCAL:3 ++) = 100
+		IF ARG:2 >= 0
+			A:(LOCAL:3 ++) = 107
+			A:(LOCAL:3 ++) = 0
+			A:(LOCAL:3 ++) = 1
+		ELSE
+			A:(LOCAL:3 ++) = 2
+		ENDIF
+		A:(LOCAL:3 ++) = 10
+		A:(LOCAL:3 ++) = 29
+		PRINTL 　　　　　　　　　　　　　　|방어|회피|마효|공격|명중|마위| |총공|공격내성　　　　　　　　　　　　　　|
+		IF ARG:2 >= 0
+			PRINTFORML 　　　　　　　　　　　　　　|소지수|%LOCALS%|　　　 |ＨＰ|ＭＰ|총명|상태이상내성　　　　　　　　　　　|
+		ELSE
+			PRINTFORML 　　　　　　　　　　　　　　|소지수|%LOCALS%|힘|지|마|인|속|운|총명|상태이상내성　　　　　　　　　　　|
+		ENDIF
+	
+ENDIF
+IF LOCAL:10 == 1
+	IF FLAG:SHOPコマンド == 114 || FLAG:SHOPコマンド == 115 || ARG:3 == 1
+		PRINT 현파라메터　　　　　　　　　|
+	ELSE
+		PRINT 변경예정파라메터　　　　　　|
+	ENDIF
+	GOTO パラ표시
+	$戻り
+	SIF 元パラメータ:53 > 0
+		元パラメータ:53 = 元パラメータ:53 / 10000
+	SIF 元パラメータ:58 > 0
+		元パラメータ:58 = 元パラメータ:58 / 10000
+	SIF 元パラメータ:55 > 0
+		元パラメータ:55 = 元パラメータ:55 % 100
+	SIF 元パラメータ:62 > 0
+		元パラメータ:62 = 元パラメータ:62 % 100
+	LOCAL:10 = 0
+ENDIF
+DRAWLINE
+LOCAL:1 = 0
+FOR LOCAL,P*10,MIN(P*10+10,ARG)
+	RESETCOLOR
+	LOCAL:10 = LOCAL:11
+	PRINTFORM [{아이템リスト:LOCAL,4}]
+	IF ARG:2 >= 0
+		EQUIP:(ARG:2):(GET_EQUIP(ARG:1)) = 아이템リスト:LOCAL
+		CALL SYNC_STATUS(ARG:2)
+		比較結果:0 = MAXBASE:(ARG:2):ＨＰ - 元パラメータ:0
+		比較結果:1 = MAXBASE:(ARG:2):ＭＰ - 元パラメータ:1
+		FOR LOCAL:4,0,8
+			比較結果:(LOCAL:4 + 3) = MAXBASE:(ARG:2):(GET_BATTLESTATUS(LOCAL:4)) - 元パラメータ:(LOCAL:4 + 3)
+		NEXT
+		FOR LOCAL:4,0,18
+			比較結果:(LOCAL:4 + 11) = MAXBASE:(ARG:2):(GET_TYPE(LOCAL:4))
+		NEXT
+		FOR LOCAL:4,0,21
+			比較結果:(LOCAL:4 + 29) = MAXBASE:(ARG:2):(GET_STATE(LOCAL:4))
+		NEXT
+		比較結果:51 = ABL:(ARG:2):공격상성
+		比較結果:52 = ABL:(ARG:2):사거리
+		LOCAL:4 = (ABL:(ARG:2):최저공격횟수 + ABL:(ARG:2):최대공격횟수) * 5
+		比較結果:53 = LOCAL:4 * 10000 + ABL:(ARG:2):최대공격횟수 * 100 + ABL:(ARG:2):최저공격횟수
+		比較結果:54 = ABL:(ARG:2):공격범위
+		比較結果:55 = 0
+		SIF ABL:(ARG:2):추가효과 > 0 && ABL:(ARG:2):추가효과명중률 > 0
+			比較結果:55 = ABL:(ARG:2):추가효과명중률 * 10000 + ABL:(ARG:2):추가효과상성 * 100 + ABL:(ARG:2):추가효과
+		CALLFORM 공격상성_{EQUIP:(ARG:2):총},ARG:2
+		比較結果:56 = RESULT
+		CALLFORM 사거리_{EQUIP:(ARG:2):총},ARG:2
+		比較結果:57 = RESULT
+		CALLFORM 최저공격횟수_{EQUIP:(ARG:2):총},ARG:2
+		LOCAL:4 = RESULT
+		CALLFORM 최대공격횟수_{EQUIP:(ARG:2):총},ARG:2
+		比較結果:58 = (LOCAL:4 + RESULT) * 10 / 2 * 10000 + RESULT * 100 + LOCAL:4
+		CALLFORM 공격범위_{EQUIP:(ARG:2):총},ARG:2
+		比較結果:59 = RESULT
+		RESULT = 0
+		TRYCALLFORM GUN_RANDOMTARGET_{EQUIP:(ARG:2):총}
+		SIF RESULT
+			比較結果:59 = 比較結果:59 * 10 + 1
+		RESULT = 0
+		TRYCALLFORM 특수탄창_{EQUIP:(ARG:2):총},ARG:2
+		比較結果:60 = MAX(RESULT , 0)
+		比較結果:60 = MIN(比較結果:60 , 6)
+		RESULT = 0
+		TRYCALLFORM 속도보정_{EQUIP:(ARG:2):총}
+		比較結果:61 = RESULT
+		
+		比較結果:62 = 0
+		TRYCCALLFORM 추가효과_{EQUIP:(ARG:2):총}
+			IF RESULT > 0
+				LOCAL:4 = RESULT
+				TRYCCALLFORM 추가효과명중률_{EQUIP:(ARG:2):총}
+					IF RESULT > 0
+						LOCAL:5 = RESULT
+						TRYCALLFORM 추가효과상성_{EQUIP:(ARG:2):총}
+						比較結果:62 = LOCAL:5 * 10000 + RESULT * 100 + LOCAL:4
+					ENDIF
+				CATCH
+				ENDCATCH
+			ENDIF
+		CATCH
+		ENDCATCH
+	
+		TRYCCALLFORM 검타입_{EQUIP:(ARG:2):검}
+			比較結果:63 = RESULT
+		CATCH
+			比較結果:63 = 0
+		ENDCATCH
+		TRYCCALLFORM 총타입_{EQUIP:(ARG:2):총}
+			比較結果:64 = RESULT
+		CATCH
+			比較結果:64 = 0
+		ENDCATCH
+		FOR LOCAL:4,0,3
+			RESULT = 0
+			TRYCALLFORM 장비추가스킬_{EQUIP:(ARG:2):(GET_EQUIP(ARG:1))},LOCAL:4,ARG:2
+			比較스킬:(LOCAL:4) = RESULT
+		NEXT
+		
+		RESULT = 0
+		TRYCALLFORM 장비조건_{아이템リスト:LOCAL},ARG:2
+		SIF RESULT < 1
+			SETCOLOR COLOR("灰色")
+		SIF LOCAL:2 == 아이템リスト:LOCAL
+			SETCOLOR COLOR("하늘색")
+	ELSE
+		VARSET 比較結果,0
+		VARSET 比較스킬,0
+		FOR LOCAL:4,0,6
+			CALLFORM 전투능력수정_{아이템リスト:LOCAL},LOCAL:4,ARG:2
+			比較結果:(LOCAL:4 + 3) = RESULT
+		NEXT
+		TRYCCALLFORM 총공격_{아이템リスト:LOCAL}
+			比較結果:9 = RESULT
+		CATCH
+			比較結果:9 = 0
+		ENDCATCH
+		TRYCCALLFORM 총명중_{아이템リスト:LOCAL}
+			比較結果:10 = RESULT
+		CATCH
+			比較結果:10 = 0
+		ENDCATCH
+		FOR LOCAL:4,0,18
+			CALLFORM 방어상성_{아이템リスト:LOCAL},LOCAL:4,ARG:2
+			比較結果:(LOCAL:4 + 11) = RESULT
+		NEXT
+		FOR LOCAL:4,0,21
+			TRYCCALLFORM バステ내성_{아이템リスト:LOCAL},LOCAL:4,ARG:2
+				比較結果:(LOCAL:4 + 29) = RESULT
+			CATCH
+				比較結果:(LOCAL:4 + 29) = 0
+			ENDCATCH
+		NEXT
+		IF ARG:1 == 0
+			CALLFORM 공격상성_{아이템リスト:LOCAL},ARG:2
+			比較結果:51 = RESULT
+			CALLFORM 사거리_{아이템リスト:LOCAL},ARG:2
+			比較結果:52 = RESULT
+			CALLFORM 최저공격횟수_{아이템リスト:LOCAL},ARG:2
+			LOCAL:4 = RESULT
+			CALLFORM 최대공격횟수_{아이템リスト:LOCAL},ARG:2
+			比較結果:53 = (LOCAL:4 + RESULT) * 10 / 2 * 10000 + RESULT * 100 + LOCAL:4
+			CALLFORM 공격범위_{아이템リスト:LOCAL},ARG:2
+			比較結果:54 = RESULT
+			FOR LOCAL:4,51,55
+				元パラメータ:(LOCAL:4) = 比較結果:(LOCAL:4)
+			NEXT
+			元パラメータ:53 = 比較結果:53 / 10000
+			TRYCCALLFORM 추가효과_{아이템リスト:LOCAL}
+				IF RESULT > 0
+					LOCAL:4 = RESULT
+					元パラメータ:55 = RESULT
+					TRYCCALLFORM 추가효과명중률_{아이템リスト:LOCAL}
+						IF RESULT > 0
+							LOCAL:5 = RESULT
+							TRYCALLFORM 추가효과상성_{아이템リスト:LOCAL}
+							比較結果:55 = LOCAL:5 * 10000 + RESULT * 100 + LOCAL:4
+						ENDIF
+					CATCH
+					ENDCATCH
+				ENDIF
+			CATCH
+			ENDCATCH
+		ELSEIF ARG:1 == 1
+			CALLFORM 공격상성_{아이템リスト:LOCAL},ARG:2
+			比較結果:56 = RESULT
+			CALLFORM 사거리_{아이템リスト:LOCAL},ARG:2
+			比較結果:57 = RESULT
+			CALLFORM 최저공격횟수_{아이템リスト:LOCAL},ARG:2
+			LOCAL:4 = RESULT
+			CALLFORM 최대공격횟수_{아이템リスト:LOCAL},ARG:2
+			比較結果:58 = (LOCAL:4 + RESULT) * 10 / 2 * 10000 + RESULT * 100 + LOCAL:4
+			CALLFORM 공격범위_{아이템リスト:LOCAL},ARG:2
+			比較結果:59 = RESULT
+			RESULT = 0
+			TRYCALLFORM GUN_RANDOMTARGET_{아이템リスト:LOCAL}
+			SIF RESULT
+				比較結果:59 = 比較結果:59 * 10 + 1
+			RESULT = 0
+			TRYCALLFORM 특수탄창_{아이템リスト:LOCAL},ARG:2
+			比較結果:60 = MAX(RESULT , 0)
+			比較結果:60 = MIN(比較結果:60 , 6)
+			RESULT = 0
+			TRYCALLFORM 속도보정_{아이템リスト:LOCAL}
+			比較結果:61 = RESULT
+			FOR LOCAL:4,56,62
+				元パラメータ:(LOCAL:4) = 比較結果:(LOCAL:4)
+			NEXT
+			元パラメータ:58 = 比較結果:58 / 10000
+			TRYCCALLFORM 추가효과_{아이템リスト:LOCAL}
+				IF RESULT > 0
+					LOCAL:4 = RESULT
+					元パラメータ:62 = RESULT
+					TRYCCALLFORM 추가효과명중률_{아이템リスト:LOCAL}
+						IF RESULT > 0
+							LOCAL:5 = RESULT
+							TRYCALLFORM 추가효과상성_{아이템リスト:LOCAL}
+							比較結果:62 = LOCAL:5 * 10000 + RESULT * 100 + LOCAL:4
+						ENDIF
+					CATCH
+					ENDCATCH
+				ENDIF
+			CATCH
+			ENDCATCH
+		ENDIF
+		TRYCCALLFORM 검타입_{아이템リスト:LOCAL}
+			比較結果:63 = RESULT
+		CATCH
+			比較結果:63 = 0
+		ENDCATCH
+		TRYCCALLFORM 총타입_{아이템リスト:LOCAL}
+			比較結果:64 = RESULT
+		CATCH
+			比較結果:64 = 0
+		ENDCATCH
+		FOR LOCAL:4,0,3
+			RESULT = 0
+			TRYCALLFORM 장비추가스킬_{아이템リスト:LOCAL},LOCAL:4,ARG:2
+			比較스킬:(LOCAL:4) = RESULT
+		NEXT
+	ENDIF
+	LOCALS = %장비의명칭(아이템リスト:LOCAL)%
+	STRLENS LOCALS
+	IF RESULT > 20
+		SUBSTRING LOCALS,0,18
+		LOCALS = %RESULTS%..
+	ENDIF
+	PRINTFORM %LOCALS,22,LEFT%
+	RESETCOLOR
+	PRINTFORM |
+	$パラ표시
+	FOR LOCAL:3,0,65
+		SELECTCASE A:(LOCAL:3)
+		CASE -1
+			BREAK
+		CASE 2
+			FOR LOCAL:4,1,7
+				RESULT = 0
+				TRYCALLFORM 기본능력수정_{아이템リスト:LOCAL},LOCAL:4,ARG:2
+				SIF RESULT < 0
+					SETCOLOR COLOR("붉은색")
+				PRINTFORM {ABS(RESULT),2}
+				RESETCOLOR
+				SIF LOCAL:4 < 6
+					PRINTFORM |
+			NEXT
+		CASE IS < 11
+			IF LOCAL:10 == 1
+				SIF 元パラメータ:(A:(LOCAL:3)) < 0
+					SETCOLOR COLOR("붉은색")
+				LOCALS = {ABS(元パラメータ:(A:(LOCAL:3))),4}
+			ELSEIF ARG:2 < 0
+				SIF 比較結果:(A:(LOCAL:3)) < 0
+					SETCOLOR COLOR("붉은색")
+				LOCALS = {ABS(比較結果:(A:(LOCAL:3))),4}
+			ELSEIF 比較結果:(A:(LOCAL:3)) > 0
+				SETCOLOR COLOR("하늘색")
+				LOCALS = ^{ABS(比較結果:(A:(LOCAL:3))),3}
+			ELSEIF 比較結果:(A:(LOCAL:3)) < 0
+				SETCOLOR COLOR("붉은색")
+				LOCALS = v{ABS(比較結果:(A:(LOCAL:3))),3}
+			ELSE
+				LOCALS = 　 0
+			ENDIF
+			IF ABS(比較結果:(A:(LOCAL:3))) > 9999
+				PRINT ****
+			ELSEIF ABS(比較結果:(A:(LOCAL:3))) > 999
+				PRINTFORM {ABS(比較結果:(A:(LOCAL:3)))}
+			ELSE
+				PRINTFORM %LOCALS%
+			ENDIF
+		CASE 11
+			FOR LOCAL:4,11,29
+				IF LOCAL:10 == 1
+					SETCOLOR TOINT(相性カラー(元パラメータ:(LOCAL:4)))
+					SUBSTRING GET_TYPE(LOCAL:4 - 11),0,2
+					PRINTFORM %RESULTS%
+				ELSEIF 比較結果:(LOCAL:4) != 元パラメータ:(LOCAL:4)
+					SETCOLOR TOINT(相性カラー(比較結果:(LOCAL:4)))
+					SUBSTRING GET_TYPE(LOCAL:4 - 11),0,2
+					PRINTFORM %RESULTS%
+				ELSE
+					RESETCOLOR
+					PRINTFORM 　
+				ENDIF
+			NEXT
+		CASE IS < 29
+		CASE 29
+			FOR LOCAL:4,29,50
+				LOCAL:5 = LOCAL:4 - 29
+				SIF LOCAL:5 == 0 || LOCAL:5 == 13 || LOCAL:5 == 16 || LOCAL:5 == 17
+					CONTINUE
+				IF LOCAL:10 == 1
+					SETCOLOR TOINT(相性カラー(MAX(元パラメータ:(LOCAL:4) + 100,0)))
+					PRINTFORM %GET_STATE_KANJI(LOCAL:4 - 29,1)%
+				ELSEIF 比較結果:(LOCAL:4) != 元パラメータ:(LOCAL:4)
+					SETCOLOR TOINT(相性カラー(MAX(比較結果:(LOCAL:4) + 100,0)))
+					PRINTFORM %GET_STATE_KANJI(LOCAL:4 - 29,1)%
+				ELSE
+					RESETCOLOR
+					PRINTFORM 　
+				ENDIF
+			NEXT
+		CASE IS < 51
+		CASE 51,56
+			IF LOCAL:10 == 1
+				PRINTFORM %GET_TYPE(元パラメータ:(A:(LOCAL:3)))%
+			ELSE
+				SIF 比較結果:(A:(LOCAL:3)) != 元パラメータ:(A:(LOCAL:3))
+					SETCOLOR COLOR("パ緑")
+				PRINTFORM %GET_TYPE(比較結果:(A:(LOCAL:3)))%
+			ENDIF
+		CASE 52,57
+			LOCAL:4 = 比較結果:(A:(LOCAL:3))
+			IF LOCAL:10 == 1
+				LOCAL:4 = 元パラメータ:(A:(LOCAL:3))
+			ELSEIF 比較結果:(A:(LOCAL:3)) > 元パラメータ:(A:(LOCAL:3))
+				SETCOLOR COLOR("하늘색")
+			ELSEIF 比較結果:(A:(LOCAL:3)) < 元パラメータ:(A:(LOCAL:3))
+				SETCOLOR COLOR("붉은색")
+			ENDIF
+			
+			SELECTCASE LOCAL:4
+			CASE 1
+				PRINT  Ｓ 
+			CASE 2
+				PRINT  Ｍ 
+			CASE IS > 2
+				PRINT  Ｌ 
+			CASEELSE
+				PRINT  ？ 
+			ENDSELECT
+		CASE 53,58
+			LOCAL:7 = 比較結果:(A:(LOCAL:3))
+			SIF LOCAL:10 == 1
+				LOCAL:7 = 元パラメータ:(A:(LOCAL:3))
+			LOCAL:4 = LOCAL:7 % 100
+			LOCAL:5 = LOCAL:7 / 100 % 100
+			LOCAL:6 = LOCAL:7 / 10000
+			PRINTFORM {LOCAL:4,2}-{LOCAL:5,2,LEFT}
+			IF LOCAL:6 > 元パラメータ:(A:(LOCAL:3)) && LOCAL:10 == 0
+				SETCOLOR COLOR("하늘색")
+			ELSEIF LOCAL:6 < 元パラメータ:(A:(LOCAL:3)) && LOCAL:10 == 0
+				SETCOLOR COLOR("붉은색")
+			ENDIF
+			PRINTFORM {LOCAL:6/10,2}.{LOCAL:6 % 10}
+		CASE 54,59
+			LOCAL:4 = 比較結果:(A:(LOCAL:3))
+			IF LOCAL:10 == 1
+				LOCAL:4 = 元パラメータ:(A:(LOCAL:3))
+			ELSEIF 比較結果:(A:(LOCAL:3)) < 10 && 元パラメータ:(A:(LOCAL:3)) < 10
+				IF 比較結果:(A:(LOCAL:3)) % 10 > 元パラメータ:(A:(LOCAL:3)) % 10
+					SETCOLOR COLOR("하늘색")
+				ELSEIF 比較結果:(A:(LOCAL:3)) % 10 < 元パラメータ:(A:(LOCAL:3)) % 10
+					SETCOLOR COLOR("붉은색")
+				ENDIF
+			ELSE
+				IF 比較結果:(A:(LOCAL:3)) % 10 > 元パラメータ:(A:(LOCAL:3)) % 10
+					SETCOLOR 0xAAFFFF
+				ELSEIF 比較結果:(A:(LOCAL:3)) % 10 < 元パラメータ:(A:(LOCAL:3)) % 10
+					SETCOLOR COLOR("桃")
+				ELSEIF 比較結果:(A:(LOCAL:3)) != 元パラメータ:(A:(LOCAL:3))
+					SETCOLOR COLOR("パ緑")
+				ENDIF
+			ENDIF
+			SELECTCASE LOCAL:4
+			CASE 1
+				PRINT １체
+			CASE 2
+				PRINT １열
+			CASE 3
+				PRINT 전체
+			CASE 21
+				PRINT 열랜
+			CASE 31
+				PRINT 전랜
+			CASEELSE
+				PRINT ？？
+			ENDSELECT
+		CASE 55,62
+			LOCAL:7 = 比較結果:(A:(LOCAL:3))
+			SIF LOCAL:10 == 1
+				LOCAL:7 = 元パラメータ:(A:(LOCAL:3))
+			LOCAL:4 = LOCAL:7 % 100
+			LOCAL:5 = LOCAL:7 / 100 % 100
+			LOCAL:6 = LOCAL:7 / 10000
+			IF LOCAL:4 > 0 && LOCAL:6 > 0
+				SIF LOCAL:4 != 元パラメータ:(A:(LOCAL:3)) && LOCAL:10 == 0
+					SETCOLOR COLOR("パ緑")
+				SIF 元パラメータ:(A:(LOCAL:3)) < 1 && LOCAL:10 == 0
+					SETCOLOR COLOR("하늘색")
+				PRINTFORM %GET_STATE(LOCAL:4),6% {LOCAL:6,3,LEFT}%GET_TYPE(LOCAL:5)%
+			ELSE
+				SIF 元パラメータ:(A:(LOCAL:3)) > 0 && LOCAL:10 == 0
+					SETCOLOR COLOR("붉은색")
+				PRINTFORM 없음　　　　　
+			ENDIF
+		CASE 60,61
+			LOCAL:4 = 比較結果:(A:(LOCAL:3))
+			IF LOCAL:10 == 1
+				LOCAL:4 = 元パラメータ:(A:(LOCAL:3))
+			ELSEIF 比較結果:(A:(LOCAL:3)) > 元パラメータ:(A:(LOCAL:3))
+				SETCOLOR COLOR("하늘색")
+			ELSEIF 比較結果:(A:(LOCAL:3)) < 元パラメータ:(A:(LOCAL:3))
+				SETCOLOR COLOR("붉은색")
+			ENDIF
+			PRINTFORM {LOCAL:4,4,LEFT}
+		CASE 63
+			LOCAL:4 = 比較結果:(A:(LOCAL:3))
+			SIF LOCAL:10 == 1
+				LOCAL:4 = 元パラメータ:(A:(LOCAL:3))
+			SELECTCASE LOCAL:4
+				CASE 1
+					PRINT  도 
+				CASE 2
+					PRINT 레이
+				CASE 3
+					PRINT  활 
+				CASE 4
+					PRINT  검 
+				CASE 5
+					PRINT  창 
+				CASE 6
+					PRINT 둔기
+				CASE 7
+					PRINT 채찍
+				CASE 8
+					PRINT 투척
+				CASE 9
+					PRINT 제구
+				CASE 10
+					PRINT 곤봉
+				CASE 11
+					PRINT 권갑
+				CASEELSE
+					PRINT 기타
+			ENDSELECT
+		CASE 64
+			LOCAL:4 = 比較結果:(A:(LOCAL:3))
+			SIF LOCAL:10 == 1
+				LOCAL:4 = 元パラメータ:(A:(LOCAL:3))
+			SELECTCASE LOCAL:4
+			CASE 1
+				PRINT ＨＧ
+			CASE 2
+				PRINT ＳＧ
+			CASE 3
+				PRINT ＭＧ
+			CASE 4
+				PRINT ＳＲ
+			CASEELSE
+				PRINT ETC 
+			ENDSELECT
+		CASE 90
+			FOR LOCAL:4,0,3
+				LOCAL:5 = 比較스킬:(LOCAL:4)
+				SIF LOCAL:10 == 1
+					LOCAL:5 = 元장비스킬:(LOCAL:4)
+				IF LOCAL:5 < 1
+					PRINTFORM 　　　　　　　　　　
+				ELSE
+					SIF MATCH(元스킬,LOCAL:5,0) < 1 && ARG:2 > -1
+						SETCOLOR COLOR("하늘색")
+					CALLFORM SKILL_NAME_{LOCAL:5},ARG:2
+					STRLENS RESULTS
+					IF RESULT > 20
+						SUBSTRING RESULTS,0,17
+						RESULTS = %RESULTS%..
+					ENDIF
+					PRINTFORM %RESULTS,20,LEFT%
+				ENDIF
+				RESETCOLOR
+				PRINTFORM |
+			NEXT
+			CONTINUE
+		CASE IS < 100
+		CASE 100
+			PRINTFORM \n　　　　　　　　　　　　　　
+			IF LOCAL:10 == 1
+				PRINTFORM 　　　　　　　 
+				RESETCOLOR
+				CONTINUE
+			ELSE
+				FONTSTYLE 8
+				PRINTFORM |{ITEM:(아이템リスト:LOCAL),3}|%TOSTR(ITEMPRICE:(아이템リスト:LOCAL), "#,###"),9%
+			ENDIF
+		CASE IS < 200
+			FOR LOCAL:4,0,A:(LOCAL:3) - 100
+				PRINT  
+			NEXT
+		CASE 200
+			PRINTFORM \n　　　　　　　　　　　　　　
+		CASE 201
+			PRINTFORM \n　　　　　　　　　　　　　　
+			FONTSTYLE 8
+		ENDSELECT
+		RESETCOLOR
+		PRINTFORM |
+	NEXT
+	FONTSTYLE 0
+	PRINTL 
+	SIF LOCAL:10 == 1
+		GOTO 戻り
+	LOCAL:1 += 1
+NEXT
+RESETCOLOR
+SIF ARG:2 >= 0
+	EQUIP:(ARG:2):(GET_EQUIP(ARG:1)) = LOCAL:2
+;PRINTL
+DRAWLINE
+PRINTFORMLC \@(P <= 0) ? %" " * 13% # [7]이전 페이지\@
+IF FLAG:SHOPコマンド == 115
+	PRINTLC [0]돌아간다  [1]정렬조건변경 [2]比較者변경 [3]比較者소거 
+ELSEIF FLAG:SHOPコマンド == 114
+	PRINTLC [0]돌아간다  [2]비교자변경 [3]비교자소거 
+ELSE
+	PRINTFORMLC [100]돌아간다 [6]\@ ARG:2 == -1 ? 비교정보를 본다 # 장비정보를 본다\@ [8]\@ ARG:3 == 1 ? 변경예정 패러미터와 비교# 현 패러미터와 비교　　　\@ 
+ENDIF
+PRINTFORMLC \@(P >= (ARG-1) / 10) ? %" " * 13% # [9]다음 페이지\@
+
+@SALE_RPG
+PRINTFORML 무엇을 매각합니까?		소지금 ￥{MONEY}
+DRAWLINE
+FOR LOCAL,0,8
+	PRINTFORML [{LOCAL}] %GET_EQUIP(LOCAL)%
+NEXT
+PRINTL [8] 아이템
+PRINTL [99] 돌아간다
+PRINTL [100] 가게를 나온다
+
+$INPUT_LOOP
+INPUT
+
+IF RESULT == 100
+	RETURN 0
+ELSEIF RESULT == 99
+	RETURN -1
+ELSEIF RESULT >= 0 && RESULT < 9
+	LOCAL = RESULT
+ELSE
+	GOTO INPUT_LOOP
+ENDIF
+P = 0
+$PRINT_LIST
+DRAWLINE
+CALL MAKE_SALERPGITEMLIST,LOCAL
+LOCAL:1 = RESULT
+CALL PRINT_SALERPGITEMLIST,LOCAL:1
+$INPUT_LOOP2
+INPUT
+LOCAL:2 = RESULT
+IF RESULT == 0
+	RESTART
+ELSEIF RESULT == 7 && P > 0
+	P -= 1
+	GOTO PRINT_LIST
+ELSEIF RESULT == 9 && P < (LOCAL:1-1)/20
+	P += 1
+	GOTO PRINT_LIST
+ELSEIF MATCH(아이템リスト,RESULT,0) > 0
+	DRAWLINE
+	IF LOCAL < 7
+		CALL 장비설명,LOCAL:2
+	ELSEIF LOCAL == 7
+		CALLFORM 장비해설_{LOCAL:2}
+	ELSE
+		CALLFORM 최대소지수_{COUNT_ITEMMAX(LOCAL:2)}
+		LOCAL:3 = RESULT
+		PRINTFORML %ITEMNAME:(LOCAL:2),20,LEFT%   소지 수：{ITEM:(LOCAL:2)}/{LOCAL:3}
+		SIF FLAG:스킬속성표시설정 == 1
+			CALL SKILL_EXPLAIN_PERFORMANCE, LOCAL:2 + 2000, -1
+		TRYCALLFORM SKILL_EXPLAIN_{LOCAL:2+2000}
+		DRAWLINE
+	ENDIF
+	PRINTFORML 몇개 매각합니까？  (현재 {ITEM:(LOCAL:2)}개 소지)
+	CALL INPUT_MANY(0,ITEM:(LOCAL:2))
+	IF RESULT == 0
+		GOTO PRINT_LIST
+	ELSE
+		LOCAL:4 = RESULT
+		LOCAL:5 = 0
+		RESULT = 0
+		IF LOCAL < 8
+			TRYCALLFORM 구입조건_{LOCAL:2}
+		ELSE
+			TRYCALLFORM 道具구입조건_{LOCAL:2+2000}
+		ENDIF
+		SIF RESULT == 1
+			LOCAL:5 = 1
+		IF LOCAL:5 == 1
+			PRINTFORMW %조사처리(ITEMNAME:(LOCAL:2), "를")% {LOCAL:4}개、JP{LOCAL:4 * (ITEMPRICE:(LOCAL:2)/2)}로 매각했습니다
+			MONEY:4 += (LOCAL:4 * (ITEMPRICE:(LOCAL:2)/2))
+		ELSE
+			PRINTFORMW %조사처리(ITEMNAME:(LOCAL:2), "를")% {LOCAL:4}개、￥{LOCAL:4 * (ITEMPRICE:(LOCAL:2)/2)}로 매각했습니다
+			MONEY += (LOCAL:4 * (ITEMPRICE:(LOCAL:2)/2))
+		ENDIF
+		ITEM:(LOCAL:2) -= LOCAL:4
+		GOTO PRINT_LIST
+	ENDIF
+ELSE
+	GOTO INPUT_LOOP2
+ENDIF
+GOTO PRINT_LIST
+
+
+@MAKE_SALERPGITEMLIST,ARG
+VARSET 아이템リスト,-1
+LOCAL:1 = 0
+IF ARG < 8
+	FOR LOCAL,2000,VARSIZE("ITEM")
+		SIF ITEMPRICE:LOCAL == 0
+			CONTINUE
+		RESULT = 12
+		IF 마정장비(LOCAL)
+			LOCAL:2 = EQ_GETID_마정장비(LOCAL)
+			TRYCALLFORM 장비箇所_마정장비,LOCAL:2
+			IF RESULT == ARG && ITEM:LOCAL > 0
+				아이템リスト:(LOCAL:1) = LOCAL
+				LOCAL:1 += 1
+			ENDIF
+		ELSE
+			TRYCALLFORM 장비箇所_{LOCAL}
+			IF RESULT == ARG && ITEM:LOCAL > 0
+				아이템リスト:(LOCAL:1) = LOCAL
+				LOCAL:1 += 1
+			ENDIF
+		ENDIF
+	NEXT
+ELSE
+	FOR LOCAL,1001,2000
+		SIF ITEMPRICE:LOCAL == 0
+			CONTINUE
+		IF ITEM:LOCAL > 0
+			아이템リスト:(LOCAL:1) = LOCAL
+			LOCAL:1 += 1
+		ENDIF
+	NEXT
+ENDIF
+RETURN LOCAL:1
+
+@PRINT_SALERPGITEMLIST,ARG
+PRINTFORML 매각할 아이템을 선택하십시오.　＜page.{P + 1}＞
+PRINTFORML 소지금 ￥{MONEY} 정크포인트 JP{MONEY:4}
+DRAWLINE
+LOCAL:1 = 0
+FOR LOCAL,P*20,MIN(P*20+20,ARG)
+	LOCAL:2 = 0
+	TRYCCALLFORM 道具구입조건_{아이템リスト:LOCAL + 2000}
+		SIF RESULT == 1
+			LOCAL:2 = 1
+	CATCH
+		TRYCALLFORM 구입조건_{아이템リスト:LOCAL}
+		SIF RESULT == 1
+			LOCAL:2 = 1
+	ENDCATCH
+	IF LOCAL:2 == 1
+		PRINTFORM [{아이템リスト:LOCAL}] %ITEMNAME:(아이템リスト:LOCAL),20,LEFT% %"JP" + TOSTR(ITEMPRICE:(아이템リスト:LOCAL)/2),9 %　　
+	ELSE
+		PRINTFORM [{아이템リスト:LOCAL}] %ITEMNAME:(아이템リスト:LOCAL),20,LEFT% %"￥" + TOSTR(ITEMPRICE:(아이템リスト:LOCAL)/2),9 %　　
+	ENDIF
+	SIF LOCAL:1 % 2 == 1
+		PRINTL 
+	LOCAL:1 += 1
+NEXT
+SIF LOCAL:1 % 2 == 1
+	PRINTL 
+;PRINTL
+DRAWLINE
+PRINTFORMLC \@(P <= 0) ? %" " * 13% # [7]이전 페이지\@
+PRINTLC [0]돌아간다
+PRINTFORMLC \@(P >= (ARG-1) / 20) ? %" " * 13% # [9]다음 페이지\@
+

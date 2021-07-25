@@ -1,0 +1,234 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:SKILLxxxx_YYYY.csv
+;	Facility	:SKILL:2072 (대죄의철갑탄)。
+;
+;	Licence		:ライセンスフリー。
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		2020/09/05		木綿豆腐				新規作成
+;	002		2020/09/12		木綿豆腐				위력の최대値を減少
+;
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+
+;-------------------------------------------------------------------------------
+; [メモ]
+; Ｐ５だと이벤트技だったので性能を大幅に捏造
+; 공격の直前に대상のバフを全해제＋해제した종류に応じて위력上昇
+; 基礎공격력５００（나선의뱀と同値）～최대値７４０
+; 能動的に위력を上げられない分、인수라지고의마탄を超える위력に설정
+; 使えるようになるまでローカパーラ_宇宙の卵までクリアして上位함락しないとだし燃費も極悪なので許されるかと
+;-------------------------------------------------------------------------------
+
+;스킬名
+@SKILL_NAME_2072,ARG
+RESULTS = 대죄의철갑탄
+
+;　명중
+@SKILL_HITRATE_2072, ARG
+RETURN 160
+
+;　위력
+@SKILL_POWER_2072, ARG
+#LOCALSIZE 1
+;해제したバフ一つにつき위력40上昇、全해제すると240上昇
+LOCAL = 500 + (FLAG:拡散フラグ * 40)
+RETURN LOCAL
+
+;　최저공격횟수
+@SKILL_MINATTACKNUMBER_2072,ARG
+RETURN 1
+
+;　최대공격횟수
+@SKILL_MAXATTACKNUMBER_2072,ARG
+RETURN 1
+
+;　ＨＰ2を支払うかＭＰ3を支払うか
+@SKILL_COSTTYPE_2072, ARG
+RETURN 3
+;소비なし＝1
+
+;　コストの量
+@SKILL_COST_2072,ARG
+;최대위력740かつ複合속성 소질보정で0.8倍されるので高めにしておこう
+;参考：コストと위력
+;コスト80오비:랜더마이저/라스타캔디/지하드/질투의폭압/4대소환とか
+;퓨플리레게돈(위력800):70/열조(위력800):42/슈퍼노바(위력800):35
+RETURN 100
+
+;　相性
+@SKILL_TYPE_2072,ARG
+#LOCALSIZE 4
+;주살・비구・만능のうち、最も効果のある相性で공격
+SIF ARG < 0 || 스킬속성표시中
+	RETURN GET_TYPE_NUM("만능")
+SIF CFLAG:ARG:ターゲット > 16 || CFLAG:ARG:ターゲット < 1
+	RETURN GET_TYPE_NUM("만능")
+LOCAL = POS(CFLAG:ARG:ターゲット)
+SIF LOCAL < 0
+	RETURN GET_TYPE_NUM("만능")
+	
+LOCAL:2 = -300
+;全部-400とかないとおもうけど、あったらあれなんで、만능をいれとく
+LOCALS = 만능
+LOCALS:1 = 만능
+LOCALS:2 = 주살
+LOCALS:3 = 비구
+FOR LOCAL:1, 1, 4
+	;판정用に수치を仕마이(동방)う。반사は-200扱い
+	LOCAL:3 = MAXBASE:LOCAL:(LOCALS:(LOCAL:1)) == 999 ? -200 # MAXBASE:LOCAL:(LOCALS:(LOCAL:1))
+	LOCAL:3 = !(HAVE_SKILL(ARG,[[스킬:영세라이도우]]) || HAVE_SKILL(ARG,2947)) && CFLAG:LOCAL:(LOCALS:(LOCAL:1)+"무효화횟수") ? -5 # LOCAL:3
+	LOCAL:3 = CFLAG:LOCAL:(LOCALS:(LOCAL:1)+"가드킬") && LOCAL:3 < 100 ? 100 # LOCAL:3
+	SELECTCASE LOCAL:1
+		CASE 2
+			LOCAL:3 = CFLAG:LOCAL:마법반사フラグ ? -200 # LOCAL:3
+		CASE 3
+			LOCAL:3 = CFLAG:LOCAL:물리반사フラグ ? -200 # LOCAL:3
+		CASEELSE
+	ENDSELECT
+	IF LOCAL:3 > LOCAL:2
+		LOCAL:2 = LOCAL:3
+		LOCALS = %LOCALS:(LOCAL:1)%
+	ENDIF
+NEXT
+;ここに書いたら설명文にまで出現するだなんて……！
+;PRINTS LOCALS
+;PRINT の魔弾が
+;IF FLAG:拡散フラグ > 0
+;	PRINTL 적の加護を穿ち破壊した！
+;ELSE
+;	PRINTL 放たれた！
+;ENDIF
+RETURN GET_TYPE_NUM(LOCALS)
+
+;　1EXTRAか2MAGICか
+@SKILL_DECIDE_TYPE_2072, ARG
+RETURN 1
+;EXTRA
+
+;　1물리데미지で計算するか2마법데미지で計算するか
+@SKILL_DAMAGETYPE_2072, ARG
+;明らかに実弾なんで
+RETURN 1
+
+;　대상が1적か2아군か3場전체か4特殊か
+@SKILL_TARGET_2072
+RETURN 1
+
+;　사거리
+@SKILL_RANGE_2072,ARG
+RETURN 3
+
+;　범위　1１체　2１열　3전체　4　적아군 전체
+@SKILL_SPHERE_2072,ARG
+RETURN 1
+
+;　 効果の타입　1공격、2회복、3상태변화、4特殊、5상태회복
+@SKILL_EFECT_2072
+RETURN 1
+
+;　 特殊処理の有無、及び処理内容
+@SKILL_SPECIALEFECT_2072,ARG
+;ARG = 1だった場合は処理の有無を返します
+SIF ARG == 1
+	RETURN 0
+;以下に特殊な処理を記述します
+
+;계승타입
+@SKILL_SUCCESSION_TYPE_2072
+RETURN GET_SUCCESSION_NUM("만능")
+
+;속도보정
+@SKILL_SPEED_2072, ARG = -1
+RETURN 0
+
+;　구상の표시とその타입
+@SKILL_MESSAGE_2072,ARG
+
+
+;전투時이외に사용できるか
+@SKILL_ACTIONABLE_FIELD_2072
+RETURN 0
+
+;스킬변화？用랭크
+@SKILL_RANK_2072
+RETURN 0
+
+;テン플레이트用、추가효과시리즈
+;추가효과스테이터스ㄴ
+@SKILL_ADDTIONAL_STATE_2072,ARG
+RETURN 0
+
+;추가효과상성
+@SKILL_ADDTIONAL_TYPE_2072,ARG
+RETURN 0
+
+;추가효과기본부여확률
+@SKILL_ADDTIONAL_BASE_RATE_2072,ARG
+RETURN 0
+
+;추가효과부여확률上限
+@SKILL_ADDTIONAL_MAX_RATE_2072,ARG
+RETURN 0
+
+;====================================================
+;스킬及び行動の実行
+;====================================================
+@ACTION_2072,ARG,ARG:1
+#LOCALSIZE 1
+
+;念のため초기化
+FLAG:拡散フラグ = 0
+
+FOR LOCAL,0,6
+	IF CFLAG:POS(ARG:1):(GET_BATTLESTATUS(LOCAL) + "강화") > 0
+		CFLAG:POS(ARG:1):(GET_BATTLESTATUS(LOCAL) + "강화") = 0
+		FLAG:拡散フラグ += 1
+	ENDIF
+NEXT
+
+LOCAL = POS(ARG:1)
+
+;こうしないとターゲット選択の설명文표시でもこの메시지が出ちゃうんすよ
+CALL SKILL_TYPE_2072,ARG
+SELECTCASE RESULT
+	CASE 1
+		PRINT 비구
+	CASE 11
+		PRINT 주살
+	CASE 17
+		PRINT 만능
+ENDSELECT
+PRINT の魔弾が
+IF FLAG:拡散フラグ > 0
+	PRINTL 적의 가호를 파괴했다！
+ELSE
+	PRINTL 발사됐다！
+ENDIF
+
+CALL ATTACK_SINGLE,ARG,LOCAL,2072
+
+FLAG:拡散フラグ = 0
+
+;====================================================
+;実行内容ここまで
+;====================================================
+
+;　 설명文の표시
+@SKILL_EXPLAIN_2072
+PRINTL 위대한 타천사가 모은 7대죄를 정련하여 만든、반역의 총탄。
+PRINTL 모든 가호를 꿰뚫고、조물주조차도 뚫는다。
+PRINTL 적１체의 강화를 전부 해제후、만능+비구+주살 상성의 특대 데미지를 준다。
+PRINTL 해제한 강화가 많을수록 위력이 상승한다。
+
+;継承に필요한部位
+@継承部位_2072,ARG
+RETURN 1
+
+;사용조건
+@SKILL_SPECIAL_ACTIONABLE_2072,ARG
+RETURN 1
+;とくにない
+

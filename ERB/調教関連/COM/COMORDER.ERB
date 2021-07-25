@@ -1,0 +1,378 @@
+﻿;--------------------------------------------
+;ARG:1が真の場合、표시を行わずに終わるので
+;표시せずに内容だけ知りたいときはどうぞ
+;@EVENTCOMから呼ばれ、COMに渡す前に実行판정を行う
+;なお、판정실패はSELECTCOMにいくまえに必ず판정실패するコマンドであるところの999を代入し
+;コマンドを不成立にする形にしてある
+;---------------------------------------------
+@COM_ORDER, ARG, ARG:1
+#LOCALSIZE 4
+#LOCALSSIZE 6
+#DIM CHARA, 2
+;書式は 
+;LOCALS ABLなどの속성
+;LOCALS:1 표시名
+;LOCALS:2 数値
+;LOCALS:3 캐릭터
+
+;とりあえず、現状はこの組み合わせで通しておく
+CHARA = TARGET
+CHARA:1 = PLAYER
+;フラグ초기化
+TFLAG:実行판정値 = 0
+TFLAG:TALENT実行판정値 = 0
+TFLAG:ABL実行판정値 = 0
+TFLAG:PALAM実行판정値 = 0
+TFLAG:MARK実行판정値 = 0
+TFLAG:EXTRA実行판정値 = 0
+TFLAG:RELATION実行판정値 = 100
+TSTR:1 = 
+TRYCCALLFORM COM_ORDER_{SELECTCOM}, CHARA, CHARA:1
+CATCH
+	RETURN 1
+ENDCATCH
+VARSET RESULTS
+SIF !STRCOUNT(TSTR:1, "판정無視") && !STRCOUNT(TSTR:1, "共通회피")
+	CALL COM_ORDER_COMMON, CHARA, CHARA:1
+;相性はここでかける
+TFLAG:実行판정値 = TFLAG:実行판정値 * TFLAG:RELATION実行판정値 / 100
+IF ARG:1
+	SIF STRCOUNT(TSTR:1, "판정無視") > 0
+		RETURN 1
+	CALLFORM COM_ORDER_NUM_{ARG}
+	RETURN TFLAG:実行판정値 > RESULT, TFLAG:実行판정値, RESULT
+ENDIF
+SPLIT TSTR:1, "/", RESULTS
+DRAWLINE
+PRINTFORML 실행판정
+DRAWLINE
+IF STRCOUNT(TSTR:1, "판정無視") > 0
+	SPLIT TSTR:1, "/", LOCALS
+	PRINTFORMW %LOCALS:1%　<판정무시>
+	RETURN 1
+ENDIF
+VARSET LOCAL
+FOR LOCAL:1, 0, 5
+	LOCAL = 0
+	;初回カウント
+	LOCAL:2 = 0
+	;字数カウント
+	LOCAL:3 = 0
+	WHILE RESULTS:LOCAL != ""
+		IF !STRCOUNT(RESULTS:LOCAL, AUTO_SPLIT("TALENT/ABL/MARK/PALAM/EXTRA", "/", LOCAL:1))
+			LOCAL++
+			CONTINUE
+		ENDIF
+		SIF !LOCAL:2
+			PRINTFORM %AUTO_SPLIT("소질/능력/각인/PALAM/그외", "/", LOCAL:1), 6, LEFT%　{TFLAG:@"%AUTO_SPLIT("TALENT/ABL/MARK/PALAM/EXTRA", "/", LOCAL:1)%実行판정値",4}　
+		SPLIT RESULTS:LOCAL, "_", LOCALS
+		LOCALS:4 = 
+		IF LOCAL:2++
+			PRINT 　
+		;	IF TOINT(LOCALS:2) > 0
+		;		LOCALS:4 += " + "
+		;	ELSE
+		;		LOCALS:4 += " - "
+		;	ENDIF
+		ENDIF
+		IF LOCALS:3 == "PLAYER"
+			LOCALS:4 += "조교자의"
+		ELSEIF LOCALS:4 == "ASSI"
+			LOCALS:4 += "조수의"
+		ENDIF
+		IF LOCAL:3 > 66
+			LOCAL:3 = 0
+			PRINTL 
+			PRINTFORM %" "*14%
+		ENDIF
+		LOCALS:4 += LOCALS:1 + @"({TOINT(LOCALS:2)})"
+		LOCAL:3 += STRLENS(LOCALS:4)
+		PRINTFORM %LOCALS:4%
+		ARRAYREMOVE RESULTS, LOCAL, 1
+	WEND
+	SIF LOCAL:2
+		PRINTL 
+NEXT
+LOCAL = 0
+;初回カウント
+LOCAL:1 = 0
+WHILE RESULTS:LOCAL != ""
+	IF !STRCOUNT(RESULTS:LOCAL, "RELATION")
+		LOCAL++
+		CONTINUE
+	ENDIF
+	SPLIT RESULTS:LOCAL, "_", LOCALS
+	SIF LOCAL:1++ == 0
+		PRINTFORM 상성　×%TOSTR(TFLAG:RELATION実行판정値, "0'.'00")%　
+	PRINTFORM %LOCALS:1%　
+	ARRAYREMOVE RESULTS, LOCAL, 1
+WEND
+PRINTL 
+CALLFORM COM_ORDER_NUM_{ARG}
+DRAWLINE
+PRINTFORM 합계치　　{TFLAG:実行판정値}　
+IF TFLAG:実行판정値 > RESULT
+	PRINT >
+ELSEIF TFLAG:実行판정値 < RESULT
+	PRINT <
+ELSE
+	PRINT =
+ENDIF
+PRINTFORML 　실행치　　{RESULT}　\@TFLAG:実行판정値 >= RESULT ? <판정성공>#<판정실패>\@
+DRAWLINE
+WAIT
+RETURN TFLAG:実行판정値 >= RESULT
+;---------------------------------------------------------------------------
+;COM_ORDERの内容を추가していき、数値の加算してTFLAGにしまっていく
+;TALENT_처녀_-20_TARGET/ABL_순종(Lv5)_10_TARGET/　といった形でしまっていく
+;---------------------------------------------------------------------------
+@ADD_COM_ORDER, ARGS, ARGS:1, ARG, ARG:1 = -99, ARG:2 = -99
+#LOCALSSIZE 1
+#LOCALSIZE 1
+;판정無視が入っている場合は打ち切り
+SIF STRCOUNT(TSTR:1, "판정無視")
+	RETURN 0
+;생략時の調整
+SIF ARG:1 == -99
+	ARG:1 = TARGET
+SIF ARG:2 == -99
+	ARG:2 = PLAYER
+IF ARGS == "판정無視"
+	TSTR:1 = %ARGS%/%ARGS:1%
+	RETURN 0
+ENDIF
+IF ARGS == "共通회피"
+	TSTR:1 += "共通회피/"
+	RETURN 0
+ENDIF
+IF ARGS == "TALENT"
+	SELECTCASE ARGS:1
+		CASE "연모"
+			SIF !연모(ARG:1, ARG:2)
+				RETURN 0
+		CASE "친애"
+			SIF !친애(ARG:1, ARG:2)
+				RETURN 0
+		CASE "음란"
+			SIF !음란(ARG:1, ARG:2)
+				RETURN 0
+		CASE "창부"
+			SIF !창부(ARG:1, ARG:2)
+				RETURN 0
+		CASE "복종"
+			SIF !복종(ARG:1, ARG:2)
+				RETURN 0
+		CASE "예속"
+			SIF !예속(ARG:1, ARG:2)
+				RETURN 0
+		CASEELSE
+			SIF !TALENT:(ARG:1):(ARGS:1)
+			RETURN 0
+	ENDSELECT
+ENDIF
+SIF ARGS == "ABL" && !ABL:(ARG:1):(ARGS:1)
+	RETURN 0
+SIF ARGS == "MARK" && !MARK:(ARG:1):(ARGS:1)
+	RETURN 0
+SIF ARGS == "PALAM" && !GETPALAMLV(PALAM:(ARG:1):(ARGS:1), 5)
+	RETURN 0
+SIF ARGS:1 == "위험일" && 위험일(ARG:1) < 2
+	RETURN 0
+SIF ARGS:1 == "미약" && !TEQUIP:(ARG:1):미약
+	RETURN 0
+IF ARGS == "STAIN" && !TALENT:(ARG:1):불결무시
+	LOCAL = 0
+	SIF ARGS:1 != "바기나" && GET_STAIN(ARGS:1, "애액", ARG:2)
+		LOCAL = 1
+	SIF GET_STAIN(ARGS:1, "정액", ARG:2)
+		LOCAL = 1
+	SIF ARGS:1 != "애널" && GET_STAIN(ARGS:1, "애널", ARG:2)
+		LOCAL = 1
+	SIF GET_STAIN(ARGS:1, "점액", ARG:2)
+		LOCAL = 1
+	SIF LOCAL == 0
+		RETURN 0
+ENDIF
+SELECTCASE ARGS
+	CASE "TALENT"
+		LOCAL = ARG
+		TSTR:1 += @"%ARGS%_%ARGS:1%_{ARG}_"
+	CASE "ABL"
+		LOCAL = ARG*ABL:(ARG:1):(ARGS:1)
+		TSTR:1 += @"%ARGS%_%ARGS:1%LV{ABL:(ARG:1):(ARGS:1)}_{ARG*ABL:(ARG:1):(ARGS:1)}_"
+	CASE "MARK"
+		LOCAL = ARG*MARK:(ARG:1):(ARGS:1)
+		TSTR:1 += @"%ARGS%_%ARGS:1%LV{MARK:(ARG:1):(ARGS:1)}_{ARG*MARK:(ARG:1):(ARGS:1)}_"
+	CASE "PALAM"
+		LOCAL = GETPALAMLV(PALAM:(ARG:1):(ARGS:1),5)
+		TSTR:1 += @"%ARGS%_%ARGS:1%LV{GETPALAMLV(PALAM:(ARG:1):(ARGS:1),5)}_{GETPALAMLV(PALAM:(ARG:1):(ARGS:1),5)}_"
+	CASE "STAIN"
+		LOCAL = 0
+		SIF ARGS:1 != "바기나" && GET_STAIN(ARGS:1, "애액", ARG:2)
+			LOCAL -= 1
+		SIF GET_STAIN(ARGS:1, "정액", ARG:2)
+			LOCAL -= 3
+		SIF ARGS:1 != "애널" && GET_STAIN(ARGS:1, "애널", ARG:2)
+			LOCAL -= 7
+		SIF GET_STAIN(ARGS:1, "점액", ARG:2)
+			LOCAL -= 15
+		IF TALENT:(ARG:1):악취둔감
+			LOCAL /= 3
+		ELSEIF TALENT:(ARG:1):악취민감
+			LOCAL *= 2
+		ENDIF
+		LOCAL = LOCAL * ARG / 100
+		IF LOCAL < 0
+			TSTR:1 += "EXTRA_"
+			SIF ARG:2 == ASSI
+				TSTR:1 += "조수의"
+			TSTR:1 += @"불결_{LOCAL}_"
+			;IF TALENT:(ARG:1):악취둔감
+			;	TSTR:1 += @"불결둔감_{LOCAL}_"
+			;ELSEIF TALENT:(ARG:1):악취민감
+			;	TSTR:1 += @"EXTRA_불결민감_{LOCAL}_"
+			;ELSE
+			;	TSTR:1 += @"EXTRA_불결_{LOCAL}_"
+			;ENDIF
+			ARGS = EXTRA
+		ELSE
+			RETURN 0
+		ENDIF
+	CASE "EXTRA"
+		SELECTCASE ARGS:1
+			CASE "위험일"
+				TSTR:1 += "EXTRA_"
+				TSTR:1 += @"\@위험일(ARG:1) == 3 ? 만월# \@발정중_10_"
+				TSTR:1 += "발정중"
+				LOCAL =  10
+			CASE "충성도"
+				LOCAL = LIMIT(BASE:충성도,0,1000) / 50 - 10
+				TSTR:1 += @"EXTRA_%ARGS:1%_{LOCAL}_"
+		CASEELSE
+			TSTR:1 += @"EXTRA_%ARGS:1%_{ARG}_"
+			LOCAL =  ARG
+		ENDSELECT
+	CASE "RELATION"
+		;相性による수정
+		LOCAL = LIMIT(100+(GET_RELATION(ARG:1, ARG:2) - 100)/2 , 50, 150)
+		TFLAG:RELATION実行판정値 = TFLAG:RELATION実行판정値 * LOCAL / 100
+		TSTR:1 += "RELATION_"
+		SELECTCASE LOCAL
+			CASE 50
+				TSTR:1 += "최악"
+			CASE 51 TO 75
+				TSTR:1 += "열악"
+			CASE 76 TO 99
+				TSTR:1 += "불량"
+			CASE 100
+				TSTR:1 += "보통"
+			CASE 100 TO 124
+				TSTR:1 += "양호"
+			CASE 125 TO 149
+				TSTR:1 += "발군"
+			CASE 150
+				TSTR:1 += "최고"
+		ENDSELECT
+		;TSTR:1 += @"%AUTO_SPLIT(" /(조교자)/(조수)/(奴隷)", "/", EQUALCHECK_TURN(1, PLAYER == ARG:2, ASSI == ARG:2, TARGET == ARG:2))%_{LOCAL}_"
+		TSTR:1 += "(" + CALLNAME:(ARG:2) + ")_"
+		LOCAL = 0
+ENDSELECT
+
+IF ARG:1 == PLAYER
+	TSTR:1 += "PLAYER/"
+ELSEIF ARG:1 == ASSI
+	TSTR:1 += "ASSI/"
+ELSE
+	TSTR:1 += "TARGET/"
+ENDIF
+
+TFLAG:実行판정値 += LOCAL
+TFLAG:@"%ARGS%実行판정値" += LOCAL
+
+
+;--------------------------
+;능력체크
+;--------------------------
+@COM_ORDER_COMMON, ARG, ARG:1
+CALL ADD_COM_ORDER, "ABL", "순종", 4, ARG, ARG:1
+CALL ADD_COM_ORDER, "ABL", "마조끼", 2, ARG, ARG:1
+;레즈조교
+IF IS_LESBIAN(ARG:1, ARG)
+	CALL ADD_COM_ORDER, "ABL", "레즈끼", 3, ARG, ARG:1
+	CALL ADD_COM_ORDER, "ABL", "레즈중독", 3, ARG, ARG:1
+	CALL ADD_COM_ORDER, "TALENT", "바이", 10, ARG, ARG:1
+	CALL ADD_COM_ORDER, "TALENT", "호기심", 7, ARG, ARG:1
+	CALL ADD_COM_ORDER, "TALENT", "보수적", -13, ARG, ARG:1
+;ＢＬ조교
+ELSEIF IS_GAY(PLAYER, TARGET)
+	CALL ADD_COM_ORDER, "ABL", "ＢＬ끼", 3, ARG, ARG:1
+	CALL ADD_COM_ORDER, "ABL", "ＢＬ중독", 3, ARG, ARG:1
+	CALL ADD_COM_ORDER, "TALENT", "바이", 10, ARG, ARG:1
+	CALL ADD_COM_ORDER, "TALENT", "호기심", 7, ARG, ARG:1
+	CALL ADD_COM_ORDER, "TALENT", "보수적", -13, ARG, ARG:1
+ELSE
+	CALL ADD_COM_ORDER, "TALENT", "호기심", 5, ARG, ARG:1
+	CALL ADD_COM_ORDER, "TALENT", "보수적", -10, ARG, ARG:1
+ENDIF
+;--------------------------
+;각인체크
+;--------------------------
+CALL ADD_COM_ORDER, "MARK", "고통각인", 5, ARG, ARG:1
+IF TALENT:ARG:프라이드높음
+	LOCAL = 4
+ELSEIF TALENT:ARG:프라이드낮음
+	LOCAL = 1
+ELSE
+	LOCAL = 2
+ENDIF
+CALL ADD_COM_ORDER, "MARK", "굴복각인", 3 * LOCAL, ARG, ARG:1
+CALL ADD_COM_ORDER, "MARK", "반발각인", -3 * LOCAL, ARG, ARG:1
+;--------------------------
+;ＰＡＬＡＭ체크
+;--------------------------
+CALL ADD_COM_ORDER, "PALAM", "복종", 3, ARG, ARG:1
+CALL ADD_COM_ORDER, "PALAM", "공포", 3, ARG, ARG:1
+;--------------------------
+;위험일체크
+;--------------------------
+CALL ADD_COM_ORDER, "EXTRA", "위험일", 10, ARG, ARG:1
+;--------------------------
+;충성도체크
+;--------------------------
+CALL ADD_COM_ORDER, "EXTRA", "충성도", 0, ARG, ARG:1
+;--------------------------
+;--------------------------
+;소질체크
+;--------------------------
+CALL ADD_COM_ORDER, "TALENT", "복종", 10, ARG, ARG:1
+CALL ADD_COM_ORDER, "TALENT", "예속", 20, ARG, ARG:1
+SIF !TALENT:ARG:복종 && TALENT:ARG:예속
+	CALL ADD_COM_ORDER, "TALENT", "반항적", -5, ARG, ARG:1
+CALL ADD_COM_ORDER, "TALENT", "꿋꿋함", -5, ARG, ARG:1
+CALL ADD_COM_ORDER, "TALENT", "솔직함", 5, ARG, ARG:1
+CALL ADD_COM_ORDER, "TALENT", "프라이드높음", -15, ARG, ARG:1
+CALL ADD_COM_ORDER, "TALENT", "프라이드낮음", 5, ARG, ARG:1
+CALL ADD_COM_ORDER, "TALENT", "눈에띄고싶어함", 2, ARG, ARG:1
+CALL ADD_COM_ORDER, "TALENT", "억압", -10, ARG, ARG:1
+CALL ADD_COM_ORDER, "TALENT", "저항", -10, ARG, ARG:1
+CALL ADD_COM_ORDER, "TALENT", "약점", 12, ARG, ARG:1
+CALL ADD_COM_ORDER, "TALENT", "즉각함락", 10, ARG, ARG:1
+CALL ADD_COM_ORDER, "TALENT", "망신", 8, ARG, ARG:1
+;--------------------------
+;조교者の소질체크
+;--------------------------
+;조교者の능력、소질
+;ABL:새드끼
+CALL ADD_COM_ORDER, "ABL", "새드끼", 2, ARG:1, ARG
+CALL ADD_COM_ORDER, "TALENT", "매혹", 6, ARG:1, ARG
+CALL ADD_COM_ORDER, "TALENT", "수수께끼의매력", 8, ARG:1, ARG
+CALL ADD_COM_ORDER, "TALENT", "새드", 3, ARG:1, ARG
+;--------------------------
+;조수の소질체크
+;--------------------------
+;조수の소질
+;고무
+SIF ASSI > 0 && !ASSIPLAY
+	CALL ADD_COM_ORDER, "TALENT", "고무", 1, ARG:1, ARG
+
+

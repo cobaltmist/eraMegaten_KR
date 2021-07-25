@@ -1,0 +1,2025 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:PUBLIC_TOILET.ERB
+;	Facility	:공중변소での노역に関する関数群です。
+;
+;	Licence		:ライセンスフリー
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		20xx/xx/xx		----					新規作成
+;	002		2010/1/12		P						페르소나の경험치취득処理の수정
+;	003		2011/09/08		黒天					本番行為での처녀(재생처녀)상실処理を関数を呼ぶように수정
+;													ＮＴＲ이벤트で一部の処理の대상がACTORではなくLOCALになっていたのを수정
+;	004		2012/09/22		ネトリス				報告の설정변경を추가、ＮＴＲを整理整頓、변기を設置するときに毎回選択ページの最初に戻らないように
+;													地の分に加筆
+;	005		2012/06/09		ネトリス				이용方法『동성客』『수간』用の処理を추가
+;	006		2015/12/31		ベン키스キー			LOCAL撤去を半分ほど
+;													Ａの추가ソースが上書きになってたのを加算に수정
+;													報告を収支のみにした際に、질사경험が加算されないのを수정
+;													報告を収支のみにした際に、후타나리客、けもの客がこないのを수정
+;													Ａ절정の処理で쾌Ｖを見ていた場所を수정
+;													조교すると신뢰を失うキャラは변기にしても신뢰を失うようにした
+;													客がつかなかった場合の処理を추가した
+;													客が혀놀림섹스광애널광を評価するようにした
+;	007		2020/05/19		がめら					NTR好感度処理をCDFLAGに변경
+;	008		2020/07/29		Jガン					변기を選んだ時のエ라を수정（140行あたり）
+;	009		2021/04/27		JK好き					公衆便所で多胎OP時でも妊娠するように修正
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;공중변소に필요한処理置き場
+@MANAGEMENT_PUBLIC_TOILET, ARG
+;화조ンタ類
+#DIM POT
+#DIM CHARA
+#DIM USER
+#DIM DISPOSE
+
+;그외ローカル変数
+#DIM 변기_設置数
+#DIM 변기_嬢눈当ての客
+#DIM 변기_集まった客
+#DIM 변기_店内の客
+
+#DIM 변기_客溢れフラグ
+#DIM 변기_客毎입횟수
+#DIM 변기_客毎Ｖ횟수
+#DIM 변기_客毎질내사정횟수
+#DIM 변기_客毎Ａ횟수
+#DIM 변기_만족도
+#DIM 변기_変動計算用
+#DIM 변기_総売上
+#DIM 변기_성공度集計
+
+#DIM 변기_使われた변기数
+#DIM 변기_NTR客フラグ
+#DIM 변기_유혹度保存
+#DIM 변기_マネジメント数
+
+
+
+변기_集まった客 = 0
+변기_店内の客 = 0
+변기_客溢れフラグ= 0
+변기_総売上 = 0
+변기_성공度集計 = 0
+변기_使われた변기数 = 0
+
+
+;-----------------------------
+;변기準備
+;-----------------------------
+;변기を数えつつ、「C」に변기のキャラ번호を격납
+VARSET C , -1
+변기_設置数 = 0
+FOR CHARA,0, CHARANUM
+	IF CFLAG:CHARA:노역フラグ == 10 + ARG
+		C:변기_設置数 = CHARA
+		변기_設置数 += 1
+	ENDIF
+NEXT
+;設置してなければ종료
+IF 변기_設置数 == 0
+	PRINTW 육변기를 한 명도 배치하지 않았기 때문에 이용자가 아무도 오지 않았다.
+	GOTO TOILET_END
+ENDIF
+
+;-----------------------------
+;변기へ客を並べる
+;-----------------------------
+;변기嬢の集客힘
+변기_嬢눈当ての客 = 0
+FOR POT, 0, 변기_設置数
+	CHARA = C:POT
+	;사용예정인수　인기の 約1/25
+	CFLAG:CHARA:변기사용예정인수 = CFLAG:CHARA:변기인기 * (80 + RAND:11) / 2125
+	변기_嬢눈当ての客 += CFLAG:CHARA:변기사용예정인수
+NEXT
+변기_集まった客 = 변기_嬢눈当ての客
+
+;予約で埋まったかな？
+IF 변기_集まった客 > 점포("규모", ARG)
+	;店に入れないから帰る
+	변기_店内の客 = 0
+	FOR POT, 0, 변기_設置数
+		CHARA = C:POT
+		CFLAG:CHARA:변기사용예정인수 = CFLAG:CHARA:변기사용예정인수 * 점포("규모", ARG) / 변기_集まった客
+		변기_店内の客 += CFLAG:CHARA:변기사용예정인수
+	NEXT
+ELSE
+	변기_店内の客 = 변기_集まった客
+ENDIF
+
+;점포の集客힘　(점포인기＋선전효과)の約1/10
+변기_集まった客 += MAX(1 + RAND:3, (점포("인기", ARG) + 점포("선전효과", ARG)) * (80 + RAND:11) / 850)
+
+;便所せまいよ再체크
+IF 변기_集まった客 > 점포("규모", ARG)
+	변기_店内の客 = 점포("규모", ARG)
+	변기_客溢れフラグ= 1
+ELSE
+	변기_店内の客 = 변기_集まった客
+ENDIF
+;(C:변기_設置数)に看板변기を記録
+C:변기_設置数 = 看板변기(ARG)
+;フリーのお客を랜덤に割り振る
+IF 변기_店内の客 > 변기_嬢눈当ての客
+	FOR USER, 0, 변기_店内の客 - 변기_嬢눈当ての客
+		;看板변기は2倍の抽選機会
+		CHARA = C:(RAND:(변기_設置数 + 1))
+		CFLAG:CHARA:변기사용예정인수 += 1
+	NEXT
+ENDIF
+
+
+;-----------------------------
+;변기毎の計算
+;-----------------------------
+FOR POT, 0, 변기_設置数
+	CHARA = C:POT
+
+	;未조교함락フラグを折る
+	CFLAG:CHARA:被조교횟수  += 1
+
+	;信じてたのに！
+	IF TALENT:CHARA:신뢰 || TALENT:CHARA:동료
+		SETCOLOR 0xff0033
+		IF TALENT:CHARA:연모
+			PRINTFORMW 공중육변기가 된 일로 인하여、%조사처리(NAME:TARGET, "는")% %NAME:MASTER%에게의 애욕이 우정을 앞서 버렸다
+		ELSEIF CFLAG:CHARA:전투참가불가능 == -1
+			PRINTFORMW PRINTFORMW 공중육변기가 된 일로 인하여、%조사처리(NAME:TARGET, "는")% %NAME:MASTER%에게의 우정이 깨지고 전투에 참여하지 않게 되었다
+			CFLAG:CHARA:전투참가불가능 = 1
+			SIF CFLAG:CHARA:포지션 > 0
+				CALL REMOVE_POSITION,CFLAG:포지션
+		ELSE
+			PRINTFORMW 공중육변기가 된 일로 인하여、%조사처리(NAME:TARGET, "는")% %NAME:MASTER% 의 노예임을 재인식한 듯하다.
+		ENDIF
+		SIF TALENT:CHARA:신뢰
+			PRINTFORMW %조사처리(NAME:TARGET, "는")%【신뢰】를 잃었다
+		SIF TALENT:CHARA:동료
+			PRINTFORMW %조사처리(NAME:TARGET, "는")%【동료】를 잃었다
+		TALENT:CHARA:신뢰 = 0
+		TALENT:CHARA:동료 = 0
+		RESETCOLOR
+	ENDIF
+	IF CFLAG:CHARA:전투참가불가능 == -1
+		SETCOLOR 0xff0033
+		PRINTFORMW 공중육변기가 된 일로 인하여、%NAME:CHARA%는 %NAME:MASTER%에 대한 신뢰를 잃어、전투에 참가하지 않습니다.
+		CFLAG:CHARA:전투참가불가능 = 1
+		SIF CFLAG:CHARA:포지션 > 0
+			CALL REMOVE_POSITION, CFLAG:CHARA:포지션
+		RESETCOLOR
+	ENDIF
+
+	;로션塗ります
+	PALAM:CHARA:윤활 = 1000
+
+	;念のため
+	CFLAG:CHARA:펠라횟수 = 0
+	CFLAG:CHARA:本番횟수 = 0
+	CFLAG:CHARA:애널횟수 = 0
+	CFLAG:CHARA:中出し횟수 = 0
+
+	변기_만족도 = 0
+	변기_NTR客フラグ = 0
+	변기_マネジメント数 = 0
+
+	;-----------------------------
+	;客毎の計算
+	;-----------------------------
+	FOR USER, 0, CFLAG:CHARA:변기사용예정인수
+		;-----------------------------
+		;フェラ
+		;-----------------------------
+		변기_客毎입횟수 = 0
+		IF CFLAG:CHARA:個別성적서비스& 8
+			변기_유혹度保存 = 변기유혹度(CHARA, 변기_NTR客フラグ)
+			FOR DISPOSE, 0, 1 + (변기_유혹度保存 + RAND:변기_유혹度保存) / 20
+				IF 변기_유혹度保存 / 2 + RAND:변기_유혹度保存 >= CFLAG:CHARA:펠라가격 * (40 + 변기_客毎입횟수 * 60)
+					;とりあえず횟수増える
+					CFLAG:CHARA:펠라횟수 += 1
+					변기_客毎입횟수 += 1
+				ELSE
+					BREAK
+				ENDIF
+			NEXT
+			;フェラのソースをまとめて추가
+			SOURCE:CHARA:정애 = 100 * 변기_客毎입횟수
+			SOURCE:CHARA:성행위 = 300 * 변기_客毎입횟수
+			SOURCE:CHARA:달성 = 150 * 변기_客毎입횟수
+			SOURCE:CHARA:굴종 = 700 * 변기_客毎입횟수
+			SOURCE:CHARA:일탈 = 200 * 변기_客毎입횟수
+			SOURCE:CHARA:반감 = 200 * 변기_客毎입횟수
+			CALL SOURCE_MANAGEMENT_CHECK, CHARA
+			CALL CUP_MANAGEMENT_T, CHARA
+			IF 변기_客毎입횟수
+				변기_マネジメント数 += 1
+				CALL フェラ_변기_MANAGEMENT, CHARA
+				변기_만족도 += RESULT
+			ENDIF
+		ENDIF
+		;-----------------------------
+		;Ｖ
+		;-----------------------------
+		변기_客毎Ｖ횟수 = 0
+		변기_客毎질내사정횟수 = 0
+		IF TALENT:CHARA:남자 == 0 && CFLAG:CHARA:個別성적서비스 & 16
+			변기_유혹度保存 = 변기유혹度(CHARA, 변기_NTR客フラグ)
+			CALL 本番_변기_MANAGEMENT_SOURCE, CHARA
+			FOR DISPOSE, 0, 1 + (변기_유혹度保存 + RAND:변기_유혹度保存) / 20
+				IF 변기_유혹度保存 / 2 + RAND:변기_유혹度保存 >= CFLAG:CHARA:섹스가격 * (20 + 변기_客毎Ｖ횟수 * 30) + TALENT:CHARA:처녀 * (CFLAG:CHARA:처녀가격 - 25) + TALENT:CHARA:재생처녀 * (CFLAG:CHARA:처녀가격 * 2 - 5)
+					CALL 本番_변기_MANAGEMENT_FOR, CHARA
+					;키스경험処理：適当に랜덤で
+					SIF RAND:4 == 0
+						TCVAR:CHARA:획득키스경험 += 1
+					변기_客毎Ｖ횟수 += 1
+					;卵子
+					IF CFLAG:CHARA:個別성적서비스& 64
+						IF 변기_유혹度保存 / 2 + RAND:변기_유혹度保存 >= CFLAG:CHARA:질내사정가격 * (1 + 변기_客毎질내사정횟수 * 6)
+							;とりあえず횟수増える
+							CFLAG:CHARA:中出し횟수 += 1
+							SIF TALENT:CHARA:임신 == 0
+								CALL SAMEN_SHOOT_SOURCE_MANAGEMENT, CHARA
+							변기_客毎질내사정횟수 += 1
+						ENDIF
+					ENDIF
+				ELSE
+					BREAK
+				ENDIF
+			NEXT
+			;本番のソースの残りを추가
+			SOURCE:CHARA:정애 += 150 * 변기_客毎Ｖ횟수
+			SOURCE:CHARA:중독충족 += 150 * 변기_客毎Ｖ횟수
+			SOURCE:CHARA:노출 += 70 * 변기_客毎Ｖ횟수
+			SOURCE:CHARA:반감 += 300 * 변기_客毎Ｖ횟수
+			;섹스중독を見る
+			IF ABL:CHARA:섹스중독 == 1
+				TIMES SOURCE:CHARA:중독충족 , 0.00
+			ELSEIF ABL:CHARA:섹스중독 == 2
+				TIMES SOURCE:CHARA:중독충족 , 0.30
+			ELSEIF ABL:CHARA:섹스중독 == 3
+				TIMES SOURCE:CHARA:중독충족 , 0.60
+			ELSEIF ABL:CHARA:섹스중독 == 4
+				TIMES SOURCE:CHARA:중독충족 , 0.90
+			ELSEIF ABL:CHARA:섹스중독 == 5
+				TIMES SOURCE:CHARA:중독충족 , 1.20
+			ELSEIF ABL:CHARA:섹스중독 == 6
+				TIMES SOURCE:CHARA:중독충족 , 1.50
+			ELSEIF ABL:CHARA:섹스중독 == 7
+				TIMES SOURCE:CHARA:중독충족 , 1.80
+			ELSEIF ABL:CHARA:섹스중독 == 8
+				TIMES SOURCE:CHARA:중독충족 , 2.30
+			ELSEIF ABL:CHARA:섹스중독 == 9
+				TIMES SOURCE:CHARA:중독충족 , 3.00
+			ELSEIF ABL:CHARA:섹스중독 >= 10
+				TIMES SOURCE:CHARA:중독충족 , 5.00
+			ENDIF
+			CALL SOURCE_MANAGEMENT_CHECK, CHARA
+			CALL CUP_MANAGEMENT_T, CHARA
+			IF 변기_客毎Ｖ횟수
+				변기_マネジメント数 += 1
+				CALL 本番_변기_MANAGEMENT, CHARA
+				변기_만족도 += RESULT
+			ENDIF
+			IF 변기_客毎질내사정횟수
+				변기_マネジメント数 += 1
+				CALL 中出し_변기_MANAGEMENT, CHARA
+				변기_만족도 += RESULT
+				PRINTFORML 中出し満足度{RESULT}
+				CFLAG:(ARG):子宮現在容量 += RESULT / 10
+			ENDIF
+		ENDIF
+		;-----------------------------
+		;Ａ
+		;-----------------------------
+		변기_客毎Ａ횟수 = 0
+		IF CFLAG:CHARA:個別성적서비스 & 32
+			변기_유혹度保存 = 변기유혹度(CHARA, 변기_NTR客フラグ)
+			CALL 애널_변기_MANAGEMENT_SOURCE, CHARA
+			FOR DISPOSE, 0, 1 + (변기_유혹度保存 + RAND:변기_유혹度保存) / 20
+				IF 변기_유혹度保存 / 2 + RAND:변기_유혹度保存 >= CFLAG:CHARA:애널가격 * (20 + 변기_客毎Ａ횟수 * 30)
+					CALL 애널_변기_MANAGEMENT_FOR, CHARA
+					;키스경험処理：適当に랜덤で
+					SIF RAND:4 == 0
+						TCVAR:CHARA:획득키스경험 += 1
+					변기_客毎Ａ횟수 += 1
+				ELSE
+					BREAK
+				ENDIF
+			NEXT
+			;애널のソースの残りを추가
+			SOURCE:CHARA:정애 += 100 * 변기_客毎Ａ횟수
+			SOURCE:CHARA:중독충족 += 200 * 변기_客毎Ａ횟수
+			SOURCE:CHARA:노출 += 60 * 변기_客毎Ａ횟수
+			SOURCE:CHARA:일탈 += 200 * 변기_客毎Ａ횟수
+			SOURCE:CHARA:반감 += 500 * 변기_客毎Ａ횟수
+			;섹스중독を見る
+			IF ABL:CHARA:섹스중독 == 1
+				TIMES SOURCE:CHARA:중독충족 , 0.00
+			ELSEIF ABL:CHARA:섹스중독 == 2
+				TIMES SOURCE:CHARA:중독충족 , 0.30
+			ELSEIF ABL:CHARA:섹스중독 == 3
+				TIMES SOURCE:CHARA:중독충족 , 0.60
+			ELSEIF ABL:CHARA:섹스중독 == 4
+				TIMES SOURCE:CHARA:중독충족 , 0.90
+			ELSEIF ABL:CHARA:섹스중독 == 5
+				TIMES SOURCE:CHARA:중독충족 , 1.20
+			ELSEIF ABL:CHARA:섹스중독 == 6
+				TIMES SOURCE:CHARA:중독충족 , 1.50
+			ELSEIF ABL:CHARA:섹스중독 == 7
+				TIMES SOURCE:CHARA:중독충족 , 1.80
+			ELSEIF ABL:CHARA:섹스중독 == 8
+				TIMES SOURCE:CHARA:중독충족 , 2.30
+			ELSEIF ABL:CHARA:섹스중독 == 9
+				TIMES SOURCE:CHARA:중독충족 , 3.00
+			ELSEIF ABL:CHARA:섹스중독 >= 10
+				TIMES SOURCE:CHARA:중독충족 , 5.00
+			ENDIF
+			CALL SOURCE_MANAGEMENT_CHECK, CHARA
+			CALL CUP_MANAGEMENT_T, CHARA
+			IF 변기_客毎Ａ횟수
+				변기_マネジメント数 += 1
+				CALL 애널_변기_MANAGEMENT, CHARA
+				변기_만족도 += RESULT
+			ENDIF
+		ENDIF
+
+		SIF BASE:CHARA:체력 <= (CFLAG:CHARA:펠라횟수 * 10 + CFLAG:CHARA:本番횟수 * 15 + CFLAG:CHARA:애널횟수 * 25 + CFLAG:CHARA:中出し횟수 * 5)
+			BREAK
+
+	NEXT
+	;客毎の計算ここまで
+
+	;-----------------------------
+	;集計
+	;-----------------------------
+	;임신用
+	IF CFLAG:CHARA:자궁내피임결계 == 0
+		SIF TALENT:CHARA:남자 == 0
+			CFLAG:CHARA:顧客の中出氏による임신판정 += CFLAG:CHARA:中出し횟수
+		SIF TALENT:CHARA:남자 && TALENT:CHARA:오토코노코
+			CFLAG:CHARA:顧客の中出氏による임신판정 += CFLAG:CHARA:애널횟수
+	ENDIF
+
+
+	;使われた
+	IF 변기_マネジメント数
+		;성공度
+		CFLAG:CHARA:노역성공度 = 변기_만족도 / 변기_マネジメント数
+		변기_使われた변기数 += 1
+		변기_성공度集計 += CFLAG:CHARA:노역성공度
+
+		;메시지표시
+		CALL WORK_MESSAGE_TOILET, CHARA
+
+		PRINTFORML %CALLNAME:CHARA%의 노역 결과
+
+		SIF CFLAG:CHARA:변기사용예정인수
+			PRINTFORML 사용해준 인원：{CFLAG:CHARA:변기사용예정인수}명　　성공도　{CFLAG:CHARA:노역성공度}％
+
+		CFLAG:CHARA:個別매상 += CFLAG:CHARA:펠라횟수 * CFLAG:CHARA:펠라가격
+		CFLAG:CHARA:個別매상 += CFLAG:CHARA:本番횟수 * CFLAG:CHARA:섹스가격
+		CFLAG:CHARA:個別매상 += CFLAG:CHARA:애널횟수 * CFLAG:CHARA:애널가격
+		CFLAG:CHARA:個別매상 += CFLAG:CHARA:中出し횟수 * CFLAG:CHARA:질내사정가격
+
+		;횟수の표시
+		IF FLAG:공중변소報告설정 < 2
+			PRINTL
+			SIF TCVAR:CHARA:획득키스경험
+				PRINTFORM 키스　　{TCVAR:CHARA:획득키스경험}회　　
+			SIF CFLAG:CHARA:펠라횟수
+				PRINTFORM 펠라　　{CFLAG:CHARA:펠라횟수}회　　
+			SIF CFLAG:CHARA:本番횟수
+				PRINTFORM 본방　　{CFLAG:CHARA:本番횟수}회　　
+			SIF CFLAG:CHARA:애널횟수
+				PRINTFORM 애널　　{CFLAG:CHARA:애널횟수}회　　
+			SIF CFLAG:CHARA:中出し횟수
+				PRINTFORM 질내사정　{CFLAG:CHARA:中出し횟수}회　　
+			PRINTL
+		ENDIF
+
+		;경험の증가
+		EXP:CHARA:변기경험 += CFLAG:CHARA:변기사용예정인수
+		EXP:CHARA:펠라경험 += CFLAG:CHARA:펠라횟수
+		EXP:CHARA:Ｖ경험 += CFLAG:CHARA:本番횟수
+		EXP:CHARA:Ａ경험 += CFLAG:CHARA:애널횟수
+
+		IF FLAG:공중변소報告설정 < 2
+			SIF CFLAG:CHARA:변기사용예정인수
+				PRINTFORM 변기경험 + {CFLAG:CHARA:변기사용예정인수}　　
+			SIF TCVAR:CHARA:획득키스경험
+				PRINTFORM 키스경험 + {TCVAR:CHARA:획득키스경험}　　
+			SIF CFLAG:CHARA:펠라횟수
+				PRINTFORM 펠라경험 + {CFLAG:CHARA:펠라횟수}　　
+			SIF CFLAG:CHARA:本番횟수
+				PRINTFORM Ｖ경험 + {CFLAG:CHARA:本番횟수}　　
+			SIF CFLAG:CHARA:애널횟수
+				PRINTFORM Ａ경험 + {CFLAG:CHARA:애널횟수}　　
+		ENDIF
+
+		IF CFLAG:CHARA:자궁내피임결계 == 0
+			EXP:CHARA:질사경험 += CFLAG:CHARA:中出し횟수
+			SIF CFLAG:CHARA:中出し횟수 && FLAG:공중변소報告설정 < 2
+				PRINTFORM 질사경험 + {CFLAG:CHARA:中出し횟수}　　
+
+		ELSEIF CFLAG:CHARA:中出し횟수 && FLAG:공중변소報告설정 < 2
+			PRINTFORM <피임결계>
+		ENDIF
+		SIF !LINEISEMPTY()
+			PRINTL 
+
+		EXP:CHARA:키스경험 += TCVAR:CHARA:획득키스경험
+		TCVAR:CHARA:획득키스경험 = 0
+		EXP:CHARA:성교경험 += CFLAG:CHARA:애널횟수 + CFLAG:CHARA:本番횟수
+		EXP:CHARA:정액경험 += CFLAG:CHARA:中出し횟수 + CFLAG:CHARA:펠라횟수 + CFLAG:CHARA:本番횟수 + CFLAG:CHARA:애널횟수
+		EXP:CHARA:절정경험 += EX:CHARA:0 + EX:CHARA:1 + EX:CHARA:2 + EX:CHARA:3
+
+		;레즈、수간の場合はココに入る
+		IF CFLAG:CHARA:14 == 1 && TALENT:CHARA:남자 == 0
+			EXP:CHARA:레즈경험 += CFLAG:CHARA:애널횟수 + CFLAG:CHARA:本番횟수 + CFLAG:CHARA:펠라횟수
+		ELSEIF CFLAG:CHARA:14 == 2
+			;수간첫경험の場合ここで이상경험부여
+			IF EXP:CHARA:수간경험 == 0
+				CALL ADDS_ABNORMAL_EXP, "수간", CHARA
+				CALL SHOW_ABNORMAL_EXP, CHARA
+			ENDIF
+			EXP:CHARA:수간경험 += CFLAG:CHARA:애널횟수 + CFLAG:CHARA:本番횟수 + CFLAG:CHARA:펠라횟수
+		ENDIF
+		;레즈、수간フラグを리셋
+		CFLAG:CHARA:14 = 0
+
+		;처녀/재생처녀상실時の메시지표시および이상경험加算
+		IF CFLAG:CHARA:처녀상실フラグ
+			CFLAG:CHARA:처녀상실フラグ = 0
+			TALENT:CHARA:처녀 = 0
+			CALL ADDS_ABNORMAL_EXP, "처녀상실（변기）" , CHARA
+			CALL SHOW_ABNORMAL_EXP, CHARA
+		ENDIF
+		SIF !LINEISEMPTY()
+			PRINTL 
+
+		IF FLAG:공중변소報告설정 < 2
+			SIF CFLAG:CHARA:애널횟수 + CFLAG:CHARA:本番횟수
+				PRINTFORM 성교경험 + {CFLAG:CHARA:애널횟수 + CFLAG:CHARA:本番횟수}　　
+			SIF CFLAG:CHARA:中出し횟수 + CFLAG:CHARA:펠라횟수 + CFLAG:CHARA:本番횟수 + CFLAG:CHARA:애널횟수
+				PRINTFORM 정액경험 + {CFLAG:CHARA:中出し횟수 + CFLAG:CHARA:펠라횟수 + CFLAG:CHARA:本番횟수 + CFLAG:CHARA:애널횟수}　　
+			SIF EX:CHARA:0 + EX:CHARA:1 + EX:CHARA:2 + EX:CHARA:3
+				PRINTFORM 절정경험 + {EX:CHARA:0 + EX:CHARA:1 + EX:CHARA:2 + EX:CHARA:3}
+			SIF CFLAG:CHARA:14 == 1
+				PRINTFORML 　레즈경험 + {CFLAG:CHARA:애널횟수 + CFLAG:CHARA:本番횟수 + CFLAG:CHARA:펠라횟수}
+			SIF CFLAG:CHARA:14 == 2
+				PRINTFORML 　수간경험 + {CFLAG:CHARA:애널횟수 + CFLAG:CHARA:本番횟수 + CFLAG:CHARA:펠라횟수}
+			PRINTL
+		ENDIF
+
+		;珠の증가
+		CALL JUEL_CHECK_TOILET, CHARA
+
+		;처녀/재생처녀を상실した場合、처녀가격を個別매상に加算
+		SIF CFLAG:CHARA:처녀상실フラグ || CFLAG:CHARA:재생처녀상실フラグ
+			CFLAG:CHARA:個別매상 += CFLAG:CHARA:처녀가격
+
+		;MAG증가処理
+		변기_変動計算用 = CFLAG:CHARA:펠라횟수 * 2 + CFLAG:CHARA:本番횟수 / 2 + CFLAG:CHARA:애널횟수 * 4 + CFLAG:CHARA:中出し횟수 * 6
+		변기_変動計算用 *= MAXBASE:CHARA:LV / 5 + 1  
+		변기_変動計算用 *= 1 + (CHARA == MASTER) + MAX(0, TALENT:CHARA:영매체질 * 9 - !TALENT:CHARA:비전투원 * 4)
+		PRINTFORML ＭＡＧ + {변기_変動計算用}
+		CALL CONTROL_MAG, CHARA, 변기_変動計算用
+
+		;체력の소비
+		변기_変動計算用 = CFLAG:CHARA:펠라횟수 * 10 + CFLAG:CHARA:本番횟수 * 15 + CFLAG:CHARA:애널횟수 * 25 + CFLAG:CHARA:中出し횟수 * 5
+		PRINTFORML 체력 - {변기_変動計算用}
+		BASE:CHARA:체력 -= 변기_変動計算用
+
+		;스트레스증가
+		IF CHARA != MASTER
+			변기_変動計算用 = CFLAG:CHARA:펠라횟수 + CFLAG:CHARA:本番횟수 * 2 + CFLAG:CHARA:애널횟수 * 2 + CFLAG:CHARA:中出し횟수 * 5
+			변기_変動計算用 *= MAX(0, 3  - 함락(CHARA) * 2)
+			변기_変動計算用 /= 1 + ABL:CHARA:순종 + ABL:CHARA:욕망 + ABL:CHARA:봉사정신 +  ABL:CHARA:마조끼
+			CFLAG:CHARA:스트레스증가치 = 변기_変動計算用
+			PRINTFORML 스트레스 + {변기_変動計算用}
+			CFLAG:CHARA:스트레스치 += 변기_変動計算用
+		ENDIF
+
+		;비전투원は경험値획득
+		IF TALENT:CHARA:비전투원
+			변기_変動計算用 = CFLAG:CHARA:個別매상 * (1 + BASE:CHARA:LV / 5)
+			PRINTFORML EXP： +{변기_変動計算用}
+			BASE:CHARA:ＥＸＰ += 변기_変動計算用
+			;레벨업판정
+			CALL CHECK_LEVEL_UP, CHARA
+		ENDIF
+
+		;페르소나구사자は装着中の페르소나の경험치획득
+		IF TALENT:CHARA:페르소나구사자
+			CALL INCREASE_PERSONA_EXP, CHARA, CFLAG:CHARA:個別매상 / 10, -1 ,1
+			IF RESULT > 0
+				;新페르소나処理
+				IF BATTLE_SETTING_IS_PERSONA_NEW_FUNCTION()
+
+				;旧페르소나処理
+				ELSE
+					PRINTFORML 페르소나【\@EQUIP:CHARA:장비페르소나 ? %CSVNAME(DITEMTYPE:(EQUIP:CHARA:장비페르소나):페르소나("NO"), 0)% # %CSVNAME(ABL:CHARA:초기페르소나, 0)%\@】　EXP：+{RESULT}
+				ENDIF
+			ENDIF
+		ENDIF
+
+		;인기増減
+		IF CFLAG:CHARA:노역성공度 < 30
+			PRINTFORML 인기 {CFLAG:CHARA:변기인기} - {6 - CFLAG:CHARA:노역성공度 / 5}
+		ELSE
+			PRINTFORML 인기 {CFLAG:CHARA:변기인기} + {CFLAG:CHARA:노역성공度 / 5 - 6}
+		ENDIF
+
+		CFLAG:CHARA:변기인기 += CFLAG:CHARA:노역성공度/5 - 6
+		IF CFLAG:CHARA:引継ぎ횟수 && FLAG:5 < 9 && DAY < 51
+			PRINTFORML 인계된 캐릭터：매상 × 0.01
+			CFLAG:CHARA:個別매상 = MAX(CFLAG:CHARA:個別매상/100,1)
+		ENDIF
+		PRINTFORML 매상：{CFLAG:CHARA:個別매상}
+		CALL 帳簿閲覧_노역, CHARA, CFLAG:CHARA:個別매상, CFLAG:CHARA:변기사용예정인수, 3
+
+		변기_総売上 += CFLAG:CHARA:個別매상
+		SIF CHARA == MASTER
+			CALL EVENTCHECK_M
+
+		CALL 공중변소ＮＴＲ, CHARA
+
+		CALL 気絶処理, CHARA
+		SIF RESULT == 0
+			PRINTW
+
+
+	;使われなかった
+	ELSE
+		;성공度-1
+		CFLAG:CHARA:노역성공度 = -1
+
+		PRINTFORML %조사처리(CALLNAME:CHARA,"는")% 아무에게도 사용되지 않았다.
+
+		;客がつかなかった場合の
+		;ソース
+		변기_変動計算用 = MAX(1, CFLAG:CHARA:변기사용예정인수)
+		SOURCE:CHARA:굴종 = 700 * 변기_変動計算用
+		SOURCE:CHARA:노출 = 70 * 변기_変動計算用
+		SOURCE:CHARA:일탈 = 200 * 변기_変動計算用
+		SOURCE:CHARA:반감 = 200 * 변기_変動計算用 * (TALENT:CHARA:처녀 ? 3 # 1)
+		CALL SOURCE_MANAGEMENT_CHECK, CHARA
+		CALL CUP_MANAGEMENT_T, CHARA
+
+		;珠の증가
+		CALL JUEL_CHECK_TOILET, CHARA
+
+		;스트레스증가
+		IF CHARA != MASTER
+			변기_変動計算用 = 2
+			변기_変動計算用 *= MAX(0, 3  - 함락(CHARA) * 2)
+			변기_変動計算用 /= 1 + ABL:CHARA:순종 + ABL:CHARA:욕망 + ABL:CHARA:봉사정신 +  ABL:CHARA:마조끼
+			CFLAG:CHARA:스트레스증가치 = 변기_変動計算用
+			PRINTFORML 스트레스 + {변기_変動計算用}
+			CFLAG:CHARA:스트레스치 += 변기_変動計算用
+		ENDIF
+	ENDIF
+
+	;主人の속성値変動
+	CALL INCREASE_LD, -3
+	CALL SYNC_STATUS, MASTER
+
+	DRAWLINE
+NEXT
+;변기毎の計算ここまで
+
+;-----------------------------
+;점포の計算
+;-----------------------------
+
+;平均の인기
+변기_성공度集計 /= MAX(1, 변기_使われた변기数)
+
+
+$TOILET_END
+PRINTFORML %SAVESTR:(20+ARG)%
+IF 변기_성공度集計 > 0
+	PRINTFORML 이용자 만족도 {변기_성공度集計}％
+	IF 변기_성공度集計 > 29
+		PRINTFORML 평판 {점포("인기", ARG)} + {변기_성공度集計 / 5  - 6}
+	ELSE
+		PRINTFORML 평판 {점포("인기", ARG)} - {-변기_성공度集計 / 5 + 6}
+	ENDIF
+	CALL 점포演算("인기", ARG, 변기_성공度集計 / 5 - 6, "+")
+	PRINTFORML 내객수：{변기_集まった客}명 ／ 이용가능인원：{점포("규모", ARG)}명
+	IF 변기_客溢れフラグ== 1
+		PRINTFORML 변소의 수용 인원보다 많은 방문자가 나타나서 변기를 이용하지 못한 손님으로부터 불평이 일었다….
+		PRINTFORML 평판 - {점포("인기", ARG) / 10}
+		CALL 점포演算("인기", ARG, 점포("인기", ARG) / 10, "-")
+	ENDIF
+ENDIF
+SIF 변기_使われた변기数 == 0
+	PRINTFORML 이 날 변기는 한 번도 이용되지 않았다.
+PRINTFORML 수입 합계 : {변기_総売上}마카
+MONEY:1 += 변기_総売上
+
+변기_変動計算用 = 500 + 점포("규모", ARG) * 50 + 接客人数(ARG) * 200
+PRINTFORML 유지비：￥{변기_変動計算用}
+MONEY -= 변기_変動計算用
+
+WAIT
+
+
+;=============================================
+;珠입수処理（便所
+;=============================================
+@JUEL_CHECK_TOILET,ARG
+#DIM JNUM
+#DIM MANY
+FOR JNUM, 0, 15
+	IF PALAM:ARG:JNUM < PALAMLV:1
+		MANY = 0
+	ELSEIF PALAM:ARG:JNUM < PALAMLV:1 * 3
+		MANY = 1
+	ELSEIF PALAM:ARG:JNUM < PALAMLV:2
+		MANY = 2
+	ELSEIF PALAM:ARG:JNUM < PALAMLV:2 * 3
+		MANY = 10
+	ELSEIF PALAM:ARG:JNUM < PALAMLV:3
+		MANY = 20
+	ELSEIF PALAM:ARG:JNUM < PALAMLV:3 * 2
+		MANY = 100
+	ELSEIF PALAM:ARG:JNUM < PALAMLV:4
+		MANY = 200
+	ELSEIF PALAM:ARG:JNUM < PALAMLV:5
+		MANY = 1000
+	ELSEIF PALAM:ARG:JNUM < PALAMLV:6
+		MANY = 2000
+	ELSEIF PALAM:ARG:JNUM < PALAMLV:7
+		MANY = 3000
+	ELSEIF PALAM:ARG:JNUM < PALAMLV:8
+		MANY = 5000
+	ELSEIF PALAM:ARG:JNUM < PALAMLV:9
+		MANY = 8000
+	ELSEIF PALAM:ARG:JNUM < 1000000
+		MANY = 12000
+	ELSEIF PALAM:ARG:JNUM < 5000000
+		MANY = 25000
+	ELSEIF PALAM:ARG:JNUM < 30000000
+		MANY = 40000
+	ELSEIF PALAM:ARG:JNUM < 100000000
+		MANY = 60000
+	ELSE
+		MANY = 100000
+	ENDIF
+	IF JNUM == 0
+		GOTJUEL:ARG:JNUM = MANY / 10 + EX:ARG:0 * 100
+	ELSEIF JNUM == 1
+		GOTJUEL:ARG:JNUM = MANY + EX:ARG:1 * 100
+	ELSEIF JNUM == 2
+		GOTJUEL:ARG:JNUM = MANY + EX:ARG:2 * 100
+	ELSEIF JNUM == 3
+		GOTJUEL:ARG:JNUM = MANY + EX:ARG:3 * 100
+	ELSEIF JNUM == 4
+	ELSEIF JNUM < 12
+		GOTJUEL:ARG:JNUM = MANY / 10
+	ELSE
+		SIF ARG != MASTER
+			GOTJUEL:ARG:100 += MANY
+	ENDIF
+	IF JNUM < 12 && GOTJUEL:ARG:JNUM > 0
+		SIF FLAG:공중변소報告설정 < 2
+			PRINTFORML %PALAMNAME:JNUM%의 구슬 + {GOTJUEL:ARG:JNUM}
+		JUEL:ARG:JNUM += GOTJUEL:ARG:JNUM
+	ENDIF
+NEXT
+
+SIF GOTJUEL:ARG:100 > 0 && FLAG:공중변소報告설정 < 2
+	PRINTFORML 부정의 구슬 + {GOTJUEL:ARG:100}
+JUEL:ARG:부정 += GOTJUEL:ARG:100
+;부정의による반발
+IF JUEL:ARG:부정 > 1500 && MARK:ARG:반발각인 < 3 && ARG != MASTER
+	PRINTFORML 반발각인 LV3 취득
+	MARK:ARG:반발각인 = 3
+	SIF MARK:ARG:4 < 3
+		MARK:ARG:4 = 3
+ELSEIF JUEL:ARG:부정 > 1000 && MARK:ARG:반발각인 < 2 && ARG != MASTER
+	PRINTFORML 반발각인 LV2 취득
+	MARK:ARG:반발각인 = 2
+	SIF MARK:ARG:4 < 2
+		MARK:ARG:4 = 2
+ELSEIF JUEL:ARG:부정 > 500 && MARK:ARG:반발각인 < 1 && ARG != MASTER
+	PRINTFORML 반발각인 LV1 취득
+	MARK:ARG:반발각인 = 1
+	SIF MARK:ARG:4 < 1
+		MARK:ARG:4 = 1
+ENDIF
+
+;=============================================
+;サービスの処理
+;=============================================
+;フェラ
+@フェラ_변기_MANAGEMENT, ARG
+#DIM L_만족도
+
+;만족도판정
+;まず성공度を計算
+;랜덤で30を추가します。변기경험に応じて期待値は上昇します。
+SELECTCASE EXP:ARG:변기경험
+	CASE IS > EXPLV:5*10
+		L_만족도 = 25 + RAND:6
+	CASE IS > EXPLV:4*10
+		L_만족도 = 20 + RAND:11
+	CASE IS > EXPLV:3*10
+		L_만족도 = 15 + RAND:16
+	CASE IS > EXPLV:2*10
+		L_만족도 = 10 + RAND:21
+	CASE IS > EXPLV:1*10
+		L_만족도 = 5 + RAND:26
+	CASEELSE
+		L_만족도 = RAND:30
+ENDSELECT
+;랜덤で30を추가します。펠라경험に応じて期待値は上昇します。
+SELECTCASE EXP:ARG:펠라경험
+	CASE IS > EXPLV:5*10
+		L_만족도 += 25 + RAND:6
+	CASE IS > EXPLV:4*10
+		L_만족도 += 20 + RAND:11
+	CASE IS > EXPLV:3*10
+		L_만족도 += 15 + RAND:16
+	CASE IS > EXPLV:2*10
+		L_만족도 += 10 + RAND:21
+	CASE IS > EXPLV:1*10
+		L_만족도 += 5 + RAND:26
+	CASEELSE
+		L_만족도 += RAND:30
+ENDSELECT
+
+;このへんのコメント악마회화からの性行為のやつだったので撤去しました
+
+;기교を評価　フェラなので혀놀림もついでに
+IF RAND:10 <= ABL:ARG:기교 + (TALENT:ARG:혀놀림 ? 3 # 0)
+	L_만족도 += ABL:ARG:기교 + (TALENT:ARG:혀놀림 ? 3 # 0)
+ENDIF
+L_만족도 += ABL:ARG:기교 + (TALENT:ARG:혀놀림 ? 3 # 0)
+
+;변기ぶりを評価
+IF RAND:10 + ABL:ARG:순종 * 2 >= ABL:ARG:욕망 + 2
+	L_만족도 += ABL:ARG:봉사정신
+	L_만족도 += ABL:ARG:정액중독
+ENDIF
+
+
+
+;가격による보정()
+L_만족도 += 200 * L_만족도 / (CFLAG:ARG:펠라가격 + 1)  / 400 - 10
+
+;순종が3LVないと、著しく微妙になります
+IF ABL:ARG:순종 < 3 && ARG != MASTER
+	L_만족도 /= 2
+ENDIF
+RETURN L_만족도
+
+
+;本番
+@本番_변기_MANAGEMENT_SOURCE,ARG
+;ソースによる加算量の체크
+SOURCE:ARG:쾌Ｖ = 400
+SOURCE:ARG:정애 = 150
+SOURCE:ARG:아픔 = 400
+SOURCE:ARG:중독충족 = 150
+SOURCE:ARG:노출 = 70
+SOURCE:ARG:반감 = 300
+
+;중독による중독충족のソースは先に処理しておく
+;섹스중독を見る
+IF ABL:ARG:섹스중독 == 0
+	TIMES SOURCE:ARG:중독충족 , 0.00
+ELSEIF ABL:ARG:섹스중독 == 1
+	TIMES SOURCE:ARG:중독충족 , 0.30
+ELSEIF ABL:ARG:섹스중독 == 2
+	TIMES SOURCE:ARG:중독충족 , 0.60
+ELSEIF ABL:ARG:섹스중독 == 3
+	TIMES SOURCE:ARG:중독충족 , 0.90
+ELSEIF ABL:ARG:섹스중독 == 4
+	TIMES SOURCE:ARG:중독충족 , 1.20
+ELSEIF ABL:ARG:섹스중독 == 5
+	TIMES SOURCE:ARG:중독충족 , 1.50
+ELSEIF ABL:ARG:섹스중독 == 6
+	TIMES SOURCE:ARG:중독충족 , 1.80
+ELSEIF ABL:ARG:섹스중독 == 7
+	TIMES SOURCE:ARG:중독충족 , 2.10
+ELSEIF ABL:ARG:섹스중독 == 8
+	TIMES SOURCE:ARG:중독충족 , 2.40
+ELSEIF ABL:ARG:섹스중독 == 9
+	TIMES SOURCE:ARG:중독충족 , 3.00
+ELSEIF ABL:ARG:섹스중독 >= 10
+	TIMES SOURCE:ARG:중독충족 , 5.00
+ENDIF
+
+CALL SOURCE_MANAGEMENT_CHECK_QUICK,ARG
+;PRINTFORML VSOURCE{CUP:ARG:1}
+;CUPに上昇ソースが帰ってくる
+SOURCE:ARG:쾌Ｖ = CUP:ARG:쾌Ｖ
+
+@本番_변기_MANAGEMENT_FOR,ARG
+#DIM L_아픔ソース
+#DIM L_쾌Ｖ
+#DIM L_Ｖ절정
+
+
+;とりあえず횟수増える
+CFLAG:ARG:本番횟수 += 1
+;아픔ソース
+L_아픔ソース = 400
+;억압、저항持ちには、억울ソース추가
+SIF TALENT:ARG:억압 || TALENT:ARG:저항
+	SOURCE:ARG:울굴 += 300
+
+;정조관념持ちで연모、친애持ち以外には常に반발のソースを추가する（섹스系のみ）
+SIF TALENT:ARG:30 && 함락(ARG) == 0
+	SOURCE:ARG:반감 += 1000
+
+;처녀だった場合は、고통のソースと반발のソースを추가する
+IF TALENT:ARG:처녀 == 1
+	L_아픔ソース += 2000
+	SOURCE:ARG:반감 += 3000
+ENDIF
+
+;재생처녀だった場合は、고통のソースと반발のソースを추가する
+IF TALENT:ARG:재생처녀 == 1
+	L_아픔ソース += 500
+	SOURCE:ARG:반감 += 1000
+ENDIF
+
+;처녀/재생처녀상실
+CALL 처녀상실, ARG
+
+
+;Vへの고통は先に処理しておく
+;EXP:ARG:Ｖ경험をみる（처녀の반감は別途処理済みなので생략）
+IF EXP:ARG:Ｖ경험 < EXPLV:1
+	TIMES L_아픔ソース , 2.50
+ELSEIF EXP:ARG:Ｖ경험 < EXPLV:2
+	TIMES L_아픔ソース , 0.80
+	SOURCE:ARG:반감 += 60
+ELSEIF EXP:ARG:Ｖ경험 < EXPLV:3
+	TIMES L_아픔ソース , 0.40
+ELSEIF EXP:ARG:Ｖ경험 < EXPLV:4
+	TIMES L_아픔ソース , 0.10
+ELSEIF EXP:ARG:Ｖ경험 >= EXPLV:4
+	TIMES L_아픔ソース , 0.00
+ENDIF
+
+;PALAM:ARG:윤활をみる
+IF PALAM:ARG:윤활 < PALAMLV:2
+	TIMES L_아픔ソース , 0.70
+	SOURCE:ARG:반감 += 60
+ELSEIF PALAM:ARG:윤활 < PALAMLV:3
+	TIMES L_아픔ソース , 0.40
+ELSEIF PALAM:ARG:윤활 < PALAMLV:4
+	TIMES L_아픔ソース , 0.10
+ELSEIF PALAM:ARG:윤활 >= PALAMLV:4
+	TIMES L_아픔ソース , 0.10
+ENDIF
+
+;PALAM:ARG:욕정をみる
+L_쾌Ｖ = CUP:ARG:1
+IF PALAM:ARG:욕정 < PALAMLV:1
+	TIMES L_쾌Ｖ , 0.60
+ELSEIF PALAM:ARG:욕정 < PALAMLV:2
+	TIMES L_쾌Ｖ , 0.80
+ELSEIF PALAM:ARG:욕정 < PALAMLV:3
+	TIMES L_쾌Ｖ , 1.00
+ELSEIF PALAM:ARG:욕정 < PALAMLV:4
+	TIMES L_쾌Ｖ , 1.50
+ELSEIF PALAM:ARG:욕정 >= PALAMLV:4
+	TIMES L_쾌Ｖ , 2.00
+ENDIF
+
+;ソース加算・쾌感・욕정・액체
+;아픔ソースを他のPALAM加算のため放り込んでおく
+SOURCE:ARG:아픔 += L_아픔ソース
+L_아픔ソース = L_아픔ソース * B / 400
+PALAM:ARG:쾌Ｖ += L_쾌Ｖ
+IF L_쾌Ｖ > 100
+;쾌감을부정は、쾌ソースの数値に応じて、억울증가（음란、창부で무효）
+	SIF TALENT:ARG:쾌감을부정 && (TALENT:ARG:음란 == 0 && TALENT:ARG:창부 == 0)
+		SOURCE:ARG:울굴 += L_쾌Ｖ/10
+	;젖기쉬움と젖기어려움はここで処理
+	IF TALENT:ARG:젖기쉬움
+		PALAM:ARG:윤활 += L_쾌Ｖ * 3 / 5
+	ELSEIF TALENT:ARG:젖기어려움
+		PALAM:ARG:윤활 += L_쾌Ｖ * 2 / 25
+	ELSE
+		PALAM:ARG:윤활 += L_쾌Ｖ / 5
+	ENDIF
+ENDIF
+PALAM:ARG:욕정 += CUP:ARG:욕정 + L_아픔ソース
+PALAM:ARG:윤활 += CUP:ARG:윤활
+
+;절정処理
+L_Ｖ절정 = 0
+IF PALAM:ARG:쾌Ｖ >= PALAMLV:4 * 2
+	L_Ｖ절정 = 2
+	PALAM:ARG:쾌Ｖ -= (PALAMLV:4 * 2 - 1000)
+ELSEIF PALAM:ARG:쾌Ｖ >= PALAMLV:4
+	L_Ｖ절정 = 1
+	PALAM:ARG:쾌Ｖ -= (PALAMLV:4 - 1000)
+ENDIF
+SIF PALAM:ARG:쾌Ｖ >= PALAMLV:4
+	PALAM:ARG:쾌Ｖ = PALAMLV:4 - 1
+
+IF L_Ｖ절정
+	SOURCE:ARG:욕정 += 800 * L_Ｖ절정
+	SOURCE:ARG:복종 += 500 * L_Ｖ절정
+	SOURCE:ARG:노출 += 700 * L_Ｖ절정
+	SOURCE:ARG:굴종 += 400 * L_Ｖ절정
+	SOURCE:ARG:반감 += 300 * L_Ｖ절정
+ENDIF
+
+EX:ARG:1 += L_Ｖ절정
+
+@本番_변기_MANAGEMENT,ARG
+#DIM L_만족도
+;만족도판정
+;まず성공度を計算
+;랜덤で30を추가します。변기경험に応じて期待値は上昇します。
+SELECTCASE EXP:ARG:변기경험
+	CASE IS > EXPLV:5*10
+		L_만족도 = 25 + RAND:6
+	CASE IS > EXPLV:4*10
+		L_만족도 = 20 + RAND:11
+	CASE IS > EXPLV:3*10
+		L_만족도 = 15 + RAND:16
+	CASE IS > EXPLV:2*10
+		L_만족도 = 10 + RAND:21
+	CASE IS > EXPLV:1*10
+		L_만족도 = 5 + RAND:26
+	CASEELSE
+		L_만족도 = RAND:30
+ENDSELECT
+;랜덤で30を추가します。Ｖ경험に応じて期待値は上昇します。
+SELECTCASE EXP:ARG:Ｖ경험
+	CASE IS > EXPLV:5*10
+		L_만족도 += 25 + RAND:6
+	CASE IS > EXPLV:4*10
+		L_만족도 += 20 + RAND:11
+	CASE IS > EXPLV:3*10
+		L_만족도 += 15 + RAND:16
+	CASE IS > EXPLV:2*10
+		L_만족도 += 10 + RAND:21
+	CASE IS > EXPLV:1*10
+		L_만족도 += 5 + RAND:26
+	CASEELSE
+		L_만족도 += RAND:30
+ENDSELECT
+
+
+;このへんのコメント악마회화からの性行為のやつだったので撤去しました
+
+;기교を評価　Ｖなので섹스광もついでに
+IF RAND:10 <= ABL:ARG:기교 + (TALENT:ARG:섹스광 ? 3 # 0)
+	L_만족도 += ABL:ARG:기교 + (TALENT:ARG:섹스광 ? 3 # 0)
+ENDIF
+L_만족도 += ABL:ARG:기교 + (TALENT:ARG:섹스광 ? 3 # 0)
+
+;변기ぶりを評価
+IF RAND:10 + ABL:ARG:순종 * 2 >= ABL:ARG:욕망 + 2
+	L_만족도 += ABL:ARG:섹스중독
+	L_만족도 += ABL:ARG:정액중독 * 2
+ENDIF
+
+;가격による보정()
+L_만족도 += 300 * L_만족도 / (CFLAG:ARG:섹스가격 + 1)  / 400 - 10
+
+;처녀・재생처녀を買ってもらった場合、만족도+
+L_만족도 += CFLAG:ARG:재생처녀상실フラグ + CFLAG:ARG:처녀상실フラグ * 2
+
+;순종が3LVないと、著しく微妙になります
+IF ABL:ARG:순종 < 3 && ARG != MASTER
+	L_만족도 /= 2
+ENDIF
+RETURN L_만족도
+
+;中出し
+@中出し_변기_MANAGEMENT,ARG
+#DIM L_만족도
+;만족도판정
+;まず성공度を計算
+;랜덤で30を추가します。변기경험に応じて期待値は上昇します。
+SELECTCASE EXP:ARG:변기경험
+	CASE IS > EXPLV:5*10
+		L_만족도 = 25 + RAND:6
+	CASE IS > EXPLV:4*10
+		L_만족도 = 20 + RAND:11
+	CASE IS > EXPLV:3*10
+		L_만족도 = 15 + RAND:16
+	CASE IS > EXPLV:2*10
+		L_만족도 = 10 + RAND:21
+	CASE IS > EXPLV:1*10
+		L_만족도 = 5 + RAND:26
+	CASEELSE
+		L_만족도 = RAND:30
+ENDSELECT
+;랜덤で30を추가します。질사경험に応じて期待値は上昇します。
+SELECTCASE EXP:ARG:질사경험
+	CASE IS > EXPLV:5*10
+		L_만족도 += 25 + RAND:6
+	CASE IS > EXPLV:4*10
+		L_만족도 += 20 + RAND:11
+	CASE IS > EXPLV:3*10
+		L_만족도 += 15 + RAND:16
+	CASE IS > EXPLV:2*10
+		L_만족도 += 10 + RAND:21
+	CASE IS > EXPLV:1*10
+		L_만족도 += 5 + RAND:26
+	CASEELSE
+		L_만족도 += RAND:30
+ENDSELECT
+
+;このへんのコメント악마회화からの性行為のやつだったので撤去しました
+
+;기교を評価　Ｖなので섹스광もついでに
+IF RAND:10 <= ABL:ARG:기교 + (TALENT:ARG:섹스광 ? 3 # 0)
+	L_만족도 += ABL:ARG:기교 + (TALENT:ARG:섹스광 ? 3 # 0)
+ENDIF
+L_만족도 += ABL:ARG:기교 + (TALENT:ARG:섹스광 ? 3 # 0)
+
+;변기ぶりを評価
+IF RAND:10 + ABL:ARG:순종 * 2 >= ABL:ARG:욕망 + 2
+	L_만족도 += ABL:ARG:정액중독 * 2
+	L_만족도 += ABL:ARG:봉사정신 * 2
+ENDIF
+
+;가격による보정()
+L_만족도 += 500 * L_만족도 / (CFLAG:ARG:질내사정가격 + 1) /400 - 10
+
+;순종が3LVないと、著しく微妙になります
+IF ABL:ARG:순종 < 3 && ARG != MASTER
+	L_만족도 /= 2
+ENDIF
+;子宮現在容量加算
+IF !IS_MALE(ARG)
+	CFLAG:(ARG):子宮現在容量 += L_만족도 * 2
+ENDIF
+
+RETURN L_만족도
+
+;애널
+@애널_변기_MANAGEMENT_SOURCE,ARG
+;ソースによる加算量の체크
+SOURCE:ARG:쾌Ａ = 400
+SOURCE:ARG:정애 = 100
+SOURCE:ARG:아픔 = 800
+SOURCE:ARG:중독충족 = 200
+SOURCE:ARG:노출 = 60
+SOURCE:ARG:일탈 = 200
+SOURCE:ARG:반감 = 500
+
+;중독による중독충족のソースは先に処理しておく
+;섹스중독を見る
+IF ABL:ARG:섹스중독 == 0
+	TIMES SOURCE:ARG:중독충족 , 0.00
+ELSEIF ABL:ARG:섹스중독 == 1
+	TIMES SOURCE:ARG:중독충족 , 0.30
+ELSEIF ABL:ARG:섹스중독 == 2
+	TIMES SOURCE:ARG:중독충족 , 0.60
+ELSEIF ABL:ARG:섹스중독 == 3
+	TIMES SOURCE:ARG:중독충족 , 0.90
+ELSEIF ABL:ARG:섹스중독 == 4
+	TIMES SOURCE:ARG:중독충족 , 1.20
+ELSEIF ABL:ARG:섹스중독 == 5
+	TIMES SOURCE:ARG:중독충족 , 1.50
+ELSEIF ABL:ARG:섹스중독 == 6
+	TIMES SOURCE:ARG:중독충족 , 1.80
+ELSEIF ABL:ARG:섹스중독 == 7
+	TIMES SOURCE:ARG:중독충족 , 2.10
+ELSEIF ABL:ARG:섹스중독 == 8
+	TIMES SOURCE:ARG:중독충족 , 2.40
+ELSEIF ABL:ARG:섹스중독 == 9
+	TIMES SOURCE:ARG:중독충족 , 3.00
+ELSEIF ABL:ARG:섹스중독 >= 10
+	TIMES SOURCE:ARG:중독충족 , 5.00
+ENDIF
+
+CALL SOURCE_MANAGEMENT_CHECK_QUICK,ARG
+;CUPに上昇ソースが帰ってくる
+;PRINTFORML ASOURCE{CUP:ARG:2}
+SOURCE:ARG:쾌Ａ = CUP:ARG:쾌Ａ
+
+@애널_변기_MANAGEMENT_FOR,ARG
+#DIM L_아픔ソース
+#DIM L_쾌Ａ
+#DIM L_Ａ절정
+;とりあえず횟수増える
+CFLAG:ARG:애널횟수 += 1
+;아픔ソース
+L_아픔ソース = 800
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;억압、저항持ちには、억울ソース추가
+SIF TALENT:ARG:억압 || TALENT:ARG:저항
+	SOURCE:ARG:울굴 += 500
+
+;Aへの고통は先に処理しておく
+;EXP:ARG:Ａ경험をみる
+IF EXP:ARG:Ａ경험 < EXPLV:1
+	TIMES L_아픔ソース , 3.00
+	SOURCE:ARG:반감 += 1000
+ELSEIF EXP:ARG:Ａ경험 < EXPLV:2
+	TIMES L_아픔ソース , 1.20
+	SOURCE:ARG:반감 += 500
+ELSEIF EXP:ARG:Ａ경험 < EXPLV:3
+	TIMES L_아픔ソース , 0.80
+	SOURCE:ARG:반감 += 250
+ELSEIF EXP:ARG:Ａ경험 < EXPLV:4
+	TIMES L_아픔ソース , 0.60
+	SOURCE:ARG:반감 += 100
+ELSEIF EXP:ARG:Ａ경험 < EXPLV:5
+	TIMES L_아픔ソース , 0.40
+ELSEIF EXP:ARG:Ａ경험 >= EXPLV:5
+	TIMES L_아픔ソース , 0.20
+ENDIF
+
+;PALAM:ARG:윤활をみる
+IF PALAM:ARG:윤활 < PALAMLV:1
+	TIMES L_아픔ソース , 1.20
+	SOURCE:ARG:반감 += 500
+ELSEIF PALAM:ARG:윤활 < PALAMLV:2
+	TIMES L_아픔ソース , 1.00
+	SOURCE:ARG:반감 += 250
+ELSEIF PALAM:ARG:윤활 < PALAMLV:3
+	TIMES L_아픔ソース , 0.60
+ELSEIF PALAM:ARG:윤활 < PALAMLV:4
+	TIMES L_아픔ソース , 0.30
+ELSEIF PALAM:ARG:윤활 >= PALAMLV:4
+	TIMES L_아픔ソース , 0.20
+ENDIF
+
+;PALAM:ARG:욕정をみる
+;쾌ＡはあまりPALAM:ARG:욕정では差が出ない
+L_쾌Ａ = CUP:ARG:쾌Ａ
+IF PALAM:ARG:욕정 < PALAMLV:1
+	TIMES L_쾌Ａ , 0.80
+ELSEIF PALAM:ARG:욕정 < PALAMLV:2
+	TIMES L_쾌Ａ , 1.00
+ELSEIF PALAM:ARG:욕정 < PALAMLV:3
+	TIMES L_쾌Ａ , 1.20
+ELSEIF PALAM:ARG:욕정 < PALAMLV:4
+	TIMES L_쾌Ａ , 1.40
+ELSEIF PALAM:ARG:욕정 >= PALAMLV:4
+	TIMES L_쾌Ａ , 1.60
+ENDIF
+
+;ソース加算・쾌感・욕정・액체
+;아픔ソースを他のPALAM加算のため放り込んでおく
+SOURCE:ARG:아픔 += L_아픔ソース
+L_아픔ソース = L_아픔ソース * B / 800
+PALAM:ARG:쾌Ａ += L_쾌Ａ
+IF L_쾌Ａ > 100
+	;쾌감을부정は、쾌ソースの数値に応じて、억울증가（음란、창부で無効）
+	SIF TALENT:ARG:쾌감을부정 && (TALENT:ARG:음란 == 0 && TALENT:ARG:창부 == 0)
+		SOURCE:ARG:울굴 += L_쾌Ａ/10
+		;젖기쉬움と젖기어려움はここで処理
+	IF TALENT:ARG:젖기쉬움
+		PALAM:ARG:윤활 += L_쾌Ａ * 3 / 5
+	ELSEIF TALENT:ARG:젖기어려움
+		PALAM:ARG:윤활 += L_쾌Ａ * 2 / 25
+	ELSE
+		PALAM:ARG:윤활 += L_쾌Ａ / 5
+	ENDIF
+ENDIF
+
+PALAM:ARG:욕정 += CUP:ARG:욕정 + L_아픔ソース
+PALAM:ARG:윤활 += CUP:ARG:윤활
+
+;절정処理
+L_Ａ절정 = 0
+IF PALAM:ARG:쾌Ａ >= PALAMLV:4 * 2
+	L_Ａ절정 = 2
+	PALAM:ARG:쾌Ａ -= (PALAMLV:4 * 2 - 1000)
+ELSEIF PALAM:ARG:쾌Ａ >= PALAMLV:4
+	L_Ａ절정 = 1
+	PALAM:ARG:쾌Ａ -= (PALAMLV:4 - 1000)
+ENDIF
+SIF PALAM:ARG:쾌Ａ >= PALAMLV:4
+	PALAM:ARG:쾌Ａ = PALAMLV:4 - 1
+
+IF L_Ａ절정
+	SOURCE:ARG:욕정 += 500 * L_Ａ절정
+	SOURCE:ARG:복종 += 700 * L_Ａ절정
+	SOURCE:ARG:노출 += 900 * L_Ａ절정
+	SOURCE:ARG:굴종 += 500 * L_Ａ절정
+	SOURCE:ARG:반감 += 400 * L_Ａ절정
+ENDIF
+
+EX:ARG:2 += L_Ａ절정
+
+@애널_변기_MANAGEMENT,ARG
+#DIM L_만족도
+;만족도판정
+;まず성공度を計算
+;랜덤で30を추가します。변기경험に応じて期待値は上昇します。
+SELECTCASE EXP:ARG:변기경험
+	CASE IS > EXPLV:5*10
+		L_만족도 = 25 + RAND:6
+	CASE IS > EXPLV:4*10
+		L_만족도 = 20 + RAND:11
+	CASE IS > EXPLV:3*10
+		L_만족도 = 15 + RAND:16
+	CASE IS > EXPLV:2*10
+		L_만족도 = 10 + RAND:21
+	CASE IS > EXPLV:1*10
+		L_만족도 = 5 + RAND:26
+	CASEELSE
+		L_만족도 = RAND:30
+ENDSELECT
+;랜덤で30を추가します。Ａ경험に応じて期待値は上昇します。
+SELECTCASE EXP:ARG:Ａ경험
+	CASE IS > EXPLV:5*10
+		L_만족도 += 25 + RAND:6
+	CASE IS > EXPLV:4*10
+		L_만족도 += 20 + RAND:11
+	CASE IS > EXPLV:3*10
+		L_만족도 += 15 + RAND:16
+	CASE IS > EXPLV:2*10
+		L_만족도 += 10 + RAND:21
+	CASE IS > EXPLV:1*10
+		L_만족도 += 5 + RAND:26
+	CASEELSE
+		L_만족도 += RAND:30
+ENDSELECT
+
+
+;このへんのコメント악마회화からの性行為のやつだったので撤去しました
+
+;기교を評価　Ａなので애널광もついでに
+IF RAND:10 <= ABL:ARG:기교 + (TALENT:ARG:애널광 ? 3 # 0)
+	L_만족도 += ABL:ARG:기교 + (TALENT:ARG:애널광 ? 3 # 0)
+ENDIF
+L_만족도 += ABL:ARG:기교 + (TALENT:ARG:애널광 ? 3 # 0)
+
+;변기ぶりを評価
+IF RAND:10 + ABL:ARG:순종 * 2 >= ABL:ARG:욕망 + 2
+	L_만족도 += ABL:ARG:마조끼
+	L_만족도 += ABL:ARG:정액중독
+ENDIF
+
+;가격による보정()
+L_만족도 += 300 * L_만족도 /(CFLAG:ARG:애널가격 + 1) / 400 - 10
+
+;순종が3LVないと、著しく微妙になります
+IF ABL:ARG:순종 < 3 && ARG != MASTER
+	L_만족도 /= 2
+ENDIF
+;子宮現在容量加算
+IF TALENT:ARG:오토코노코
+	CFLAG:(ARG):子宮現在容量 += L_만족도 * 2
+ENDIF
+RETURN L_만족도
+
+
+;================================================
+;FUNCTION
+;================================================
+@看板변기(ARG)
+#FUNCTION
+#DIM CHARA
+#DIM DRAW
+DRAW = -1
+FOR CHARA,0,CHARANUM
+	IF CFLAG:CHARA:노역フラグ == 10+ARG && CFLAG:CHARA:従事内容 == 1
+		IF DRAW == -1
+			DRAW = CHARA
+		ELSE
+			SIF CFLAG:CHARA:변기인기 > CFLAG:DRAW:변기인기
+				DRAW = CHARA
+		ENDIF
+	ENDIF
+NEXT
+RETURNF DRAW
+
+@변기유혹度(CHARA, F_NTR)
+#FUNCTION
+#DIM CHARA
+#DIM L_유혹度
+#DIM F_NTR
+
+;ふつう전라なので복장は無し
+L_유혹度 = 50
+
+;순종で추가
+L_유혹度 += ABL:CHARA:순종 * 4
+;봉사정신で추가
+L_유혹度 += ABL:CHARA:봉사정신 * 3
+;정액중독で추가
+L_유혹度 += ABL:CHARA:정액중독 * 5
+;発情で추가
+SIF 위험일(CHARA) > 1
+	L_유혹度 += 10
+;PALAM・굴복で추가
+L_유혹度 += PALAMLV_F(CHARA, "굴복")*3
+;PALAM・욕망で추가
+L_유혹度 += PALAMLV_F(CHARA, "욕정")*1
+;PALAM・윤활で추가
+L_유혹度 += PALAMLV_F(CHARA, "윤활")*1
+
+
+;음란・창부で추가
+SIF TALENT:CHARA:음란
+	TIMES L_유혹度 , 1.30
+SIF TALENT:CHARA:창부
+	TIMES L_유혹度 , 1.60
+
+;복종・예속で추가
+SIF TALENT:CHARA:복종
+	TIMES L_유혹度 , 2.00
+SIF TALENT:CHARA:예속
+	TIMES L_유혹度 , 2.50
+
+;NTR체크
+IF F_NTR
+	IF F_NTR >= 3
+		SIF TALENT:CHARA:연모
+			TIMES L_유혹度 , 2.00
+		SIF TALENT:CHARA:친애
+			TIMES L_유혹度 , 5.00
+	ELSE
+		SIF TALENT:CHARA:연모
+			TIMES L_유혹度 , 0.50
+		SIF TALENT:CHARA:친애
+			TIMES L_유혹度 , 0.20
+	ENDIF
+ENDIF
+
+SIF CFLAG:CHARA:引継ぎ횟수 && FLAG:5 != 9 && DAY < 51
+	L_유혹度 = L_유혹度 * DAY / 100
+
+
+
+RETURNF L_유혹度
+
+;=====================================================
+;메시지を표시
+;=====================================================
+@WORK_MESSAGE_TOILET,ARG
+;CFLAG:ARG:14 = 1.후타나리オネイサマ登場フラグ 2.수간フラグ
+;동성、수간판정
+;후타나리
+SIF CFLAG:ARG:個別성적서비스& 128 && RAND:3 == 0
+	CFLAG:ARG:14 = 1
+;けもい
+SIF CFLAG:ARG:個別성적서비스& 256 && RAND:2 == 0
+	CFLAG:ARG:14 = 2
+
+
+SIF (FLAG:공중변소報告설정 < 2) == 0
+	RETURN
+
+SELECTCASE CFLAG:ARG:14
+	;후타나리
+	CASE 1
+		SETCOLOR 0x9900FF
+		PRINTFORML %CALLNAME:ARG%의 주위를 요염한 여자들이 둘러싼다
+		PRINTFORML 하지만 그녀들의 가랑이에는 아름다운 용모와는 어울리지 않는 물건이 우뚝 솟아 있다…
+		RESETCOLOR
+	;けもい
+	CASE 2
+		SETCOLOR COLOR("RED")
+		PRINTFORML %CALLNAME:ARG%의 주위를 짐승들이 둘러싼다
+		PRINTFORML 짐승들은 페니스를 발기시키고 %CALLNAME:ARG%에게 일제히 달려 들었다…
+		RESETCOLOR
+ENDSELECT
+
+;성공度で分岐
+PRINTFORML %조사처리(CALLNAME:ARG,"는")% {CFLAG:ARG:변기사용예정인수}명의 손님에게 성욕처리용 육변기로 사용되어 
+SIF CFLAG:ARG:펠라횟수
+	PRINTFORM 입안에 {CFLAG:ARG:펠라횟수}회, 
+SIF CFLAG:ARG:애널횟수
+	PRINTFORM 항문에 {CFLAG:ARG:애널횟수}회, 
+SIF CFLAG:ARG:中出し횟수
+	PRINTFORM 질내에 {CFLAG:ARG:中出し횟수}회, 
+SIF CFLAG:ARG:펠라횟수+CFLAG:ARG:애널횟수+CFLAG:ARG:中出し횟수
+	PRINTL 정액을 쏟아부어졌다.
+IF FLAG:공중변소報告설정 == 0
+	;봉사정신Lv5이상or혀놀림
+	IF CFLAG:ARG:펠라횟수 >= 1 && (ABL:ARG:7 >= 5 || TALENT:ARG:52)
+		IF RAND:5 == 0 && TALENT:ARG:111 || TALENT:ARG:112
+			PRINTFORML %조사처리(CALLNAME:ARG,"는")% 손님의 요구로 뜨겁고 단단한 물건을 가슴에 끼운 채 입으로 봉사하고 있었다.
+			PRINTFORMW 탄력 있고 부드러운 가슴으로 훑어 나가자 끝에서 탁해진 액체가 흘러나오더니, 뿌리부터 힘차게 끈적한 백탁액이 흘러 들어왔다.
+			PRINTFORML 진땀을 흘리며 괴로워하는 듯한 손님의 얼굴에 %조사처리(CALLNAME:ARG,"는")% 음탕한 미소를 띤 채 유방을 밀어 올려,
+			PRINTFORMW 고기만두 같은 형태를 음란하게 바꿔 나갔다.
+			PRINTFORMW 뿌리부터 격류에 쓸려내려가는듯한 느낌을 받은 손님은 남근을 %CALLNAME:ARG%의 입에 밀어넣고, 입안에 잔뜩 사정했다.
+		ELSEIF RAND:4 == 0
+			PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 손님 앞에 무릎 꿇고 바지의 지퍼를 내리고선, 손님의 사타구니에 얼굴을 묻었다.
+			PRINTFORML 부드러운 동작으로 머리를 앞뒤로 움직이고, 끈적한 혀놀림으로 손님을 절정시켜,
+			PRINTFORMW 뿌리부터 터무니없는 쾌감의 파도가 밀려 들어오자 손님은 %CALLNAME:ARG%의 입 안에 방출했다.
+		ELSEIF RAND:3 == 0
+			PRINTFORML %조사처리(CALLNAME:ARG,"는")% 크게 솟아오른 손님의 남근을 뿌리까지 삼켰다.
+			PRINTFORMW 손님은 녹아내리듯 황홀한 얼굴로 몸을 젖히고서는, 이마에서 식은 땀을 줄줄 흘렸다.
+			PRINTFORML %CALLNAME:ARG%의 혀 기술은 거의 사람 잡을 수준에 도달해, 강철 같은 마음을 가진 남자라도 몸이 달아오르게 된다
+			PRINTFORMW 혀의 움직임에 손님은 멍하니 입을 벌린 채로, %CALLNAME:ARG%의 음란한 봉사에 몸을 맡겼다.
+		ELSEIF RAND:2 == 0
+			PRINTFORML 손님이 바지를 내리고 남근을 꺼내더니, 그걸 억지로 %CALLNAME:ARG%의 입에 밀어 넣었다.
+			PRINTFORMW %CALLNAME:ARG%의 질퍽한 입 안은 마경 그 자체로, 손님은 가학적인 미소를 띄우고 허리를 움직이는 행위에 몰두했다.
+			PRINTFORMW 그리고 마음껏 쌌다.
+			PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 뿜어져 나오는 뜨거운 즙을 한 방울도 남기지 않고 빨아들였다.
+		ELSE
+			PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 음란한 표정을 짓고 손님을 올려다보았다.
+			PRINTFORMW 어느 정도로 음란한 미소였는지
+			PRINTFORML 그 미소에 숨 쉬는 것조차 잊어 버린 손님의 지퍼를 열고 남근을 끄집어내더니
+			PRINTFORMW 음란한 손놀림으로 훑어 내려서 단단하게 세우고, 그대로 입에 머금었다.
+			PRINTFORML 입과 남근이 하나로 융합하는 듯한 쾌감에 손님은 한심한 소리를 냈다
+			PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 뺨을 오므려 남자로부터 쾌락의 원천을 뽑아 내려고 하고 있었다.
+			PRINTFORMW 손님의 얼굴에서 표정이 사라졌을 때, %CALLNAME:ARG%의 입에 대량의 백탁액이 쏟아졌다.
+		ENDIF
+	ENDIF
+	;A감각Lv5이상or애널광
+	IF CFLAG:ARG:애널횟수 >= 1 && (ABL:ARG:5 >= 5 || TALENT:ARG:76)
+		IF RAND:2 == 0
+			PRINTFORML 푸욱, 하고 직장으로 밀려 들어오는 이물의 감각에 %조사처리(CALLNAME:ARG,"는")% 비명을 질렀지만,
+			PRINTFORMW 곧 쾌락을 찾아낸 듯, 손님의 남근을 떼어 놓지 않을듯이 괄약근을 조이며 격렬한 움직임에 교성을 흘리기 시작했다.
+			PRINTFORMW 장내에 하얗고 탁한 액체가 흘러 들어오자 %조사처리(CALLNAME:ARG,"는")% 단번에 항문을 조여, 남근을 쥐어짰다.
+		ELSE
+			PRINTFORMW 손으로 애널을 희롱하는데 질린 손님이 지퍼를 내리고 우뚝 선 남근을 꺼내서 %CALLNAME:ARG%의 항문에 대고서는, 단번에 꿰뚫었다.
+			PRINTFORML 본래 배설하기 위한 기관에 육봉을 쑤셔 박힌 채, %조사처리(CALLNAME:ARG,"는")% 정신 나간 것처럼 엉덩이를 흔들어 댔다.
+			PRINTFORMW 질로는 맛볼 수 없고 항문 성교로만 느낄 수 있는 감각에 손님은 천박한 얼굴로 %CALLNAME:ARG%의 엉덩이를 두들겼다.
+		ENDIF
+	ENDIF
+	;V감각Lv5이상or섹스광
+	IF CFLAG:ARG:中出し횟수 >= 1 && (ABL:ARG:4 >= 5 || TALENT:ARG:75)
+		IF RAND:5 == 0
+			PRINTFORMW 손님은 %조사처리(CALLNAME:ARG,"를")% 네 발로 기게 한 다음 뒤에서 엉덩이를 잡아당기고, 허리를 가져다 대었다.
+			PRINTFORML 닫혀 있던 부드러운 질벽이 단단한 육봉으로 억지로 벌려지는가 싶더니 단숨에 조여 와서 뜨거운 점액으로 합쳐졌다.
+			PRINTFORMW 이 세상의 것이 아닌듯한 쾌락에 손님은 3초도 버티지 못 하고 절정에 달했다.
+		ELSEIF RAND:4 == 0
+			PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 손님에게 뒤쪽에서부터 범해지고 있다.
+			PRINTFORML 남근이 부드러운 질벽을 깎아 낼 기세로 쑤셔 대자 유연한 질벽이 휘감기더니, 강하게 조여 대었다.
+			PRINTFORMW 틈새 하나 없이 남근을 둘러싸고, 쿠퍼액을 쥐어짜 댔다.
+			PRINTFORML 엉덩이를 때릴 때마다 한계 없이 올라가는 쾌감에, 손님은 발정한 원숭이마냥 허리를 움직여 대더니,
+			PRINTFORMW 꿀단지의 기묘한 꿈틀거림에 짐승 같은 소리를 흘렸다.
+			PRINTFORMW 이윽고 육봉에서 정액이 뛰쳐나올 듯한 감각을 느끼자, 주저 없이 %CALLNAME:ARG% 안에다 사정했다.
+		ELSEIF RAND:3 == 0
+			PRINTFORMW 손님은 %CALLNAME:ARG%의 허리를 잡고서 젖어 있는 꿀단지에 남근을 단숨에 집어넣었다.
+			PRINTFORML %조사처리(CALLNAME:ARG,"는")% 터무니없이 음란한 표정을 띄우고 있다.
+			PRINTFORMW 남근이 깊숙히 들어온 순간, 꿀단지가 강렬하게 조여 오는 상태에, 손님은 신음성을 내더니, 격럴하게 허리를 움직였다.
+			PRINTFORMW 손님은 오래 버티지 못 하고 절정에 달하고 그대로 %CALLNAME:ARG%의 가슴 위로 쓰러졌다.
+		ELSEIF RAND:2 == 0
+			PRINTFORMW %조사처리(CALLNAME:ARG,"가")% 손님을 넘어뜨리고서 위에 올라타서는, 발기한 물건을 향해 허리를 내렸다.
+			PRINTFORML 비육의 미끈거리는 감촉이 떨어져 내리고, 단숨에 부드러운 질벽이 한계를 모르듯이 조여 왔다.
+			SIF TALENT:ARG:111 || TALENT:ARG:112
+			PRINT 풍만한 유방이 요동치며,
+			PRINTFORMW 격렬히 허리를 흔들어 대는 %CALLNAME:ARG%의 치태에 농락 당하는 손님은, 단지 사정의 순간을 기다릴 수밖에 없었다.
+		ELSE
+			PRINTFORMW 손님은 변기에 허리를 내리고 %조사처리(CALLNAME:ARG,"를")% 껴안은 채로 범했다.
+			PRINTFORML %조사처리(CALLNAME:ARG,"는")% 창부처럼 손님의 남근을 머금은 엉덩이를 흠들고, 달콤한 목소리를 흘렸다.
+			PRINTFORM 손님이 꽉 껴안자
+			SIF TALENT:ARG:111 || TALENT:ARG:112
+			PRINT 풍만한 가슴을 눌러오는 한편,
+			PRINTFORMW 격렬하게 허리를 움직이면서 입술을 겹쳐왔다.
+			PRINTFORML 혀를 집어넣고서, 할짝할짝 음란한 소리를 울리면서 주변의 열기를 고조시켜 가며,
+			PRINTFORMW 손님은, %CALLNAME:ARG%의 질내에 잔뜩 사정했다.
+		ENDIF
+	ENDIF
+ENDIF
+IF CFLAG:ARG:노역성공度 > 29
+	;함락状況で分岐
+	IF TALENT:ARG:붕괴
+		PRINTFORML 부서진 인형처럼 범해지는 것을 얌전히 받아들이는 모습이、
+		PRINTFORML 반대로 육변기로서 사용감이 좋다고 여겨진 모양이다。
+	ELSEIF TALENT:ARG:연모 || TALENT:ARG:친애
+		;Ｖ감각で分岐
+		IF ABL:ARG:Ｖ감각 > 3 && CFLAG:ARG:本番횟수
+			IF RAND:3 == 0 && TALENT:ARG:아내
+				PRINTFORML 약지에 빛나는 반지와 함께, %조사처리(CALLNAME:MASTER,"를")% 위하여 정숙함을 유지하려고 하는 모습이
+				PRINTFORMW 이용자들의 가학심에 불을 붙인 모양이다.
+			ELSEIF RAND:2 == 0
+				PRINTFORML %CALLNAME:MASTER%에게 사죄하고 있음에도 불구하고,
+				PRINTFORMW 남자에게 허리를 흔들어 대는 모습이 이용자들의 흥분을 더욱 부채질한 듯 하다.
+			ELSE
+				PRINTFORML %CALLNAME:MASTER%의 이름을 부르면서도
+				PRINTFORML 양다리로 손님의 몸을 꽉 붙잡고서, 꿀단지에 육봉을 머금고 놓아주지 않은채
+				PRINTFORMW 스스로 허리를 흔들며 쾌락을 탐하는 모습이 손님을 기쁘게 한 듯 하다.
+			ENDIF
+		ELSEIF ABL:ARG:봉사정신 > 3 && CFLAG:ARG:펠라횟수
+			IF RAND:2 == 0 && TALENT:ARG:아내
+				PRINTFORML 입에서 흘러내린 정액이 떨어진 손가락에서 빛나는 반지가
+				PRINTFORMW 이용자의 배덕감을 자극하고 있는 듯하다.
+			ELSE
+				PRINTFORML 타인의 여자에게 자신의 페니스를 물리고 있다는 행위가
+				PRINTFORML 이용자들의 정복욕을 자극하고 있는 듯 하다.
+			ENDIF
+		ELSE
+			PRINTFORML %CALLNAME:MASTER%의 이름을 부르며 울부짖는 모습이
+			PRINTFORMW 일부 손님의 가학 취미를 자극해 호평이었던 것 같다.
+		ENDIF
+	ELSEIF TALENT:ARG:음란 || TALENT:ARG:창부
+		PRINTFORML 손님과 같이 적극적으로 쾌락을 얻으려고 하는 음란한 모습이
+		PRINTFORMW 사용자들에게 호평을 받은 모양이다.
+	ELSEIF TALENT:ARG:복종 || TALENT:ARG:예속
+		PRINTFORML 남자의 욕망을 토해내기 위해 존재하는 「변기」로서 보여주는 철저하게 순종하는 자세가 호평 받아
+		PRINTFORMW 손님들에게 돈을 더 받은 모양이다.
+	ELSEIF 위험일(ARG) > 1
+		PRINTFORML 발정해 버린 황홀한 표정으로 정액을 짜내려는 듯한 모습이
+		PRINTFORMW 손님들에게 호평이었던 것 같다.
+	ELSE
+		PRINTFORMW 손님들의 반응이 좋은 것 같다.
+	ENDIF
+ELSE
+	PRINTFORMW 그러나 손님의 반응은 좋지 못했던 것 같다……
+ENDIF
+;이벤트구상
+T = TARGET
+TARGET = ARG
+TFLAG:13 = 22
+CALL KOJO_MESSAGE_EVENT
+TARGET = T
+
+;=============================================
+;PALAM上昇処理（特設）
+;=============================================
+@CUP_MANAGEMENT_T,ARG
+PALAM:ARG:5 += CUP:ARG:5
+FOR LOCAL,7,19
+	PALAM:ARG:LOCAL += CUP:ARG:LOCAL
+NEXT
+;ソース초기化
+FOR LOCAL,0,20
+	CUP:ARG:LOCAL = 0
+	SOURCE:ARG:LOCAL = 0
+NEXT
+
+
+;==========================================================
+;@공중변소ＮＴＲ
+; 공중변소노역でのNTR処理
+;<引数>
+;	ARG   = ＮＴＲキャラの등록번호
+;<戻り値>
+;	なし
+;==========================================================
+
+@공중변소ＮＴＲ, ARG
+#LOCALSIZE 6
+VARSET LOCAL,0
+;LOCAL:1 = 호감도변화量
+;LOCAL:2 = NTR好き客からの声掛けられ확률
+;LOCAL:3 = NTR引っかかり확률마이ナス보정
+;LOCAL:4 = NTR客の判別
+;LOCAL:5 = NTR客のプ레이횟수
+
+;공중변소ＮＴＲ이벤트がOFFの場合は何もせず戻る
+;専有奴隷の개목걸이を장비している場合は何もせず戻る
+;남자は弾く
+SIF !GETBIT(FLAG:ＮＴＲ기능 , 4) || (CFLAG:ARG:그외 == 1116 || CFLAG:ARG:그외2 == 1116 || CFLAG:ARG:그외3 == 1116 || CFLAG:ARG:그외4 == 1116 || CFLAG:ARG:그외5 == 1116 || CFLAG:ARG:그외6 == 1116) || TALENT:ARG:남자 == 1
+	RETURN
+;NTR好き客からの声掛けられ확률산출
+LOCAL:2 = LIMIT(CFLAG:ARG:放置日数 * 2, 0, 30) + TALENT:ARG:인기 * 10
+
+;NTR引っかかり확률마이ナス보정の計算
+LOCAL:3 = CFLAG:ARG:放置日数 * 2 + TALENT:ARG:즉각함락 * 50
+SIF 위험일(ARG) > 1
+	LOCAL:3 += 위험일(ARG) * 10
+
+;NTR客のプ레이횟수、기본は5
+LOCAL:5 = 5
+
+;ＮＴＲ客の설정処理
+SELECTCASE FLAG:ＮＴＲ客の설정
+	CASE  0
+		TIMES LOCAL:2 , 1.00
+		TIMES LOCAL:3 , 1.00
+		TIMES LOCAL:5 , 1.00
+	CASE  1
+		TIMES LOCAL:2 , 1.50
+		TIMES LOCAL:3 , 2.00
+		TIMES LOCAL:5 , 2.00
+	CASE  2
+		TIMES LOCAL:2 , 3.00
+		TIMES LOCAL:3 , 4.00
+		TIMES LOCAL:5 , 4.00
+ENDSELECT
+
+SIF (CFLAG:ARG:그외 == 1117 || CFLAG:ARG:그외2 == 1117 || CFLAG:ARG:그외3 == 1117)
+	PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 뭐라 말할 수 없는 달콤한 향기를 풍기고 있다……
+;호감도
+LOCAL:1 = ARG:1/3+ARG:2/3 + ARG:3 + CFLAG:ARG:放置日数
+IF RAND:2 == 0
+	CDFLAG:ARG:キャラ間好感度:(94) += LOCAL:1
+ELSE
+	CDFLAG:ARG:キャラ間好感度:(93) -= LOCAL:1
+ENDIF
+
+;ＮＴＲ好きの客（연모・친애限定）
+;放置日数*2（上限30％）の확률로声をかけられる（인기持ちはさらに+10％）
+;愛ＮＴＲ상태の場合は50％
+IF (TALENT:ARG:연모 || TALENT:ARG:친애) && RAND:100 < LOCAL:2 || (TALENT:ARG:ＮＴＲ == 1 || TALENT:ARG:ＮＴＲ == 4) && RAND:100 < 50 || (CFLAG:ARG:그외 == 1117 || CFLAG:ARG:그외2 == 1117 || CFLAG:ARG:그외3 == 1117)
+	PRINTFORML 
+	PRINTFORMW %CALLNAME:ARG%에게 네토리 취미를 가진 손님이 온 듯하다……
+	;誘いに乗るか판정
+	;기본치0％+放置日数*2（上限なし）さらに즉각함락持ちは+50で、発情の場合も+10～15
+	;これに함락度*10の마이ナス보정を入れる
+	;ＮＴＲ상태の場合は無조건
+	IF RAND:100 > 100 + 함락(ARG) * 10 - LOCAL:3 || TALENT:ARG:ＮＴＲ > 0 || (CFLAG:ARG:그외 == 1117 || CFLAG:ARG:그외2 == 1117 || CFLAG:ARG:그외3 == 1117)
+		PRINTFORML 
+		PRINTFORML 네토리 취미의 손님이 %CALLNAME:ARG%의 귓가에 무언가를 속삭이고 있다……
+		PRINTFORML ・
+		PRINTFORML ・・
+		PRINTFORMW ・・・
+		;本番판정
+		;기본치50％+放置日数*2（上限なし）さらに즉각함락持ちは+50
+		;これに함락度*50の마이ナス보정を入れる
+		;愛ＮＴＲ상태の場合は無조건でドピュドピュされる
+		IF RAND:100 > 50 + 함락(ARG) * 50 - LOCAL:3 || TALENT:ARG:ＮＴＲ > 0 || (CFLAG:ARG:그외 == 1117 || CFLAG:ARG:그외2 == 1117 || CFLAG:ARG:그외3 == 1117)
+			IF CFLAG:ARG:現ＮＴＲ進行度 > 10
+				IF CFLAG:ARG:108 == 1
+					CFLAG:ARG:108 = 0
+					PRINTFORML %CALLNAME:ARG%의 자궁내 피임 결계가 해제되어버렸다……
+				ENDIF
+				IF RAND:100 < 30 && CFLAG:ARG:109 == 0
+					CFLAG:ARG:109 = 1
+					PRINTFORML %조사처리(CALLNAME:ARG,"는")% 네토리 취미의 손님에게 배란유발제를 입으로 받아먹었다……
+				ENDIF
+			ENDIF
+			SETCOLOR COLOR("pink")
+			IF TALENT:ARG:ＮＴＲ == 1 || TALENT:ARG:ＮＴＲ == 4
+				IF CFLAG:ARG:個別성적서비스 & 16
+					IF CFLAG:ARG:個別성적서비스 & 64
+						IF RAND:2 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"를")% 사랑스러운 눈으로 바라보면서, 환희의 신음성을 내고 있다…
+						ELSE
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 행복한 듯한 표정으로 %NTRNAME(CFLAG:ARG:함락キャラ)%의 정액을 받아들이고 있다…
+						ENDIF
+					ELSE
+						PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 질내사정 금지에도 상관없이, 기쁜 듯한 표정으로 %NTRNAME(CFLAG:ARG:함락キャラ)%에게 교배 당하고 있다…
+					ENDIF
+				ELSE
+					PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 섹스 금지에도 상관없이, 녹을 듯한 표정으로 %NTRNAME(CFLAG:ARG:함락キャラ)%의 허리 놀림에 숨을 헐떡이고 있다…
+					PRINTFORMW 그리고 그대로 질내사정까지 당해 버렸다…
+				ENDIF
+			ELSE
+				PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 얼굴을 붉게 물들인 채로, 네토리 취미를 가진 손님이 몰아붙이자 숨을 헐떡이고 있다
+			ENDIF
+			RESETCOLOR
+			LOCAL:4 = -8
+			CALL 공중변소ＮＴＲ_SEX, ARG, LOCAL:4
+			PRINTL		
+		ELSE
+			PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 네토리 취미의 손님의 유혹을 견뎌낸 것 같다
+			LOCAL:4 = 0
+			CALL 공중변소ＮＴＲ_SEX, ARG, LOCAL:4
+		ENDIF
+	ELSE
+		PRINTFORML 네토리 취미의 손님은 %조사처리(CALLNAME:ARG,"를")% 품평하듯이 지긋이 감상하더니, 그대로 돌아갔다
+	ENDIF
+;ＮＴＲというか쾌락堕ち
+;절륜、薬物、テクニシャン等
+;放置日数*2（上限30％）の확률로声をかけられる（인기持ちはさらに+10％）
+;ＮＴＲ상태の場合は50％
+ELSEIF RAND:100 < LOCAL:2 || (TALENT:ARG:ＮＴＲ == 2 || TALENT:ARG:ＮＴＲ == 5) && RAND:100 < 50 || (CFLAG:ARG:그외 == 1117 || CFLAG:ARG:그외2 == 1117 || CFLAG:ARG:그외3 == 1117)
+	PRINTFORML 
+	;フェラ有り
+	IF CFLAG:ARG:個別성적서비스 & 8 && RAND:5 == 0
+		PRINTFORML 남자들이 %CALLNAME:ARG%에게 쉴 틈도 주지 않고, 목구멍 깊숙히 정액을 흘려보내고 있다…
+		LOCAL:4 = 2
+	;本番有り
+	ELSEIF CFLAG:ARG:個別성적서비스 & 16 && RAND:4 == 0
+		IF RAND:2 == 0
+			PRINTFORML 살찐 아저씨가 정력적으로 %조사처리(CALLNAME:ARG,"를")% 몇 번이나 범하고 있다……
+			LOCAL:4 = 3
+		ELSE
+			PRINTFORML 거근의 손님이 %CALLNAME:ARG%에게 팔뚝 같이 굵은 페니스를 가져다 대었다……
+			LOCAL:4 = 4
+		ENDIF
+	;애널有り
+	ELSEIF CFLAG:ARG:個別성적서비스 & 32 && RAND:3 == 0
+		PRINTFORML 비쩍 마른 남자가 %CALLNAME:ARG%의 애널을 집요하게 공략하고 있다…
+		LOCAL:4 = 5
+
+	;中出し有り
+	ELSEIF CFLAG:ARG:個別성적서비스 & 64 && RAND:2 == 0
+		PRINTFORML 뒤룩뒤룩 살찐 남자가 쉴 새 없이 %CALLNAME:ARG% 안에다 계속해서 사정을 반복하고 있다…
+		LOCAL:4 = 6
+	;全てに対応
+	ELSE
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 손님에게 수상한 약을 투여되어버렸다……
+		LOCAL:4 = 7
+	ENDIF
+	PRINTFORML ・
+	PRINTFORML ・・
+	PRINTFORML ・・・
+	;耐えられるか판정
+	;기본치50％+放置日数*2（上限なし）さらに즉각함락持ちは+50
+	;これに함락度*50の마이ナス보정を入れる
+	;ＮＴＲ상태の場合は無조건でドピュドピュされる
+	IF RAND:100 > 50 + 함락(ARG) * 50 - LOCAL:3 || (TALENT:ARG:ＮＴＲ == 2 || TALENT:ARG:ＮＴＲ == 5) || (CFLAG:ARG:그외 == 1117 || CFLAG:ARG:그외2 == 1117 || CFLAG:ARG:그외3 == 1117)
+		IF CFLAG:ARG:現ＮＴＲ進行度 > 10
+			IF CFLAG:ARG:108 == 1
+				CFLAG:ARG:108 = 0
+				PRINTFORML %CALLNAME:ARG%의 자궁내 피임 결계가 해제되어버렸다……
+			ENDIF
+			IF RAND:100 < 30 && CFLAG:ARG:109 == 0
+				CFLAG:ARG:109 = 1
+				PRINTFORML %조사처리(CALLNAME:ARG,"는")% 네토리 취미의 손님에게 배란유발제를 입으로 먹여져 버렸다……
+			ENDIF
+		ENDIF
+		SETCOLOR COLOR("dark-pink")
+		IF LOCAL:4 == 2
+			PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 녹을 듯한 표정으로 남자들의 페니스를 빨아 대고 있다……
+		ELSEIF LOCAL:4 == 3
+			PRINTFORMW 살찐 아저씨의 엄청난 절륜함에 %조사처리(CALLNAME:ARG,"는")% 자신을 잊고서 미친 듯이 헐떡이고 있다……
+		ELSEIF LOCAL:4 == 4
+			PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 거근이 질내를 비집고 들어오는 쾌락에 기쁜 듯한 비명을 지르고 있다……
+		ELSEIF LOCAL:4 == 5
+			PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 집요한 애널에의 자극에 교성을 지르고 있다……
+		ELSEIF LOCAL:4 == 6
+			PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 칠칠치 못한 표정으로 질내에서 넘쳐나오는 정액을 흘려 대면서, 또다시 교배해 달라고 조르고 있다……
+		ELSEIF LOCAL:4 == 7
+			PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 칠칠치 못한 아헤가오를 한 채로 남자들에게 사용되고 있다……
+		ENDIF
+		RESETCOLOR
+		CALL 공중변소ＮＴＲ_SEX, ARG, LOCAL:4
+	ELSE
+		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 어떻게든 견뎌낸 것 같다
+		LOCAL:4 = 0
+		CALL 공중변소ＮＴＲ_SEX, ARG, LOCAL:4
+	ENDIF
+ENDIF
+
+
+
+;==========================================================
+;@공중변소ＮＴＲ_SEX
+; ＮＴＲ섹스計算
+;<引数>
+;	ARG   = ＮＴＲキャラの등록번호
+;	ARG:1 = NTR客の判別
+;<사용変数>
+;	LOCAL:1 = 相손の사정횟수
+;	LOCAL:2 = 相손の성교횟수
+;	LOCAL:3 = 호감도
+;	LOCAL:4 = 음란度
+;	LOCAL:5 = 호감도減少処理用
+;==========================================================
+@공중변소ＮＴＲ_SEX, ARG, ARG:1
+#LOCALSIZE 6
+#DIM LCOUNT
+
+;LOCAL配列초기化
+VARSET LOCAL,0
+CFLAG:ARG:펠라횟수 = 0
+CFLAG:ARG:本番횟수 = 0
+CFLAG:ARG:애널횟수 = 0
+CFLAG:ARG:中出し횟수 = 0
+CFLAG:ARG:손コキ횟수 = 0
+;ＮＴＲ好きの客
+IF ARG:1 == -8
+	CFLAG:ARG:中出し횟수 = 1
+	CFLAG:ARG:本番횟수 = 1
+	LOCAL:1 = 3 + RAND:5
+	LOCAL:2 = LOCAL:1 + RAND:(LOCAL:1)
+;連続フェラ
+ELSEIF ARG:1 == 2
+	CFLAG:ARG:中出し횟수 = 1
+	CFLAG:ARG:本番횟수 = 1
+	CFLAG:ARG:펠라횟수 = 10
+	LOCAL:1 = 6 + RAND:10
+	LOCAL:2 = LOCAL:1 + RAND:(LOCAL:1)
+;절륜
+ELSEIF ARG:1 == 3
+	CFLAG:ARG:中出し횟수 = 5
+	CFLAG:ARG:本番횟수 = 5
+	LOCAL:1 = 10 + RAND:15
+	LOCAL:2 = LOCAL:1 + RAND:(LOCAL:1)
+;巨根
+ELSEIF ARG:1 == 4
+	CFLAG:ARG:中出し횟수 = 1
+	CFLAG:ARG:本番횟수 = 1
+	LOCAL:1 = 6 + RAND:10
+	LOCAL:2 = LOCAL:1 + RAND:(LOCAL:1)
+	;とりあえず확장フラグに사용
+	TCVAR:ARG:획득Ｖ확장경험 = 1
+;애널好き
+ELSEIF ARG:1 == 5
+	CFLAG:ARG:애널횟수 = 5
+	LOCAL:1 = 6 + RAND:10
+	LOCAL:2 = LOCAL:1 + RAND:(LOCAL:1)
+;大量中出し
+ELSEIF ARG:1 == 6
+	CFLAG:ARG:中出し횟수 = 10
+	CFLAG:ARG:本番횟수 = 10
+	LOCAL:1 = 6 + RAND:10
+	LOCAL:2 = LOCAL:1 + RAND:(LOCAL:1)
+;妖しい薬
+ELSEIF ARG:1 == 7
+	LOCAL:1 = 6 + RAND:10
+	LOCAL:2 = LOCAL:1 + RAND:(LOCAL:1)
+;耐え切る
+ELSE
+	LOCAL:1 = 1 + RAND:5
+	LOCAL:2 = LOCAL:1 + RAND:(LOCAL:1)
+ENDIF
+
+
+FOR LCOUNT , 0 , LOCAL:2
+	IF RAND:100 < 60
+		IF HAVE_PENIS(ARG) && HAVE_VAGINA(ARG)
+			IF CFLAG:ARG:個別성적서비스 & 16 || (TALENT:ARG:ＮＴＲ == 2 || TALENT:ARG:ＮＴＲ == 5)
+				CFLAG:ARG:本番횟수 += 1
+				CFLAG:ARG:손コキ횟수 += 1
+			ELSEIF CFLAG:ARG:個別성적서비스 & 32
+				CFLAG:ARG:애널횟수 += 1
+				CFLAG:ARG:손コキ횟수 += 1
+			ELSEIF CFLAG:ARG:個別성적서비스 & 8
+				CFLAG:ARG:펠라횟수 += 1
+				CFLAG:ARG:손コキ횟수 += 1
+			ELSE
+				CFLAG:ARG:손コキ횟수 += 1
+			ENDIF
+		ELSEIF HAVE_PENIS(ARG)
+			IF CFLAG:ARG:個別성적서비스 & 32 || (TALENT:ARG:ＮＴＲ == 2 || TALENT:ARG:ＮＴＲ == 5)
+				CFLAG:ARG:애널횟수 += 1
+				CFLAG:ARG:손コキ횟수 += 1
+			ELSEIF CFLAG:ARG:個別성적서비스 & 8
+				CFLAG:ARG:펠라횟수 += 1
+				CFLAG:ARG:손コキ횟수 += 1
+			ELSE
+				CFLAG:ARG:손コキ횟수 += 1
+			ENDIF
+		ELSE
+			IF CFLAG:ARG:個別성적서비스 & 16 || (TALENT:ARG:ＮＴＲ == 2 || TALENT:ARG:ＮＴＲ == 5)
+				CFLAG:ARG:本番횟수 += 1
+			ELSEIF CFLAG:ARG:個別성적서비스 & 32
+				CFLAG:ARG:애널횟수 += 1
+			ELSEIF CFLAG:ARG:個別성적서비스 & 8
+				CFLAG:ARG:펠라횟수 += 1
+			ELSE
+
+			ENDIF
+		ENDIF
+	ELSEIF RAND:100 < 50
+		IF HAVE_PENIS(ARG)
+			CFLAG:ARG:손コキ횟수 += 1
+		ELSE
+			IF CFLAG:ARG:個別성적서비스 & 8 || (TALENT:ARG:ＮＴＲ == 2 || TALENT:ARG:ＮＴＲ == 5)
+				CFLAG:ARG:펠라횟수 += 1
+			ELSEIF CFLAG:ARG:個別성적서비스 & 16
+				CFLAG:ARG:本番횟수 += 1
+			ELSEIF CFLAG:ARG:個別성적서비스 & 32
+				CFLAG:ARG:애널횟수 += 1
+			ELSE
+
+			ENDIF
+		ENDIF
+	ELSE
+		IF HAVE_PENIS(ARG) && HAVE_VAGINA(ARG)
+			IF CFLAG:ARG:個別성적서비스 & 32 || (TALENT:ARG:ＮＴＲ == 2 || TALENT:ARG:ＮＴＲ == 5)
+				CFLAG:ARG:애널횟수 += 1
+				CFLAG:ARG:손コキ횟수 += 1
+			ELSEIF CFLAG:ARG:個別성적서비스 & 16
+				CFLAG:ARG:本番횟수 += 1
+				CFLAG:ARG:손コキ횟수 += 1
+			ELSEIF CFLAG:ARG:個別성적서비스 & 8
+				CFLAG:ARG:펠라횟수 += 1
+				CFLAG:ARG:손コキ횟수 += 1
+			ELSE
+				CFLAG:ARG:손コキ횟수 += 1
+			ENDIF
+		ELSEIF HAVE_PENIS(ARG)
+			IF CFLAG:ARG:個別성적서비스 & 32 || (TALENT:ARG:ＮＴＲ == 2 || TALENT:ARG:ＮＴＲ == 5)
+				CFLAG:ARG:애널횟수 += 1
+				CFLAG:ARG:손コキ횟수 += 1
+			ELSEIF CFLAG:ARG:個別성적서비스 & 8
+				CFLAG:ARG:펠라횟수 += 1
+				CFLAG:ARG:손コキ횟수 += 1
+			ELSE
+				CFLAG:ARG:손コキ횟수 += 1
+			ENDIF
+		ELSE
+			IF CFLAG:ARG:個別성적서비스 & 32 || (TALENT:ARG:ＮＴＲ == 2 || TALENT:ARG:ＮＴＲ == 5)
+				CFLAG:ARG:애널횟수 += 1
+			ELSEIF CFLAG:ARG:個別성적서비스 & 16
+				CFLAG:ARG:本番횟수 += 1
+			ELSEIF CFLAG:ARG:個別성적서비스 & 8
+				CFLAG:ARG:펠라횟수 += 1
+			ELSE
+
+			ENDIF
+		ENDIF
+	ENDIF
+	;키스경험処理：適当に랜덤で
+	SIF RAND:2 == 0
+		TCVAR:ARG:획득키스경험 += 1
+NEXT
+SIF CFLAG:ARG:個別성적서비스 & 64 || (TALENT:ARG:ＮＴＲ == 2 || TALENT:ARG:ＮＴＲ == 5)
+	CFLAG:ARG:中出し횟수 +=LIMIT(RAND:(1+CFLAG:ARG:本番횟수) , 0, LOCAL:1)
+
+;획득경험
+TCVAR:ARG:획득펠라경험 = CFLAG:ARG:펠라횟수
+TCVAR:ARG:획득봉사쾌락경험 = CFLAG:ARG:펠라횟수
+TCVAR:ARG:획득Ｖ경험 = CFLAG:ARG:本番횟수
+TCVAR:ARG:획득Ａ경험 = CFLAG:ARG:애널횟수
+TCVAR:ARG:획득성교경험 = CFLAG:ARG:本番횟수 + CFLAG:ARG:애널횟수
+TCVAR:ARG:획득질사경험 = CFLAG:ARG:中出し횟수
+TCVAR:ARG:획득정액경험 = LOCAL:1
+SIF CFLAG:ARG:손コキ횟수 > 0
+	TCVAR:ARG:획득사정경험 = RAND:(CFLAG:ARG:손コキ횟수)
+SIF TCVAR:ARG:획득성교경험 + TCVAR:ARG:획득사정경험 > 0
+	TCVAR:ARG:획득절정경험 = RAND:(TCVAR:ARG:획득성교경험 + TCVAR:ARG:획득사정경험)
+IF TCVAR:ARG:획득Ｖ확장경험
+	TCVAR:ARG:획득Ｖ확장경험 = CFLAG:ARG:本番횟수
+	TCVAR:ARG:획득Ａ확장경험 = CFLAG:ARG:애널횟수
+ENDIF
+;처녀/재생처녀상실時の메시지표시および이상경험加算
+IF CFLAG:ARG:처녀상실フラグ
+	CFLAG:ARG:처녀상실フラグ = 0
+	TALENT:ARG:처녀 = 0
+	;SETCOLOR COLOR("red")
+	;PRINTFORML 이상경험획득　【＋２】　처녀상실（ＮＴＲ）
+	;RESETCOLOR
+	;EXP:ARG:이상경험 += 2
+	;SETBIT CFLAG:ARG:이상경험記録 , 35
+	CALL ADDS_ABNORMAL_EXP, "처녀상실（변기）" , ARG
+	CALL SHOW_ABNORMAL_EXP, ARG
+ELSEIF TALENT:ARG:재생처녀
+	PRINTFORML 재생처녀 상실
+	TALENT:ARG:재생처녀 = 0
+ENDIF
+;확장첫경험時の메시지표시および이상경험加算
+IF TCVAR:ARG:획득Ｖ확장경험 && (EXP:ARG:Ｖ확장경험 == 0 || EXP:ARG:Ａ확장경험 == 0)
+	;SETCOLOR COLOR("red")
+	;PRINTFORML 이상경험획득　【＋１】　확장첫경험
+	;RESETCOLOR
+	;EXP:ARG:이상경험 += 1
+	;SETBIT CFLAG:ARG:이상경험記録 , 13
+	CALL ADDS_ABNORMAL_EXP, "확장첫경험" , ARG
+	CALL SHOW_ABNORMAL_EXP, ARG
+ENDIF
+
+
+LOCAL:3 = TCVAR:ARG:획득정액경험 * 5 + (TCVAR:ARG:획득절정경험 + TCVAR:ARG:획득질사경험) * 10 + CFLAG:ARG:放置日数
+LOCAL:4 = CFLAG:ARG:本番횟수 + CFLAG:ARG:애널횟수 + TCVAR:ARG:획득절정경험 * 10
+LOCAL:5 = CFLAG:ARG:中出し횟수 * 5 + TCVAR:ARG:획득절정경험 * 7
+
+;ＮＴＲ客の설정処理
+SELECTCASE FLAG:ＮＴＲ客の설정
+	CASE  0
+		TIMES LOCAL:3 , 1.00
+		TIMES LOCAL:4 , 1.00
+		TIMES LOCAL:5 , 1.00
+	CASE  1
+		TIMES LOCAL:3 , 2.00
+		TIMES LOCAL:4 , 2.00
+		TIMES LOCAL:5 , 2.00
+	CASE  2
+		TIMES LOCAL:3 , 5.00
+		TIMES LOCAL:4 , 5.00
+		TIMES LOCAL:5 , 5.00
+ENDSELECT
+;耐え切った場合はそれぞれ半分に
+IF ARG:1 == 0
+	LOCAL:3 /= 2
+	LOCAL:4 /= 2
+	LOCAL:5 /= 2
+ENDIF
+
+;호감도
+IF ARG:1 == -8
+	CDFLAG:ARG:キャラ間好感度:(96) += LOCAL:3
+;不特定多数に설정
+ELSE
+	ARG:1 = -1
+	LOCAL:5 += LOCAL:3/2
+	;음란度上昇
+	;바람기がある場合は음란度倍化
+	IF TALENT:ARG:바람기
+		CFLAG:ARG:음란度 += LOCAL:3
+	ELSE
+		CFLAG:ARG:음란度 += LOCAL:3/2
+	ENDIF
+ENDIF
+;음란度上昇
+;바람기がある場合は음란度倍化
+IF TALENT:ARG:바람기
+	CFLAG:ARG:음란度 += LOCAL:4*2
+ELSE
+	CFLAG:ARG:음란度 += LOCAL:4
+ENDIF
+
+;子宮現在容量加算
+IF TALENT:ARG:오토코노코
+	CFLAG:(ARG):子宮現在容量 += LOCAL:5 * 3
+ELSEIF !IS_MALE(ARG)
+	CFLAG:(ARG):子宮現在容量 += LOCAL:5 * 3
+ENDIF
+
+;호감도減少処理
+CALL NTR_SHOOT , ARG , ARG:1 , LOCAL:5
+SIF ARG:1 == -1
+	CDFLAG:ARG:キャラ間好感度:(99) -= LOCAL:5
+
+
+;임신用
+SIF CFLAG:ARG:자궁내피임결계 == 0
+	CFLAG:ARG:顧客の中出氏による임신판정 = TCVAR:ARG:획득질사경험*2
+
+CALL SHOW_ADD_EXP, ARG
+

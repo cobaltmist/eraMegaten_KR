@@ -1,0 +1,85 @@
+﻿;-------------------------------------------------
+;모유마시기
+;봉사계コマンド、레벨4
+;-------------------------------------------------
+@ACT_COM89
+PRINTL 모유마시기
+;-------------------------------------------------
+;実行決定
+;-------------------------------------------------
+TSTR:0 = 모유마시기
+;CALL KOJO_MESSAGE_COM
+
+;조교者→조교대상
+TFLAG:28 = 2
+;-------------------------------------------------
+;ソース추가処理
+;-------------------------------------------------
+;소비체력、기력
+DOWNBASE:TARGET:체력 += 50
+DOWNBASE:TARGET:기력 += 180
+
+SOURCE:TARGET:정애 = 1000
+SOURCE:TARGET:달성 = 1000
+SOURCE:TARGET:복종 = 2000
+SOURCE:TARGET:굴종 = 1800
+SOURCE:TARGET:일탈 = 100
+SOURCE:TARGET:반감 = 100
+
+
+;-------------------------------------------------
+;불결の処理
+;-------------------------------------------------
+;奴隷のＢ⇔조교者の입の불결が移動
+CALL MOVE_STAIN("가슴", TARGET, "입", PLAYER)
+
+;-------------------------------------------------
+;吸精処理
+;-------------------------------------------------
+IF CFLAG:PLAYER:ＭＡＧ非被흡수 == 0
+	LOCAL = (RAND:5+1) * BASE:LV
+	CALL DRAIN_MAG,PLAYER,LOCAL,TARGET
+ELSEIF CFLAG:TARGET:ＭＡＧ非被흡수 == 0
+	LOCAL = (RAND:5+1) * BASE:LV
+	CALL DRAIN_MAG,TARGET,LOCAL,PLAYER
+ENDIF
+
+;-------------------------------------------------
+;경험の処理
+;-------------------------------------------------
+A = 5
+IF IS_LESBIAN(TARGET,PLAYER)
+	CALL ADDS_EXP("레즈경험", A, TARGET)
+	CALL ADDS_EXP("레즈경험", A, PLAYER)
+ELSEIF IS_GAY(TARGET,PLAYER)
+	CALL ADDS_EXP("ＢＬ경험", A, TARGET)
+	CALL ADDS_EXP("ＢＬ경험", A, PLAYER)
+ENDIF
+
+;애정경험
+IF (TALENT:3 == 1 || TALENT:6 == 1) && ASSIPLAY == 0
+;	PRINTS EXPNAME:23
+;	PRINTL +1
+	CALL ADDS_EXP("애정경험", 1, TARGET)
+;	PRINTFORML 애정경험(주인)＋１
+	CALL ADDS_EXP("애정경험", 1, MASTER)
+ENDIF
+
+;의존도ベクトル
+TFLAG:33 = 4
+
+;의존도보정値(主人かつ연모で1、친애で2）
+IF TALENT:3 && ASSIPLAY == 0
+	TFLAG:30 += 2
+ELSEIF TALENT:6 && ASSIPLAY == 0
+	TFLAG:30 += 4
+ENDIF
+
+
+RETURN 1
+
+;===================================================
+;조교타입
+;===================================================
+@COMTYPE_89
+RETURN COMTYPE("봉사계")

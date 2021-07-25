@@ -1,0 +1,1968 @@
+﻿;=======================================================================
+;攻略조건
+;=======================================================================
+@PREREQUISITE_DUNGEON_65
+IF 이벤트フラグ:11:0 > 0 
+	RETURN 1
+ELSE
+	RETURN 0
+ENDIF
+
+;=======================================================================
+;던전名
+;=======================================================================
+@GET_DUNGEON_NAME_65
+RESULTS = 슈바르츠바스
+
+;=======================================================================
+;フ로어名표시
+;=======================================================================
+@FLOORNAME_65
+PRINT 슈바르츠바스
+SELECTCASE FLAG:現M
+	CASE 0
+		PRINT   조사선（
+		SELECTCASE STRFLAG_NUM_D("조사선位置")
+			CASE 0
+				PRINT 지상
+			CASE 1
+				PRINT 섹터・안트리아
+			CASE 2
+				PRINT 섹터・보티즈
+			CASE 3
+				PRINT 섹터・카리나
+			CASE 4
+				PRINT 섹터・델파이너스
+			CASE 5
+				PRINT 섹터・에리다누스
+		ENDSELECT
+		PRINTL ）
+	CASE IS < 4
+		PRINTL 섹터・안트리아
+	CASE IS < 12
+		PRINTL 섹터・보티즈
+	CASE 12
+		PRINTL 섹터・카리나 Ｂ１Ｆ
+	CASE 13
+		PRINTL 섹터・카리나 １Ｆ
+	CASE 14
+		PRINT 섹터・카리나 ２Ｆ
+		SELECTCASE STRFLAG_NUM_D("カリーナ숨겨진 장소")
+			CASE 0
+				PRINTL 
+			CASE 1
+				PRINTL （숨겨진 장소Ａ）
+			CASE 2
+				PRINTL （숨겨진 장소Ｂ）
+		ENDSELECT
+	CASE 15
+		PRINT 섹터・카리나 ３Ｆ
+		SELECTCASE STRFLAG_NUM_D("カリーナ숨겨진 장소")
+			CASE 0
+				PRINTL 
+			CASE 1
+				PRINTL （숨겨진 장소Ａ）
+			CASE 2
+				PRINTL （숨겨진 장소Ｂ）
+		ENDSELECT
+	CASE 16
+		PRINTL 섹터・카리나 ４Ｆ
+	CASE IS < 32
+		PRINTL 섹터・델파이너스
+ENDSELECT
+
+
+
+
+;=======================================================================
+;スタート地点입력
+;=======================================================================
+@START_DUNGEON_65,ARG
+FLAG:現M = 0
+FLAG:現X = 11
+FLAG:現Y = 7
+
+
+;=======================================================================
+;指定したマスに進入可能か
+;=======================================================================
+@CAN_ENTER_65,ARG,ARG:1
+SELECTCASE DA:ARG:(ARG:1)
+	CASE 1001
+		SIF STRFLAG_NUM_D("조사선位置") == 0
+			RETURN 0
+	;∧
+	CASE 902, 912
+		CALL ONE_WAY(902, 912, 922, 932, 942, 952, 962, 972)
+		IF FLAG:現Y < ARG:1
+			PRINTW ＞扉は開かない
+			RETURN 0
+		ENDIF
+		FLAG:現Y -= 2
+		CALL ONE_WAY(902, 912, 922, 932, 942, 952, 962, 972)
+		FLAG:現Y += 2
+	;＞
+	CASE 922, 932
+		CALL ONE_WAY(902, 912, 922, 932, 942, 952, 962, 972)
+		IF FLAG:現X > ARG
+			PRINTW ＞扉は開かない
+			RETURN 0
+		ENDIF
+		FLAG:現X += 2
+		CALL ONE_WAY(902, 912, 922, 932, 942, 952, 962, 972)
+		FLAG:現X -= 2
+	;∨
+	CASE 942, 952
+		CALL ONE_WAY(902, 912, 922, 932, 942, 952, 962, 972)
+		IF FLAG:現Y > ARG:1
+			PRINTW ＞扉は開かない
+			RETURN 0
+		ENDIF
+		FLAG:現Y += 2
+		CALL ONE_WAY(902, 912, 922, 932, 942, 952, 962, 972)
+		FLAG:現Y -= 2
+	;＜
+	CASE 962, 972
+		CALL ONE_WAY(902, 912, 922, 932, 942, 952, 962, 972)
+		IF FLAG:現X < ARG
+			PRINTW ＞扉は開かない
+			RETURN 0
+		ENDIF
+		FLAG:現X -= 2
+		CALL ONE_WAY(902, 912, 922, 932, 942, 952, 962, 972)
+		FLAG:現X += 2
+	CASE 992	
+		PRINTW ＞문이 열리지 않는다
+		RETURN 0
+	CASEELSE
+		;2以外の扉はドア이벤트へ
+		IF DA:ARG:(ARG:1) % 10 == 2 && DA:ARG:(ARG:1) > 2
+			CALL DOOR_65, DA:ARG:(ARG:1) / 10
+			RETURN RESULT
+		ENDIF
+ENDSELECT
+
+CALL CAN_ENTER,ARG,ARG:1
+RETURN RESULT
+
+;=======================================================================
+;ターミナル名前
+;=======================================================================
+@GET_FLOORNAME_65
+SELECTCASE FLAG:現M
+	CASE 0
+		RESULTS = 조사선
+	CASE IS < 4
+		RESULTS = 섹터・안트리아
+	CASE IS < 12
+		RESULTS = 섹터・보티즈
+	CASE IS < 17
+		RESULTS = 섹터・카리나
+	CASE IS < 32
+		RESULTS = 섹터・델파이너스
+
+ENDSELECT
+
+
+;=======================================================================
+;フ로어데이터
+;=======================================================================
+@MAKE_FLOOR_65
+SELECTCASE FLAG:現M
+
+	CASE 0
+	;船
+		FLAG:최대X = 40
+		FLAG:최대Y = 14
+;								 0000000000111111111122222222223333333333
+;								 0123456789012345678901234567890123456789
+		CALL MAKE_FLOOR_LINE, 0,"                                        "
+		CALL MAKE_FLOOR_LINE, 1,"                                        "
+		CALL MAKE_FLOOR_LINE, 2,"           1111 111 111 111 111 111     "
+		CALL MAKE_FLOOR_LINE, 3,"         111111 1112181 111 1I1 1111    "
+		CALL MAKE_FLOOR_LINE, 4,"       11111111 111 111 111 111 11111   "
+		CALL MAKE_FLOOR_LINE, 5,"     1111 11111      2   2   2  111811  "
+		CALL MAKE_FLOOR_LINE, 6,"   111111 81111 111111111111111 111111  "
+		CALL MAKE_FLOOR_LINE, 7,"   11 81111111121111111111111112111111F "
+		CALL MAKE_FLOOR_LINE, 8,"   111111 11111 111111111111111 111111  "
+		CALL MAKE_FLOOR_LINE, 9,"     1111 11111  2   2       2  111111  "
+		CALL MAKE_FLOOR_LINE,10,"       11111111 111 111 111 111 11111   "
+		CALL MAKE_FLOOR_LINE,11,"         111111 1112111 1112181 1111    "
+		CALL MAKE_FLOOR_LINE,12,"           1111 111 111 111 111 111     "
+		CALL MAKE_FLOOR_LINE,13,"                                        "
+
+		
+	CASE 1
+	;アントリア １階
+		FLAG:최대X = 20
+		FLAG:최대Y = 20
+		CALL MAKE_FLOOR_LINE, 0,"                                         "
+		CALL MAKE_FLOOR_LINE, 1,"                                         "
+		CALL MAKE_FLOOR_LINE, 2,"   1111111121111   111211 111 1111111    "
+		CALL MAKE_FLOOR_LINE, 3,"  11 2 2 2  1  1   1    1   2 2   2 11   "
+		CALL MAKE_FLOOR_LINE, 4,"  1  1 1 1  1111   1    12DDD D DDD  1   "
+		CALL MAKE_FLOOR_LINE, 5,"  1  1 1 1  1  1  111   1     D  D   1   "
+		CALL MAKE_FLOOR_LINE, 6,"  1  1 1 1  1  1  11111 12DDDDDD DDD21   "
+		CALL MAKE_FLOOR_LINE, 7,"               2  111 1 1            1   "
+		CALL MAKE_FLOOR_LINE, 8,"  111 111 111  1      1 12DDD2112DDD21   "
+		CALL MAKE_FLOOR_LINE, 9,"  11111111111  1112xX11              1   "
+		CALL MAKE_FLOOR_LINE,10,"  111 111 111  1   1    1111112DD DD21   "
+		CALL MAKE_FLOOR_LINE,11,"       2       1   1   1111 2   D D      "
+		CALL MAKE_FLOOR_LINE,12,"  111 111 111  2   1   1    D D DDD 11   "
+		CALL MAKE_FLOOR_LINE,13,"  11111111111111  111  12DDDD D D D211   "
+		CALL MAKE_FLOOR_LINE,14,"  111 111 111  1 11 11 1      D   D      "
+		CALL MAKE_FLOOR_LINE,15,"   2           1 11111 12DDDDDDDD    1   "
+		CALL MAKE_FLOOR_LINE,16,"   1  111 112111 11111 1     2      11   "
+		CALL MAKE_FLOOR_LINE,17,"   112111 1    1 11X11 12DDD 111111211   "
+		CALL MAKE_FLOOR_LINE,18,"      111 111      x            2   11   "
+		CALL MAKE_FLOOR_LINE,19,"                1111111         I    1   "
+		CALL MAKE_FLOOR_LINE,20,"               111111111                 "
+		CALL MAKE_FLOOR_LINE,21,"   1111111111121   1   1 7111121111      "
+		CALL MAKE_FLOOR_LINE,22,"   11          111111111       1  11     "
+		CALL MAKE_FLOOR_LINE,23,"   1111111111121 11111 1 1111111   1     "
+		CALL MAKE_FLOOR_LINE,24,"               1   2   1     1     2     "
+		CALL MAKE_FLOOR_LINE,25,"   111  111   11 11111 11111112I  111    "
+		CALL MAKE_FLOOR_LINE,26,"   1   11111     1   1 1 1   1   11111   "
+		CALL MAKE_FLOOR_LINE,27,"   1112111111111211111Xx11  1111         "
+		CALL MAKE_FLOOR_LINE,28,"   1   11111     11111      1  1 11111   "
+		CALL MAKE_FLOOR_LINE,29,"   1    111  111111111 111111111  111    "
+		CALL MAKE_FLOOR_LINE,30,"   1             1 2 1       2 1   2     "
+		CALL MAKE_FLOOR_LINE,31,"   1 11111  111  1 1 1  111  1 1   1     "
+		CALL MAKE_FLOOR_LINE,32,"   1 11    11111 1 1 1 11111 1 1   1     "
+		CALL MAKE_FLOOR_LINE,33,"   1111111211111 1 F 1 1111111 11111     "
+		CALL MAKE_FLOOR_LINE,34,"     11  1 11111 1 1 1 11111 1 1         "
+		CALL MAKE_FLOOR_LINE,35,"     11111  111  1 F 1  111  1 1         "
+		CALL MAKE_FLOOR_LINE,36,"                                         "
+		
+	CASE 2
+	;アントリア Ｂ１階
+		FLAG:최대X = 20
+		FLAG:최대Y = 20
+		CALL MAKE_FLOOR_LINE, 0,"    0    0    0    0    0    0    0    0 "
+		CALL MAKE_FLOOR_LINE, 1,"                                         "
+		CALL MAKE_FLOOR_LINE, 2,"                                         "
+		CALL MAKE_FLOOR_LINE, 3,"                                         "
+		CALL MAKE_FLOOR_LINE, 4,"                                         "
+		CALL MAKE_FLOOR_LINE, 5,"                                         "
+		CALL MAKE_FLOOR_LINE, 6,"                                         "
+		CALL MAKE_FLOOR_LINE, 7,"                                         "
+		CALL MAKE_FLOOR_LINE, 8,"                                         "
+		CALL MAKE_FLOOR_LINE, 9,"                                         "
+		CALL MAKE_FLOOR_LINE,10,"                                         "
+		CALL MAKE_FLOOR_LINE,11,"                                         "
+		CALL MAKE_FLOOR_LINE,12,"                                         "
+		CALL MAKE_FLOOR_LINE,13,"                                         "
+		CALL MAKE_FLOOR_LINE,14,"                                         "
+		CALL MAKE_FLOOR_LINE,15,"                                         "
+		CALL MAKE_FLOOR_LINE,16,"                                         "
+		CALL MAKE_FLOOR_LINE,17,"                                         "
+		CALL MAKE_FLOOR_LINE,18,"                                         "
+		CALL MAKE_FLOOR_LINE,19,"                                        "
+		CALL MAKE_FLOOR_LINE,20,"                                         "
+		CALL MAKE_FLOOR_LINE,21,"                 111111116               "
+		CALL MAKE_FLOOR_LINE,22,"                   1                     "
+		CALL MAKE_FLOOR_LINE,23,"                 1 2 I                   "
+		CALL MAKE_FLOOR_LINE,24,"                 1 1 2                   "
+		CALL MAKE_FLOOR_LINE,25,"  1111 111111111 11111 111111111 1111    "
+		CALL MAKE_FLOOR_LINE,26," 11111      1    11111   1    1  11111   "
+		CALL MAKE_FLOOR_LINE,27," 1111112111111121111111211<11112111111   "
+		CALL MAKE_FLOOR_LINE,28," 11111   1       11111           11111   "
+		CALL MAKE_FLOOR_LINE,29,"  1111 111111111 11111 111111111 1111    "
+		CALL MAKE_FLOOR_LINE,30,"                 A 1 A      1            "
+		CALL MAKE_FLOOR_LINE,31,"  1111 11111111111 2 11111111111 1111    "
+		CALL MAKE_FLOOR_LINE,32,"  1111         1 1 1   1         1111    "
+		CALL MAKE_FLOOR_LINE,33," 711111211 11111 1 11>1111111112111117   "
+		CALL MAKE_FLOOR_LINE,34,"  1111   1       2         1     1111    "
+		CALL MAKE_FLOOR_LINE,35,"  1111  911111121111111<11111111         "
+		CALL MAKE_FLOOR_LINE,36,"                                         "
+
+	CASE 3
+	;アントリア Ｂ２階
+		FLAG:최대X = 20
+		FLAG:최대Y = 20
+		CALL MAKE_FLOOR_LINE, 0,"                                        "
+		CALL MAKE_FLOOR_LINE, 1,"                  111                   "
+		CALL MAKE_FLOOR_LINE, 2,"                  111                   "
+		CALL MAKE_FLOOR_LINE, 3,"                  111                   "
+		CALL MAKE_FLOOR_LINE, 4,"                   2                    "
+		CALL MAKE_FLOOR_LINE, 5,"                 1111I                  "
+		CALL MAKE_FLOOR_LINE, 6,"                  111                   "
+		CALL MAKE_FLOOR_LINE, 7,"                  111                   "
+		CALL MAKE_FLOOR_LINE, 8,"               1  111  1                "
+		CALL MAKE_FLOOR_LINE, 9,"               112111211                "
+		CALL MAKE_FLOOR_LINE,10,"                   2                    "
+		CALL MAKE_FLOOR_LINE,11,"               11 111 11                "
+		CALL MAKE_FLOOR_LINE,12,"               11 1 1 11                "
+		CALL MAKE_FLOOR_LINE,13,"               11>1 1 11                "
+		CALL MAKE_FLOOR_LINE,14,"               11 1 1 11                "
+		CALL MAKE_FLOOR_LINE,15,"               11 111>11                "
+		CALL MAKE_FLOOR_LINE,16,"               11     11                "
+		CALL MAKE_FLOOR_LINE,17,"               11 111 11                "
+		CALL MAKE_FLOOR_LINE,18,"               11 1 1<11                "
+		CALL MAKE_FLOOR_LINE,19,"               11<1 1 11                "
+		CALL MAKE_FLOOR_LINE,20,"               11 1 1 11                "
+		CALL MAKE_FLOOR_LINE,21,"               11 111 11                "
+		CALL MAKE_FLOOR_LINE,22,"                V   2 2                 "
+		CALL MAKE_FLOOR_LINE,23,"               11 111 11                "
+		CALL MAKE_FLOOR_LINE,24,"               11 111 11                "
+		CALL MAKE_FLOOR_LINE,25,"               11     11                "
+		CALL MAKE_FLOOR_LINE,26,"               11 111 11                "
+		CALL MAKE_FLOOR_LINE,27,"               11 1 1 11                "
+		CALL MAKE_FLOOR_LINE,28,"               11 1 1 11                "
+		CALL MAKE_FLOOR_LINE,29,"               1121 1211                "
+		CALL MAKE_FLOOR_LINE,30,"                  1 1                   "
+		CALL MAKE_FLOOR_LINE,31," 11111        111 1 1 111        11111  "
+		CALL MAKE_FLOOR_LINE,32,"     1111111211111111 111121111111      "
+		CALL MAKE_FLOOR_LINE,33," 61111        111 111 111        11116  "
+		CALL MAKE_FLOOR_LINE,34,"                                        "
+		CALL MAKE_FLOOR_LINE,35,"                                        "
+		CALL MAKE_FLOOR_LINE,36,"                                         "
+
+	CASE 4
+	;ボー디무ーズ１Ｆ
+		FLAG:최대X =  35
+		FLAG:최대Y =  39
+;								 00000000001111111111222222222233333
+;								 01234567890123456789012345678901234
+		CALL MAKE_FLOOR_LINE, 0,"                                   "
+		CALL MAKE_FLOOR_LINE, 1,"           1 HHH 6 HHH 1           "
+		CALL MAKE_FLOOR_LINE, 2,"          H1 1111111HH 11          "
+		CALL MAKE_FLOOR_LINE, 3,"         1H1 155 1 1HH 111         "
+		CALL MAKE_FLOOR_LINE, 4,"        11H1 111 1 1HH 1111        "
+		CALL MAKE_FLOOR_LINE, 5,"           2   2 1 2   2           "
+		CALL MAKE_FLOOR_LINE, 6,"        11 1HHH1 1 1HHH1  1        "
+		CALL MAKE_FLOOR_LINE, 7,"        11 1   1 1 1   11 1        "
+		CALL MAKE_FLOOR_LINE, 8,"        1  11111 1 111H1  1        "
+		CALL MAKE_FLOOR_LINE, 9,"        1 H1 H H 1 H 1 H 11        "
+		CALL MAKE_FLOOR_LINE,10,"        1 H1 H H 1 H 1 H 11        "
+		CALL MAKE_FLOOR_LINE,11,"        1 H1 H H 1 H 1 H 11        "
+		CALL MAKE_FLOOR_LINE,12,"        2 H1 H H 1 H 1 H  2        "
+		CALL MAKE_FLOOR_LINE,13,"   111111 111111 9 11111 11111111  "
+		CALL MAKE_FLOOR_LINE,14,"   1    1  HHH 2   2 HHH      11   "
+		CALL MAKE_FLOOR_LINE,15,"   1111111     1 9 1     111   11  "
+		CALL MAKE_FLOOR_LINE,16,"     1   2     1 2 1     2 11   1  "
+		CALL MAKE_FLOOR_LINE,17,"   1 111 11111 11111 111 1  11  1  "
+		CALL MAKE_FLOOR_LINE,18,"   1 1     1 1  111  111 11   111  "
+		CALL MAKE_FLOOR_LINE,19,"   111 111 1 2   2   111 111   11  "
+		CALL MAKE_FLOOR_LINE,20,"   1   111 1 111 1    2  2      1  "
+		CALL MAKE_FLOOR_LINE,21,"   1 1 111 1 1 1 1 12111111111     "
+		CALL MAKE_FLOOR_LINE,22,"     1  2    1 H 1 1         111   "
+		CALL MAKE_FLOOR_LINE,23,"   911111HH111 1 1 1 111 111 111   "
+		CALL MAKE_FLOOR_LINE,24,"     A  1    1 H 1 1   12111  1    "
+		CALL MAKE_FLOOR_LINE,25,"    111 1 11 1 1 1 12111 111  1    "
+		CALL MAKE_FLOOR_LINE,26,"    111 1  1 1 H 1     1      12I  "
+		CALL MAKE_FLOOR_LINE,27,"    111 111111 1 121111111111 1    "
+		CALL MAKE_FLOOR_LINE,28,"     A       1 H 1          1 2    "
+		CALL MAKE_FLOOR_LINE,29,"   11111111121 111 1111111111111   "
+		CALL MAKE_FLOOR_LINE,30,"   1         1   A             1   "
+		CALL MAKE_FLOOR_LINE,31,"   11111HHH1 112111<1HHHHH<111<1   "
+		CALL MAKE_FLOOR_LINE,32,"   2             1      A      1   "
+		CALL MAKE_FLOOR_LINE,33,"   1 DDD<D>DDD 1 1  1   1   1  2   "
+		CALL MAKE_FLOOR_LINE,34,"   1 V V D DDD<1 12111 111 111 1   "
+		CALL MAKE_FLOOR_LINE,35,"   1 D D D D D 121  1   1   1  1   "
+		CALL MAKE_FLOOR_LINE,36,"   1 D D D D D 1 1      A   2  1   "
+		CALL MAKE_FLOOR_LINE,37,"   1<D>D>D<D>D 1 11>111111 11111   "
+		CALL MAKE_FLOOR_LINE,38,"                                   "
+
+
+	CASE 5
+	;ボー디무ーズ ２Ｆ
+		FLAG:최대X = 26 
+		FLAG:최대Y = 16 
+;								 00000000001111111111222222
+;								 01234567890123456789012345
+		CALL MAKE_FLOOR_LINE, 0,"                            "
+		CALL MAKE_FLOOR_LINE, 1,"           11111 7 61111    "
+		CALL MAKE_FLOOR_LINE, 2,"          11     1     11   "
+		CALL MAKE_FLOOR_LINE, 3,"          1  1  111  1 111  "
+		CALL MAKE_FLOOR_LINE, 4,"        P 1 11 11111 111 11 "
+		CALL MAKE_FLOOR_LINE, 5,"        1 1111 1 1 1 11   1 "
+		CALL MAKE_FLOOR_LINE, 6,"             1 1 1 1 11 1 1 "
+		CALL MAKE_FLOOR_LINE, 7,"        1111 1 1 P 1 11 P   "
+		CALL MAKE_FLOOR_LINE, 8,"        1    1   1 1 11     "
+		CALL MAKE_FLOOR_LINE, 9,"        1 111111 1 1 2   11 "
+		CALL MAKE_FLOOR_LINE,10,"        1      1 111 111211 "
+		CALL MAKE_FLOOR_LINE,11,"        11111121   1 1   11 "
+		CALL MAKE_FLOOR_LINE,12,"         11  1   I21 P  11  "
+		CALL MAKE_FLOOR_LINE,13,"          11 1     1 1 11   "
+		CALL MAKE_FLOOR_LINE,14,"           1111111211111    "
+		CALL MAKE_FLOOR_LINE,15,"                            "
+
+
+	CASE 6
+	;ボー디무ーズ ３Ｆ
+		FLAG:최대X = 26
+		FLAG:최대Y = 16
+;								 00000000001111111111222222
+;								 01234567890123456789012345
+		CALL MAKE_FLOOR_LINE, 0,"                            "
+		CALL MAKE_FLOOR_LINE, 1,"           11116 6 71111    "
+		CALL MAKE_FLOOR_LINE, 2,"          111    1     11   "
+		CALL MAKE_FLOOR_LINE, 3,"            1 HHH11 1   1   "
+		CALL MAKE_FLOOR_LINE, 4,"         11 1 HH111 1 11111 "
+		CALL MAKE_FLOOR_LINE, 5,"        P11 1 H1111H1 1 1 1 "
+		CALL MAKE_FLOOR_LINE, 6,"         11 1 H111HH1 1 P H "
+		CALL MAKE_FLOOR_LINE, 7,"          1 1  1 HHH1 1 1 H "
+		CALL MAKE_FLOOR_LINE, 8,"        1 1 1  1 HHH1 11111 "
+		CALL MAKE_FLOOR_LINE, 9,"        1 1 1  P HHH1   1   "
+		CALL MAKE_FLOOR_LINE,10,"        111 1       2   2 1 "
+		CALL MAKE_FLOOR_LINE,11,"            1  611111   111 "
+		CALL MAKE_FLOOR_LINE,12,"         11 2       1   11  "
+		CALL MAKE_FLOOR_LINE,13,"          HH1111 I     11   "
+		CALL MAKE_FLOOR_LINE,14,"           111 111111111    "
+		CALL MAKE_FLOOR_LINE,15,"                            "
+
+
+	CASE 7
+	;ボ－디무ーズ ４Ｆ
+		FLAG:최대X = 26 
+		FLAG:최대Y = 16 
+;								 00000000001111111111222222
+;								 01234567890123456789012345
+		CALL MAKE_FLOOR_LINE, 0,"                            "
+		CALL MAKE_FLOOR_LINE, 1,"           11117 7 61111    "
+		CALL MAKE_FLOOR_LINE, 2,"         I211    1    111   "
+		CALL MAKE_FLOOR_LINE, 3,"            1  11111  2 11  "
+		CALL MAKE_FLOOR_LINE, 4,"        111 1  1   1  1     "
+		CALL MAKE_FLOOR_LINE, 5,"        11121  1 P 1  1 111 "
+		CALL MAKE_FLOOR_LINE, 6,"        111 1  1 1 1  12111 "
+		CALL MAKE_FLOOR_LINE, 7,"          2 1  1 1 P  1 111 "
+		CALL MAKE_FLOOR_LINE, 8,"        111 1  1   1  1     "
+		CALL MAKE_FLOOR_LINE, 9,"        11121  11111  1 111 "
+		CALL MAKE_FLOOR_LINE,10,"        111 1    1    12111 "
+		CALL MAKE_FLOOR_LINE,11,"            1 17 6 1121 111 "
+		CALL MAKE_FLOOR_LINE,12,"         P1 2 1       1     "
+		CALL MAKE_FLOOR_LINE,13,"          11111  I  11111   "
+		CALL MAKE_FLOOR_LINE,14,"           111   1111111    "
+		CALL MAKE_FLOOR_LINE,15,"                            "
+
+
+	CASE 8
+	;ボー디무ーズ ５Ｆ
+		FLAG:최대X = 26 
+		FLAG:최대Y = 16 
+;								 00000000001111111111222222
+;								 01234567890123456789012345
+		CALL MAKE_FLOOR_LINE, 0,"                            "
+		CALL MAKE_FLOOR_LINE, 1,"           1111    71111    "
+		CALL MAKE_FLOOR_LINE, 2,"          111 11       11   "
+		CALL MAKE_FLOOR_LINE, 3,"            1  1   111 111  "
+		CALL MAKE_FLOOR_LINE, 4,"        111 1  1   1 1 1 11 "
+		CALL MAKE_FLOOR_LINE, 5,"        11121  1   1 1 1  1 "
+		CALL MAKE_FLOOR_LINE, 6,"        111 1  1   1 1 11 1 "
+		CALL MAKE_FLOOR_LINE, 7,"            1  1 P 111  1 1 "
+		CALL MAKE_FLOOR_LINE, 8,"        111 1  1 1 1    1 1 "
+		CALL MAKE_FLOOR_LINE, 9,"        11121  1 1 1HHHH111 "
+		CALL MAKE_FLOOR_LINE,10,"        111 1  1 1      1 1 "
+		CALL MAKE_FLOOR_LINE,11,"            16 1 7 HHH1 1 6 "
+		CALL MAKE_FLOOR_LINE,12,"         11        H1HH21   "
+		CALL MAKE_FLOOR_LINE,13,"          111  I I HHHH     "
+		CALL MAKE_FLOOR_LINE,14,"           1111111 HHH11    "
+		CALL MAKE_FLOOR_LINE,15,"                            "
+
+	CASE 9
+	;ボー디무ーズ ６Ｆ
+		FLAG:최대X = 26 
+		FLAG:최대Y = 16 
+;								 00000000001111111111222222
+;								 01234567890123456789012345
+		CALL MAKE_FLOOR_LINE, 0,"                            "
+		CALL MAKE_FLOOR_LINE, 1,"           1 111 I  11111   "
+		CALL MAKE_FLOOR_LINE, 2,"          11 1 1 1 1  111   "
+		CALL MAKE_FLOOR_LINE, 3,"          11 1 1 1 1  1 11  "
+		CALL MAKE_FLOOR_LINE, 4,"        I  1 6 1 1 1  6  11 "
+		CALL MAKE_FLOOR_LINE, 5,"        2  1   1 1 1      1 "
+		CALL MAKE_FLOOR_LINE, 6,"        111111 1 1 1 I21111 "
+		CALL MAKE_FLOOR_LINE, 7,"        11 1 1 1 1        1 "
+		CALL MAKE_FLOOR_LINE, 8,"        11 1 1 1 1  HHH   1 "
+		CALL MAKE_FLOOR_LINE, 9,"        11111111 1 1HPH11 1 "
+		CALL MAKE_FLOOR_LINE,10,"        2    1   1  HHH 1 1 "
+		CALL MAKE_FLOOR_LINE,11,"        11   7   1      1 7 "
+		CALL MAKE_FLOOR_LINE,12,"         11      1 111111   "
+		CALL MAKE_FLOOR_LINE,13,"          11   I 1  1       "
+		CALL MAKE_FLOOR_LINE,14,"           1111121 11111    "
+		CALL MAKE_FLOOR_LINE,15,"                            "
+
+	CASE 10
+	;ボー디무ーズ ７Ｆ
+		FLAG:최대X = 26 
+		FLAG:최대Y = 16 
+;								 00000000001111111111222222
+;								 01234567890123456789012345
+		CALL MAKE_FLOOR_LINE, 0,"                                   "
+		CALL MAKE_FLOOR_LINE, 1,"           1111    11111           "
+		CALL MAKE_FLOOR_LINE, 2,"  I       11  11   1   11          "
+		CALL MAKE_FLOOR_LINE, 3,"  2       1    1   1    11      6  "
+		CALL MAKE_FLOOR_LINE, 4," 111    1 1  7 1   2  7  11    111 "
+		CALL MAKE_FLOOR_LINE, 5," 11121121 11 1 1   1  1   1 111111 "
+		CALL MAKE_FLOOR_LINE, 6," 111    1  1 111   11111  1     2  "
+		CALL MAKE_FLOOR_LINE, 7," 111    1  1              1    111 "
+		CALL MAKE_FLOOR_LINE, 8," 111    1 11111211111111121    111 "
+		CALL MAKE_FLOOR_LINE, 9," 111    1  1            1      111 "
+		CALL MAKE_FLOOR_LINE,10,"  6     1  1111    6 1111 1     1  "
+		CALL MAKE_FLOOR_LINE,11,"        11   1     1 1  111        "
+		CALL MAKE_FLOOR_LINE,12,"         11  1     1 1  11         "
+		CALL MAKE_FLOOR_LINE,13,"          11   I   2 1             "
+		CALL MAKE_FLOOR_LINE,14,"           11111   1111P           "
+		CALL MAKE_FLOOR_LINE,15,"                                   "
+
+
+	CASE 11
+	;ボー디무ーズ ８Ｆ
+		FLAG:최대X = 26 
+		FLAG:최대Y = 16 
+;								 00000000001111111111222222
+;								 01234567890123456789012345
+		CALL MAKE_FLOOR_LINE, 0,"                                   "
+		CALL MAKE_FLOOR_LINE, 1,"           11  1 9 11111           "
+		CALL MAKE_FLOOR_LINE, 2,"          111 11 1 111111          "
+		CALL MAKE_FLOOR_LINE, 3,"  1       111211 1 1111111      7  "
+		CALL MAKE_FLOOR_LINE, 4," 111    1 111 11 1 11111111    111 "
+		CALL MAKE_FLOOR_LINE, 5," 111    1     11 1 11111111    111 "
+		CALL MAKE_FLOOR_LINE, 6," 111    11112111 1 11111111    111 "
+		CALL MAKE_FLOOR_LINE, 7,"  2       1    1 1211111111     1  "
+		CALL MAKE_FLOOR_LINE, 8," 111211211111 11 1 111111112111111 "
+		CALL MAKE_FLOOR_LINE, 9," 111        1  1 1             111 "
+		CALL MAKE_FLOOR_LINE,10,"  7     11111  1 1 7  1   1     2  "
+		CALL MAKE_FLOOR_LINE,11,"        1   1 11 1 1  1  11     I  "
+		CALL MAKE_FLOOR_LINE,12,"          1 1    1 1  1111         "
+		CALL MAKE_FLOOR_LINE,13,"          111  I 1 1   11          "
+		CALL MAKE_FLOOR_LINE,14,"           11111 1 11111           "
+		CALL MAKE_FLOOR_LINE,15,"                                   "
+
+
+
+	CASE 12
+	;カリーナ Ｂ１Ｆ
+		FLAG:최대X = 33
+		FLAG:최대Y = 21
+;								 00000000001111111111222222222233
+;								 01234567890123456789012345678901
+		CALL MAKE_FLOOR_LINE, 0,"                                "
+		CALL MAKE_FLOOR_LINE, 1,"                                "
+		CALL MAKE_FLOOR_LINE, 2,"                                "
+		CALL MAKE_FLOOR_LINE, 3,"                 113 DDD2111    "
+		CALL MAKE_FLOOR_LINE, 4,"                 1   D       I  "
+		CALL MAKE_FLOOR_LINE, 5,"                 1   D       2  "
+		CALL MAKE_FLOOR_LINE, 6,"                 1 DDDDD211111  "
+		CALL MAKE_FLOOR_LINE, 7,"                 1 D         1  "
+		CALL MAKE_FLOOR_LINE, 8,"                 1 D         2  "
+		CALL MAKE_FLOOR_LINE, 9,"                 1 DDDDD DDDDD  "
+		CALL MAKE_FLOOR_LINE,10,"                 1     D D  DD  "
+		CALL MAKE_FLOOR_LINE,11,"                 1     D D  D   "
+		CALL MAKE_FLOOR_LINE,12,"                 12DDDDD 2  2   "
+		CALL MAKE_FLOOR_LINE,13,"                 1     D 1  1   "
+		CALL MAKE_FLOOR_LINE,14,"                 1     D 1  11  "
+		CALL MAKE_FLOOR_LINE,15,"                 1 DDDDD 1  1   "
+		CALL MAKE_FLOOR_LINE,16,"                 1 D     1  2   "
+		CALL MAKE_FLOOR_LINE,17,"                 1 D 811 1 111  "
+		CALL MAKE_FLOOR_LINE,18,"                   2   1 1 141  "
+		CALL MAKE_FLOOR_LINE,19,"                 618 11111 111  "
+		CALL MAKE_FLOOR_LINE,20,"                                "
+		
+
+	CASE 13
+	;カリーナ １Ｆ
+		FLAG:최대X = 33
+		FLAG:최대Y = 21
+;								 000000000011111111112222222222333
+;								 012345678901234567890123456789012
+		CALL MAKE_FLOOR_LINE, 0,"                                 "
+		CALL MAKE_FLOOR_LINE, 1,"                 1111I           "
+		CALL MAKE_FLOOR_LINE, 2,"                   1             "
+		CALL MAKE_FLOOR_LINE, 3,"  11111121111111 111     11111   "
+		CALL MAKE_FLOOR_LINE, 4,"  1  11      1    11 111 1 1 1   "
+		CALL MAKE_FLOOR_LINE, 5,"  1  11111 111 11G112111 1 1 16  "
+		CALL MAKE_FLOOR_LINE, 6,"  11111    1    1 11 111 1 1 1   "
+		CALL MAKE_FLOOR_LINE, 7,"     11111 111111 11     1 1 1   "
+		CALL MAKE_FLOOR_LINE, 8,"  11 11           11 111111111   "
+		CALL MAKE_FLOOR_LINE, 9,"  11G112111111111G11 1       1   "
+		CALL MAKE_FLOOR_LINE,10,"  41 11           11 1111111 1   "
+		CALL MAKE_FLOOR_LINE,11,"  11G111116 111 1111       1 2   "
+		CALL MAKE_FLOOR_LINE,12,"  11 11     1 1   11 1111111 1   "
+		CALL MAKE_FLOOR_LINE,13,"     11111111 113 11 3111311 1   "
+		CALL MAKE_FLOOR_LINE,14,"  11111           11         1   "
+		CALL MAKE_FLOOR_LINE,15,"  1  11112I 3111111121111111112I "
+		CALL MAKE_FLOOR_LINE,16,"  1  11           11    1    1   "
+		CALL MAKE_FLOOR_LINE,17,"  111111X111111X1111 111111111   "
+		CALL MAKE_FLOOR_LINE,18,"                   G             "
+		CALL MAKE_FLOOR_LINE,19,"                 71116           "
+		CALL MAKE_FLOOR_LINE,20,"                                 "
+
+	CASE 14
+	;カリーナ ２Ｆ
+		FLAG:최대X = 33
+		FLAG:최대Y = 21
+;								 000000000011111111112222222222333
+;								 012345678901234567890123456789012
+		CALL MAKE_FLOOR_LINE, 0,"                                 "
+		CALL MAKE_FLOOR_LINE, 1,"                                 "
+		CALL MAKE_FLOOR_LINE, 2,"                                 "
+		CALL MAKE_FLOOR_LINE, 3,"  61111211111111 1111111111113   "
+		CALL MAKE_FLOOR_LINE, 4,"      1      1   1 1 1           "
+		CALL MAKE_FLOOR_LINE, 5,"  111111211  111111111 11111117  "
+		CALL MAKE_FLOOR_LINE, 6,"  1   1   1            2         "
+		CALL MAKE_FLOOR_LINE, 7,"  1   1   112pprpppppo 111111    "
+		CALL MAKE_FLOOR_LINE, 8,"  1  11      aj aaaljo 1    1    "
+		CALL MAKE_FLOOR_LINE, 9,"  1111  11112pogggaalp 111111    "
+		CALL MAKE_FLOOR_LINE,10,"        1       jjnfgo   X  1    "
+		CALL MAKE_FLOOR_LINE,11,"  111 111 712ppppIpflj   1  1    "
+		CALL MAKE_FLOOR_LINE,12,"  1   1         jjjfho  11  1    "
+		CALL MAKE_FLOOR_LINE,13,"  11111121112ppg a alp  1   1    "
+		CALL MAKE_FLOOR_LINE,14,"  1   1       ogIa llp  2   2    "
+		CALL MAKE_FLOOR_LINE,15,"  1   1  1111 ofjloppp 111 111   "
+		CALL MAKE_FLOOR_LINE,16,"  11  1     1 p  a     111 141   "
+		CALL MAKE_FLOOR_LINE,17,"   1111121111 pgpppppp 111 111   "
+		CALL MAKE_FLOOR_LINE,18,"                   2             "
+		CALL MAKE_FLOOR_LINE,19,"                 61117           "
+		CALL MAKE_FLOOR_LINE,20,"                                 "
+		
+		
+		
+		
+	CASE 15
+	;カリーナ ３Ｆ
+		FLAG:최대X = 33
+		FLAG:최대Y = 21
+;								 000000000011111111112222222222333
+;								 012345678901234567890123456789012
+		CALL MAKE_FLOOR_LINE, 0,"                                 "
+		CALL MAKE_FLOOR_LINE, 1,"                                 "
+		CALL MAKE_FLOOR_LINE, 2,"                                 "
+		CALL MAKE_FLOOR_LINE, 3,"  711111112ppprpaprppp21111111   "
+		CALL MAKE_FLOOR_LINE, 4,"            o  gag apa           "
+		CALL MAKE_FLOOR_LINE, 5,"  111111112ppaoorooapp211111116  "
+		CALL MAKE_FLOOR_LINE, 6,"  2 2 2    aaaoagao n       2    "
+		CALL MAKE_FLOOR_LINE, 7,"  D D D    lpaoaIazapp2D DDDD    "
+		CALL MAKE_FLOOR_LINE, 8,"  D D DDD  jr oapaoapa D D  DD   "
+		CALL MAKE_FLOOR_LINE, 9,"  D D D D  lpao u oapa D DD  D   "
+		CALL MAKE_FLOOR_LINE,10,"    D D D  lpaoapao r  D     2   "
+		CALL MAKE_FLOOR_LINE,11,"  DDDDD D  apgoa+aoapa DDDDDDD   "
+		CALL MAKE_FLOOR_LINE,12,"  2 D   2   n japloapa   D       "
+		CALL MAKE_FLOOR_LINE,13,"  1 D   1  alaofh oapg DDDD211   "
+		CALL MAKE_FLOOR_LINE,14,"  1 DD21112ppgoallj no D         "
+		CALL MAKE_FLOOR_LINE,15,"  1 D      aaaogoggggp D 111116  "
+		CALL MAKE_FLOOR_LINE,16,"  1 D       b oa   pwp   1   1   "
+		CALL MAKE_FLOOR_LINE,17,"  1 D211112pplp2I  p p2111 111   "
+		CALL MAKE_FLOOR_LINE,18,"                   2             "
+		CALL MAKE_FLOOR_LINE,19,"                 71116           "
+		CALL MAKE_FLOOR_LINE,20,"                                 "
+		
+		CALL SET_TILE, 16 , 9 , STRFLAG_NUM_D("カリーナ숨겨진 장소") , 1 , 902
+		CALL SET_TILE, 12 , 7 , STRFLAG_NUM_D("カリーナ숨겨진 장소") , 0 , 15014
+
+
+	CASE 16
+	;カリーナ ４Ｆ
+		FLAG:최대X = 33
+		FLAG:최대Y = 21
+;								 000000000011111111112222222222333
+;								 012345678901234567890123456789012
+		CALL MAKE_FLOOR_LINE, 0,"                                 "
+		CALL MAKE_FLOOR_LINE, 1,"                 1111I           "
+		CALL MAKE_FLOOR_LINE, 2,"                 1               "
+		CALL MAKE_FLOOR_LINE, 3,"  111       111  1 111>1111111   "
+		CALL MAKE_FLOOR_LINE, 4," 11111     11111 1 111       1   "
+		CALL MAKE_FLOOR_LINE, 5," 31 112111211 11 1 111 11111117  "
+		CALL MAKE_FLOOR_LINE, 6," 11111     11111 1 111 1     1   "
+		CALL MAKE_FLOOR_LINE, 7,"  111       111  1 111 1111111   "
+		CALL MAKE_FLOOR_LINE, 8,"      11     2   1   2           "
+		CALL MAKE_FLOOR_LINE, 9,"     1111   111  1   1     111   "
+		CALL MAKE_FLOOR_LINE,10,"    111111 11111 1 111 1112141   "
+		CALL MAKE_FLOOR_LINE,11,"  F1F11111211 1121 1   1   111   "
+		CALL MAKE_FLOOR_LINE,12,"    111111 11111 2 1   1         "
+		CALL MAKE_FLOOR_LINE,13,"     1111   111  I 1 I21111111   "
+		CALL MAKE_FLOOR_LINE,14,"      11     2     1   1     1   "
+		CALL MAKE_FLOOR_LINE,15,"  111       111    111111111117  "
+		CALL MAKE_FLOOR_LINE,16," 11111     11111                 "
+		CALL MAKE_FLOOR_LINE,17," 11 412111211 11   11111111111   "
+		CALL MAKE_FLOOR_LINE,18," 11111     11111   11        1   "
+		CALL MAKE_FLOOR_LINE,19,"  111       111    117 1111111   "
+		CALL MAKE_FLOOR_LINE,20,"                                 "
+		
+		
+	CASE 17
+	;デルファイナス１Ｆ
+		FLAG:최대X = 27
+		FLAG:최대Y = 27
+;								 000000000011111111112222222
+;								 012345678901234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"                           "
+		CALL MAKE_FLOOR_LINE, 1," 1111111111111111111111111 "
+		CALL MAKE_FLOOR_LINE, 2," 111                   111 "
+		CALL MAKE_FLOOR_LINE, 3," 111 1kkkkkk1111       111 "
+		CALL MAKE_FLOOR_LINE, 4," 1   V  1      1kkkk1    1 "
+		CALL MAKE_FLOOR_LINE, 5," 1 111111xX14  1    t    1 "
+		CALL MAKE_FLOOR_LINE, 6," 1 t t c c     1qqqq111  1 "
+		CALL MAKE_FLOOR_LINE, 7," 1 t t c c F F 1    t    1 "
+		CALL MAKE_FLOOR_LINE, 8," 1 t t c c 1 1 1qqqq111  1 "
+		CALL MAKE_FLOOR_LINE, 9," 1 xXxXxXxX1 1 1         1 "
+		CALL MAKE_FLOOR_LINE,10," 1 t t c c c c 1qqqq1q1F 1 "
+		CALL MAKE_FLOOR_LINE,11," 1 t t c c c c 1    1    1 "
+		CALL MAKE_FLOOR_LINE,12," 1 t t c c c c 1  I 1    1 "
+		CALL MAKE_FLOOR_LINE,13," 1 t t c c c c 1 1111111 1 "
+		CALL MAKE_FLOOR_LINE,14," 1 1111111 11111 1111111 1 "
+		CALL MAKE_FLOOR_LINE,15," 1 1                   1 1 "
+		CALL MAKE_FLOOR_LINE,16," 1 11111Xx11   111Xx1111 1 "
+		CALL MAKE_FLOOR_LINE,17," 1       1 1 6 1 1       1 "
+		CALL MAKE_FLOOR_LINE,18," 1 1111121 2 1 2 1211111 1 "
+		CALL MAKE_FLOOR_LINE,19," 1 1     1 11111 1     1 1 "
+		CALL MAKE_FLOOR_LINE,20," 1 1 111 1 1 1 1 1 111 1 1 "
+		CALL MAKE_FLOOR_LINE,21," 1 1G141 1 1 1 1 1 141G1 1 "
+		CALL MAKE_FLOOR_LINE,22," 1   111 1 1 1 1 1 111   1 "
+		CALL MAKE_FLOOR_LINE,23," 111     1 1 F 1 1     111 "
+		CALL MAKE_FLOOR_LINE,24," 111       1 1 1       111 "
+		CALL MAKE_FLOOR_LINE,25," 11111111111 F 11111111111 "
+		CALL MAKE_FLOOR_LINE,26,"                           "
+		
+		
+	CASE 18
+	;デルファイナス２Ｆ
+		FLAG:최대X = 27
+		FLAG:최대Y = 27
+;								 000000000011111111112222222
+;								 012345678901234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"                           "
+		CALL MAKE_FLOOR_LINE, 1,"             P             "
+		CALL MAKE_FLOOR_LINE, 2,"  ｼﾋﾋ ﾐﾐﾐﾐﾐﾐﾐｳﾋﾋﾋﾋﾋﾋ111 1  "
+		CALL MAKE_FLOOR_LINE, 3,"  ｼ ｳ ｳ               1 1  "
+		CALL MAKE_FLOOR_LINE, 4,"  ｼ ｳ ｳ ﾐﾐﾐｼ 6 ｼﾋﾋﾋﾋﾋ 1 1  "
+		CALL MAKE_FLOOR_LINE, 5,"  ｼ ｳ ｳ ｳ  ｼ 1 ｼ    ｳ   1  "
+		CALL MAKE_FLOOR_LINE, 6,"  ｼ ｳ ｳ ｳ  ﾐ1x1111ﾐﾐ11111  "
+		CALL MAKE_FLOOR_LINE, 7,"  ｼ ｳ ｳ ｳ    X   1      1  "
+		CALL MAKE_FLOOR_LINE, 8,"  ｼ ｳ ｳ ｳﾋ   1   1      1  "
+		CALL MAKE_FLOOR_LINE, 9,"  ｼ ｳ ｳ  ｳ 11111 1  111 1  "
+		CALL MAKE_FLOOR_LINE,10,"  ｼ 111  1 1   1 112141 1  "
+		CALL MAKE_FLOOR_LINE,11,"  ｼ 111xX1 1 I 1    111 1  "
+		CALL MAKE_FLOOR_LINE,12,"  ｼ  1     1 2 1        1  "
+		CALL MAKE_FLOOR_LINE,13," Pﾋ  2  ﾐﾐﾐ11111ﾐﾐﾐﾐﾐｼ  ﾐP "
+		CALL MAKE_FLOOR_LINE,14,"  11 111ｳ    1       ｼ  ｳ  "
+		CALL MAKE_FLOOR_LINE,15,"  1  1  ｳﾋﾋ  1 1  1  ｼ  ｳ  "
+		CALL MAKE_FLOOR_LINE,16,"  1  1    ｳ  1 1111 111 ｳ  "
+		CALL MAKE_FLOOR_LINE,17,"  1 111ﾋﾋ ｳﾋ 7 1111 111 ｳ  "
+		CALL MAKE_FLOOR_LINE,18,"  1 1 ｼ ｳ  ｳ   1  2 ｼ ｼ ｳ  "
+		CALL MAKE_FLOOR_LINE,19,"  1 1 ｼ ｳﾋ ｳ      1 ｼ ｼ ｳ  "
+		CALL MAKE_FLOOR_LINE,20,"  1 1 ｼ  ｳ ｳﾋﾋﾋ1 11 ｼ ｼ ｳ  "
+		CALL MAKE_FLOOR_LINE,21,"  111 ｼ  ｳ     1 1  ｼ ｼ ｳ  "
+		CALL MAKE_FLOOR_LINE,22,"  1   ｼ  ｳﾋﾋﾋﾋﾋ1 11 ｼ ｼ ｳ  "
+		CALL MAKE_FLOOR_LINE,23,"      ｼ        1  1 ｼ ｼ ｳ  "
+		CALL MAKE_FLOOR_LINE,24,"  111111ﾐﾐﾐﾐﾐﾐﾐ1ﾋﾋ1ﾋﾋ ﾐﾐｳ  "
+		CALL MAKE_FLOOR_LINE,25,"                           "	
+		
+		
+	CASE 19
+	;デルファイナス３Ｆ
+		FLAG:최대X = 27
+		FLAG:최대Y = 27
+;								 000000000011111111112222222
+;								 012345678901234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"                           "
+		CALL MAKE_FLOOR_LINE, 1,"                           "
+		CALL MAKE_FLOOR_LINE, 2,"                     P     "
+		CALL MAKE_FLOOR_LINE, 3,"   111  111     111  ｳﾋﾋ   "
+		CALL MAKE_FLOOR_LINE, 4,"   1 1  141  7  141    ｳ   "
+		CALL MAKE_FLOOR_LINE, 5,"   1 1  111  1  111  ﾐﾐｳ   "
+		CALL MAKE_FLOOR_LINE, 6,"   1     2  111  2   ｳ     "
+		CALL MAKE_FLOOR_LINE, 7,"   11121 111111111 12ｳ 1   "
+		CALL MAKE_FLOOR_LINE, 8,"   1 1 1    111    1   1   "
+		CALL MAKE_FLOOR_LINE, 9,"   1 1 1111  1  1111 611   "
+		CALL MAKE_FLOOR_LINE,10,"   1 1    1 111 1      1   "
+		CALL MAKE_FLOOR_LINE,11,"   1 1111 12111211 111 1   "
+		CALL MAKE_FLOOR_LINE,12,"   1    2    X   1   121   "
+		CALL MAKE_FLOOR_LINE,13,"   1111111   x   111 1 1   "
+		CALL MAKE_FLOOR_LINE,14,"       1 1 11111 1 xX1 1   "
+		CALL MAKE_FLOOR_LINE,15,"    6 1111 1   1 111   1   "
+		CALL MAKE_FLOOR_LINE,16,"    1 1    1 6 1       1   "
+		CALL MAKE_FLOOR_LINE,17,"   11 1 11 1 1 111111  1   "
+		CALL MAKE_FLOOR_LINE,18,"   1  1 11 11111   2  11   "
+		CALL MAKE_FLOOR_LINE,19,"   1111 11       DDD 11    "
+		CALL MAKE_FLOOR_LINE,20,"         12DDDDDDD         "
+		CALL MAKE_FLOOR_LINE,21,"   ｼﾋﾋﾋﾋ       X   ｼﾋﾋﾋﾋ   "
+		CALL MAKE_FLOOR_LINE,22,"   ｼ   ｳ 111111x11 ｼ   ｳ   "
+		CALL MAKE_FLOOR_LINE,23,"   ﾐﾐｼ ｳﾋﾋﾋﾋﾋﾋﾋﾋﾋﾋﾋﾋ ﾐﾐｳ   "
+		CALL MAKE_FLOOR_LINE,24,"     P                     "
+		CALL MAKE_FLOOR_LINE,25,"                           "
+		
+		
+	CASE 20
+	;デルファイナス４Ｆ
+		FLAG:최대X = 27
+		FLAG:최대Y = 27
+;								 000000000011111111112222222
+;								 012345678901234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"                           "
+		CALL MAKE_FLOOR_LINE, 1,"                           "
+		CALL MAKE_FLOOR_LINE, 2,"                           "
+		CALL MAKE_FLOOR_LINE, 3,"                           "
+		CALL MAKE_FLOOR_LINE, 4,"    11111211 6 DDDDD211    "
+		CALL MAKE_FLOOR_LINE, 5,"    1     11 1 D      1    "
+		CALL MAKE_FLOOR_LINE, 6,"    2 D D211 1 DDDD  11    "
+		CALL MAKE_FLOOR_LINE, 7,"    D D D    2    D  11    "
+		CALL MAKE_FLOOR_LINE, 8,"    D D D DDDDDDD 2  11    "
+		CALL MAKE_FLOOR_LINE, 9,"    D D D D     D 11 7     "
+		CALL MAKE_FLOOR_LINE,10,"    D D D D 111 D 11       "
+		CALL MAKE_FLOOR_LINE,11,"    DDD D D 141 D 1112I    "
+		CALL MAKE_FLOOR_LINE,12,"    2 D D D 111 D 11       "
+		CALL MAKE_FLOOR_LINE,13,"    1 D D 2  G  2 112DD    "
+		CALL MAKE_FLOOR_LINE,14,"    1 DDD 1111111     D    "
+		CALL MAKE_FLOOR_LINE,15,"    7 D   1     1  DDDD    "
+		CALL MAKE_FLOOR_LINE,16,"      D  11  7  11 D  D    "
+		CALL MAKE_FLOOR_LINE,17,"    DDDD 1  111  1 DD D    "
+		CALL MAKE_FLOOR_LINE,18,"    D DD 1  111  1  D 2    "
+		CALL MAKE_FLOOR_LINE,19,"    DDD  111111111 DD ｼ    "
+		CALL MAKE_FLOOR_LINE,20,"    2       1 1    2  ｼ    "
+		CALL MAKE_FLOOR_LINE,21,"    1  1211     1111  ｼ    "
+		CALL MAKE_FLOOR_LINE,22,"    1111 1111 P11111 舎    "
+		CALL MAKE_FLOOR_LINE,23,"                     P     "
+		CALL MAKE_FLOOR_LINE,24,"                           "
+		
+		
+	CASE 21
+	;デルファイナス５Ｆ
+		FLAG:최대X = 27
+		FLAG:최대Y = 27
+;								 000000000011111111112222222
+;								 012345678901234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"                           "
+		CALL MAKE_FLOOR_LINE, 1,"                           "
+		CALL MAKE_FLOOR_LINE, 2,"                           "
+		CALL MAKE_FLOOR_LINE, 3,"                           "
+		CALL MAKE_FLOOR_LINE, 4,"             7             "
+		CALL MAKE_FLOOR_LINE, 5,"     112DDD21112DDD211     "
+		CALL MAKE_FLOOR_LINE, 6,"     1           v   1     "
+		CALL MAKE_FLOOR_LINE, 7,"     2 sssD21112Dvmm 2     "
+		CALL MAKE_FLOOR_LINE, 8,"     D v           v D     "
+		CALL MAKE_FLOOR_LINE, 9,"     v v sDDDDsssDDDDD     "
+		CALL MAKE_FLOOR_LINE,10,"     v v v   2   e v e     "
+		CALL MAKE_FLOOR_LINE,11,"     DDD v 11111 e v e     "
+		CALL MAKE_FLOOR_LINE,12,"     v e v 1   1 e vmm     "
+		CALL MAKE_FLOOR_LINE,13,"     v e v 1 1 1 e   D     "
+		CALL MAKE_FLOOR_LINE,14,"     v DDD 1 1 1 sse D     "
+		CALL MAKE_FLOOR_LINE,15,"     Dmm e 11111 v e D     "
+		CALL MAKE_FLOOR_LINE,16,"     e D e   6   v e D     "
+		CALL MAKE_FLOOR_LINE,17,"     e D sse   ssv DDD     "
+		CALL MAKE_FLOOR_LINE,18,"     D D v e   v   e D     "
+		CALL MAKE_FLOOR_LINE,19,"     2 DDD ssssvmmmm 2     "
+		CALL MAKE_FLOOR_LINE,20,"     1   v           1     "
+		CALL MAKE_FLOOR_LINE,21,"     112Dvm21112DDD211     "
+		CALL MAKE_FLOOR_LINE,22,"             2             "
+		CALL MAKE_FLOOR_LINE,23,"             I             "
+		CALL MAKE_FLOOR_LINE,24,"                           "
+		
+		
+	CASE 22
+	;デルファイナス６Ｆ
+		FLAG:최대X = 27
+		FLAG:최대Y = 27
+;								 000000000011111111112222222
+;								 012345678901234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"                           "
+		CALL MAKE_FLOOR_LINE, 1,"                           "
+		CALL MAKE_FLOOR_LINE, 2,"                           "
+		CALL MAKE_FLOOR_LINE, 3,"                           "
+		CALL MAKE_FLOOR_LINE, 4,"                           "
+		CALL MAKE_FLOOR_LINE, 5,"         4       4         "
+		CALL MAKE_FLOOR_LINE, 6,"      11111 111 111k1      "
+		CALL MAKE_FLOOR_LINE, 7,"      t 111 141 111 1      "
+		CALL MAKE_FLOOR_LINE, 8,"      t 111 111 111q1      "
+		CALL MAKE_FLOOR_LINE, 9,"      t  t   1      1      "
+		CALL MAKE_FLOOR_LINE,10,"      t  t   111k1qq1      "
+		CALL MAKE_FLOOR_LINE,11,"      t  11P   1 t  1      "
+		CALL MAKE_FLOOR_LINE,12,"      t  c   6 1 t  1      "
+		CALL MAKE_FLOOR_LINE,13,"      t  c   1 P t  1      "
+		CALL MAKE_FLOOR_LINE,14,"      t  11111 c 1kk1      "
+		CALL MAKE_FLOOR_LINE,15,"      t1 1 P   c    1      "
+		CALL MAKE_FLOOR_LINE,16,"      t  1 t 7 c    1      "
+		CALL MAKE_FLOOR_LINE,17,"      t 11 t 1 1q1  1      "
+		CALL MAKE_FLOOR_LINE,18,"      t c  t 1   1qq1      "
+		CALL MAKE_FLOOR_LINE,19,"      t c  11111    1      "
+		CALL MAKE_FLOOR_LINE,20,"      111111 2 1kkkk1      "
+		CALL MAKE_FLOOR_LINE,21,"             I             "
+		CALL MAKE_FLOOR_LINE,22,"                           "
+	
+	
+	CASE 23
+	;デルファイナス７Ｆ
+		FLAG:최대X = 27
+		FLAG:최대Y = 27
+;								 000000000011111111112222222
+;								 012345678901234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"                           "
+		CALL MAKE_FLOOR_LINE, 1,"                           "
+		CALL MAKE_FLOOR_LINE, 2,"                           "
+		CALL MAKE_FLOOR_LINE, 3,"                           "
+		CALL MAKE_FLOOR_LINE, 4,"                           "
+		CALL MAKE_FLOOR_LINE, 5,"                           "
+		CALL MAKE_FLOOR_LINE, 6,"        4                  "
+		CALL MAKE_FLOOR_LINE, 7,"       111q11111 111       "
+		CALL MAKE_FLOOR_LINE, 8,"       111 c 1 t 141       "
+		CALL MAKE_FLOOR_LINE, 9,"       111 c 1 t 111       "
+		CALL MAKE_FLOOR_LINE,10,"       1   c 1 t  X        "
+		CALL MAKE_FLOOR_LINE,11,"       1kkk1 1 t11x1       "
+		CALL MAKE_FLOOR_LINE,12,"           t 7 1   t       "
+		CALL MAKE_FLOOR_LINE,13,"       61111   111 t       "
+		CALL MAKE_FLOOR_LINE,14,"           t 111 1 t       "
+		CALL MAKE_FLOOR_LINE,15,"       P1kk1 c t 1k1       "
+		CALL MAKE_FLOOR_LINE,16,"        2  t c t   t       "
+		CALL MAKE_FLOOR_LINE,17,"       111 t c t 111       "
+		CALL MAKE_FLOOR_LINE,18,"       141 t c t 111       "
+		CALL MAKE_FLOOR_LINE,19,"       111 11111q111       "
+		CALL MAKE_FLOOR_LINE,20,"                  4        "
+		CALL MAKE_FLOOR_LINE,21,"                           "
+		
+		
+		CALL SET_TILE, 18 , 8 , STRFLAG_D("ア벨初回") , 0 , 1
+		
+	CASE 24
+	;デルファイナス８Ｆ
+		FLAG:최대X = 27
+		FLAG:최대Y = 27
+;								 000000000011111111112222222
+;								 012345678901234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"                           "
+		CALL MAKE_FLOOR_LINE, 1,"                           "
+		CALL MAKE_FLOOR_LINE, 2,"                           "
+		CALL MAKE_FLOOR_LINE, 3,"                           "
+		CALL MAKE_FLOOR_LINE, 4,"                           "
+		CALL MAKE_FLOOR_LINE, 5,"                           "
+		CALL MAKE_FLOOR_LINE, 6,"                           "
+		CALL MAKE_FLOOR_LINE, 7,"                           "
+		CALL MAKE_FLOOR_LINE, 8,"        111 111 111        "
+		CALL MAKE_FLOOR_LINE, 9,"        141 1 111112I      "
+		CALL MAKE_FLOOR_LINE,10,"        111 111 111        "
+		CALL MAKE_FLOOR_LINE,11,"         X   1   1         "
+		CALL MAKE_FLOOR_LINE,12,"        1x111111 1         "
+		CALL MAKE_FLOOR_LINE,13,"       711     1 1         "
+		CALL MAKE_FLOOR_LINE,14,"        1x111111 1         "
+		CALL MAKE_FLOOR_LINE,15,"         X   1   2         "
+		CALL MAKE_FLOOR_LINE,16,"        111 111 111        "
+		CALL MAKE_FLOOR_LINE,17,"        141 1 1 141        "
+		CALL MAKE_FLOOR_LINE,18,"        111 111 111        "
+		CALL MAKE_FLOOR_LINE,19,"                           "
+		
+		
+	CASE 25
+	;デルファイナス９Ｆ
+		FLAG:최대X = 27
+		FLAG:최대Y = 27
+;								 000000000011111111112222222
+;								 012345678901234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"                           "
+		CALL MAKE_FLOOR_LINE, 1,"                           "
+		CALL MAKE_FLOOR_LINE, 2,"                           "
+		CALL MAKE_FLOOR_LINE, 3,"                           "
+		CALL MAKE_FLOOR_LINE, 4,"                           "
+		CALL MAKE_FLOOR_LINE, 5,"                           "
+		CALL MAKE_FLOOR_LINE, 6,"                           "
+		CALL MAKE_FLOOR_LINE, 7,"                           "
+		CALL MAKE_FLOOR_LINE, 8,"                           "
+		CALL MAKE_FLOOR_LINE, 9,"         1111x112I         "
+		CALL MAKE_FLOOR_LINE,10,"         1   X             "
+		CALL MAKE_FLOOR_LINE,11,"         1  111            "
+		CALL MAKE_FLOOR_LINE,12,"         1  141   I        "
+		CALL MAKE_FLOOR_LINE,13,"         11 111  11        "
+		CALL MAKE_FLOOR_LINE,14,"          X      11        "
+		CALL MAKE_FLOOR_LINE,15,"         1x11111 1         "
+		CALL MAKE_FLOOR_LINE,16,"         2     X 1         "
+		CALL MAKE_FLOOR_LINE,17,"         11111 x11         "
+		CALL MAKE_FLOOR_LINE,18,"                           "
+	
+		
+	CASE 26
+	;エリダヌス１Ｆ
+		FLAG:최대X = 45
+		FLAG:최대Y = 40
+;								 000000000011111111112222222222333333333344444
+;								 012345678901234567890123456789012345678901234
+		CALL MAKE_FLOOR_LINE, 0,"                                             "
+		CALL MAKE_FLOOR_LINE, 1," 11     1  111  1  111 11 11 11 1111116 6111 "
+		CALL MAKE_FLOOR_LINE, 2," 1     111  1  111  11 11 11 11 1  111     1 "
+		CALL MAKE_FLOOR_LINE, 3,"   1  11111 1 11111     2  2  2 1  11  12111 "
+		CALL MAKE_FLOOR_LINE, 4,"  111  111  1  111  1   111111111 11  11   2 "
+		CALL MAKE_FLOOR_LINE, 5," 11111  1  611  1  111  2   2 2   1  11  1   "
+		CALL MAKE_FLOOR_LINE, 6,"  111             11111 11 11111 11 11  11   "
+		CALL MAKE_FLOOR_LINE, 7,"   1    1   1      111  11 1 1   11111111111 "
+		CALL MAKE_FLOOR_LINE, 8,"     1111  111      1      1 11  11      1 1 "
+		CALL MAKE_FLOOR_LINE, 9," 11  111  11111   1    11 11111 11111<11 1 1 "
+		CALL MAKE_FLOOR_LINE,10,"  1  1     111   111   11 2        1   A 1 1 "
+		CALL MAKE_FLOOR_LINE,11," 11 11  1   1   111111111 111 11 111 11111 1 "
+		CALL MAKE_FLOOR_LINE,12," 11 6  111    1  111    1   1 11>1 1  V    1 "
+		CALL MAKE_FLOOR_LINE,13," 1    11111  111  1  1111 111 1    1  11<1<1 "
+		CALL MAKE_FLOOR_LINE,14,"   1   111  11 11       2   1 111 111>11   1 "
+		CALL MAKE_FLOOR_LINE,15,"  111   1    111  1216 612111 1 121   2    1 "
+		CALL MAKE_FLOOR_LINE,16," 11111    1   1   1         2 1   1 11121  1 "
+		CALL MAKE_FLOOR_LINE,17,"  111    1HH      1 11111 1 12111 111 V 1  1 "
+		CALL MAKE_FLOOR_LINE,18,"   1   1HHH1 111111  1  1 111 1 1  A  1 1  1 "
+		CALL MAKE_FLOOR_LINE,19,"   1      HH  1   2  1 11 1   1<1  1111 1111 "
+		CALL MAKE_FLOOR_LINE,20,"   2   11       111 11 11 111                "
+		CALL MAKE_FLOOR_LINE,21,"  11 61111111   1   1     1 11 1 1 1111 1  1 "
+		CALL MAKE_FLOOR_LINE,22," 11   A  1  2   1 1216 6111 1  1 121    1121 "
+		CALL MAKE_FLOOR_LINE,23," 1  1116 1 111111 1       1 1121 1 1  111    "
+		CALL MAKE_FLOOR_LINE,24," 1 11 A  2 2  2   1111111 1      1 1111 1111 "
+		CALL MAKE_FLOOR_LINE,25," 1 1  1 11116 11     11 1 6  11111    1 2  1 "
+		CALL MAKE_FLOOR_LINE,26," 1 1 11        1   6 1  1    1   121 11 1 11 "
+		CALL MAKE_FLOOR_LINE,27," 1   1  1111>11111 1 1  2    11         1 1  "
+		CALL MAKE_FLOOR_LINE,38," 121 1 11 2    1 1 1 2 11111  1 1 11   11 11 "
+		CALL MAKE_FLOOR_LINE,29," 1 1 1 1  11 6 1 121 1 11  1 11 1 1121111  2 "
+		CALL MAKE_FLOOR_LINE,30," 1 1      1111 1 1 1 1 11  2 1  1 11 6     1 "
+		CALL MAKE_FLOOR_LINE,31," 1 1<1 6       1 1 121 2  1111  1      111 1 "
+		CALL MAKE_FLOOR_LINE,32," 121 1 11 11111121 1 1 11 1    111   1 1 1 1 "
+		CALL MAKE_FLOOR_LINE,33," 1 1 1  A        1   1 11 111111 1111121 1 1 "
+		CALL MAKE_FLOOR_LINE,34," 1 1 1  111 111111 6 1 11    2       1     1 "
+		CALL MAKE_FLOOR_LINE,35," 1 1 1         A   1 1 2   11112111  2  11 1 "
+		CALL MAKE_FLOOR_LINE,36," 1   1 111111 1111<1 1 11111111   2 111 11 1 "
+		CALL MAKE_FLOOR_LINE,37," 111   V    2 2    2 1 1  F1111 1 1 1 1 1  1 "
+		CALL MAKE_FLOOR_LINE,38," 1111111116 1111111121 6  F 111 111 1 1 1111 "
+		CALL MAKE_FLOOR_LINE,39,"                                             "
+
+	CASE 27
+	;エリダヌス２Ｆ
+		FLAG:최대X = 45
+		FLAG:최대Y = 40
+;								 000000000011111111112222222222333333333344444
+;								 012345678901234567890123456789012345678901234
+		CALL MAKE_FLOOR_LINE, 0,"                                             "
+		CALL MAKE_FLOOR_LINE, 1," 11 111   11 1111111111111111 111111117 7111 "
+		CALL MAKE_FLOOR_LINE, 2," 11 111   11     1HH  HHHH          2      2 "
+		CALL MAKE_FLOOR_LINE, 3," 1111   11111111   HHHHHH    jj jj  p aaljjp "
+		CALL MAKE_FLOOR_LINE, 4,"   11HH 11     11  1      11 jj jllapfpgphgg "
+		CALL MAKE_FLOOR_LINE, 5," 111 HH 11 71H 11    11 1111 j   aw g jalajl "
+		CALL MAKE_FLOOR_LINE, 6," 111 H1 11  HH 11    11 1 11 j j ajjp j j ja "
+		CALL MAKE_FLOOR_LINE, 7,"            HH 11  111  1 11 j j aj pjppl ja "
+		CALL MAKE_FLOOR_LINE, 8," 1111 11111 H1     111 11    j j aj p gplnla "
+		CALL MAKE_FLOOR_LINE, 9," 1 11 11  2     1  111 11111 j jjlj pigga ja "
+		CALL MAKE_FLOOR_LINE,10," 1        1111111 11 1 11  1    ja  f aaaala "
+		CALL MAKE_FLOOR_LINE,11," 11 1111111       11 1    11 oo ja jIjaj  ja "
+		CALL MAKE_FLOOR_LINE,12,"  1 7     1 11 11    2    1  oo ja jpjajjwja "
+		CALL MAKE_FLOOR_LINE,13," 11    11 1111 11   11 11 1  ppalaaapaalaala "
+		CALL MAKE_FLOOR_LINE,14," 1    111       111 1   1 112oo jwjjo  j  j  "
+		CALL MAKE_FLOOR_LINE,15," 1111 1     111 111 17 71 11 oo j      j     "
+		CALL MAKE_FLOOR_LINE,16,"  111 1 1111111>111 1   1 11    jjjjjj jjjjj "
+		CALL MAKE_FLOOR_LINE,17,"  11111 11  111  2  2   2                    "
+		CALL MAKE_FLOOR_LINE,18,"                 11111111111                 "
+		CALL MAKE_FLOOR_LINE,19," 111111    11111 11111111111                 "
+		CALL MAKE_FLOOR_LINE,20," 111  11P111        2   2     DDDDD D  D     "
+		CALL MAKE_FLOOR_LINE,21," 11P 711  11111111  1   1 12DDDDDDDDDDDDDD21 "
+		CALL MAKE_FLOOR_LINE,22,"  11        111 P1  17 71 1 D D    D D D D 1 "
+		CALL MAKE_FLOOR_LINE,23,"  11 117 11 P11111  1   1 1 D D211 D D D D 1 "
+		CALL MAKE_FLOOR_LINE,24," 111 11  11     11  16 11 1 DDD 11 DDDDD D 1 "
+		CALL MAKE_FLOOR_LINE,25," 111  P 11117  111        7 D D      D D D 1 "
+		CALL MAKE_FLOOR_LINE,26," 11P  111      P11 7 P      DDDDD DDDDDDDD   "
+		CALL MAKE_FLOOR_LINE,27,"          1111111111 1      D DDD DD 2 D D   "
+		CALL MAKE_FLOOR_LINE,28,"  1111   111     P11 1 11   D      D 1 DDD   "
+		CALL MAKE_FLOOR_LINE,29,"  11 7 P11   7 1     1 11   DD2111 D 1 D D   "
+		CALL MAKE_FLOOR_LINE,30," 11P         1 1111111 11 1 D      D 7 D D 1 "
+		CALL MAKE_FLOOR_LINE,31," 111   7 111 111       2  1 D      D   D D 1 "
+		CALL MAKE_FLOOR_LINE,32," 1111  1111      11P   1  12DDDDDDDDDDDDDD21 "
+		CALL MAKE_FLOOR_LINE,33,"   11P    V 111  1    111                    "
+		CALL MAKE_FLOOR_LINE,34,"         P11P11111 7  111 11111111111111     "
+		CALL MAKE_FLOOR_LINE,35,"  111111   1111111111  1  2            2 111 "
+		CALL MAKE_FLOOR_LINE,36," 111 7 111P111P111  1P 1211 HH11 HH11 HH2111 "
+		CALL MAKE_FLOOR_LINE,37," 1PP        1111111111 1  H HH 1 HH 1 HH 111 "
+		CALL MAKE_FLOOR_LINE,38," 1111111111 P111  11   7  HHHH 11HH 11HH     "
+		CALL MAKE_FLOOR_LINE,39,"                                             "
+
+
+
+	CASE 28
+	;エリダヌス３Ｆ
+		FLAG:최대X = 34
+		FLAG:최대Y = 35
+;								 000000000011111111112222222222333
+;								 012345678901234567890123456789012
+		CALL MAKE_FLOOR_LINE, 0,"                                "
+		CALL MAKE_FLOOR_LINE, 1,"                                "
+		CALL MAKE_FLOOR_LINE, 2,"                                "
+		CALL MAKE_FLOOR_LINE, 3,"                                "
+		CALL MAKE_FLOOR_LINE, 4,"                                "
+		CALL MAKE_FLOOR_LINE, 5,"                                "
+		CALL MAKE_FLOOR_LINE, 6,"                                "
+		CALL MAKE_FLOOR_LINE, 7,"                                "
+		CALL MAKE_FLOOR_LINE, 8,"                                "
+		CALL MAKE_FLOOR_LINE, 9,"                                "
+		CALL MAKE_FLOOR_LINE,10,"                                "
+		CALL MAKE_FLOOR_LINE,11,"                                "
+		CALL MAKE_FLOOR_LINE,12,"                                "
+		CALL MAKE_FLOOR_LINE,13,"                                "
+		CALL MAKE_FLOOR_LINE,14,"                                "
+		CALL MAKE_FLOOR_LINE,15,"                                "
+		CALL MAKE_FLOOR_LINE,16,"          111  111     111  111 "
+		CALL MAKE_FLOOR_LINE,17,"          11112111     11121111 "
+		CALL MAKE_FLOOR_LINE,18,"          111  111     111  111 "
+		CALL MAKE_FLOOR_LINE,19,"           1                 1  "
+		CALL MAKE_FLOOR_LINE,20,"           2                 2  "
+		CALL MAKE_FLOOR_LINE,21,"           1                 1  "
+		CALL MAKE_FLOOR_LINE,22,"          111               111 "
+		CALL MAKE_FLOOR_LINE,23,"          111               111 "
+		CALL MAKE_FLOOR_LINE,24,"          111      116      111 "
+		CALL MAKE_FLOOR_LINE,25,"           1        1        1  "
+		CALL MAKE_FLOOR_LINE,26,"           2        1        2  "
+		CALL MAKE_FLOOR_LINE,27,"           1     1111111     1  "
+		CALL MAKE_FLOOR_LINE,28,"          111   11  1  11   111 "
+		CALL MAKE_FLOOR_LINE,29,"          11112111  1  11121111 "
+		CALL MAKE_FLOOR_LINE,30,"          111   11 111 11   111 "
+		CALL MAKE_FLOOR_LINE,31,"                 1111111        "
+		CALL MAKE_FLOOR_LINE,32,"                   111          "
+		CALL MAKE_FLOOR_LINE,33,"                    I           "
+		CALL MAKE_FLOOR_LINE,34,"                                "
+
+
+
+	CASE 29
+	;エリダヌス４Ｆ
+		FLAG:최대X = 36
+		FLAG:최대Y = 35
+;								 000000000011111111112222222222333333
+;								 012345678901234567890123456789012345
+		CALL MAKE_FLOOR_LINE, 0,"                                    "
+		CALL MAKE_FLOOR_LINE, 1,"                                    "
+		CALL MAKE_FLOOR_LINE, 2,"                                    "
+		CALL MAKE_FLOOR_LINE, 3,"                    1               "
+		CALL MAKE_FLOOR_LINE, 4,"                   111              "
+		CALL MAKE_FLOOR_LINE, 5,"        1111111112111112111111111   "
+		CALL MAKE_FLOOR_LINE, 6,"        1       2  111  2       1   "
+		CALL MAKE_FLOOR_LINE, 7,"        1      111  1  111      1   "
+		CALL MAKE_FLOOR_LINE, 8,"        1     11111   11111     1   "
+		CALL MAKE_FLOOR_LINE, 9,"        1      111     111      1   "
+		CALL MAKE_FLOOR_LINE,10,"        1       1       1       1   "
+		CALL MAKE_FLOOR_LINE,11,"        1          111          1   "
+		CALL MAKE_FLOOR_LINE,12,"        1  1      11111      1  1   "
+		CALL MAKE_FLOOR_LINE,13,"        1 111   111111111   111 1   "
+		CALL MAKE_FLOOR_LINE,14,"        121111 111     111 111121   "
+		CALL MAKE_FLOOR_LINE,15,"        2 111  11  111  11  111 2   "
+		CALL MAKE_FLOOR_LINE,16,"        1  1  111 11111 111  1  1   "
+		CALL MAKE_FLOOR_LINE,17,"       111    11  11111  11    111  "
+		CALL MAKE_FLOOR_LINE,18,"      11111   11  11111  11   11111 "
+		CALL MAKE_FLOOR_LINE,19,"       111    11  11111  11    111  "
+		CALL MAKE_FLOOR_LINE,20,"        1  1  111 11111 111  1  1   "
+		CALL MAKE_FLOOR_LINE,21,"        1 111  11  111  11  111 2   "
+		CALL MAKE_FLOOR_LINE,22,"        121111 111  2  111 111121   "
+		CALL MAKE_FLOOR_LINE,23,"        1 111   111111111   111 1   "
+		CALL MAKE_FLOOR_LINE,24,"        1  1      11111      1  1   "
+		CALL MAKE_FLOOR_LINE,25,"        1       I  111          1   "
+		CALL MAKE_FLOOR_LINE,26,"        1       2   2   1       1   "
+		CALL MAKE_FLOOR_LINE,27,"        1      111  1  111      1   "
+		CALL MAKE_FLOOR_LINE,28,"        111111Xx111 1 11111211111   "
+		CALL MAKE_FLOOR_LINE,29,"               111  1  111          "
+		CALL MAKE_FLOOR_LINE,30,"                1  111  1           "
+		CALL MAKE_FLOOR_LINE,31,"                1211111Xx           "
+		CALL MAKE_FLOOR_LINE,32,"                   111              "
+		CALL MAKE_FLOOR_LINE,33,"                    I               "
+		CALL MAKE_FLOOR_LINE,34,"                                    "
+		
+		
+	CASE 30
+	;フォルナクス１Ｆ
+		FLAG:최대X = 27
+		FLAG:최대Y = 27
+;								 000000000011111111112222222
+;								 012345678901234567890123456
+		CALL MAKE_FLOOR_LINE, 0,"                                             "
+		CALL MAKE_FLOOR_LINE, 1,"                                             "
+		CALL MAKE_FLOOR_LINE, 2,"                                             "
+		CALL MAKE_FLOOR_LINE, 3,"                                             "
+		CALL MAKE_FLOOR_LINE, 4,"                                             "
+		CALL MAKE_FLOOR_LINE, 5,"                                             "
+		CALL MAKE_FLOOR_LINE, 6,"                                             "
+		CALL MAKE_FLOOR_LINE, 7,"                                             "
+		CALL MAKE_FLOOR_LINE, 8,"                                             "
+		CALL MAKE_FLOOR_LINE, 9,"                                             "
+		CALL MAKE_FLOOR_LINE,10,"                                             "
+		CALL MAKE_FLOOR_LINE,11,"                                             "
+		CALL MAKE_FLOOR_LINE,12,"                                             "
+		CALL MAKE_FLOOR_LINE,13,"          7       7       7 "
+		CALL MAKE_FLOOR_LINE, 2,"          1       1       1 "
+		CALL MAKE_FLOOR_LINE, 3,"          1       1       1 "
+		CALL MAKE_FLOOR_LINE, 4,"          1       1       1 "
+		CALL MAKE_FLOOR_LINE, 5,"          1111111 1 1111111 "
+		CALL MAKE_FLOOR_LINE, 6,"                1 1 1       "
+		CALL MAKE_FLOOR_LINE, 7,"              I 1 1 1 1     "
+		CALL MAKE_FLOOR_LINE, 8,"              2 2 2 2 1     "
+		CALL MAKE_FLOOR_LINE, 9,"          11111 11111 11111 "
+		CALL MAKE_FLOOR_LINE,10,"          1   1 11111 1     "
+		CALL MAKE_FLOOR_LINE,11,"          1 1 1 11111 1 1 1 "
+		CALL MAKE_FLOOR_LINE,12,"          111 1 11111 1 1 1 "
+		CALL MAKE_FLOOR_LINE,13,"           1  1   1   1 1 1 "
+		CALL MAKE_FLOOR_LINE,14,"           2  1   1   1 1 1 "
+		CALL MAKE_FLOOR_LINE,15,"          111 1111111 111 1 "
+		CALL MAKE_FLOOR_LINE,16,"            1 2       1 1 1 "
+		CALL MAKE_FLOOR_LINE,17,"            1 112111211 121 "
+		CALL MAKE_FLOOR_LINE,18,"            1 1  111      1 "
+		CALL MAKE_FLOOR_LINE,19,"          111 1  111  111 1 "
+		CALL MAKE_FLOOR_LINE,20,"          1 1 1  111  111 1 "
+		CALL MAKE_FLOOR_LINE,21,"          1 111  111  2   1 "
+		CALL MAKE_FLOOR_LINE,22,"          1 1 1  111  111 1 "
+		CALL MAKE_FLOOR_LINE,23,"            1 1  111    1 1 "
+		CALL MAKE_FLOOR_LINE,24,"          1 1 11 111 11 1 1 "
+		CALL MAKE_FLOOR_LINE,25,"          1 1 11 1F1 11 1 1 "
+		CALL MAKE_FLOOR_LINE,26,"          111 11  F  111111 "
+		CALL MAKE_FLOOR_LINE,27,"                            "
+
+
+
+	CASE 31
+	;フォルナクスＢ１Ｆ
+		FLAG:최대X = 36
+		FLAG:최대Y = 15
+;								 000000000011111111112222222222333333
+;								 012345678901234567890123456789012345
+		CALL MAKE_FLOOR_LINE, 0,"                                    "
+		CALL MAKE_FLOOR_LINE, 1,"  1111111111117   7   7111111111111 "
+		CALL MAKE_FLOOR_LINE, 2,"  1 1       V     1          1    1 "
+		CALL MAKE_FLOOR_LINE, 3,"  1 A 111111111   1   1 1111 111111 "
+		CALL MAKE_FLOOR_LINE, 4,"    1   1   1     2   1 1    1      "
+		CALL MAKE_FLOOR_LINE, 5,"  1111111 11111  111  1 11111111111 "
+		CALL MAKE_FLOOR_LINE, 6,"  1       1 1 1  111  1 1           "
+		CALL MAKE_FLOOR_LINE, 7,"  111111111 1 1  111  111 111111111 "
+		CALL MAKE_FLOOR_LINE, 8,"    A       1 1  111  1 1 1 1     1 "
+		CALL MAKE_FLOOR_LINE, 9,"  111111111<1 1  111  1 111 11111 1 "
+		CALL MAKE_FLOOR_LINE,10,"    1     1 1     2   1         1 1 "
+		CALL MAKE_FLOOR_LINE,11,"  111111111 111   1   1 111111111 1 "
+		CALL MAKE_FLOOR_LINE,12,"  1   1   1   1   1   1 1 1     1 1 "
+		CALL MAKE_FLOOR_LINE,13,"  11111I  6 111   6   111 6 11111 1 "
+		CALL MAKE_FLOOR_LINE,14,"                                    "
+
+	CASE 32
+	;フォルナクスＢ２Ｆ
+		FLAG:최대X = 36
+		FLAG:최대Y = 15
+;								 000000000011111111112222222222333333
+;								 012345678901234567890123456789012345
+		CALL MAKE_FLOOR_LINE, 0,"                                    "
+		CALL MAKE_FLOOR_LINE, 1,"   111  1111116   6   6111111111111 "
+		CALL MAKE_FLOOR_LINE, 2,"  P111111         1               1 "
+		CALL MAKE_FLOOR_LINE, 3,"   111  1  111    1   12DDDDDDDDD 1 "
+		CALL MAKE_FLOOR_LINE, 4,"        111111P   2   1 D       D 1 "
+		CALL MAKE_FLOOR_LINE, 5,"   111  1  111   111  1 D 111112D 1 "
+		CALL MAKE_FLOOR_LINE, 6,"  P111111        111  1 D 1     D 1 "
+		CALL MAKE_FLOOR_LINE, 7,"   111  1  111   111  1 D 1 711 D 1 "
+		CALL MAKE_FLOOR_LINE, 8,"        111111P  111  1 D 1   1   1 "
+		CALL MAKE_FLOOR_LINE, 9,"   111  1  111   111  1 D211111 D 1 "
+		CALL MAKE_FLOOR_LINE,10,"  P111111         2   1         D 1 "
+		CALL MAKE_FLOOR_LINE,11,"   111  11 111    1   1 DDDDDDDDD 1 "
+		CALL MAKE_FLOOR_LINE,12,"         11111P   1   1 2       2 1 "
+		CALL MAKE_FLOOR_LINE,13,"  11111I   111    7   111111 111111 "
+		CALL MAKE_FLOOR_LINE,14,"                                    "
+
+
+	CASE 33
+	;フォルナクスＢ３Ｆ
+		FLAG:최대X = 36
+		FLAG:최대Y = 15
+;								 000000000011111111112222222222333333
+;								 012345678901234567890123456789012345
+		CALL MAKE_FLOOR_LINE, 0,"                                             "
+		CALL MAKE_FLOOR_LINE, 1,"                  7                          "
+		CALL MAKE_FLOOR_LINE, 2,"  111111 11111P   1   112DDD DDD211 "
+		CALL MAKE_FLOOR_LINE, 3,"       121        1   1  DDD      1 "
+		CALL MAKE_FLOOR_LINE, 4,"  P11111 111111   2   2 DDDDDDDDD 2 "
+		CALL MAKE_FLOOR_LINE, 5,"                 111  D DDDDDDDDDDD "
+		CALL MAKE_FLOOR_LINE, 6,"  111111 11111P  111  D         DDD "
+		CALL MAKE_FLOOR_LINE, 7,"       121       111  D2117 6112DDD "
+		CALL MAKE_FLOOR_LINE, 8,"  P11111 111111  111          1 DDD "
+		CALL MAKE_FLOOR_LINE, 9,"                 111  DDDDDDD 1 DDD "
+		CALL MAKE_FLOOR_LINE,10,"  111111 11111P   2   2 DDDDD   D 2 "
+		CALL MAKE_FLOOR_LINE,11,"       121        1   1  DDDD     1 "
+		CALL MAKE_FLOOR_LINE,12,"  P11111 111111   1   112DDDDDD 211 "
+		CALL MAKE_FLOOR_LINE,13,"                  6                          "
+		CALL MAKE_FLOOR_LINE,14,"                                             "
+
+
+	CASE 34
+	;フォルナクスＢ４Ｆ
+		FLAG:최대X = 36
+		FLAG:최대Y = 14
+;								 000000000011111111112222222222333333
+;								 012345678901234567890123456789012345
+		CALL MAKE_FLOOR_LINE, 0,"                                             "
+		CALL MAKE_FLOOR_LINE, 1,"  111 111 11111   6   112D D211 711 "
+		CALL MAKE_FLOOR_LINE, 2,"  1 1   1 1 1 1   1   11 DDD 11  11 "
+		CALL MAKE_FLOOR_LINE, 3,"  1 1 111 1 1     1   7  2 D  7   2 "
+		CALL MAKE_FLOOR_LINE, 4,"  1 111   1 11P   2     11 D    DDD "
+		CALL MAKE_FLOOR_LINE, 5,"      1 P        111   711 DDDDDD   "
+		CALL MAKE_FLOOR_LINE, 6,"  P1111 1 11111  111            2   "
+		CALL MAKE_FLOOR_LINE, 7,"        111 1    111  DDD 61111112I "
+		CALL MAKE_FLOOR_LINE, 8,"  11111  1  1 1  111  D D       2   "
+		CALL MAKE_FLOOR_LINE, 9,"      11 11 1 1  111  D DDDDDDDDD   "
+		CALL MAKE_FLOOR_LINE,10,"  111  V    1 1   2   D DD   DDDD   "
+		CALL MAKE_FLOOR_LINE,11,"  1 1111HH  1 1   1   2  D 7  DD  7 "
+		CALL MAKE_FLOOR_LINE,12,"  1      HH   1   1   11   11 D  11 "
+		CALL MAKE_FLOOR_LINE,13,"  1>111I  HH1<1   7   117  112DD211 "
+		CALL MAKE_FLOOR_LINE,14,"                                             "
+
+
+	CASE 35
+	;フォルナクスＢ５Ｆ
+		FLAG:최대X = 36
+		FLAG:최대Y = 15
+;								 000000000011111111112222222222333333
+;								 012345678901234567890123456789012345
+		CALL MAKE_FLOOR_LINE, 0,"                                    "
+		CALL MAKE_FLOOR_LINE, 1,"  1 11111111111   7   111111 11 611 "
+		CALL MAKE_FLOOR_LINE, 2,"  1       1   1   1   1    1 11  11 "
+		CALL MAKE_FLOOR_LINE, 3,"  1<1111111HHH1   1   1 1111  6   1 "
+		CALL MAKE_FLOOR_LINE, 4,"  1   1       1   2             111 "
+		CALL MAKE_FLOOR_LINE, 5,"  111 1 1     1  111   6111112111   "
+		CALL MAKE_FLOOR_LINE, 6,"  1 1 1 11       111    A           "
+		CALL MAKE_FLOOR_LINE, 7,"  1 1 1 11111111  1  11 11111111111 "
+		CALL MAKE_FLOOR_LINE, 8,"  1 1     1   1  111  1           1 "
+		CALL MAKE_FLOOR_LINE, 9,"  1 111   1   1  111  1111111111111 "
+		CALL MAKE_FLOOR_LINE,10,"  1 11111<1   1   2   A             "
+		CALL MAKE_FLOOR_LINE,11,"  1 111     111 1112I 112I 6 111  6 "
+		CALL MAKE_FLOOR_LINE,12,"  1      11 1     1    1   1   1 11 "
+		CALL MAKE_FLOOR_LINE,13,"  11111I 111111   6   116  11111 11 "
+		CALL MAKE_FLOOR_LINE,14,"                                             "
+
+
+	CASE 36
+	;フォルナクスＢ６Ｆ
+		FLAG:최대X = 26
+		FLAG:최대Y = 40
+;								 00000000001111111111222222
+;								 01234567890123456789012345
+		CALL MAKE_FLOOR_LINE, 0,"                          "
+		CALL MAKE_FLOOR_LINE, 1,"                  6       "
+		CALL MAKE_FLOOR_LINE, 2,"                  1       "
+		CALL MAKE_FLOOR_LINE, 3,"                  1       "
+		CALL MAKE_FLOOR_LINE, 4,"                 111      "
+		CALL MAKE_FLOOR_LINE, 5,"                 1 1      "
+		CALL MAKE_FLOOR_LINE, 6,"                 1 1      "
+		CALL MAKE_FLOOR_LINE, 7,"                11 11     "
+		CALL MAKE_FLOOR_LINE, 8,"                1   1     "
+		CALL MAKE_FLOOR_LINE, 9,"                1 1 1     "
+		CALL MAKE_FLOOR_LINE,10,"               11 1111    "
+		CALL MAKE_FLOOR_LINE,11,"               1     1    "
+		CALL MAKE_FLOOR_LINE,12,"               12ppp 1    "
+		CALL MAKE_FLOOR_LINE,13,"              11  gj 11   "
+		CALL MAKE_FLOOR_LINE,14,"              1  ppo  2   "
+		CALL MAKE_FLOOR_LINE,15,"                agjf  p   "
+		CALL MAKE_FLOOR_LINE,16,"             ppppfjfpgpp  "
+		CALL MAKE_FLOOR_LINE,17,"             p  pfpgp  p  "
+		CALL MAKE_FLOOR_LINE,18,"             p  2 2 2  p  "
+		CALL MAKE_FLOOR_LINE,19,"            pp DDDDDDD pp "
+		CALL MAKE_FLOOR_LINE,20,"            pp    D    gg "
+		CALL MAKE_FLOOR_LINE,21,"             w  DDDDD oo  "
+		CALL MAKE_FLOOR_LINE,22,"             pa D D D2pp  "
+		CALL MAKE_FLOOR_LINE,23,"             pp D   D g   "
+		CALL MAKE_FLOOR_LINE,24,"              p DDDDD p   "
+		CALL MAKE_FLOOR_LINE,25,"              p   D   p   "
+		CALL MAKE_FLOOR_LINE,26,"              pp  D  pp   "
+		CALL MAKE_FLOOR_LINE,27,"               pp 2 pp    "
+		CALL MAKE_FLOOR_LINE,28,"               2  1  2    "
+		CALL MAKE_FLOOR_LINE,29,"               11 I 11    "
+		CALL MAKE_FLOOR_LINE,30,"                1 1 1     "
+		CALL MAKE_FLOOR_LINE,31,"                1   1     "
+		CALL MAKE_FLOOR_LINE,32,"                11111     "
+		CALL MAKE_FLOOR_LINE,33,"                 1 1      "
+		CALL MAKE_FLOOR_LINE,34,"                 1 1      "
+		CALL MAKE_FLOOR_LINE,35,"                 111      "
+		CALL MAKE_FLOOR_LINE,36,"                  1       "
+		CALL MAKE_FLOOR_LINE,37,"                  1       "
+		CALL MAKE_FLOOR_LINE,38,"                  7       "
+		CALL MAKE_FLOOR_LINE,39,"                          "
+		
+	CASE 37
+	;フォルナクスＢ７Ｆ
+		FLAG:최대X = 45
+		FLAG:최대Y = 40
+;								 00000000001111111111222
+;								 01234567890123456789012
+		CALL MAKE_FLOOR_LINE, 0,"                       "
+		CALL MAKE_FLOOR_LINE, 1,"                       "
+		CALL MAKE_FLOOR_LINE, 2,"                       "
+		CALL MAKE_FLOOR_LINE, 3,"                       "
+		CALL MAKE_FLOOR_LINE, 4,"                       "
+		CALL MAKE_FLOOR_LINE, 5,"                       "
+		CALL MAKE_FLOOR_LINE, 6,"                       "
+		CALL MAKE_FLOOR_LINE, 7,"                       "
+		CALL MAKE_FLOOR_LINE, 8,"                       "
+		CALL MAKE_FLOOR_LINE, 9,"                       "
+		CALL MAKE_FLOOR_LINE,10,"                       "
+		CALL MAKE_FLOOR_LINE,11,"                       "
+		CALL MAKE_FLOOR_LINE,12,"                       "
+		CALL MAKE_FLOOR_LINE,13,"                       "
+		CALL MAKE_FLOOR_LINE,14,"                       "
+		CALL MAKE_FLOOR_LINE,15,"                       "
+		CALL MAKE_FLOOR_LINE,16,"                       "
+		CALL MAKE_FLOOR_LINE,17,"                       "
+		CALL MAKE_FLOOR_LINE,18,"                       "
+		CALL MAKE_FLOOR_LINE,19,"                 111   "
+		CALL MAKE_FLOOR_LINE,20,"                 111   "
+		CALL MAKE_FLOOR_LINE,21,"                 111   "
+		CALL MAKE_FLOOR_LINE,22,"                  2    "
+		CALL MAKE_FLOOR_LINE,23,"                  1    "
+		CALL MAKE_FLOOR_LINE,24,"                  1    "
+		CALL MAKE_FLOOR_LINE,25,"                  1    "
+		CALL MAKE_FLOOR_LINE,26,"                  2    "
+		CALL MAKE_FLOOR_LINE,27,"                 111   "
+		CALL MAKE_FLOOR_LINE,28,"                 1 1   "
+		CALL MAKE_FLOOR_LINE,29,"                 111   "
+		CALL MAKE_FLOOR_LINE,30,"                  2    "
+		CALL MAKE_FLOOR_LINE,31,"                  1    "
+		CALL MAKE_FLOOR_LINE,32,"                  1    "
+		CALL MAKE_FLOOR_LINE,33,"                  1    "
+		CALL MAKE_FLOOR_LINE,34,"                  2    "
+		CALL MAKE_FLOOR_LINE,35,"               I211111 "
+		CALL MAKE_FLOOR_LINE,36,"                 111   "
+		CALL MAKE_FLOOR_LINE,37,"                  1    "
+		CALL MAKE_FLOOR_LINE,38,"                  6    "
+		CALL MAKE_FLOOR_LINE,39,"                       "
+
+
+	CASE 38
+	;グルース１Ｆ
+		FLAG:최대X = 45
+		FLAG:최대Y = 40
+;								 000000000011111111112222222222333333333344444
+;								 012345678901234567890123456789012345678901234
+		CALL MAKE_FLOOR_LINE, 0,"                                             "
+		CALL MAKE_FLOOR_LINE, 1,"           7          F          7           "
+		CALL MAKE_FLOOR_LINE, 2,"           1          1          1           "
+		CALL MAKE_FLOOR_LINE, 3,"         I2111        1        1112I         "
+		CALL MAKE_FLOOR_LINE, 4,"           1          1          1           "
+		CALL MAKE_FLOOR_LINE, 5,"           2          2          2           "
+		CALL MAKE_FLOOR_LINE, 6,"          111         p         111          "
+		CALL MAKE_FLOOR_LINE, 7,"         11111       lpo       11111         "
+		CALL MAKE_FLOOR_LINE, 8,"         11111      alIof      11111         "
+		CALL MAKE_FLOOR_LINE, 9,"         11111      alpof      11111         "
+		CALL MAKE_FLOOR_LINE,10,"         11111      aajff      11111         "
+		CALL MAKE_FLOOR_LINE,11,"                    a j f                    "
+		CALL MAKE_FLOOR_LINE,12,"                    a j f                    "
+		CALL MAKE_FLOOR_LINE,13," aaaaaaa aaaaaaabaaaa j ffffwfffffff fff fff "
+		CALL MAKE_FLOOR_LINE,14,"   a a   aaaaa        j        fffff fff fff "
+		CALL MAKE_FLOOR_LINE,15," aaa a   aaa          w          fff fff fff "
+		CALL MAKE_FLOOR_LINE,16," a a a a aaa a a jjj  j  jjj f f fff  i   i  "
+		CALL MAKE_FLOOR_LINE,17," a a   a  a  a a jjj jjj j j f f  f  fff fff "
+		CALL MAKE_FLOOR_LINE,18," a a aaaaaaaaaaa jjj j j j j fffffffff f f f "
+		CALL MAKE_FLOOR_LINE,19," a a     aaa     j j j j w f f    i  f f f f "
+		CALL MAKE_FLOOR_LINE,20," a a aaa aaa aaa j j j j j f f f fff f f f f "
+		CALL MAKE_FLOOR_LINE,21,"     aaabaaabaaa jwj j   j j   f fff fff f   "
+		CALL MAKE_FLOOR_LINE,22," a a aaa aaa aaa j   j j   j f f fff f f f f "
+		CALL MAKE_FLOOR_LINE,23," a a     aaa     j j jjj j j f f     f f f f "
+		CALL MAKE_FLOOR_LINE,24," a a aaa aaa aaa j j j j j j f fffffff f fff "
+		CALL MAKE_FLOOR_LINE,25," a a aaabaaabaaa j j   j j j f             f "
+		CALL MAKE_FLOOR_LINE,26," aaa aaa aaa aaa jjj jjjjjjj ffffffff ffff f "
+		CALL MAKE_FLOOR_LINE,27,"   a      b       j  jjj  j  f  f f f    f   "
+		CALL MAKE_FLOOR_LINE,28," aaa aaa aaa aaa  j       j  ffff f ffffff f "
+		CALL MAKE_FLOOR_LINE,29,"     aaa aaa aaa jjj jjj jjj   f  i   i    f "
+		CALL MAKE_FLOOR_LINE,30," aaa aaa aaa aaa jjjjjjjjjjj fff fff fff fff "
+		CALL MAKE_FLOOR_LINE,31," aaa  b   b   b  jjj jjj jjj f f fff fff f f "
+		CALL MAKE_FLOOR_LINE,32," aaa  aaa a aaaa  j   j      fff fff fff f f "
+		CALL MAKE_FLOOR_LINE,33,"  b     a a    a jjj jjj jjj  i   i      f f "
+		CALL MAKE_FLOOR_LINE,34," aaaaaaaa a aaaljjjj jjjjjjjjoff  f ffffff f "
+		CALL MAKE_FLOOR_LINE,35," a  b   a a a  j jjj jjj jjj off ff        f "
+		CALL MAKE_FLOOR_LINE,36," a aaa aa b aaay             zff f  fff  fff "
+		CALL MAKE_FLOOR_LINE,37," a aaa    a    jj           jj   f  fffiffff "
+		CALL MAKE_FLOOR_LINE,38," a aaa aaaaaaaaijl2117 7112llofffff fff  fff "
+		CALL MAKE_FLOOR_LINE,39,"                                             "
+
+
+	CASE 39
+	;グルースＢ１Ｆ
+		FLAG:최대X = 45
+		FLAG:최대Y = 40
+;								 000000000011111111112222222222333333333344444
+;								 012345678901234567890123456789012345678901234
+		CALL MAKE_FLOOR_LINE, 0,"                                             "
+		CALL MAKE_FLOOR_LINE, 1," 111111111 6 111111111 111 P  1  6  1  P 1 1 "
+		CALL MAKE_FLOOR_LINE, 2," 1       1 1     1   1 1 1 1 111 1 111 1 1 1 "
+		CALL MAKE_FLOOR_LINE, 3," 1 11111 1 1 1 11111 1 7 1 1 111212111 1 111 "
+		CALL MAKE_FLOOR_LINE, 4," 1 1   1 1 1 1 1   1 1     1     1     1     "
+		CALL MAKE_FLOOR_LINE, 5," 1 117 111 1 1 1 711 1 P11111111 1 P11111111 "
+		CALL MAKE_FLOOR_LINE, 6," 1 1   1 1 1 1 1   1 1     1     1     1     "
+		CALL MAKE_FLOOR_LINE, 7," 1 11111 1 1 1 11111 1 1 P 1 11  1  11 1 7 1 "
+		CALL MAKE_FLOOR_LINE, 8," 1       1 1 1       1 1 1 1 1  111  1 1 1 1 "
+		CALL MAKE_FLOOR_LINE, 9," 1 1111 11 1 111111111 1 1 P 1  111  1   1 1 "
+		CALL MAKE_FLOOR_LINE,10,"   1  1    2           1 1   1  111  P   111 "
+		CALL MAKE_FLOOR_LINE,11," 111 111 11111 11ﾋﾋﾋ11 111     11111       1 "
+		CALL MAKE_FLOOR_LINE,12," 1 1 111 1 1 1 1     1 1    1111 1 1111    1 "
+		CALL MAKE_FLOOR_LINE,13," 1 1 ｼ ｼ 1 7 1 1 111 1 1 P111111 7 111111P 1 "
+		CALL MAKE_FLOOR_LINE,14," 1   ｼ ｼ 1   1 1  1  1 1    1111   1111    1 "
+		CALL MAKE_FLOOR_LINE,15,"    ｼﾐ ｼ 11111 11 1  1 111     11111     111 "
+		CALL MAKE_FLOOR_LINE,16," 11 ｼ  ｼ        1 1211 1 1 1 1  111  1 1 1 1 "
+		CALL MAKE_FLOOR_LINE,17," 1  ｼ  ﾐﾐｼ 1 1  2 1  1 1 1 1 11 111 11 1 1 1 "
+		CALL MAKE_FLOOR_LINE,18," 1 1ｼ1   ｼ ｳ 1 1ｼ1ｳ1   7 1 1 112111211 1 P 1 "
+		CALL MAKE_FLOOR_LINE,19," 121ｼ121 ｼ ｳ 121ｼ1ｳ121     1    111    1     "
+		CALL MAKE_FLOOR_LINE,20," 1 1ｼ1 1 ｼ ｳ 1 1ｼ1ｳ1 1 P1111111P111P1111111P "
+		CALL MAKE_FLOOR_LINE,21," 1  ｼ  1 ｼ ｳ 1  1 2  1     1    111    1     "
+		CALL MAKE_FLOOR_LINE,22," ｳ  ｼ  1 1 ｳ11121 11 1 111 1 P  111  P 1 111 "
+		CALL MAKE_FLOOR_LINE,23," ｳ  ｼ  1           ｳ 1 1 1 1 1  111  1 1   1 "
+		CALL MAKE_FLOOR_LINE,24," ｳ 111 1 11111 ﾐﾐﾐﾐ1 1 1 1 P 1   1   1 P 111 "
+		CALL MAKE_FLOOR_LINE,25," ｳ 111 1 1   1 ｳ   ｼ 1 1     1   1   1     1 "
+		CALL MAKE_FLOOR_LINE,26," ｳ ｼ ｼ 111 7 1 ｳ I ｼ 1 1 11111111P1111111P 1 "
+		CALL MAKE_FLOOR_LINE,27," ｳ ｼ ｼ   1 1 1 ｳ 2 ｼ   1     1       1     1 "
+		CALL MAKE_FLOOR_LINE,28," ｳﾋﾋ ﾐﾐ1 11111 ｳ111111 117 P 1 11111 1 P 711 "
+		CALL MAKE_FLOOR_LINE,29,"           1           1   1 1 1   1 1 1   1 "
+		CALL MAKE_FLOOR_LINE,30," 111 1頬頬 12111111111 11P 1 P 1 P 1 1 1 111 "
+		CALL MAKE_FLOOR_LINE,31," 1       ｳ 1 1       1     1     1     1     "
+		CALL MAKE_FLOOR_LINE,32," 1 11111 ｳ 2 1 11111 1 P1111111P 1 11111111P "
+		CALL MAKE_FLOOR_LINE,33," 1 1   1 ｳ 1   1   1 1     1     1     1     "
+		CALL MAKE_FLOOR_LINE,34," 11117 1 ｳ 12111 711 1 111 1 P11111111 1 P 1 "
+		CALL MAKE_FLOOR_LINE,35," 1 1   1 ｳ 1   1   1 1 111 1     1     1 1 1 "
+		CALL MAKE_FLOOR_LINE,36," ｳ 11111 ｳ 1 I 11111 1 111 1 711 1 111 P 111 "
+		CALL MAKE_FLOOR_LINE,37," ｳ       ｳ 1 2           1     1 1 1       1 "
+		CALL MAKE_FLOOR_LINE,38," ﾋﾋﾋﾋﾋﾋﾋ11111111111116 611111111 7 111111111 "
+		CALL MAKE_FLOOR_LINE,39,"                                             "
+
+
+		
+		
+	CASE 40
+	;グルースＢ２Ｆ
+		FLAG:최대X = 45
+		FLAG:최대Y = 40
+;								 000000000011111111112222222222333333333344444
+;								 012345678901234567890123456789012345678901234
+		CALL MAKE_FLOOR_LINE, 0,"                                             "
+		CALL MAKE_FLOOR_LINE, 1," 舎1 1 111 1 111 1 1頬     1          11 I   "
+		CALL MAKE_FLOOR_LINE, 2," ｼ   1   2 1 2   1   ｳ    11 111   11111 2   "
+		CALL MAKE_FLOOR_LINE, 3," ｼ 11111 11111 11111 ｳ 6 11111111 11   1 11  "
+		CALL MAKE_FLOOR_LINE, 4," ｼ   1     1     1   ｳ 11111  11  111111111  "
+		CALL MAKE_FLOOR_LINE, 5," ｼ 1 6 111212111 6 1 ｳ 11 111 1    1111111   "
+		CALL MAKE_FLOOR_LINE, 6," ｼ 1   111 1 111   1 ｳ 1   11111      11 1   "
+		CALL MAKE_FLOOR_LINE, 7," ｼ11 1 111   111 1 11ｳ 1 1 1 111  111  1 6   "
+		CALL MAKE_FLOOR_LINE, 8," ｼ   1     1     1   ｳ   1    11   111 1   1 "
+		CALL MAKE_FLOOR_LINE, 9," ｼ 11111 11111 11111 ｳ   111  111  111 11111 "
+		CALL MAKE_FLOOR_LINE,10," ｼ 2 1     1     1 2 ｳ   11112111  111    11 "
+		CALL MAKE_FLOOR_LINE,11," 111 1 111212111 1 HHH   111  11    11111  1 "
+		CALL MAKE_FLOOR_LINE,12," 111               HHH     1 11     11 111 1 "
+		CALL MAKE_FLOOR_LINE,13," 111 7     6     7 HHH 1 1 7 11  6  1  7 1 1 "
+		CALL MAKE_FLOOR_LINE,14,"     1  1111111  1   1 1 1   1  111      2 1 "
+		CALL MAKE_FLOOR_LINE,15,"   111  1     1  111 1 111  11  111      111 "
+		CALL MAKE_FLOOR_LINE,16," 1   1  1  I  1  1     1111111  111 1  1  11 "
+		CALL MAKE_FLOOR_LINE,17," ｼ 1 1  1  1111  1 111 1 111 1   1  1111   1 "
+		CALL MAKE_FLOOR_LINE,18," ｼ 1    1          1   6 11      1    1111   "
+		CALL MAKE_FLOOR_LINE,19," ｼ 112I 1  7      1111   1111    1     111   "
+		CALL MAKE_FLOOR_LINE,20," ｼ 11   1 111   I211 1 1111 1111 7 11  11111 "
+		CALL MAKE_FLOOR_LINE,21," ｼ 1    1111111      1   1         11  11    "
+		CALL MAKE_FLOOR_LINE,22," 111 1    111 1  1 111       1     111 11111 "
+		CALL MAKE_FLOOR_LINE,23," 2   1  1 1 1 1  1   1    11 1 11  111 1  11 "
+		CALL MAKE_FLOOR_LINE,24," 1 111  1     1  111 1    11111111  11 1   2 "
+		CALL MAKE_FLOOR_LINE,25," 1   1  1111111  1   1  1111111111   1 1 111 "
+		CALL MAKE_FLOOR_LINE,26," 1 1 7     6     7 1 1 11  7 11111  11 7 1 1 "
+		CALL MAKE_FLOOR_LINE,27," 1 1               1 1 2      11     2     1 "
+		CALL MAKE_FLOOR_LINE,28," 111 1 111 1 111 1 111 116 11  111   111 611 "
+		CALL MAKE_FLOOR_LINE,29," 1   1     1     1     1   111      1111   1 "
+		CALL MAKE_FLOOR_LINE,30," 1 11111 11111 11111   1111111 1 1 111    11 "
+		CALL MAKE_FLOOR_LINE,31,"     1 2   1     1     11111111111 11   1 2  "
+		CALL MAKE_FLOOR_LINE,32," 1 1 1 111 1 111 1 1 1 11111 1111  111111111 "
+		CALL MAKE_FLOOR_LINE,33," 1 1   111   111   1 1  111111111   1111111  "
+		CALL MAKE_FLOOR_LINE,34," 111 6 111 1 111 6 111 111 1111111 111  1111 "
+		CALL MAKE_FLOOR_LINE,35," ｳ   1     1   2 1   ｳ 11      2 1   1111111 "
+		CALL MAKE_FLOOR_LINE,36," ｳ 11111 11111 11111 ｳ 11  1 611 1  11111111 "
+		CALL MAKE_FLOOR_LINE,37," ｳ   1     1     1   ｳ 11111  11 1       11  "
+		CALL MAKE_FLOOR_LINE,38," 核1 1 111 1 111 1 1亞  11112111 6 1111111   "
+		CALL MAKE_FLOOR_LINE,39,"                                             "
+		
+		
+	CASE 41
+	;グルースＢ３Ｆ
+		FLAG:최대X = 44
+		FLAG:최대Y = 28
+;								 00000000001111111111222222222233333333334444
+;								 01234567890123456789012345678901234567890123
+		CALL MAKE_FLOOR_LINE, 0,"                                            "
+		CALL MAKE_FLOOR_LINE, 1,"                                            "
+		CALL MAKE_FLOOR_LINE, 2,"                                            "
+		CALL MAKE_FLOOR_LINE, 3,"                                            "
+		CALL MAKE_FLOOR_LINE, 4,"                                            "
+		CALL MAKE_FLOOR_LINE, 5,"                                            "
+		CALL MAKE_FLOOR_LINE, 6,"                                            "
+		CALL MAKE_FLOOR_LINE, 7,"                                            "
+		CALL MAKE_FLOOR_LINE, 8,"                                            "
+		CALL MAKE_FLOOR_LINE, 9,"                                            "
+		CALL MAKE_FLOOR_LINE,10,"                                            "
+		CALL MAKE_FLOOR_LINE,11,"                                            "
+		CALL MAKE_FLOOR_LINE,12,"                                            "
+		CALL MAKE_FLOOR_LINE,13,"     6           6         6           6    "
+		CALL MAKE_FLOOR_LINE,14,"  11 11<11 11<11 11<HH 11>11 11<11 11<11 11 "
+		CALL MAKE_FLOOR_LINE,15,"  11>11 11<11 11>11 HHXx1 11<11 11<11 11<11 "
+		CALL MAKE_FLOOR_LINE,16,"  A   V A   V A   V A   A A     V   A A   A "
+		CALL MAKE_FLOOR_LINE,17,"  11<11 11<11 11>11 11 11 11<11 11>11 11>11 "
+		CALL MAKE_FLOOR_LINE,18,"  11 11>11 11>11 11>1  11 11 1xX11 11>11 11 "
+		CALL MAKE_FLOOR_LINE,19,"   A 11  A 6   A 11   I11  V 11    11  V 11 "
+		CALL MAKE_FLOOR_LINE,20,"  11 V  11    11 V     A  11 A   6 A  11 A  "
+		CALL MAKE_FLOOR_LINE,21,"  11 11>11 11>11 11<11 11 11 11 11 11<11 11 "
+		CALL MAKE_FLOOR_LINE,22,"  11<11 11<11 11>11 11 11 11<11 11>11 11>11 "
+		CALL MAKE_FLOOR_LINE,23,"  V   A V   A V   V A      V  A A   V     V "
+		CALL MAKE_FLOOR_LINE,24,"  HH 11 11>11 11<11 11Xx1 11 11 11<11 11<HH "
+		CALL MAKE_FLOOR_LINE,25,"  HH>11<11 11<11 11>11 11>11 1xX11 1xX11 HH "
+		CALL MAKE_FLOOR_LINE,26,"     6           6         6           6    "
+		CALL MAKE_FLOOR_LINE,27,"                                            "
+
+		CALL SET_TILE, 25 , 21 , STRFLAG_NUM_D("グルース隠し場") , 0 , 962
+		CALL SET_TILE, 27 , 19 , STRFLAG_NUM_D("グルース隠し場") , 0 , 0
+		CALL SET_TILE, 28 , 22 , STRFLAG_NUM_D("グルース隠し場") , 2 , 922
+		CALL SET_TILE, 29 , 20 , STRFLAG_NUM_D("グルース隠し場") , 1 , 942
+		CALL SET_TILE, 30 , 16 , STRFLAG_NUM_D("グルース隠し場") , 1 , 942
+		CALL SET_TILE, 30 , 16 , STRFLAG_NUM_D("グルース隠し場") , 2 , 902
+		CALL SET_TILE, 30 , 23 , STRFLAG_NUM_D("グルース隠し場") , 2 , 942
+		
+		
+	CASE 42
+	;グルースＢ４Ｆ
+		FLAG:최대X = 25
+		FLAG:최대Y = 24
+;								 0000000000111111111122222
+;								 0123456789012345678901234
+		CALL MAKE_FLOOR_LINE, 0,"                         "
+		CALL MAKE_FLOOR_LINE, 1,"                         "
+		CALL MAKE_FLOOR_LINE, 2,"                         "
+		CALL MAKE_FLOOR_LINE, 3,"                         "
+		CALL MAKE_FLOOR_LINE, 4,"                         "
+		CALL MAKE_FLOOR_LINE, 5,"                    111  "
+		CALL MAKE_FLOOR_LINE, 6,"                    111  "
+		CALL MAKE_FLOOR_LINE, 7,"                    111  "
+		CALL MAKE_FLOOR_LINE, 8,"                     2   "
+		CALL MAKE_FLOOR_LINE, 9,"                     1   "
+		CALL MAKE_FLOOR_LINE,10,"                     1   "
+		CALL MAKE_FLOOR_LINE,11,"                     2   "
+		CALL MAKE_FLOOR_LINE,12,"                    111  "
+		CALL MAKE_FLOOR_LINE,13,"                     1   "
+		CALL MAKE_FLOOR_LINE,14,"                     1   "
+		CALL MAKE_FLOOR_LINE,15,"                     2   "
+		CALL MAKE_FLOOR_LINE,16,"                    111  "
+		CALL MAKE_FLOOR_LINE,17,"                     1   "
+		CALL MAKE_FLOOR_LINE,18,"                     1   "
+		CALL MAKE_FLOOR_LINE,19,"                   I2111 "
+		CALL MAKE_FLOOR_LINE,20,"                     1   "
+		CALL MAKE_FLOOR_LINE,21,"                     1   "
+		CALL MAKE_FLOOR_LINE,22,"                     I   "
+		CALL MAKE_FLOOR_LINE,23,"                         "
+
+
+
+
+
+
+
+	CASE 99
+	;
+		FLAG:최대X = 45
+		FLAG:최대Y = 36
+;								 000000000011111111112222222222333333333344444
+;								 012345678901234567890123456789012345678901234
+		CALL MAKE_FLOOR_LINE, 0,"                                             "
+		CALL MAKE_FLOOR_LINE, 1,"                                             "
+		CALL MAKE_FLOOR_LINE, 2,"                                             "
+		CALL MAKE_FLOOR_LINE, 3,"                                             "
+		CALL MAKE_FLOOR_LINE, 4,"                                             "
+		CALL MAKE_FLOOR_LINE, 5,"                                             "
+		CALL MAKE_FLOOR_LINE, 6,"                                             "
+		CALL MAKE_FLOOR_LINE, 7,"                                             "
+		CALL MAKE_FLOOR_LINE, 8,"                                             "
+		CALL MAKE_FLOOR_LINE, 9,"                                             "
+		CALL MAKE_FLOOR_LINE,10,"                                             "
+		CALL MAKE_FLOOR_LINE,11,"                                             "
+		CALL MAKE_FLOOR_LINE,12,"                                             "
+		CALL MAKE_FLOOR_LINE,13,"                                             "
+		CALL MAKE_FLOOR_LINE,14,"                                             "
+		CALL MAKE_FLOOR_LINE,15,"                                             "
+		CALL MAKE_FLOOR_LINE,16,"                                             "
+		CALL MAKE_FLOOR_LINE,17,"                                             "
+		CALL MAKE_FLOOR_LINE,18,"                                             "
+		CALL MAKE_FLOOR_LINE,19,"                                             "
+		CALL MAKE_FLOOR_LINE,20,"                                             "
+		CALL MAKE_FLOOR_LINE,21,"                                             "
+		CALL MAKE_FLOOR_LINE,22,"                                             "
+		CALL MAKE_FLOOR_LINE,23,"                                             "
+		CALL MAKE_FLOOR_LINE,24,"                                             "
+		CALL MAKE_FLOOR_LINE,25,"                                             "
+		CALL MAKE_FLOOR_LINE,26,"                                             "
+		CALL MAKE_FLOOR_LINE,27,"                                             "
+		CALL MAKE_FLOOR_LINE,28,"                                             "
+		CALL MAKE_FLOOR_LINE,29,"                                             "
+		CALL MAKE_FLOOR_LINE,30,"                                             "
+		CALL MAKE_FLOOR_LINE,31,"                                             "
+		CALL MAKE_FLOOR_LINE,32,"                                             "
+		CALL MAKE_FLOOR_LINE,33,"                                             "
+		CALL MAKE_FLOOR_LINE,34,"                                             "
+		CALL MAKE_FLOOR_LINE,35,"                                             "
+
+
+	CASE 99
+	;
+		FLAG:최대X = 45
+		FLAG:최대Y = 36
+;								 000000000011111111112222222222333333333344444
+;								 012345678901234567890123456789012345678901234
+		CALL MAKE_FLOOR_LINE, 0,"                                             "
+		CALL MAKE_FLOOR_LINE, 1,"                                             "
+		CALL MAKE_FLOOR_LINE, 2,"                                             "
+		CALL MAKE_FLOOR_LINE, 3,"                                             "
+		CALL MAKE_FLOOR_LINE, 4,"                                             "
+		CALL MAKE_FLOOR_LINE, 5,"                                             "
+		CALL MAKE_FLOOR_LINE, 6,"                                             "
+		CALL MAKE_FLOOR_LINE, 7,"                                             "
+		CALL MAKE_FLOOR_LINE, 8,"                                             "
+		CALL MAKE_FLOOR_LINE, 9,"                                             "
+		CALL MAKE_FLOOR_LINE,10,"                                             "
+		CALL MAKE_FLOOR_LINE,11,"                                             "
+		CALL MAKE_FLOOR_LINE,12,"                                             "
+		CALL MAKE_FLOOR_LINE,13,"                                             "
+		CALL MAKE_FLOOR_LINE,14,"                                             "
+		CALL MAKE_FLOOR_LINE,15,"                                             "
+		CALL MAKE_FLOOR_LINE,16,"                                             "
+		CALL MAKE_FLOOR_LINE,17,"                                             "
+		CALL MAKE_FLOOR_LINE,18,"                                             "
+		CALL MAKE_FLOOR_LINE,19,"                                             "
+		CALL MAKE_FLOOR_LINE,20,"                                             "
+		CALL MAKE_FLOOR_LINE,21,"                                             "
+		CALL MAKE_FLOOR_LINE,22,"                                             "
+		CALL MAKE_FLOOR_LINE,23,"                                             "
+		CALL MAKE_FLOOR_LINE,24,"                                             "
+		CALL MAKE_FLOOR_LINE,25,"                                             "
+		CALL MAKE_FLOOR_LINE,26,"                                             "
+		CALL MAKE_FLOOR_LINE,27,"                                             "
+		CALL MAKE_FLOOR_LINE,28,"                                             "
+		CALL MAKE_FLOOR_LINE,29,"                                             "
+		CALL MAKE_FLOOR_LINE,30,"                                             "
+		CALL MAKE_FLOOR_LINE,31,"                                             "
+		CALL MAKE_FLOOR_LINE,32,"                                             "
+		CALL MAKE_FLOOR_LINE,33,"                                             "
+		CALL MAKE_FLOOR_LINE,34,"                                             "
+		CALL MAKE_FLOOR_LINE,35,"                                             "
+
+		
+		
+
+ENDSELECT
+
+
+
+;=======================================================================
+;タイル定義
+;=======================================================================
+@DEFINE_TILES_65, ARGS, ARG, ARG:1
+;-----------------------------------------------------------------------
+;階層固有
+;-----------------------------------------------------------------------
+#LOCALSIZE 1
+
+;-----------------------------------------------------------------------
+;共通
+;-----------------------------------------------------------------------
+;F 이벤트床
+SIF ARGS == "F"
+	RETURN 11
+;G 이벤트扉
+SIF ARGS == "G"
+	RETURN 12
+;I 이벤트施設
+SIF ARGS == "I"
+	RETURN 19
+;d 이벤트ダークゾーン
+SIF ARGS == "d"
+	RETURN -11
+;一方通行
+SIF ARGS == "A"
+	RETURN 902
+SIF ARGS == ">"
+	RETURN 922
+SIF ARGS == "V"
+	RETURN 942
+SIF ARGS == "<"
+	RETURN 962
+;P 落とし穴
+SIF ARGS == "P"
+	RETURN 15
+;H HP罠
+SIF ARGS == "H"
+	RETURN 25
+
+;x 隠し扉用床
+SIF ARGS == "x"
+	RETURN 21
+;X 隠し扉
+SIF ARGS == "X"
+	RETURN 22
+
+;ｳ 移動上
+SIF ARGS == "ｳ"
+	RETURN 31
+;ﾋ 移動左
+SIF ARGS == "ﾋ"
+	RETURN 41
+;ｼ 移動下
+SIF ARGS == "ｼ"
+	RETURN 51
+;ﾐ 移動右
+SIF ARGS == "ﾐ"
+	RETURN 61
+;t 移動上、変化
+SIF ARGS == "t"
+	RETURN 71
+;k 移動左、変化
+SIF ARGS == "k"
+	RETURN 81
+;c 移動下、変化
+SIF ARGS == "c"
+	RETURN 91
+;q 移動右、変化
+SIF ARGS == "q"
+	RETURN 101
+;v 暗闇移動上
+SIF ARGS == "v"
+	RETURN -21
+;m 暗闇移動左
+SIF ARGS == "m"
+	RETURN -31
+;e 暗闇移動下
+SIF ARGS == "e"
+	RETURN -41
+;s 暗闇移動右
+SIF ARGS == "s"
+	RETURN -51
+
+
+
+;隠し場用
+SIF ARGS == "a"
+	RETURN 1001
+	
+SIF ARGS == "b"
+	RETURN 1002
+	
+SIF ARGS == "f"
+	RETURN 1010
+	
+SIF ARGS == "g"
+	RETURN 1011
+	
+SIF ARGS == "h"
+	RETURN 1012
+	
+SIF ARGS == "i"
+	RETURN 1020
+	
+SIF ARGS == "j"
+	RETURN 1100
+	
+SIF ARGS == "l"
+	RETURN 1101
+	
+SIF ARGS == "n"
+	RETURN 1102
+	
+SIF ARGS == "o"
+	RETURN 1110
+	
+SIF ARGS == "p"
+	RETURN 1111
+	
+SIF ARGS == "r"
+	RETURN 1112
+	
+SIF ARGS == "u"
+	RETURN 1122
+	
+SIF ARGS == "w"
+	RETURN 1200
+	
+SIF ARGS == "y"
+	RETURN 1201
+	
+SIF ARGS == "z"
+	RETURN 1210
+	
+SIF ARGS == "+"
+	RETURN 1211
+
+
+
+RETURN 0
+
+;=======================================================================
+;タイル調整
+;=======================================================================
+@MAKE_FLOOR_LINE_COMMON_65, ARG, ARG:1, ARG:2
+#LOCALSIZE 30
+;LOCAL:3 宝箱 던전フラグ:75~99
+;LOCAL:4 이벤트
+;LOCAL:8 メッセンジャー
+;(0/0)でLOCALを소거
+SIF ARG:1 == 0 && ARG:2 == 0
+	VARSET LOCAL
+	
+IF ARG == 1
+
+ENDIF
+;이벤트ダークゾーン
+IF ARG == -11
+	DA:(ARG:1):(ARG:2) = -(FLAG:現M * 1000 + LOCAL:29 * 10 + 1)
+	LOCAL:29++
+	SELECTCASE -DA:(ARG:1):(ARG:2) / 10
+		
+	ENDSELECT
+ENDIF
+;이벤트床
+IF ARG == 11
+	DA:(ARG:1):(ARG:2) = (FLAG:現M+1)*1000 + LOCAL:1 * 10 + 1
+	LOCAL:1++
+ENDIF
+;이벤트扉 G
+IF ARG == 12
+	DA:(ARG:1):(ARG:2) = (FLAG:現M+1)*1000 + LOCAL:2 * 10 + 2
+	LOCAL:2++
+ENDIF
+IF ARG == 3
+	IF GETBIT(던전フラグ:(FLAG:現던전):(FLAG:現M+25), LOCAL:3)
+		DA:(ARG:1):(ARG:2) = 1
+	ELSE
+		DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:3 * 10 + 3
+	ENDIF
+	LOCAL:3++
+
+ENDIF
+IF ARG == 4
+	DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:4 * 10 + 4
+	LOCAL:4++
+	SELECTCASE DA:(ARG:1):(ARG:2) / 10
+
+	ENDSELECT
+ENDIF
+IF ARG == 6
+	DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:6 * 10 + 6
+	LOCAL:6++
+ENDIF
+IF ARG == 7
+	DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:7 * 10 + 7
+	LOCAL:7++
+ENDIF
+IF ARG == 8
+	DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:8 * 10 + 8
+	LOCAL:8++
+	SELECTCASE DA:(ARG:1):(ARG:2) / 10
+
+	ENDSELECT
+ENDIF
+
+IF ARG == 19
+	DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:9 * 10 + 9
+	LOCAL:9++
+ENDIF
+
+
+;隠し扉
+IF ARG == 21
+	DA:(ARG:1):(ARG:2) = (FLAG:現M+1)*1000 + LOCAL:21 * 10 + 100001
+	LOCAL:21++
+ENDIF
+
+
+IF ARG == 22
+	DA:(ARG:1):(ARG:2) = (FLAG:現M+1)*1000 + LOCAL:22 * 10 + 100002
+	LOCAL:22++
+ENDIF
+
+;隠し場用
+IF ARG >= 1001
+	IF STRFLAG_NUM_D("カリーナ숨겨진 장소") == 0
+		DA:(ARG:1):(ARG:2) = (ARG - 1000) / 100
+	ELSEIF STRFLAG_NUM_D("カリーナ숨겨진 장소") == 1
+		DA:(ARG:1):(ARG:2) = ((ARG - 1000) % 100) / 10
+	ELSE
+		DA:(ARG:1):(ARG:2) = (ARG - 1000) % 10
+	ENDIF
+ENDIF
+

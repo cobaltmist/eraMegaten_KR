@@ -1,0 +1,224 @@
+﻿;통상공격
+;스킬のテン플레이트になっています
+
+;스킬名
+@SKILL_NAME_3616,ARG
+RESULTS = 이나즈마
+SIF SKILLGAGE_D_GET(ARG, 3600)
+	RESULTS = 이나즈마2
+
+;　명중
+@SKILL_HITRATE_3616, ARG
+RETURN 100
+
+;　위력
+@SKILL_POWER_3616, ARG
+RETURN 100
+
+;　최저공격횟수
+@SKILL_MINATTACKNUMBER_3616,ARG
+IF ARG > -1
+	IF SKILLGAGE_D_GET(ARG,3616) && SKILLGAGE_D_GET(ARG, 3600)
+		RETURN 2
+	ELSE
+		RETURN 1
+	ENDIF
+ENDIF
+RETURN 1
+
+;　최대공격횟수
+@SKILL_MAXATTACKNUMBER_3616,ARG
+IF ARG > -1
+	IF SKILLGAGE_H_GET(ARG,3616) && SKILLGAGE_D_GET(ARG, 3600)
+		RETURN 2
+	ELSE
+		RETURN 1
+	ENDIF
+ENDIF
+RETURN 1
+
+;　ＨＰ2を支払うかＭＰ3を支払うか
+@SKILL_COSTTYPE_3616, ARG
+RETURN 3
+;소비なし＝1
+
+;　コストの量
+@SKILL_COST_3616,ARG
+RETURN 8
+
+;　相性
+@SKILL_TYPE_3616,ARG
+#LOCALSSIZE 3
+#LOCALSIZE 4
+SIF ARG < 0 || 스킬속성표시中
+	RETURN GET_TYPE_NUM("전격")
+SIF CFLAG:ARG:ターゲット > 16 || CFLAG:ARG:ターゲット < 1
+	RETURN GET_TYPE_NUM("전격")
+LOCAL = POS(CFLAG:ARG:ターゲット)
+SIF LOCAL < 0
+	RETURN GET_TYPE_NUM("전격")
+	
+LOCAL:2 = -300
+LOCALS = 전격
+LOCALS:1 = 비구
+LOCALS:2 = 전격
+FOR LOCAL:1, 1, 3
+	;판정用に수치を仕마이(동방)う。반사は-200扱い
+	LOCAL:3 = MAXBASE:LOCAL:(LOCALS:(LOCAL:1)) == 999 ? -200 # MAXBASE:LOCAL:(LOCALS:(LOCAL:1))
+	;LOCAL:3 = BTL_CHK_SKILL_관통(ARG) && INRANGE(MAXBASE:LOCAL:(LOCALS:(LOCAL:1)), 0, 100) ? 100 # LOCAL:3
+	LOCAL:3 = CFLAG:LOCAL:(LOCALS:(LOCAL:1)+"가드킬") && LOCAL:3 < 100 ? 100 # LOCAL:3
+	LOCAL:3 = CFLAG:LOCAL:(LOCALS:(LOCAL:1)+"무효화횟수") ? 0 # LOCAL:3
+	LOCAL:3 = GET_TYPE_NUM(LOCALS:(LOCAL:1)) < 17 && CFLAG:LOCAL:무효フラグ ? 0 # LOCAL:3
+	SIF LOCAL:1 == 1
+		LOCAL:3 = LOCAL:1 == 1 && CFLAG:LOCAL:물리반사フラグ ? -200 # LOCAL:3
+	IF LOCAL:3 > LOCAL:2
+		LOCAL:2 = LOCAL:3
+		LOCALS = %LOCALS:(LOCAL:1)%
+	ENDIF
+NEXT
+RETURN GET_TYPE_NUM(LOCALS)
+;전격
+
+;　1EXTRAか2MAGICか
+@SKILL_DECIDE_TYPE_3616, ARG
+RETURN 1
+;どちらでもない
+
+;　1물리데미지で計算するか2마법데미지で計算するか
+@SKILL_DAMAGETYPE_3616, ARG
+RETURN 2
+
+
+;　대상が1적か2아군か3場전체か4特殊か
+@SKILL_TARGET_3616
+RETURN 1
+
+;　사거리
+@SKILL_RANGE_3616,ARG
+RETURN 3
+
+;　범위　1１체　2１열　3전체　4　적아군 전체
+@SKILL_SPHERE_3616,ARG
+IF ARG > -1
+	SIF SKILLGAGE_D_GET(ARG,3616)
+		RETURN 3
+ENDIF
+RETURN 1
+
+;　 効果の타입　1공격、2회복、3상태변화、4特殊、5상태회복
+@SKILL_EFECT_3616
+RETURN 1
+
+;　 特殊処理の有無、及び処理内容
+@SKILL_SPECIALEFECT_3616,ARG
+;ARG = 1だった場合は処理の有無を返します
+SIF ARG == 1
+	RETURN 0
+;以下に特殊な処理を記述します
+
+;계승타입
+@SKILL_SUCCESSION_TYPE_3616
+RETURN 6
+;전격
+
+;속도보정
+@SKILL_SPEED_3616, ARG = -1
+RETURN 0
+
+;　구상の표시とその타입
+@SKILL_MESSAGE_3616,ARG
+
+
+;전투時이외に사용できるか
+@SKILL_ACTIONABLE_FIELD_3616
+RETURN 0
+
+;스킬변화？用랭크
+@SKILL_RANK_3616
+RETURN 0
+
+
+;テン플레이트用、추가효과시리즈
+;추가효과스테이터스
+@SKILL_ADDTIONAL_STATE_3616,ARG
+RETURN GET_STATE_NUM("SHOCK")
+
+;추가효과상성
+@SKILL_ADDTIONAL_TYPE_3616,ARG
+RETURN GET_TYPE_NUM("전격")
+
+;추가효과기본부여확률
+@SKILL_ADDTIONAL_BASE_RATE_3616,ARG
+RETURN 20
+
+;추가효과부여확률上限
+@SKILL_ADDTIONAL_MAX_RATE_3616,ARG
+RETURN 66
+
+;====================================================
+;トリガー発動조건
+;====================================================
+@SKILL_TRIGGER_ACTIONABLE_3616,ARG,ARG:1
+;自分じゃなければNG
+SIF ARG != ARG:1
+	RETURN 0
+;ゲージがなければ不発
+SIF SKILLGAGE_D_GET(ARG,3616) < 1
+	RETURN 0
+CALLFORM SKILL_EFECT_{CFLAG:ARG:입력行動}
+SIF RESULT != 1 || CFLAG:ARG:ターゲット < 1
+	RETURN 0
+IF CFLAG:ARG:ターゲット < 17
+	SIF POS(CFLAG:ARG:ターゲット) < 0 || GET_STATE(CFLAG:POS(CFLAG:ARG:ターゲット):ステート) == "DYING"
+		RETURN 0
+	RESULT:1 = CFLAG:ARG:ターゲット
+ELSEIF CFLAG:ARG:ターゲット < 20
+	RESULT:1 = 19
+ELSE
+	RESULT:1 = 22
+ENDIF
+RETURN 1
+
+;====================================================
+;스킬及び行動の実行
+;====================================================
+
+@ACTION_3616,ARG,ARG:1
+#LOCALSIZE 4
+IF SKILLGAGE_D_GET(ARG,3616) == 0
+	CALL ATTACK_SINGLE,ARG,POS(ARG:1),3616,1
+	CALL SKILLGAGE_D_SET,ARG,3616,3
+	PRINTFORML ＞　3턴 전격으로 인한 추격이 발동하게 되었다
+ELSE
+	CALL ATTACK_FIELD,ARG,ARG:1,3616
+ENDIF
+WAIT
+
+;하이볼티지のゲージが蓄積していればコンボ판정、
+SIF SKILLGAGE_H_GET(ARG, 3617) == 1
+	CALL SKILLGAGE_H_SET,ARG,3617,2
+
+
+;====================================================
+;実行内容ここまで
+;====================================================
+
+;　 설명文の표시
+@SKILL_EXPLAIN_3616
+PRINTL 공중에서 대각선 아래로 급강하 공격
+PRINTL 궤도상에 전격의 오비가 발생하여、3턴동안 전체공격화
+PRINTL 자신의 행동으로 공격 스킬을 발동하면 전격+비구의 복합상성으로 추격이 발동한다
+
+;継承に필요한部位
+@継承部位_3616,ARG
+RETURN 1
+;とくにない
+
+@SKILL_ACTIONABLE_BATTLE_3616
+RETURN 1
+
+;사용조건
+@SKILL_SPECIAL_ACTIONABLE_3616,ARG
+RETURN 1
+;とくにない
+

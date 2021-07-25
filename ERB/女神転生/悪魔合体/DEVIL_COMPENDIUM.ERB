@@ -1,0 +1,532 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:DEVIL_COMPENDIUM.ERB
+;	Facility	:악마全書一般の処理
+;
+;	Licence		:ライセンスフリー。
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		20XX/XX/XX		N새						新規作成
+;	002		2011/03/ 8		P						一部表記ずれを対策
+;	003		2011/06/13		名無し					３身逆引き検索を추가
+;	004		2011/10/01		黒天					全書閲覧で登録데이터とオリジナル(CSV)데이터の切り替え기능を추가
+;	005		2013/12/02		ひみつ					全書閲覧が2列で見れてページ送りも出来るように변경。스킬の説明も見れるように修正。
+;													스킬속성표시の適用範囲拡大。스킬속성표시にキャラ情報を渡すように
+;			2017/08/30		輝心深紺				全書番号範囲を7101まで（勝손に）확장。
+;	007		2017/08/30		空気					ＣＯＭＰに空き容量がなければ自宅ストレージに送るように
+;	008		2020/12/16		JK好き					デビダス起動時に解析率が1～9％の時の표시を調整
+;	009		2020/12/31		JK好き					フラグ１体のみ악마を呼び出せなくなる패턴潰し
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;================================================================
+;악마全書予定地
+;解析度:1 〜 명칭識別、회화可能 100 〜 アナライズ可能 1000〜全書呼び出し可能
+
+
+
+
+;=============================================================
+;악마全書
+;=============================================================
+@DEVIL_COMPENDIUM
+#LOCALSIZE 31
+;LOCAL ループ用
+;LOCAL:1 選択종족
+;LOCAL:2 選択した악마
+;LOCAL:3 召喚した악마の番号
+;LOCAL:4 召喚費用
+;LOCAL:5 召喚可能フラグ
+;LOCAL:6 既に仲魔にいるか
+;LOCAL:7 全書登録有無
+;LOCAL:8 参照데이터(0:オリジナル(CSV)데이터、1:登録데이터)
+;LOCAL:9 CSVフラグ,１体のみであり、既に仲魔にいるか
+;LOCAL:10
+;LOCAL:20
+;LOCAL:30 표시ページ番号
+;C 閲覧可能な종족のリスト
+;D 選択した종족のリスト
+;LOCAL配列の초기化
+VARSET LOCAL,0
+DRAWLINE
+PRINTL [1] 열람
+PRINTL [2] ２신합체 역검색
+PRINTL [3] ３신합체 역검색
+PRINTL [4] 악마전서 등록
+PRINTL [5] 소질 검색
+PRINTL [6] 스킬 검색
+PRINTL [7] 방어상성 검색
+PRINTL [8] 성향 검색
+DRAWLINE
+PRINTL [0] 돌아간다
+$INPUT_LOOP
+ONEINPUT
+IF RESULT == 0
+	RETURN 0
+ELSEIF RESULT == 2
+	CALL REVERSE_LOOKUP_DEVIL, 2
+	RESTART
+ELSEIF RESULT == 3
+	CALL REVERSE_LOOKUP_DEVIL, 3
+	RESTART
+ELSEIF RESULT == 4
+	CALL REGISTRATION_COMPENDIUM
+	RESTART
+ELSEIF RESULT == 5
+	CALL TALENT_LOOKUP_DEVIL
+	RESTART
+ELSEIF RESULT == 6
+	CALL SKILL_LOOKUP_DEVIL
+	RESTART
+ELSEIF RESULT == 7
+	CALL RESIST_LOOKUP_DEVIL
+	RESTART
+ELSEIF RESULT == 8
+	CALL ALI_LOOKUP_DEVIL
+	RESTART
+ELSEIF RESULT > 8
+	GOTO INPUT_LOOP
+ENDIF
+
+LOCAL:25 = LINECOUNT	;行数
+$COMPENDIUM_START
+CUSTOMDRAWLINE ･
+
+;リスト초기化
+VARSET C, 0
+FOR LOCAL,1,17
+	C:LOCAL = 1
+NEXT
+
+FOR LOCAL,1,7101
+	IF EXISTCSV(LOCAL,0)
+		SIF FLAG:(20000+LOCAL) > 0 && (CSVABL(LOCAL,GETNUM(ABL,"종족"),0)) > -1
+			C:(CSVABL(LOCAL,GETNUM(ABL,"종족"),0)) = 1
+	ENDIF
+NEXT
+
+
+;반마인・정령（？）・조마は閲覧不可
+C:36 = 0
+C:40 = 0
+C:45 = 0
+
+PRINTL 어느 종족의 악마를 열람하겠습니까?
+FOR LOCAL,1,99
+	SIF C:LOCAL != 1
+		CONTINUE
+	PRINTFORMLC [{LOCAL,2}] %STR:LOCAL,6,LEFT%
+NEXT
+PRINTL
+
+DRAWLINE
+PRINTL [0] 돌아간다
+
+$INPUT_LOOP1
+INPUT
+SIF RESULT > 999
+	GOTO INPUT_LOOP1
+IF RESULT == 0
+	RESTART
+ELSEIF C:RESULT != 1
+	GOTO INPUT_LOOP1
+ENDIF
+
+LOCAL:1 = RESULT
+
+LOCAL:26 = 0					;표시ページ
+LOCAL:27 = CURRENTREDRAW()		;REDRAW値
+REDRAW 2
+LOCAL:28 = LINECOUNT			;行数
+$PRINT_LIST
+
+;リストの作成
+VARSET D, -1
+FOR LOCAL,1,7101
+	IF EXISTCSV(LOCAL,0) && CSVABL(LOCAL,GETNUM(ABL,"종족"),0) == LOCAL:1
+;		SIF CSVCFLAG(LOCAL,(GETNUM(CFLAG,"전서소환불가")),0) == 1 || FLAG:(20000+LOCAL) < 1000 || (CSVCFLAG(LOCAL,(GETNUM(CFLAG,"合体조건有り")),0) == 1 && FLAG:(10000+LOCAL) == 0)
+;			CONTINUE
+		IF SOFT_ON("데비다스'XX")
+			SIF CSVCFLAG(LOCAL,(GETNUM(CFLAG,"EXTRA出典")),0) == 1 && (GETBIT(FLAG:EXTRA이벤트설정, 0) == 0 || GETBIT(FLAG:EXTRA이벤트필터, 1) == 1)
+				CONTINUE
+			SIF CSVCFLAG(LOCAL,(GETNUM(CFLAG,"EXTRA出典")),0) == 3 && (GETBIT(FLAG:EXTRA이벤트설정, 0) == 0 || GETBIT(FLAG:EXTRA이벤트필터, 3) == 1)
+				CONTINUE
+			SIF CSVCFLAG(LOCAL,(GETNUM(CFLAG,"EXTRA出典")),0) == 4 && (GETBIT(FLAG:EXTRA이벤트설정, 0) == 0 || GETBIT(FLAG:EXTRA이벤트필터, 4) == 1)
+				CONTINUE
+			SIF CSVCFLAG(LOCAL,(GETNUM(CFLAG,"EXTRA出典")),0) == 5 && (GETBIT(FLAG:EXTRA이벤트설정, 0) == 0 || GETBIT(FLAG:EXTRA이벤트필터, 5) == 1)
+				CONTINUE
+			SIF CSVCFLAG(LOCAL,(GETNUM(CFLAG,"EXTRA出典")),0) == 6 && (GETBIT(FLAG:EXTRA이벤트설정, 0) == 0 || GETBIT(FLAG:EXTRA이벤트필터, 6) == 1)
+				CONTINUE
+			SIF CSVCFLAG(LOCAL,(GETNUM(CFLAG,"EXTRA出典")),0) == 9 && (GETBIT(FLAG:EXTRA이벤트설정, 0) == 0 || GETBIT(FLAG:EXTRA이벤트필터, 9) == 1)
+				CONTINUE
+			SIF CSVCFLAG(LOCAL,(GETNUM(CFLAG,"EXTRA出典")),0) == 10 && (GETBIT(FLAG:EXTRA이벤트설정, 0) == 0 || GETBIT(FLAG:EXTRA이벤트필터, 10) == 1)
+				CONTINUE
+			SIF CSVCFLAG(LOCAL,(GETNUM(CFLAG,"EXTRA出典")),0) == 98 && GETBIT(FLAG:EXTRA이벤트설정, 0) == 0
+				CONTINUE
+ 		ELSEIF FLAG:(20000+LOCAL) < 1
+			CONTINUE
+		ENDIF
+		FOR LOCAL:10,0,5000
+			IF D:(LOCAL:10) == -1
+					D:(LOCAL:10) = LOCAL
+					BREAK
+			ELSEIF CSVBASE(LOCAL,GETNUM(BASE,"LV"),0) <= CSVBASE(D:(LOCAL:10),GETNUM(BASE,"LV"),0)
+				CONTINUE
+			ELSE
+					FOR LOCAL:20,4999,LOCAL:10,-1
+						SIF D:(LOCAL:20-1) > -1
+							D:(LOCAL:20) = D:(LOCAL:20-1)
+					NEXT
+					D:(LOCAL:10) = LOCAL
+					BREAK
+			ENDIF
+		NEXT
+	ENDIF
+NEXT
+LOCAL:29 = FINDELEMENT(D, -1)	;閲覧가능수
+
+CLEARLINE LINECOUNT - LOCAL:28
+LOCAL:6 = 0
+;リストを표시
+DRAWLINE
+PRINTFORML □%STR:(LOCAL:1)% (page.{LOCAL:26 + 1}/{LOCAL:29 / 2 / リスト표시数() + 1})
+DRAWLINE
+FOR LOCAL, LOCAL:26 * 2 * リスト표시数(), MIN(LOCAL:29, LOCAL:26 * 2 * リスト표시数() + リスト표시数())
+	SIF D:LOCAL == -1
+		BREAK
+	CALL PRINTDEVIL_ELEMENT(LOCAL, LOCAL:1)
+	IF D:(LOCAL + リスト표시数()) >= 0
+		PRINT 　
+		CALL PRINTDEVIL_ELEMENT(LOCAL + リスト표시数(), LOCAL:1)
+	ENDIF
+	PRINTL 
+NEXT
+SIF LOCAL:26 && (LOCAL:26 == LOCAL:29 / 2 / リスト표시数())
+	PRINTFORM %"\n" * (リスト표시数() + 3 + LOCAL:28 - LINECOUNT)%
+DRAWLINE
+PRINTFORMLC \@ LOCAL:26 > 0 ? [1007]이전 페이지 # %" " * 16% \@
+PRINTFORMLC [1000]돌아간다
+PRINTFORMLC \@ LOCAL:26 < LOCAL:29 / 2 / リスト표시数() ? [1009]다음 페이지 # %" " * 16% \@
+$INPUT_LOOP2
+INPUT
+IF RESULT == 1000
+	CLEARLINE LINECOUNT - LOCAL:25
+	REDRAW LOCAL:27
+	GOTO COMPENDIUM_START
+ELSEIF RESULT == 1007 && LOCAL:26 > 0
+	LOCAL:26--
+	GOTO PRINT_LIST
+ELSEIF RESULT == 1009 && LOCAL:26 < LOCAL:29 / 2 / リスト표시数()
+	LOCAL:26++
+	GOTO PRINT_LIST
+ELSEIF RESULT < 0 || RESULT >= 5000 || D:RESULT == -1 || FLAG:(20000+D:RESULT) < 100
+	CLEARLINE 1
+	GOTO INPUT_LOOP2
+ENDIF
+
+LOCAL:2 = D:RESULT
+LOCAL:3 = CHARANUM
+
+;LOCAL:9が리셋されない패턴が확인できたので추가
+IF CSVCFLAG(LOCAL:2 , GETNUM(CFLAG,"１体のみ"),0) && FINDCHARA(NO,LOCAL:2) > 0
+	LOCAL:9 = 1
+ELSE
+	LOCAL:9 = 0
+ENDIF
+;選んだ악마が既に仲魔である場合、後に渡すフラグを立てておく
+SIF FINDCHARA_NO_C(LOCAL:2) > -1
+	LOCAL:6 = 1
+
+;最初は全書등록されている데이터を표시するように
+LOCAL:8 = 1
+LOCAL:7 = 0
+
+$CHANGE_REFER_DATA
+;一旦악마をキャラ등록
+CALL ADD_NEW_COMPANION, LOCAL:2, 0, -1, 1
+;적専用스킬を含めて一旦再설정
+FOR LOCAL, 1, FLAG:스킬数 + 1
+	LOCALS = 스킬{LOCAL}
+	ABL:(LOCAL:3):LOCALS = CSVABL(LOCAL:2, GETNUM(ABL, LOCALS))
+NEXT
+
+;指定악마を全書등록してるか체크
+SIF STRFLAG_NUM_CPD_FIND("NO", NO:(LOCAL:3)) > -1
+	LOCAL:7 = 1
+
+;全書등록されている악마で、全書등록데이터を閲覧する場合、등록情報を参照
+SIF LOCAL:7 && LOCAL:8
+	CALL STRFLAG_NUM_CPD(LOCAL:3,"REFER")
+
+;초기化する능력を記述
+CFLAG:(LOCAL:3):초기LV = BASE:(LOCAL:3):LV
+BASE:(LOCAL:3):ＥＸＰ = BASE:(LOCAL:3):LV* (BASE:(LOCAL:3):LV+1) * (BASE:(LOCAL:3):LV-1) * 5 /3
+
+CFLAG:(LOCAL:3):능력강화횟수 = 0
+FOR LOCAL,0,6
+	CFLAG:(LOCAL:3):(GET_BASESTATUS(LOCAL) + "강화횟수") = 0
+NEXT
+CALL SYNC_STATUS,LOCAL:3
+CALL HEALTH_CHARA,LOCAL:3
+
+LOCAL:24 = LINECOUNT
+LOCAL:30 = 2
+$PRINT_STATUS
+CLEARLINE LINECOUNT - LOCAL:24
+CUSTOMDRAWLINE =
+U = LOCAL:3
+LOCALS = \@ CSTR:U:종족명 != "" ? %CSTR:U:종족명% # %STR:(ABL:U:종족)% \@
+PRINTFORML %LOCALS%　　%NAME:U%　　
+CALLFORM SHOW_INFO_PAGE_{LOCAL:30}
+PRINTFORM %"\n" * MAX(0, 26 - LINECOUNT + LOCAL:24)%
+
+;소환費用を산출
+LOCAL:4 = MAX(POWER(BASE:(LOCAL:3):LV,3),BASE:(LOCAL:3):LV*300, POWER(CSVBASE(LOCAL:2 , GETNUM(BASE , "LV"),0) ,3) ,CSVBASE(LOCAL:2,GETNUM(BASE,"LV"),0) * 300)
+;정령は2.5倍
+SIF LOCAL:1 == 13
+	TIMES LOCAL:4 , 2.50
+IF FLAG:(20000+LOCAL:2) < 1000
+	LOCAL:4 *= 2 * 1000
+	LOCAL:4 /= MAX(1,FLAG:(20000+LOCAL:2))
+ENDIF
+;기본능력値합계が18 + Lv * 1.5 + 5 + 264 ( = Lv * 1.5 + 287)より大きい場合1ptにつき10万円추가
+LOCAL:4 += MAX(0, BASE:(LOCAL:3):힘 + BASE:(LOCAL:3):지혜 + BASE:(LOCAL:3):마력 + BASE:(LOCAL:3):인내력 + BASE:(LOCAL:3):속도 + BASE:(LOCAL:3):운 - BASE:(LOCAL:3):LV * 3 / 2 - 287) * 100000 / POWER(2, FLAG:전투난이도-1)
+
+;FUSION.ERBから페이지送り他を輸入
+
+;스테이터스の표시변경用
+PRINTFORMLC \@ LOCAL:30 > 1 ? [1007]이전 페이지 # %" " * 16% \@
+PRINTFORMLC                 
+PRINTFORMLC \@ LOCAL:30 < 3 ? [1009]다음 페이지 # %" " * 16% \@
+PRINTL
+PRINTL
+
+IF CSVCFLAG(LOCAL:2,(GETNUM(CFLAG,"전서소환불가")),0) == 1 || (CSVCFLAG(LOCAL:2,(GETNUM(CFLAG,"合体조건有り")),0) == 1 && FLAG:(10000+LOCAL:2) == 0) || FLAG:(20000+LOCAL:2) < 100 || LOCAL:1 > 18
+	PRINTFORM [9] 돌아간다
+	LOCAL:5 = 0
+ELSE
+	SIF LOCAL:6 == 1
+		PRINT 이미 같은 동료마가 있습니다만、
+	PRINTFORM 이 악마를 소환하겠습니까?（소환비용:￥{LOCAL:4}) [0]Yes [9]No
+	LOCAL:5 = 1
+
+ENDIF
+
+IF LOCAL:7
+	PRINT  [10] 등록내용을 소거한다
+	PRINTFORM  [11] \@ LOCAL:8 ? 오리지널 # 등록 \@데이터를 참조한다
+ENDIF
+PRINTL
+
+$INPUT_LOOP3
+INPUTS
+IF RESULTS == ""
+	GOTO INPUT_LOOP3
+ELSEIF !ISNUMERIC(RESULTS)
+	CLEARLINE 1
+	GOTO INPUT_LOOP3
+ENDIF
+RESULT = TOINT(RESULTS)
+IF RESULT == 1007 && LOCAL:30 > 1
+	LOCAL:30--
+	GOTO PRINT_STATUS
+ELSEIF RESULT == 1009 && LOCAL:30 < 3
+	LOCAL:30++
+	GOTO PRINT_STATUS
+ELSEIF INRANGE(RESULT, 1, FLAG:스킬数)
+	LOCALS = 스킬{RESULT}
+	IF ABL:U:LOCALS > 0
+		SIF FLAG:스킬속성표시설정 == 1
+			CALL SKILL_EXPLAIN_PERFORMANCE, ABL:U:LOCALS, U
+		TRYCALLFORM SKILL_EXPLAIN_{ABL:U:LOCALS}
+		WAIT
+		GOTO PRINT_STATUS
+	ELSE
+		CLEARLINE 1
+		GOTO INPUT_LOOP3
+	ENDIF
+ELSEIF RESULT == 9
+	CALL キャラ삭제, LOCAL:3
+	GOTO PRINT_LIST
+ELSEIF RESULT == 10 && LOCAL:7
+	CALL STRFLAG_NUM_CPD(LOCAL:3,"CLEAR")
+	PRINTFORML %LOCALS% %NAME:U%의 등록 내용을 소거했습니다
+	CALL キャラ삭제, LOCAL:3
+	GOTO PRINT_LIST
+ELSEIF RESULT == 11 && LOCAL:7
+	;표시内容(등록⇔オリジナル)切替
+	INVERTBIT LOCAL:8, 0
+	CALL キャラ삭제, LOCAL:3
+	GOTO CHANGE_REFER_DATA
+ELSEIF RESULT == 0 && LOCAL:5 == 1
+ELSE
+	CLEARLINE 1
+	GOTO INPUT_LOOP3
+ENDIF
+
+;200体対策
+IF CHARANUM > MAX_PLAYER_CHARA
+	PRINTL ※캐릭터 수가 상한에 도달해 있습니다
+	PRINTW 캐릭터 가입 처리를 취소합니다
+	CALL キャラ삭제, LOCAL:3
+	GOTO PRINT_LIST
+ENDIF
+
+;악마の레벨>主人の레벨だった場合駄눈
+IF LOCAL:9
+	PRINTW 유감이지만 이 악마는 2체 이상 동료마로 삼을 수 없다
+	CALL キャラ삭제, LOCAL:3
+	GOTO PRINT_LIST
+ENDIF
+
+;同じ仲魔がいる場合の除外をコメントアウト。代わりに自動스토리지送りとします
+;IF LOCAL:6 == 1
+;	PRINTW 동일한 동료마가 있는 것 같다
+;	CALL キャラ삭제, LOCAL:3
+;	GOTO PRINT_LIST
+;ENDIF
+
+;악마の레벨>主人の레벨だった場合駄눈
+IF BASE:(LOCAL:3):LV > BASE:MASTER:LV || CSVBASE(LOCAL:2,GETNUM(BASE,"LV"),0) > BASE:MASTER:LV
+	PRINTW 유감스럽지만…… 네 레벨로는 아직 다룰 수 없다
+	CALL キャラ삭제, LOCAL:3
+	GOTO PRINT_LIST
+ENDIF
+
+;---- EDIT 007 DEL START -------------------------
+;ＣＯＭＰ용량が一杯
+;IF FLAG:ＣＯＭＰ용량 < NUM_NAKAMA()+ソフト용량()
+;	PRINTW ＣＯＭＰの空き容量が不발しているようだな
+;	CALL キャラ삭제, LOCAL:3
+;	GOTO PRINT_LIST
+;ENDIF
+;---- EDIT 007 DEL END ---------------------------
+
+;발りなければ불가능
+IF MONEY < LOCAL:4
+	PRINTW 자금이 부족한 것 같다
+	CALL キャラ삭제, LOCAL:3
+	GOTO PRINT_LIST
+ENDIF
+
+;￥を소비
+MONEY -= LOCAL:4
+
+;적専用스킬を삭제
+FOR LOCAL, 1, FLAG:스킬数 + 1
+	LOCALS = 스킬{LOCAL}
+	RESULT = 0
+	TRYCALLFORM 적専用_{ABL:(LOCAL:3):LOCALS}
+	ABL:(LOCAL:3):LOCALS = RESULT ? 0 # ABL:(LOCAL:3):LOCALS
+NEXT
+
+;作成時のセリフを표시
+TRYCCALLFORM FUSION_MESSAGE_K{NO:(LOCAL:3)},LOCAL:3
+CATCH
+	TRYCALLFORM FUSION_MESSAGE_PUB{ABL:(LOCAL:3):회화타입},LOCAL:3
+ENDCATCH
+PRINTFORMW %STR:(LOCAL:1)% %조사처리(CALLNAME:(LOCAL:3),"가")% 동료마로 들어왔다
+
+IF LOCAL:6 == 1
+	PRINTW 이미 같은 동료마가 있기에 스토리지로 보내졌다
+	CFLAG:(LOCAL:3):所属ＣＯＭＰ = -1
+ENDIF
+
+;---- EDIT 007 ADD START -------------------------
+IF ＣＯＭＰ空き容量() == -1
+	PRINTW ＣＯＭＰ의 빈 용량이 부족해 스토리지로 보냈다
+	CFLAG:(LOCAL:3):所属ＣＯＭＰ = -1
+ENDIF
+;---- EDIT 007 ADD END ---------------------------
+
+;종족リストに戻るよ
+GOTO PRINT_LIST
+
+
+
+;=============================================================
+;악마解析度증가処理
+;=============================================================
+@INCREASE_ANALYZE,ARG,ARG:1
+;ARG　증가させたい악마の등록번호
+;ARG:1 증가させたい値
+
+SIF NUM_HAVESKILL([[스킬:민속학]])
+	ARG:1 *= 2
+FLAG:(20000+ARG) += ARG:1
+SIF FLAG:(20000+ARG) > 1000
+	FLAG:(20000+ARG) = 1000
+
+
+
+@PRINTDEVIL_ELEMENT(ARG, ARG:1)
+#LOCALSIZE 1
+LOCAL = MAX(POWER(CSVBASE(D:ARG, GETNUM(BASE, "LV")), 3), CSVBASE(D:ARG, GETNUM(BASE, "LV")) * 300)	;소환費用を산출
+SIF ARG:1 == 13	;정령は2.5倍
+	TIMES LOCAL , 2.50
+IF CSVCFLAG(D:ARG,(GETNUM(CFLAG,"EXTRA出典")),0) < 0
+	SETCOLOR COLOR("AQUA")
+ELSEIF CSVCFLAG(D:ARG,(GETNUM(CFLAG,"EXTRA出典")),0) == 3 || CSVCFLAG(D:ARG,(GETNUM(CFLAG,"EXTRA出典")),0) == 4
+	SETCOLOR COLOR("PASTEL-BLUE")
+ELSEIF CSVCFLAG(D:ARG,(GETNUM(CFLAG,"EXTRA出典")),0) == 5
+	SETCOLOR COLOR("PASTEL-PURPLE")
+ELSEIF CSVCFLAG(D:ARG,(GETNUM(CFLAG,"EXTRA出典")),0) == 6
+	SETCOLOR COLOR("PASTEL-RED")
+ELSEIF CSVCFLAG(D:ARG,(GETNUM(CFLAG,"EXTRA出典")),0) && CSVCFLAG(D:ARG,(GETNUM(CFLAG,"EXTRA出典")),0) < 99
+	SETCOLOR COLOR("PASTEL-GREEN")
+ENDIF
+IF FLAG:(20000 + D:ARG) < 100
+	SETCOLOR 0x404040
+ELSEIF SOFT_ON("데비다스'XX") && CSVABL(D:ARG, GETNUM(ABL, "코딩"),0) && ITEM:(CSVABL(D:ARG, GETNUM(ABL, "코딩"),0)) == 0
+	SETCOLOR COLOR("YELLOW")
+ELSEIF STRFLAG_NUM_CPD_FIND("NO", D:ARG) > -1
+;등록데이터 있는 악마는 색깔을 연두색으로 표시
+	SETCOLOR 0x00ff00
+ENDIF
+IF FLAG:(20000 + D:ARG) < 1000
+	LOCAL *= 2 * 1000
+	LOCAL /= MAX(1, FLAG:(20000 + D:ARG))
+ENDIF
+IF SOFT_ON("데비다스'XX") && FLAG:(20000 + D:ARG) < 100
+	IF CSVCFLAG(D:ARG,(GETNUM(CFLAG,"EXTRA出典")),0) == -2
+		PRINTFORM [{ARG, 3}] %"-（위전）-", 20, LEFT%?????　   　
+	ELSEIF CSVCFLAG(D:ARG,(GETNUM(CFLAG,"EXTRA出典")),0) == -1
+		PRINTFORM [{ARG, 3}] %"-（데빌칠드런）-", 20, LEFT%?????　   　
+	ELSEIF CSVCFLAG(D:ARG,(GETNUM(CFLAG,"EXTRA出典")),0) == 1
+		PRINTFORM [{ARG, 3}] %"-（EXTRA）-", 20, LEFT%?????　   　
+	ELSEIF CSVCFLAG(D:ARG,(GETNUM(CFLAG,"EXTRA出典")),0) == 3
+		PRINTFORM [{ARG, 3}] %"-（MeltyBlood）-", 20, LEFT%?????　   　
+	ELSEIF CSVCFLAG(D:ARG,(GETNUM(CFLAG,"EXTRA出典")),0) == 4
+		PRINTFORM [{ARG, 3}] %"-（Fate）-", 20, LEFT%?????　   　
+	ELSEIF CSVCFLAG(D:ARG,(GETNUM(CFLAG,"EXTRA出典")),0) == 5
+		PRINTFORM [{ARG, 3}] %"-(마도카☆마기카)-", 20, LEFT%?????　   　
+	ELSEIF CSVCFLAG(D:ARG,(GETNUM(CFLAG,"EXTRA出典")),0) == 6
+		PRINTFORM [{ARG, 3}] %"-（환상향）-", 20, LEFT%?????　   　
+	ELSEIF CSVCFLAG(D:ARG,(GETNUM(CFLAG,"EXTRA出典")),0) == 9 || CSVCFLAG(D:ARG,(GETNUM(CFLAG,"EXTRA出典")),0) == 10 || CSVCFLAG(D:ARG,(GETNUM(CFLAG,"EXTRA出典")),0) == 98
+		PRINTFORM [{ARG, 3}] %"-（EXTRA）-", 20, LEFT%?????　   　
+	ELSEIF FLAG:(20000 + D:ARG) / 10 > 0
+		PRINTFORM [{ARG, 3}] %CSVCALLNAME(D:ARG), 20, LEFT%Lv{CSVBASE(D:ARG, GETNUM(BASE, "LV")), 3, RIGHT}　{FLAG:(20000 + D:ARG) / 10, 3, RIGHT}％
+	ELSE
+		PRINTFORM [{ARG, 3}] %"??????????", 20, LEFT%?????　   　
+	ENDIF
+ELSE
+	PRINTFORM [{ARG, 3}] %CSVCALLNAME(D:ARG), 20, LEFT%Lv{CSVBASE(D:ARG, GETNUM(BASE, "LV")), 3, RIGHT}　{FLAG:(20000 + D:ARG) / 10, 3, RIGHT}％
+ENDIF
+IF CSVTALENT(D:ARG, GETNUM(TALENT, "남자"))
+	PRINTS \@ CSVTALENT(D:ARG, GETNUM(TALENT, "오토코노코")) ? ？　 # ♂　 \@
+ELSE
+	PRINTS \@ CSVTALENT(D:ARG, GETNUM(TALENT, "후타나리")) ? 쌍　 # ♀　 \@
+ENDIF
+IF FLAG:(20000 + D:ARG) < 100
+	PRINT  (상세불명) 
+	RESETCOLOR
+ELSEIF CSVCFLAG(D:ARG, GETNUM(CFLAG, "전서소환불가")) || (CSVCFLAG(D:ARG, GETNUM(CFLAG,"合体조건有り")) && !FLAG:(10000 + D:ARG)) || ARG:1 > 18
+	PRINT  (소환불가) 
+ELSEIF STRFLAG_NUM_CPD_FIND("NO", D:ARG) > -1
+;등록데이터 악마표시 색깔 → 뒷부분 텍스트는 원래 색으로
+	PRINTFORM ￥{LOCAL, 10, RIGHT}
+	RESETCOLOR
+ELSE
+	PRINTFORM ￥{LOCAL, 10, RIGHT}
+ENDIF
+RESETCOLOR

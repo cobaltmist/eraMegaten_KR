@@ -1,0 +1,815 @@
+﻿;========================================================
+;言うまでもなく某erastaのWS（わしが育てた）システムのパクry
+;あと머리카락型とか各種色설정
+
+;スリーサイズ표시処理
+;・eratenは임신期間短いので腹ポコ処理はしない。
+;・体重は인간と特定종족のみ。구조や材質が違うから仕方ないね。
+;・머리카락색깔・머리카락형태・눈동자색깔・肌の色の표시処理
+
+;※머리카락型は詳しい人추가してください。
+
+;以下사용箇所
+
+;BASE:23 P長(処理だけ作っておく)
+;BASE:24 신장
+;BASE:25 바스트
+;BASE:26 ウェスト
+;BASE:27 힙사이즈
+;MAXBASE:28 サバ読み前の体重
+;BASE:28 체중
+;BASE:29 BMI
+
+;CFLAG:ARG:35 머리카락색깔
+;CFLAG:ARG:36 머리카락형태
+;CFLAG:ARG:37 눈동자색깔
+;CFLAG:ARG:38 피부색깔
+;CFLAG:ARG:컵수 カップサイズ
+
+;그외のファイルで改造したところ
+;SHOP_NAMECHANGE.ERB 各種설정処理を추가
+;SHOW_STATUS.ERB スリーサイズ표시 魔乳・むちむちの표시分岐など
+;ITEM.ERB 肌の色関連をTALENTからCFLAGに
+;EVENT_P.ERB 임신発깨달음時にバスト1cm成長
+;SYSTEM_DAUGHTER.ERB 娘にスリーサイズ・外見を遺伝させる
+;-------------------------------------------------
+
+;-------------------------------------------------
+;スリーサイズの표시処理
+;-------------------------------------------------
+@SHOW_INFO_BODYSIZE, ARG
+CALL CALC_TAIJU(ARG)
+CALL DEFINITE_KOSINIKU(ARG)
+;유아は표시なし
+IF BASE:ARG:신장 > 0 && !TALENT:ARG:유아／유아퇴행
+	PRINTFORM 신장：{BASE:ARG:신장}cm
+
+	;体重が設定されており、「0：인간」「32：괴이」「36：半魔」「43：영웅」「44：悪魔つき」「45：조마」なら体重表示
+	IF BASE:ARG:체중 > 0 && (ABL:ARG:종족 == 0 || ABL:ARG:종족 == 32 || ABL:ARG:종족 == 36 || ABL:ARG:종족 == 43 || ABL:ARG:종족 ==44 || ABL:ARG:종족 == 45)
+			;ふたごちゃんパッチオンかつ妊娠している場合
+		;計算しようかと思ったが、元から計算はしていないので
+		IF FLAG:ふたごちゃんフラグ > 0 && TALENT:ARG:임신
+			PRINTFORM   체중：{BASE:ARG:체중}kg ＋ 胎児{CFLAG:ARG:今回受胎人数}人分
+		ELSE
+			PRINTFORM   체중：{BASE:ARG:체중}kg
+		ENDIF
+	ELSE
+		PRINTFORM   체중：불명
+	ENDIF
+
+	IF BASE:ARG:바스트 == 0 
+		PRINTFORM   Ｂ：불명
+	ELSE
+		PRINTFORM   Ｂ：{BASE:ARG:바스트}cm
+		PRINT (
+		CALL SHOW_CUPSIZE(ARG)
+		PRINT )
+	ENDIF
+
+	IF BASE:ARG:웨스트 == 0 
+		PRINTFORM   Ｗ：불명
+	ELSE
+		IF CFLAG:ARG:子宮現在容量 == 0
+			PRINTFORM   Ｗ：{BASE:ARG:웨스트}cm
+		ELSE
+			;腹囲が470センチとかになっちゃってたので修正
+			PRINTFORM   現在Ｗ：{( (CFLAG:ARG:子宮現在容量*6/1000) + BASE:ARG:웨스트)}cm （元Ｗ：{BASE:ARG:웨스트}cm）
+;			PRINTFORM   現在Ｗ：{( (CFLAG:ARG:子宮現在容量*6/100) + BASE:ARG:웨스트)}cm （元Ｗ：{BASE:ARG:웨스트}cm）
+		ENDIF
+	ENDIF
+
+	IF BASE:ARG:힙사이즈 == 0 
+		PRINTFORM   Ｈ：불명
+	ELSE
+		PRINTFORM   Ｈ：{BASE:ARG:힙사이즈}cm
+		CALL CHECK_HIPSIZE(ARG)
+	ENDIF
+		PRINTFORML 
+
+	;「子宮」容量なので、オトコの場合は表示しない（男の娘は妊娠できるが、表示しない）
+	IF !BASE:ARG:웨스트 == 0 && !TALENT:ARG:남자
+		PRINTFORM 現在子宮内정액量{CFLAG:ARG:子宮現在容量}ml ／ 최대子宮容量{CFLAG:ARG:子宮최대容量}ml
+		;5000ml＝一般的な妊娠後期の子宮容積を超過している場合
+		SIF FLAG:ふたごちゃんフラグ > 0 && (CFLAG:ARG:子宮現在容量 > 5000)
+			PRINTFORM ：【精液ボテ】
+	ENDIF
+ENDIF
+
+;IF TALENT:ARG:남자 || TALENT:ARG:후타나리
+;	IF BASE:ARG:23 == 0
+;		PRINTFORM   페니스サイズ：불명
+;	ELSE
+;		PRINTFORM   페니스サイズ：{BASE:ARG:23}cm
+;	ENDIF
+;ENDIF
+PRINTL
+
+;-------------------------------------------------
+;カップサイズ測定
+;-------------------------------------------------
+@CHECK_CUPSIZE, ARG
+;Sはカップサイズ用変数、Xはバスト보정値、Yはウェスト보정値、Zは身長보정値
+X = ((((BASE:ARG:바스트 * 100) - (BASE:ARG:신장 * 54)) * 100) / 250)
+Y = ((((BASE:ARG:신장 * 38) - (BASE:ARG:웨스트 * 100)) * 100) / 342)
+;임신時は임신発깨달음時のウェストから計算
+; SIF TALENT:ARG:임신
+;	Y = ((((BASE:ARG:신장 * 38) - ((BASE:ARG:웨스트 - (CFLAG:ARG:123 / 100)) * 100)) * 100) / 342)
+	;Y = ((((BASE:ARG:신장 * 38) - ((BASE:ARG:웨스트 - (CFLAG:123 / 100)) * 100)) * 100) / 342)
+	;↑のCFLAG:123が何の数字なのか불명なのでこの部分を仮で消す;後で分からなくなるから数字で書かないほうがいいよまじで
+	;→たぶん別バリアントの名残と思われる。削除してしまってよさそうな気がする……ゾ……
+Z = ((((BASE:ARG:신장 * 100) - 15880) * 100) / 2300)
+S = X + Y + Z
+CFLAG:ARG:컵수 = 0
+;S += 450
+S += 550
+IF S > 0
+	;100未満を切り上げ
+	S -= S % 100
+	S += 100
+	;カップサイズ測定
+	CFLAG:ARG:컵수 = S / 100
+ENDIF
+
+TALENT:ARG:魔乳 = 0
+TALENT:ARG:폭유 = 0
+TALENT:ARG:거유 = 0
+TALENT:ARG:절벽 = 0
+TALENT:ARG:빈유 = 0
+
+;カップサイズから대상の가슴資質を修正する
+SELECTCASE CFLAG:ARG:컵수
+CASE IS >= 14
+	TALENT:ARG:魔乳 = 1
+CASE IS >= 8
+	TALENT:ARG:폭유 = 1
+CASE IS >= 6
+	TALENT:ARG:거유 = 1
+CASE 5
+CASE IS >= 3
+	TALENT:ARG:빈유 = 1
+CASEELSE
+	TALENT:ARG:절벽 = 1
+ENDSELECT
+
+X = 0
+Y = 0
+Z = 0
+S = 0
+
+;-------------------------------------------------
+;カップサイズ표시
+;-------------------------------------------------
+@SHOW_CUPSIZE, ARG
+CALL CHECK_CUPSIZE(ARG)
+	SELECTCASE CFLAG:ARG:컵수
+	CASE 0
+		PRINT 測定不能
+	CASE 1
+		PRINT ＡＡＡ
+	CASE 2
+		PRINT ＡＡ
+	CASE 3
+		PRINT Ａ
+	CASE 4
+		PRINT Ｂ
+	CASE 5
+		PRINT Ｃ
+	CASE 6
+		PRINT Ｄ
+	CASE 7
+		PRINT Ｅ
+	CASE 8
+		PRINT Ｆ
+	CASE 9
+		PRINT Ｇ
+	CASE 10
+		PRINT Ｈ
+	CASE 11
+		PRINT Ｉ
+	CASE 12
+		PRINT Ｊ
+	CASE 13
+		PRINT Ｋ
+	CASE 14
+		PRINT Ｌ
+	CASE 15
+		PRINT Ｍ
+	CASE 16
+		PRINT Ｎ
+	CASE 17
+		PRINT Ｏ
+	CASE 18
+		PRINT Ｐ
+	CASE 19
+		PRINT Ｑ
+	CASE 20
+		PRINT Ｒ
+	CASE 21
+		PRINT Ｓ
+	CASE 22
+		PRINT Ｔ
+	CASE 23
+		PRINT Ｕ
+	CASE 24
+		PRINT Ｖ
+	CASE 25
+		PRINT Ｗ
+	CASE 26
+		PRINT Ｘ
+	CASE 27
+		PRINT Ｙ
+	CASE 28
+		PRINT Ｚ
+	CASE IS >= 29
+		IF ABL:ARG:속성LC == 2 && ABL:ARG:속성LD > 1
+			PRINT 초
+		ELSEIF ABL:ARG:속성LD == 3 || ABL:ARG:속성LC == 3
+			PRINT 마
+		ELSE
+			PRINT 성
+		ENDIF
+	ENDSELECT
+
+
+;-------------------------------------------------
+;尻サイズ測定
+;乳サイズ測定のほぼ丸々流用
+;-------------------------------------------------
+@CHECK_HIPSIZE, ARG
+;Sは尻サイズ用変数、Xは尻보정値、Yはウェスト보정値、Zは身長보정値
+X = ((((BASE:ARG:힙사이즈 * 100) - (BASE:ARG:신장 * 54)) * 100) / 250)
+Y = ((((BASE:ARG:신장 * 38) - (BASE:ARG:웨스트 * 100)) * 100) / 342)
+;임신時は임신発깨달음時のウェストから計算
+SIF TALENT:ARG:임신
+	Y = (((BASE:ARG:신장 * 38) - (BASE:ARG:웨스트 * 100) * 100) / 342)
+	;Y = ((((BASE:ARG:신장 * 38) - ((BASE:ARG:웨스트 - (CFLAG:123 / 100)) * 100)) * 100) / 342)
+	;↑のCFLAG:123が何の数字なのか불명なのでこの部分を仮で消す
+Z = ((((BASE:ARG:신장 * 100) - 15880) * 100) / 2300)
+S = X + Y + Z
+S += 550
+IF S > 0
+	;100未満を切り上げ
+	S -= S % 100
+	S += 100
+	;尻サイズ測定
+	S = S / 100
+ENDIF
+
+TALENT:ARG:魔尻 = 0
+TALENT:ARG:爆尻 = 0
+TALENT:ARG:巨尻 = 0
+TALENT:ARG:並尻 = 0
+TALENT:ARG:小尻 = 0
+
+;尻サイズから대상の尻資質を修正する
+;乳のようにカップサイズ測定は……正直いらないと思う、かな？
+SELECTCASE S
+CASE IS >= 11
+	TALENT:ARG:魔尻 = 1
+CASE IS >= 8
+	TALENT:ARG:爆尻 = 1
+CASE IS >= 6
+	TALENT:ARG:巨尻 = 1
+CASE IS >= 3
+	TALENT:ARG:並尻 = 1
+CASEELSE
+	TALENT:ARG:小尻 = 1
+ENDSELECT
+
+X = 0
+Y = 0
+Z = 0
+S = 0
+
+
+;-------------------------------------------------
+;페니스サイズ설정(ひな形だけ)
+;-------------------------------------------------
+@CHECK_WS_P, ARG
+$WS_P_START
+IF BASE:ARG:신장 == 0 || BASE:ARG:23 == 0
+	PRINTFORML %CALLNAME:ARG%의 페니스 사이즈는 미설정입니다
+ELSE
+	PRINTFORML %CALLNAME:ARG%의 페니스 사이즈는{BASE:ARG:23}cm 입니다
+ENDIF
+PRINTFORML 사이즈를 설정해주세요[10-{BASE:ARG:신장 / 8}]
+	INPUT
+IF RESULT >= 10 || RESULT <= (BASE:ARG:신장 / 8)
+	BASE:ARG:23 = RESULT
+;大業物持ちには20%程度のボーナス
+	IF TALENT:ARG:크고아름다움
+		O = 0
+		O = RAND:(BASE:ARG:23 / 5) + 1
+		PRINTFORML [크고아름다움]소지시 {O}cm의 보너스 포인트가 추가됩니다.
+		BASE:ARG:23 += O
+	O = 0
+	ENDIF
+	PRINTFORML 페니스사이즈가 {BASE:ARG:23}cm로 설정되었습니다.
+ELSE
+	PRINTFORML 맞지 않는 값입니다.
+	GOTO WS_P_START
+ENDIF
+
+;-------------------------------------------------
+;体重計算
+;・男は身長が설정されていれば計算
+;・신장(メートル)の二乗にBMIを乗算で기본値+乳腰尻で보정
+;・バスト4cmごとに1kg増減
+;・ウェスト2cmごとに1kg増減
+;・ヒップ4cmごとに1kg増減
+;-------------------------------------------------
+@CALC_TAIJU, ARG
+;女と오토코노코は身長とスリーサイズが설정されてなければ計算しない
+IF (!TALENT:ARG:남자 || TALENT:ARG:오토코노코) && (BASE:ARG:신장 == 0 || BASE:ARG:바스트 == 0 || BASE:ARG:웨스트 == 0 || BASE:ARG:힙사이즈 == 0)
+	BASE:ARG:체중 = 0
+;男は身長が설정されてなければ計算しない
+ELSEIF TALENT:ARG:남자 && !TALENT:ARG:오토코노코 && BASE:ARG:신장 == 0
+	BASE:ARG:체중 = 0
+;男はBMI22で計算
+ELSEIF TALENT:ARG:남자 && !TALENT:ARG:오토코노코
+	MAXBASE:ARG:체중 = (BASE:ARG:신장 * BASE:ARG:신장 / 455)
+;それ以外はBMI20でまず計算
+ELSE
+	MAXBASE:ARG:체중 = (BASE:ARG:신장 * BASE:ARG:신장 / 500) + ((BASE:ARG:바스트 - (BASE:ARG:신장 * 53 /100)) / 4) + ((BASE:ARG:웨스트 - (BASE:ARG:신장 * 38 / 100)) / 2) + ((BASE:ARG:힙사이즈 - (BASE:ARG:신장 * 54 /100)) / 4)
+	BASE:ARG:체중 = (BASE:ARG:신장 * BASE:ARG:신장 / 500) + ((BASE:ARG:바스트 - (BASE:ARG:신장 * 53 /100)) / 4) + ((BASE:ARG:웨스트 - (BASE:ARG:신장 * 38 / 100)) / 2) + ((BASE:ARG:힙사이즈 - (BASE:ARG:신장 * 54 /100)) / 4)
+	;女の子はサバ読む(身長170未満なら5.56% 170以上なら6.25%)
+	IF !TALENT:ARG:오토코노코
+		IF BASE:ARG:신장 < 170 || NO:ARG == 4197
+			BASE:ARG:체중 = MAXBASE:ARG:체중 *17 / 18
+		ELSE
+			BASE:ARG:체중 = MAXBASE:ARG:체중 *15 / 16
+		ENDIF
+	;오토코노코
+	ELSE
+		BASE:ARG:체중 = MAXBASE:ARG:체중
+	ENDIF
+ENDIF
+;[슬렌더][포동포동]対応としてBMIを計算しておく 小数点以下1位まで記録するため10倍で
+IF BASE:ARG:신장 > 0 && BASE:ARG:체중 > 0
+	BASE:ARG:BMI = BASE:ARG:체중 * 100000 / (BASE:ARG:신장 * BASE:ARG:신장)
+ENDIF
+
+;-------------------------------------------------
+;スレンダーorむちむち판정
+;-------------------------------------------------
+@DEFINITE_KOSINIKU, ARG
+IF BASE:ARG:신장 != 0 && BASE:ARG:체중 != 0 && (!TALENT:ARG:남자 || TALENT:ARG:오토코노코)
+	IF BASE:ARG:BMI < 185 || BASE:ARG:웨스트 *10 < BASE:ARG:신장 * 340 / 100
+		TALENT:ARG:슬렌더 = 1
+		TALENT:ARG:포동포동 = 0
+	ELSEIF BASE:ARG:BMI >= 240 || BASE:ARG:웨스트 *10 >= BASE:ARG:신장 * 400 / 100
+		TALENT:ARG:슬렌더 = 0
+		TALENT:ARG:포동포동 = 1
+	ELSE
+		TALENT:ARG:슬렌더 = 0
+		TALENT:ARG:포동포동 = 0
+	ENDIF
+ELSEIF CSVTALENT(NO:ARG, 127, 0) == 1
+	TALENT:ARG:슬렌더 = 1
+	TALENT:ARG:포동포동 = 0
+ELSEIF CSVTALENT(NO:ARG, 128, 0) == 2
+	TALENT:ARG:슬렌더 = 0
+	TALENT:ARG:포동포동 = 2
+ELSEIF CSVTALENT(NO:ARG, 128, 0) == 1
+	TALENT:ARG:슬렌더 = 0
+	TALENT:ARG:포동포동 = 1
+ELSE
+	TALENT:ARG:슬렌더 = 0
+	TALENT:ARG:포동포동 = 0
+ENDIF
+
+;-------------------------------------------------
+;外見を표시させる。머리카락색깔・머리카락형태・눈동자색깔・肌の色の四종류。
+;-------------------------------------------------
+@SHOW_APPEARANCE, ARG
+PRINT 머리카락색깔：
+CALL SHOW_HAIRCOLOR(ARG)
+PRINT 　머리카락형태：
+CALL SHOW_HAIRSTYLE(ARG)
+PRINT 　눈동자색깔：
+CALL SHOW_EYECOLOR(ARG)
+PRINT 　피부색깔：
+CALL SHOW_SKINCOLOR(ARG)
+PRINTL
+
+@SHOW_HAIRCOLOR, ARG
+SELECTCASE CFLAG:ARG:머리카락색깔
+CASE 0
+	PRINT 미설정
+CASE 1
+	PRINT 검은색
+CASE 2
+	PRINT 갈색
+CASE 3
+	PRINT 금색
+CASE 4
+	PRINT 은색
+CASE 5
+	PRINT 빨간색
+CASE 6
+	PRINT 파란색
+CASE 7
+	PRINT 녹색
+CASE 8
+	PRINT 핑크
+CASE 9
+	PRINT 자주색
+CASE 10
+	PRINT 백색
+CASE 11
+	PRINT 밤색
+CASE 12
+	PRINT 박빛
+CASE 13
+	PRINT 적자색
+CASE 14
+	PRINT 플라티나
+CASE 15
+	PRINT 애쉬 브라운
+CASE 16
+	PRINT 오렌지
+CASEELSE
+	PRINT 불명
+ENDSELECT
+
+@SHOW_HAIRSTYLE, ARG
+IF TALENT:ARG:남자 && !TALENT:ARG:오토코노코
+	SELECTCASE CFLAG:ARG:머리카락형태
+	CASE 0
+		PRINT 미설정
+	CASE 1
+		PRINT 스킨헤드
+	CASE 2
+		PRINT 스포츠
+	CASE 3
+		PRINT 단발
+	CASE 4
+		PRINT 모히칸
+	CASE 5
+		PRINT 상투
+	CASE 6
+		PRINT 칠대삼
+	CASE 7
+		PRINT 장발
+	CASE 8
+		PRINT 펀치파마
+	CASE 9
+		PRINT 미즈라
+	CASE 10
+		PRINT 변발
+	CASEELSE
+		PRINT 불명
+	ENDSELECT
+ELSE
+	SELECTCASE CFLAG:ARG:머리카락형태
+	CASE 0
+		PRINT 미설정
+	CASE 1
+		PRINT 숏헤어
+	CASE 2
+		PRINT 숏커트
+	CASE 3
+		PRINT 세미롱
+	CASE 4
+		PRINT 포니테일
+	CASE 5
+		PRINT 트윈테일
+	CASE 6
+		PRINT 스트레이트 롱
+	CASE 7
+		PRINT 업
+	CASE 8
+		PRINT 뭉실뭉실 파마
+	CASE 9
+		PRINT 롱웨이
+	CASE 10
+		PRINT 땋은 머리
+	CASE 11
+		PRINT 투사이드업
+	CASE 12
+		PRINT 번
+	CASE 13
+		PRINT 일본식 머리
+	CASEELSE
+		PRINT 불명
+	ENDSELECT
+ENDIF
+
+@SHOW_EYECOLOR, ARG
+SELECTCASE CFLAG:ARG:눈동자색깔
+CASE 0
+	PRINT 미설정
+CASE 1
+	PRINT 검은색
+CASE 2
+	PRINT 갈색
+CASE 3
+	PRINT 금색
+CASE 4
+	PRINT 은색
+CASE 5
+	PRINT 빨간색
+CASE 6
+	PRINT 파란색
+CASE 7
+	PRINT 녹색
+CASE 8
+	PRINT 자주색
+CASE 9
+	PRINT 회색
+CASE 10
+	PRINT 하늘색
+CASEELSE
+	PRINT 불명
+ENDSELECT
+
+@SHOW_SKINCOLOR, ARG
+SELECTCASE CFLAG:ARG:피부색깔
+CASE 0
+	PRINT 미설정
+CASE 1
+	PRINT 흰색
+CASE 2
+	PRINT 갈색
+CASE 3
+	PRINT 빨간색
+CASE 4
+	PRINT 파란색
+CASE 5
+	PRINT 녹색
+CASEELSE
+	PRINT 불명
+ENDSELECT
+
+
+
+;-------------------------------------------------
+;スリーサイズのオートセット
+;誤差上等。仮決めみたいなもの。
+;-------------------------------------------------
+@SET_INFO_BODYSIZE, ARG, ARGS
+;남자の場合、または身長미설정、また、厳しめの조건に合致しない場合は帰る
+SIF TALENT:ARG:남자 || BASE:ARG:신장 == 0
+	RETURN 0
+
+
+;スリーサイズが설정されていない場合、素質から自動でセットする
+IF BASE:ARG:바스트 == 0
+	CALL SET_INFO_BODYSIZE_AUTO_BUST(ARG)
+	CALL SET_INFO_BODYSIZE_AUTO_WAIST(ARG)
+	CALL SET_INFO_BODYSIZE_AUTO_HIP(ARG)
+ENDIF
+
+
+;변경の上限、下限については、あえて체크しない
+SELECTCASE ARGS
+	CASE "豊가슴"
+		;0-2カップ分くらい変動する
+		BASE:ARG:바스트 += RAND:6 +1
+	CASE "縮가슴"
+		;0-2カップ分くらい変動する
+		BASE:ARG:바스트 -= RAND:6 +1
+	CASE "肥満"
+		BASE:ARG:웨스트 += RAND:3 +1
+	CASE "痩身"
+		BASE:ARG:웨스트 -= RAND:3 +1
+	CASE "豊尻"
+		BASE:ARG:힙사이즈 += RAND:3 +1
+	CASE "縮尻"
+		BASE:ARG:힙사이즈 -= RAND:3 +1
+	CASEELSE
+		;身長伸ばす薬とかもアリな気がする。変化の薬(アダルト）とかで……
+ENDSELECT
+
+
+
+
+;-------------------------------------------------
+;バストサイズのオートセット
+;-------------------------------------------------
+@SET_INFO_BODYSIZE_AUTO_BUST, ARG
+	IF TALENT:ARG:절벽
+		;AAA-AA
+		LOCAL = RAND:30
+		;測定不能절벽にしない慈悲
+		SIF LOCAL <= 10
+			LOCAL = 10
+	ELSEIF TALENT:ARG:빈유
+		;A-B
+		LOCAL = RAND:40
+		LOCAL += 20
+		;カップサイズは3-4
+		SIF LOCAL >= 40
+			LOCAL = 40
+		SIF LOCAL <= 30
+			LOCAL = 30
+	ELSEIF TALENT:ARG:거유
+		;D-E
+		LOCAL = RAND:30
+		LOCAL += 50
+		;カップサイズは6-7
+		SIF LOCAL >= 70
+			LOCAL = 70
+		SIF LOCAL <= 60
+			LOCAL = 60
+	ELSEIF TALENT:ARG:폭유
+		;F-K
+		LOCAL = RAND:80
+		LOCAL += 60
+		;カップサイズは8-13
+		SIF LOCAL >= 130
+			LOCAL = 130
+		SIF LOCAL <= 80
+			LOCAL = 80
+	ELSEIF TALENT:ARG:魔乳
+		;L-魔
+		;魔なるものなので凄まじく雑にブレる
+		;期待値的には18＝Ｐカップくらい。
+		;また、下限カップが出やすい。1/3くらいはＬカップになる。ラージサイズだな。……雑ゥ！！！
+		LOCAL = RAND:250
+		LOCAL += 60
+		;カップサイズは14-30
+		SIF LOCAL >= 300
+			LOCAL = 300
+		SIF LOCAL <= 140
+			LOCAL = 140
+	;普通乳
+	ELSE
+		;C
+		LOCAL = RAND:10
+		LOCAL = 50
+	ENDIF
+
+	;身長からおよそのサイズを설정
+	;身長から予測されるアンダーバストに、カップ数分の가슴囲をプラスし、1000以下を切り捨てし1000で割る
+	;でっかいオパーイは夢なので上限下限を설정しないこととする。
+	;ちなみに160センチでB74(AAA)-146(魔)になる。
+	RESULT = BASE:ARG:신장 * 432
+	RESULT += (LOCAL * 250) + 2500
+	RESULT -= S % 1000
+
+	BASE:ARG:바스트 = RESULT / 1000
+
+
+;-------------------------------------------------
+;ウェストサイズのオートセット
+;-------------------------------------------------
+@SET_INFO_BODYSIZE_AUTO_WAIST, ARG
+	;기본は身長/1000*350から410の間だがたまーに油断してる
+	;真ん中ちょい上が標準
+	LOCAL = 330
+	LOCAL += RAND:50 + RAND:50
+	SIF LOCAL >= 410
+		LOCAL = 410
+	SIF LOCAL <= 350
+		LOCAL = 350
+	;1/5で油断、子どもならイカ腹な感じでしょうかね
+	SIF RAND:5 == 0
+		LOCAL += RAND:50
+
+	;ウェストを算出し、1000以下を切り捨てし1000で割る
+	RESULT = BASE:ARG:신장 * LOCAL
+	RESULT -= S % 1000
+	BASE:ARG:웨스트 = RESULT / 1000
+
+;-------------------------------------------------
+;ヒップサイズのオートセット
+;-------------------------------------------------
+@SET_INFO_BODYSIZE_AUTO_HIP, ARG
+;기본は乳サイズの流用
+
+	IF TALENT:ARG:小尻
+		;10-19の範囲
+		LOCAL = RAND:20
+		SIF LOCAL <= 10
+			LOCAL = 10
+	ELSEIF TALENT:ARG:巨尻
+		;30-39
+		LOCAL = RAND:20
+		LOCAL += 20
+		SIF LOCAL >= 39
+			LOCAL = 39
+		SIF LOCAL <= 30
+			LOCAL = 30
+	ELSEIF TALENT:ARG:爆尻
+		;40-49
+		;ちょっとだけ大きくなりやすい
+		LOCAL = RAND:25
+		LOCAL += 30
+		SIF LOCAL >= 49
+			LOCAL = 49
+		SIF LOCAL <= 40
+			LOCAL = 40
+	ELSEIF TALENT:ARG:魔尻
+		;50-75
+		;大きくなりやすい
+		LOCAL = RAND:35
+		LOCAL += 45
+		SIF LOCAL >= 75
+			LOCAL = 75
+		SIF LOCAL <= 50
+			LOCAL = 50
+	;미설정、または普通尻
+	ELSE
+		;20-29
+		;ちょっとおしりは小さめになりがちです。普通ならな。
+		LOCAL = RAND:20
+		LOCAL += 10
+		SIF LOCAL >= 29
+			LOCAL = 29
+		SIF LOCAL <= 20
+			LOCAL = 20
+	ENDIF
+
+
+	;身長からおよそのサイズを설정
+	;身長から予測される尻サイズを標準とし、そこから盛ったり削ったりし、1000以下を切り捨てし1000で割る
+	;でっかいおしりも夢なので上限下限を설정しないこととする。
+	;ちなみに160センチでH79(S)-103(魔)になる。
+	;X:標準尻
+	;Y:並尻分のプラス
+	X = BASE:ARG:신장 * (530 + RAND:13)
+	;並尻分の肉加算値
+	Y = RAND:20
+	Y += 10
+	SIF Y >= 29
+		Y = 29
+	SIF Y <= 20
+		Y = 20
+	RESULT = X - (Y * 300) + (LOCAL * 300)
+	RESULT -= S % 1000
+
+	BASE:ARG:힙사이즈 = RESULT / 1000
+
+
+
+
+;-------------------------------------------------
+;指定バストサイズにするやつ
+;SET_INFO_BODYSIZE_BUST,キャラ,乳サイズを指定
+;-------------------------------------------------
+@SET_INFO_BODYSIZE_BUST, ARG, ARGS
+
+	TALENT:ARG:절벽 = 0
+	TALENT:ARG:빈유 = 0
+	TALENT:ARG:거유 = 0
+	TALENT:ARG:폭유 = 0
+	TALENT:ARG:魔乳 = 0
+
+	SELECTCASE ARGS
+		CASE "절벽"
+			TALENT:ARG:절벽 = 1
+		CASE "빈유"
+			TALENT:ARG:빈유 = 1
+		CASE "거유"
+			TALENT:ARG:거유 = 1
+		CASE "폭유"
+			TALENT:ARG:폭유 = 1
+		CASE "魔乳"
+			TALENT:ARG:魔乳 = 1
+		CASEELSE
+	ENDSELECT
+
+CALL SET_INFO_BODYSIZE_AUTO_BUST, ARG
+
+;-------------------------------------------------
+;指定ヒップサイズにするやつ
+;-------------------------------------------------
+@SET_INFO_BODYSIZE_HIP, ARG, ARGS
+
+
+	TALENT:ARG:小尻 = 0
+	TALENT:ARG:並尻 = 0
+	TALENT:ARG:巨尻 = 0
+	TALENT:ARG:爆尻 = 0
+	TALENT:ARG:魔尻 = 0
+
+	SELECTCASE ARGS
+		CASE "小尻"
+			TALENT:ARG:小尻 = 1
+		CASE "並尻"
+			TALENT:ARG:並尻 = 1
+		CASE "巨尻"
+			TALENT:ARG:巨尻 = 1
+		CASE "爆尻"
+			TALENT:ARG:爆尻 = 1
+		CASE "魔尻"
+			TALENT:ARG:魔尻 = 1
+		CASEELSE
+	ENDSELECT
+CALL SET_INFO_BODYSIZE_AUTO_HIP, ARG
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

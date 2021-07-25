@@ -1,0 +1,136 @@
+﻿;기교の可否
+@ISABLUP2
+;연모、친애、복종、예속はMAXLV10
+IF ABL:2 >= 10
+	RETURN 0
+ELSEIF ABL:2 >= 5 && !함락(TARGET) && TARGET != MASTER
+	RETURN 0
+ENDIF
+
+CALL DECIDE_ABLUP2
+
+IF Z == 0
+	RETURN 0
+ELSE
+	RETURN 1
+ENDIF
+
+
+;기교
+@ABLUP2
+$ABLUP_LOOP
+
+DRAWLINE
+;연모、친애、복종、예속はMAXLV10
+IF ABL:2 >= 10
+	PRINTW 이미 MAX입니다
+	RETURN 0
+ELSEIF ABL:2 >= 5 && !함락(TARGET) && TARGET != MASTER
+	PRINTW 이미 MAX입니다
+	RETURN 0
+ENDIF
+
+CALL DECIDE_ABLUP2
+
+PRINT [0] - 
+PRINTS PALAMNAME:8
+PRINT 의 구슬×
+PRINTV A
+PRINT ……
+IF I == 0
+	PRINT ＯＫ
+ELSE
+	SIF I & 1
+		PRINT 구슬부족 
+	SIF I & 2
+		PRINT 경험부족 
+ENDIF
+PRINTL 
+
+IF Z == 0
+	WAIT
+	RETURN
+ENDIF
+
+PRINTLC [100] - 그만둔다
+PRINTFORMLC   %" " * 42%
+PRINTLC [200] - 자동 능력 상승
+
+
+INPUT
+IF (RESULT < 0 || RESULT > 0) && RESULT != 100 && RESULT != 200
+	RESTART
+ELSEIF I != 0 && RESULT == 0
+	PRINTL 조건을 만족하지 못했습니다
+	RETURN 0
+ELSEIF RESULT == 100
+	RETURN 0
+ELSEIF RESULT == 200
+	CALL AUTOMAX, 2
+	RETURN 0
+ENDIF
+
+ABL:2 += 1
+
+IF RESULT == 0
+	JUEL:8 -= A
+ENDIF
+
+PRINTS ABLNAME:2
+PRINT 의 레벨이 
+PRINTV ABL:2
+PRINTFORMW %조사만처리(ABL:2,"가")% 되었습니다
+GOTO ABLUP_LOOP
+
+;기교LVUP판정
+@DECIDE_ABLUP2
+;조건別にＯＫかダメかを記録する
+I = 0
+;능력アップ가능なら1にする
+Z = 0
+
+IF ABL:2 == 0
+	A = 1
+ELSEIF ABL:2 == 1
+	A = 20
+ELSEIF ABL:2 == 2
+	A = 200
+ELSEIF ABL:2 == 3
+	A = 3000
+ELSEIF ABL:2 == 4
+	A = 20000
+ELSEIF ABL:2 == 5
+	A = 25000
+ELSEIF ABL:2 == 6
+	A = 34000
+ELSEIF ABL:2 == 7
+	A = 45000
+ELSEIF ABL:2 == 8
+	A = 55000
+ELSEIF ABL:2 == 9
+	A = 70000
+ENDIF
+
+;自尊心
+IF TALENT:15
+	TIMES A , 1.50
+ENDIF
+;일선을넘지않음
+IF TALENT:27 && (TALENT:3 == 0 && TALENT:4 == 0 && TALENT:5 == 0 && 함락() < 2)
+	TIMES A , 2.00
+ENDIF
+
+;0になった場合は1にする
+SIF A == 0
+	A = 1
+
+;습득의 구슬で上げる
+SIF JUEL:8 < A
+	I |= 1
+
+IF I == 0
+	Z = 1
+ENDIF
+RETURN 1
+
+

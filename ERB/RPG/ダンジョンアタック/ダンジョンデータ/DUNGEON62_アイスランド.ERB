@@ -1,0 +1,1011 @@
+﻿
+;=======================================================================
+;
+;=======================================================================
+
+;=======================================================================
+;攻略조건
+;=======================================================================
+@PREREQUISITE_DUNGEON_62
+SIF 의뢰フラグ:12:0 == 1
+	RETURN 1
+RETURN 0
+
+;=======================================================================
+;던전名
+;=======================================================================
+@GET_DUNGEON_NAME_62
+RESULTS = 아이스랜드
+
+;=======================================================================
+;스타ト地点입력
+;=======================================================================
+@START_DUNGEON_62, ARG
+FLAG:現M = 0
+FLAG:現X = 7
+FLAG:現Y =15
+;CALL AUTOMAP
+RETURN 0
+;=======================================================================
+;스타ト時이벤트
+;=======================================================================
+@EVENT_DUNGEON_START_62
+IF 던전フラグ:62:5 == 0
+	CALL MESSAGE_WINDOW_D, "", "＞얼음의 마계 아이스 랜드"
+	IF 던전フラグ:61:1 == 1
+		CALL MESSAGE_WINDOW_D, "","＞이곳에 있는 마왕 헬이 메시아의 뿔을 가지고 있다고 한다"
+	ELSEIF 던전フラグ:61:1 == 2
+		CALL MESSAGE_WINDOW_D, "","＞이곳에 있는 마왕 헬이 메시아의 눈동자를 가지고 있다고 한다"
+	ENDIF
+		CALL MESSAGE_WINDOW_D, "","＞당신은 헬을 만나보기로 했다"
+던전フラグ:62:5 = 1
+ENDIF
+;=======================================================================
+;フ로어名표시
+;=======================================================================
+@FLOORNAME_62
+	PRINT 아이스 랜드　
+SELECTCASE FLAG:現M
+	CASE 0
+		PRINTL 프로스트 타운
+	CASE 1
+		PRINTL 엘류드니르・바깥
+	CASE 2
+		PRINTL 엘류드니르・１Ｆ
+	CASE 3
+		PRINTL 엘류드니르・２Ｆ
+	CASE 4
+		PRINTL 엘류드니르・３Ｆ
+	CASE 5
+		PRINTL 엘류드니르・마왕의 방
+	CASE 6
+		PRINTL 엘류드니르・감옥
+	CASE 7
+		PRINTL 탈출 통로
+	CASE 8
+		PRINTL 감춰진 평원
+	CASE 9
+		PRINTL 감춰진 통로
+	CASEELSE
+ENDSELECT
+;=======================================================================
+;指定したマスに進入가능か
+;=======================================================================
+@CAN_ENTER_62, ARG, ARG:1
+SELECTCASE DA:ARG:(ARG:1)
+	CASE 12
+		;上にしか進めない＝上からは無理
+		;上である時＝現在のYがARG:1より小さいとき
+	IF 던전フラグ:62:1 == 1
+		IF ARG:1 < FLAG:現Y
+			CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, ARG, ARG:1)
+			RETURN 0
+		ENDIF
+	ENDIF
+
+	CASE 22
+	IF 던전フラグ:62:6 == 0
+		IF ARG:1 > FLAG:現Y
+			CALL MESSAGE_WINDOW_D, "", "＞감옥의 문은 닫혀있다"
+			CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, ARG, ARG:1)
+			RETURN 0
+		ELSE
+		CALL MESSAGE_WINDOW_D, "", "＞닫혀있던 문을 열었다"
+		던전フラグ:62:6 =1
+		ENDIF
+	ENDIF
+
+	CASE 32
+	IF 던전フラグ:62:4 == 0
+		IF ARG:1 < FLAG:現Y
+			CALL MESSAGE_WINDOW_D, "", "＞문은 닫혀있다"
+			CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, ARG, ARG:1)
+			RETURN 0
+		ELSE
+			CALL MESSAGE_WINDOW_D, "", "＞닫혀있던 문을 열었다"
+			던전フラグ:62:4 = 1
+			던전フラグ:62:1 = 3
+			FLAG:탈출스킬禁止 = 0
+		ENDIF
+	ENDIF
+	CASEELSE
+ENDSELECT
+CALL CAN_ENTER,ARG,ARG:1
+RETURN RESULT
+
+;=======================================================================
+;特殊タイル표시
+;=======================================================================
+@TILE_MARK_COMMON_62_1, ARG , ARG:1 , ARG:2
+SELECTCASE ARG / 10
+	CASE 30
+	IF 던전フラグ:62:1 >= 2
+			RESULTS = ↑
+	ELSE
+			RESULTS = ■
+	ENDIF
+	CASE 10 , 20 , 41 , 50 , 60
+		RESULTS = ↑
+	CASE 11 , 21 , 31 , 40 , 51 , 61
+		RESULTS = ↓
+	CASEELSE
+		RETURN 1
+ENDSELECT
+
+@TILE_MARK_COMMON_62_2, ARG , ARG:1 , ARG:2
+SELECTCASE ARG / 10
+	CASE 1
+	IF 던전フラグ:62:1 >= 2
+			RESULTS = □
+	ELSE
+			RESULTS = ■
+	ENDIF
+	CASEELSE
+		RETURN 1
+ENDSELECT
+
+@TILE_MARK_COMMON_62_4, ARG , ARG:1 , ARG:2
+SELECTCASE ARG / 10
+	CASE  60
+		SETCOLOR 0x00ff00
+		RESULTS = ｍ
+	CASE  10 , 70
+		IF 던전フラグ:62:1 < 4
+		SETCOLOR 0x00ff00
+		RESULTS = ｍ
+		ELSE
+		RESULTS = □
+		ENDIF
+	CASE  20
+	IF 던전フラグ:62:1 <= 2 && 던전フラグ:62:2 == 0
+		SETCOLOR 0x00ff00
+		RESULTS = ｍ
+		ELSE
+		RESULTS = □
+		ENDIF
+	CASE  30
+	IF 던전フラグ:62:1 <= 2 && 던전フラグ:62:3 == 0
+		SETCOLOR 0x00ff00
+		RESULTS = ｍ
+		ELSE
+		RESULTS = □
+		ENDIF
+	CASE  40
+	IF 던전フラグ:62:1 == 3 && 던전フラグ:62:2 == 0
+		SETCOLOR 0x00ff00
+		RESULTS = ｍ
+		ELSE
+		RESULTS = □
+		ENDIF
+	CASE  50
+	IF 던전フラグ:62:1 == 3 && 던전フラグ:62:3 == 0
+		SETCOLOR 0x00ff00
+		RESULTS = ｍ
+		ELSE
+		RESULTS = □
+		ENDIF
+	CASE  444
+	IF 던전フラグ:62:1 == 1
+		SETCOLOR 0x00ff00
+		RESULTS = ｍ
+		ELSE
+		RESULTS = □
+		ENDIF
+	CASEELSE
+		RETURN 1
+ENDSELECT
+
+
+@TILE_MARK_COMMON_62_9, ARG , ARG:1 , ARG:2
+SELECTCASE ARG / 10
+	CASE 222
+	IF 던전フラグ:62:1 == 0
+			RESULTS = ！
+	ELSE
+			RESULTS = □
+	ENDIF
+;	CASEELSE
+;		RETURN 1
+ENDSELECT
+
+;=======================================================================
+;タイル定義
+;=======================================================================
+@DEFINE_TILES_62, ARGS, ARG, ARG:1
+SELECTCASE ARGS
+	CASE "a"
+		RETURN 101
+	CASE "A"
+		RETURN 111
+	CASE "b"
+		RETURN 201
+	CASE "B"
+		RETURN 211
+	CASE "c"
+		RETURN 301
+	CASE "C"
+		RETURN 311
+	CASE "d"
+		RETURN 401
+	CASE "D"
+		RETURN 411
+	CASE "e"
+		RETURN 501
+	CASE "E"
+		RETURN 511
+	CASE "f"
+		RETURN 601
+	CASE "F"
+		RETURN 611
+	CASE "x"
+		RETURN 12
+	CASE "y"
+		RETURN 22
+	CASE "z"
+		RETURN 32
+	CASE "W"
+		RETURN 2229
+	CASE "!"
+		RETURN 104
+	CASE "#"
+		RETURN 204
+	CASE "$"
+		RETURN 304
+	CASE "%"
+		RETURN 404
+	CASE "&"
+		RETURN 504
+	CASE "'"
+		RETURN 604
+	CASE "("
+		RETURN 704
+	CASE "Y"
+		RETURN 4444
+	CASE "Z"
+		RETURN 5554
+ENDSELECT
+
+;=======================================================================
+;フ로어데이터
+;=======================================================================
+@MAKE_FLOOR_62
+SELECTCASE FLAG:現M
+	CASE 0
+		;フロストタウン
+		FLAG:최대X = 14
+		FLAG:최대Y = 17
+							;	  01234567890123456789
+   		CALL MAKE_FLOOR_LINE, 0, "       a      "
+   		CALL MAKE_FLOOR_LINE, 1, "       1      "
+   		CALL MAKE_FLOOR_LINE, 2, "       1      "
+   		CALL MAKE_FLOOR_LINE, 3, "       W      "
+   		CALL MAKE_FLOOR_LINE, 4, "   1!1111111  "
+   		CALL MAKE_FLOOR_LINE, 5, "   1   1   1  "
+   		CALL MAKE_FLOOR_LINE, 6, "   1 7 1 1 1  "
+   		CALL MAKE_FLOOR_LINE, 7, "   1 z 1 2 1  "
+   		CALL MAKE_FLOOR_LINE, 8, "  11%111&1111 "
+   		CALL MAKE_FLOOR_LINE, 9, "  1   111   1 "
+   		CALL MAKE_FLOOR_LINE,10, "  1 1 111 T ( "
+   		CALL MAKE_FLOOR_LINE,11, "  1 2 111 2 1 "
+   		CALL MAKE_FLOOR_LINE,12, "  1111'111111 "
+   		CALL MAKE_FLOOR_LINE,13, "       1      "
+   		CALL MAKE_FLOOR_LINE,14, "       1      "
+   		CALL MAKE_FLOOR_LINE,15, "       1      "
+   		CALL MAKE_FLOOR_LINE,16, "       8      "
+
+	CASE 1
+		FLAG:최대X = 15
+		FLAG:최대Y = 18 
+							;	  01234567890123456789
+   		CALL MAKE_FLOOR_LINE, 0, "               "
+   		CALL MAKE_FLOOR_LINE, 1, "  1         1  "
+   		CALL MAKE_FLOOR_LINE, 2, "  1    b    1  "
+   		CALL MAKE_FLOOR_LINE, 3, "  111  2  111  "
+   		CALL MAKE_FLOOR_LINE, 4, "    1111111    "
+   		CALL MAKE_FLOOR_LINE, 5, "      111      "
+   		CALL MAKE_FLOOR_LINE, 6, "   11 111 11   "
+   		CALL MAKE_FLOOR_LINE, 7, "   1111111111  "
+   		CALL MAKE_FLOOR_LINE, 8, "   1  11111111 "
+   		CALL MAKE_FLOOR_LINE, 9, "  11111111111  "
+   		CALL MAKE_FLOOR_LINE,10, " 111111111  11 "
+   		CALL MAKE_FLOOR_LINE,11, "  111  1111111 "
+   		CALL MAKE_FLOOR_LINE,12, "     11111111  "
+   		CALL MAKE_FLOOR_LINE,13, "    11111  1   "
+   		CALL MAKE_FLOOR_LINE,14, "     111111    "
+   		CALL MAKE_FLOOR_LINE,15, "    111111     "
+   		CALL MAKE_FLOOR_LINE,16, "      111      "
+   		CALL MAKE_FLOOR_LINE,17, "       A       "
+
+
+	CASE 2
+		FLAG:최대X = 32
+		FLAG:최대Y = 30
+							;	  0123456789012345678901234567890
+   		CALL MAKE_FLOOR_LINE, 0, "                               "
+   		CALL MAKE_FLOOR_LINE, 1, "              6                "
+   		CALL MAKE_FLOOR_LINE, 2, "              2                "
+   		CALL MAKE_FLOOR_LINE, 3, "             111               "
+   		CALL MAKE_FLOOR_LINE, 4, "    3         1           3    "
+   		CALL MAKE_FLOOR_LINE, 5, "    2  3     111          2    "
+   		CALL MAKE_FLOOR_LINE, 6, "   111 2    11111        111   "
+   		CALL MAKE_FLOOR_LINE, 7, "  111111111111111111111111111  "
+   		CALL MAKE_FLOOR_LINE, 8, "   111     1111111       111   "
+   		CALL MAKE_FLOOR_LINE, 9, "            11111         1    "
+   		CALL MAKE_FLOOR_LINE,10, "             111          1    "
+   		CALL MAKE_FLOOR_LINE,11, "             111          1    "
+   		CALL MAKE_FLOOR_LINE,12, "              1          111   "
+   		CALL MAKE_FLOOR_LINE,13, "    3        111          1    "
+   		CALL MAKE_FLOOR_LINE,14, "    2                    111   "
+   		CALL MAKE_FLOOR_LINE,15, "  11111     11111   111111111  "
+   		CALL MAKE_FLOOR_LINE,16, " 111111111111111111111     111 "
+  		CALL MAKE_FLOOR_LINE,17, "   1     111     111           "
+   		CALL MAKE_FLOOR_LINE,18, "   1          1          7     "
+   		CALL MAKE_FLOOR_LINE,19, "   1          1          2     "
+   		CALL MAKE_FLOOR_LINE,20, "   1          1         111    "
+   		CALL MAKE_FLOOR_LINE,21, " 11111       111       11111   "
+   		CALL MAKE_FLOOR_LINE,22, "  11111     11111     11111    "
+   		CALL MAKE_FLOOR_LINE,23, "     11111111111111111111      "
+   		CALL MAKE_FLOOR_LINE,24, "             111               "
+   		CALL MAKE_FLOOR_LINE,25, "             111               "
+   		CALL MAKE_FLOOR_LINE,26, "              1                "
+   		CALL MAKE_FLOOR_LINE,27, "              1                "
+   		CALL MAKE_FLOOR_LINE,28, "             111               "
+   		CALL MAKE_FLOOR_LINE,29, "              B                "
+
+	CASE 3
+		FLAG:최대X = 12 
+		FLAG:최대Y = 12 
+							;	  01234567890123456789
+   		CALL MAKE_FLOOR_LINE, 0, "            "
+   		CALL MAKE_FLOOR_LINE, 1, "     6      "
+   		CALL MAKE_FLOOR_LINE, 2, "    111     "
+   		CALL MAKE_FLOOR_LINE, 3, "  1111111   "
+   		CALL MAKE_FLOOR_LINE, 4, " 11  1  11  "
+   		CALL MAKE_FLOOR_LINE, 5, "    111     "
+   		CALL MAKE_FLOOR_LINE, 6, "    111 T   "
+   		CALL MAKE_FLOOR_LINE, 7, " 111111111  "
+   		CALL MAKE_FLOOR_LINE, 8, "   11111    "
+   		CALL MAKE_FLOOR_LINE, 9, "    111     "
+   		CALL MAKE_FLOOR_LINE,10, "     7      "
+   		CALL MAKE_FLOOR_LINE,11, "            "
+
+
+	CASE 4
+		FLAG:최대X = 9 
+		FLAG:최대Y = 12 
+							;	  01234567890123456789
+   		CALL MAKE_FLOOR_LINE, 0, "    f    "
+   		CALL MAKE_FLOOR_LINE, 1, "    2    "
+   		CALL MAKE_FLOOR_LINE, 2, "    1    "
+   		CALL MAKE_FLOOR_LINE, 3, "  1 1 1  "
+   		CALL MAKE_FLOOR_LINE, 4, " 11 1 11 "
+   		CALL MAKE_FLOOR_LINE, 5, " 1111111 "
+   		CALL MAKE_FLOOR_LINE, 6, " 1 1 1 1 "
+   		CALL MAKE_FLOOR_LINE, 7, "   111   "
+   		CALL MAKE_FLOOR_LINE, 8, "    1    "
+   		CALL MAKE_FLOOR_LINE, 9, "   111   "
+   		CALL MAKE_FLOOR_LINE,10, "    7    "
+   		CALL MAKE_FLOOR_LINE,11, "         "
+
+	CASE 5
+		FLAG:최대X = 11 
+		FLAG:최대Y = 13 
+							;	  01234567890123456789
+   		CALL MAKE_FLOOR_LINE, 0, "           "
+   		CALL MAKE_FLOOR_LINE, 1, "           "
+   		CALL MAKE_FLOOR_LINE, 2, " 1 1 Z 1 1 "
+   		CALL MAKE_FLOOR_LINE, 3, " 111111111 "
+   		CALL MAKE_FLOOR_LINE, 4, "  1111111  "
+   		CALL MAKE_FLOOR_LINE, 5, "  1111111  "
+   		CALL MAKE_FLOOR_LINE, 6, " 111111111 "
+   		CALL MAKE_FLOOR_LINE, 7, " 1 11111 1 "
+   		CALL MAKE_FLOOR_LINE, 8, "    111    "
+   		CALL MAKE_FLOOR_LINE, 9, "     1     "
+   		CALL MAKE_FLOOR_LINE,10, "    111    "
+   		CALL MAKE_FLOOR_LINE,11, "    111    "
+   		CALL MAKE_FLOOR_LINE,12, "     F     "
+
+	CASE 6
+		FLAG:최대X = 10 
+		FLAG:최대Y = 12 
+							;	  01234567890123456789
+   		CALL MAKE_FLOOR_LINE, 0, "     c    "
+   		CALL MAKE_FLOOR_LINE, 1, "     x    "
+   		CALL MAKE_FLOOR_LINE, 2, "   111Y1  "
+   		CALL MAKE_FLOOR_LINE, 3, "  1$111#1 "
+   		CALL MAKE_FLOOR_LINE, 4, "  1111111 "
+   		CALL MAKE_FLOOR_LINE, 5, "     y    "
+   		CALL MAKE_FLOOR_LINE, 6, "   11111  "
+   		CALL MAKE_FLOOR_LINE, 7, "   11111  "
+   		CALL MAKE_FLOOR_LINE, 8, "  1111111 "
+   		CALL MAKE_FLOOR_LINE, 9, "     2    "
+   		CALL MAKE_FLOOR_LINE,10, "     6    "
+   		CALL MAKE_FLOOR_LINE,11, "          "
+
+	CASE 7
+		FLAG:최대X = 17
+		FLAG:최대Y = 18 
+							;	  01234567890123456789
+   		CALL MAKE_FLOOR_LINE, 0, "                 "
+   		CALL MAKE_FLOOR_LINE, 1, "         111     "
+   		CALL MAKE_FLOOR_LINE, 2, "      1111111    "
+   		CALL MAKE_FLOOR_LINE, 3, "    11111  111   "
+   		CALL MAKE_FLOOR_LINE, 4, "   111      111  "
+   		CALL MAKE_FLOOR_LINE, 5, "  111        111 "
+   		CALL MAKE_FLOOR_LINE, 6, "  11          11 "
+   		CALL MAKE_FLOOR_LINE, 7, "   1         111 "
+   		CALL MAKE_FLOOR_LINE, 8, "   11         11 "
+   		CALL MAKE_FLOOR_LINE, 9, "  111         1  "
+   		CALL MAKE_FLOOR_LINE,10, "  11          C  "
+   		CALL MAKE_FLOOR_LINE,11, " 111             "
+   		CALL MAKE_FLOOR_LINE,12, " 111             "
+   		CALL MAKE_FLOOR_LINE,13, "  11             "
+   		CALL MAKE_FLOOR_LINE,14, "   1             "
+   		CALL MAKE_FLOOR_LINE,15, "   1             "
+   		CALL MAKE_FLOOR_LINE,16, "   d             "
+   		CALL MAKE_FLOOR_LINE,17, "                 "
+
+	CASE 8
+		FLAG:최대X = 16 
+		FLAG:최대Y = 12
+							;	  01234567890123456789
+   		CALL MAKE_FLOOR_LINE, 0, "                "
+   		CALL MAKE_FLOOR_LINE, 1, "   D            "
+   		CALL MAKE_FLOOR_LINE, 2, "  111           "
+   		CALL MAKE_FLOOR_LINE, 3, "  111           "
+   		CALL MAKE_FLOOR_LINE, 4, "  111           "
+   		CALL MAKE_FLOOR_LINE, 5, "   11 T      e  "
+   		CALL MAKE_FLOOR_LINE, 6, "   11 2     111 "
+   		CALL MAKE_FLOOR_LINE, 7, "  11111     111 "
+   		CALL MAKE_FLOOR_LINE, 8, " 111111    111  "
+   		CALL MAKE_FLOOR_LINE, 9, "    1111  111   "
+   		CALL MAKE_FLOOR_LINE,10, "     11111111   "
+   		CALL MAKE_FLOOR_LINE,11, "                "
+
+
+	CASE 9
+		FLAG:최대X = 13
+		FLAG:최대Y = 16
+							;	  01234567890123456789
+   		CALL MAKE_FLOOR_LINE, 0, "             "
+   		CALL MAKE_FLOOR_LINE, 1, "          6  "
+   		CALL MAKE_FLOOR_LINE, 2, "         111 "
+   		CALL MAKE_FLOOR_LINE, 3, "         111 "
+   		CALL MAKE_FLOOR_LINE, 4, "         111 "
+   		CALL MAKE_FLOOR_LINE, 5, "          1  "
+   		CALL MAKE_FLOOR_LINE, 6, "          1  "
+   		CALL MAKE_FLOOR_LINE, 7, "          1  "
+   		CALL MAKE_FLOOR_LINE, 8, "      3  111 "
+   		CALL MAKE_FLOOR_LINE, 9, "     1111111 "
+   		CALL MAKE_FLOOR_LINE,10, "   11111111  "
+   		CALL MAKE_FLOOR_LINE,11, "  111111     "
+   		CALL MAKE_FLOOR_LINE,12, " 11111       "
+   		CALL MAKE_FLOOR_LINE,13, "  111        "
+   		CALL MAKE_FLOOR_LINE,14, "   E         "
+   		CALL MAKE_FLOOR_LINE,15, "             "
+
+	CASEELSE
+ENDSELECT
+
+;=======================================================================
+;タイル調整
+;=======================================================================
+@MAKE_FLOOR_LINE_COMMON_62, ARG, ARG:1, ARG:2
+#LOCALSIZE 30
+;LOCAL:3 宝箱 던전フラグ:70~99
+;LOCAL:4 이벤트
+;(0/0)でLOCALを소거
+SIF ARG:1 == 0 && ARG:2 == 0
+	VARSET LOCAL
+SELECTCASE ARG
+	CASE 3
+		IF GETBIT(던전フラグ:(FLAG:現던전):(FLAG:現M+70), LOCAL:3)
+			DA:(ARG:1):(ARG:2) = 1
+		ELSE
+			DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:3 * 10 + 3
+		ENDIF
+		LOCAL:3++
+	CASE 4
+		DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:4 * 10 + 4
+		LOCAL:4++
+	CASE 5
+		;DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:5 * 10 + 5
+		;LOCAL:5++
+	CASE 6
+		DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:6 * 10 + 6
+		LOCAL:6++
+	CASE 7
+		DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:7 * 10 + 7
+		LOCAL:7++
+	CASE 8
+		DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:8 * 10 + 8
+		LOCAL:8++
+	CASE 9
+		DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:9 * 10 + 9
+		LOCAL:9++
+
+ENDSELECT
+;=======================================================================
+;[5]조사　実行時の이벤트
+;=======================================================================
+@EVENT_CHECK_DUNGEON_62
+CALL EVENT_DUNGEON_62
+RETURN RESULT
+
+;=======================================================================
+;タイル進入時の이벤트
+;=======================================================================
+@EVENT_ENTER_DUNGEON_62,ARG
+;ARG = 進入時の向き　0の場合ワープなど
+CALL EVENT_DUNGEON_62, ARG , 0
+RETURN RESULT
+
+@EVENT_DUNGEON_62, ARG, ARG:1
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y) % 10
+;==========
+;ワープの処理
+;==========
+	CASE 1
+	CALL FLOOR_62
+	RETURN RESULT
+;==========
+;出입の処理
+;==========
+	CASE 8
+		CALL DUNGEON_EXIT
+	RETURN 1
+;==========
+;扉の処理
+;==========
+	CASE 2
+		CALL DUNGEON_DOOR,ARG
+		RETURN 1
+;========
+;宝の処理
+;========
+	CASE 3
+		CALL TREASURE_62
+		RETURN 1
+
+;=======
+;階段
+;=======
+	CASE 6
+		CALL UPSTAIRS_62
+		RETURN 1
+
+	CASE 7
+		CALL DOWNSTAIRS_62
+		RETURN 1
+;==========
+;이벤트
+;==========
+	CASE 4
+	SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+	CASE 10
+		IF 던전フラグ:62:1 < 4
+		CALL MESSAGE_WINDOW_D, "잭프로스트", "큰 소리로 말할 수는 없지만 호―, 그 헬이란 녀석이 온 뒤로 이 거리는 힘들다 호―"
+		CALL MESSAGE_WINDOW_D, "잭프로스트", "거리에서 약탈하지, 걔 밑에 붙은 놈들도 제멋대로 굴지 엉망진창이다 호―"
+		ENDIF
+	CASE 20
+		IF 던전フラグ:62:1 == 1
+			CALL MESSAGE_WINDOW_D, "설인", "이 마을의 헬이란 녀석은 지독한 녀석이라, 약탈하거나 마구 날뛰는 등 맘대로 굴고 있어"
+		ELSEIF 던전フラグ:62:1 == 2 && 던전フラグ:62:2 == 0
+			CALL MESSAGE_WINDOW_D, "더스트", "난 도적단의 부두목인 더스트라고 하지"
+			CALL MESSAGE_WINDOW_D, "더스트", "헬을 쓰러뜨리는데 협력해주겠다면 동료마가 되어주마!"
+		CALL INPUT_YN_D
+			IF RESULT == 0;y
+				CALL MESSAGE_WINDOW_D, "더스트", "앞으로 잘 부탁한다야!"
+				CALL MESSAGE_WINDOW_D, "", "＞더스트가 동료마로 들어왔다!"
+					CALL ADD_NEW_COMPANION,[[キャラ:예티]],200
+					IF RESULT == 1
+						NAME:(RESULT:1) = ダスト
+						CALLNAME:(RESULT:1) = ダスト
+						BASE:(RESULT:1):LV = 16
+						BASE:(RESULT:1):ＥＸＰ = 5*(BASE:(RESULT:1):LV - 1)*(BASE:(RESULT:1):LV)*(BASE:(RESULT:1):LV + 1)/3*5/4
+						BASE:(RESULT:1):힘 = 13
+						BASE:(RESULT:1):지혜 = 3 
+						BASE:(RESULT:1):마력 = 4
+						BASE:(RESULT:1):인내력 = 10
+						BASE:(RESULT:1):속도 = 7
+						BASE:(RESULT:1):운 = 5
+						ABL:(RESULT:1):스킬4 = [[스킬:부후라]]
+						ABL:(RESULT:1):스킬5 = [[스킬:아이스브레스]]
+						ABL:(RESULT:1):스킬6 = [[스킬:디아라한]]
+						CALL SYNC_STATUS,(RESULT:1)
+						CALL HEALTH_CHARA,(RESULT:1)
+					ENDIF
+				던전フラグ:62:2 = 1
+			ELSEIF RESULT == 1;n
+					CALL MESSAGE_WINDOW_D, "더스트", "언제든 말만 걸어주라고!"
+			ENDIF
+		ENDIF
+	CASE 30
+		IF 던전フラグ:62:1 == 1
+			CALL MESSAGE_WINDOW_D, "네코마타", "헬 부하인 놈에게 억지로 여기로 끌려왔어……/이대로 여기에 있다가는……"
+		ELSEIF 던전フラグ:62:1 == 2 && 던전フラグ:62:3 == 0
+			CALL MESSAGE_WINDOW_D, "네코마타", "여기서 나갈 거면 같이 데려가 줘"
+		CALL INPUT_YN_D
+			IF RESULT == 0;y
+				CALL MESSAGE_WINDOW_D, "네코마타", "응, 잘 부탁할게"
+				CALL MESSAGE_WINDOW_D, "", "＞네코마타가 동료마로 들어왔다!"
+					CALL ADD_NEW_COMPANION,[[キャラ:네코마타]],200
+					던전フラグ:62:3 = 1
+			ELSEIF RESULT == 1;n
+					CALL MESSAGE_WINDOW_D, "네코마타", "언제든 말 붙여줘……"
+			ENDIF
+		ENDIF
+	CASE 40
+	IF 던전フラグ:62:1 == 3 && 던전フラグ:62:2 == 0
+			CALL MESSAGE_WINDOW_D, "더스트", "난 도적단의 부두목인 더스트라고 하지"
+			CALL MESSAGE_WINDOW_D, "더스트", "헬을 쓰러뜨리는데 협력해주겠다면 동료마가 되어주마!"
+		CALL INPUT_YN_D
+			IF RESULT == 0;y
+				CALL MESSAGE_WINDOW_D, "더스트", "앞으로 잘 부탁한다야!"
+				CALL MESSAGE_WINDOW_D, "", "＞더스트가 동료마로 들어왔다!"
+					CALL ADD_NEW_COMPANION,[[キャラ:예티]],200
+					IF RESULT == 1
+						NAME:(RESULT:1) = ダスト
+						CALLNAME:(RESULT:1) = ダスト
+						BASE:(RESULT:1):LV = 16
+						BASE:(RESULT:1):ＥＸＰ = 5*(BASE:(RESULT:1):LV - 1)*(BASE:(RESULT:1):LV)*(BASE:(RESULT:1):LV + 1)/3*5/4
+						BASE:(RESULT:1):힘 = 13
+						BASE:(RESULT:1):지혜 = 3 
+						BASE:(RESULT:1):마력 = 4
+						BASE:(RESULT:1):인내력 = 10
+						BASE:(RESULT:1):속도 = 7
+						BASE:(RESULT:1):운 = 5
+						ABL:(RESULT:1):스킬4 = [[스킬:부후라]]
+						ABL:(RESULT:1):스킬5 = [[스킬:아이스브레스]]
+						ABL:(RESULT:1):스킬6 = [[스킬:디아라한]]
+						CALL SYNC_STATUS,(RESULT:1)
+						CALL HEALTH_CHARA,(RESULT:1)
+					ENDIF
+				던전フラグ:62:2 = 1
+			ELSEIF RESULT == 1;n
+					CALL MESSAGE_WINDOW_D, "더스트", "언제든 말만 걸어주라고!"
+			ENDIF
+		ENDIF
+	CASE 50
+		IF 던전フラグ:62:1 == 3 && 던전フラグ:62:3 == 0
+			CALL MESSAGE_WINDOW_D, "네코마타", "헬과 싸울 거라면 돕게 해줘!"
+		CALL INPUT_YN_D
+			IF RESULT == 0;y
+				CALL MESSAGE_WINDOW_D, "네코마타", "응, 잘 부탁할게"
+				CALL MESSAGE_WINDOW_D, "", "＞네코마타가 동료마로 들어왔다!"
+					CALL ADD_NEW_COMPANION,[[キャラ:네코마타]],200
+					던전フラグ:62:3 = 1
+			ELSEIF RESULT == 1;n
+					CALL MESSAGE_WINDOW_D, "네코마타", "언제든 말 붙여줘……"
+			ENDIF
+		ENDIF
+	CASE 60
+	IF 던전フラグ:62:1 < 4
+		CALL MESSAGE_WINDOW_D, "잭프로스트", "인간이 마계에 오다니 별일이다 호―"
+		CALL MESSAGE_WINDOW_D, "잭프로스트", "여기는 프로스트 타운이라고 해 호―/ 마을 북쪽에는 헬 님이 계신 성이 있다 호―"
+	ELSE
+		CALL MESSAGE_WINDOW_D, "잭프로스트", "헬이 없어져서 평화로워졌다 호―"
+	ENDIF
+	CASE 70
+	IF 던전フラグ:62:1 < 4
+		CALL MESSAGE_WINDOW_D, "잭프로스트", "헬에게 거역하던 도적단이 잡혔다 호―"
+		CALL MESSAGE_WINDOW_D, "잭프로스트", "이젠 아무도 헬에게 거역하지 않는다 호―……"
+	ENDIF
+	CASE 444
+		IF 던전フラグ:62:1 == 1
+				CALL MESSAGE_WINDOW_D, "", "＞빨간 잭프로스트가 있다"
+				CALL MESSAGE_WINDOW_D, "빨간 잭프로스트", "당신, 헬프로스트의 부하에게 잡혀버린 거야"
+				CALL MESSAGE_WINDOW_D, "다이아나", "나는 다이아나. 헬에게 반항하는 도적단을 해먹고 있어"
+				CALL MESSAGE_WINDOW_D, "다이아나", "헬을 쓰러뜨리는데 힘이 필요해./당신의 힘을 빌려주겠다면, 감옥에서 나갈 방법을 가르쳐 줄게"
+				CALL MESSAGE_WINDOW_D, "", "＞다이아나에게 협력하겠습니까?"
+			CALL INPUT_YN_D
+			IF RESULT == 0;y
+				CALL MESSAGE_WINDOW_D, "", "＞그녀에게 협력할 뜻을 전했다"
+				CALL MESSAGE_WINDOW_D, "다이아나", "이로써 우리는 협력자야/북쪽의 벽을 조사해봐 나갈 구멍이 있어/그걸 써서 일단 마을로 돌아가자"
+				CALL MESSAGE_WINDOW_D, "다이아나", "가기 전에 감옥에 있는 다른 악마에게 말을 걸어보지그래?"
+				던전フラグ:62:1 = 2
+			ELSEIF RESULT == 1;n
+				CALL MESSAGE_WINDOW_D, "다이아나", "동료가 되어주지 않을 거면, 가르쳐줄 수 없어"
+			ENDIF
+		ENDIF
+	CASE 555
+		IF 던전フラグ:62:1 == 3
+		CALL MESSAGE_WINDOW_D, "", "＞얼음으로 이루어진 거대한 프로스트족이 있다"
+		CALL MESSAGE_WINDOW_D, "헬", "너냐, 도적단의 리더와 도망쳤던 인간은!"
+		CALL MESSAGE_WINDOW_D, "헬", "바보 같은 녀석이군. 어슬렁어슬렁 만나러 왔으니 말이지!"
+		CALL MESSAGE_WINDOW_D, "헬", "죄수가 달아난 사실이 있어선 내 체면 문제지!/편하게 죽을 수 있다고 여기지 마라!"
+		CALL MESSAGE_WINDOW_D, "", "＞마왕　헬이 １체 나타났다!/＞요정　잭프로스트가 ２체 나타났다!" , , , , , , , , , "CENTER"
+		FLAG:도주불가フラグ = 1
+		FLAG:회화불능フラグ = 1
+		FLAG:선제기습취소 = 1
+		CALL SET_ENEMY,8,[[キャラ:잭프로스트]],15,0,1
+		CFLAG:(CHARANUM-1):ＨＰ보정 = 200
+		CFLAG:(CHARANUM-1):ＭＰ보정 = 200
+		CALL SYNC_STATUS,(CHARANUM-1)
+		CALL HEALTH_CHARA,(CHARANUM-1)
+
+		CALL SET_ENEMY,9,[[キャラ:킹프로스트]],20,0,1
+		CFLAG:(CHARANUM-1):ＨＰ보정 = 500
+		CFLAG:(CHARANUM-1):ＭＰ보정 = 500
+		CFLAG:(CHARANUM-1):行動횟수 = 2
+		NAME:(CHARANUM-1) = 헬
+		CALLNAME:(CHARANUM-1) = 헬
+		ABL:(CHARANUM-1):스킬1 = [[스킬:마카쟈마]]
+		ABL:(CHARANUM-1):스킬2 = [[스킬:프린파]]
+		ABL:(CHARANUM-1):스킬3 = [[스킬:부후라]]
+		ABL:(CHARANUM-1):스킬4 = [[스킬:마하・부후]]
+		ABL:(CHARANUM-1):스킬5 = [[스킬:디아]]
+		BASE:(CHARANUM-1):지변 = 200
+		ABL:(CHARANUM-1):아이템1 = [[아이템:프로스트포]]
+		ABL:(CHARANUM-1):입수확률1 = 100
+		CALL SYNC_STATUS,(CHARANUM-1)
+		CALL HEALTH_CHARA,(CHARANUM-1)
+
+		CALL SET_ENEMY,10,[[キャラ:잭프로스트]],15,0,1
+		CFLAG:(CHARANUM-1):ＨＰ보정 = 200
+		CFLAG:(CHARANUM-1):ＭＰ보정 = 200
+		CALL SYNC_STATUS,(CHARANUM-1)
+		CALL HEALTH_CHARA,(CHARANUM-1)
+		CALL BATTLE_START
+
+		FLAG:도주불가フラグ = 0
+		FLAG:회화불능フラグ = 0
+		FLAG:선제기습취소 = 0
+		CALL MESSAGE_WINDOW_D, "", "＞마왕　헬은 쓰러졌다!"
+		CALL SHOW_PICTURE, "D"
+		IF 던전フラグ:61:1 == 1
+			CALL MESSAGE_WINDOW_D, "","＞금색 메시아의 뿔을 입수해서/＞마블 랜드에 갈 수 있게 되었다!"
+		ELSEIF 던전フラグ:61:1 == 2
+			CALL MESSAGE_WINDOW_D, "","＞금색 메시아의 눈동자를 입수해서/＞마블 랜드에 갈 수 있게 되었다!"
+		ENDIF
+		CALL MESSAGE_WINDOW_D, "다이아나", "당신 덕분에 헬을 넘어뜨릴 수 있었어!"
+		CALL MESSAGE_WINDOW_D, "다이아나", "답례라고 하긴 뭐하지만, 나도 동료마로 삼아주지 않을래?"
+		CALL INPUT_YN_D
+		IF RESULT == 0;y
+			CALL MESSAGE_WINDOW_D, "다이아나", "고마워! 앞으로도 잘 부탁해!"
+			CALL MESSAGE_WINDOW_D, "", "＞다이아나가 동료마로 들어왔다!"
+			CALL ADD_NEW_COMPANION,[[キャラ:딸기프로스트]],200
+			IF RESULT == 1
+			LOCAL = RESULT:1
+			NAME:LOCAL = 다이아나
+			CALLNAME:LOCAL = 다이아나
+			ENDIF
+		ELSEIF RESULT == 1;n
+			CALL MESSAGE_WINDOW_D, "다이아나", "그래……"
+		ENDIF
+		던전フラグ:62:1 = 4
+		CALL MESSAGE_WINDOW_D, "", "＞아이스 랜드를 뒤로했다……"
+		CALL MESSAGE_WINDOW_D, "","＞펜리르에게서 보상금 ￥40000을 받고, 명성 75를 얻었다"
+		MONEY += 40000
+		FLAG:名声 += 75
+		FLAG:탈출 = 1
+			RETURN 1
+	ENDIF
+		ENDSELECT
+		RETURN 1
+
+	CASE 9
+		SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+	CASE 222
+		IF 던전フラグ:62:1 == 0
+		CALL MESSAGE_WINDOW_D, "", "＞눈사람이 길을 막고 있다"
+		CALL MESSAGE_WINDOW_D, "잭프로스트", "히―호―！/이 녀석이 헬 님이 말하던 위험인물이다 호―!/잡아서 감옥에 넣자 호―!"
+		CALL MESSAGE_WINDOW_D, "", "＞요정　잭프로스트가 잔뜩 나왔다!" , , , , , , , , , "CENTER"
+		CALL MESSAGE_WINDOW_D, "", "＞수에 압도되어 당신은 붙잡혀버렸다……"
+		CALL MESSAGE_WINDOW_D, "", "………………/…………/……"
+		던전フラグ:62:1 = 1
+		CALL DUNGEON_WORP, 6, 5, 3
+		FLAG:탈출스킬禁止 = 1
+		ENDIF
+	ENDSELECT
+	RETURN 1
+ENDSELECT
+RETURN 0
+;-----------------------------------------------------------------------
+;タイ루이ベント
+;-----------------------------------------------------------------------
+@FLOOR_62, ARG
+#LOCALSIZE 4
+#LOCALSSIZE 2
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+	;ワープゾーン
+	CASE 10 , 11 , 20 , 21 , 30 , 31 , 40 , 41 , 50 , 51 , 60 , 61
+		;ワープゾーン関係
+		;100の位がID
+		;10の位が0なら上層に、1なら下層に行く
+		LOCAL = DA:(FLAG:現X):(FLAG:現Y) / 10 % 10 ? DA:(FLAG:現X):(FLAG:現Y) -10 # DA:(FLAG:現X):(FLAG:現Y) + 10
+		LOCAL:1 = DA:(FLAG:現X):(FLAG:現Y) / 10 % 10 ? FLAG:現M - 1 # FLAG:現M + 1
+		CALL SHOW_PICTURE, "EMPTY"
+		CALL DUNGEON_WORP_ID, LOCAL:1, LOCAL, 1
+ENDSELECT
+
+;=======================================================================
+;階段置き場
+;=======================================================================
+@UPSTAIRS_62
+	SELECTCASE FLAG:現M
+		CASE 2
+			SIF FLAG:現X == 14 && FLAG:現Y == 1
+				CALL DUNGEON_UPSTAIRS,3,5,10
+		CASE 3
+			SIF FLAG:現X == 5 && FLAG:現Y == 1
+				CALL DUNGEON_UPSTAIRS,4,4,10
+		CASE 6
+			SIF FLAG:現X == 5 && FLAG:現Y == 10
+				CALL DUNGEON_UPSTAIRS,2,25,18
+		CASE 9
+			SIF FLAG:現X == 10 && FLAG:現Y == 1
+				CALL DUNGEON_UPSTAIRS,0,5,6
+		CASEELSE
+	ENDSELECT
+RETURN 1
+
+@DOWNSTAIRS_62
+	SELECTCASE FLAG:現M
+		CASE 3
+			SIF FLAG:現X == 5 && FLAG:現Y == 10
+				CALL DUNGEON_DOWNSTAIRS,2,14,1
+		CASE 2
+			SIF FLAG:現X == 25 && FLAG:現Y == 18
+				CALL DUNGEON_DOWNSTAIRS,6,5,10
+		CASE 4
+			SIF FLAG:現X == 4 && FLAG:現Y == 10
+				CALL DUNGEON_DOWNSTAIRS,3,5,1
+		CASE 0
+			SIF FLAG:現X == 5 && FLAG:現Y == 6
+				CALL DUNGEON_DOWNSTAIRS,9,10,2
+		CASEELSE
+	ENDSELECT
+	RETURN 1
+
+;=======================================================================
+;필요레벨눈安
+;권장LV 雑물고기최저LV 雑물고기最高LV ボスLV 
+;=======================================================================
+@GET_DUNGEON_LV_62
+RETURN 12,  7, 17, 20
+;=======================================================================
+;エンカウント率
+;=======================================================================
+@ENCOUNT_RATE_62
+SELECTCASE FLAG:現M
+	CASE 1 TO 5
+		FLAG:エンカウント率 = FLAG:未遭遇歩数*5 + 5
+	CASE 7 TO 9
+		FLAG:エンカウント率 = FLAG:未遭遇歩数*5
+	CASEELSE
+		FLAG:エンカウント率 = 0
+ENDSELECT
+
+;=======================================================================
+;エンカウント処理
+;=======================================================================
+@CHECK_ENCOUNT_62
+IF RAND:100 < FLAG:エンカウント率
+	CALL ENEMY_TABLE
+	RETURN 1
+ELSE
+	FLAG:未遭遇歩数 += 1
+	RETURN 0
+ENDIF
+;=======================================================================
+;적の종족の종류数
+;=======================================================================
+@CLASS_NUM_62
+RETURN CLASS_NUM_COMMON("初級")
+;=======================================================================
+;적の総数
+;ARGは出現する적の종류です
+;=======================================================================
+@ENEMY_NUM_62, ARG
+RETURN ENEMY_NUM_COMMON("中級", ARG)
+;=======================================================================
+;적の종류
+;=======================================================================
+@ENEMY_62, ARG
+SELECTCASE FLAG:現M
+
+CASE 3 TO 5
+SELECTCASE RAND:100
+	CASE IS < 25
+		RETURN [[キャラ:잭프로스트]], 15
+	CASE IS < 40
+		RETURN [[キャラ:놈]],15
+	CASE IS < 50
+		RETURN [[キャラ:케트시]],15
+	CASE IS < 60
+		RETURN [[キャラ:아즈미]], 15
+	CASE IS < 70
+		RETURN [[キャラ:엠푸사]], 15
+	CASE IS < 80
+		RETURN [[キャラ:토뵤]], 15
+	CASE IS < 90
+		RETURN [[キャラ:야마치치]], 16
+	CASE IS < 95
+		RETURN [[キャラ:아케트라브]], 17
+	CASE IS < 100
+		RETURN [[キャラ:니케]], 17
+ENDSELECT
+
+
+
+CASE 7 TO 9
+SELECTCASE RAND:100
+	CASE IS < 30
+		RETURN [[キャラ:쁘띠프로스트]], 9
+	CASE IS < 40
+		RETURN [[キャラ:리림]], 9
+	CASE IS < 50
+		RETURN [[キャラ:실키]], 9
+	CASE IS < 60
+		RETURN [[キャラ:임프]], 9
+	CASE IS < 70
+		RETURN [[キャラ:유킨코]], 7
+	CASE IS < 80
+		RETURN [[キャラ:알프]], 7
+	CASE IS < 90
+		RETURN [[キャラ:빌뷔스]], 8
+	CASE IS < 100
+		RETURN [[キャラ:나하트코볼트]], 7
+ENDSELECT
+
+CASEELSE
+SELECTCASE RAND:100
+	CASE IS < 25
+		RETURN [[キャラ:잭프로스트]], 12
+	CASE IS < 40
+		RETURN [[キャラ:뷔디네]], 12
+	CASE IS < 50
+		RETURN [[キャラ:필방]],10
+	CASE IS < 60
+		RETURN [[キャラ:이누가미]], 13
+	CASE IS < 70
+		RETURN [[キャラ:가기손]], 12
+	CASE IS < 80
+		RETURN [[キャラ:커시]], 11
+	CASE IS < 90
+		RETURN [[キャラ:케트시]], 12
+	CASE IS < 100
+		RETURN [[キャラ:오바리욘]], 11
+ENDSELECT
+
+ENDSELECT
+;=======================================================================
+;宝箱の中身
+;=======================================================================
+@TREASURE_62
+#LOCALSIZE 9
+LOCAL = FLAG:現M + 70
+LOCAL:1 = (DA:(FLAG:現X):(FLAG:現Y) / 10) % 100
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+	;マップ번호*100+そのマップで何番눈の宝箱かを示す数値でどの宝箱かを判別します。
+	;例えば0の場合、0版のマップの0番눈の宝箱であることを表しています。
+	CASE 200
+		CALL GET_TREASURE, [[아이템:속도의향]] , 1 , FLAG:現던전, LOCAL , LOCAL:1
+	CASE 201
+		CALL GET_TREASURE_MONEY, 1 , 150 , FLAG:現던전, LOCAL , LOCAL:1
+	CASE 202
+		CALL GET_TREASURE, [[아이템:도반옥]] , 1 , FLAG:現던전, LOCAL , LOCAL:1
+	CASE 203
+		CALL GET_TREASURE, [[아이템:우황단]] , 2 , FLAG:現던전, LOCAL , LOCAL:1
+	CASE 900
+		CALL GET_TREASURE, [[아이템:극한의곡옥]] , 1 , FLAG:現던전, LOCAL , LOCAL:1
+ENDSELECT
+RETURN 1
+
+
+;=======================================================================
+;윤간참가악마
+;=======================================================================
+@DUNGEON_RAPE_DEVIL_62
+;랜덤にどの악마が出るか決定
+;RETURN CSV번호 , 人数 , 레벨
+SELECTCASE RAND:3
+	CASE 0
+		RETURN [[キャラ:임프]] , 3 + RAND:10 , CSVBASE([[キャラ:임프]] , GETNUM(BASE , "LV") , 0) + RAND:3
+	CASE 1
+		RETURN [[キャラ:빌뷔스]] , 3 + RAND:10 , CSVBASE([[キャラ:빌뷔스]] , GETNUM(BASE , "LV") , 0) + RAND:3
+	CASE 2
+		RETURN [[キャラ:토뵤]] , 3 + RAND:10 , CSVBASE([[キャラ:토뵤]] , GETNUM(BASE , "LV") , 0) + RAND:3
+ENDSELECT
+

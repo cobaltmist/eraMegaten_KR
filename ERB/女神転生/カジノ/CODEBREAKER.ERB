@@ -1,0 +1,428 @@
+﻿;コードブレーカー
+;作成日時　2011/05/19
+;2011/05/20　気持ち軽量化　コメントを추가
+;2011/05/30　景品を설정
+;2011/06/02　표시周りを변경　引数の체크がおかしかったのを수정
+
+;ARG
+;1:ムー大陸　2:ビエンの街　3:신주쿠
+@NANDI, ARG
+PRINTL 난디씨：
+PRINTL 「나마스테！ 나는 인도에서 온 난디씨라네。
+PRINTW 　또 만났던 사람 오래간만이라 기쁘다네」
+PRINTL 「코드브레이커라네。 해 봐。
+PRINTW 　당신 수 맞추기만 하면 돼。이번 힌트는 간단하네」
+PRINTL 「1회에  1메탈카드라네、당신은 어떻게 할텐가？」
+$INPUT_START
+
+;난이도설정
+SELECTCASE ARG
+	CASE 1
+		;桁数
+		LOCAL = 3
+		;各桁の최대値
+		LOCAL:1 = 6
+		;回答許容횟수
+		LOCAL:2 = 8
+		;賞品문자열
+		LOCALS = 카파망토,챠크라드롭,라이어트밤,액화질소봄베,네이팜탄,디스톤,디스패라이즈,디스포이즌
+	CASE 2
+		;桁数
+		LOCAL = 5
+		;各桁の최대値
+		LOCAL:1 = 8
+		;回答許容횟수
+		LOCAL:2 = 8
+		;賞品문자열
+		LOCALS = 타천사의날개,팬텀망토,카파망토,챠크라드롭,라이어트밤,액화질소봄베,네이팜탄,외상약
+	CASEELSE
+		;桁数
+		LOCAL = 4
+		;各桁の최대値
+		LOCAL:1 = 8
+		;回答許容횟수
+		LOCAL:2 = 8
+		;賞品문자열
+		LOCALS = 챠크라포트,발의망토,아게하망토,챠크라드롭,라이어트밤,액화질소봄베,네이팜탄,외상약
+ENDSELECT
+CALL INPUT_SELECT(1, "게임 스타트", 2, "어드바이스를 듣는다", 9, "밖으로 나간다")
+
+IF RESULT == 2
+	PRINTL 난디씨：
+	PRINTFORMW 「난디씨 1부터 {LOCAL:1}까지 {LOCAL}자리의 수 ＡＮＳＷＥＲ에 넣으시게」
+	PRINTL 「▲ ▼버튼으로 수를 바꾸어 결정버튼으로 결정하게。 JUDGE에  H B 나올거야。
+	PRINTL 　H는 힌트。수만큼 위치가 맞은 것이네。B는 블로우。수만큼 맞춘 위치가 틀린 거라네。
+	PRINTW 　전부 H면 적중이네」
+	PRINTL 　｢HINT는 그 수가 있는지 없는지 나와요。둥그렇게 된 것은 그 수가 거기에 들어 있다는 거에요。
+	PRINTL 　동그라미는 그 수가 어딘가에 있다는 것이지요。 ×는 그 수가 아니라는 거에요。
+	PRINTW 　HINT를 잘 사용해서 맞히시게」
+	PRINTW 「빨리 맞힐수록 좋은 물건을 받을 수 있으니、행운을 빌겠네」
+	PRINTL 난디씨：
+	PRINTL 「당신 어떻게 할텐가？」
+	GOTO INPUT_START
+ELSEIF RESULT == 9
+	PRINTL 난디씨：
+	PRINTL 「인도의 난디씨 언제라도 기다리고 있어요。또 와요 나마스테」
+	RETURN 0
+ELSEIF RESULT == 1
+	IF ITEM:메탈카드 < 1
+		PRINTL 난디씨：
+		PRINTL 「메탈카드 가지고 있지 않아。
+		PRINTL 　코드브레이커 할 수 없다。
+		PRINTW 　또 와。메탈카드 가지고 나마스테」
+		RETURN 0
+	ENDIF
+	ITEM:메탈카드--
+	CALL CODE_BREAKER, LOCAL, LOCAL:1, LOCAL:2, LOCALS
+	LOCAL = RESULT
+	PRINTL
+	PRINTL 난디씨：
+	IF LOCAL < 0
+		PRINTL 「유감이네。한 번 더 할까？」
+	ELSE
+		;賞品획득
+		SPLIT LOCALS, ",", LOCALS
+		CALL GET_ITEMS(LOCALS:(LOCAL-1), 1)
+		PRINT 「축하합니다。상품은 
+		PRINTFORM %LOCALS:(LOCAL-1)%
+		PRINTL (이)네。잘됐네！
+		PRINTL 　한 번 더 할까？」
+	ENDIF
+ENDIF
+
+GOTO INPUT_START
+
+;引数
+;ARG:0 桁数(3～5)
+;ARG:1 数字の上限(桁数～9)
+;ARG:2 回答가능な횟수(1～9)
+;ARGS:0 賞品名(カンマ区切り)
+;戻り値 正解した場合掛かった손数　正解出来なかった場合-1
+@CODE_BREAKER, ARG:0 = 4, ARG:1 = 6, ARG:2 = 8, ARGS:0 = "賞品１,賞品２,賞品３,賞品４,賞品５,賞品６,賞品７,賞品８,賞品９,"
+#LOCALSIZE 300
+#DIM LCOUNT
+REDRAW 0
+SIF ARG:0 < 3
+	ARG:0 = 3
+SIF ARG:0 > 5
+	ARG:0 = 5
+SIF ARG:1 > 9
+	ARG:1 = 9
+SIF ARG:1 < ARG:0
+	ARG:1 = ARG:0
+SIF ARG:2 > 9
+	ARG:2 = 9
+SIF ARG:2 < 1
+	ARG:2 = 1
+VARSET LOCAL, 0
+
+;표시用 LOCALS:0～9 全角０～９
+;LOCALS:11～19 賞品名1～9
+SPLIT "０,１,２,３,４,５,６,７,８,９,　," + ARGS:0, ",", LOCALS
+
+;現在の입력손数
+LOCAL:10 = 0
+
+;正解설정
+;LOCAL:11 正解1桁눈
+;LOCAL:12 正解2桁눈
+;LOCAL:13 正解3桁눈
+;LOCAL:14 正解4桁눈
+;LOCAL:15 正解5桁눈
+FOR LOCAL, 11, ARG:0 + 11
+	LOCAL:1 = RAND:(ARG:1) + 1
+	FOR LOCAL:2, LOCAL - 1, 10, -1
+		IF LOCAL:(LOCAL:2) == LOCAL:1
+			LOCAL:1++
+			SIF LOCAL:1 > ARG:1
+				LOCAL:1 = 1
+			LOCAL:2 = LOCAL
+			CONTINUE
+		ENDIF
+	NEXT
+	LOCAL:(LOCAL) = LOCAL:1
+NEXT
+
+;PRINTFORM 正解は
+;FOR LOCAL, 11, ARG:0 + 11
+;	PRINTFORM {LOCAL:(LOCAL)}
+;NEXT
+;PRINTFORMW です
+
+;입력処理
+;LOCAL:21 입력中1桁눈
+;LOCAL:22 입력中2桁눈
+;LOCAL:23 입력中3桁눈
+;LOCAL:24 입력中4桁눈
+;LOCAL:25 입력中5桁눈
+VARSET LOCAL, 1, 21, 21 + ARG:0
+
+$INPUT_LOOP
+
+;입력済み데이터やヒント等の표시
+PRINTL
+PRINTL  　　　　　　　【ＣＯＤＥ　ＢＲＥＡＫＥＲ】
+
+IF LOCAL:(90 + LOCAL:10) == ARG:0 || LOCAL:10 == ARG:2
+	LOCALS:21 =  
+	LOCAL = (18 - ARG:0 * 3) / 2
+	FOR LCOUNT, 0, LOCAL
+		LOCALS:21 += " "
+	NEXT
+	FOR LCOUNT, 0, ARG:0
+		LOCALS:21 += " " + LOCALS:(LOCAL:(LCOUNT + 11))
+	NEXT
+	LOCAL = 18 - ARG:0 * 3 - LOCAL
+	FOR LCOUNT, 0, LOCAL
+		LOCALS:21 += " "
+	NEXT
+	LOCAL:1 = 1
+ELSE
+	LOCAL:1 = 0
+	LOCALS:21 = 　　　　　　　　　
+ENDIF
+
+LOCAL = (26 - STRLENS(LOCALS:(11 + LOCAL:10 - LOCAL:1))) / 2
+PRINTFORML 　┏━ANSWER(1～{ARG:1})━━┓　┏━━━━ＰＲＩＺＥ━━━━┓
+PRINTFORML 　┃%LOCALS:21%┃　┃%LOCALS:10,LOCAL%%LOCALS:(11+LOCAL:10-LOCAL:1)%%LOCALS:10,26-LOCAL-STRLENS(LOCALS:(11+LOCAL:10-LOCAL:1))%┃
+PRINTFORML 　┗━━━━━━━━━┛　┗━━━━━━━━━━━━━┛
+PRINTL  　　　　　　　　　　　JUDGE　　 │ HINT
+
+FOR LCOUNT, 0, MAX(ARG:2, ARG:1)
+	IF LCOUNT <= ARG:2
+		;입력済み데이터の표시
+		PRINTFORM %LOCALS:(LCOUNT + 1)%번째
+		FOR LOCAL, 0, 5
+			IF LOCAL:(LCOUNT * 10 + LOCAL + 111) == 0
+				PRINT － 
+			ELSE
+				PRINTFORM %LOCALS:(LOCAL:(LCOUNT * 10 + LOCAL + 111))% 
+			ENDIF
+		NEXT
+
+		PRINT  
+
+		LOCAL:1 = LOCAL:(91 + LCOUNT)
+		LOCAL:2 = LOCAL:(101 + LCOUNT)
+		SETCOLOR 0x20e0e0
+		FOR LOCAL, 0, 5
+			IF LOCAL:1 == 0 && LOCAL:2 == 0
+				PRINT   
+			ELSEIF LOCAL:1 > 0
+				PRINT H 
+				LOCAL:1--
+			ELSE
+				PRINT B 
+				LOCAL:2--
+			ENDIF
+		NEXT
+		RESETCOLOR
+	ELSE
+		PRINT  　　　　　　　　　　　　　　　　
+	ENDIF
+
+	IF LCOUNT < ARG:1
+		;ヒントの표시
+		PRINTFORM │ %LOCALS:(LCOUNT + 1)%：
+		LOCAL:1 = 0
+		FOR LOCAL, 0, ARG:0
+			;解答としてありえるケースのうち、各桁にその数字が存在するケースの합계件数
+			LOCAL:1 += LOCAL:(LCOUNT * 10 + LOCAL + 201)
+		NEXT
+		FOR LOCAL, 0, ARG:0
+			IF LOCAL:200 == 0
+				;1손눈が未입력の상태
+				PRINT －
+			ELSEIF LOCAL:(LCOUNT * 10 + LOCAL + 201) == 0
+				;全ケース中、その数字がその桁にある가능性は0件
+				SETCOLOR 0x60e0e0
+				PRINT ×
+				RESETCOLOR
+			ELSEIF LOCAL:1 == LOCAL:200
+				IF LOCAL:200 == LOCAL:(LCOUNT * 10 + LOCAL + 201)
+					;全ケース中、その数字がその桁にあるケース以外存在しない
+					SETCOLOR 0xe040a0
+					PRINT ◎
+					RESETCOLOR
+				ELSE
+					;全ケース中、その数字がいずれかの桁にあるケース以外存在しない
+					SETCOLOR 0xe0e044
+					PRINT ○
+					RESETCOLOR
+				ENDIF
+			ELSE
+				PRINT －
+			ENDIF
+			PRINT  
+		NEXT
+		PRINTL 
+	ELSE
+		PRINTL │
+	ENDIF
+NEXT
+
+IF LOCAL:(90 + LOCAL:10) == ARG:0
+;正解が出たので、손数を返す
+	REDRAW 1
+	RETURN LOCAL:10
+ELSEIF LOCAL:10 == ARG:2
+;횟수が제한を越えたので종료
+	REDRAW 1
+	RETURN -1
+ENDIF
+
+;입력用ボタン作成
+PRINT 　
+FOR LCOUNT, 0, ARG:0
+	PRINTBUTTON "▲ ", LCOUNT
+NEXT
+PRINTL 
+
+PRINT 　
+FOR LCOUNT, 0, ARG:0
+	PRINTFORM %LOCALS:(LOCAL:(LCOUNT + 21))% 
+NEXT
+PRINTL 
+
+PRINT 　
+FOR LCOUNT, 0, ARG:0
+	PRINTBUTTON "▼ ", LCOUNT + 10
+NEXT
+
+PRINTBUTTON "　　　　[결정] ", 100
+
+INPUT
+IF RESULT >= 0
+	IF RESULT < 10
+		LOCAL:(RESULT + 21)++
+		SIF LOCAL:(RESULT + 21) > ARG:1
+			LOCAL:(RESULT + 21) = 1
+	ELSEIF RESULT < 20
+		LOCAL:(RESULT + 11)--
+		SIF LOCAL:(RESULT + 11) < 1
+			LOCAL:(RESULT + 11) = ARG:1
+	ENDIF
+ENDIF
+
+IF RESULT != 100
+	CLEARLINE 10 + MAX(ARG:1, ARG:2)
+	GOTO INPUT_LOOP
+ENDIF
+
+;LOCAL:1 = ヒット数
+;LOCAL:2 = ブロー数
+LOCAL:1 = 0
+LOCAL:2 = 0
+FOR LCOUNT, 0, ARG:0
+	FOR LOCAL, 0, ARG:0
+		IF LOCAL:(LCOUNT + 21) == LOCAL:(LOCAL + 11)
+			IF LCOUNT == LOCAL
+				LOCAL:1++
+			ELSE
+				LOCAL:2++
+			ENDIF
+		ENDIF
+	NEXT
+NEXT
+
+;LOCAL:91～99   Ｈ保存用1～9回눈
+;LOCAL:101～109 Ｂ保存用1～9回눈
+;LOCAL:111～119 입력保存用1回눈 ～
+;LOCAL:191～199 입력保存用9回눈
+FOR LCOUNT, 0, ARG:0
+	LOCAL:(LCOUNT + LOCAL:10 * 10 + 111) = LOCAL:(LCOUNT + 21)
+NEXT
+LOCAL:(LOCAL:10 + 91) = LOCAL:1
+LOCAL:(LOCAL:10 + 101) = LOCAL:2
+
+;입력済み손数を加算
+LOCAL:10++
+
+;ヒントの解析
+;比較用変数초기설정(とりうる最小の値)
+FOR LCOUNT, 0, ARG:0 + 1
+	LOCAL:(LCOUNT + 30) = LCOUNT
+NEXT
+VARSET LOCAL, 0, 200, 200 + ARG:1 * 10 + ARG:0
+
+$HINT_LOOP
+;とりうる모든回答で、입력済み데이터全てについて、矛盾を検索
+;矛盾フラグ
+LOCAL:4 = 0
+FOR LCOUNT, 0, LOCAL:10
+	;LOCAL:2 = ヒット数
+	;LOCAL:3 = ブロー数
+	LOCAL:2 = 0
+	LOCAL:3 = 0
+
+	;比較用変数が正解だった場合と、過去の입력済み데이터を照らし合わせ
+	FOR LOCAL, 0, ARG:0
+		FOR LOCAL:1, 0, ARG:0
+			IF LOCAL:(LCOUNT * 10 + LOCAL + 111) == LOCAL:(LOCAL:1 + 31)
+				IF LOCAL == LOCAL:1
+					LOCAL:2++
+					BREAK
+				ELSE
+					LOCAL:3++
+					BREAK
+				ENDIF
+			ENDIF
+		NEXT
+	NEXT
+	IF LOCAL:(91 + LCOUNT) != LOCAL:2 || LOCAL:(101 + LCOUNT) != LOCAL:3
+		;過去のHB데이터と矛盾あり
+		LOCAL:4 = 1
+		BREAK
+	ENDIF
+NEXT
+
+IF LOCAL:4 == 0
+	;矛盾がないケースを1件加算
+	LOCAL:200++
+	;LOCAL:211～299に、各桁に該当する数字が何件あったかを記録
+	;LOCAL:211　1桁눈に1があった件数
+	;LOCAL:212　2桁눈に1があった件数
+	;LOCAL:221　1桁눈に2があった件数…
+	FOR LCOUNT, 0, ARG:0
+		LOCAL:((LOCAL:(31 + LCOUNT) * 10) + LCOUNT + 191)++
+	NEXT
+ENDIF
+
+;次のケース
+FOR LOCAL, ARG:0, 0, -1
+	;桁上がり체크
+	IF LOCAL:(30 + LOCAL) >= ARG:1
+		LOCAL:(30 + LOCAL) = 0
+		;最上位の桁が溢れたら종료
+		SIF LOCAL == 1
+			LOCAL:30 = 1
+	ELSE
+		LOCAL:(30 + LOCAL)++
+		;上位の桁と重複していないか체크
+		LOCAL:9 = 0
+		FOR LOCAL:1, LOCAL - 1, 0, -1
+			IF LOCAL:(30 + LOCAL) == LOCAL:(30 + LOCAL:1)
+				;重複してたフラグ
+				LOCAL:9++
+				BREAK
+			ENDIF
+		NEXT
+		IF LOCAL:9
+			;重複してたので、同じ桁でもう1回加算
+			LOCAL++
+		ELSEIF LOCAL == ARG:0
+			;最下位の桁まで重複してなかったので、종료
+			BREAK
+		ELSE
+			;重複してなかったので、下位の桁に戻る
+			LOCAL += 2
+		ENDIF
+	ENDIF
+NEXT
+
+IF LOCAL:30 == 1
+	CLEARLINE 10 + MAX(ARG:1, ARG:2)
+	GOTO INPUT_LOOP
+ELSE
+	GOTO HINT_LOOP
+ENDIF

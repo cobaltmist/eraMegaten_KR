@@ -1,0 +1,2543 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:PROSTITUTION.ERB
+;	Facility	:창관(宿屋)での노역に関する関数群です。
+;
+;	Licence		:ライセンスフリー
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		20XX/XX/XX		----					新規作成
+;	002		2011/03/21		黒天					노역가능なキャラを一括で노역に従事させる選択肢を추가
+;	003		2011/04/13		黒天					二人미만(一括選択肢비표시)상태でも直接입력することで
+;													一括選択処理が実行できていた問題を수정
+;	005		2011/09/08		黒天					처녀(재생처녀)상실処理を関数を呼ぶように수정
+;	006		2012/05/17		osoji					아야章加筆、色변경
+;	007		2013/11/24		ひみつ					リスト표시数설정
+;	008		2017/06/23		kuni					キャラ표시でINPUT_CHARA_LISTを사용するように변경
+;	009		2020/05/19		がめら					NTR好感度処理をCDFLAGに변경
+;	010		2020/06/24		名無し					尻素質が収益に影響するように
+;	011		2020/09/22		JK好き					娼館で処女喪失した際の異常経験取得処理が正しく行われていなかった問題を修正
+;	012		2021/04/26		JK好き					娼館で多胎OP時でも妊娠するように修正
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;창관で働かせる
+;奴隷を一日だけ창관に貸して働かせます。客の数だけ収益が上がるため、욕망や레즈が重要視されます
+
+;==========================================================
+;@PROSTITUTION
+; 宿屋(창관)で働かせる奴隷を選択する。
+;<引数>
+;	なし
+;<戻り値>
+;	なし
+;==========================================================
+@PROSTITUTION
+#LOCALSIZE 5
+$PROSTITUTION_TOP
+;사용する変数の초기化
+A = 0
+B = 0
+C = 0
+D = 0
+;LOCAL   = 選択したキャラ
+;LOCAL:1 = 가운価
+;LOCAL:2 = 매춘가능人数
+;LOCAL:3 = 一括매춘用화조ンタ
+;LOCAL:4 = 노역확인결과
+;LOCAL配列초기化
+VARSET LOCAL,0
+$PRINT_LIST
+CALL INPUT_CHARA_LIST("매춘시킬 노예를 선택하세요", "CASTING_PROSTITUTION", "", "", "MODECHANGE_PROSTITUTION")
+IF RESULT == 1000
+	RETURN 0
+ENDIF
+
+IF RESULT == 999
+	;一括選択できない상태のためINPUT_LOOP_1に戻る
+	SIF FLAG:노역実行확인생략설정 == 0 || A < 2
+		GOTO PRINT_LIST
+	;一応확인
+	PRINTL 현재 매춘 가능한 모든 노예를 매춘시킵니다.
+	PRINTL 좋습니까?
+	CALL INPUT_YN
+	SIF RESULT == 1
+		;キャラ一覧に戻る。
+		GOTO PRINT_LIST
+	;一括노역フラグON
+	LOCAL:3 = 1
+	LOCAL = Q:(LOCAL:3-1)
+	LOCAL:2 = A
+ELSE
+	LOCAL = RESULT
+ENDIF
+
+$SELECT_LOOP
+
+;가운価を計算。
+DRAWLINE
+
+CALL SALARY_PROSTITUTION,LOCAL,1
+LOCAL:1 = RESULT
+
+IF LOCAL:1 > 0
+	;노역実行확인생략설정が有効な場合、표시後WAITしないようにする。
+	IF FLAG:노역実行확인생략설정 == 0
+		PRINTFORMW 매춘 하루 동안 {LOCAL:1}마카 정도 전망됩니다
+	ELSE
+		PRINTFORML 매춘 하루 동안 {LOCAL:1}마카 정도 전망됩니다
+	ENDIF
+ELSE
+	PRINTFORMW 매춘 가격이 0마카를 밑돌았으므로 중지합니다
+	IF FLAG:노역実行확인생략설정 == 1
+		IF LOCAL:3 > 0 && LOCAL:3 < LOCAL:2
+			;LOCAL:3が0より大きく(一括選択)、LOCAL:3がLOCAL:2미만(まだ全員の노역従事が終わってない)場合
+			;다음 캐릭터の노역従事
+			LOCAL:3 += 1
+			LOCAL = Q:(LOCAL:3-1)
+
+			GOTO SELECT_LOOP
+		ELSE
+			;노역実行확인생략설정が有効な場合、関数の머리に戻る
+			GOTO PROSTITUTION_TOP
+		ENDIF
+	ENDIF
+	RETURN 0
+ENDIF
+
+;창관コマンドを実行するか？
+IF FLAG:노역実行확인생략설정 == 0
+	PRINTFORML 오늘 하루, %CALLNAME:LOCAL%에게 매춘시키겠습니까?
+	CALL INPUT_YN,"매춘시킨다","그만둔다"
+	LOCAL:4 = RESULT
+ELSE
+	;노역実行확인생략설정が有効な場合、実行확인は無조건で実行する(0)を설정
+	LOCAL:4 = 0
+ENDIF
+
+IF LOCAL:4 == 0
+	PRINTFORML 다음 날까지 %CALLNAME:LOCAL%에게 손님을 받게 합니다
+	;이벤트구상
+	T = TARGET
+	TARGET = LOCAL
+	TFLAG:13 = 16
+	;未조교함락フラグを折る
+	CFLAG:被조교횟수 += 1
+	CALL KOJO_MESSAGE_EVENT
+	TARGET = T
+	;SIF LOCAL == TARGET
+	;	TARGET = -1
+	;SIF LOCAL == ASSI
+	;	ASSI = -1
+	;SIF CPOS(LOCAL) > 0
+	;	CALL REMOVE_POSITION,CPOS(LOCAL)
+	CFLAG:LOCAL:노역フラグ = 2
+	CFLAG:LOCAL:노역단가 = LOCAL:1
+	PRINTL 
+	IF FLAG:노역実行확인생략설정 == 1
+		IF LOCAL:3 > 0 && LOCAL:3 < LOCAL:2
+			;LOCAL:3が0より大きく(一括選択)、LOCAL:3がLOCAL:2미만(まだ全員の노역従事が終わってない)場合
+			;다음 캐릭터の노역従事
+			LOCAL:3 += 1
+			LOCAL = Q:(LOCAL:3-1)
+
+			GOTO SELECT_LOOP
+		ELSE
+			;노역実行확인생략설정が有効な場合、関数の머리に戻る
+			GOTO PROSTITUTION_TOP
+		ENDIF
+	ENDIF
+ELSE
+	RESTART
+ENDIF
+
+@CASTING_PROSTITUTION(ARG)
+SIF CFLAG:ARG:노역フラグ > 0
+	RETURN 0
+SIF ARG != MASTER && (ABL:ARG:욕망 + ABL:ARG:기교 + ABL:ARG:노출증 + TALENT:ARG:음란*3 + TALENT:ARG:창부*3) < 7
+	RETURN 0
+SIF BASE:ARG:0 <= 500
+	RETURN 0
+SIF CFLAG:ARG:この場に居ないフラグ == 1
+	RETURN 0
+RETURN 1
+
+@MODECHANGE_PROSTITUTION, ARG
+SELECTCASE ARG
+	CASE -1
+		;노역実行확인생략옵션が有効な場合にのみ選択肢を표시する。
+		SIF FLAG:노역実行확인생략설정 == 1 && A >= 2
+			PRINTL [999] 매춘할 수 있는 모든 노예를 매춘시킨다
+	CASE 999
+		RETURN ARG , 0
+ENDSELECT
+RETURN ARG , 1
+
+;==========================================================
+;@END_PROSTITUTION
+; 宿屋(창관)での노역日報処理
+;<引数>
+;	ARG = 노역を行うキャラの등록번호
+;<戻り値>
+;	なし
+;==========================================================
+@END_PROSTITUTION,ARG
+#LOCALSIZE 25
+#DIM LCOUNT
+#DIM 客入り
+#DIM Ｖプレイ回数
+#DIM Ａプレイ回数
+;LOCAL:1  = 作業用領域
+;LOCAL:10 = 客入り
+;LOCAL:9  = 計算用
+;LOCAL:8  = 顧客만족도
+;LOCAL:7  = 評価
+;LOCAL:6  = 합계プ레이횟수
+;LOCAL:11 = 섹스系プ레이頻度(횟수)
+;LOCAL:12 = 봉사계プ레이頻度(횟수)
+;LOCAL:13 = ＳＭ계プ레이頻度(횟수)
+;LOCAL:14 = 동성愛(레즈、ＢＬ)系プ레이頻度(횟수)
+;LOCAL:16 = プ레이頻度합계(割합계算用)
+;LOCAL:20 = Ｖ／Ａプ레이횟수差計算用
+;Ｖプレイ回数 = Ｖプ레이횟수
+;Ａプレイ回数 = Ａプ레이횟수
+;LOCAL:23 = 처녀상실による珠加算보정
+
+;LOCAL配列초기化
+VARSET LOCAL,0
+
+;最初に노역단가を再計算
+CALL SALARY_PROSTITUTION,ARG,0
+CFLAG:ARG:노역단가 = RESULT
+
+CUSTOMDRAWLINE ･
+
+
+;창부の인기に応じて客が来ます
+;初めての場合は店の인기に依存
+IF EXP:ARG:매춘경험 == 0
+	LOCAL:8 = 100
+	SIF ITEM:여관 || ITEM:창관
+		LOCAL:8 = FLAG:매춘인기 + 40
+	LOCAL = 0
+	LOCAL:9 = 0
+	WHILE LOCAL:8 > 100 * (POWER(4 , LOCAL)-1) / 3
+		LOCAL:9 += (MIN(LOCAL:8 , 100 * (POWER(4 , LOCAL+1) - 1) / 3) - 100 * (POWER(4 , LOCAL) -1) / 3) / (10 * (POWER(4,LOCAL)))
+		LOCAL ++
+	WEND
+	IF LOCAL:9
+		FOR LCOUNT, 0, LOCAL:9
+			客入り += RAND:2
+		NEXT
+	ENDIF
+ELSE
+	LOCAL = 0
+	LOCAL:9 = 0
+	WHILE CFLAG:ARG:매춘인기 > 100 * (POWER(2 , LOCAL)-1) / 3
+		LOCAL:9 += (MIN(CFLAG:ARG:매춘인기 , 100 * (POWER(2 , LOCAL+1) - 1) / 3) - 100 * (POWER(2 , LOCAL) -1) / 3) / (10 * (POWER(2,LOCAL)))
+		LOCAL ++
+	WEND
+	IF LOCAL:9
+		FOR LCOUNT, 0, LOCAL:9
+			客入り += RAND:2
+		NEXT
+	ENDIF
+ENDIF
+;店に인기に応じて客が来ます
+LOCAL:8 = 100
+SIF ITEM:여관 || ITEM:창관
+	LOCAL:8 = FLAG:매춘인기
+LOCAL = 0
+LOCAL:9 = 0
+WHILE LOCAL:8 > 100 * (POWER(4 , LOCAL)-1) / 3
+	LOCAL:9 += (MIN(LOCAL:8 , 100 * (POWER(4 , LOCAL+1) - 1) / 3) - 100 * (POWER(4 , LOCAL) -1) / 3) / (10 * (POWER(4,LOCAL)))
+	LOCAL ++
+WEND
+IF 客入り
+	FOR LCOUNT, 0, LOCAL:9
+		客入り += RAND:2
+	NEXT
+ENDIF
+
+
+客入り = TABLE_CALC2(客入り, 5, 95)
+客入り = TABLE_CALC2(客入り, 10, 90)
+客入り = TABLE_CALC2(客入り, 25, 80)
+客入り = TABLE_CALC2(客入り, 30, 10)
+
+
+;최저一人は来る
+SIF 客入り < 1
+	客入り = 1
+
+;만족도판정
+;랜덤で40を추가します。매춘경험に応じて期待値は上昇します。
+IF EXP:ARG:매춘경험 > 30000
+	LOCAL:8 = 60
+ELSEIF EXP:ARG:매춘경험 > 10000
+	LOCAL:8 = RAND:31 + 30
+ELSEIF EXP:ARG:매춘경험 > 5000
+	LOCAL:8 = RAND:36 + 25
+ELSEIF EXP:ARG:매춘경험 > 3000
+	LOCAL:8 = RAND:41 + 20
+ELSEIF EXP:ARG:매춘경험 > 1000
+	LOCAL:8 = RAND:46 + 15
+ELSEIF EXP:ARG:매춘경험 > 500
+	LOCAL:8 = RAND:51 + 10
+ELSEIF EXP:ARG:매춘경험 > 100
+	LOCAL:8 = RAND:56 + 5
+ELSE
+	LOCAL:8 = RAND:61
+ENDIF
+
+;욕망を체크する。욕망が相손の욕망を上回るかどうか。성공なら욕망레벨の２倍、실패なら１倍入ります。
+;CBVA매춘では、相손の욕망の최대値が4です。
+LOCAL:9 = RAND:9
+IF LOCAL:9 <= ABL:ARG:욕망
+	LOCAL:8 += ABL:ARG:욕망
+	LOCAL:8 += ABL:ARG:욕망
+ELSE
+	LOCAL:8 += ABL:ARG:욕망
+ENDIF
+
+;相손からの行動が発生します。相손の기교がこちらの욕망以下の場合、不満そうな表情が出る가능性があります。
+;相손の기교＋こちらの순종の２倍＞こちらの욕망＋２なら、問題なく行為を노출증と봉사정신を加える事が出来ます。
+;발りない場合は加えられません。
+LOCAL:9 = RAND:5
+LOCAL:9 += ABL:ARG:순종
+LOCAL:9 += ABL:ARG:순종
+LOCAL:9 -= 2
+
+IF LOCAL:9 >= ABL:ARG:기교
+	LOCAL:8 += ABL:ARG:봉사정신
+	LOCAL:8 += ABL:ARG:노출증
+ENDIF
+
+;ここまでで최대120％
+
+;순종が3LVないと、著しく微妙になります
+IF ABL:ARG:순종 < 3 && ARG != MASTER
+	LOCAL:8 /= 2
+ENDIF
+
+;この時点でのLOCAL:8が만족도
+
+;総プ레이횟수を計算
+LOCAL:6 = 0
+FOR LCOUNT, 0, 客入り
+	;客一人当たり、１＋０～만족도/10回プ레이していく
+	LOCAL:6 += 1 + (RAND:(LOCAL:8/10+1))
+NEXT
+
+;LOCAL:11 ~ 15 섹스系　～동성愛系の割合、16 = 割合합계
+
+;소질、능력に応じて行為の比率の決定(各소질は持ってれば1が入っている）
+;섹스系、기본的に大きい。AV감각、처녀、재생처녀、섹스중독、섹스광、애널광
+;남자が無い場合のみＶでの횟수を加算する
+LOCAL:11 = 0
+SIF TALENT:ARG:남자 == 0
+	LOCAL:11 = ABL:ARG:Ｖ감각+TALENT:ARG:처녀*7+TALENT:ARG:재생처녀*3+TALENT:ARG:섹스광*5
+LOCAL:11 += ABL:ARG:Ａ감각+ABL:ARG:섹스중독+TALENT:ARG:애널광*5
+
+;봉사계、봉사정신と정액중독が高く、헌신적
+LOCAL:12 = ABL:ARG:봉사정신+ABL:ARG:정액중독+TALENT:ARG:헌신적*5
+
+;SM系、|새드끼-마조끼|の数値が大きい、도착적、새드、마조、체력大눈
+;마조傾向
+IF ABL:ARG:마조끼 >= ABL:ARG:새드끼
+	LOCAL:13 = ABL:ARG:마조끼-ABL:ARG:새드끼+TALENT:ARG:마조*10+TALENT:ARG:도착적*5
+;サド傾向
+ELSEIF ABL:ARG:새드끼 > ABL:ARG:마조끼
+	LOCAL:13 = ABL:ARG:새드끼-ABL:ARG:마조끼+TALENT:ARG:새드*10+TALENT:ARG:도착적*5
+;同値
+ELSE
+	LOCAL:13 = ABL:ARG:마조끼+TALENT:ARG:도착적*5
+ENDIF
+;5미만は0にする
+SIF LOCAL:13 < 5
+	LOCAL:13 = 0
+
+;레즈系、레즈끼、레즈중독、바이、男性の場合はＢＬ끼とＢＬ중독
+LOCAL:14 = ABL:ARG:레즈끼+ABL:ARG:레즈중독*2+TALENT:ARG:바이*5+ABL:ARG:ＢＬ끼+ABL:ARG:ＢＬ중독*2
+;5미만は0にする
+SIF LOCAL:14 < 5
+	LOCAL:14 = 0
+
+;高頻度プ레이(매춘구상分岐)판정用の値を설정
+;1:섹스系、2:봉사계、3:ＳＭ계、4:동성愛(레즈、ＢＬ)系
+CFLAG:ARG:창관でのプ레이頻度판정 = 1
+SIF LOCAL:(10+CFLAG:ARG:창관でのプ레이頻度판정) < LOCAL:12
+	CFLAG:ARG:창관でのプ레이頻度판정 = 2
+SIF LOCAL:(10+CFLAG:ARG:창관でのプ레이頻度판정) < LOCAL:13
+	CFLAG:ARG:창관でのプ레이頻度판정 = 3
+SIF LOCAL:(10+CFLAG:ARG:창관でのプ레이頻度판정) < LOCAL:14
+	CFLAG:ARG:창관でのプ레이頻度판정 = 4
+
+LOCAL:16 = MAX(1,LOCAL:11 + LOCAL:12 + LOCAL:13 + LOCAL:14)
+
+;それぞれの系統のプ레이횟수を산출してLOCAL:11 ～ 14に入れる
+LOCAL:11 = LOCAL:6 * LOCAL:11 / LOCAL:16
+LOCAL:12 = LOCAL:6 * LOCAL:12 / LOCAL:16
+LOCAL:13 = LOCAL:6 * LOCAL:13 / LOCAL:16
+LOCAL:14 = LOCAL:6 * LOCAL:14 / LOCAL:16
+
+SIF LOCAL:11 + LOCAL:12 + LOCAL:13 + LOCAL:14 == 0
+	LOCAL:(11+RAND:4) = LOCAL:6
+
+;매춘時の구상표시
+LOCAL:1 = TARGET
+TARGET = ARG
+TFLAG:13 = 63
+CALL KOJO_MESSAGE_EVENT
+TARGET = LOCAL:1
+PRINTFORML %CALLNAME:ARG%의 매춘결과：
+
+;체력の減少기본치
+LOSEBASE:체력 = LOCAL:6*25
+;스트레스치の付加
+SIF ARG != MASTER
+	CFLAG:ARG:10 += 2
+
+LOCAL:23 = 0
+IF LOCAL:11 > 0
+	;VとAのプ레이差
+	;남자はAのみ
+	IF TALENT:ARG:남자
+		LOCAL:20 = ABL:ARG:Ａ감각
+		Ｖプレイ回数 = 0
+		Ａプレイ回数 = LOCAL:11
+	ELSEIF ABL:ARG:Ｖ감각 > ABL:ARG:Ａ감각
+		LOCAL:20 = ABL:ARG:Ｖ감각-ABL:ARG:Ａ감각
+		Ｖプレイ回数 = LOCAL:11/2+LOCAL:20
+		Ａプレイ回数 = LOCAL:11-Ｖプレイ回数
+	ELSE
+		LOCAL:20 = ABL:ARG:Ａ감각-ABL:ARG:Ｖ감각
+		Ｖプレイ回数 = LOCAL:11/2-LOCAL:20
+		Ａプレイ回数 = LOCAL:11-Ｖプレイ回数
+	ENDIF
+	;奴隷が処女の場合
+	IF TALENT:ARG:처녀
+		Ｖプレイ回数 += LOCAL:20/2
+		Ａプレイ回数 -= LOCAL:20/2
+		SIF Ｖプレイ回数 > 0
+			LOCAL:23 = 20
+	ENDIF
+	SIF Ｖプレイ回数 < 0
+		Ｖプレイ回数 = 0
+	SIF Ａプレイ回数 < 0
+		Ａプレイ回数 = 0
+	EXP:ARG:Ｖ경험 += Ｖプレイ回数
+	EXP:ARG:Ａ경험 += Ａプレイ回数
+	EXP:ARG:절정경험 += LOCAL:11/3
+	;ふたなりかオトコ
+	SIF TALENT:ARG:후타나리 || TALENT:ARG:남자
+		EXP:ARG:사정경험 += LOCAL:11/3
+	;男の娘はケツマンコで妊娠
+	SIF TALENT:ARG:오토코노코 && CFLAG:ARG:자궁내피임결계 == 0
+		CFLAG:ARG:顧客の中出氏による임신판정 += Ａプレイ回数
+	EXP:ARG:성교경험 += Ｖプレイ回数 + Ａプレイ回数
+	;질사경험
+	IF CFLAG:ARG:자궁내피임결계 == 0
+		EXP:ARG:질사경험 += Ｖプレイ回数
+		CFLAG:ARG:顧客の中出氏による임신판정 += Ｖプレイ回数
+	ENDIF
+	JUEL:ARG:쾌Ｖ += Ｖプレイ回数*50
+	JUEL:ARG:쾌Ａ += Ａプレイ回数*50
+	JUEL:ARG:욕정 += LOCAL:11*30
+	JUEL:ARG:습득 += LOCAL:11*50
+	SIF ARG != MASTER
+		JUEL:ARG:부정 += (LOCAL:23+LOCAL:11)*100/MAX(1,ABL:ARG:순종)
+ENDIF
+;봉사계
+IF LOCAL:12 > 0
+	EXP:ARG:정액경험 += LOCAL:12
+	EXP:ARG:봉사쾌락경험 += LOCAL:12
+	EXP:ARG:펠라경험 += LOCAL:12
+	EXP:ARG:키스경험 += LOCAL:12
+	JUEL:ARG:복종 += LOCAL:12*10
+	JUEL:ARG:습득 += LOCAL:12*60
+	SIF ARG != MASTER
+		JUEL:ARG:부정 += LOCAL:12*100/MAX(1,ABL:ARG:순종)
+ENDIF
+;ＳＭ系
+IF LOCAL:13 > 0
+	IF ABL:ARG:마조끼 > ABL:ARG:새드끼
+		EXP:ARG:고통쾌락경험 += LOCAL:13
+		JUEL:ARG:고통 += LOCAL:13*50
+	ENDIF
+	SIF ABL:ARG:새드끼 > ABL:ARG:마조끼
+		EXP:ARG:가학쾌락경험 += LOCAL:13
+	JUEL:ARG:습득 += LOCAL:13*40
+	SIF ARG != MASTER
+		JUEL:ARG:부정 += LOCAL:13*100/MAX(1,ABL:ARG:순종)
+ENDIF
+;レズ系
+IF LOCAL:14 > 0
+	EXP:ARG:절정경험 += LOCAL:14/3
+	;ふたなりかオトコ
+	SIF TALENT:ARG:후타나리 || TALENT:ARG:남자
+		EXP:ARG:사정경험 += LOCAL:14/3
+	;男の娘で、かつ男の娘ＢＬ設定が０のときはＢＬ経験が入らない
+	SIF !TALENT:ARG:오토코노코 || FLAG:오토코노코ＢＬ설정 >= 1
+		EXP:ARG:(40+TALENT:ARG:남자) += LOCAL:14
+	JUEL:ARG:쾌Ｃ += LOCAL:14*50
+	JUEL:ARG:욕정 += LOCAL:14*30
+	JUEL:ARG:습득 += LOCAL:14*40
+	SIF ARG != MASTER
+		JUEL:ARG:부정 += LOCAL:14*100/MAX(1,ABL:ARG:순종)
+ENDIF
+
+PRINTFORML 【%CALLNAME:ARG%의 경험과 구슬】
+
+;경험표시は一括で行う
+SIF 客入り > 0
+	PRINTFORML 매춘경험＋{客入り}
+SIF Ｖプレイ回数 > 0
+	PRINTFORML %EXPNAME:0%＋{Ｖプレイ回数}
+SIF Ａプレイ回数 > 0
+	PRINTFORML %EXPNAME:1%＋{Ａプレイ回数}
+PRINTFORML 키스경험＋{Ｖプレイ回数}
+SIF (LOCAL:11/3+LOCAL:24/3) > 0
+	PRINTFORML %EXPNAME:2%＋{LOCAL:11/3+LOCAL:13/3}
+SIF (TALENT:ARG:후타나리 || TALENT:ARG:남자) && (LOCAL:11/3+LOCAL:13/3) > 0
+	PRINTFORML %EXPNAME:3%＋{LOCAL:11/3+LOCAL:13/3}
+
+SIF LOCAL:11 > 0
+	PRINTFORML %EXPNAME:4%＋{LOCAL:11}
+
+IF Ｖプレイ回数 > 0
+	IF CFLAG:ARG:자궁내피임결계 == 0
+		PRINTFORML %EXPNAME:5%＋{Ｖプレイ回数}
+	ELSE
+		PRINTFORML <피임결계>
+	ENDIF
+ENDIF
+SIF Ｖプレイ回数+Ａプレイ回数+LOCAL:12 > 0
+	PRINTFORML %EXPNAME:20%＋{Ｖプレイ回数+Ａプレイ回数+LOCAL:12}
+IF LOCAL:12 > 0
+	PRINTFORML %EXPNAME:21%＋{LOCAL:12}
+	PRINTFORML %EXPNAME:22%＋{LOCAL:12}
+ENDIF
+IF LOCAL:13
+	SIF ABL:ARG:마조끼 >= ABL:ARG:새드끼
+		PRINTFORML %EXPNAME:30%＋{LOCAL:13}
+	SIF ABL:ARG:새드끼 > ABL:ARG:마조끼
+		PRINTFORML %EXPNAME:32%＋{LOCAL:13}
+ENDIF
+
+SIF LOCAL:14
+	PRINTFORML %EXPNAME:(40+TALENT:ARG:남자)%＋{LOCAL:14}
+
+;本番ありの場合처녀/再生처녀상실による이상경험획득処理
+IF Ｖプレイ回数 && TALENT:ARG:처녀
+	CALL ADDS_ABNORMAL_EXP, "처녀상실（매춘）", ARG
+	CALL SHOW_ABNORMAL_EXP, ARG, 1
+	CALL 처녀상실, ARG
+	IF CFLAG:ARG:처녀상실フラグ
+		PRINTL 소비체력×150％
+		TIMES LOSEBASE:체력 , 1.5
+	ENDIF
+ELSEIF Ｖプレイ回数 && TALENT:ARG:재생처녀
+	CALL 처녀상실, ARG
+	IF CFLAG:ARG:재생처녀상실フラグ
+		PRINTL 소비체력×120％
+		TIMES LOSEBASE:체력 , 1.20
+	ENDIF
+ENDIF
+
+;珠표시も同様
+SIF LOCAL:14 > 0
+	PRINTFORML 쾌Ｃ의 구슬＋{LOCAL:14*50}
+SIF Ｖプレイ回数 > 0
+	PRINTFORML 쾌Ｖ의 구슬＋{Ｖプレイ回数*50}
+SIF Ａプレイ回数 > 0
+	PRINTFORML 쾌Ａ의 구슬＋{Ａプレイ回数*50}
+SIF LOCAL:12 > 0
+	PRINTFORML 복종의 구슬＋{LOCAL:12*10}
+SIF (LOCAL:11*30+LOCAL:14*30) > 0
+	PRINTFORML 욕정의 구슬＋{LOCAL:11*30+LOCAL:14*30}
+SIF (LOCAL:11*50+LOCAL:12*60+LOCAL:13*40+LOCAL:14*40) > 0
+	PRINTFORML 습득의 구슬＋{LOCAL:11*50+LOCAL:12*60+LOCAL:13*40+LOCAL:14*40}
+SIF ABL:ARG:마조끼 > ABL:ARG:새드끼 && LOCAL:13
+	PRINTFORML 고통의 구슬＋{LOCAL:13*50}
+SIF ((LOCAL:23+LOCAL:11+LOCAL:12+LOCAL:13+LOCAL:14)*100/MAX(1,ABL:ARG:순종)) > 0 && ARG != MASTER
+	PRINTFORML 부정의 구슬＋{(LOCAL:23+LOCAL:11+LOCAL:12+LOCAL:13+LOCAL:14)*100/MAX(1,ABL:ARG:순종)}
+;フェラ・中田氏などの횟수×LV分ＭＡＧを흡수してくる
+IF Ｖプレイ回数 + Ａプレイ回数 + LOCAL:12 > 0
+	PRINTFORML ＭＡＧ+{((Ｖプレイ回数*2+Ａプレイ回数*2+LOCAL:12*1)*MAXBASE:ARG:LV)*(1+(ARG == MASTER)*4+MAX(TALENT:ARG:영매체질*9 - !TALENT:ARG:비전투원 * 5, 0))/2/5}
+	CALL CONTROL_MAG,ARG,((Ｖプレイ回数*2+Ａプレイ回数*2+LOCAL:12*1)*MAXBASE:ARG:LV)*(1+(ARG == MASTER)*4+MAX(TALENT:ARG:영매체질*9 - !TALENT:ARG:비전투원 * 5, 0))/2/5
+ENDIF
+
+;こっそりと임신中は체력소비1.5倍
+IF TALENT:ARG:임신
+	TIMES LOSEBASE:체력 , 1.50
+ENDIF
+
+PRINTFORML 체력 － {LOSEBASE:체력}
+BASE:ARG:체력 -= LOSEBASE:체력
+
+;비전투원は경험치획득
+IF TALENT:ARG:비전투원
+	PRINTFORML EXP： +{CFLAG:ARG:노역단가*(100+LOCAL:6)/100*(1+BASE:ARG:LV/5)}
+	BASE:ARG:ＥＸＰ += CFLAG:ARG:노역단가*(100+LOCAL:6)/100*(1+BASE:ARG:LV/5)
+	;레벨업판정
+	CALL CHECK_LEVEL_UP,ARG
+	;IF TALENT:ARG:비전투원 && BASE:ARG:ＥＸＰ >= MAXBASE:ARG:ＥＸＰ
+	;	PRINTFORML LEVEL UP!
+	;	BASE:ARG:LV += 1
+	;	CALL SYNC_STATUS,ARG
+	;ENDIF
+ENDIF
+IF TALENT:ARG:페르소나구사자
+	CALL INCREASE_PERSONA_EXP, ARG, CFLAG:ARG:노역단가*(100+LOCAL:6) / 10, -1 ,1
+	IF RESULT > 0
+		;新페르소나処理
+		IF BATTLE_SETTING_IS_PERSONA_NEW_FUNCTION()
+
+		;旧페르소나処理
+		ELSE
+			PRINTFORML 페르소나【\@EQUIP:ARG:장비페르소나 ? %CSVNAME(DITEMTYPE:(EQUIP:ARG:장비페르소나):페르소나("NO"), 0)% # %CSVNAME(ABL:ARG:초기페르소나, 0)%\@】　EXP：+{RESULT}
+		ENDIF
+	ENDIF
+ENDIF
+
+PRINTL
+;満발度による인기増減処理
+PRINTFORML 고객만족도:{LOCAL:8}％
+
+IF EXP:ARG:매춘경험 == 0
+	PRINTFORML 【%조사처리(CALLNAME:ARG,"가")% 매춘 데뷔했습니다】
+	;デビュー時は증가する인기に보정がかかる
+	;기본の인기上昇値
+	CFLAG:ARG:매춘인기 = 20 * MAX(0,LOCAL:8/10-1)
+	IF CFLAG:ARG:매춘인기 == 0
+		PRINTFORML 유감스럽게도 인기는 완전히 얻을 수 없었지만 앞으로 노력하도록 합시다.
+	ELSE
+		PRINTFORML 현재 인기 {CFLAG:ARG:매춘인기}
+	ENDIF
+ELSE
+	;기본の인기上昇値
+	LOCAL:1 = 2 * (LOCAL:8/5-5)
+	PRINTFORM 인기 {CFLAG:ARG:매춘인기} 
+	SIF LOCAL:1 >= 0
+		PRINT +
+	PRINTFORML {LOCAL:1}
+	CFLAG:ARG:매춘인기 += LOCAL:1
+ENDIF
+EXP:ARG:매춘경험 += 客入り
+PRINTL
+
+IF ITEM:여관 || ITEM:창관
+	LOCAL:1 = (LOCAL:8/5-5)
+	IF ITEM:창관 
+		PRINT 창관
+	ELSE
+		PRINT 여관
+	ENDIF
+	PRINTFORM 인기 {FLAG:매춘인기} 
+	SIF LOCAL:1 >= 0
+		PRINT +
+	PRINTFORML {LOCAL:1}
+	FLAG:매춘인기 += LOCAL:1
+ELSEIF LOCAL:8 < 40
+	PRINTL 손님을 만족시키지 못해서 아르바이트비가 반으로 줄었다.
+	CFLAG:ARG:노역단가 /= 2
+ENDIF
+
+
+;お金を得る
+PRINTFORM %조사처리(CALLNAME:ARG,"는")% {客入り}인의 손님을 몸으로 접대해 {CFLAG:ARG:노역단가*(100+LOCAL:6)/100}마카
+IF ITEM:여관 || ITEM:창관
+	PRINTW 를 벌었습니다.
+ELSE
+	PRINTW 의 아르바이트비를 얻었습니다.
+ENDIF
+MONEY:1 += CFLAG:ARG:노역단가*(100+LOCAL:6)/100
+CALL 帳簿閲覧_노역, ARG, CFLAG:ARG:노역단가*(100+LOCAL:6)/100, 客入り, 2
+
+;PRINTFORML %CALLNAME:ARG%のＶプレイ回数{Ｖプレイ回数}回
+;PRINTFORML %CALLNAME:ARG%のＡプレイ回数{Ａプレイ回数}回
+;子宮現在容量加算
+IF TALENT:ARG:오토코노코
+	CFLAG:(ARG):子宮現在容量 += Ａプレイ回数 * 5
+ELSEIF !IS_MALE(ARG)
+	CFLAG:(ARG):子宮現在容量 += Ｖプレイ回数 * 5
+ENDIF
+;ふたごちゃんフラグがオンの場合、子宮容量を拡張する（二重の意味で）
+IF FLAG:ふたごちゃんフラグ
+	;=====================
+	;●子宮容量計算
+	;=====================
+	;現実的に言うと、非妊娠時の子宮は潰れており（中に誰もいないのだから当然）、
+	;容積は2mlほど。妊娠時はこれが4000ml～5000ml程度になるらしい。
+	;柔軟性は実際極めて高いようなので、（栓をされながら注ぎ込まれた場合として）普通体格で50ml程度を基準とする。
+	;通常、射精は2-5ml程度。上記射精強度ごとの値で通常射精は+5とあるので、体積はそれを基準とする。
+	;現実だと子宮口に阻まれて大半の精子はまず子宮内に入れないのだが、まあエロファンタジーエロファンタジー。
+	;ボッテボテに精液ボテるの大好きなので成長も大きめにしたが、それはそれとして成長しすぎると
+	;多胎率を上げるのが大変になるので最大値の成長は手加減する
+
+	;未設定の場合
+	CALL 子宮最大容量初期設定,ARG
+
+	;満タンにされた場合、拡張する
+	IF CFLAG:(ARG):子宮現在容量 > CFLAG:(ARG):子宮최대容量
+		;射精強度関数「TCVAR:ARG:사정」の数値に基づき、増加値を決定する
+		;射精量を1/4にした値に、[임신하기쉬움]で1.5倍、[출산경험]でさらにドン、の補正
+		;ただし、まぁ、射精した量の半分は超えない程度に
+		SELECTCASE TCVAR:ARG:사정
+			CASE 1
+				LOCAL:2 = MIN(3, 2 * ( TALENT:(ARG):임신하기쉬움 * 5 / 10 +1) * (EXP:(ARG):출산경험 / 10 + 1))
+			CASE 2
+				LOCAL:2 = MIN(5, 3 * (TALENT:(ARG):임신하기쉬움 * 5 / 10 +1) * (EXP:(ARG):출산경험 / 10 + 1))
+			CASE 3
+				LOCAL:2 = MIN(12, 6 * (TALENT:(ARG):임신하기쉬움 * 5 / 10 +1) * (EXP:(ARG):출산경험 / 10 + 1))
+			CASE 4
+				LOCAL:2 = MIN(25, 12 * (TALENT:(ARG):임신하기쉬움 * 5 / 10 +1) * (EXP:(ARG):출산경험 / 10 + 1))
+			CASE 5
+				;あんまり子宮容量が成長しすぎると満タンにするのがキツくなるので、ここは手加減
+				;射精量がランダムなので、ここは保存しておいた値を使う
+				LOCAL:2 = MIN(100, (LOCAL:2 / 4 * (TALENT:(ARG):임신하기쉬움 * 5 / 10 +1) * (EXP:(ARG):출산경험 / 10 + 1)))
+			CASEELSE
+		ENDSELECT
+		;おまじない
+		SIF LOCAL:2 < 1
+			LOCAL:2 = 1
+
+		;5000mlまではいいペースで増える
+		IF CFLAG:(ARG):子宮최대容量 <= 5000
+			CFLAG:(ARG):子宮최대容量 += LOCAL:2 + 1
+		;10000mlまでは速度半減
+		ELSEIF CFLAG:(ARG):子宮최대容量 <= 10000
+			CFLAG:(ARG):子宮최대容量 += LOCAL:2 / 2 + 1
+		;20000までは速度3割
+		ELSEIF CFLAG:(ARG):子宮최대容量 <= 20000
+			CFLAG:(ARG):子宮최대容量 += LOCAL:2 / 3 + 1
+		;それ以上は25%
+		ELSE
+			CFLAG:(ARG):子宮최대容量 += LOCAL:2 / 4 + 1
+		ENDIF
+
+		;最強射精が1回1000程度として、50回ぶち込めば満タンになる程度の容量でカンスト
+		;単純に考えて一般的妊婦さんの10倍だぞ10倍
+		;ただし現在容量は注ぎ込めば注ぎ込むだけ増えるので、「限界を超えて膨らみつつ、平常時はこれが限度」という感じ
+		SIF CFLAG:(ARG):子宮최대容量 >= 50000
+			CFLAG:(ARG):子宮최대容量 = 50000
+
+		;ふたごちゃんパッチ環境下なら、現在容量が最大容量を超えていても、最大容量まで下がらない
+		;※ステータス表示で「精液ボテ」と表示する。あと、多胎率が上昇する
+	ENDIF
+ENDIF
+
+
+;ＮＴＲ進行
+CALL NTR_PROSTITUTION,ARG,LOCAL:11,LOCAL:13,客入り
+
+;主人の속성値変動
+CALL INCREASE_LD,-2
+CALL SYNC_STATUS,MASTER
+
+SIF ARG == MASTER
+	CALL EVENTCHECK_M
+
+CALL 気絶処理(ARG)
+
+;最後に又、給料再計算（처녀상실等）
+CALL SALARY_PROSTITUTION,ARG,0
+CFLAG:ARG:노역단가 = RESULT
+
+	;노역フラグを해제
+	;CFLAG:ARG:노역フラグ = 0
+
+;==========================================================
+;@SALARY_PROSTITUTION
+; 매춘の노역단가を計算する。
+;<引数>
+;	ARG   = 노역대상キャラ
+;	ARG:1 = 가운価計算情報の표시有無(0:비표시 / 0以外:표시)
+;<戻り値>
+;	노역단가
+;==========================================================
+@SALARY_PROSTITUTION,ARG,ARG:1 = 0
+#LOCALSIZE 4
+;LOCAL   = 노역단가
+;LOCAL:1 = 가운価보정倍率
+;LOCAL:2 = 作業用値一時격납領域
+;LOCAL:3 = 붕괴/광기/임신표시分岐用
+;念のため変数の초기化
+VARSET LOCAL,0
+
+;ABL:순종をみる
+SELECTCASE ABL:ARG:순종
+	CASE 0
+		LOCAL += 0
+	CASE 1
+		LOCAL += 0
+	CASE 2
+		LOCAL += 1
+	CASE 3
+		LOCAL += 1
+	CASE 4
+		LOCAL += 2
+	CASE 5
+		LOCAL += 2
+	CASE 6
+		LOCAL += 2
+	CASE 7
+		LOCAL += 3
+	CASE 8
+		LOCAL += 3
+	CASE 9
+		LOCAL += 3
+	CASEELSE
+		LOCAL += 4
+ENDSELECT
+
+;ABL:욕망をみる
+SELECTCASE ABL:ARG:욕망
+	CASE 0
+		LOCAL += 0
+	CASE 1
+		LOCAL += 1
+	CASE 2
+		LOCAL += 2
+	CASE 3
+		LOCAL += 3
+	CASE 4
+		LOCAL += 4
+	CASE 5
+		LOCAL += 5
+	CASE 6
+		LOCAL += 6
+	CASE 7
+		LOCAL += 7
+	CASE 8
+		LOCAL += 8
+	CASE 9
+		LOCAL += 9
+	CASEELSE
+		LOCAL += 10
+ENDSELECT
+
+;ABL:Ｖ감각をみる
+SELECTCASE ABL:ARG:Ｖ감각
+	CASE 0
+		LOCAL += 0
+	CASE 1
+		LOCAL += 1
+	CASE 2
+		LOCAL += 1
+	CASE 3
+		LOCAL += 2
+	CASE 4
+		LOCAL += 2
+	CASE 5
+		LOCAL += 3
+	CASE 6
+		LOCAL += 3
+	CASE 7
+		LOCAL += 4
+	CASE 8
+		LOCAL += 4
+	CASE 9
+		LOCAL += 4
+	CASEELSE
+		LOCAL += 5
+ENDSELECT
+
+;ABL:Ａ감각をみる
+SELECTCASE ABL:ARG:Ａ감각
+	CASE 0
+		LOCAL += 0
+	CASE 1
+		LOCAL += 1
+	CASE 2
+		LOCAL += 1
+	CASE 3
+		LOCAL += 2
+	CASE 4
+		LOCAL += 2
+	CASE 5
+		LOCAL += 3
+	CASE 6
+		LOCAL += 3
+	CASE 7
+		LOCAL += 4
+	CASE 8
+		LOCAL += 4
+	CASE 9
+		LOCAL += 4
+	CASEELSE
+		LOCAL += 5
+ENDSELECT
+
+;ABL:봉사정신をみる
+SELECTCASE ABL:ARG:봉사정신
+	CASE 0
+		LOCAL += 0
+	CASE 1
+		LOCAL += 0
+	CASE 2
+		LOCAL += 1
+	CASE 3
+		LOCAL += 1
+	CASE 4
+		LOCAL += 1
+	CASE 5
+		LOCAL += 2
+	CASE 6
+		LOCAL += 2
+	CASE 7
+		LOCAL += 2
+	CASE 8
+		LOCAL += 3
+	CASE 9
+		LOCAL += 3
+	CASEELSE
+		LOCAL += 4
+ENDSELECT
+
+;ABL:레즈끼をみる
+SELECTCASE ABL:ARG:레즈끼
+	CASE 0
+		LOCAL += 0
+	CASE 1
+		LOCAL += 1
+	CASE 2
+		LOCAL += 2
+	CASE 3
+		LOCAL += 2
+	CASE 4
+		LOCAL += 3
+	CASE 5
+		LOCAL += 3
+	CASE 6
+		LOCAL += 3
+	CASE 7
+		LOCAL += 4
+	CASE 8
+		LOCAL += 4
+	CASE 9
+		LOCAL += 4
+	CASEELSE
+		LOCAL += 5
+ENDSELECT
+
+;ABL:정액중독をみる
+SELECTCASE ABL:ARG:정액중독
+	CASE 0
+		LOCAL += 0
+	CASE 1
+		LOCAL += 1
+	CASE 2
+		LOCAL += 2
+	CASE 3
+		LOCAL += 3
+	CASE 4
+		LOCAL += 4
+	CASE 5
+		LOCAL += 5
+	CASE 6
+		LOCAL += 6
+	CASE 7
+		LOCAL += 7
+	CASE 8
+		LOCAL += 8
+	CASE 9
+		LOCAL += 9
+	CASEELSE
+		LOCAL += 10
+ENDSELECT
+
+;ABL:레즈중독
+SELECTCASE ABL:ARG:레즈중독
+	CASE 0
+		LOCAL += 0
+	CASE 1
+		LOCAL += 1
+	CASE 2
+		LOCAL += 2
+	CASE 3
+		LOCAL += 3
+	CASE 4
+		LOCAL += 4
+	CASE 5
+		LOCAL += 5
+	CASE 6
+		LOCAL += 6
+	CASE 7
+		LOCAL += 7
+	CASE 8
+		LOCAL += 8
+	CASE 9
+		LOCAL += 9
+	CASEELSE
+		LOCAL += 10
+ENDSELECT
+
+;ABL:섹스중독
+SELECTCASE ABL:ARG:섹스중독
+	CASE 0
+		LOCAL += 0
+	CASE 1
+		LOCAL += 1
+	CASE 2
+		LOCAL += 2
+	CASE 3
+		LOCAL += 3
+	CASE 4
+		LOCAL += 4
+	CASE 5
+		LOCAL += 5
+	CASE 6
+		LOCAL += 6
+	CASE 7
+		LOCAL += 7
+	CASE 8
+		LOCAL += 8
+	CASE 9
+		LOCAL += 9
+	CASEELSE
+		LOCAL += 10
+ENDSELECT
+
+
+;ABL:ＢＬ끼をみる
+SELECTCASE ABL:ARG:ＢＬ끼
+	CASE 0
+		LOCAL += 0
+	CASE 1
+		LOCAL += 1
+	CASE 2
+		LOCAL += 2
+	CASE 3
+		LOCAL += 2
+	CASE 4
+		LOCAL += 3
+	CASE 5
+		LOCAL += 3
+	CASE 6
+		LOCAL += 4
+	CASE 7
+		LOCAL += 4
+	CASE 8
+		LOCAL += 5
+	CASE 9
+		LOCAL += 5
+	CASEELSE
+		LOCAL += 6
+ENDSELECT
+
+;ABL:ＢＬ중독
+SELECTCASE ABL:ARG:ＢＬ중독
+	CASE 0
+		LOCAL += 0
+	CASE 1
+		LOCAL += 1
+	CASE 2
+		LOCAL += 2
+	CASE 3
+		LOCAL += 3
+	CASE 4
+		LOCAL += 4
+	CASE 5
+		LOCAL += 5
+	CASE 6
+		LOCAL += 6
+	CASE 7
+		LOCAL += 7
+	CASE 8
+		LOCAL += 8
+	CASE 9
+		LOCAL += 9
+	CASEELSE
+		LOCAL += 10
+ENDSELECT
+
+SIF LOCAL > 0 && ARG:1
+	PRINTFORML 기본매춘단가：{LOCAL}
+
+;소질による보정
+LOCAL:2 = 0
+LOCAL:1 = 100
+;소질による매각額보정値計算
+;TALENT:처녀をみる
+IF TALENT:ARG:처녀
+	LOCAL:2 = 100
+	LOCAL:1 += 100
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:0% ＋{LOCAL:2}％
+ENDIF
+;TALENT:재생처녀をみる
+IF TALENT:ARG:재생처녀
+	LOCAL:2 = 20
+	LOCAL:1 += 20
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:1% ＋{LOCAL:2}％
+ENDIF
+;소질による増減
+;함락소질
+;연모
+IF TALENT:ARG:3
+	LOCAL:2 = 50
+	LOCAL:1 -=  50
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:3% －{LOCAL:2}％
+ENDIF
+;음란
+IF TALENT:ARG:4
+	LOCAL:2 = 50
+	LOCAL:1 += 50
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:4% ＋{LOCAL:2}％
+ENDIF
+;복종
+IF TALENT:ARG:5
+	LOCAL:2 = 30
+	LOCAL:1 += 30
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:5% ＋{LOCAL:2}％
+ENDIF
+;친애
+IF TALENT:ARG:6
+	LOCAL:2 = 80
+	LOCAL:1 -=  80
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:6% －{LOCAL:2}％
+ENDIF
+;창부
+IF TALENT:ARG:7
+	LOCAL:2 = 100
+	LOCAL:1 += 100
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:7% ＋{LOCAL:2}％
+ENDIF
+;예속
+IF TALENT:ARG:8
+	LOCAL:2 = 60
+	LOCAL:1 += 60
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:8% ＋{LOCAL:2}％
+ENDIF
+
+
+
+;그외소질
+;겁쟁이
+IF TALENT:ARG:10
+	LOCAL:2 = 20
+	LOCAL:1 -=  20
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:10% －{LOCAL:2}％
+ENDIF
+;반항적
+IF TALENT:ARG:11
+	LOCAL:2 = 20
+	LOCAL:1 += 20
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:11% ＋{LOCAL:2}％
+ENDIF
+;꿋꿋함
+IF TALENT:ARG:12
+	LOCAL:2 = 40
+	LOCAL:1 += 40
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:12% ＋{LOCAL:2}％
+ENDIF
+;솔직함
+IF TALENT:ARG:13
+	LOCAL:2 = 20
+	LOCAL:1 -=  20
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:13% －{LOCAL:2}％
+ENDIF
+;얌전함
+IF TALENT:ARG:14
+	LOCAL:2 = 20
+	LOCAL:1 -=  20
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:14% －{LOCAL:2}％
+ENDIF
+;프라이드높음
+IF TALENT:ARG:15
+	LOCAL:2 = 20
+	LOCAL:1 += 20
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:15% ＋{LOCAL:2}％
+ENDIF
+;건방짐
+IF TALENT:ARG:16
+	LOCAL:2 = 20
+	LOCAL:1 += 20
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:16% ＋{LOCAL:2}％
+ENDIF
+;프라이드낮음
+IF TALENT:ARG:17
+	LOCAL:2 = 20
+	LOCAL:1 -=  20
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:17% －{LOCAL:2}％
+ENDIF
+;츤데레
+IF TALENT:ARG:18
+	LOCAL:2 = 20
+	LOCAL:1 += 20
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:18% ＋{LOCAL:2}％
+ENDIF
+;자제심
+IF TALENT:ARG:20
+	LOCAL:2 = 20
+	LOCAL:1 += 20
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:20% ＋{LOCAL:2}％
+ENDIF
+;무관심
+IF TALENT:ARG:21
+	LOCAL:2 = 20
+	LOCAL:1 -=  20
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:21% －{LOCAL:2}％
+ENDIF
+;감정결핍
+IF TALENT:ARG:22
+	LOCAL:2 = 20
+	LOCAL:1 -=  20
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:22% －{LOCAL:2}％
+ENDIF
+;호기심
+IF TALENT:ARG:23
+	LOCAL:2 = 10
+	LOCAL:1 += 10
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:23% ＋{LOCAL:2}％
+ENDIF
+;보수적
+IF TALENT:ARG:24
+	LOCAL:2 = 10
+	LOCAL:1 += 10
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:24% ＋{LOCAL:2}％
+ENDIF
+;일선을넘지않음
+IF TALENT:ARG:27
+	LOCAL:2 = 30
+	LOCAL:1 += 30
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:27% ＋{LOCAL:2}％
+ENDIF
+;눈에띄고싶어함
+IF TALENT:ARG:28
+	LOCAL:2 = 10
+	LOCAL:1 += 10
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:28% ＋{LOCAL:2}％
+ENDIF
+;정조관념
+IF TALENT:ARG:30
+	LOCAL:2 = 20
+	LOCAL:1 += 20
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:30% ＋{LOCAL:2}％
+ENDIF
+;정조관결여
+IF TALENT:ARG:31
+	LOCAL:2 = 20
+	LOCAL:1 -=  20
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:31% －{LOCAL:2}％
+ENDIF
+;해방
+IF TALENT:ARG:33
+	LOCAL:2 = 10
+	LOCAL:1 += 10
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:33% ＋{LOCAL:2}％
+ENDIF
+;부끄럼쟁이
+IF TALENT:ARG:35
+	LOCAL:2 = 10
+	LOCAL:1 += 10
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:35% ＋{LOCAL:2}％
+ENDIF
+;부끄럼없음
+IF TALENT:ARG:36
+	LOCAL:2 = 10
+	LOCAL:1 -=  10
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:36% －{LOCAL:2}％
+ENDIF
+;아픔에약함
+IF TALENT:ARG:40
+	LOCAL:2 = 20
+	LOCAL:1 -=  20
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:40% －{LOCAL:2}％
+ENDIF
+;아픔에강함
+IF TALENT:ARG:41
+	LOCAL:2 = 20
+	LOCAL:1 += 20
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:41% ＋{LOCAL:2}％
+ENDIF
+;젖기쉬움
+IF TALENT:ARG:42
+	LOCAL:2 = 10
+	LOCAL:1 += 10
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:42% ＋{LOCAL:2}％
+ENDIF
+;젖기어려움
+IF TALENT:ARG:43
+	LOCAL:2 = 10
+	LOCAL:1 -=  10
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:43% －{LOCAL:2}％
+ENDIF
+;습득빠름
+IF TALENT:ARG:습득빠름
+	LOCAL:2 = 10
+	LOCAL:1 += 10
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:50% ＋{LOCAL:2}％
+ENDIF
+;습득느림
+IF TALENT:ARG:51
+	LOCAL:2 = 10
+	LOCAL:1 -=  10
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:51% －{LOCAL:2}％
+ENDIF
+;혀놀림
+IF TALENT:ARG:52
+	LOCAL:2 = 30
+	LOCAL:1 += 30
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:52% ＋{LOCAL:2}％
+ENDIF
+;약독내성
+IF TALENT:ARG:56
+	LOCAL:2 = 20
+	LOCAL:1 -=  20
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:56% －{LOCAL:2}％
+ENDIF
+;오줌싸개
+IF TALENT:ARG:57
+	LOCAL:2 = 10
+	LOCAL:1 += 10
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:57% ＋{LOCAL:2}％
+ENDIF
+;자위하기쉬움
+IF TALENT:ARG:60
+	LOCAL:2 = 10
+	LOCAL:1 += 10
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:60% ＋{LOCAL:2}％
+ENDIF
+;악취둔감
+IF TALENT:ARG:61
+	LOCAL:2 = 20
+	LOCAL:1 -=  20
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:61% －{LOCAL:2}％
+ENDIF
+;악취민감
+IF TALENT:ARG:62
+	LOCAL:2 = 20
+	LOCAL:1 += 20
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:62% ＋{LOCAL:2}％
+ENDIF
+;헌신적
+IF TALENT:ARG:헌신적
+	LOCAL:2 = 30
+	LOCAL:1 += 30
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:63% ＋{LOCAL:2}％
+ENDIF
+;쾌감에솔직
+IF TALENT:ARG:70
+	LOCAL:2 = 30
+	LOCAL:1 -=  30
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:70% －{LOCAL:2}％
+ENDIF
+;쾌감을부정
+IF TALENT:ARG:71
+	LOCAL:2 = 30
+	LOCAL:1 += 30
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:71% ＋{LOCAL:2}％
+ENDIF
+;즉각함락
+IF TALENT:ARG:73
+	LOCAL:2 = 50
+	LOCAL:1 -=  50
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:73% －{LOCAL:2}％
+ENDIF
+;자위광
+IF TALENT:ARG:74
+	LOCAL:2 = 20
+	LOCAL:1 += 20
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:74% ＋{LOCAL:2}％
+ENDIF
+;섹스광
+IF TALENT:ARG:섹스광
+	LOCAL:2 = 30
+	LOCAL:1 += 30
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:75% ＋{LOCAL:2}％
+ENDIF
+;애널광
+IF TALENT:ARG:애널광
+	LOCAL:2 = 20
+	LOCAL:1 += 20
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:76% ＋{LOCAL:2}％
+ENDIF
+;음유
+IF TALENT:ARG:77
+	LOCAL:2 = 30
+	LOCAL:1 += 30
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:77% ＋{LOCAL:2}％
+ENDIF
+;도착적
+IF TALENT:ARG:도착적
+	LOCAL:2 = 10
+	LOCAL:1 += 10
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:80% ＋{LOCAL:2}％
+ENDIF
+;남성혐오
+IF TALENT:ARG:82
+	LOCAL:2 = 10
+	LOCAL:1 -=  10
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:82% －{LOCAL:2}％
+ENDIF
+;새드
+IF TALENT:ARG:새드
+	LOCAL:2 = 30
+	LOCAL:1 += 30
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:83% ＋{LOCAL:2}％
+ENDIF
+;마조
+IF TALENT:ARG:마조
+	LOCAL:2 = 40
+	LOCAL:1 += 40
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:84% ＋{LOCAL:2}％
+ENDIF
+;망신
+IF TALENT:ARG:86
+	LOCAL:2 = 30
+	LOCAL:1 += 30
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:86% ＋{LOCAL:2}％
+ENDIF
+;여성혐오
+IF TALENT:ARG:88
+	LOCAL:2 = 10
+	LOCAL:1 -=  10
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:88% －{LOCAL:2}％
+ENDIF
+;소악마
+IF TALENT:ARG:87
+	LOCAL:2 = 20
+	LOCAL:1 += 20
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:87% ＋{LOCAL:2}％
+ENDIF
+;요호
+IF TALENT:ARG:91
+	LOCAL:2 = 20
+	LOCAL:1 += 20
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:91% ＋{LOCAL:2}％
+ENDIF
+;매력
+IF TALENT:ARG:92
+	LOCAL:2 = 20
+	LOCAL:1 += 20
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:92% ＋{LOCAL:2}％
+ENDIF
+;수수께끼의매력
+IF TALENT:ARG:94
+	LOCAL:2 = 100
+	LOCAL:1 += 100
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:94% ＋{LOCAL:2}％
+ENDIF
+;Ｃ둔감（감각が4이상なら무효）
+IF TALENT:ARG:101 && ABL:ARG:Ｃ감각 < 4
+	LOCAL:2 = 30
+	LOCAL:1 -=  30
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:101% －{LOCAL:2}％
+ENDIF
+;Ｃ민감（감각が3미만なら무효）
+IF TALENT:ARG:102 && ABL:ARG:Ｃ감각 >= 3
+	LOCAL:2 = 30
+	LOCAL:1 += 30
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:102% ＋{LOCAL:2}％
+ENDIF
+;Ｖ둔감（감각が4이상なら무효）
+IF TALENT:ARG:103 && ABL:ARG:4 < 4
+	LOCAL:2 = 30
+	LOCAL:1 -=  30
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:103% －{LOCAL:2}％
+ENDIF
+;Ｖ민감（감각が3미만なら무효）
+IF TALENT:ARG:104 && ABL:ARG:4 >= 3
+	LOCAL:2 = 30
+	LOCAL:1 += 30
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:104% ＋{LOCAL:2}％
+ENDIF
+;Ａ둔감（감각が4이상なら무효）
+IF TALENT:ARG:105 && ABL:ARG:Ａ감각 < 4
+	LOCAL:2 = 30
+	LOCAL:1 -=  30
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:105% －{LOCAL:2}％
+ENDIF
+;Ａ민감（감각が3미만なら무효）
+IF TALENT:ARG:106 && ABL:ARG:Ａ감각 >= 3
+	LOCAL:2 = 30
+	LOCAL:1 += 30
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:106% ＋{LOCAL:2}％
+ENDIF
+;Ｂ둔감（감각が4이상なら무효）
+IF TALENT:ARG:107 && ABL:ARG:6 < 4
+	LOCAL:2 = 30
+	LOCAL:1 -=  30
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:107% －{LOCAL:2}％
+ENDIF
+;Ｂ민감（감각が3미만なら무효）
+IF TALENT:ARG:108 && ABL:ARG:6 >= 3
+	LOCAL:2 = 30
+	LOCAL:1 += 30
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:108% ＋{LOCAL:2}％
+ENDIF
+;빈유
+IF TALENT:ARG:109
+	LOCAL:2 = 20
+	LOCAL:1 -= 20
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:109% －{LOCAL:2}％
+ENDIF
+;절벽
+IF TALENT:ARG:110
+	LOCAL:2 = 10
+	LOCAL:1 += 10
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:110% ＋{LOCAL:2}％
+ENDIF
+;거유
+IF TALENT:ARG:111
+	LOCAL:2 = 20
+	LOCAL:1 += 20
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:111% ＋{LOCAL:2}％
+ENDIF
+;폭유
+IF TALENT:ARG:112
+	LOCAL:2 = 10
+	LOCAL:1 += 10
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:112% ＋{LOCAL:2}％
+ENDIF
+;魔乳
+IF TALENT:ARG:魔乳
+	LOCAL:2 = 10
+	LOCAL:1 += 10
+	SIF ARG:1
+		PRINTFORML 魔乳 ＋{LOCAL:2}％
+ENDIF
+;남자でないなら有効
+IF !TALENT:ARG:남자
+	;小尻
+	IF TALENT:ARG:121
+		LOCAL:2 = 10
+		LOCAL:1 -= 10
+		SIF ARG:1
+			PRINTFORML %TALENTNAME:121% －{LOCAL:2}％
+	ENDIF
+	;巨尻
+	IF TALENT:ARG:123
+		LOCAL:2 = 20
+		LOCAL:1 += 20
+		SIF ARG:1
+			PRINTFORML %TALENTNAME:123% ＋{LOCAL:2}％
+	ENDIF
+	;爆尻
+	IF TALENT:ARG:124
+		LOCAL:2 = 10
+		LOCAL:1 += 10
+		SIF ARG:1
+			PRINTFORML %TALENTNAME:124% ＋{LOCAL:2}％
+	ENDIF
+ENDIF
+;회복빠름
+IF TALENT:ARG:130
+	LOCAL:2 = 20
+	LOCAL:1 += 20
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:130% ＋{LOCAL:2}％
+ENDIF
+;회복느림
+IF TALENT:ARG:131
+	LOCAL:2 = 20
+	LOCAL:1 -=  20
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:131% －{LOCAL:2}％
+ENDIF
+;흡혈귀
+IF TALENT:ARG:132
+	LOCAL:2 = 30
+	LOCAL:1 += 30
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:132% ＋{LOCAL:2}％
+ENDIF
+;동물귀
+IF TALENT:ARG:143
+	LOCAL:2 = 20
+	LOCAL:1 += 20
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:143% ＋{LOCAL:2}％
+ENDIF
+;인기
+IF TALENT:ARG:145
+	LOCAL:2 = 50
+	LOCAL:1 += 50
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:145% ＋{LOCAL:2}％
+ENDIF
+;봉래인
+IF TALENT:ARG:147
+	LOCAL:2 = 70
+	LOCAL:1 += 70
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:147% ＋{LOCAL:2}％
+ENDIF
+;모유체질
+IF TALENT:ARG:149
+	LOCAL:2 = 20
+	LOCAL:1 += 20
+	SIF ARG:1
+		PRINTFORML %TALENTNAME:149% ＋{LOCAL:2}％
+ENDIF
+
+;,광기は報酬をかなり低くする（순종によって、80％まで회복）
+;임신は逆に高くする。
+IF TALENT:ARG:9 || TALENT:ARG:141 || TALENT:ARG:153
+	IF TALENT:ARG:9 || TALENT:ARG:141
+		LOCAL *= MIN(10,ABL:ARG:순종)
+		TIMES LOCAL , 0.08
+		LOCAL:2 = MIN(10,ABL:ARG:순종)
+		LOCAL:2 *= 8
+		;표시する소질名판정用
+		IF TALENT:ARG:9
+			LOCAL:3 = 9
+		ELSE
+			LOCAL:3 = 141
+		ENDIF
+	ELSEIF TALENT:ARG:153
+		TIMES LOCAL , 2.3
+		LOCAL:2 = 230
+		LOCAL:3 = 153
+	ENDIF
+
+	IF ARG:1
+		PRINTL 
+		PRINTFORML %TALENTNAME:(LOCAL:3)% ×{LOCAL:2}％
+		PRINTL 
+	ENDIF
+ENDIF
+
+;보정値が0以下の場合は1にする
+SIF LOCAL:1 <= 0
+	LOCAL:1 = 1
+
+SIF ARG:1
+	PRINTFORML 최종배율 {LOCAL:1}％
+
+;보정値の適用
+LOCAL *= LOCAL:1
+LOCAL /= 100
+
+;시설による보정
+IF ITEM:창관
+	TIMES LOCAL , 1.3
+	SIF ARG:1
+		PRINTFORML 창관소지에 의한 보정 ×130％
+ELSEIF ITEM:여관 == 0
+	TIMES LOCAL , 0.5
+	SIF ARG:1
+		PRINTFORML 마진 ×50％
+ENDIF
+
+;난이도보정
+CALL CORRECT_DIFFICULTY, LOCAL, ARG:1
+LOCAL = RESULT
+
+;인계된 캐릭터보정
+CALL CORRECT_PROCESSION_CHARA, ARG, LOCAL , ARG:1
+LOCAL = RESULT
+
+RETURN LOCAL
+
+
+;==========================================================
+;@NTR_PROSTITUTION
+; 매춘노역でのNTR処理
+;<引数>
+;	ARG   = ＮＴＲキャラの등록번호
+;	ARG:1 = 섹스系プ레이횟수
+;	ARG:2 = SM系プ레이횟수
+;	ARG:3 = 相손をした人数
+;<戻り値>
+;	なし
+;==========================================================
+@NTR_PROSTITUTION, ARG, ARG:1, ARG:2, ARG:3
+#LOCALSIZE 5
+;LOCAL:1 = 호감도변화量
+;LOCAL:2 = NTR好き客からの声掛けられ확률
+;LOCAL:3 = NTR引っかかり확률마이ナス보정
+;LOCAL:4 = NTR客判別
+
+;LOCAL配列초기化
+VARSET LOCAL,0
+
+;창관ＮＴＲ이벤트がOFFの場合は何もせず戻る
+;専有奴隷の개목걸이を장비している場合は何もせず戻る
+;남자は弾く
+SIF !GETBIT(FLAG:ＮＴＲ기능 , 2) || (CFLAG:ARG:그외 == 1116 || CFLAG:ARG:그외2 == 1116 || CFLAG:ARG:그외3 == 1116 || CFLAG:ARG:그외4 == 1116 || CFLAG:ARG:그외5 == 1116 || CFLAG:ARG:그외6 == 1116) || TALENT:ARG:남자 == 1
+	RETURN
+
+;NTR好き客からの声掛けられ확률산출
+LOCAL:2 = LIMIT(CFLAG:ARG:放置日数 * 2, 0, 30) + TALENT:ARG:인기 * 10
+
+;NTR引っかかり확률마이ナス보정の計算
+LOCAL:3 = CFLAG:ARG:放置日数 * 2 + TALENT:ARG:즉각함락 * 50
+SIF 위험일(ARG) > 1
+	LOCAL:3 += 위험일(ARG) * 10
+
+;ＮＴＲ客の설정処理
+SELECTCASE FLAG:ＮＴＲ客の설정
+	CASE  0
+		TIMES LOCAL:2 , 1.00
+		TIMES LOCAL:3 , 1.00
+	CASE  1
+		TIMES LOCAL:2 , 1.50
+		TIMES LOCAL:3 , 2.00
+	CASE  2
+		TIMES LOCAL:2 , 3.00
+		TIMES LOCAL:3 , 4.00
+ENDSELECT
+
+SIF (CFLAG:ARG:그외 == 1117 || CFLAG:ARG:그외2 == 1117 || CFLAG:ARG:그외3 == 1117)
+	PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 뭐라고 말할 수 없는 달콤한 향기를 풍기고 있다……
+;호감도
+LOCAL:1 = ARG:1/3+ARG:2/3 + ARG:3 + CFLAG:ARG:放置日数
+IF RAND:2 == 0
+	CDFLAG:ARG:キャラ間好感度:(96) += LOCAL:1
+ELSE
+	CDFLAG:ARG:キャラ間好感度:(95) -= LOCAL:1
+ENDIF
+
+;デートのお誘い
+;放置日数*2（上限30％）の확률로声をかけられる（인기持ちはさらに+10％）
+;ＮＴＲ상태の場合は50％
+IF RAND:100 < LOCAL:2 || TALENT:ARG:ＮＴＲ > 0 && RAND:100 < 50 || (CFLAG:ARG:그외 == 1117 || CFLAG:ARG:그외2 == 1117 || CFLAG:ARG:그외3 == 1117)
+	PRINTFORML 
+	PRINTFORML %조사처리(CALLNAME:ARG,"는")% 손님에게 가게 밖 데이트를 신청 받은 것 같다
+	;誘いに乗るか판정
+	;기본치0％+放置日数*2（上限なし）さらに즉각함락持ちは+50で、発情の場合も+10～15
+	;これに함락度*10の마이ナス보정を入れる
+	;ＮＴＲ상태の場合は無조건でついていく
+	IF RAND:100 > 100 + 함락(ARG) * 10 - LOCAL:3 || TALENT:ARG:ＮＴＲ > 0 || (CFLAG:ARG:그외 == 1117 || CFLAG:ARG:그외2 == 1117 || CFLAG:ARG:그외3 == 1117)
+		PRINTFORML 
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 손님과 약속 장소로 향했다……
+		PRINTFORML ・
+		PRINTFORML ・・
+		PRINTFORMW ・・・
+		;本番판정
+		;기본치50％+放置日数*2（上限なし）さらに즉각함락持ちは+50
+		;これに함락度*50の마이ナス보정を入れる
+		;ＮＴＲ상태の場合は無조건でドピュドピュされる
+		IF RAND:100 > 50 + 함락(ARG) * 50 - LOCAL:3 || TALENT:ARG:ＮＴＲ > 0 || (CFLAG:ARG:그외 == 1117 || CFLAG:ARG:그외2 == 1117 || CFLAG:ARG:그외3 == 1117)
+			IF RAND:2 == 0
+				;優しい창관顧客
+				LOCAL:4 = -4
+				IF TALENT:ARG:ＮＴＲ == 1
+					PRINTFORMW %조사처리(CALLNAME:ARG,"는")% %NTRNAME(CFLAG:ARG:함락キャラ)%에게 이끌려 호텔로 갔다……
+				ELSE
+					PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 손님이 불러 호텔에 들어갔다
+                                ENDIF
+				IF CFLAG:ARG:現ＮＴＲ進行度 > 10
+					IF CFLAG:ARG:자궁내피임결계 == 1
+						CFLAG:ARG:자궁내피임결계 = 0
+						PRINTFORML %CALLNAME:ARG%의 자궁내 피임 결계가 해제되어 버렸다……
+					ENDIF
+					IF RAND:100 < 30 && CFLAG:ARG:배란유발제 == 0
+						CFLAG:ARG:배란유발제 = 1
+						PRINTFORML %조사처리(CALLNAME:ARG,"는")%배란유발제를 먹여졌다……
+					ENDIF
+				ENDIF
+				PRINTFORML 
+				CALL NTR_PROSTITUTION_SEX, ARG, LOCAL:4
+
+				SETCOLOR COLOR("pink")
+				IF TALENT:ARG:ＮＴＲ == 1
+					;위험일
+					IF 위험일(ARG) == 1
+						IF RAND:7 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"가")% 사정하는 순간 제대로 달라붙어、조금이라도 많이 정액을 받아들일려고 했다……
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 위험일에 %NTRNAME(CFLAG:ARG:함락キャラ)%에게 교배 당할 수 있다는 것에 행복을 느끼고 있다……
+						ELSEIF RAND:6 == 0
+							PRINTFORML %조사처리(CALLNAME:ARG,"는")% 방에 들어가자、뺨을 붉게 물들이며 위험일에 대해 %NTRNAME(CFLAG:ARG:함락キャラ)%에게 전했다……
+							PRINTFORMW 
+							PRINTFORML %조사처리(CALLNAME:ARG,"는")% 위험일 같은 여자의 주기에 대해 %NTRNAME(CFLAG:ARG:함락キャラ)%에게 말하는 것을 약속하고 있었다。
+							PRINTFORMW 무리를 시키지 않기 위해서、%CALLNAME:ARG%의 신체가 신경 쓰이기 때문이라고 설명되어 있었던 것이다。
+							PRINTFORML 확실히、위험일에는 언제나 제대로 진한 진심이 담긴 교배 섹스를 해 주고 있고、
+							PRINTFORMW 생리를 하는 날에는、충분히 %NTRNAME(CFLAG:ARG:함락キャラ)%의 뜨거운 정자를 질내사정 받고 있다。
+							PRINTFORML 그러지 않은 날에는 거리낌 없이 몇 번이나 질내사정을 반복해……
+							PRINTFORMW 
+							PRINTFORMW …어쨌든、%조사처리(CALLNAME:ARG,"는")% 오늘도 %NTRNAME(CFLAG:ARG:함락キャラ)%에 충분히 진한 정액으로 교배 받았다……
+						ELSEIF RAND:5 == 0
+							PRINTFORML %조사처리(CALLNAME:ARG,"는")% %NTRNAME(CFLAG:ARG:함락キャラ)%에 귀에 입을 대어、위험일이니까 가득 싸 주어 달라고 음란하게 부탁했다……
+							PRINTFORMW 그리고 %NTRNAME(CFLAG:ARG:함락キャラ)%에게 걸쳐、이미 녹은 그곳에 스스로 %NTRNAME(CFLAG:ARG:함락キャラ)%의 페니스를 삽입시켜 간다……
+							PRINTFORMW 격렬한 허리 놀림으로 몇 번이나 정액을 짜낸 %조사처리(CALLNAME:ARG,"는")% 체내에서 퍼지는 %NTRNAME(CFLAG:ARG:함락キャラ)%의 정액의 감촉에 만족한 듯하다……
+						ELSEIF RAND:4 == 0
+							PRINTFORML 뒤에서 부터 격렬하게 찔리면서、평소보다도 열정적으로 질내사정을 조르는 %조사처리(CALLNAME:ARG,"를")% 보며、
+							PRINTFORMW %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"는")% 위험일에 대하여 헤아리며、재깍재깍하고 자궁의 입구를 상냥하게 노크하기 시작했다……
+							PRINTFORML 여성의 중요한 부분을 한 번씩 찔릴 때마다 %조사처리(CALLNAME:ARG,"는")% 사정의 순간을 의식하여、달콤한 소리로 신음해 버린다……
+							PRINTFORMW 그 정중하고 강렬한 자극은 %CALLNAME:ARG%에게 여자로서 한층 더 큰 즐거움을 상상하게 했다……
+							PRINTFORML 그대로 초조하게 되고 난 다음、겨우 뜨거워져 대량의 정액을 질내에 싸 주자、
+							PRINTFORMW 강렬한 감촉에 %조사처리(CALLNAME:ARG,"는")% 눈물을 흘리면서 전신을 떨어 가며、요구 당한다는 즐거움을 맛보며 절정에 달했다……
+						ELSEIF RAND:3 == 0
+							PRINTFORMW 몇 번이나 질내사정된 다음에 %조사처리(CALLNAME:ARG,"는")%、%NTRNAME(CFLAG:ARG:함락キャラ)%에 팔에 안기면서 위험일이었단 것을 전한다……
+							PRINTFORML 그걸 들은 %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"는")% 놀라 눈이 흔들렸지만、%조사처리(CALLNAME:ARG,"는")% 상냥하게 입을 맞추었다……
+							PRINTFORMW %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"는")% 놀라는 것을 그만두고 %조사처리(CALLNAME:ARG,"를")% 껴안아、키스에 응했다……
+						ELSEIF RAND:2 == 0
+							PRINTFORMW 몇 번이나 질내사정된 다음에 %조사처리(CALLNAME:ARG,"는")%、%NTRNAME(CFLAG:ARG:함락キャラ)%에 팔에 안기면서 위험일이였던 것을 전했다……
+							PRINTFORMW 그걸 들은 %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"는")% %조사처리(CALLNAME:ARG,"를")% 껴안으며 상냥하게 키스했다……
+							PRINTFORML 흘러넘치는 햄복감에 싸인 %조사처리(CALLNAME:ARG,"는")% 넋을 잃고 있었지만、
+							PRINTFORMW %NTRNAME(CFLAG:ARG:함락キャラ)%의 페니스가 완전히 건강을 되찾고 있는 것을 보곤 쓴웃음을 지었다……
+							PRINTFORML 
+							PRINTFORMW 격렬한 교배 섹스를 끝내고、%NTRNAME(CFLAG:ARG:함락キャラ)%의 팔에 다시 안기며 %조사처리(CALLNAME:ARG,"는")% 재차 행복을 느끼고 있었다……
+						ELSE
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% %NTRNAME(CFLAG:ARG:함락キャラ)%에게 위험일이라 말하며、이미 습기 찬 국부를 조여 오며 각오가 되어 있는 일을 전했다……
+							PRINTFORMW 그리고、그 둘은 열정적으로 몇 번이고 몸을 섞었다……
+						ENDIF
+					;発情
+					ELSEIF 위험일(ARG) == 2
+						IF RAND:4 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% %NTRNAME(CFLAG:ARG:함락キャラ)%에게 뒤로 찔릴 때、여자답지 않은 소리를 높이고 있다……
+							PRINTFORMW %NTRNAME(CFLAG:ARG:함락キャラ)%의 정액이 위험일인 질내를 채워 몇 번이고、%조사처리(CALLNAME:ARG,"는")% 열락과 기쁨으로 가득 찬 교성을 높이고 있다
+						ELSEIF RAND:3 == 0
+							PRINTFORMW 느긋히 %조사처리(CALLNAME:ARG,"를")% 밀어 헤쳐 침입해 오는 페니스의 감촉에 %조사처리(CALLNAME:ARG,"는")% 짐승과 같이 소리 지른다……
+							PRINTFORML 흘러넘치는 액을 뚝뚝 떨어뜨리며 음란한 움직임으로 꿈틀거리는 %CALLNAME:ARG%의 위험일인 꿀단지는、
+							PRINTFORMW 절정을 맞이한 %NTRNAME(CFLAG:ARG:함락キャラ)%의 페니스를 감지하곤 단단히 조여、뜨거운 교배를 바라고 있었다……
+						ELSEIF RAND:2 == 0
+							PRINTFORMW 발정하여、달아오름이 멈추지 않는 %CALLNAME:ARG%의 신체는、
+							PRINTFORMW 위험일의 질이 정액으로 채워질 떄까지%조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"를")% 놓칠려 하지 않았다……
+						ELSE
+							PRINTFORMW 밖으로 노출된 성욕을 %조사처리(CALLNAME:ARG,"와")% %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"는")% 서로 탐내고……
+							PRINTFORMW 몇 번이고 위험일의 질에 정액을 받아들이고 채워 가며、서로의 신체를 계속 요구하고 있다……
+							PRINTFORMW 수컷과 암퇘지의 냄새로 충만한 실내엔、고기가 부딪히는 소리와 두 명의 난폭한 숨결만이 들리고 있었다……
+						ENDIF
+					;만월発情
+					ELSEIF 위험일(ARG) == 3
+						IF RAND:4 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% %NTRNAME(CFLAG:ARG:함락キャラ)%에게 뒤에서부터 찔릴 때、여자답지 않은 소리를 높이고 있다……
+							PRINTFORMW %NTRNAME(CFLAG:ARG:함락キャラ)%의 정액이 질내를 채워 몇 번이고、%조사처리(CALLNAME:ARG,"는")% 열락과 기쁨으로 가득 찬 교성을 높이고 있다
+						ELSEIF RAND:3 == 0
+							PRINTFORMW 느긋히%조사처리(CALLNAME:ARG,"를")% 밀어 해쳐 침입해 오는 페니스의 감촉에 %조사처리(CALLNAME:ARG,"는")% 짐승과 같이 소리 지른다……
+							PRINTFORML 흘러넘치는 액을 뚝뚝 떨어뜨리며 음란한 움직임으로 꿈틀거리는 %CALLNAME:ARG%의 꿀단지는、
+							PRINTFORMW 절정을 맞이한 %NTRNAME(CFLAG:ARG:함락キャラ)%의 페니스를 감지하곤 단단히 조여、뜨겁게 사정할 때까지 뗴어 놓지 않을 것 같다……
+						ELSEIF RAND:2 == 0
+							PRINTFORMW 완전히 발정한 %CALLNAME:ARG%의 몸은 만족할 때까지 %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"를")% 놓으려고 하지 않았다……
+						ELSE
+							PRINTFORMW 밖으로 노출된 성욕을、%조사처리(CALLNAME:ARG,"와")%%조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"는")% 서로 탐내고……
+							PRINTFORMW 교배의 냄새로 충만한 실내엔、고기를 부딪히는 소리와 두명의 난폭한 숨결만이 들리고 있었다……
+						ENDIF
+					;통상
+					ELSE
+						IF RAND:17 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"와")% 격렬하게 서로 사랑하고 있다……
+							PRINTFORMW 자궁 안에 퍼지는 『뜨거움』을 느끼면서、여자로서의 행복을 만끽하고 있다……
+						ELSEIF RAND:16 == 0
+							PRINTFORML %조사처리(CALLNAME:ARG,"는")% 기승위로 격렬하게 허리를 흔들던 것을 느슨하게 하고、아직 연결된 채로 넘어뜨려 %NTRNAME(CFLAG:ARG:함락キャラ)%에게 달라붙어、
+							PRINTFORMW 신체를 %NTRNAME(CFLAG:ARG:함락キャラ)%에게 밀착시키면서 입술이 닿을 거리에서 키스를 졸랐다……
+							PRINTFORML %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"는")% 연결된 채로 %조사처리(CALLNAME:ARG,"를")% 제대로 안아、부탁에 응해 입을 맞춘다……
+							PRINTFORML 혀로부터 감싸는 것 같은 상냥한 키스를 %NTRNAME(CFLAG:ARG:함락キャラ)%로부터 몇 번이나 받고 있는 동안、
+							PRINTFORMW 질벽은 무의식 중에 꽉하고 페니스를 단단히 조여、끈적끈적한 애액을 배어 나오게 했다……
+							PRINTFORML %CALLNAME:ARG%의 몸이 기쁘게 응하고 있단 것을 알자、%조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"는")% %CALLNAME:ARG%의 입술을 빠는 것을 멈추지 않은 채로 아래에서부터 밀어 올려、
+							PRINTFORMW 이윽고 요염하게 사정을 애타게 기다리는 %CALLNAME:ARG%의 질에, 잔뜩 정액을 퍼부어 갔다……
+						ELSEIF RAND:15 == 0
+							PRINTFORMW 조명이 꺼진 어슴푸레한 호텔 실내에、남녀의 뜨거운 숨결이 떨리고 있다……
+							PRINTFORMW %조사처리(CALLNAME:ARG,"와")% %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"는")% 태어난 그대로의 모습으로 연결되어、육욕을 탐내고 있다……
+							PRINTFORMW 두 명의 연결은 확실한 증거를 얻기 위해、단지 그것을 위해 오로지 서로가 서로를 요구하고 있었다……
+						ELSEIF RAND:14 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 앉아 있는 %NTRNAME(CFLAG:ARG:함락キャラ)%의 가랑이에 달라붙어 놓지 않고、넋을 잃은 채 열정적이고 맹목적으로 달라붙어 봉사를 계속하고 있었다……
+							PRINTFORML %NTRNAME(CFLAG:ARG:함락キャラ)%에게 상냥하게 머리를 어루만져지자、%조사처리(CALLNAME:ARG,"는")% 입으로는 음란한 짓을 계속한 채로 위로 시선을 올리곤 서로 바라본다……
+							PRINTFORMW 열정적으로 정열적인 봉사를 계속하는%CALLNAME:ARG%의 고기 단지는、이미 기대와 흥분으로 찌르르하게 되어 달콤한 애액을 늘어뜨리고 있다……
+							PRINTFORML %NTRNAME(CFLAG:ARG:함락キャラ)%의 가벼운 신호로 %조사처리(CALLNAME:ARG,"는")% 드디어 %NTRNAME(CFLAG:ARG:함락キャラ)%에 삽입해 주겠다는 말에 얼굴을 붉혔다……
+							PRINTFORMW %NTRNAME(CFLAG:ARG:함락キャラ)%에게 안겨 대면좌위를 요구 받자、
+							PRINTFORML %조사처리(CALLNAME:ARG,"는")% %NTRNAME(CFLAG:ARG:함락キャラ)%의 페니스를 천천히 맛보듯이 앉아、끈적해진 꿀단지로 삼켜 간다……
+							PRINTFORMW 혀를 얽으며 헌신적으로 허리를 흔들며 봉사하는 %조사처리(CALLNAME:ARG,"는")%、뜨거운 정액을 태내에 받는 것에 대한 기대가 흘러넘치고 있다……
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% %NTRNAME(CFLAG:ARG:함락キャラ)%에게 제대로 껴안겨 、귓속말로 사랑의 말을 들으며 진한 정액으로 교배되었다……
+							PRINTFORML
+							PRINTFORMW 그 후、몇 번이고 충분히 질내사정 당한 %조사처리(CALLNAME:ARG,"는")%、%NTRNAME(CFLAG:ARG:함락キャラ)%의 팔 안에서 행복하게 페니스를 요구했다……
+						ELSEIF RAND:13 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 정면에서 찔리면서 %NTRNAME(CFLAG:ARG:함락キャラ)%에게 귓속말로 사랑을 속삭여져、행복함에 싸이고 있었다……
+							PRINTFORML %NTRNAME(CFLAG:ARG:함락キャラ)%의 딱딱한 페니스로 자궁 입구를 몇 번이나 노크되어、연달아 절정 당하고 있다……
+							PRINTFORMW %CALLNAME:ARG%의 육벽은 진심어린 애액으로 %NTRNAME(CFLAG:ARG:함락キャラ)%의 페니스를 감싸、가장 안쪽까지 사정하도록 준비하고 있었다……
+						ELSEIF RAND:12 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"와")%%조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"는")% 호텔의 욕조에 잠겨 연결되고 있다……
+							PRINTFORMW 흘러넘치는 뜨거운 물을 신경 쓸 여유는 곧바로 없어져、%조사처리(CALLNAME:ARG,"는")% 사랑하는 남자에게 요구되는 기쁨에 만취했다……
+						ELSEIF RAND:11 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 명령 당한 대로 질구를 M자로 벌려、흠뻑 졎어 있었던 음부가 %NTRNAME(CFLAG:ARG:함락キャラ)%에 잘 보이도록 손가락으로 벌렸다……
+							PRINTFORMW %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"는")% 빨려 들어갈듯이 얼굴을 가까이해、숨이 닿는 거리에서 %CALLNAME:ARG%의 부끄러운 부분을 관찰하고 있다……
+							PRINTFORMW 수치심을 참는 %조사처리(CALLNAME:ARG,"였")%지만、%NTRNAME(CFLAG:ARG:함락キャラ)%에 딱딱하게 발기한 음경을 보자、부끄러워하며 수줍어한다……
+						ELSEIF RAND:10 == 0
+							PRINTFORML %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"는")% 방에 들어가자마자%조사처리(CALLNAME:ARG,"를")% 뒤에서부터 꼭 껴안아、사랑을 속삭이며 애무를 시작했다……
+							PRINTFORMW 그리고、그곳이 충분히 젖은 것을 확인하곤、속옷 틈새로 삽입했다……
+							PRINTFORML 
+							PRINTFORML %조사처리(CALLNAME:ARG,"는")% 자신을 뒤로부터 꼭 껴안아、무아지경으로 허리를 흔드는 %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"가")% 사랑스럽다고 생각하며、몸을 바치고 있다……
+							PRINTFORMW %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"는")% 빠르게 한계를 맞이하여、꼭 껴안은 팔에 억지로 힘을 넣어 단단히 자궁에 정액을 쏟았다……
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 자신을 안는 팔의 강함과、뜨겁게 내뿜어진 것에서 여자로써의 충만함과 즐거움을 느끼고 있다……
+						ELSEIF RAND:9 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% %NTRNAME(CFLAG:ARG:함락キャラ)%에게 강직하게 범해져 、달콤한 소리를 높이고 있었다……
+							PRINTFORMW 떄떄로%NTRNAME(CFLAG:ARG:함락キャラ)%의 이름을 부르면서、정욕을 탐내고 있다……
+							PRINTFORMW 그리고 서로 강하게 꼭 껴안은 채로、%NTRNAME(CFLAG:ARG:함락キャラ)%의 정액을 몸의 가장 안쪽까지 받아들였다……
+						ELSEIF RAND:8 == 0
+							PRINTFORMW 알몸으로 얼싸 안은 %조사처리(CALLNAME:ARG,"와")% %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"는")%、깊게 연결된 채로 뜨거운 키스를 주고 받고 있다……
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 혀를 얽히고 있는 진심 어린 키스를 멈추지 않고 %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"를")% 계속 요구했다……
+							PRINTFORMW 양손을 겹쳐 키스를 계속한 채로、%CALLNAME:ARG%의 질에 뜨거운 정액이 뿜어졌다……
+						ELSEIF RAND:7 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 메이드복을 입은 채로、%조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"와")% 함께 있었다……
+							PRINTFORMW 수줍어하면서도、주인님과 메이드 플레이에 %조사처리(CALLNAME:ARG,"는")% 열중해 버리고 말았다……
+							PRINTFORML 진한「봉사」로 전신이 %NTRNAME(CFLAG:ARG:함락キャラ)%의 정액 범벅이 되면서、
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 다음에 만날 때의 플레이는 무엇으로 할까 생각하고 있었다……
+						ELSEIF RAND:6 == 0
+							PRINTFORML %조사처리(CALLNAME:ARG,"는")% 격렬하게 키스하면서、들어앉은 %NTRNAME(CFLAG:ARG:함락キャラ)%에게 대면좌위로 연결되고 있다……
+							PRINTFORMW 몸의 가장 안쪽을 계속 강하게 찔려、이미 %조사처리(CALLNAME:ARG,"는")% 몇 번이고 절정에 달하여 %NTRNAME(CFLAG:ARG:함락キャラ)%의 정액을 질내에 받아들이고 있었다……
+							PRINTFORML %CALLNAME:ARG%의 약한 곳을 전부 완전히 알고 있는 %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"는")%、교묘하게 허리를 움직여 재차 절정을 향한 고문을 가속하고 있다……。
+							PRINTFORML %조사처리(CALLNAME:ARG,"는")% %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"가")% 또다시 자신을 가게 해 줄 것이란걸 깨닫자、%조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"를")% 꽉 껴안았다……
+							PRINTFORMW 그리고 가속한 채 %NTRNAME(CFLAG:ARG:함락キャラ)%의 강한 한 번의 찌르기로、%조사처리(CALLNAME:ARG,"는")% 크게 교성을 올렸다……
+							PRINTFORML 
+							PRINTFORMW 그대로 한계가 올 때까지 %조사처리(CALLNAME:ARG,"는")% 가는 것을 계속하게 되었다……
+						ELSEIF RAND:5 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")%、%NTRNAME(CFLAG:ARG:함락キャラ)%에게 앞에서부터 상냥하게 꿰뚫리면서 사랑의 말을 속삭여져、완전히 흐느적흐느적하게 되었다……
+							PRINTFORMW %NTRNAME(CFLAG:ARG:함락キャラ)%의 달콤한 고문을 피할 방법도 없는 %조사처리(CALLNAME:ARG,"는")%、발을 얽어 질내사정을 조르는 것으로 %NTRNAME(CFLAG:ARG:함락キャラ)%의 고문에 답하고 있었다……
+							PRINTFORMW 그리고 질내에 %NTRNAME(CFLAG:ARG:함락キャラ)%의 뜨거운 정액을 느끼면서、%조사처리(CALLNAME:ARG,"는")% 그 감미로운 감촉에 조수를 뿜으면서 절정을 맞았다……
+						ELSEIF RAND:4 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"와")% %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"는")% 손가락을 얽히게 하면서 몇 번이나 서로의 입을 요구하고 있다……
+							PRINTFORMW 키스하는 사이에 들려오는 %NTRNAME(CFLAG:ARG:함락キャラ)%의 상냥한 말에、%조사처리(CALLNAME:ARG,"는")% 넋을 잃고 듣고 있다……
+						ELSEIF RAND:3 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% %NTRNAME(CFLAG:ARG:함락キャラ)%에게 격렬하게 뒤에서부터 찔리고 있다……
+							PRINTFORMW %NTRNAME(CFLAG:ARG:함락キャラ)%에게 제일 안쪽이 자극될 때마다、%조사처리(CALLNAME:ARG,"는")% 전신이 녹아 가는 것 같은 행복감에 싸이고 있었다……
+							PRINTFORMW 뒤에서 몸을 만지작 거려지면서、%조사처리(CALLNAME:ARG,"는")% %NTRNAME(CFLAG:ARG:함락キャラ)%에게 질내에 사정해 달라고 간절히 애원했다……
+						ELSEIF RAND:2 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% %NTRNAME(CFLAG:ARG:함락キャラ)% 위에서 양손을 맞잡아、손가락을 서로 걸면서 질내에 흘러넘치는 정액을 받아들이고 있다……
+							PRINTFORMW 질내에서의 맥동이 가라앉자 %조사처리(CALLNAME:ARG,"는")% %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"를")% 응시하면서、기쁜듯이 미소 지었다……
+						ELSE
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 시트를 바로잡으며 %NTRNAME(CFLAG:ARG:함락キャラ)%의 욕망을 받아들이고 있다……
+							PRINTFORMW 두 명은 손가락 얽은 채、깊고 긴 키스를 주고 받았다……
+						ENDIF
+					ENDIF
+				ELSEIF TALENT:ARG:ＮＴＲ == 2
+					;위험일
+					IF 위험일(ARG) == 1
+						IF RAND:3 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 손님의 정액이 위험일의 질내에 쏟아질 때마다、한 방울이라도 많이 짜기 위해서 허리를 흔들었다……
+						ELSEIF RAND:2 == 0
+							PRINTFORML %조사처리(CALLNAME:ARG,"는")% 뺨을 붉히며 손님의 귀에 입을 대면서、추잡한 말을 굳이 선택하여
+							PRINTFORMW 위험일의 교배해 달라고 남자에게 속삭였다……
+							PRINTFORMW 강직하게 범해지고 정액을 삼키는 순간을 애타게 기다리며、%CALLNAME:ARG%의 치부는 이미 찌르르하고 젖고 있다……
+						ELSE
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 남자의 손을 잡아、스커트 속으로 끌어들였다……
+							PRINTFORML %조사처리(CALLNAME:ARG,"가")% 속옷을 입지 않은 것을、그리고 이미 충분히 녹아 있단 것을 직접 말하며、
+							PRINTFORMW 금방 위험일의 그곳에 싸 주었으면 좋겠다고、뜨거운 숨을 내쉬면서 남자에게 말하였다……
+						ENDIF
+					;発情
+					ELSEIF 위험일(ARG) == 2
+						IF RAND:3 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"와")% 손님은 마치 발정 난 짐승 같이 서로 격렬하게 범했다……
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 쾌락에 저속해진 얼굴을 보이면서 몇 번이나 위험일의 자궁 내에 교배되었다……
+						ELSEIF RAND:2 == 0
+							PRINTFORMW 발정이 멈추지 않은 %조사처리(CALLNAME:ARG,"를")% 손님이 안기 위해 방에 들어가자、
+							PRINTFORML 참지 못하고 손님에게 달라붙어 가랑이를 문지르며 입술을 탐한다……
+							PRINTFORMW 위험일의 질내사정을 몇 번이고 받아도 몸의 열기는 다스려지지 않고、%조사처리(CALLNAME:ARG,"는")% 스스로 허리를 털고 있었다……
+						ELSE
+							PRINTFORMW 몸이 뜨거워진 %조사처리(CALLNAME:ARG,"는")% 손님의 옷을 벗겨 내、본능대로 덤벼들었다……
+							PRINTFORMW 열정적인 눈동자를 띄우고 위험일의 자궁에 충분히 교배되는 것을 기대하며、격렬하게 허리를 털고 있다……
+						ENDIF
+					;만월発情
+					ELSEIF 위험일(ARG) == 3
+						IF RAND:5 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"와")% 손님은 마치 발정 난 짐승과 같이 서로 격렬하게 범하고 있다……
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 쾌락에 저속해진 얼굴을 보이면서 몇 번이나 교배되었다……
+						ELSEIF RAND:4 == 0
+							PRINTFORML 발정이 멈추지 않은 %조사처리(CALLNAME:ARG,"를")% 손님이 안기 위해 방에 들어가자、
+							PRINTFORMW 참지 못하고 손님에게 달라붙어 가랑이를 문지르며 입술을 탐하다……
+							PRINTFORMW 질내에 사정을 몇 번이고 받아도 몸의 열기는 다스려지지 않고、%조사처리(CALLNAME:ARG,"는")% 허리를 계속 흔들고 있다……
+						ELSEIF RAND:3 == 0
+							PRINTFORMW 발정하고 있는 %조사처리(CALLNAME:ARG,"는")%、손님에게 계속해서 애태워져, 애액을 흘리면서 몸부림치고 있다。
+							PRINTFORML 진심 어린 애액을 흘러보내고 있는 입을、페니스로 문지르는 것을 계속하고 있다……
+							PRINTFORMW 이미 여러 번 절정하고 있지만、%조사처리(CALLNAME:ARG,"가")% 요구하고 있는 것은 좀 더 강하고 확실한 것이었다。
+							PRINTFORML 이윽고、딱 하고 페니스의 움직임이 멈추어、천천히 질구에 페니스를 삽입해 갔다……
+							PRINTFORMW 겨우 주어진 삽입에 %조사처리(CALLNAME:ARG,"는")% 환희의 소리를 지르며 깊고 긴 절정을 맞이했다……
+						ELSEIF RAND:2 == 0
+							PRINTFORMW 몸이 뜨거워진 %조사처리(CALLNAME:ARG,"는")% 손님의 옷을 벗겨 내、본능대로 덤벼들었다……
+							PRINTFORMW 열정적인 눈동자를 띠며、격렬하게 허리를 흔들고 있다……
+						ELSE
+							PRINTFORML 발정한 %CALLNAME:ARG%에게 격렬하게 몇 번이나 박아서、이미 몇 번이나 사정한 손님은、
+							PRINTFORMW 큰 대자로 뻗어 숨을 정돈하고 있었지……만、그곳을 다 채우고도 부족한 듯한 %조사처리(CALLNAME:ARG,"가")% 덤벼든다……！
+							PRINTFORMW 무리하게 페니스를 발기시키면서 스스로 허리를 박아、탐내듯이 허리를 흔든다……
+						ENDIF
+					;통상
+					ELSE
+						IF RAND:14 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 스스로 젖은 고기 단지를 사용해 손님의 페니스에 봉사하고 있다……
+							PRINTFORMW 꽉하고 페니스를 단단히 조이는 감각에, 손님은 녹은 표정을 띄우고 있다……
+						ELSEIF RAND:13 == 0
+							PRINTFORMW 손님은 %CALLNAME:ARG%의 발을 크게 벌려、핑크색의 유육을 벌려 작게 얼굴을 내밀어 안을 빨고 있다……
+							PRINTFORML 집중적으로 클리토리스를 계속 애무 당하자 %조사처리(CALLNAME:ARG,"는")% 여러 번 조수를 뿜으며 절정하여、벌벌 신체를 떨고 있었다……。
+							PRINTFORMW 절정을 거듭할 때마다 %CALLNAME:ARG%의 신체는 민감하게 되어、다음으로 맞이하는 절정이 갚고 격렬한 것이 되어 가는 것 같았다……
+							PRINTFORML 계속 높아지는 자극에 %조사처리(CALLNAME:ARG,"는")% 몸을 비틀어、시트를 꽉 쥐면서 비명과 같이 허덕이며 소리를 지르고 있다……
+							PRINTFORMW 그리고 마침내 강렬하게 절정을 맞이하고、침을 흘리며 등을 뒤로 젖히곤 %조사처리(CALLNAME:ARG,"는")% 실금해 버렸다……。
+						ELSEIF RAND:12 == 0
+							PRINTFORMW 손님과 정상위로 연결된 %조사처리(CALLNAME:ARG,"는")% 물기를 띤 얼굴로 달콤한 교성을 지르고 있다……
+							PRINTFORMW 격렬한 삽입을 %CALLNAME:ARG%의 질구는 부드럽게 받아들여、정액을 짜낼려고 제대로 단단하게 조이고 있었다……
+						ELSEIF RAND:11 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 방금 쏟아진 정액을 비소를 손가락으로 벌려 손님에게 과시하고 있다……
+							PRINTFORMW 그 음란한 광경에, 손님의 숨결은 다시 난폭해진다……
+						ELSEIF RAND:10 == 0
+							PRINTFORMW 손님의 필사적인 부탁을 들어 준 %조사처리(CALLNAME:ARG,"는")% 메이드복을 입은 채 손님의 페니스를 날름날름 빨고 있다……
+							PRINTFORMW 당황하고 있던 %CALLNAME:ARG%도、마지막엔 생각보다는 분위기를 타서 에로한 메이드 씨를 연기하고 있던 것 같다……
+						ELSEIF RAND:9 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 손님의 자지에 질을 휘저어지며、허덕여 소리를 지르면서 기분 좋은 듯이 희롱 당하고 있다……
+							PRINTFORMW 몇 번이나 절정이나 절정을 거듭하는 격렬한 섹스에、%조사처리(CALLNAME:ARG,"는")% 시간을 잊고 빠지고 있다……
+						ELSEIF RAND:8 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"와")% 고객은、쾌락만을 요구하는 격렬한 섹스를 체력이 다할 때까지 계속했다……
+						ELSEIF RAND:7 == 0
+							PRINTFORMW 손님에게 난폭하게 질을 후벼지며、%조사처리(CALLNAME:ARG,"는")% 교성을 지르고 있었다……
+							PRINTFORMW 눈물과 침을 흘려보내며, 강렬한 쾌감에 몸을 떨고 있다……
+						ELSEIF RAND:6 == 0
+							PRINTFORMW 정액과 애액의 냄새가 흘러 퍼지는 방에서、%조사처리(CALLNAME:ARG,"는")% 아직 부족하단 표정으로 손님의 페니스를 삼켜 빨고 있다……
+						ELSEIF RAND:5 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 손님에게 뒤로부터 찔리고 있다……
+							PRINTFORMW 교성을 지르며 부드로운 신체를 움직여、%CALLNAME:ARG%의 가장 안쪽에 한층 더 큰 자극을 요구하고 있다……
+						ELSEIF RAND:4 == 0
+							PRINTFORMW 페니스로 찌를 때마다 귀 앞으로 들리는 달콤한 허덕임 소리에、손님을 우쭐해 하고 있다……
+							PRINTFORMW 완전히 %CALLNAME:ARG%의 페이스에 말려든 손님은、한계 이상으로 짜지고 녹초가 되어 버렸다……
+						ELSEIF RAND:3 == 0
+							PRINTFORMW 손님에게 난폭하게 밀어 넘어뜨려지고 욕망을 부어지며、%조사처리(CALLNAME:ARG,"는")% 기쁨을 느끼고 있었다……
+						ELSEIF RAND:2 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 추잡한 미소를 띄우면서, 손님 위에서 허리를 흔들고 있다……
+						ELSE
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 질로부터 정액을 흘려보내면서 엉덩이를 흔들며、손님의 페니스를 조르고 있다……
+						ENDIF
+					ENDIF
+				ELSE
+					;위험일
+					IF 위험일(ARG) == 1
+						IF RAND:5 == 0
+							PRINTFORML %조사처리(CALLNAME:ARG,"는")% 『위험일이니까』하며 콘돔을 끼워 주고 나서、안겼다……
+							PRINTFORMW 그러나 콘돔이 파열되어、위험일의 질내에 제대로 교배되어 버렸다……
+							PRINTFORML 
+							PRINTFORMW 그후、%조사처리(CALLNAME:ARG,"는")% 『책임질 테니까』라고 속삭이는 손님에게 몇 번이나 생으로 질내사정 당했다……
+						ELSEIF RAND:4 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 손님의 강행인 권유를 딱 잘라 거절할 수 없어서、위험일의 신체에 질내사정을 허락해 버렸다……
+						ELSEIF RAND:3 == 0
+							PRINTFORML %조사처리(CALLNAME:ARG,"는")% 위험일임에도 불구하고、무드에 흐트려지고 황홀한 기분이 되어 있는 동안、
+							PRINTFORMW 정신이 들자 발을 얽어 허리를 꽉 눌러、스스로 질내사정을 조르고 있었다……
+						ELSEIF RAND:2 == 0
+							PRINTFORML %CALLNAME:ARG%의 안 된다고 하는 말을 들어 주지 않고, 손님은 억지로 %조사처리(CALLNAME:ARG,"를")% 밀어 넘어뜨린다……
+							PRINTFORMW 손님에게 반항할 수 없게 깔려、위험일의 질에 몇 번이나 사정되어 버렸다……
+						ELSE
+							PRINTFORML 위험일의 질에 몇 번이나 정액을 흘려 넣어진 %조사처리(CALLNAME:ARG,"는")%, 경솔한 자신을 후회하고 있었지만、
+							PRINTFORMW 퍼부어진 뜨거운 정액의 감촉을 생각하자、여자로서의 충만감도 분명히 느끼고 있었다……。
+						ENDIF
+					;発情
+					ELSEIF 위험일(ARG) == 2
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 뜨거워진 신체를 억제하지 않고、위험한 날이란걸 알고 있으면서 손님에게 고무 없이 섹스하는 것을 허락해 버렸다……
+							PRINTFORMW 쾌락을 채우는 행위의 이전에 『죄악감』이나 『임신에 대한 불안』 따위 %CALLNAME:ARG%에겐 쾌락을 높이는 요소 중 일부가 된 것 같다……
+					;만월発情
+					ELSEIF 위험일(ARG) == 3
+						PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 신체의 쾌락을 채우기 위해 손님과 추잡하게 서로를 요구했다……
+						PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 사정을 끝낸 페니스를 입으로 깨끗하게 하면서 다음 행위를 조르고 있다……
+					;通常
+					ELSE
+						IF RAND:8 == 0
+							PRINTFORMW 손님은 %CALLNAME:ARG%의 몸을 마음껏 만끽했다……
+						ELSEIF RAND:7 == 0
+							PRINTFORMW 손님은 %CALLNAME:ARG%의 날씬한 신체를 몇 번이고 안았다……
+						ELSEIF RAND:6 == 0
+							PRINTFORMW 손님은 %CALLNAME:ARG%의 육체에 충분히 짜내었다……
+						ELSEIF RAND:5 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 손님에게 몇 번이나 안겨、전신이 정액 범벅이 되어 있다……
+						ELSEIF RAND:4 == 0
+							PRINTFORMW 손님은 %CALLNAME:ARG%의 사적인 봉사에 만족한 듯하다……
+						ELSEIF RAND:3 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 손님에게 요구되는 대로 몸을 허락해、충분히 질내사정되었다……
+						ELSEIF RAND:2 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 쏟아지는 대로 손님의 정액을 받아들여 버린 일에 당황하고 있다……
+						ELSE
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 손님의 정액을 충분히 교배 받았다……	
+						ENDIF
+					ENDIF
+				ENDIF
+				RESETCOLOR
+			ELSE
+				;薬で無理矢理
+				;鬼畜な창관顧客
+				LOCAL:4 = -4
+				IF TALENT:ARG:ＮＴＲ == 3
+					PRINTFORMW %조사처리(CALLNAME:ARG,"는")% %NTRNAME(CFLAG:ARG:함락キャラ)%에게 이끌려, 맨션에 들어갔다……
+				ELSE
+					PRINTFORMW 약을 먹게 된 %조사처리(CALLNAME:ARG,"는")% 몽롱해진 채로、맨션에 데리고 들어가졌다……
+				ENDIF
+				IF CFLAG:ARG:現ＮＴＲ進行度 > 10
+					IF CFLAG:ARG:자궁내피임결계 == 1
+						CFLAG:ARG:자궁내피임결계 = 0
+						PRINTFORML %CALLNAME:ARG%의 자궁내 피임 결계가 해제되어 버렸다……
+					ENDIF
+					IF RAND:100 < 30 && CFLAG:ARG:배란유발제 == 0
+						CFLAG:ARG:배란유발제 = 1
+						PRINTFORML %조사처리(CALLNAME:ARG,"는")% 배란유발제를 먹게 되었다……
+					ENDIF
+				ENDIF
+				PRINTFORML 
+				CALL NTR_PROSTITUTION_SEX, ARG, LOCAL:4
+
+				SETCOLOR COLOR("dark-pink")
+				IF TALENT:ARG:ＮＴＲ == 3
+					SETCOLOR 220,51,130
+					;위험일
+					IF 위험일(ARG) == 1
+						IF RAND:6 == 0
+							PRINTFORML %조사처리(CALLNAME:ARG,"는")% 자신이 『위험일』인 것을 %NTRNAME(CFLAG:ARG:함락キャラ)%에게 보고했다……
+							PRINTFORMW 그러자 %조사처리(CALLNAME:ARG,"는")% 발을 넓힌 자세로 의자에 묶여、아이마스크를 한 상태에서 범해진다……
+							PRINTFORML 
+							PRINTFORMW 질내에서 페니스를 느끼고、질내사정 당했다는 것을 알자、%NTRNAME(CFLAG:ARG:함락キャラ)%에게 임신될 수 있다면 어쩔 수 없다고 여기곤 방관했다……
+							PRINTFORMW 그러나、아이마스크를 떼어지자、눈앞에는 기름기가 도는 아저씨가 숨을 헐떡이며 %CALLNAME:ARG%에게 사정하고 있었다……
+							PRINTFORML 
+							PRINTFORMW 지나친 일에 비명을 지르며 날뛰었지만、의자에 얽매여 있었기에 아무 것도 하지 못하고、그대로 몇 번이나 농후한 정액을 사정 당헀다……
+						ELSEIF RAND:5 == 0
+							PRINTFORML %조사처리(CALLNAME:ARG,"는")% %NTRNAME(CFLAG:ARG:함락キャラ)%에게 얼굴을 붉히며、오늘이 위험일이란 걸 알린다……
+							PRINTFORML 위험일에는 언제나、%조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"가")% %조사처리(CALLNAME:ARG,"를")% 진심으로 임신시킬 생각으로
+							PRINTFORMW 평상시보다 격렬하고 강하게 안아 오는 것을 알고 있었던 것이다。
+							PRINTFORMW %NTRNAME(CFLAG:ARG:함락キャラ)%의 정액을 자궁으로 받는 것에 대한 기대로、가랑이는 이미 젖고 있다……
+						ELSEIF RAND:4 == 0
+							PRINTFORMW 방에 데리고 들어가진 %조사처리(CALLNAME:ARG,"는")% 물기를 띤 눈동자로 위험일인 것을 보고하며、
+							PRINTFORMW 잔뜩 안에 싸 주세요라고 작은 소리로 부탁했다……
+						ELSEIF RAND:3 == 0
+							PRINTFORML %조사처리(CALLNAME:ARG,"가")% 위험일이라 알게 된 %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"는")%、평소보다 격렬하고 난폭하게 %조사처리(CALLNAME:ARG,"를")% 범하고 있었다……
+							PRINTFORMW 나의 아이를 낳아라고 귓속말로 반복하며、뜨겁게 사정을 몇 번이고 체내에서 맛보았다……
+						ELSEIF RAND:2 == 0
+							PRINTFORML 방에 도착하자 마자 밀어 넘어뜨려져、그대로 몇 시간이나 계속 범해진 %조사처리(CALLNAME:ARG,"는")%、
+							PRINTFORMW 몽롱해지면서도 %NTRNAME(CFLAG:ARG:함락キャラ)%의 삽입을 받아들여、달콤한 소리를 지르고 있다……
+							PRINTFORML 현관에서、침대에서、부엌에서、베란다에서、
+							PRINTFORMW 남자와 여자의 냄새가 돌아다니는 방 안에서 끝없이 교배하며、계속 요구되고 있다……
+							PRINTFORML %조사처리(CALLNAME:ARG,"가")% 위험일이란 것을 알고 있는 걸까。
+							PRINTFORMW %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"는")% %조사처리(CALLNAME:ARG,"를")% 임신시키기 위한 본능적인 섹스를、언제까지나 계속하고 있었다……
+						ELSE
+							PRINTFORML 개목걸이만 목에 묶은 %CALLNAME:ARG%로부터 위험일이란 것을 전해 듣자、
+							PRINTFORMW %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"는")% 손에 잡힌 목줄에 묶인 %조사처리(CALLNAME:ARG,"를")% 비디오 카메라 앞에 데려왔다。
+							PRINTFORMW 그리고 목줄을 당기며 %CALLNAME:ARG%의 귀 앞에 입을 대어、교배하는 모습을 기록하겠다고 속삭였다……
+							PRINTFORMW 임신에 대한 기대와 치욕에 다한 흥미로 %CALLNAME:ARG%의 얼굴을 붉히고 있다……
+						ENDIF
+					;発情
+					ELSEIF 위험일(ARG) == 2
+						PRINTFORML %조사처리(CALLNAME:ARG,"는")% 자신이 『위험일』이란 것을 %NTRNAME(CFLAG:ARG:함락キャラ)%에게 보고했다……
+						PRINTFORMW 그러자、%조사처리(CALLNAME:ARG,"는")% 발을 넓힌 자세로 의자에 묶여져、아이마스크를 한 상태에서 범해졌다……
+						PRINTFORML 
+						PRINTFORMW 질내에서 자지를 느끼며 질내사정되었다는 것을 알자、%NTRNAME(CFLAG:ARG:함락キャラ)%에게 임신될 수 있다면 어쩔 수 없다며 방관했다……
+						PRINTFORMW 그러나、아이마스크를 풀자、눈앞에는 기름기가 도는 아저씨가 숨을 헐떡이며 %CALLNAME:ARG%의 안에 사정하고 있었다……
+						PRINTFORML 
+						PRINTFORMW 지나친 상황에 비명을 지르며 날뛰었지만, 의자에 얽매인 상태였기에 아무 것도 못하고, 그대로 몇 번이고 농후한 정액을 받아 버렸다……
+					;만월発情
+					ELSEIF 위험일(ARG) == 3
+						PRINTFORML %조사처리(CALLNAME:ARG,"는")% 자신이 『위험일』이란 것을 %NTRNAME(CFLAG:ARG:함락キャラ)%에게 보고했다……
+						PRINTFORMW 그러자、%조사처리(CALLNAME:ARG,"는")% 발을 넓힌 자세로 의자에 묶여져、아이마스크를한 상태에서 범해졌다……
+						PRINTFORML 
+						PRINTFORMW 질내에서 자지를 느끼며 질내사정되었다는 것을 알자、%NTRNAME(CFLAG:ARG:함락キャラ)%에게 임신될 수 있다면 어쩔 수 없다며 방관했다……
+						PRINTFORMW 그러나、아이마스크를 풀자、눈앞에는 기름기가 도는 아저씨가 숨을 헐떡이며 %CALLNAME:ARG%의 안에 사정하고 있었다……
+						PRINTFORML 
+						PRINTFORMW 지나친 상황에 비명을 지르며 날뛰었지만, 의자에 얽매인 상태였기에 아무 것도 못하고, 그대로 몇 번이고 농후한 정액을 받아 버렸다……
+					;通常
+					ELSE
+						IF RAND:18 == 0
+							PRINTFORMW 알몸이 된 %조사처리(CALLNAME:ARG,"는")% 등을 돌린 채 양손에 자물쇠를 채워졌다。
+							PRINTFORMW 그리고 자진하여 %NTRNAME(CFLAG:ARG:함락キャラ)%의 아래에서 무릎 꿇어、신체를 붙여 페니스를 혀로 빨기 시작한다。
+							PRINTFORMW 페니스에 얼굴을 문지르는 것 같은 애무를 섞으면서、미혹 없는 눈빛으로 사랑스러운 듯 페니스에 봉사를 계속했다……
+						ELSEIF RAND:17 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% %NTRNAME(CFLAG:ARG:함락キャラ)%에게 깔려 남폭하게 범해지는 것을 계속하고 있다……
+							PRINTFORMW 신체의 구석구석까지 %NTRNAME(CFLAG:ARG:함락キャラ)%에게 정복되어 가는 느낌에、%조사처리(CALLNAME:ARG,"는")% 만취하고 있었다……
+						ELSEIF RAND:16 == 0
+							PRINTFORMW 신체가 구속된 채로 %NTRNAME(CFLAG:ARG:함락キャラ)%에게 사양 없는 능욕을 받아、%조사처리(CALLNAME:ARG,"는")% 격렬하게 체력을 소모하고 있다……
+							PRINTFORMW 거기에 %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"는")% 상냥한 소리로 오늘의 %CALLNAME:ARG%의 분발을 칭찬하며, 정중하게 질구를 만져 간다.……
+							PRINTFORML 몽롱해진 의식 속에서、%조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"가")% 만족한 것、그리고 그렇게 할 수 있었던 것을 안 %조사처리(CALLNAME:ARG,"는")% 진심으로 즐겁게
+							PRINTFORMW %NTRNAME(CFLAG:ARG:함락キャラ)%에게의 예속을 더욱 깊어지게 했다……
+						ELSEIF RAND:15 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 양손과 양발을 구속되고 눈을 덮혀、%NTRNAME(CFLAG:ARG:함락キャラ)%에게 격렬하게 범해지고 있다 ……
+						ELSEIF RAND:14 == 0
+							PRINTFORMW %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"는")% 단단히 묶인 %CALLNAME:ARG%を를 자유롭게 범해, 몇 번이고 질내사정했다……
+							PRINTFORMW 신체의 자유가 제한되어진 능욕에、자신이 %NTRNAME(CFLAG:ARG:함락キャラ)%의 지배 하에 있단 것을 마음속까지 새길 수 있었다 ……
+						ELSEIF RAND:13 == 0
+							PRINTFORMW %NTRNAME(CFLAG:ARG:함락キャラ)%에게 걸터앉아라고 명령 당하자、%조사처리(CALLNAME:ARG,"는")% 기쁜 듯이 수행했다……
+							PRINTFORMW 얼굴을 녹이는 열락에 싸이면서、허리를 요염하게 흔들고 있다……
+						ELSEIF RAND:12 == 0
+							PRINTFORMW 주어진 나이트 드레스를 입은 %조사처리(CALLNAME:ARG,"는")%、%NTRNAME(CFLAG:ARG:함락キャラ)%에 의해 요염한 파티에 이끌리고 있었다。
+							PRINTFORML 격조 높은 일상생활 용품이 줄 선 현관에서、높은 지위를 가진 듯한 옷차림의 %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"가")% 여성과 온화하게 담소하고 있었으……나、
+							PRINTFORMW 동시에 도처에 남녀가 추잡하게 섹스하고 있고 、그 모습을 모인 귀족들이 즐기고 있었다 。
+							PRINTFORML %NTRNAME(CFLAG:ARG:함락キャラ)%에게 명령 당해、여럿에게 몇 번이나 범해지고 백탁액에 물드는 %CALLNAME:ARG%의 모습은 상당히 호평을 얻은 것 같아、
+							PRINTFORMW 부디 또 참가하도록 권해져 버렸다……
+						ELSEIF RAND:11 == 0
+							PRINTFORML 방에 들어가자 %조사처리(CALLNAME:ARG,"는")% 스스로 옷을 벗어、%NTRNAME(CFLAG:ARG:함락キャラ)%에게 나체를 보인다。
+							PRINTFORMW 그리고 %NTRNAME(CFLAG:ARG:함락キャラ)%에게 무릎 꿇으면서、발에 입을 맞추어 스스로의 충성이 변함없는 것이라고 보이고 있다……
+							PRINTFORML 그 모습에 만족한 %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"는")%、순종의 증거로 개목걸이를 손으로 걸어 주는 것으로
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 노예로서 %NTRNAME(CFLAG:ARG:함락キャラ)%의 소유물이라는 것을, 겨우 인정 받을 수 있었다……
+							PRINTFORMW 오늘도 무사하게 직접 시중드는 일이 용서된 %조사처리(CALLNAME:ARG,"가")% 진심으로 안도해、어떤 명령이 내려질지를 가슴을 떨며 기대하고 있었다……
+						ELSEIF RAND:10 == 0
+							PRINTFORML 몇 번이고 %NTRNAME(CFLAG:ARG:함락キャラ)%의 욕망을 질내에 받은 %조사처리(CALLNAME:ARG,"는")%、침대 위에서
+							PRINTFORMW 조금 전까지 %CALLNAME:ARG%의 질을 휘젓고 있던 페니스를 햛고 있었다……
+							PRINTFORML 안에 남은 정액을 훌쩍거리며、불결을 혀로 정중하게 빨고 취해 간다 ……
+							PRINTFORMW %NTRNAME(CFLAG:ARG:함락キャラ)%에게 상냥하게 머리를 쓰다짐어지자、%조사처리(CALLNAME:ARG,"는")% 속이 빈 눈동자로 미소 지었다……
+						ELSEIF RAND:9 == 0
+							PRINTFORMW 알몸의 %조사처리(CALLNAME:ARG,"는")% 새빨간 개목걸이를 건 채 맨션의 방 벽에 묶여 버렸다。
+							PRINTFORML 완전히 %NTRNAME(CFLAG:ARG:함락キャラ)%의 지배하에 놓여진 것에 %조사처리(CALLNAME:ARG,"는")% 즐거움을 느껴、
+							PRINTFORMW 마치 애완동물처럼 %NTRNAME(CFLAG:ARG:함락キャラ)%에게 달라붙어 총애를 요구하고 있다……
+						ELSEIF RAND:8 == 0
+							PRINTFORML %NTRNAME(CFLAG:ARG:함락キャラ)%에게 명령 당하는 대로、%조사처리(CALLNAME:ARG,"는")% %NTRNAME(CFLAG:ARG:함락キャラ)%에게 걸터앉았다……
+							PRINTFORMW 추잡하게 허리를 흔드는 %조사처리(CALLNAME:ARG,"는")%、순수하게 %NTRNAME(CFLAG:ARG:함락キャラ)%에게 명령 받는 것만 생각하고 있었다。
+							PRINTFORML %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"가")% 바라는 대로 봉사해、%조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"가")% 기분이 내킬 때까지 안기는 일에、의문을 가질 여지는 이미 없다。
+							PRINTFORMW 지금 %조사처리(CALLNAME:ARG,"는")% 그저、%NTRNAME(CFLAG:ARG:함락キャラ)%에게 이렇게 당할 수 있는 일만을 바라고 있었다……
+						ELSEIF RAND:7 == 0
+							PRINTFORMW %CALLNAME:ARG%의 신체를 다 알고 있는 %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"는")%、%조사처리(CALLNAME:ARG,"가")% 실금할 때까지 몇 번이나 절정에 몰아넣으면서
+							PRINTFORMW 절정의 여운으로 음경을 구하며 단단히 조이는 질에, 충분히 사정했다……
+						ELSEIF RAND:6 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"가")% 방에 들어가자、%NTRNAME(CFLAG:ARG:함락キャラ)%로부터 갈아입도록 봉투와 옷을 건네받았다……
+							PRINTFORML 알몸보다 부끄럽다고 생각되는、옷감이 대부분 없는 비키니 수영복으로 갈아입고
+							PRINTFORMW 카메라를 쥔 %NTRNAME(CFLAG:ARG:함락キャラ)%의 앞에서、명령대로 추잡한 포즈를 취했다……
+						ELSEIF RAND:5 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"가")% 방에 들어가자 、%NTRNAME(CFLAG:ARG:함락キャラ)%에게 갈아입을 봉투와 옷을 건네받았다……
+							PRINTFORML 받은 가죽 제품의 본디지 의상은 %CALLNAME:ARG%의 사이즈에 딱 맞아、
+							PRINTFORMW 단단히 구속용의 쇠장식이 붙어 있는 본격적인 노예 사양의 것이었다。
+							PRINTFORML 노예로서 앞으로도 귀여움 받을 수 있는 것을 형태로 나타낸 %조사처리(CALLNAME:ARG,"는")% 깊이 감사하며、
+							PRINTFORMW %NTRNAME(CFLAG:ARG:함락キャラ)%에게의 충성을 더욱 강하게 했다……
+						ELSEIF RAND:4 == 0
+							PRINTFORMW 아직 중학생 정도의 이름도 모르는 소년의 페니스를、%조사처리(CALLNAME:ARG,"는")% 열의를 담아 펠라치오하고 있다……
+							PRINTFORML %NTRNAME(CFLAG:ARG:함락キャラ)%에게 유혹하라고 명령 당해、아직 여자의 신체를 모르는 것 같은 소년을 뒷골목으로 끌고 온 것이었다。
+							PRINTFORML 소년은 처음 자극에、곧바로 입안에 사정해 버렸지만、젊은 페니스는 더욱 딱딱해지고 있다……
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 소년에게 귓속말로 마음대로 해도 좋다고 말하며、속옷을 비켜 놓아 벽에 양손을 붙이고 엉덩이를 내밀자 소년은 빠르게 찌르기 시작헀다……
+							PRINTFORML 내성이 전혀 없는 소년은 유혹 당하는 대로 허르를 쑥 내밀어、미숙하지만 열중하여 허리를 흔들고 있다……
+							PRINTFORMW 가감도 테크닉도 없는 그저 난폭하게 범하는 섹스를、%조사처리(CALLNAME:ARG,"는")% 끝까지 받아들였다……
+							PRINTFORML 
+							PRINTFORML 체내가 젊은 정액투성이가 된 후、%조사처리(CALLNAME:ARG,"는")% %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"가")% 가까이의 빌딩의 창으로부터 보고 있었단 걸 깨달았다。
+							PRINTFORMW ……아무래도 만족하고 있는 것 같다。
+							PRINTFORMW 감미로운 포상을 기대하며、%NTRNAME(CFLAG:ARG:함락キャラ)%의 맨션으로 돌아갔다……。
+						ELSEIF RAND:3 == 0
+							PRINTFORML 목에 붉은 개목걸이만 몸에 걸어、%조사처리(CALLNAME:ARG,"는")% 여느 떄처럼 %NTRNAME(CFLAG:ARG:함락キャラ)%에게 난폭하게 범해지고 있다……。
+							PRINTFORMW 침대에 푹 엎드린 채로 허리만을 들고、뒤로부터 격렬하게 찔리고 있었다……
+							PRINTFORML %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"가")% 개목걸이에 연결된 목줄로 억지로 %조사처리(CALLNAME:ARG,"를")% 당겨、위로 돌리고 젖혀지는%조사처리(CALLNAME:ARG,"를")% 껴안아、
+							PRINTFORMW 이번에는 가슴을 강하게 애무하며 더욱 피스톤질을 반복한다……
+							PRINTFORML 등에 닿는 %NTRNAME(CFLAG:ARG:함락キャラ)%의 한숨이 난폭해진 것을 느낀 %조사처리(CALLNAME:ARG,"는")%、이제 사정에 가까워진 걸 느끼고 있었다……
+							PRINTFORML 단단히 껴안겨 한층 격렬하게 찔린 순간、%조사처리(CALLNAME:ARG,"는")% 질내로 뜨거운 정액을 받아 들였다……
+							PRINTFORMW 
+							PRINTFORML 당분간、%조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"는")% %CALLNAME:ARG%의 부드러운 피부를 어루만지면서 사정의 여운에 잠겨 있었지만、
+							PRINTFORMW %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"는")% %조사처리(CALLNAME:ARG,"를")% 응시하며 목줄을 다시 잡아、두 번 가볍게 당겼다。봉사해라、의 신호다……
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 입으로 음행을 하며、개목걸이로 %조사처리(NTRNAME(CFLAG:ARG:함락キャラ),"와")% 연결되어 있는 평온함에 만족하고 있었다 ……
+						ELSEIF RAND:2 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% %NTRNAME(CFLAG:ARG:함락キャラ)%의 동료들에게 윤간되고 있다……
+							CFLAG:ARG:레이프フラグ = 1
+						ELSE
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% %NTRNAME(CFLAG:ARG:함락キャラ)%에 난폭하게 범해져 、몇 번이나 교배되었다……
+						ENDIF
+					ENDIF
+				ELSE
+					SETCOLOR 204,51,255
+					;위험일
+					IF 위험일(ARG) == 1
+						PRINTFORMW 남자는 필사적으로 저항하는 %CALLNAME:ARG%의 모습에서『위험일』이란 것을 알고、자궁에 페니스를 꽉 누르며 사정했다……
+						PRINTFORMW 낭패하는 %조사처리(CALLNAME:ARG,"를")% 내려다보며、남자는 정액으로 질퍽해진 질내를 다시 밀어 올리기 시작했다……
+						PRINTFORML 
+						PRINTFORMW 울면서 용서를 바라는 %조사처리(CALLNAME:ARG,"를")% 바라보며、남자는 몇 번이고 몇 번이고 질내사정을 반복한다……
+					;発情
+					ELSEIF 위험일(ARG) == 2
+						PRINTFORMW 남자는 필사적으로 저항하는 %CALLNAME:ARG%의 모습에서『위험일』이란 것을 알고、자궁에 페니스를 꽉 누르며 사정했다……
+						PRINTFORMW 낭패하는 %조사처리(CALLNAME:ARG,"를")% 내려다보며、남자는 정액으로 질퍽해진 질내를 다시 밀어 올리기 시작했다……
+						PRINTFORML 
+						PRINTFORMW 울면서 용서를 바라는 %조사처리(CALLNAME:ARG,"를")% 바라보며、남자는 몇 번이고 몇 번이고 질내사정을 반복한다……
+					;만월発情
+					ELSEIF 위험일(ARG) == 3
+						PRINTFORMW 남자는 필사적으로 저항하는 %CALLNAME:ARG%의 모습에서『위험일』이란 것을 알고、자궁에 페니스를 꽉 누르며 사정했다……
+						PRINTFORMW 낭패하는 %조사처리(CALLNAME:ARG,"를")% 내려다보며、남자는 정액으로 질퍽해진 질내를 다시 밀어 올리기 시작했다……
+						PRINTFORML 
+						PRINTFORMW 울면서 용서를 바라는 %조사처리(CALLNAME:ARG,"를")% 바라보며、남자는 몇 번이고 몇 번이고 질내사정을 반복한다……
+					;通常
+					ELSE
+						IF RAND:13 == 0
+							PRINTFORML %조사처리(CALLNAME:ARG,"는")% 후장까지 페니스로 찔러 넣어져、억지로 허리를 흔들고 있다……
+							PRINTFORMW 남자는 그 상태로 사정하고、오열하는 %조사처리(CALLNAME:ARG,"를")% 밀어 넘어뜨린다……
+							PRINTFORML 
+							PRINTFORMW 그리고、그대로 억지로 삽입해、용서를 구하는 %CALLNAME:ARG%의 질내에 몇 번이나 백탁을 토했다……
+						ELSEIF RAND:12 == 0
+							PRINTFORMW 알몸으로 벗겨져 속박된 %조사처리(CALLNAME:ARG,"는")%、눈앞에 난폭한 남자에게 거칠게 가슴을 만져지고 있다……
+							PRINTFORMW 울먹이는 소리로 이제 그만해 줬으면 좋겠다고 간절히 애원하는 %조사처리(CALLNAME:ARG,"를")% 무시해、남자는 억지로 삽입을 시작했다……
+							PRINTFORMW 격렬한 허리 놀림에 능욕된 %조사처리(CALLNAME:ARG,"는")%、남자의 비릿한 정액을 충분히 질내에 받아들이고 있다……
+						ELSEIF RAND:11 == 0
+							PRINTFORMW 남자는 %조사처리(CALLNAME:ARG,"를")% 몸을 뒤로 묶고、우뚝 선 페니스를 입으로 가져갔다……
+							PRINTFORMW 약 때문에 힘이 들어기지 않는 %CALLNAME:ARG%의 입을 비틀어 열고、페니스를 흔들리는 머리를 잡아 무리하게 허리를 흔든다……
+							PRINTFORML 
+							PRINTFORMW 남자는 %CALLNAME:ARG%의 목 안쪽에 뜨거운 정액을 퍼부으며、이 다음 %CALLNAME:ARG%로 어떻게 즐길까 생각하고 있었다……
+						ELSEIF RAND:10 == 0
+							PRINTFORMW 남자는 %조사처리(CALLNAME:ARG,"를")% 방에 데리고 들어가、이미 딱딱하게 발기하고 있는 페니스를 적셔、마른 질에 찔러 넣었다……
+							PRINTFORMW 고통에 %조사처리(CALLNAME:ARG,"는")% 신음 소리를 지르지만、남자는 거기에 신경 쓰지 않고、힘에 맡기는 행위를 오히려 가속하고 있는 것 같다……
+							PRINTFORML 
+							PRINTFORMW 연달아 몇 번이나 안에 싸진 %조사처리(CALLNAME:ARG,"는")%、정액이 흘러넘치는 붉게 부은 음부를 노출한 채로 눈물을 머금고 있다 ……
+						ELSEIF RAND:9 == 0
+							PRINTFORMW 남자는 %조사처리(CALLNAME:ARG,"를")% 전라로 하여 단단히 묶어서、비디오 촬영을 시작했다……
+							PRINTFORMW 멈출 것을 필사적으로 애원하는 %조사처리(CALLNAME:ARG,"는")%、남자의 가학심을 부추기고 있는것 을 깨닫지 못했다……
+							PRINTFORML 
+							PRINTFORMW ……%CALLNAME:ARG%의 질로부터 물렁물렁한 정액이 흘러넘치는 장면을 찍어 끝내 간신히 촬영을 종료했다……
+						ELSEIF RAND:8 == 0
+							PRINTFORMW 근육질의 젊은 남자는 %조사처리(CALLNAME:ARG,"를")% 가볍게 안아 침대에 던져、던진 그 위에서 덮쳤다……
+							PRINTFORMW 날뛰어 저항하는 %조사처리(CALLNAME:ARG,"를")% 시원한 얼굴로 억눌러、발기한 굵은 음경을 %CALLNAME:ARG%의 비소에 천천히 삽입해 간다……
+							PRINTFORML 
+							PRINTFORMW 끝없는 체력을 가진 남자에게 저항할 체력도 다해、그대로 몇 번이나 질내에 정액을 훌려 넣어졌다……
+						ELSEIF RAND:7 == 0
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 무리하게 억눌리고 덮쳐져、뒤에서 가장 안쪽까지 찔리고 있었다 ……
+							PRINTFORMW %CALLNAME:ARG%의 거절과 혐오의 기분과는 반대로、딱딱해진 페니스는 자궁을 계속 자극하여、몸이 반응해 버리고 있다……
+							PRINTFORML 
+							PRINTFORMW 몇 번이나 억지로 다루어진 %조사처리(CALLNAME:ARG,"는")% 애액을 흘려보내、남자의 기분이 좋아질 때까지 교배를 허락해 버렸다……
+						ELSEIF RAND:6 == 0
+							PRINTFORMW 약으로 휘청거리는 %조사처리(CALLNAME:ARG,"를")% 남자는 손대기 쉽게 묶어、로터와 e맛서지와 애널바이브를 꺼냈다……
+							PRINTFORMW 남자는 세 가지 귀중한 보물과 높은 기교로 %조사처리(CALLNAME:ARG,"를")% 흐늘흐늘하게 하여 반발을 없앤 후、충분히 교배를 했다……
+						ELSEIF RAND:5 == 0
+							PRINTFORMW 남자는 %조사처리(CALLNAME:ARG,"를")% 배트에 던지며、방에 있던 살찐 중년 남자로부터 돈을 받고, 방을 나와 버렸다……
+							PRINTFORMW 살찐 중년남자는 %CALLNAME:ARG%의 속옷을 질질 내려 침을 비순에 발라 자지를 찔러 넣었다……
+							PRINTFORML 
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 제대로 된 저항도 하지 못하고、중년 남자의 농후한 정액을 몇 번이나 흘려 넣어졌다……
+						ELSEIF RAND:4 == 0
+							PRINTFORMW %CALLNAME:ARG%의 저항은 허무하게、남자의 욕망덩어리를 보지 안쪽에 몇 번이나 쏟아부어져 버렸다…… 
+						ELSEIF RAND:3 == 0
+							PRINTFORML %조사처리(CALLNAME:ARG,"는")% 양다리가 크게 벌어진 자세로 침대의 머리 부분의 로프로 구속되어 있다……
+							PRINTFORMW 그러자、남자는 노출된 보지에 자지를 꽂으며 몹시 거칠게 허리를 흔들었다……
+							PRINTFORML 
+							PRINTFORMW 그리고、눈물을 흘리는 %CALLNAME:ARG%의 머리카락을 잡아 결합부를 과시하며、질내사정했다……
+						ELSEIF RAND:2 == 0
+							PRINTFORMW 남자는 몽롱해진 %조사처리(CALLNAME:ARG,"를")% 덮쳐、허리를 흔들고 있다……
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 혼탁한 의식 속에서 %CALLNAME:MASTER%의 이름을 중얼거리며、정액을 흘려 넣어지고 있다……
+						ELSE
+							PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 는 방에 들어온 똘마니들에게 윤간 당했다……
+							PRINTFORMW 움직일 수 없는 %CALLNAME:ARG%의 몸을 똘마니들의 페니스가 용서 없이 유린하고 있다……
+							CFLAG:ARG:레이프フラグ = 1
+						ENDIF
+					ENDIF
+				ENDIF
+				RESETCOLOR
+			ENDIF
+			;試験用
+			;레벨업판정
+			PRINTFORML 
+			CALL CHECK_LEVEL_UP,ARG
+		ELSE
+			PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 손님과 식사를 하게 됬다……
+			;放置日数によって変化
+			PRINTL 
+			IF 함락(ARG) * 50 - LOCAL:2 > 80
+				PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 빨리 끝맺은 것 같다
+			ELSEIF 함락(ARG) * 50 - LOCAL:2 > 60
+				PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 식사를 즐기고 온 것 같다
+				CFLAG:ARG:放置日数 += 1 + RAND:3
+			ELSEIF 함락(ARG) * 50 - LOCAL:2 <= 60
+				PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 다음에 만날 약속을 해 온 것 같다…
+				CFLAG:ARG:放置日数 += 1 + RAND:3
+			ENDIF
+		ENDIF
+	ENDIF
+ENDIF
+;==========================================================
+;@NTR_PROSTITUTION_SEX
+; ＮＴＲ섹스計算
+;<引数>
+;	ARG   = ＮＴＲキャラの등록번호
+;	ARG:1 = NTR客の判別
+;<사용変数>
+;	LOCAL:1 = 相손の사정횟수
+;	LOCAL:2 = 相손の성교횟수
+;	LOCAL:3 = 호감도
+;	LOCAL:4 = 음란度
+;	LOCAL:5 = 호감도減少処理用
+;==========================================================
+@NTR_PROSTITUTION_SEX, ARG, ARG:1
+#LOCALSIZE 6
+#DIM LCOUNT
+
+;LOCAL配列초기化
+VARSET LOCAL,0
+CFLAG:ARG:펠라횟수 = 0
+CFLAG:ARG:本番횟수 = 0
+CFLAG:ARG:애널횟수 = 0
+CFLAG:ARG:中出し횟수 = 0
+CFLAG:ARG:손コキ횟수 = 0
+;優しい창관顧客）
+IF ARG:1 == -4
+	CFLAG:ARG:中出し횟수 = 1
+	CFLAG:ARG:本番횟수 = 1
+	LOCAL:1 = 3 + RAND:5
+	LOCAL:2 = LOCAL:1 + RAND:(LOCAL:1)
+	TCVAR:ARG:획득키스경험 = 3
+	TCVAR:ARG:획득바람경험 = 1
+
+;鬼畜な창관顧客
+ELSEIF ARG:1 == -5
+	CFLAG:ARG:中出し횟수 = 2
+	CFLAG:ARG:本番횟수 = 2
+	LOCAL:1 = 6 + RAND:10
+	LOCAL:2 = LOCAL:1 + RAND:(LOCAL:1)
+	TCVAR:ARG:획득윤간경험 = 1
+ENDIF
+
+
+FOR LCOUNT , 0 , LOCAL:2
+	IF RAND:100 < 60
+		IF HAVE_PENIS(ARG) && HAVE_VAGINA(ARG)
+			CFLAG:ARG:本番횟수 += 1
+			CFLAG:ARG:손コキ횟수 += 1
+		ELSEIF HAVE_PENIS(ARG)
+			CFLAG:ARG:애널횟수 += 1
+			CFLAG:ARG:손コキ횟수 += 1
+		ELSE
+			CFLAG:ARG:本番횟수 += 1
+		ENDIF
+	ELSEIF RAND:100 < 50
+		IF HAVE_PENIS(ARG)
+			CFLAG:ARG:손コキ횟수 += 1
+		ELSE
+			CFLAG:ARG:펠라횟수 += 1
+		ENDIF
+	ELSE
+		IF HAVE_PENIS(ARG) && HAVE_VAGINA(ARG)
+			CFLAG:ARG:애널횟수 += 1
+			CFLAG:ARG:손コキ횟수 += 1
+		ELSEIF HAVE_PENIS(ARG)
+			CFLAG:ARG:애널횟수 += 1
+			CFLAG:ARG:손コキ횟수 += 1
+		ELSE
+			CFLAG:ARG:애널횟수 += 1
+		ENDIF
+	ENDIF
+	;키스경험処理：適当に랜덤で
+	SIF RAND:2 == 0
+		TCVAR:ARG:획득키스경험 += 1
+
+NEXT
+CFLAG:ARG:中出し횟수 +=LIMIT(RAND:(1+CFLAG:ARG:本番횟수) , 0, LOCAL:1)
+
+;획득경험
+TCVAR:ARG:획득펠라경험 = CFLAG:ARG:펠라횟수
+TCVAR:ARG:획득봉사쾌락경험 = CFLAG:ARG:펠라횟수
+TCVAR:ARG:획득Ｖ경험 = CFLAG:ARG:本番횟수
+TCVAR:ARG:획득Ａ경험 = CFLAG:ARG:애널횟수
+TCVAR:ARG:획득성교경험 = CFLAG:ARG:本番횟수 + CFLAG:ARG:애널횟수
+TCVAR:ARG:획득질사경험 = CFLAG:ARG:中出し횟수
+TCVAR:ARG:획득정액경험 = LOCAL:1
+SIF CFLAG:ARG:손コキ횟수 > 0
+	TCVAR:ARG:획득사정경험 = RAND:(CFLAG:ARG:손コキ횟수)
+SIF TCVAR:ARG:획득성교경험 + TCVAR:ARG:획득사정경험 > 0
+	TCVAR:ARG:획득절정경험 = RAND:(TCVAR:ARG:획득성교경험 + TCVAR:ARG:획득사정경험)
+
+;처녀상실処理
+IF TALENT:ARG:처녀
+	CALL ADDS_ABNORMAL_EXP, "처녀상실（윤간）", ARG
+	SETCOLOR COLOR("red")
+	IF ARG:1 == -5
+		PRINTFORML 【＋２】   처녀상실（윤간）
+	ELSE
+		PRINTFORML 【＋２】   처녀상실(ＮＴＲ)
+	ENDIF
+	RESETCOLOR
+	TALENT:ARG:처녀 = 0
+ELSEIF TALENT:ARG:재생처녀
+	PRINTFORML 재생처녀 상실
+	TALENT:ARG:재생처녀 = 0
+ENDIF
+
+LOCAL:3 = TCVAR:ARG:획득정액경험 * 5 + (TCVAR:ARG:획득절정경험 + TCVAR:ARG:획득질사경험) * 10 + CFLAG:ARG:放置日数
+LOCAL:4 = CFLAG:ARG:本番횟수 + CFLAG:ARG:애널횟수 + TCVAR:ARG:획득절정경험 * 10
+LOCAL:5 = CFLAG:ARG:中出し횟수 * 5 + TCVAR:ARG:획득절정경험 * 7
+
+;ＮＴＲ客の설정処理
+SELECTCASE FLAG:ＮＴＲ客の설정
+	CASE  0
+		TIMES LOCAL:3 , 1.00
+		TIMES LOCAL:4 , 1.00
+		TIMES LOCAL:5 , 1.00
+	CASE  1
+		TIMES LOCAL:3 , 2.00
+		TIMES LOCAL:4 , 2.00
+		TIMES LOCAL:5 , 2.00
+	CASE  2
+		TIMES LOCAL:3 , 5.00
+		TIMES LOCAL:4 , 5.00
+		TIMES LOCAL:5 , 5.00
+ENDSELECT
+
+
+
+
+;호감도
+IF ARG:1 == -4
+	CDFLAG:ARG:キャラ間好感度:(96) += LOCAL:3
+ELSEIF ARG:1 == -5
+	CDFLAG:ARG:キャラ間好感度:(95) -= LOCAL:3
+ENDIF
+
+;음란度上昇
+;바람기がある場合は음란度倍化
+IF TALENT:ARG:바람기
+	CFLAG:ARG:음란度 += LOCAL:4*2
+ELSE
+	CFLAG:ARG:음란度 += LOCAL:4
+ENDIF
+
+PRINTFORML LOCAL:4{LOCAL:4}LOCAL:5{LOCAL:5}
+;子宮現在容量加算
+IF TALENT:ARG:오토코노코
+	CFLAG:(ARG):子宮現在容量 += LOCAL:5 * 2
+ELSEIF !IS_MALE(ARG)
+	CFLAG:(ARG):子宮現在容量 += LOCAL:5 * 2
+ENDIF
+
+;호감도減少処理
+CALL NTR_SHOOT , ARG , ARG:1 , LOCAL:5
+
+;임신用
+SIF CFLAG:ARG:자궁내피임결계 == 0
+	CFLAG:ARG:顧客の中出氏による임신판정 = TCVAR:ARG:획득질사경험*2
+
+CALL SHOW_ADD_EXP, ARG
+

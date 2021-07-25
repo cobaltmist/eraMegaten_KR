@@ -1,0 +1,84 @@
+﻿;통상공격
+;스킬のテン플레이트になっています
+
+; 스킬名
+@SKILL_NAME_2428, ARG
+RESULTS = 치유의 파동
+
+; 1EXTRAか2MAGICか
+@SKILL_DECIDE_TYPE_2428, ARG
+RETURN 0
+; どちらでもない
+
+; 効果の타입　1공격、2회복、3상태변화、4特殊、5상태회복、6자동효과
+@SKILL_EFECT_2428
+RETURN 6
+
+; 계승타입
+@SKILL_SUCCESSION_TYPE_2428
+RETURN 22
+; 何でもおｋ
+
+; 스킬변화？用랭크
+@SKILL_RANK_2428
+RETURN 9
+
+; 설명文の표시
+@SKILL_EXPLAIN_2428
+PRINTL [자동] 전투 종료시 아군 전체의 HP의 5％를 회복하지만, MAG를 소비한다.
+
+@SKILL_ACTIONABLE_BATTLE_2428
+RETURN 0
+
+; 스킬効果の実装部分
+; BATTLE.ERBに追記するには煩雑であるため分離
+; ARGは치유의파동実行キャラのChara Num
+; 処理の流れ
+;  1.MAG소비量を計算するためにループを回す
+;  2.MAGが발りてれば소비して회복処理へ移る
+; 소비量はとりあえず中治癒促進に準拠。6名分だとえらいこっちゃ
+; GOTOは避けたかったがさらに切り出すのも何だしなあ
+@SKILL_2428_EXEC_HEALING, ARG
+#LOCALSIZE 3
+; 초기化処理
+VARSET LOCAL, 0
+FOR LOCAL:2, 1, 7
+	; 着눈포지션のキャラを취득
+	LOCAL = POS(LOCAL:2)
+	; 포지션にキャラが存在していて、生存しておりかつHPが満タンでない
+	SIF LOCAL > -1 && GET_STATE(CFLAG:LOCAL:ステート) != "DYING" && BASE:LOCAL:ＨＰ < MAXBASE:LOCAL:ＨＰ
+		LOCAL:1 += MAXBASE:LOCAL:ＨＰ/20 * BASE:LOCAL:LV
+NEXT
+IF LOCAL:1 > 0 && CFLAG:ARG:ＭＡＧ自己소비 == 0 && ABL:ARG:종족 != 0 && ABL:ARG:종족 != 45
+	IF BASE:MASTER:ＭＡＧ >= LOCAL:1
+		PRINTFORML %CALLNAME:ARG,20%의 치유의 파동이 파티 멤버를 회복시킨다(MAG 주인 소비)
+		CALL CONTROL_MAG, MASTER, -LOCAL:1
+		GOTO HEALING_EXEC_2428
+	ELSEIF BASE:ARG:ＭＡＧ >= LOCAL:1
+		PRINTFORML %CALLNAME:ARG,20%의 치유의 파동이 파티 멤버를 회복시킨다(MAG %CALLNAME:ARG% 소비)
+		CALL CONTROL_MAG, ARG, -LOCAL:1
+		GOTO HEALING_EXEC_2428
+	ENDIF
+ELSEIF LOCAL:1 > 0 && BASE:ARG:ＭＡＧ >= LOCAL:1
+	PRINTFORML %CALLNAME:ARG,20%의 치유의 파동이 파티 멤버를 회복시킨다(MAG %CALLNAME:ARG% 소비)
+	CALL CONTROL_MAG, ARG, -LOCAL:1
+	GOTO HEALING_EXEC_2428
+ENDIF
+GOTO FUNCTION_END_2428
+
+$HEALING_EXEC_2428
+FOR LOCAL:2, 1, 7
+	; 着눈포지션のキャラを취득
+	LOCAL = POS(LOCAL:2)
+	; 포지션にキャラが存在していて、生存しておりかつHPが満タンでない
+	SIF LOCAL > -1 && GET_STATE(CFLAG:LOCAL:ステート) != "DYING" && BASE:LOCAL:ＨＰ < MAXBASE:LOCAL:ＨＰ
+		CALL VAR_HP, LOCAL, MAX(MAXBASE:LOCAL:ＨＰ/20, 1), 3
+NEXT
+
+$FUNCTION_END_2428
+RETURN 0
+
+;継承に필요한部位
+@継承部位_2428,ARG
+RETURN 1
+

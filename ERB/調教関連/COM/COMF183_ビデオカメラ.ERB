@@ -1,0 +1,240 @@
+﻿;-------------------------------------------------
+;비디오카메라
+;특수커맨드
+;-------------------------------------------------
+@COMNAME183
+RESULTS = 비디오카메라
+SIF TEQUIP:28
+	RESULTS = 촬영終了
+@ACT_COM183
+#DIM LCOUNT
+;カウントは10回とする
+K = 10
+
+;촬영者の処理
+$INPUT_LOOP
+IF TEQUIP:주도권
+;여자주도 -> 반드시 조수가 있어야 한다
+	FLAG:22 = 2
+	PRINTFORML 촬영자는 %CALLNAME:ASSI%입니다
+ELSE
+;남자주도 -> 조수 시키거나, 조수가 없더라도 자기가 찍으면 된다
+	IF TEQUIP:28 == 0 && ASSI >= 0
+		PRINTL 촬영자를 선택해주세요　도중에 변경은 불가능합니다
+		PRINTL （촬영자를 변경하는경우、일단 촬영을 종료해주세요）
+		PRINTL 
+		PRINTFORML [0] %CALLNAME:MASTER%
+		PRINTFORML [1] %CALLNAME:ASSI%
+		PRINTFORML 
+		INPUT
+		IF RESULT == 0
+			FLAG:22 = 1
+			PRINTFORML 촬영자는 %CALLNAME:MASTER%입니다
+		ELSEIF RESULT == 1 && ASSI > 0
+			FLAG:22 = 2
+			PRINTFORML 촬영자는 %CALLNAME:ASSI%입니다
+		ELSE
+			GOTO INPUT_LOOP
+		ENDIF
+	ELSEIF TEQUIP:28 == 0
+		FLAG:22 = 1
+		PRINTFORML 촬영자는 %CALLNAME:MASTER%입니다
+	ENDIF
+ENDIF
+
+TSTR:0 = 비디오카메라
+;CALL KOJO_MESSAGE_COM
+
+;탈착 처리
+IF TEQUIP:28
+;비디오 촬영이 되어있는 상태라면 종료한다
+;테이프는 종료 시에 수를 줄인다、여기에 지금까지의 가격과 경험을 더한다
+	TEQUIP:28 = 0
+	ITEM:43 -= 1
+	CALL PRICE_VIDEO
+	PRINTW ★★★비디오 촬영을 종료합니다★★★
+ELSE
+;비디오 촬영을 하게 되면 초기화해서 개시
+;TODO 기동 조건을 작성한다
+	TEQUIP:28 = 1
+	TFLAG:70 = 0
+	FOR LCOUNT, 0, K
+		S = LCOUNT + 110
+		TCVAR:S = -1
+	NEXT
+	;마지막으로 찍은 비디오의 주인공으로 현 시점의 조교대상을 대입
+	LASTVIDEO_HERO = TARGET
+	PRINTW ★★★비디오 촬영을 시작합니다★★★
+ENDIF
+
+;의존도ベクトル
+TFLAG:33 = 0
+
+
+RETURN 1
+
+;-------------------------------------------------
+;계속 장착 처리
+;-------------------------------------------------
+@EQUIP_COM183
+;촬영개시시에는 카운트에 넣지 않는다
+IF TFLAG:70 == 0
+	TFLAG:70 += 1
+	RETURN 1
+ENDIF
+
+;-------------------------------------------------
+;ソース추가処理
+;-------------------------------------------------
+;소비체력、기력
+DOWNBASE:TARGET:체력 += 0
+DOWNBASE:TARGET:기력 += 50
+
+SOURCE:TARGET:무서움 += 1000
+SOURCE:TARGET:일탈 += 400
+SOURCE:TARGET:반감 += 700
+
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;억압、저항持ちには、억울ソース추가
+SIF TALENT:32 || TALENT:34
+	SOURCE:TARGET:울굴 += 700
+
+;고통を伴わない마조끼及び마조の処理は先にしておく
+;마조끼を見る
+A = 1000
+IF ABL:9 == 0
+	TIMES A , 0.80
+	SOURCE:TARGET:액체 += 0
+	SOURCE:TARGET:욕정 += 0
+ELSEIF ABL:9 == 1
+	TIMES A , 1.00
+	SOURCE:TARGET:액체 += 20
+	SOURCE:TARGET:욕정 += 30
+ELSEIF ABL:9 == 2
+	TIMES A , 1.20
+	SOURCE:TARGET:액체 += 40
+	SOURCE:TARGET:욕정 += 70
+ELSEIF ABL:9 == 3
+	TIMES A , 1.40
+	SOURCE:TARGET:액체 += 70
+	SOURCE:TARGET:욕정 += 120
+ELSEIF ABL:9 == 4
+	TIMES A , 1.50
+	SOURCE:TARGET:액체 += 110
+	SOURCE:TARGET:욕정 += 180
+ELSEIF ABL:9 == 5
+	TIMES A , 1.70
+	SOURCE:TARGET:액체 += 150
+	SOURCE:TARGET:욕정 += 250
+ELSEIF ABL:9 == 6
+	TIMES A , 1.90
+	SOURCE:TARGET:액체 += 200
+	SOURCE:TARGET:욕정 += 300
+ELSEIF ABL:9 == 7
+	TIMES A , 2.10
+	SOURCE:TARGET:액체 += 250
+	SOURCE:TARGET:욕정 += 350
+ELSEIF ABL:9 == 8
+	TIMES A , 2.30
+	SOURCE:TARGET:액체 += 300
+	SOURCE:TARGET:욕정 += 400
+ELSEIF ABL:9 == 9
+	TIMES A , 2.50
+	SOURCE:TARGET:액체 += 350
+	SOURCE:TARGET:욕정 += 450
+ELSEIF ABL:9 >= 10
+	TIMES A , 3.00
+	SOURCE:TARGET:액체 += 500
+	SOURCE:TARGET:욕정 += 500
+ENDIF
+SOURCE:TARGET:노출 += A
+
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+IF FLAG:22 == 1
+	CALL ADDS_EXP("촬영경험", 1, MASTER)
+;	PRINTL 主人촬영경험＋１
+ELSEIF FLAG:22 == 2
+	CALL ADDS_EXP("촬영경험", 1, ASSI)
+;	PRINTL 조수촬영경험＋１
+ENDIF
+;EXP:TARGET:63 += 1
+;PRINTL 奴隷피사경험＋１
+CALL ADDS_EXP("피사경험", 1, TARGET)
+;의존도ベクトルを強制的に변경
+SIF TFLAG:33 == 1 || TFLAG:33 == 2
+	TFLAG:33 = 3
+
+;의존도보정値(복종で1、예속で2　強制변경なのでリセット）
+IF TALENT:5 && ASSIPLAY == 0
+	TFLAG:30 = 1
+ELSEIF TALENT:8 && ASSIPLAY == 0
+	TFLAG:30 = 2
+ENDIF
+
+
+;-------------------------------------------------
+;비디오 처리
+;-------------------------------------------------
+;카운트는 10회로 합니다
+K = 10
+
+;테이프 잔량이 없어지면 강제로 EQUIP플래그를 해제한다、그 뒤 비디오 값과 경험 처리를 더 해 준다
+IF TFLAG:70 <= 0 || TFLAG:70 >= K
+	TEQUIP:28 = 0
+	ITEM:43 -= 1
+	;촬영내용의 보존
+;	S = TFLAG:70+10
+	S = TFLAG:70 + 109
+;	FLAG:S = SELECTCOM
+	IF TFLAG:90
+		;특수한 경우
+		;TFLAG:90에 의해 기록된다
+		
+		TCVAR:S = TFLAG:90
+		;볼일이 끝난 TFLAG:90는 초기화해둔다
+		TFLAG:90 = 0
+	ELSE
+		TCVAR:S = SELECTCOM
+	ENDIF
+	TFLAG:70 += 1
+	CALL PRICE_VIDEO
+	PRINTL ＜테이프의 잔량이 없어졌습니다　비디오 촬영을 정지합니다＞
+	RETURN 1
+ELSE
+	PRINTFORML ＜비디오촬영중{TFLAG:70}/{K}＞
+ENDIF
+
+;촬영내용의 보존
+;S = TFLAG:70+10
+;FLAG:S = SELECTCOM
+S = TFLAG:70 + 109
+IF TFLAG:90
+	TCVAR:S = TFLAG:90
+	TFLAG:90 = 0
+ELSE
+	TCVAR:S = SELECTCOM
+ENDIF
+
+;촬영횟수의 증가
+;밀어넘어뜨려진다(발버둥친다), 가슴팍열기, 바지/속옷벗기기(조교자), 바지/속옷벗기기, 브래지어벗기기, 신발벗기기 커맨드일 경우 → 촬영횟수를 보존한다
+;조수도 참가한다/빠진다 → 촬영횟수를 보존한다
+;긴급피임약, 조수피임약, 배란유도제 커맨드일 경우 → 촬영횟수를 보존한다
+SIF !(SELECTCOM == 220 || SELECTCOM == 221 || SELECTCOM == 224 || SELECTCOM == 226 || SELECTCOM == 227 || SELECTCOM == 228 || SELECTCOM == 229 || SELECTCOM == 271 || SELECTCOM == 272 || SELECTCOM == 273)
+	TFLAG:70 += 1
+
+RETURN 1
+
+
+;===================================================
+;조교타입
+;===================================================
+@COMTYPE_183
+RETURN COMTYPE("특수커맨드계")
+
+

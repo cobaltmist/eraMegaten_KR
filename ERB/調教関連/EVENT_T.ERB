@@ -1,0 +1,669 @@
+﻿;EVENT_T.ERB、EVENT_TRAIN、조교時及び조교前後の이벤트
+@EVENTTRAIN
+#PRI
+#DIM LCOUNT
+;主人公の사정を0に
+BASE:MASTER:사정 = 0
+BASE:MASTER:모유 = 0
+BASE:MASTER:절정 = 0
+;いちおう조교대상と조수も
+BASE:TARGET:사정 = 0
+BASE:TARGET:절정 = 0
+IF ASSI >= 0
+	ISASSI:ASSI = 1
+	BASE:ASSI:사정 = 0
+	BASE:ASSI:모유 = 0
+	BASE:ASSI:절정 = 0
+ENDIF
+BASE:TARGET:모유 = 0
+BASE:MASTER:뇨의 = 0
+
+;사정限界数の確保
+FOR LCOUNT, 0, CHARANUM
+	CFLAG:LCOUNT:사정残数の保存 = 10 + (EXP:LCOUNT:절정경험/200 + EXP:LCOUNT:사정경험/200)
+	SIF TALENT:LCOUNT:절륜 == 1
+		TIMES CFLAG:LCOUNT:사정残数の保存,1.50
+	LOCAL = 10000
+	SIF TALENT:절륜
+		LOCAL /= 2
+	MAXBASE:LCOUNT:사정 = LOCAL
+	MAXBASE:LCOUNT:절정 = LOCAL
+NEXT
+
+;사정後の充填時間を리셋
+CFLAG:MASTER:사정ゲージ再装填 = 0
+CFLAG:TARGET:사정ゲージ再装填 = 0
+SIF ASSI >= 0
+	CFLAG:ASSI:사정ゲージ再装填 = 0
+
+;사정フラグ、처녀상실フラグなどを리셋
+VARSET TFLAG, 0, 0, 200
+;SELECTCOM・PREVCOMの廃棄
+VARSET SELECTCOM, -1
+VARSET PREVCOM, -1
+;FOR LCOUNT, 0, 200
+;	TFLAG:LCOUNT = 0
+;NEXT
+
+;질내に바기나불결を付加
+;SIF HAVE_VAGINA(TARGET)
+;	CALL SET_STAIN("질내", "애액", TARGET)
+;SIF HAVE_VAGINA(MASTER)
+;	STAIN:MASTER:6 |= 1
+;IF ASSI >= 0
+;	SIF HAVE_VAGINA(ASSI)
+;		STAIN:ASSI:6 |= 1
+;ENDIF
+
+;콘돔자동장착설정の리셋
+FLAG:콘돔자동장착処理 = 0
+
+;콘돔사정フラグを리셋
+CFLAG:사용済み콘돔판정 = 0
+
+;조교者は誰か
+IF ASSIPLAY == 0
+	PLAYER = MASTER
+ELSE
+	PLAYER = ASSI
+ENDIF
+
+;주도권を最初から握っているか
+TEQUIP:MASTER:주도권 = 1
+SIF ASSI >= 0
+	TEQUIP:ASSI:주도권 = 1
+	
+IF CFLAG:TARGET:초기주도권 && ABL:TARGET:순종 < 3
+	TEQUIP:TARGET:주도권 = 1
+	TEQUIP:MASTER:주도권 = 0
+	SIF ASSI >= 0
+		TEQUIP:ASSI:주도권 = 0
+ENDIF
+CFLAG:TARGET:被조교횟수 += 1
+
+@EVENTTRAIN
+#LATER
+;전투참가불가능フラグの소거
+;便利な関数が出来てたので早速이용
+IF CFLAG:TARGET:전투참가불가능
+	SIF CFLAG:TARGET:매각가능 || 함락(TARGET)
+		CFLAG:TARGET:전투참가불가능 = 0
+ENDIF
+
+@EVENTTURNEND
+#PRI
+;매각や조수化が가능になったか
+SIF TARGET < 0
+	RETURN 0
+
+SIF ABL:순종+ABL:욕망 < 6
+	RETURN 0
+SIF ABL:순종 < 4 && ((TALENT:반항적 && TALENT:복종 == 0 && TALENT:예속 == 0) || TALENT:꿋꿋함)
+	RETURN 0
+SIF ABL:욕망 < 4 && (TALENT:자제심 || TALENT:억압 || TALENT:저항)
+	RETURN 0
+LOCAL = 0
+SIF ABL:기교 >= 2 && ABL:봉사정신 >= 2
+	LOCAL += 1
+SIF ABL:기교 >= 4 && ABL:봉사정신 >= 4
+	LOCAL += 1
+SIF ABL:노출증 >= 3 && ABL:자위중독
+	LOCAL += 1
+SIF ABL:마조끼 >= 3
+	LOCAL += 1
+SIF ABL:Ｃ감각+ABL:Ｖ감각+ABL:Ａ감각+ABL:Ｂ감각 >= 8
+	LOCAL += 1
+SIF ABL:Ｃ감각+ABL:Ｖ감각+ABL:Ａ감각+ABL:Ｂ감각 >= 13
+	LOCAL += 1
+SIF ABL:순종 >= 4
+	LOCAL += 1
+SIF ABL:욕망 >= 4
+	LOCAL += 1
+SIF ABL:정액중독
+	LOCAL += 1
+SIF ABL:수간중독
+	LOCAL += 1
+SIF ABL:촉수중독
+	LOCAL += 1
+SIF ABL:윤간중독
+	LOCAL += 1
+SIF ABL:키스중독
+	LOCAL += 1
+SIF (ABL:레즈끼 >= 3 && ABL:레즈중독) || (ABL:ＢＬ끼 >= 3 && ABL:ＢＬ중독)
+	LOCAL += 1
+SIF ABL:요리기능 >= 2 || ABL:가창기능 >= 2
+	LOCAL += 1
+SIF MARK:굴복각인 >= 3 && MARK:쾌락각인 >= 3
+	LOCAL += 1
+SIF MARK:굴복각인 >= 3 && MARK:고통각인 >= 3
+	LOCAL += 1
+
+;IF GROUPMATCH(1,(ABL:기교 >= 3 && ABL:봉사정신 >= 3) , (ABL:노출증 >= 3 && ABL:자위중독) , ABL:마조끼 >= 3 , ABL:3+ABL:4+ABL:5+ABL:6 >= 13 , ABL:0 >= 5 , ABL:1 >= 5) >= 2
+IF LOCAL > MIN(6,CSVBASE(NO:TARGET,GETNUM(BASE,"LV"),0)/10 + (ABL:종족 == 0))
+	IF CFLAG:매각가능 <= 0
+		PRINTFORMW %타겟이(1)% 매각할 수 있게 되었다
+		CFLAG:매각가능 = 1
+	ENDIF
+ELSE
+	RETURN 0
+ENDIF
+
+IF ABL:순종+ABL:욕망+ABL:기교+(TALENT:남자 ? ABL:ＢＬ끼 # ABL:레즈끼) >= 12
+	IF CFLAG:매각가능 <= 1
+		PRINTFORMW %타겟이(1)% 조수가 가능하게 되었다
+		CFLAG:매각가능 = 2
+	ENDIF
+ENDIF
+
+@EVENTTURNEND
+#DIM LCOUNT
+IF ASSI > 0
+	IF TALENT:ASSI:요호 && ITEM:미약 == 0
+		PRINTW [요호]의 효과로 미약을 손에 넣었습니다
+		ITEM:미약 = 1
+	ENDIF
+ENDIF
+
+FOR LCOUNT, 0, 100
+	SIF ITEM:LCOUNT < 0
+		ITEM:LCOUNT = 0
+NEXT
+
+RETURN 0
+
+@ASSI_CHANGE
+;[여우]かつ기교LV5、Ｃ감각LV5で처녀
+IF TALENT:ASSI:여우 && (ABL:ASSI:기교 >= 5 && ABL:ASSI:Ｃ감각 >= 5 && TALENT:ASSI:처녀)
+	DRAWLINE
+	PRINTFORML %조사처리(NAME:ASSI,"는")% [요호]가 되었다
+	DRAWLINE
+	WAIT
+	TALENT:ASSI:여우 = 0
+	TALENT:ASSI:요호 = 1
+ENDIF
+
+$INPUT_LOOP
+;[이상한뿌리]かつＣ감각LV5、정액중독LV3이상
+IF TALENT:ASSI:이상한뿌리 && (ABL:ASSI:Ｃ감각 >= 5 && ABL:ASSI:정액중독 >= 3) && TALENT:ASSI:후타나리 == 0 && !IS_MALE(ASSI)
+	DRAWLINE
+	PRINTFORML ……아무래도 [이상한뿌리]의 효과가 나타난 것 같다
+	PRINTFORMW %조사처리(CALLNAME:ASSI,"를")% [후타나리]로 만들겠습니까?
+	PRINTL [0] - 한다
+	PRINTL [1] - 하지않는다
+	INPUT
+	IF RESULT == 0
+		PRINTFORML %NAME:ASSI%의 [이상한뿌리]는 [후타나리]가 되었다
+		TALENT:ASSI:후타나리 = 1
+	ELSEIF RESULT == 1
+		PRINTFORML %조사처리(NAME:ASSI,"는")% [이상한뿌리]를 잃었다
+	ELSE
+		GOTO INPUT_LOOP
+	ENDIF
+	DRAWLINE
+	WAIT
+	TALENT:ASSI:이상한뿌리 = 0
+ENDIF
+
+$INPUT_LOOP_2
+;[구현]かつ욕망LV5か레즈끼LV4이상
+IF TALENT:ASSI:구현 && (ABL:ASSI:욕망 >= 5 || ABL:ASSI:레즈끼 >= 4) && TALENT:ASSI:후타나리 == 0 && !IS_MALE(ASSI)
+	DRAWLINE
+	PRINTFORML ……아무래도 [구현]의 효과가 나타난 것 같다
+	PRINTFORML %조사처리(CALLNAME:ASSI,"를")% [후타나리]로 만들겠습니까?
+	PRINTL [0] - 한다
+	PRINTL [1] - 하지않는다
+	INPUT
+	IF RESULT == 0
+		PRINTFORML %조사처리(NAME:ASSI,"는")% [구현]에 의해 [후타나리]가 되었다
+		TALENT:ASSI:후타나리 = 1
+	ELSEIF RESULT == 1
+		PRINTFORML %조사처리(NAME:ASSI,"는")% [구현]을 잃었다
+	ELSE
+		GOTO INPUT_LOOP_2
+	ENDIF
+	DRAWLINE
+	WAIT
+	TALENT:ASSI:구현 = 0
+ENDIF
+
+;ISASSI:ASSI = 1
+
+RETURN 0
+
+@YOUJI
+;조교者が유치
+IF TALENT:PLAYER:유치
+	PRINTS NAME:PLAYER
+	PRINTFORM %조사만처리(NAME:PLAYER,"가")% 젖을 들이마시는 동안에
+	PRINTS NAME:TARGET
+	PRINTFORMW %조사만처리(NAME:TARGET,"가")% 모유가 나오게 되었다
+	TALENT:모유체질 = 1
+ENDIF
+
+@EVENTCOMEND
+
+IF EXP:Ｖ경험 == 0 && EXP:Ａ경험 > 0 && TALENT:정조관념 && CFLAG:貞操を守れるなら…… == 0
+	CFLAG:貞操を守れるなら…… = 1
+	PRINTW 정조를 지킬 수 있다면 뒤를 범해지는 것 정도는 괜찮다고 생각하는 것 같다……
+ENDIF
+@EVENTCOMEND
+#PRI
+SIF PLAYER == MASTER
+	CFLAG:TARGET:構ったフラグ = 1
+
+;조교で【붕괴】を得た場合の이벤트
+@COLLAPSE_MIND_TRAIN
+;함락持ちかどうかで필요충성도변화
+IF 함락(TARGET)
+	IF (CFLAG:TARGET:스트레스치 -99) * 100 <= BASE:TARGET:충성도
+		PRINTFORMW %조사처리(CALLNAME,"는")% 심한 스트레스를 받고 있는 것 같다……
+		PRINTFORMW %CALLNAME%의 충성도가 {(CFLAG:TARGET:스트레스치 -99) * 100}감소했다
+		BASE:TARGET:충성도 -= (CFLAG:TARGET:스트레스치 -99) * 100
+		CFLAG:스트레스치 = 99
+		RETURN 0
+	ENDIF
+ELSE
+	IF (CFLAG:TARGET:스트레스치 -99) * 500 <= BASE:TARGET:충성도
+		PRINTFORMW %조사처리(CALLNAME,"는")% 심한 스트레스를 받고 있는 것 같다……
+		PRINTFORMW %CALLNAME%의 충성도가 {(CFLAG:TARGET:스트레스치 -99) * 500}감소했다
+		BASE:TARGET:충성도 -= (CFLAG:TARGET:스트레스치 -99) * 500
+		CFLAG:스트레스치 = 99
+		RETURN 0
+	ENDIF
+ENDIF
+
+PRINTFORMW %CALLNAME:TARGET%의 상태가 이상하다
+PRINTFORMW PRINTFORMW 격렬한 조교의 영향으로 %타겟은()% 정신에 이상이 생긴 것 같다
+PRINTFORMW %조사처리(NAME:TARGET,"는")% 【붕괴】되었다
+TALENT:붕괴 = 1
+TFLAG:13 = 247
+	CALL KOJO_MESSAGE_EVENT
+IF TALENT:연모 || TALENT:음란 || TALENT:복종 || TALENT:친애 || TALENT:창부 || TALENT:예속
+	PRINTFORM %타겟은()% [
+	SIF TALENT:연모
+		PRINT 연모
+	SIF TALENT:음란
+		PRINT 음란
+	SIF TALENT:복종
+		PRINT 복종
+	SIF TALENT:친애
+		PRINT 친애
+	SIF TALENT:창부
+		PRINT 창부
+	SIF TALENT:예속
+		PRINT 예속
+	PRINTW ]을(를) 잃었다
+	SIF TALENT:연모
+		TALENT:연모 = 0
+	SIF TALENT:음란
+		TALENT:음란 = 0
+	SIF TALENT:복종
+		TALENT:복종 = 0
+	SIF TALENT:친애
+		TALENT:친애 = 0
+	SIF TALENT:창부
+		TALENT:창부 = 0
+	SIF TALENT:예속
+		TALENT:예속 = 0
+ENDIF
+
+@EVENTEND
+#PRI
+SIF TARGET > 0 && TALENT:TARGET:페르소나구사자
+	CALL ISABLE_EVOLUTE_PERSONA
+
+@EVENTEND
+#LATER
+PRINTL 조교를 종료했습니다
+;九条나나미は처녀である限り신뢰を維持する。
+IF TARGET == GETCHARA([[キャラ:나나미]]) && CFLAG:801 == 4
+	PRINTFORMW 이번에도 처녀가 지켜진 나나미의 신뢰는 유지되고 있다
+;九条나나미でなければ조교で신뢰を상실する。
+ELSE
+	IF TALENT:TARGET:신뢰 || TALENT:TARGET:동료
+		SETCOLOR 0xff0033
+		IF TALENT:TARGET:연모
+			PRINTFORMW 조교를 받은 것 때문에、%조사처리(NAME:TARGET,"는")%%NAME:MASTER%에게의 애욕이 우정을 앞서 버렸다
+		ELSEIF CFLAG:TARGET:전투참가불가능 == -1
+			PRINTFORMW 조교를 받은 것 때문에、%조사처리(NAME:TARGET,"는")%%NAME:MASTER%에게의 우정이 깨지고 전투에 참여하지 않게 되었다
+			CFLAG:전투참가불가능 = 1
+			SIF CFLAG:포지션 > 0
+				CALL REMOVE_POSITION,CFLAG:포지션
+		ELSE
+			PRINTFORMW 조교를 받은 것 때문에、%조사처리(NAME:TARGET,"는")%%NAME:MASTER%의 노예임을 재인식한 듯하다.
+		ENDIF
+		SIF TALENT:TARGET:신뢰
+			PRINTFORMW %조사만처리(NAME:TARGET,"는")% 【신뢰】를 잃었다
+		SIF TALENT:TARGET:동료
+			PRINTFORMW %조사만처리(NAME:TARGET,"는")% 【동료】를 잃었다
+		TALENT:TARGET:신뢰 = 0
+		TALENT:TARGET:동료 = 0
+		FLAG:信頼人数 -= 1
+		FLAG:今周回信頼人数 -= 1
+		RESETCOLOR
+	ENDIF
+ENDIF
+IF CFLAG:TARGET:전투참가불가능 == -1
+	SETCOLOR 0xff0033
+	PRINTFORMW 조교를 받은 것 때문에 %조사처리(NAME:TARGET,"는")% %NAME:MASTER%에 대한 신뢰를 잃어 전투에 참가하지 않게 되었습니다
+	CFLAG:전투참가불가능 = 1
+	SIF CFLAG:포지션 > 0
+		CALL REMOVE_POSITION,CFLAG:포지션
+	RESETCOLOR
+ENDIF
+;修練中に戦闘参加不可能になった場合の修練中断処理
+IF CFLAG:TARGET:전투참가불가능 == 1 && CFLAG:TARGET:노역フラグ == 6
+	SETCOLOR 0xff0033
+	PRINTFORMW 調教を始めたことにより、%NAME:TARGET%の修練を中断させました
+	CFLAG:TARGET:노역フラグ = 0
+	RESETCOLOR
+ENDIF
+;非戦闘員が食堂で働いていて、労役の条件を満たさなくなったら労役解除
+IF (ABL:TARGET:순종 + ABL:TARGET:봉사정신 + ABL:TARGET:요리기능 + TALENT:TARGET:연모*3 + TALENT:TARGET:친애*6) < 6 && TALENT:TARGET:비전투원 && CFLAG:TARGET:被조교횟수 && CFLAG:TARGET:노역フラグ == 1
+	SETCOLOR 0xff0033
+	PRINTFORMW 조교를 받은 것 때문에、%조사처리(NAME:TARGET,"는")% %NAME:MASTER%에 대한 신뢰를 잃어、노역이 중지됐습니다
+	CFLAG:TARGET:노역フラグ = 0
+	RESETCOLOR
+ENDIF
+;비전투원が전투員素質を持っていて、훈련경험を持っていれば비전투원が無くなる
+IF TALENT:TARGET:비전투원 == 1 && EXP:TARGET:훈련경험 > 99 && (TALENT:TARGET:석세서 || TALENT:TARGET:데빌시프터 || TALENT:TARGET:이능자 || TALENT:TARGET:페르소나구사자 || TALENT:TARGET:도구지식 || TALENT:TARGET:아이템숙련 || TALENT:TARGET:건슬링거 || TALENT:TARGET:쿠즈노하 || TALENT:TARGET:식노 || TALENT:TARGET:달인)
+	SETCOLOR 0x0099cc
+	PRINTFORMW 충분한 전투경험을 쌓은 %조사처리(NAME:TARGET,"는")% 전투에 참가 할 수 있게 되었다
+	TALENT:TARGET:230 = 0
+	RESETCOLOR
+ENDIF
+
+;조교後行為の체크
+CALL SELF_CHECK
+
+;착유した모유の매각
+CALL SELL_MILK
+
+;조교時に録画したビデオを매각
+CALL SELL_VIDEO
+
+;조교時に촬영した사진を매각
+CALL SELL_PICTURE
+
+;何의 구슬を得られたか
+CALL JUEL_CHECK
+
+;부정의の打ち消し체크
+CALL DENIAL_CHECK
+
+CALL CHANGE_ALI
+
+BEGIN ABLUP
+
+;스트레스치の加算
+CFLAG:TARGET:스트레스치 += 1
+SIF MARK:TARGET:반발각인 > 2
+	CFLAG:TARGET:스트레스치 += 1
+;스트레스치100이상で붕괴を得る
+SIF CFLAG:TARGET:스트레스치 >= 100 && TALENT:TARGET:붕괴 == 0
+	CALL COLLAPSE_MIND_TRAIN
+
+@JUEL_CHECK
+#DIM LCOUNT
+
+LOCAL = (EX:Ｃ절정 + EX:Ｖ절정 + EX:Ａ절정 +EX:Ｂ절정+EX:4+EX:5)*2
+FOR LCOUNT, 0, 15
+	IF PALAM:LCOUNT < PALAMLV:1
+		G = 0
+	ELSEIF PALAM:LCOUNT < PALAMLV:1*3
+		G = 1
+	ELSEIF PALAM:LCOUNT < PALAMLV:2
+		G = 2
+	ELSEIF PALAM:LCOUNT < PALAMLV:2*3
+		G = 10
+	ELSEIF PALAM:LCOUNT < PALAMLV:3
+		G = 20
+	ELSEIF PALAM:LCOUNT < PALAMLV:3*2
+		G = 100
+	ELSEIF PALAM:LCOUNT < PALAMLV:4
+		G = 200
+	ELSEIF PALAM:LCOUNT < PALAMLV:5
+		G = 1000
+	ELSEIF PALAM:LCOUNT < PALAMLV:6
+		G = 2000
+	ELSEIF PALAM:LCOUNT < PALAMLV:7
+		G = 3000
+	ELSEIF PALAM:LCOUNT < PALAMLV:8
+		G = 5000
+	ELSEIF PALAM:LCOUNT < PALAMLV:9
+		G = 8000
+	ELSEIF PALAM:LCOUNT < PALAMLV:10
+		G = 12000
+	ELSEIF PALAM:LCOUNT < PALAMLV:11
+		G = 25000
+	ELSEIF PALAM:LCOUNT < PALAMLV:12
+		G = 40000
+	ELSEIF PALAM:LCOUNT < PALAMLV:13
+		G = 60000
+	ELSEIF PALAM:LCOUNT < PALAMLV:14
+		G = 100000
+	ELSEIF PALAM:LCOUNT < PALAMLV:15
+		G = 250000
+	ELSEIF PALAM:LCOUNT < PALAMLV:16
+		G = 500000
+	ELSE
+		G = 1000000
+	ENDIF
+
+	IF LCOUNT == 0
+		GOTJUEL:LCOUNT = G + EX:Ｃ절정 * 1000
+	ELSEIF LCOUNT == 1
+		GOTJUEL:LCOUNT = G + EX:Ｖ절정 * 1000
+	ELSEIF LCOUNT == 2
+		GOTJUEL:LCOUNT = G + EX:Ａ절정 * 1000
+	ELSEIF LCOUNT == 3
+		GOTJUEL:LCOUNT = G + EX:Ｂ절정 * 1000
+	ELSEIF LCOUNT < 12
+		GOTJUEL:LCOUNT = G
+		LOCAL += PALAMLV_F(TARGET,PALAMNAME:LCOUNT)*3
+	ELSE
+		GOTJUEL:부정 += G
+	ENDIF
+NEXT
+
+DRAWLINE
+PRINTL 조교의 결과：
+IF LOCAL > 0 && FLAG:(20000+NO:TARGET)
+	PRINTFORML 해석도 ＋{LOCAL/10}.{LOCAL%10}％
+	CALL INCREASE_ANALYZE,NO:TARGET,LOCAL
+ENDIF
+D = 0
+FOR LCOUNT, 0, 15
+	IF LCOUNT == 0
+		D = 0
+	ELSEIF LCOUNT == 1
+		D = 1
+	ELSEIF LCOUNT == 2
+		D = 2
+	ELSEIF LCOUNT == 3
+		D = 3
+	ELSEIF LCOUNT == 4
+		D = 4
+	ELSEIF LCOUNT == 5
+		D = 5
+	ELSEIF LCOUNT == 6
+		D = 6
+	ELSEIF LCOUNT == 7
+		D = 7
+	ELSEIF LCOUNT == 8
+		D = 8
+	ELSEIF LCOUNT == 9
+		D = 9
+	ELSEIF LCOUNT == 10
+		D = 10
+	ELSEIF LCOUNT == 11
+		D = 11
+	ELSEIF LCOUNT == 12
+		D = 12
+	ELSEIF LCOUNT == 13
+		D = 13
+	ELSEIF LCOUNT == 14
+		D = 14
+	ENDIF
+	
+	IF D == 12
+		PRINTFORML %PALAMNAME:100%의 구슬×({JUEL:100}+{GOTJUEL:100})
+		JUEL:부정 += GOTJUEL:부정
+	ELSEIF D != 4 && D != 13 && D != 14
+		PRINTFORML %PALAMNAME:D%의 구슬×({JUEL:D}+{GOTJUEL:D})
+		JUEL:D += GOTJUEL:D
+	ENDIF
+	
+NEXT
+
+PRINTW 이상의 구슬을 얻었습니다
+
+@DENIAL_CHECK
+#DIM LCOUNT
+SIF JUEL:부정 == 0
+	RETURN 0
+
+SIF SUMARRAY(JUEL,5,8) < 1
+	RETURN 0
+
+$LABEL_1
+A = RAND:3 + 5
+B = JUEL:부정 / 2
+SIF B == 0 && JUEL:부정 > 0
+	B = 1
+SIF JUEL:A < B
+	B = JUEL:A
+JUEL:A -= B
+JUEL:부정 -= B
+
+SIF B > 0
+	PRINTFORML %PALAMNAME:A%의 구슬×{B}감소
+SIF JUEL:부정 > 0 && (JUEL:5 + JUEL:6 + JUEL:7) > 0
+	GOTO LABEL_1
+
+$LABEL_2
+A = RAND:3 + 9
+B = JUEL:부정 / 2
+SIF B == 0 && JUEL:부정 > 0
+	B = 1
+SIF JUEL:A < B
+	B = JUEL:A
+JUEL:A -= B
+JUEL:부정 -= B
+SIF B > 0
+	PRINTFORML %PALAMNAME:A%의 구슬×{B}개 감소
+SIF JUEL:부정 > 0 && (JUEL:치정 + JUEL:고통 + JUEL:공포) > 0
+	GOTO LABEL_2
+
+DRAWLINE
+PRINTL 부정의 구슬과 그밖의 구슬간의 상쇄가 발생하고 있습니다
+PRINTL 그 결과, 
+D = 0
+FOR LCOUNT, 0, 13
+	IF LCOUNT == 0
+		D = 0
+	ELSEIF LCOUNT == 1
+		D = 1
+	ELSEIF LCOUNT == 2
+		D = 2
+	ELSEIF LCOUNT == 3
+		D = 3
+	ELSEIF LCOUNT == 4
+		D = 4
+	ELSEIF LCOUNT == 5
+		D = 5
+	ELSEIF LCOUNT == 6
+		D = 6
+	ELSEIF LCOUNT == 7
+		D = 7
+	ELSEIF LCOUNT == 8
+		D = 8
+	ELSEIF LCOUNT == 9
+		D = 9
+	ELSEIF LCOUNT == 10
+		D = 10
+	ELSEIF LCOUNT == 11
+		D = 11
+	ELSEIF LCOUNT == 12
+		D = 12
+	ENDIF
+	
+
+	IF D == 12
+		PRINTFORML %PALAMNAME:100%의 구슬×({JUEL:100})
+	ELSEIF D != 4
+		PRINTFORML %PALAMNAME:D%의 구슬×({JUEL:D})
+	ENDIF
+
+NEXT
+
+PRINTW 이상과 같이 변화했습니다
+
+@CHANGE_ALI
+;ALI변경処理、主人・조수・조교대상全員かかわるのでここで,とはいえ조수はちょっとどうしたモンかなって感じなので、無視する形で保留
+;とりあえず、主人と조교대상のALIの平均に、主人は1、조교대상は함락していれば4、していなければ2だけ近づく
+;主人또는대상が고고함의반지を장비しているとき変動が発生しない
+IF EQUIP:MASTER:악세사리 != 5010 && TARGET >= 0 && EQUIP:TARGET:악세사리 != 5010
+	;主人のみ반혼의반지を장비(より主人の側に近づきやすくなる)
+	IF EQUIP:MASTER:악세사리 == 5034 && EQUIP:TARGET:악세사리 != 5034
+		LOCAL = (CFLAG:MASTER:善悪치 * 2 + CFLAG:TARGET:善悪치) / 3
+		LOCAL:1 = 5
+		LOCAL:2 = 1
+	;奴隷のみ반혼의반지を장비(より奴隷の側に近づきやすくなる)
+	ELSEIF EQUIP:MASTER:악세사리 != 5034 && EQUIP:TARGET:악세사리 == 5034
+		LOCAL = (CFLAG:MASTER:善悪치 + CFLAG:TARGET:善悪치 * 2 ) / 3
+		LOCAL:1 = 3
+		LOCAL:2 = 3
+	;両方が반혼의반지を장비しているか、どちらも장비していない
+	ELSE
+		LOCAL = (CFLAG:MASTER:善悪치 + CFLAG:TARGET:善悪치) / 2
+		LOCAL:1 = 3
+		LOCAL:2 = 1
+	ENDIF
+	IF 함락(TARGET)
+		CALL CHANGE_CHARA_LD,TARGET,LOCAL,LOCAL:1 * 2
+	ELSE
+		CALL CHANGE_CHARA_LD,TARGET,LOCAL,LOCAL:1
+	ENDIF
+	CALL CHANGE_CHARA_LD,MASTER,LOCAL,LOCAL:2
+
+	;主人のみ반혼의반지を장비(より主人の側に近づきやすくなる)
+	IF EQUIP:MASTER:악세사리 == 5034 && EQUIP:TARGET:악세사리 != 5034
+		LOCAL = (CFLAG:MASTER:秩混치 * 2 + CFLAG:TARGET:秩混치) / 3
+		LOCAL:1 = 5
+		LOCAL:2 = 1
+	;奴隷のみ반혼의반지を장비(より奴隷の側に近づきやすくなる)
+	ELSEIF EQUIP:MASTER:악세사리 != 5034 && EQUIP:TARGET:악세사리 == 5034
+		LOCAL = (CFLAG:MASTER:秩混치 + CFLAG:TARGET:秩混치 * 2 ) / 3
+		LOCAL:1 = 3
+		LOCAL:2 = 3
+	;両方が반혼의반지を장비しているか、どちらも장비していない
+	ELSE
+		LOCAL = (CFLAG:MASTER:秩混치 + CFLAG:TARGET:秩混치) / 2
+		LOCAL:1 = 3
+		LOCAL:2 = 1
+	ENDIF
+	IF 함락(TARGET)
+		CALL CHANGE_CHARA_LC,TARGET,LOCAL,LOCAL:1 * 2
+	ELSE
+		CALL CHANGE_CHARA_LC,TARGET,LOCAL,LOCAL:1
+	ENDIF
+	CALL CHANGE_CHARA_LC,MASTER,LOCAL,LOCAL:2
+ENDIF
+
+@ISABLE_EVOLUTE_PERSONA
+;강화フラグが奇数 = 강화待ちの時は종료
+SIF CFLAG:페르소나강화フラグ % 2 == 1
+	RETURN 0
+;2단계눈が飛ばされて、3단계눈が설정されている場合は0から2まで進める
+SIF !ABL:초기페르소나2 && ABL:초기페르소나3 && !CFLAG:페르소나강화フラグ
+	CFLAG:페르소나강화フラグ = 2
+IF CFLAG:페르소나강화フラグ == 0 && 함락(TARGET) >= 1 && BASE:LV >= 30 && ABL:초기페르소나2
+	CFLAG:페르소나강화フラグ = 1
+	TFLAG:페르소나강화가능 = 2
+ENDIF
+IF CFLAG:페르소나강화フラグ == 2 && 함락(TARGET) >= 2 && BASE:LV >= 50 && ABL:초기페르소나3
+	CFLAG:페르소나강화フラグ = 3
+	TFLAG:페르소나강화가능 = 3
+ENDIF
+

@@ -1,0 +1,459 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:COMBATANTING.ERB
+;	Facility	:비전투원の전투員化処理群
+;
+;	Licence		:ライセンスフリー。
+;
+;	SYSTEM_LEVELUP.ERBをコピペして作りました。
+;
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		2018/06/22		JK好き					新規作成
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+
+
+;===============================
+;레벨アップ판정＆処理
+;;===============================
+@CHECK_COMBATANTING,ARG
+	IF FLAG:레벨アップ時インターフェース설정 == 0
+		CALL CHECK_DEF_COMBATANTING, ARG
+	ELSEIF FLAG:레벨アップ時インターフェース설정 == 1
+		CALL CHECK_NEW_COMBATANTING, ARG
+	ELSEIF FLAG:레벨アップ時インターフェース설정 == 2
+		CALL CHECK_AUTO_COMBATANTING, ARG
+	ENDIF
+
+
+;===============================
+;레벨アップ판정＆処理　디폴트式
+;===============================
+@CHECK_DEF_COMBATANTING,ARG
+;LOCALの使い過ぎでLOCALがゲシュタルト붕괴したので디폴트式への対応は辞めました
+;新インターフェイス側へ飛びます
+;どうしても필요だという方はご自分でどうぞ
+	CALL CHECK_NEW_COMBATANTING, ARG
+
+;===============================
+;레벨アップ판정＆処理　新I/F
+;===============================
+@CHECK_NEW_COMBATANTING,ARG
+	#DIM 레벨上昇値,1
+	#DIM ボーナス포인트,1
+	#DIM 事前최대ＨＰ,1
+	#DIM 事前최대ＭＰ,1
+	ARRAYREMOVE ボーナス포인트,0,0
+	레벨上昇値 = BASE:ARG:LV
+	;비전투원を引き継ぐと레벨0換算で스테이터스が14ポイント分与えられるようなので초기値14
+	ボーナス포인트 = 14
+	事前최대ＨＰ = MAXBASE:ARG:ＨＰ
+	事前최대ＭＰ = MAXBASE:ARG:ＭＰ
+	
+	;引継ぎキャラはある程度스테이터스が与えられるようなのでここでリセット
+	FOR LOCAL, 31, 37
+		BASE:ARG:LOCAL = 0
+	NEXT
+
+	;能力値ボーナス포인트
+	FOR LOCAL, 0, 레벨上昇値
+		SIF (LOCAL) % 2 == 1
+			ボーナス포인트 += 1
+		ボーナス포인트 += 1
+	NEXT
+
+	PRINTFORMW %NAME:ARG%の스테이터스を振り直してください。
+
+	;레벨アップに伴う能力値ボーナス
+	CALL STATUS_BONUS(ARG,ボーナス포인트)
+
+	;元々비전투원なので장비できないはずなのでコメントアウト
+	;インス토르ソフト・악세사리等の特殊ボーナス
+	CALL LVUP_BOOSTER(ARG,ボーナス포인트)
+
+	CALLFORM EVENT_LEVELUP,ARG,LOCAL:1
+	TRYCALLFORM EVENT_LEVELUP_{NO:ARG},LOCAL:1
+	CALL SYNC_STATUS,ARG
+
+	;던전内조교の可能性も考えて念のため残す
+	;増加分だけＨＰとＭＰが회복
+	CALL VAR_HP,ARG,MAXBASE:ARG:ＨＰ - 事前최대ＨＰ,3
+	CALL VAR_MP,ARG,MAXBASE:ARG:ＭＰ - 事前최대ＭＰ,3
+
+	;인간なら全회복
+	IF IS_HUMAN(ARG)
+		BASE:ARG:ＨＰ = MAXBASE:ARG:ＨＰ
+		CFLAG:ARG:ステート = GET_STATE_NUM("GOOD")
+	ENDIF
+
+;===============================
+;레벨アップ판정＆処理　AUTO
+;===============================
+@CHECK_AUTO_COMBATANTING,ARG
+	;LOCAL使い過ぎでしょ…
+	;LOCAL:2-7 対応した능력의상승値
+	#DIM 레벨上昇値,1
+	#DIM ボーナス포인트,1
+	#DIM 事前최대ＨＰ,1
+	#DIM 事前최대ＭＰ,1
+	#DIM 능력選択횟수,1
+	ARRAYREMOVE ボーナス포인트,0,0
+	레벨上昇値 = BASE:ARG:LV
+	;비전투원を引き継ぐと레벨0換算で스테이터스が14ポイント分与えられるようなので초기値14
+	ボーナス포인트 = 14
+	事前최대ＨＰ = MAXBASE:ARG:ＨＰ
+	事前최대ＭＰ = MAXBASE:ARG:ＭＰ
+	
+	;引継ぎキャラはある程度스테이터스が与えられるようなのでここでリセット
+	FOR LOCAL, 31, 37
+		BASE:ARG:LOCAL = 0
+	NEXT
+
+	;能力値ボーナス포인트
+	FOR LOCAL, 0, 레벨上昇値
+		SIF (LOCAL) % 2 == 1
+			ボーナス포인트 += 1
+		ボーナス포인트 += 1
+	NEXT
+
+	VARSET LOCAL
+
+	;無いわけない
+	IF ボーナス포인트
+		;現在の최대ＨＰ・ＭＰを記憶
+		事前최대ＨＰ = MAXBASE:ARG:ＨＰ
+		事前최대ＭＰ = MAXBASE:ARG:ＭＰ
+
+		PRINTFORMW %NAME:ARG%의 스테이터스가 자동으로 배분됩니다
+		PRINTL 
+		PRINTL
+		$INPUT_UP_STATUS
+		DRAWLINE
+			PRINTFORML %종족명(ARG)%　　%CALLNAME:ARG%　　
+			PRINTFORM 　　LV{BASE:ARG:LV,3}　　　
+			CALL PRINT_ALIGNMENT,ARG,0,0
+			PRINTFORML 
+			CUSTOMDRAWLINE ･
+			PRINTFORML 능력상승{ボーナス포인트,3}포인트
+		WHILE ボーナス포인트 > 능력選択횟수
+			LOCAL:11 = ボーナス포인트 - 능력選択횟수
+			$AUTO_LEVELUP_LOOP
+			;特定のキャラの레벨アップをある程度方向づけたい場合
+			;例、魔=知>耐＝速>운>힘の場合
+			IF ARG == GETCHARA([[キャラ:에이린]])
+				SELECTCASE RAND:17
+					CASE 0
+						LOCAL:2 += 1
+						능력選択횟수 += 1
+					CASE 1,6,11,12
+						LOCAL:3 += 1
+						능력選択횟수 += 1
+					CASE 2,7,13,14
+						LOCAL:4 += 1
+						능력選択횟수 += 1
+					CASE 3,8,15
+						LOCAL:5 += 1
+						능력選択횟수 += 1
+					CASE 4,9,16
+						LOCAL:6 += 1
+						능력選択횟수 += 1
+					CASE 5,10
+						LOCAL:7 += 1
+						능력選択횟수 += 1
+				ENDSELECT
+			;素質で分類してみた
+			ELSEIF TALENT:ARG:영맹 || TALENT:ARG:잔학
+			;힘、速が少し伸びやすく、知、魔が少し伸びにくい
+				SELECTCASE RAND:17
+					CASE 0,6,10
+						LOCAL:2 += 1
+						능력選択횟수 += 1
+					CASE 1
+						LOCAL:3 += 1
+						능력選択횟수 += 1
+					CASE 2
+						LOCAL:4 += 1
+						능력選択횟수 += 1
+					CASE 3,7
+						LOCAL:5 += 1
+						능력選択횟수 += 1
+					CASE 4,8,11
+						LOCAL:6 += 1
+						능력選択횟수 += 1
+					CASE 5,9
+						LOCAL:7 += 1
+						능력選択횟수 += 1
+				ENDSELECT
+			ELSEIF TALENT:ARG:우애 || TALENT:ARG:천사
+			;힘が少し伸びにくく、耐がすこし伸びやすい
+				SELECTCASE RAND:17
+					CASE 0
+						LOCAL:2 += 1
+						능력選択횟수 += 1
+					CASE 1,6
+						LOCAL:3 += 1
+						능력選択횟수 += 1
+					CASE 2,7
+						LOCAL:4 += 1
+						능력選択횟수 += 1
+					CASE 3,8,11
+						LOCAL:5 += 1
+						능력選択횟수 += 1
+					CASE 4,9
+						LOCAL:6 += 1
+						능력選択횟수 += 1
+					CASE 5,10
+						LOCAL:7 += 1
+						능력選択횟수 += 1
+				ENDSELECT
+			ELSEIF TALENT:ARG:냉정 || TALENT:ARG:현명 
+			;知が伸びやすい
+				SELECTCASE RAND:17
+					CASE 0
+						LOCAL:2 += 1
+						능력選択횟수 += 1
+					CASE 1,6,7
+						LOCAL:3 += 1
+						능력選択횟수 += 1
+					CASE 2
+						LOCAL:4 += 1
+						능력選択횟수 += 1
+					CASE 3
+						LOCAL:5 += 1
+						능력選択횟수 += 1
+					CASE 4
+						LOCAL:6 += 1
+						능력選択횟수 += 1
+					CASE 5
+						LOCAL:7 += 1
+						능력選択횟수 += 1
+				ENDSELECT
+			ELSEIF TALENT:ARG:교활
+			;知、速が少し伸びやすい
+				SELECTCASE RAND:17
+					CASE 0
+						LOCAL:2 += 1
+						능력選択횟수 += 1
+					CASE 1,6
+						LOCAL:3 += 1
+						능력選択횟수 += 1
+					CASE 2
+						LOCAL:4 += 1
+						능력選択횟수 += 1
+					CASE 3
+						LOCAL:5 += 1
+						능력選択횟수 += 1
+					CASE 4,7
+						LOCAL:6 += 1
+						능력選択횟수 += 1
+					CASE 5
+						LOCAL:7 += 1
+						능력選択횟수 += 1
+				ENDSELECT
+			ELSEIF TALENT:ARG:우둔 || TALENT:ARG:좀비 || TALENT:ARG:허심
+			;知、速が伸びにくい
+				SELECTCASE RAND:17
+					CASE 0,6,10
+						LOCAL:2 += 1
+						능력選択횟수 += 1
+					CASE 1
+						LOCAL:3 += 1
+						능력選択횟수 += 1
+					CASE 2,7,11
+						LOCAL:4 += 1
+						능력選択횟수 += 1
+					CASE 3,8,12
+						LOCAL:5 += 1
+						능력選択횟수 += 1
+					CASE 4
+						LOCAL:6 += 1
+						능력選択횟수 += 1
+					CASE 5,9,13
+						LOCAL:7 += 1
+						능력選択횟수 += 1
+				ENDSELECT
+			ELSEIF TALENT:ARG:교만 || TALENT:ARG:타천사
+			;知、魔がすこし伸びやすい
+				SELECTCASE RAND:17
+					CASE 0
+						LOCAL:2 += 1
+						능력選択횟수 += 1
+					CASE 1,7
+						LOCAL:3 += 1
+						능력選択횟수 += 1
+					CASE 2,8
+						LOCAL:4 += 1
+						능력選択횟수 += 1
+					CASE 3
+						LOCAL:5 += 1
+						능력選択횟수 += 1
+					CASE 4
+						LOCAL:6 += 1
+						능력選択횟수 += 1
+					CASE 5
+						LOCAL:7 += 1
+						능력選択횟수 += 1
+				ENDSELECT
+			;特に素質がない男の場合、힘が上がりやすくする
+			ELSEIF TALENT:ARG:남자
+				SELECTCASE RAND:7
+					CASE 0,6
+						LOCAL:2 += 1
+						능력選択횟수 += 1
+					CASE 1
+						LOCAL:3 += 1
+						능력選択횟수 += 1
+					CASE 2
+						LOCAL:4 += 1
+						능력選択횟수 += 1
+					CASE 3
+						LOCAL:5 += 1
+						능력選択횟수 += 1
+					CASE 4
+						LOCAL:6 += 1
+						능력選択횟수 += 1
+					CASE 5
+						LOCAL:7 += 1
+						능력選択횟수 += 1
+				ENDSELECT
+			;特に素質がない女の場合、마력が上がりやすくする
+			ELSEIF !TALENT:ARG:남자
+				SELECTCASE RAND:7
+					CASE 0
+						LOCAL:2 += 1
+						능력選択횟수 += 1
+					CASE 1
+						LOCAL:3 += 1
+						능력選択횟수 += 1
+					CASE 2,6
+						LOCAL:4 += 1
+						능력選択횟수 += 1
+					CASE 3
+						LOCAL:5 += 1
+						능력選択횟수 += 1
+					CASE 4
+						LOCAL:6 += 1
+						능력選択횟수 += 1
+					CASE 5
+						LOCAL:7 += 1
+						능력選択횟수 += 1
+				ENDSELECT
+			;それ以外は完全に랜덤
+			ELSE
+				SELECTCASE RAND:6
+					CASE 0
+						LOCAL:2 += 1
+						능력選択횟수 += 1
+					CASE 1
+						LOCAL:3 += 1
+						능력選択횟수 += 1
+					CASE 2
+						LOCAL:4 += 1
+						능력選択횟수 += 1
+					CASE 3
+						LOCAL:5 += 1
+						능력選択횟수 += 1
+					CASE 4
+						LOCAL:6 += 1
+						능력選択횟수 += 1
+					CASE 5
+						LOCAL:7 += 1
+						능력選択횟수 += 1
+				ENDSELECT
+			ENDIF
+		WEND
+			CUSTOMDRAWLINE ･
+		REPEAT 6
+			PRINTFORML %GET_BASESTATUS(COUNT+1),4%：{MAXBASE:ARG:(GET_BASESTATUS(COUNT+1)) + LOCAL:(COUNT+2),4}(+{LOCAL:(COUNT+2),3})
+		REND
+			PRINTW 
+	;新インターフェース側と同じ処理に변경
+	;インス토르ソフト・악세사리等の特殊ボーナス
+	CALL LVUP_BOOSTER(ARG,ボーナス포인트)
+	
+;一応残す;LVUP_BOOSTERと中身がだいぶ違うような…
+;		;---- EDIT 006 MOD START -------------------------
+;		;LOCAL:10→LOCAL:1
+;		REPEAT LOCAL:1
+;		;---- EDIT 006 MOD END   -------------------------
+;			;インス토르ソフト数
+;			LOCAL:8 = SUMARRAY(EQUIP:MASTER:0 , GETNUM(EQUIP, "헤라클레스") , GETNUM(EQUIP, "헤라클레스")+7)
+;			FOR LOCAL,1, 7
+;				LOCALS = %GET_BASESTATUS(LOCAL)%
+;				IF ABL:ARG:종족 > 0
+;					;---- EDIT 006 MOD START -------------------------
+;					;강화の発動率の減少速度を/5から/3に
+;					;また、コストが安いマニアック以上に関しては減少速度をおそめる
+;					SIF !EQUIP:MASTER:(GETNUM(EQUIP, "헤라클레스") + LOCAL - 1)
+;						CONTINUE
+;					SIF !NUM_SUMMONER()
+;						CONTINUE
+;					IF FLAG:전투난이도 > 3
+;						SIF RAND:100 > (50 - MIN(40, CFLAG:ARG:능력강화횟수 / 4)) / MAX(1,LOCAL:8)
+;							CONTINUE
+;					ELSE
+;						SIF RAND:100 > (50 - MIN(40, CFLAG:ARG:능력강화횟수 / 2)) / MAX(1,LOCAL:8)
+;							CONTINUE
+;					ENDIF
+;					;최대と最小の差 * 10 * 15
+;					LOCAL:11 = (MAX(MAXBASE:ARG:힘, MAXBASE:ARG:지혜, MAXBASE:ARG:마력, MAXBASE:ARG:인내력, MAXBASE:ARG:속도, MAXBASE:ARG:운) - MIN(MAXBASE:ARG:힘, MAXBASE:ARG:지혜, MAXBASE:ARG:마력, MAXBASE:ARG:인내력, MAXBASE:ARG:속도, MAXBASE:ARG:운))
+;					LOCAL:11 = MAX(1,(LOCAL:11 * 10 + 14) / 15)
+;					LOCAL:12 = (MAXBASE:ARG:LOCALS - MIN(MAXBASE:ARG:힘, MAXBASE:ARG:지혜, MAXBASE:ARG:마력, MAXBASE:ARG:인내력, MAXBASE:ARG:속도, MAXBASE:ARG:운)) * 10 / LOCAL:11 * 5
+;					SIF RAND:100 < LOCAL:12
+;						CONTINUE
+;					PRINTFORML %EQUIPNAME:(GETNUM(EQUIP, "헤라클레스") + LOCAL - 1)%の効果で%LOCALS%がさらに+１
+;					CFLAG:ARG:능력강화횟수 += 1
+;					LOCALS += "강화횟수"
+;					CFLAG:ARG:LOCALS += 1
+;					;---- EDIT 006 MOD END   -------------------------
+;				;---- EDIT 006 ADD START -------------------------
+;				;インス토르ソフトとは挙動がだいぶ違うので注意
+;				;基礎発動率は25%~50%で강화횟수によって減少していく
+;				;さらに能力値の高低差により、100%~25%が乗算されるので、1/2~1/16の間で動くことになる
+;				ELSE
+;					SIF EQUIP:ARG:악세사리 != GETNUM(ITEM, "스트렝스소스") + LOCAL - 1
+;						CONTINUE
+;					IF FLAG:전투난이도 > 3
+;						SIF RAND:80 > 50 - MIN(40, CFLAG:ARG:능력강화횟수 / 4)
+;							CONTINUE
+;					ELSE
+;						SIF RAND:80 > 50 - MIN(40, CFLAG:ARG:능력강화횟수 / 2)
+;							CONTINUE
+;					ENDIF
+;					;최대と最小の差 * 10 * 15
+;					LOCAL:11 = (MAX(MAXBASE:ARG:힘, MAXBASE:ARG:지혜, MAXBASE:ARG:마력, MAXBASE:ARG:인내력, MAXBASE:ARG:속도, MAXBASE:ARG:운) - MIN(MAXBASE:ARG:힘, MAXBASE:ARG:지혜, MAXBASE:ARG:마력, MAXBASE:ARG:인내력, MAXBASE:ARG:속도, MAXBASE:ARG:운))
+;					LOCAL:11 = MAX(1,(LOCAL:11 * 10 + 14) / 15)
+;					LOCAL:12 = (MAXBASE:ARG:LOCALS - MIN(MAXBASE:ARG:힘, MAXBASE:ARG:지혜, MAXBASE:ARG:마력, MAXBASE:ARG:인내력, MAXBASE:ARG:속도, MAXBASE:ARG:운)) * 10 / LOCAL:11 * 5
+;					SIF RAND:200 < LOCAL:12
+;						CONTINUE
+;					PRINTFORML %ITEMNAME:(EQUIP:ARG:악세사리)%の効果で%LOCALS%がさらに+１
+;					CFLAG:ARG:능력강화횟수 += 1
+;					LOCALS += "강화횟수"
+;					CFLAG:ARG:LOCALS += 1
+;				ENDIF
+;				;---- EDIT 006 ADD END   -------------------------
+;			NEXT
+;		REND
+;		
+		REPEAT 7
+			BASE:ARG:(GET_BASESTATUS(1*COUNT)) += LOCAL:(1+COUNT)
+		REND
+		
+		
+		CALLFORM EVENT_LEVELUP,ARG,LOCAL:1
+		TRYCALLFORM EVENT_LEVELUP_{NO:ARG},LOCAL:1
+		CALL SYNC_STATUS,ARG
+		
+		;増加分だけＨＰとＭＰが회복
+		CALL VAR_HP,ARG,MAXBASE:ARG:ＨＰ - 事前최대ＨＰ,3
+		CALL VAR_MP,ARG,MAXBASE:ARG:ＭＰ - 事前최대ＭＰ,3
+		
+		;인간なら全회복
+		IF ABL:ARG:종족 == 0 || ABL:ARG:종족 > 45
+			BASE:ARG:ＨＰ = MAXBASE:ARG:ＨＰ
+			CFLAG:ARG:ステート = GET_STATE_NUM("GOOD")
+		ENDIF
+	ENDIF
+

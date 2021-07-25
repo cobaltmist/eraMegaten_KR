@@ -1,0 +1,277 @@
+﻿;通常공격
+;스킬のテンプレートになっています
+
+;스킬名
+@SKILL_NAME_423,ARG
+RESULTS = 스리스티
+
+
+;　명중
+@SKILL_HITRATE_423, ARG
+RETURN 100
+
+;　위력
+@SKILL_POWER_423, ARG
+RETURN 0
+
+;　최저공격횟수
+@SKILL_MINATTACKNUMBER_423,ARG
+RETURN 1
+
+;　최대공격횟수
+@SKILL_MAXATTACKNUMBER_423,ARG
+RETURN 1
+
+;　ＨＰ2を支払うかＭＰ3を支払うか
+@SKILL_COSTTYPE_423, ARG
+RETURN 3
+;소비なし＝1
+
+;　コストの量
+@SKILL_COST_423,ARG
+RETURN 50
+
+;　相性
+@SKILL_TYPE_423,ARG
+RETURN 0
+
+;　1EXTRAか2MAGICか
+@SKILL_DECIDE_TYPE_423, ARG
+RETURN 2
+;魔法
+
+;　1物理데미지で計算するか2魔法데미지で計算するか
+@SKILL_DAMAGETYPE_423, ARG
+RETURN 2
+
+
+;　대상が1적か2아군か3場전체か4特殊か
+@SKILL_TARGET_423
+RETURN 2
+
+;　사거리
+@SKILL_RANGE_423,ARG
+RETURN 1
+
+;　範囲　11체　21열　3전체　4　적아군전체
+@SKILL_SPHERE_423,ARG
+RETURN 3
+
+;　 効果の타입　1공격、2회복、3상태変化、4特殊、5상태회복
+@SKILL_EFECT_423
+RETURN 5
+
+;　 特殊処理の有無、及び処理内容
+@SKILL_SPECIALEFECT_423,ARG
+;ARG = 1だった場合は処理の有無を返します
+SIF ARG == 1
+	RETURN 0
+;以下に特殊な処理を記述します
+
+;계승타입
+@SKILL_SUCCESSION_TYPE_423
+RETURN 4
+
+@継承不能_423
+RETURN 1
+;特殊
+
+;속도보정
+@SKILL_SPEED_423, ARG = -1
+RETURN 2
+
+;　구상の표시とその타입
+@SKILL_MESSAGE_423,ARG
+
+;전투時以外に사용できるか
+@SKILL_ACTIONABLE_FIELD_423
+RETURN 1
+
+;스킬変化？用랭크
+@SKILL_RANK_423
+RETURN 10
+
+
+
+;テンプレート用、추가효과シリーズ
+;추가효과스테이터스
+@SKILL_ADDTIONAL_STATE_423,ARG
+RETURN 0
+
+;추가효과상성
+@SKILL_ADDTIONAL_TYPE_423,ARG
+RETURN 0
+
+;추가효과기본부여확률
+@SKILL_ADDTIONAL_BASE_RATE_423,ARG
+RETURN 0
+
+;추가효과부여확률上限
+@SKILL_ADDTIONAL_MAX_RATE_423,ARG
+RETURN 0
+
+;====================================================
+;스킬及び行動の実行
+;====================================================
+@ACTION_423,ARG,ARG:1
+;コスト支払い
+;CALL PAY_COST,ARG,423
+;旧仕様
+;IF ARG:1 == 19
+;	LOCAL:7 = 1
+;	LOCAL:8 = 7
+;ELSE
+;	LOCAL:7 = 7
+;	LOCAL:8 = 17
+;ENDIF
+;FOR LOCAL:9, LOCAL:7, LOCAL:8
+;	LOCALS = 포지션{LOCAL:9}
+;	SIF FLAG:LOCALS < 0
+;		CONTINUE
+;	LOCAL = FLAG:LOCALS
+;	CALL SKILL_CURE_STATE_423, CFLAG:LOCAL:ステート
+;	IF RESULT == 1
+;		PRINTFORML 　　TARGET:[{LOCAL:9,2}] %CALLNAME:(LOCAL),20,LEFT%　>>>>>>　되살아났다
+;		CFLAG:LOCAL:ステート = 0
+;		CFLAG:LOCAL:ステート経過ターン = 0
+;		CALL VAR_HP, (LOCAL), MAXBASE:(LOCAL):ＨＰ/4
+;	ENDIF
+;NEXT
+;WAIT
+IF CFLAG:(ARG):PTフラグ
+	;LOCAL:9に대상者、ARGに사용者、PTフラグ == 2はPTにいる仲間、PTフラグ == 1はPTにいない仲間、PTフラグ == 0は적
+	FOR LOCAL:9, 0, CHARANUM
+		;사용者はスルー
+		SIF (LOCAL:9) == ARG
+			CONTINUE
+		;PTに居ない인간は無理
+		SIF CFLAG:(LOCAL:9):PTフラグ == 1 && (ABL:(LOCAL:9):종족 == 0 || ABL:(LOCAL:9):종족 > 45)
+			CONTINUE
+		;렌탈中は排除
+		SIF CFLAG:(LOCAL:9):노역フラグ == 3
+			CONTINUE
+		SIF TALENT:(LOCAL:9):비전투원
+			CONTINUE
+		;ＣＯＭＰにもPTにもいない악마を排除
+		SIF CFLAG:(LOCAL:9):所属ＣＯＭＰ == -1 && CFLAG:(LOCAL:9):PTフラグ < 2
+			CONTINUE
+		SIF CFLAG:(LOCAL:9):この場に居ないフラグ == 1
+			CONTINUE
+		SIF CFLAG:(LOCAL:9):PTフラグ == 0
+			CONTINUE
+
+		IF CFLAG:(LOCAL:9):ステート == GET_STATE_NUM("DYING")
+			CFLAG:(LOCAL:9):ステート = 0
+			CFLAG:(LOCAL:9):ステート経過ターン = 0
+			CALL VAR_HP, (LOCAL:9), MAXBASE:(LOCAL:9):ＨＰ/4
+			PRINTFORML %조사처리(CALLNAME:(LOCAL:9),"는")% 되살아났다
+		ENDIF
+	NEXT
+;적が使った場合
+ELSE
+	LOCAL:7 = 7
+	LOCAL:8 = 17
+	FOR LOCAL:9, LOCAL:7, LOCAL:8
+		LOCALS = 포지션{LOCAL:9}
+		SIF FLAG:LOCALS < 0
+			CONTINUE
+		LOCAL = FLAG:LOCALS
+		CALL SKILL_CURE_STATE_423, CFLAG:LOCAL:ステート
+		IF RESULT == 1
+			PRINTFORML 　　TARGET:[{LOCAL:9,2}] %CALLNAME:(LOCAL),20,LEFT%　>>>>>>　되살아났다ㄴ
+			CFLAG:LOCAL:ステート = 0
+			CFLAG:LOCAL:ステート経過ターン = 0
+			CALL VAR_HP, (LOCAL), MAXBASE:(LOCAL):ＨＰ/4
+		ENDIF
+	NEXT
+ENDIF
+WAIT
+
+;====================================================
+;実行内容ここまで
+;====================================================
+
+;====================================================
+;전투中以外での実行
+;====================================================
+@ACTION_FIELD_423,ARG,ARG:1
+;コスト支払い
+CALL PAY_COST,ARG,423
+
+;旧仕様
+;FOR LOCAL:9,1,7
+;	LOCALS = 포지션{LOCAL:9}
+;	SIF FLAG:LOCALS < 0
+;		CONTINUE
+;	LOCAL = FLAG:LOCALS
+;	CALL SKILL_CURE_STATE_423,CFLAG:LOCAL:ステート
+;	IF RESULT == 1
+;		PRINTFORML 　　TARGET:[{LOCAL:9,2}] %CALLNAME:(LOCAL),20,LEFT%　>>>>>>　되살아났다
+;		CFLAG:LOCAL:ステート = 0
+;		CFLAG:LOCAL:ステート経過ターン = 0
+;		CALL VAR_HP,(LOCAL),MAXBASE:(LOCAL):ＨＰ/4
+;	ENDIF
+;NEXT
+FOR LOCAL:9, 0, CHARANUM
+	;사용者はスルー
+	SIF (LOCAL:9) == ARG
+		CONTINUE
+	;PTに居ない인간は無理
+	SIF CFLAG:(LOCAL:9):PTフラグ == 1 && (ABL:(LOCAL:9):종족 == 0 || ABL:(LOCAL:9):종족 > 45)
+		CONTINUE
+	SIF CFLAG:(LOCAL:9):노역フラグ == 3
+		CONTINUE
+	SIF TALENT:(LOCAL:9):비전투원
+		CONTINUE
+	SIF CFLAG:(LOCAL:9):所属ＣＯＭＰ == -1 && CFLAG:(LOCAL:9):PTフラグ != 2
+		CONTINUE
+	SIF CFLAG:(LOCAL:9):この場に居ないフラグ == 1
+		CONTINUE
+
+	IF CFLAG:(LOCAL:9):ステート == GET_STATE_NUM("DYING")
+		CFLAG:(LOCAL:9):ステート = 0
+		CFLAG:(LOCAL:9):ステート経過ターン = 0
+		CALL VAR_HP, (LOCAL:9), MAXBASE:(LOCAL:9):ＨＰ/4
+		PRINTFORML %조사처리(CALLNAME:(LOCAL:9),"는")% 되살아났다
+	ENDIF
+NEXT
+WAIT
+
+;====================================================
+;実行内容ここまで
+;====================================================
+
+
+;　 説明文の표시
+@SKILL_EXPLAIN_423
+PRINTL [회복] 파티 전체의 DYING을 치료한다.
+PRINTL 대기 멤버의 DYING도 회복한다.
+
+;継承に필요な部位
+@継承部位_423, ARG
+RETURN 1
+
+;사용조건
+@SKILL_SPECIAL_ACTIONABLE_423, ARG
+RETURN 1
+;とくにない
+
+;ターゲット조건
+@SKILL_SPECIAL_TARGET_423, ARG
+;CALLFORM SKILL_CURE_STATE_423, (CFLAG:(POS(ARG)):ステート)
+CALLFORM SKILL_CURE_STATE_423,(CFLAG:ARG:ステート)
+RETURN RESULT
+
+;控えに使えるか
+@SKILL_T_RESERVE_423
+RETURN 0
+
+;何のバッド스테이터스を治せるか
+@SKILL_CURE_STATE_423,ARG
+SELECTCASE GET_STATE(ARG)
+	CASE "DYING"
+		RETURN 1
+	CASEELSE
+		RETURN 0
+ENDSELECT
+

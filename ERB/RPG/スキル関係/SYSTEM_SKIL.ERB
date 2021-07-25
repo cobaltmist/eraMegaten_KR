@@ -1,0 +1,891 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;	Edit	Date			Author					Reason
+;	001		20XX/XX/XX								新規作成
+;	002		2021/02/22		亜人いいよね			スキルカード拡張枠の追加
+
+;==========================================================
+;스킬기본性能説明
+;==========================================================
+;@SKILL_EXPLAIN_PERFORMANCE(ARG:0, ARG:1 = -1)
+@SKILL_EXPLAIN_PERFORMANCE(ARG:0, ARG:1)
+#DIMS CONST EFFECT = "？？？", "공격", "회복", "상태변화", "특수", "상태회복", "자동효과"
+#LOCALSIZE 11
+;現時点では、손を入れないと표시詐欺になる스킬がパッチでそれなりにある状況なのでキャラ渡しは一時封印
+;링케이지の説明も손を入れないと落ちるものがパッチであるので一時封印中
+;そのうち표시情報増やして추가효과とか확률とか入れたい気はするけど、親切過ぎるのも考え物なんだろうか？
+;ARG:1 = -1				;強制-1化を除外
+LOCAL:2 = RESULT		;RESULT保護
+LOCAL:10 = U			;U保護
+스킬속성표시中 = 1	;うまく표시出来ない스킬はこの情報見て회피したいけど、未対応なら以下のでっち上げで회피を試みる
+;스킬속성표시中で판정しないと표시詐欺になるであろう스킬の눈安
+;・威힘が링케이지참가자で変動する스킬のうち、단독링케이지の場合の판정がない스킬
+;・랜덤속성の스킬
+;・적の상태等により、相性や威힘が変化する스킬
+;・拡散フラグを用途外利用している스킬(現ＨＰ割合や残ＭＰを見ている場合が多い)
+
+;念の為、キャラ情報渡された場合は未対応を考慮して各情報をでっち上げる
+IF ARG:1 >= 0
+	;링케이지の場合は기본的に참가者取れないと思うので、단독링케이지の値を표시
+	LOCAL:3 = CFLAG:(ARG:1):단독링케이지
+	CFLAG:(ARG:1):단독링케이지 = 1
+	;ターゲットが影響する스킬は표시詐欺だけど손抜きで。포지션が絡むので、必ずいるMASTERを指定
+	LOCAL:4 = CFLAG:(ARG:1):ターゲット
+	CFLAG:(ARG:1):ターゲット = CFLAG:MASTER:포지션
+	FOR LOCAL:0, 1, 6	;これも표시詐欺だけど손抜きで。全部自分
+		LOCAL:(LOCAL:0 + 4) = CFLAG:(ARG:1):@"링케이지참가자{LOCAL:0}"
+		CFLAG:(ARG:1):@"링케이지참가자{LOCAL:0}" = ARG:1
+	NEXT
+	;拡散フラグの用途外利用には全く対応できないので、そういう스킬も표시詐欺になる
+ENDIF
+
+;最初に種別
+TRYCCALLFORM SKILL_EFECT_{ARG:0}
+	LOCAL:0 = RESULT
+	U = ARG:1
+	PRINTFORM 종별：\@ INRANGE(LOCAL:0, 1, 6) ? %EFFECT:(LOCAL:0)% # %EFFECT:0% \@
+	;相性표시
+	IF GROUPMATCH(LOCAL:0, 1, 3)
+		CALLFORM SKILL_TYPE_{ARG:0}, ARG:1
+		PRINTFORM 　속성：%GET_TYPE(RESULT)%
+	ENDIF
+	;範囲표시
+	TRYCALLFORM SKILL_SPHERE_{ARG:0}, ARG:1
+	PRINT 　범위:
+	SELECTCASE RESULT
+		CASE 1
+			PRINTFORM 1명
+		CASE 2
+			PRINTFORM 1열
+		CASE 3
+			PRINTFORM 전체
+		CASE 4
+			PRINTFORM 적아군
+		CASEELSE
+			PRINT 없음
+	ENDSELECT
+	;威힘표시
+	IF INRANGE(LOCAL:0, 1, 3)
+		CALLFORM SKILL_POWER_{ARG:0}, ARG:1
+		PRINTFORM 　위력：{RESULT}
+	ENDIF
+	;명중표시
+	IF INRANGE(LOCAL:0, 1, 3)
+		CALLFORM SKILL_HITRATE_{ARG:0}, ARG:1
+		PRINTFORM 　명중：{RESULT}
+	ENDIF
+	;횟수표시
+	IF INRANGE(LOCAL:0, 1, 3)
+		CALLFORM SKILL_MINATTACKNUMBER_{ARG:0},ARG:1
+		PRINTFORM 　횟수:{RESULT}〜
+		CALLFORM SKILL_MAXATTACKNUMBER_{ARG:0},ARG:1
+		PRINTFORM {RESULT}
+	ENDIF
+	IF LOCAL:0 != 6
+		;소비표시
+		CALLFORM SKILL_COSTTYPE_{ARG:0}, ARG:1
+		IF RESULT == 2
+			CALLFORM SKILL_COST_{ARG:0}, ARG:1
+			PRINTFORM 　소비：ＨＰ{RESULT}％
+		ELSEIF RESULT == 3
+			CALLFORM SKILL_COST_{ARG:0}, ARG:1
+			PRINTFORM 　소비：{RESULT}ＭＰ
+		ENDIF
+	;	;範囲取得しておく
+	;	CALLFORM SKILL_SPHERE_{ARG}, ARG:1
+	;	LOCAL:1 = RESULT
+	ENDIF
+	;物理/魔法데미지표시
+	IF INRANGE(LOCAL:0, 1, 3)
+		CALLFORM SKILL_DAMAGETYPE_{ARG:0}
+		PRINTFORM 　산출：%(RESULT == 1 ? "물리" # "마법")%
+	ENDIF
+	PRINTL 
+CATCH
+	;ひょっとしたらSKILL_EFECTが無い스킬があるかもしれない
+	[IF_DEBUG]
+		PRINTFORMW 예외：{ARG} 번 스킬의 기본성능설명을 하려고 했습니다。
+		PRINTFORMW 변수 @SKILL_EFECT_{ARG}(이)가 보이지 않습니다。
+		PRINTFORMW 미실장 스킬을 습득하고 있을 가능성이 있습니다。
+	[ENDIF]
+ENDCATCH
+
+;キャラ情報渡された場合はここで各情報を戻す
+IF ARG:1 >= 0
+	CFLAG:(ARG:1):단독링케이지 = LOCAL:3
+	CFLAG:(ARG:1):ターゲット     = LOCAL:4
+	FOR LOCAL:0, 1, 6
+		CFLAG:(ARG:1):@"링케이지참가자{LOCAL:0}" = LOCAL:(4 + LOCAL:0)
+	NEXT
+ENDIF
+스킬속성표시中 = 0	;스킬속성표시終了
+U = LOCAL:10
+RETURN LOCAL:2
+
+;==========================================================
+;스킬카드システム
+;스킬카드一覧표시
+;==========================================================
+@SHOW_SKILL_CARD
+#DIM 選択스킬
+#DIM 選択스킬系統
+#DIM ページ
+#DIM ライン
+#LOCALSIZE 2
+
+REDRAW 0
+選択스킬系統 = -1
+選択스킬 = -1
+ページ = 0
+ライン = LINECOUNT
+CALL 스킬카드在庫確認()
+FOR LOCAL, 0, 24
+	X:LOCAL = Z:LOCAL
+NEXT
+
+
+$START
+CLEARLINE LINECOUNT - ライン
+CUSTOMDRAWLINE =
+IF 選択스킬 > -1
+	PRINTFORML 【%SKILL_NAME_F(選択스킬)%】
+	SIF FLAG:스킬속성표시설정 == 1
+		CALL SKILL_EXPLAIN_PERFORMANCE, 選択스킬, -1
+	TRYCALLFORM SKILL_EXPLAIN_{選択스킬}
+ELSE
+	PRINTFORML \@ 選択스킬系統 == -1 ? 어떤 계통의 스킬카드를 확인할까요？ # 어떤 스킬의 설명을 봅니까？ \@
+	PRINTL
+ENDIF
+DRAWLINE
+IF 選択스킬系統 > -1
+	FOR LOCAL, ページ*20 , (ページ+1)*20
+		IF S:LOCAL > 0
+			CALLFORM SKILL_NAME_{S:LOCAL}
+			IF GETBIT(FLAG:カスタムゲーム화면,1)
+				PRINTFORM [{S:LOCAL,4}] %RESULTS,38,LEFT% × {ITEM:(10000+S:LOCAL),3}\@ABLE_MAKESKILLCARD(S:LOCAL)?　복제가능　#　　　　　\@
+			ELSE
+				PRINTFORM [{S:LOCAL,4}] %RESULTS,20,LEFT% × {ITEM:(10000+S:LOCAL),3}\@ABLE_MAKESKILLCARD(S:LOCAL)?　복제가능　#　　　　　\@
+			ENDIF
+			RESETCOLOR
+		ENDIF
+		SIF LOCAL % 2 == 1
+			PRINTL
+	NEXT
+ELSE
+	PRINTFORM %"\n" * 10%
+ENDIF
+DRAWLINE
+FOR LOCAL,0,24
+	;使えるカードが無い系統は暗く표시
+	SIF LOCAL == 21
+		CONTINUE
+	IF LOCAL == 選択스킬系統
+		SETCOLOR COLOR("하늘색")
+	ELSEIF X:LOCAL == 0
+		SETCOLOR 0x606060
+	ENDIF
+	;IF LOCAL == 22
+	;	PRINTFORM [4022] 자동효과
+	;ELSEIF LOCAL == 23
+	;	PRINTFORML [4023] 레어
+	;ELSE
+	PRINTFORM [{4000+LOCAL}] %GET_SUCCESSION(LOCAL)%　　
+	;ENDIF
+	RESETCOLOR
+	SIF LOCAL % 6 == 5 || LOCAL == 20
+		PRINTL
+NEXT
+DRAWLINE
+PRINTFORMLC \@(ページ <= 0) ? %" " * 16% # [3007]이전 페이지\@
+PRINTLC [0]돌아간다
+PRINTFORMLC \@(ページ >= (LOCAL:1 - 1) / 20) ? %" " * 16% # [3009]다음 페이지\@
+PRINTL 
+PRINTFORMLC [3004]이전 계통
+PRINTFORMLC 현재의 계통【\@ 選択스킬系統 == -1 ? ---- #%GET_SUCCESSION(選択스킬系統)%\@】
+PRINTFORMLC [3006]다음 계통
+
+$INPUT_LOOP_1
+INPUT
+IF RESULT == 0
+	REDRAW 1
+	RETURN 0
+;系統選択
+ELSEIF RESULT >= 4000 && RESULT <= 4023
+	ページ = 0
+	選択스킬系統 = RESULT - 4000
+	CALL 스킬카드在庫確認(選択스킬系統, , 1)
+	LOCAL:1 = RESULT
+	GOTO START
+;系統送り
+ELSEIF RESULT == 3004 || RESULT == 3006
+	ページ = 0
+	選択스킬系統 += (RESULT == 3004 ? -1 # 1)
+	SIF 選択스킬系統 == 21
+		選択스킬系統 += (RESULT == 3004 ? -1 # 1)
+	CALL 스킬카드在庫確認(選択스킬系統, , 1)
+	LOCAL:1 = RESULT
+	GOTO START
+;ページ操作
+ELSEIF (RESULT == 3007 && ページ> 0) || (RESULT == 3009 && ページ < (LOCAL:1 -1) / 20)
+	ページ += (RESULT == 3007 ? -1 # 1)
+	GOTO START
+ELSEIF !RANGE(RESULT , 0 , VARSIZE("ITEM") - 10001) || MATCH(S,RESULT) == -1 || ITEM:(10000+RESULT) < 1
+	CLEARLINE 1
+	GOTO INPUT_LOOP_1
+ENDIF
+選択스킬 = RESULT
+GOTO START
+
+
+;==============================================================
+;스킬습득用・リスト표시
+;==============================================================
+@SHOW_LEARN_SKILL(ARG)
+#LOCALSIZE 6
+LOCAL:3 = LINECOUNT
+IF !LOCAL:5
+	LOCAL:4 = CURRENTREDRAW()
+	SIF LOCAL:4 != 2
+		REDRAW 2
+	LOCAL:5 = 1
+ENDIF
+PRINTL 어떤 계통의 스킬을 습득합니까?
+CALL 스킬카드在庫確認(, ARG)
+FOR LOCAL, 0, 21
+	SIF FLAG:SHOPコマンド == [[SHOP:동료마강화]] && !TALENT:ARG:GET_SUCCESSION(LOCAL)
+		SETCOLOR 0xDDDDDD
+	SIF FLAG:SHOPコマンド == [[SHOP:벨벳룸]] && !TALENT:ARG:GET_SUCCESSION(LOCAL)
+		SETCOLOR STRFLAG_EV("초기페르소나스킬습득", 0, [[이벤트:페르소나]]) ? 0xDDDDDD # 0x404040
+	SIF !Z:LOCAL	;使えるカードが無い系統は暗く표시
+		SETCOLOR 0x606060
+	IF FLAG:SHOPコマンド == [[SHOP:동료마강화]]
+		PRINTFORM [{LOCAL, 2}] %GET_SUCCESSION(LOCAL)%　\@ TALENT:ARG:GET_SUCCESSION(LOCAL) ? ○ # △ \@　
+	ELSEIF FLAG:SHOPコマンド == [[SHOP:벨벳룸]]
+		IF STRFLAG_EV("초기페르소나스킬습득", 0, [[이벤트:페르소나]])
+			PRINTFORM [{LOCAL, 2}] %GET_SUCCESSION(LOCAL)%　\@ TALENT:ARG:GET_SUCCESSION(LOCAL) ? ○ # △ \@　
+		ELSE
+			PRINTFORM [{LOCAL, 2}] %GET_SUCCESSION(LOCAL)%　\@ TALENT:ARG:GET_SUCCESSION(LOCAL) ? ○ # × \@　
+		ENDIF
+	ELSE
+		PRINTFORM [{LOCAL,2}] %GET_SUCCESSION(LOCAL)%　　
+	ENDIF
+	PRINTFORM \@ LOCAL % 6 == 5 ? \n # \@
+	RESETCOLOR
+NEXT
+SETCOLOR Z:22 ? GETCOLOR() # 0x606060
+PRINT [22] 자동효과
+RESETCOLOR
+IF FLAG:SHOPコマンド == [[SHOP:동료마강화]]
+	SETCOLOR Z:23 ? GETCOLOR() # 0x606060
+	PRINTFORM 　[23] 레어
+	RESETCOLOR
+ENDIF
+PRINTFORML \n[100]돌아간다
+$INPUT_LOOP
+INPUT
+IF RESULT == 100
+	SIF LOCAL:4 != 2
+		REDRAW LOCAL:4
+	LOCAL:5 = 0
+	RETURN 0
+{
+ELSEIF !INRANGE(RESULT, 0, 23) || RESULT == 21 || (FLAG:SHOPコマンド == [[SHOP:벨벳룸]] && RESULT == 23) || 
+	(FLAG:SHOPコマンド == [[SHOP:벨벳룸]] && RESULT != 22 && !TALENT:ARG:GET_SUCCESSION(RESULT) && 
+	!STRFLAG_EV("초기페르소나스킬습득", 0, [[이벤트:페르소나]]))
+}
+	CLEARLINE 1
+	GOTO INPUT_LOOP
+ENDIF
+
+RESULT:10 = RESULT
+
+CALL 스킬카드在庫確認(RESULT:10, ARG)
+LOCAL:1 = RESULT
+IF !LOCAL:1
+	CLEARLINE 1
+	REUSELASTLINE 카드를 소지하지 않았습니다
+	GOTO INPUT_LOOP
+ENDIF
+
+;Sの中身を표시
+P = 0
+LOCAL:2 = LINECOUNT
+$PRINT_LIST
+CLEARLINE LINECOUNT - LOCAL:2
+DRAWLINE
+FOR LOCAL, P * 20, (P + 1) * 20
+	IF S:LOCAL > 0 && ITEM:(10000 + S:LOCAL)
+		CALLFORM SKILL_NAME_{S:LOCAL}
+		PRINTFORM [{S:LOCAL, 4}] %RESULTS, 20, LEFT% × {ITEM:(10000 + S:LOCAL), 3}　　\@ LOCAL & 1 ? \n # \@
+	ENDIF
+NEXT
+PRINTFORM \@ LINEISEMPTY() ? # \n \@
+PRINTFORM \@ P && P == (LOCAL:1 - 1) / 20 ? %"\n" * MAX(0, 11 + LOCAL:2 - LINECOUNT)% # \@
+DRAWLINE
+PRINTFORMLC \@ P > 0 ? [3007]이전 페이지 # %" " * 16% \@
+PRINTLC [0]돌아간다
+PRINTFORMLC \@ P < (LOCAL:1 - 1) / 20 ? [3009]다음 페이지 # %" " * 16% \@
+PRINTL 
+$INPUT_LOOP_1
+INPUT
+IF RESULT == 0
+	CLEARLINE LINECOUNT - LOCAL:3
+	RESTART
+ELSEIF RESULT == 3007 && P > 0
+	P--
+	GOTO PRINT_LIST
+ELSEIF RESULT == 3009 && P < (LOCAL:1 - 1) / 20
+	P++
+	GOTO PRINT_LIST
+ELSEIF RESULT < 0 || !MATCH(S, RESULT, 0, LOCAL:1) || !ITEM:(10000 + RESULT)
+	CLEARLINE 1
+	GOTO INPUT_LOOP_1
+ENDIF
+SIF LOCAL:4 != 2
+	REDRAW LOCAL:4
+LOCAL:5 = 0
+RETURN RESULT
+
+
+;==========================================
+;사교의관・스킬카드作成
+;==========================================
+@CASTING_MAKE_SKILLCARD(ARG:0)
+SIF ABL:(ARG:0):종족 == 0 || NO:(ARG:0) == 4509
+	RETURN 0
+;임신か충성도2000以上필요
+SIF (TALENT:(ARG:0):임신 == 0 || TALENT:(ARG:0):붕괴) && BASE:(ARG:0):충성도 < 500
+	RETURN 0
+;임신消えたりで面倒
+SIF ((TALENT:(ARG:0):임신 && CFLAG:(ARG:0):출산予定日 - 2 <= DAY) || TALENT:(ARG:0):육아중) && FLAG:출산기능ONOFF == 1
+	RETURN 0
+SIF CFLAG:(ARG:0):노역フラグ == 3
+	RETURN 0
+SIF CFLAG:(ARG:0):この場に居ないフラグ == 1
+	RETURN 0
+;악마かつ페르소나구사자　악마かつ달인も弾く
+SIF TALENT:(ARG:0):페르소나구사자 || TALENT:(ARG:0):달인
+	RETURN 0
+RETURN 1
+
+@MAKE_SKILLCARD
+#DIM LINE
+;LOCAL FOR用
+;LOCAL:1 作成する악마
+;LOCAL:2 作成する스킬の습득番号
+;LOCAL:5 ページ管理用
+;LOCAL:7 스킬카드化可能스킬の個数
+
+;LOCAL:8-12 増加する스트레스치
+
+;キャラリストを표시・選択
+CALL INPUT_CHARA_LIST("스킬카드를 작성할 악마를 선택해주세요", "CASTING_MAKE_SKILLCARD")
+SIF RESULT == 1000
+	RETURN 0
+LOCAL:1 = RESULT
+
+DRAWLINE
+LINE = LINECOUNT
+$INPUT_LOOP
+CLEARLINE LINECOUNT - LINE
+
+VARSET S,-1
+LOCAL:7 = 0
+FOR LOCAL,1,FLAG:이능자스킬数+1
+	SIF ABL:(LOCAL:1):("스킬" + TOSTR(LOCAL)) == 0
+		CONTINUE
+	;랭크0は弾く
+	CALLFORM SKILL_RANK_{ABL:(LOCAL:1):("스킬" + TOSTR(LOCAL))}
+	SIF RESULT == 0
+		CONTINUE
+	;継承不能스킬は弾く
+	TRYCCALLFORM 継承不能_{ABL:(LOCAL:1):("스킬" + TOSTR(LOCAL))}
+		SIF RESULT
+			CONTINUE
+	CATCH
+	ENDCATCH
+	;スキルロック設定がかかっているスキルを除く
+	SIF GETBIT(CFLAG:(LOCAL:1):スキルロック設定,LOCAL)
+		CONTINUE
+	S:(LOCAL) = ABL:(LOCAL:1):("스킬" + TOSTR(LOCAL))
+	LOCAL:7 += 1
+NEXT
+IF LOCAL:7 == 0
+	PRINTFORMW 스킬카드가 될 수 있는 스킬을 갖고있지 않습니다
+	CLEARLINE 2
+	RESTART
+ENDIF
+
+$PRINT_SKILLLIST
+;名前と스킬リスト표시
+DRAWLINE
+PRINTFORML □%CALLNAME:(LOCAL:1)%의스킬：
+; IF TALENT:(LOCAL:1):인수라 || TALENT:(LOCAL:1):달인
+; 	FOR LOCAL,1,FLAG:이능자스킬数+1
+	FOR LOCAL,1,CHARA_SKILLCOUNT(LOCAL:1)+1
+		SIF S:LOCAL == -1
+			SETCOLOR 0x404040
+		IF GETBIT(FLAG:カスタムゲーム화면,1)
+			IF ABL:(LOCAL:1):("스킬" + TOSTR(LOCAL)) > 0
+				CALLFORM SKILL_NAME_{ABL:(LOCAL:1):("스킬" + TOSTR(LOCAL))},LOCAL:1
+				;PRINTFORM 　[{LOCAL}]%RESULTS,38,LEFT%
+				PRINTFORM 　[{LOCAL}]
+				IF (S:LOCAL != -1)
+					IF !(ITEM:(10000+S:(LOCAL)) || ABLE_MAKESKILLCARD(S:(LOCAL)))
+						LOCAL:4 = GETCOLOR()
+						SETCOLOR COLOR("PASTEL-RED")
+						PRINTFORM (미)
+						SETCOLOR LOCAL:4
+					ENDIF
+				ENDIF
+				PRINTFORM %RESULTS,38,LEFT%
+			ENDIF
+			SIF LOCAL == 3 || LOCAL == 6 || LOCAL == 8
+				PRINTL
+		ELSE
+			IF ABL:(LOCAL:1):("스킬" + TOSTR(LOCAL)) > 0
+				CALLFORM SKILL_NAME_{ABL:(LOCAL:1):("스킬" + TOSTR(LOCAL))},LOCAL:1
+				;PRINTFORM 　[{LOCAL}]%RESULTS,20,LEFT%
+				PRINTFORM 　[{LOCAL}]
+				IF (S:LOCAL != -1)
+					IF !(ITEM:(10000+S:(LOCAL)) || ABLE_MAKESKILLCARD(S:(LOCAL)))
+						LOCAL:4 = GETCOLOR()
+						SETCOLOR COLOR("PASTEL-RED")
+						PRINTFORM (미)
+						SETCOLOR LOCAL:4
+					ENDIF
+				ENDIF
+				PRINTFORM %RESULTS,20,LEFT%
+			ENDIF
+			SIF LOCAL % 4 == 0
+				PRINTL
+		ENDIF
+		RESETCOLOR
+	NEXT
+;ELSE
+; 	FOR LOCAL,1,FLAG:스킬数+1
+; 		SIF S:LOCAL == -1
+; 			SETCOLOR 0x404040
+; 		IF GETBIT(FLAG:カスタムゲーム화면,1)
+; 			IF ABL:(LOCAL:1):("스킬" + TOSTR(LOCAL)) > 0
+; 				CALLFORM SKILL_NAME_{ABL:(LOCAL:1):("스킬" + TOSTR(LOCAL))},LOCAL:1
+; 				;PRINTFORM 　[{LOCAL}]%RESULTS,38,LEFT%
+; 				PRINTFORM 　[{LOCAL}]
+; 				IF (S:LOCAL != -1)
+; 					IF !(ITEM:(10000+S:(LOCAL)) || ABLE_MAKESKILLCARD(S:(LOCAL)))
+; 						LOCAL:4 = GETCOLOR()
+; 						SETCOLOR COLOR("PASTEL-RED")
+; 						PRINTFORM (미)
+; 						SETCOLOR LOCAL:4
+; 					ENDIF
+; 				ENDIF
+; 				PRINTFORM %RESULTS,38,LEFT%
+; 			ENDIF
+; 			SIF LOCAL == 3 || LOCAL == 6 || LOCAL == 8
+; 				PRINTL
+; 		ELSE
+; 			IF ABL:(LOCAL:1):("스킬" + TOSTR(LOCAL)) > 0
+; 				CALLFORM SKILL_NAME_{ABL:(LOCAL:1):("스킬" + TOSTR(LOCAL))},LOCAL:1
+; 				;PRINTFORM 　[{LOCAL}]%RESULTS,20,LEFT%
+; 				PRINTFORM 　[{LOCAL}]
+; 				IF (S:LOCAL != -1)
+; 					IF !(ITEM:(10000+S:(LOCAL)) || ABLE_MAKESKILLCARD(S:(LOCAL)))
+; 						LOCAL:4 = GETCOLOR()
+; 						SETCOLOR COLOR("PASTEL-RED")
+; 						PRINTFORM (미)
+; 						SETCOLOR LOCAL:4
+; 					ENDIF
+; 				ENDIF
+; 				PRINTFORM %RESULTS,20,LEFT%
+; 			ENDIF
+; 			SIF LOCAL % 4 == 0
+; 				PRINTL
+; 		ENDIF
+; 		RESETCOLOR
+; 	NEXT
+;ENDIF
+DRAWLINE
+PRINTL [0]돌아간다　[99]스킬잠금설정
+
+$INPUT_LOOP_2
+INPUT
+IF RESULT == 0
+	RESTART
+ELSEIF RESULT == 99
+	CALL SKILL_ROCK_SETTING, LOCAL:1
+	GOTO INPUT_LOOP
+ELSEIF RESULT < 0 || RESULT > FLAG:이능자스킬数+1 || S:RESULT == -1
+	GOTO INPUT_LOOP_2
+ENDIF
+
+LOCAL:2 = RESULT
+
+;랭크を取得
+;CALLFORM SKILL_RANK_{S:(LOCAL:2)}
+;RESULT:1 = 
+
+DRAWLINE
+CALLFORM SKILL_NAME_{ABL:(LOCAL:1):("스킬" + TOSTR(LOCAL:2))}, LOCAL:1
+CALLFORM SKILL_SUCCESSION_TYPE_{ABL:(LOCAL:1):("스킬" + TOSTR(LOCAL:2))}
+PRINTFORML 【%GET_SUCCESSION(RESULT)%】 %RESULTS%
+SIF FLAG:스킬속성표시설정 == 1
+	CALL SKILL_EXPLAIN_PERFORMANCE, ABL:(LOCAL:1):@"스킬{LOCAL:2}", LOCAL:1
+TRYCALLFORM SKILL_EXPLAIN_{ABL:(LOCAL:1):("스킬" + TOSTR(LOCAL:2))}
+DRAWLINE
+IF ITEM:(10000+S:(LOCAL:2))
+	LOCAL:4 = GETCOLOR()
+	SETCOLOR COLOR("PASTEL-RED")
+	PRINTFORML ※이 스킬카드는 {ITEM:(10000+S:(LOCAL:2))}매 소지하고 있습니다
+	SETCOLOR LOCAL:4
+ENDIF
+IF ABLE_MAKESKILLCARD(S:(LOCAL:2))
+	LOCAL:4 = GETCOLOR()
+	SETCOLOR COLOR("PASTEL-BLUE")
+	PRINTL ※이 스킬카드는 시간성에서 복제가능합니다
+	SETCOLOR LOCAL:4
+ENDIF
+PRINTFORML 현재、다음과 같은 방법으로 스킬카드를 작성할 수 있습니다　충성도{BASE:(LOCAL:1):충성도,6}
+DRAWLINE
+SIF BASE:(LOCAL:1):충성도 >= (4+CFLAG:(LOCAL:1):스킬抽出횟수)*250
+	PRINTFORML [1] 스킬추출 (충성도가 {(2+CFLAG:(LOCAL:1):스킬抽出횟수)*250} 감소하고、대상이 스킬을 잊습니다)
+SIF BASE:(LOCAL:1):충성도 >= 500
+	PRINTL [2] 스킬카드화 (악마는 삭제됩니다)
+SIF TALENT:(LOCAL:1):임신 && TALENT:(LOCAL:1):붕괴 == 0
+	PRINTL [3] 태내의 생명을 스킬카드화 ([임신]을 잃고、스트레스와 피로가 쌓입니다)
+DRAWLINE
+PRINTL [0] 돌아간다
+$INPUT_LOOP_3
+INPUT
+IF RESULT == 0
+	GOTO PRINT_SKILLLIST
+ELSEIF RESULT == 1 && BASE:(LOCAL:1):충성도 >= (4+CFLAG:(LOCAL:1):스킬抽出횟수)*250
+	PRINTFORML %CALLNAME:(LOCAL:1)%에게서 스킬카드를 추출합니다。좋습니까
+	CALL INPUT_YN
+	SIF RESULT == 1
+		GOTO PRINT_SKILLLIST
+	CALLFORM SKILL_NAME_{S:(LOCAL:2)}
+	PRINTFORMW %CALLNAME:(LOCAL:1)%에게서、%RESULTS%의 스킬카드를 추출했다
+	BASE:(LOCAL:1):충성도 -= (2+CFLAG:(LOCAL:1):스킬抽出횟수)*250
+	ABL:(LOCAL:1):("스킬"+TOSTR(LOCAL:2)) = 0
+	CFLAG:(LOCAL:1):스킬抽出횟수 += 1
+	ITEM:(10000+S:(LOCAL:2)) += 1
+	;장비지식스킬が削除대상で장비지식스킬系をまったく소지していない場合は장비を해제する
+	CALL SKILL_EQUIPTHEORY_DEL_SKILL, LOCAL:1, LOCAL:2
+ELSEIF RESULT == 2 && BASE:(LOCAL:1):충성도 >= 500
+	PRINTFORML %조사처리(CALLNAME:(LOCAL:1),"를")% 스킬카드화 합니다.。괜찮습니까?
+	CALL INPUT_YN
+	SIF RESULT == 1
+		GOTO PRINT_SKILLLIST
+	CALLFORM SKILL_NAME_{S:(LOCAL:2)}
+	PRINTFORMW %조사처리(CALLNAME:(LOCAL:1),"를")%、%RESULTS%의 스킬카드로 재탄생시켰다。
+	;손紙システム
+	CALL FUSION_LETTER,LOCAL:1,2
+;	SIF CFLAG:(LOCAL:1):포지션 > 0
+;		CALL REMOVE_POSITION,CFLAG:(LOCAL:1):포지션
+;	DELCHARA LOCAL:1
+	CALL キャラ삭제, LOCAL:1
+;	FOR LOCAL, 0 , 4
+;		IF TARGET:LOCAL > LOCAL:1
+;			TARGET:LOCAL -= 1
+;		ELSEIF TARGET:LOCAL == LOCAL:1
+;			TARGET:LOCAL = -1
+;		ENDIF
+;		IF ASSI:LOCAL > LOCAL:1
+;			ASSI:LOCAL -= 1
+;		ELSEIF ASSI:LOCAL == LOCAL:1
+;			ASSI:LOCAL = -1
+;		ENDIF
+;	NEXT
+	
+	;フォーメーション再読み込み
+;	CALL REFRESH_POS
+
+	;主人の속성値変動
+	CALL INCREASE_LD,-5
+	CALL SYNC_STATUS,MASTER
+	ITEM:(10000+S:(LOCAL:2)) += 1
+ELSEIF RESULT == 3 && TALENT:(LOCAL:1):임신 && TALENT:(LOCAL:1):붕괴 == 0
+	PRINTFORML %CALLNAME:(LOCAL:1)%의 태내의 생명을 스킬카드화 합니다。괜찮습니까
+	CALL INPUT_YN
+	SIF RESULT == 1
+		GOTO PRINT_SKILLLIST
+	CALLFORM SKILL_NAME_{S:(LOCAL:2)}
+	PRINTFORML %CALLNAME:(LOCAL:1)%의 태내에 있는 생명을 %RESULTS%의 스킬카드로 변환했다。
+	PRINTFORMW %조사처리(CALLNAME:(LOCAL:1),"는")% [임신]을 잃고、다시 임신할 수 있는 몸이 되었다。
+	ITEM:(10000+S:(LOCAL:2)) += 1
+;	LOCAL:3 = TARGET
+;	TARGET = LOCAL:2
+	TALENT:(LOCAL:1):153 = 0
+	CFLAG:(LOCAL:1):発情임신 = 0
+	;임신이벤트で減った체력の최대値が회복（少なめ）
+	CFLAG:(LOCAL:1):今回受胎人数 = 0
+	
+	;妊娠イベントで減った体力の最大値が回復（少なめ
+	;MAXBASE:(LOCAL:1):0 += 300
+	;가슴の縮小処理を実行
+	PRINTW また、가슴の大きさも小さくなったようだ
+;	C = LOCAL:1
+	CALL REVERSE_B_SIZE(LOCAL:1)
+	CALL CLEAR_FLAG(LOCAL:1)
+		
+	;스트레스치の보정の決定
+	;ABL:순종をみる
+	LOCAL:8 = ABL:(LOCAL:1):순종 * 5
+
+	E = 100
+	;함락素質を見る
+	SIF TALENT:(LOCAL:1):연모
+		E = 90
+	SIF TALENT:(LOCAL:1):3 && CFLAG:(LOCAL:1):111 == MASTER
+		E = 120
+	SIF TALENT:(LOCAL:1):4
+		E = 80
+	SIF TALENT:(LOCAL:1):5
+		E = 60
+	SIF TALENT:(LOCAL:1):친애
+		E = 85
+	SIF TALENT:(LOCAL:1):6 && CFLAG:(LOCAL:1):111 == MASTER
+		E = 135
+	SIF TALENT:(LOCAL:1):7
+		E = 60
+	SIF TALENT:(LOCAL:1):8
+		E = 40
+	SIF TALENT:(LOCAL:1):9
+		E = 0
+
+	F = (90- LOCAL:8)*E/10000
+
+	CFLAG:(LOCAL:1):10 += F
+	BASE:(LOCAL:1):0 = 10
+	RESULT = (LOCAL:1)
+	IF CFLAG:(LOCAL:1):10 >= 100 && TALENT:(LOCAL:1):9 == 0 && (LOCAL:1) != MASTER
+		IF 함락(LOCAL:1) > 0
+			IF (CFLAG:(LOCAL:1):스트레스치 -99) * 100 <= BASE:(LOCAL:1):충성도
+				PRINTFORMW %조사처리(CALLNAME:(LOCAL:1),"는")% 강한 스트레스를 느끼고 있는 모양이다……
+				PRINTFORMW %CALLNAME:(LOCAL:1)%의 충성도가 {(CFLAG:(LOCAL:1):스트레스치 -99) * 100} 감소했다
+				BASE:(LOCAL:1):충성도 -= (CFLAG:(LOCAL:1):스트레스치 -99) * 100
+				CFLAG:(LOCAL:1):스트레스치 = 99
+			ENDIF
+		ELSE
+			IF (CFLAG:(LOCAL:1):스트레스치 -99) * 500 <= BASE:(LOCAL:1):충성도
+				PRINTFORMW %조사처리(CALLNAME:(LOCAL:1),"는")% 강한 스트레스를 느끼고 있는 모양이다……
+				PRINTFORMW %CALLNAME:(LOCAL:1)%의 충성도가 {(CFLAG:(LOCAL:1):스트레스치 -99) * 500} 감소했다
+				BASE:(LOCAL:1):충성도 -= (CFLAG:(LOCAL:1):스트레스치 -99) * 500
+				CFLAG:(LOCAL:1):스트레스치 = 99
+			ENDIF
+		ENDIF
+	ENDIF
+	SIF CFLAG:(LOCAL:1):10 >= 100 && TALENT:(LOCAL:1):9 == 0
+		CALL COLLAPSE_MIND_ITEM, LOCAL:1
+
+	PRINTFORMW %조사처리(NAME:((LOCAL:1)),"는")% 체력을 격렬하게 소모했다
+	;PRINTFORMW 조금 쉬게하는 편이 좋을 것 같다
+	;휴식フラグを立てる
+	;FLAG:0 = 1
+	;BEGIN TURNEND
+	CALL INCREASE_LD,-5
+	CALL SYNC_STATUS,MASTER
+	;장비지식스킬が削除대상で장비지식스킬系をまったく소지していない場合は장비を해제する
+	CALL SKILL_EQUIPTHEORY_DEL_SKILL, LOCAL:1, LOCAL:2
+ELSE
+	GOTO INPUT_LOOP_3
+ENDIF
+RESTART
+
+;==========================================
+;스킬카드一覧用 스킬카드在庫確認
+;==========================================
+@스킬카드在庫確認, ARG = -1, ARG:1 = -1, ARG:2
+;계승타입=ARGの스킬카드の소지を調べ、소지していたらS:に代入
+;ARG が指定されていない場合、各계승타입の소지종류数をZ:に代入して返す
+;ARG:1 が指定されている場合、ARG:1の습득できる스킬のみを調べる
+;ARG:2 が真の場合스킬카드が作成出来る場合も판정を通す
+;なお、継承不能스킬は계승타입23として扱う
+SIF ARG:1 >= CHARANUM
+	ARG:1 = -1
+
+VARSET S,-1
+VARSET Z,0
+LOCAL:1 = 0
+LOCAL:2 = 0
+
+;EDIT 002 MOD START -----------------------------------
+;Sに選択した系統のスキルを代入
+FOR LOCAL, 1 ,4000
+	;총～システム系はスキップ
+	SIF LOCAL == 2101
+		LOCAL = 2400
+	;아이템系はスキップ
+	SIF LOCAL == 3001
+		LOCAL = 3401
+	;3900～4000は拡張枠
+	;オリジナルスキル系はスキップ
+	SIF LOCAL == 3900
+		LOCAL = 3920
+	;拡張枠の未実装分はスキップ
+	SIF LOCAL == 3924
+		BREAK
+;EDIT 002 MOD END -------------------------------------
+	;所持していないカードをまず弾く
+	;ただしARG:2が真の場合はカード作成可能な場合も通す
+	IF ARG:2
+		SIF (ITEM:(10000+LOCAL) < 1) && !ABLE_MAKESKILLCARD(LOCAL)
+			CONTINUE
+	ELSE
+		SIF (ITEM:(10000+LOCAL) < 1)
+			CONTINUE
+	ENDIF
+	
+	;스킬소지による판정
+	;ARG:1>=0なら、ARG:1のキャラが持ってて重複습득上限に達した스킬は弾く
+	IF ARG:1 > -1 && HAVE_SKILL(ARG:1 , LOCAL)
+		TRYCCALLFORM 重複習得数_{LOCAL}
+			SIF HAVE_SKILL_OVERLAP(ARG:1,LOCAL) + 1 > RESULT
+				CONTINUE
+		CATCH
+			CONTINUE
+		ENDCATCH
+	ENDIF
+	
+	;계승타입による판정
+	RESULT = 0
+	;まず継承不能스킬か체크
+	TRYCALLFORM 継承不能_{LOCAL}
+	IF RESULT
+		SIF ARG > -1 && ARG != 23
+			CONTINUE
+		LOCAL:2 = 23
+	ELSE
+		TRYCCALLFORM SKILL_SUCCESSION_TYPE_{LOCAL}
+			LOCAL:2 = RESULT
+			SIF RESULT != ARG && ARG > -1
+				CONTINUE
+		CATCH
+			CONTINUE
+		ENDCATCH
+	ENDIF
+	CALLFORM SKILL_RANK_{LOCAL}
+	SIF RESULT <= 0 || RESULT > 15
+		CONTINUE
+	S:(LOCAL:1) = LOCAL
+	LOCAL:1 += 1
+	Z:(LOCAL:2) += 1
+NEXT
+RETURN LOCAL:1
+
+;==========================================
+;特殊スキルチェック
+;ARG	スキル番号
+;ARG:1	スキル番号も含むか　0含まない　1含む
+;==========================================
+@SP_SKILL_CHECK, ARG, ARG:1 = 0
+;スキル番号が汎用か
+SIF 2500 <= ARG && ARG:1 > 0
+	RETURN 1
+
+;継承タイプによる判定
+RESULT = 0
+;まず継承不能スキルかチェック
+TRYCALLFORM 継承不能_{ARG}
+SIF RESULT
+	RETURN 1
+TRYCCALLFORM SKILL_SUCCESSION_TYPE_{ARG}
+	SIF RESULT > 22&& RESULT < 0
+		RETURN 1
+CATCH
+ENDCATCH
+
+;ランクによる判定
+CALLFORM SKILL_RANK_{ARG}
+SIF RESULT <= 0 || RESULT > 15
+	RETURN 1
+RETURN 0
+
+;==========================================
+;スキルロック設定
+;ARG	キャラ番号
+;ARG:1	悪魔変身時かそうじゃないか　0人間時　1悪魔変身
+;==========================================
+@SKILL_ROCK_SETTING, ARG,ARG:1 = 0
+#DIM LINE
+#DIM SKILL_C
+#DIMS LOCKS
+IF ARG:1 == 1
+	LOCKS = 悪魔変身スキルロック設定
+ELSE
+	LOCKS = スキルロック設定
+ENDIF
+PRINTFORML □%CALLNAME:ARG%의 스킬 잠금 설정：
+	PRINTL 　※잠금하면 스킬을 삭제하기 어려워집니다
+SKILL_C = CHARA_SKILLCOUNT(ARG,ARG:1)
+SIF ARG:1 == 1
+	SKILL_C = 8
+LINE = LINECOUNT
+$PRINT_LIST
+CLEARLINE LINECOUNT - LINE
+
+FOR LOCAL,1,SKILL_C + 1
+	IF ARG:1 == 1
+		LOCALS = 초기변신악마스킬{LOCAL}
+	ELSE
+		LOCALS = 스킬{LOCAL}
+	ENDIF
+	SIF ABL:ARG:LOCALS < 1
+		CONTINUE
+	SIF GETBIT(CFLAG:ARG:LOCKS,LOCAL)
+		SETCOLOR COLOR("黄色")
+	PRINTFORM 　[{LOCAL,2}]
+	IF GETBIT(CFLAG:ARG:LOCKS,LOCAL)
+		PRINT LOCK　
+	ELSE
+		PRINT 　　　
+	ENDIF
+	CALLFORM SKILL_NAME_{ABL:ARG:LOCALS},ARG
+	PRINTFORML %RESULTS%
+	
+	RESETCOLOR
+NEXT
+DRAWLINE
+PRINTL [0]돌아간다 [99]자동잠금
+INPUT
+IF RESULT == 0
+	CLEARLINE LINECOUNT - LINE + 2
+	RETURN 0
+ENDIF
+SIF RESULT == 99
+	CALL AUTO_SKILL_ROCK,ARG,ARG:1
+LOCALS = 스킬{RESULT}
+SIF RESULT > 0 && RESULT <= SKILL_C && ABL:ARG:LOCALS > 0
+	INVERTBIT CFLAG:ARG:LOCKS,RESULT
+GOTO PRINT_LIST
+
+;==========================================
+;スキルロック自動設定
+;ARG	キャラ番号
+;ARG:1	悪魔変身時かそうじゃないか　0人間時　1悪魔変身
+;==========================================
+@AUTO_SKILL_ROCK, ARG,ARG:1 = 0
+#DIM SKILL_C
+#DIMS LOCKS
+IF ARG:1 == 1
+	LOCKS = 悪魔変身スキルロック設定
+ELSE
+	LOCKS = スキルロック設定
+ENDIF
+
+SKILL_C = CHARA_SKILLCOUNT(ARG,ARG:1)
+SIF ARG:1 == 1
+	SKILL_C = 8
+	
+CFLAG:ARG:LOCKS = 0
+FOR LOCAL,1,SKILL_C + 1
+	IF ARG:1 == 1
+		LOCALS = 초기변신악마스킬{LOCAL}
+	ELSE
+		LOCALS = 스킬{LOCAL}
+	ENDIF
+	SIF ABL:ARG:LOCALS < 1
+		CONTINUE
+	CALL SP_SKILL_CHECK,ABL:ARG:LOCALS
+	SIF RESULT > 0
+		SETBIT CFLAG:ARG:LOCKS,LOCAL
+NEXT

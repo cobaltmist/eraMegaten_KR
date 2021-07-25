@@ -1,0 +1,99 @@
+﻿;--------------------------------------------------
+;コマンド選択用입력関数@INPUT_SPLIT
+;ARGSをARGS:1でSPLITして選択肢とする입력関数
+;ARGS     = 選択に関する설명文
+;ARGS:1   = 選択肢リスト
+;ARGS:2   = 選択肢リストの区切り
+;ARGS:3   = "취소"に相当する選択肢（空白時비표시）
+;ARG:1    = １열に표시する항목数
+;ARG:2    = 最初に표시する페이지
+;ARG:3    = 選択肢の開始번호
+;ARG:4    = "전 페이지"に対応する選択肢번호
+;ARG:5    = "취소"に対応する選択肢번호
+;ARG:6    = "다음 페이지"に対応する選択肢번호
+;RESULT   = 選択肢の번호
+;RESULT:1 = 選択肢が含まれていた페이지
+;RESULTS  = 選択肢のテ키스ト
+;-------------------------------------------------
+@INPUT_SPLIT(ARGS,ARGS:1,ARGS:2,ARGS:3 = "　",ARG:1 = 1,ARG:2 = 0,ARG:3 = 1,ARG:4 = 1001,ARG:5 = 0,ARG:6 = 1003)
+#LOCALSIZE 2
+#LOCALSSIZE 1
+#DIM 표시スタート,1
+#DIM 항목文字数,1
+#DIM 항목数,1
+#DIM 항목桁数,1
+#DIM 페이지,1
+#DIM 페이지엔드,1000
+VARSET RESULTS , "　"
+표시スタート = 1
+항목文字数 = 0
+ARGS:1 = %ARGS:3%%ARGS:2%%ARGS:1%
+SPLIT ARGS:1,ARGS:2,RESULTS
+FOR LOCAL,1,VARSIZE("RESULTS")
+	SIF RESULTS:LOCAL == "　"
+		BREAK
+	항목文字数 = MAX(항목文字数,STRLENS(RESULTS:LOCAL)+1)
+	항목数 = LOCAL
+NEXT
+항목桁数 = STRLENS(TOSTR(항목数+ARG:3))
+WHILE 항목文字数+항목桁数+2 >= 80 / ARG:1 && ARG:1 != 1
+	ARG:1 --
+WEND
+
+VARSET 페이지엔드,-1
+페이지 = 0
+LOCAL:1 = 20*ARG:1
+FOR LOCAL,1,항목数+2
+	SIF RESULTS:LOCAL != ""
+		LOCAL:1 --
+	페이지엔드:페이지 = LOCAL
+	SIF LOCAL:1 != 0
+		CONTINUE
+	LOCAL:1 = 20*ARG:1
+	페이지 ++
+NEXT	
+페이지 = MIN(ARG:2,FINDELEMENT(페이지엔드,-1)-1)
+
+$RE_DRAW
+PRINTFORML %ARGS%
+DRAWLINE
+LOCAL:1 = ARG:1
+FOR LOCAL,페이지 == 0 ? ARG:3 # 페이지엔드:(페이지-1),페이지엔드:페이지
+	SIF RESULTS:LOCAL == ""
+		CONTINUE
+	PRINTFORM [{LOCAL,항목桁数}]%RESULTS:LOCAL,항목文字数,LEFT%
+	LOCAL:1 --
+	SIF LOCAL:1 != 0
+		CONTINUE
+	PRINTL 
+	LOCAL:1 = ARG:1
+NEXT
+$END_PRINT
+SIF !LINEISEMPTY()
+	PRINTL
+DRAWLINE
+PRINTFORMLC \@ 페이지 != 0                   ? [{ARG:4}]이전 페이지 # 　\@
+PRINTFORMLC \@ RESULTS != "　"               ? [{ARG:5}]%RESULTS%  # 　\@
+PRINTFORMLC \@ 페이지엔드:(페이지+1) != -1 ? [{ARG:6}]다음 페이지 # 　\@
+PRINTL
+$INPUT_LOOP
+INPUT
+SELECTCASE RESULT
+	CASE ARG:4
+		페이지 = MAX(0,페이지-1)
+		GOTO RE_DRAW
+	CASE ARG:6
+		페이지 += 페이지엔드:(페이지+1) != -1 ? 1 # 0
+		GOTO RE_DRAW
+	CASE ARG:5
+		LOCALS = %RESULTS:0%
+	CASE ARG:3 TO ARG:3+항목数-1
+		LOCALS = %RESULTS:MAX(RESULT-ARG:3+1,0)%
+	CASEELSE
+		GOTO INPUT_LOOP
+ENDSELECT
+SIF EQUALCHECK_STR(LOCALS,"","　")
+	GOTO INPUT_LOOP
+VARSET RESULTS
+RESULTS = %LOCALS%
+RETURN RESULT,페이지

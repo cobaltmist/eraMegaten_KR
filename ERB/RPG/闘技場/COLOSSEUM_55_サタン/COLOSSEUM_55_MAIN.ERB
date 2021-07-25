@@ -1,0 +1,151 @@
+﻿;====================
+;조건
+;====================
+@PLAYABLE_COLOSSEUM_55
+;IF 사탄撃破 != FLAG:周回횟수
+IF FLAG:闘技場名声 >= 1000 && 투기장フラグ:55:0 == 0
+	RESULTS = 시합 랭크 ＸＸＸ　ＶＳ 마왕 사탄
+	RETURN 1
+ENDIF
+
+
+;====================
+;内容
+;====================
+@COLOSSEUM_55
+#DIM L_NO
+#DIM OPTION
+OPTION = 0
+
+FLAG:도주불가フラグ = 1
+FLAG:회화불능フラグ = 1
+FLAG:선제기습취소 = 1
+CUSTOMDRAWLINE =
+PRINTW 견디기 힘들 정도의 흉악한 기운이 느껴진다…
+PRINTW 앞으로 나아가겠습니까?
+$_SELECT
+PRINTL [0] 예
+PRINTL [1] 아니오
+;PRINTFORML [2] 디버그용：PC全員の레벨を능력を99に(現在\@ GETBIT(OPTION,2) ? ON # OFF \@)
+;PRINTFORML [3] 디버그용：解析度MAX(現在\@ GETBIT(OPTION,3) ? ON # OFF \@)
+;PRINTFORML [4] 디버그용：HPMP보임化(現在\@ GETBIT(OPTION,4) ? ON # OFF \@)
+$INP
+ONEINPUT
+IF RESULT == 1
+	RETURN
+;#;ELSEIF INRANGE(RESULT,1,4)
+;#;	INVERTBIT OPTION,RESULT
+;#; CLEARLINE 6
+;#; GOTO _SELECT
+ELSEIF RESULT != 0
+	CLEARLINE 1
+	GOTO INP
+ENDIF
+PRINTW 마음을 굳히고 투기장에 들어갔다…
+PRINTL 마왕 사탄　1명 나타났다
+
+;디버그용PC超강화モード
+;#; IF GETBIT(OPTION,2)
+;#;		FOR LOCAL:1,1,7
+;#;			LOCAL = POS(LOCAL:1)
+;#;			SIF LOCAL < 0
+;#;				CONTINUE
+;#;			BASE:LOCAL:LV = 200
+;#;			BASE:LOCAL:힘 = 99
+;#;			BASE:LOCAL:지혜 = 99
+;#;			BASE:LOCAL:마력 = 99
+;#;			BASE:LOCAL:인내력 = 99
+;#;			BASE:LOCAL:속도 = 99
+;#;			BASE:LOCAL:운 = 99
+;#;			CALL SYNC_STATUS(LOCAL)
+;#;			CALL HEALTH_CHARA(LOCAL)
+;#;		NEXT
+;#;	ENDIF
+;디버그용 사탄解析度を최대に
+;#;	SIF GETBIT(OPTION,3)
+;#;		사탄解析度 = 1000
+
+発狂モード = 0
+유혹の果実 = 0
+
+CUSTOMDRAWLINE =
+WAIT
+
+;CALL SET_ENEMY,14,[[キャラ:사탄]],99,0,1
+
+;===============================================================================
+;四文字様チキチキここから
+;CSV取り込みした場合삭제してください
+;===============================================================================
+CALL SET_ENEMY,14,3301,99,0,1
+;디버그용 사탄ボスフラグ해제
+;#;	SIF GETBIT(OPTION,4)
+;#;		CFLAG:(CHARANUM-1):ボスフラグ = 0
+NAME:(CHARANUM-1) = 사탄
+CALLNAME:(CHARANUM-1) = 사탄
+L_NO = NO:(CHARANUM-1)
+SWAP 사탄解析度,FLAG:(20000+L_NO)
+CFLAG:(CHARANUM-1):行動횟수 = 5
+;一切보정を含まない分능력値が凶悪
+;(本来の능력は18+LV(99)*1.5=168±5辺りが妥当である)
+BASE:(CHARANUM-1):힘 = 150
+BASE:(CHARANUM-1):지혜 = 120
+BASE:(CHARANUM-1):마력 = 150
+BASE:(CHARANUM-1):인내력 = 120
+BASE:(CHARANUM-1):속도 = 100
+BASE:(CHARANUM-1):운 = 100
+;합계능력740。ポケモンもびっくり
+;相性セット
+BASE:(CHARANUM-1):정신 = 0
+BASE:(CHARANUM-1):신경 = 0
+BASE:(CHARANUM-1):만능 = 50
+BASE:(CHARANUM-1):파마 = 0
+BASE:(CHARANUM-1):주살 = 0
+;全BS무효
+FOR LOCAL,GETNUM(BASE,"HAPPY"),GETNUM(BASE,"DYING")+1
+	BASE:(CHARANUM-1):LOCAL = 0
+	MAXBASE:(CHARANUM-1):LOCAL = 0
+NEXT
+;===============================================================================
+;四文字様チキチキここまで
+;===============================================================================
+
+CALL 사탄相性セット(CHARANUM-1,3)
+CALL SYNC_STATUS(CHARANUM-1)
+MAXBASE:(CHARANUM-1):ＨＰ = 30000
+MAXBASE:(CHARANUM-1):ＭＰ = 99999
+CALL HEALTH_CHARA,(CHARANUM-1)
+CSTR:(CHARANUM-1):사고패턴 = 사탄
+
+CALL BATTLE_START
+;전투종료後処理
+
+
+;===============================================================================
+;四文字様チキチキここから
+;四文字様から間借りしていた解析度を返す
+;===============================================================================
+SWAP 사탄解析度,FLAG:(20000+L_NO)
+;===============================================================================
+;四文字様チキチキここまで
+;===============================================================================
+
+CUSTOMDRAWLINE =
+PRINTW ＞사탄을 쓰러뜨렸다
+;#;SIF CALLNAME:MASTER == "イカサマ"
+;#;	PRINTW チート乙
+
+;해제した인스톨소프트を返しておく
+CALL SKILL_2504_INSTALLSOFT("RESET")
+
+FLAG:도주불가フラグ = 0
+FLAG:회화불능フラグ = 0
+FLAG:선제기습취소 = 0
+
+;사탄撃破 = FLAG:周回횟수
+투기장フラグ:55:0 = 1
+
+FOR LOCAL,0,CHARANUM
+	CALL HEALTH_CHARA,LOCAL
+NEXT
+RETURN 1

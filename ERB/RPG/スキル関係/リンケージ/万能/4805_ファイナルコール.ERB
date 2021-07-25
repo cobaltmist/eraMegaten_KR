@@ -1,0 +1,276 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:4805_최후의부름.ERB
+;	Facility	:서머너専用の링케이지技
+;
+;	Licence		:ライセンスフリー
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		20XX/XX/XX		TR(SAYA)				新規作成
+;	002		2018/08/09		TR(SAYA)				위력の表記ミス修正、파트너の소비を위력相応に増大、対応特技増加
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;서머너강화計画？の為に킹라이저장비キャラにも使える様に
+;長所：최대火힘がえげつない。
+;短所：蘇生が손間。削りに向かない。자폭스킬自体が不用品。とどめを刺したら동료は経験値が貰えない。
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+
+
+;스킬名
+@SKILL_NAME_4805,ARG
+RESULTS = 최후의부름
+
+;　명중
+@SKILL_HITRATE_4805, ARG = -1
+;건슬링거以外は十全に扱えない
+SIF ARG == -1
+	RETURN 100
+SIF TALENT:ARG:건슬링거
+	RETURN 110
+RETURN 80
+
+;　위력
+;相손のライフ割合に応じて위력が格段に上昇する
+;アニメ版でマオー・헬の体の亀裂に対して放った事の再現
+@SKILL_POWER_4805, ARG
+;500 + 자폭者の인내력 * 5(최대999)
+LOCAL = MIN( 999 , 400 + BASE:(CFLAG:ARG:링케이지참가자1):인내력 * 5 + BASE:ARG:마력 * 2 + BASE:ARG:운*2 )
+
+
+SELECTCASE ( BASE:(POS(CFLAG:ARG:ターゲット)):ＨＰ * 100 / MAXBASE:(POS(CFLAG:ARG:ターゲット)):ＨＰ ) - 1
+CASE IS < 5
+	TIMES LOCAL, 11.5
+CASE IS < 10
+	TIMES LOCAL, 6.81
+CASE IS < 15
+	TIMES LOCAL, 4.25
+CASE IS < 20
+	TIMES LOCAL, 2.83
+;30-40%は1.5倍
+CASE IS < 30
+	TIMES LOCAL, 2.02
+;30-40%は1.3倍
+CASE IS < 40
+	TIMES LOCAL, 1.56
+CASE IS < 50
+	TIMES LOCAL, 1.2
+;50-70%で等倍
+CASE IS < 70
+;70-90%で0.8倍
+CASE IS < 90
+	TIMES LOCAL,0.8
+;9割以上で반감
+CASEELSE
+	TIMES LOCAL,0.5
+ENDSELECT
+RETURN LOCAL
+	
+
+;　최저공격횟수
+@SKILL_MINATTACKNUMBER_4805,ARG
+RETURN 1
+
+;　최대공격횟수
+@SKILL_MAXATTACKNUMBER_4805,ARG
+RETURN 1
+
+;　ＨＰ2を支払うかＭＰ3を支払うか
+@SKILL_COSTTYPE_4805, ARG, ARG:1
+RETURN 2
+
+;　コストの量
+@SKILL_COST_4805, ARG
+RETURN 30
+
+;　相性
+@SKILL_TYPE_4805, ARG
+VARSET LOCAL
+SIF ARG == -1
+	RETURN GET_TYPE_NUM("만능")
+SIF CFLAG:ARG:ターゲット > 16 || CFLAG:ARG:ターゲット < 1
+	RETURN GET_TYPE_NUM("만능")
+LOCAL = POS(CFLAG:ARG:ターゲット)
+SIF LOCAL < 0
+	RETURN GET_TYPE_NUM("만능")
+LOCAL:1 = MAXBASE:LOCAL:만능 == 999 ? -999 # MAXBASE:LOCAL:만능
+SIF CFLAG:LOCAL:만능무효화횟수
+	LOCAL:1 = 0
+LOCAL:2 = MAXBASE:LOCAL:비구 == 999 ? -999 # MAXBASE:LOCAL:비구
+SIF CFLAG:LOCAL:비구무효화횟수
+	LOCAL:2 = 0
+RETURN LOCAL:1 > LOCAL:2 ? GET_TYPE_NUM("만능") # GET_TYPE_NUM("비구")
+
+;　1EXTRAか2MAGICか
+;高クリティカル
+@SKILL_CRITICAL_RATE_4805, ARG
+RETURN 30
+
+@SKILL_DECIDE_TYPE_4805, ARG
+RETURN 1
+
+;　1物理데미지で計算するか2魔法데미지で計算するか
+@SKILL_DAMAGETYPE_4805, ARG
+RETURN 1
+
+;　대상が1적か2아군か3場전체か4特殊か
+@SKILL_TARGET_4805
+RETURN 1
+
+;　사거리
+@SKILL_RANGE_4805,ARG
+RETURN 3
+
+;　範囲　11체　21열　3전체　4　적아군전체
+@SKILL_SPHERE_4805,ARG
+RETURN 1
+
+;　 効果の타입　1공격、2회복、3상태変化、4特殊、5상태회복
+@SKILL_EFECT_4805
+RETURN 1
+
+;　 特殊処理の有無、及び処理内容
+@SKILL_SPECIALEFECT_4805,ARG
+;ARG = 1だった場合は処理の有無を返します
+SIF ARG == 1
+	RETURN 0
+;以下に特殊な処理を記述します
+
+;계승타입
+@SKILL_SUCCESSION_TYPE_4805
+RETURN 20
+;만능
+
+;속도보정
+@SKILL_SPEED_4805, ARG = -1
+RETURN 20
+
+;　구상の표시とその타입
+@SKILL_MESSAGE_4805,ARG
+
+;전투時以外に사용できるか
+@SKILL_ACTIONABLE_FIELD_4805
+RETURN 0
+
+;스킬変化？用랭크
+@SKILL_RANK_4805
+RETURN 0
+
+@SKILL_RANKUP_4805
+RETURN 0
+
+;テンプレート用、추가효과シリーズ
+;추가효과스테이터스
+@SKILL_ADDTIONAL_STATE_4805,ARG
+RETURN 0
+
+;추가효과상성
+@SKILL_ADDTIONAL_TYPE_4805,ARG
+RETURN 0
+
+;추가효과기본부여확률
+@SKILL_ADDTIONAL_BASE_RATE_4805,ARG
+RETURN 0
+
+;추가효과부여확률上限
+@SKILL_ADDTIONAL_MAX_RATE_4805,ARG
+RETURN 0
+;====================================================
+;스킬及び行動の実行
+;====================================================
+@ACTION_4805, ARG, ARG:1
+LOCAL = POS(ARG:1)
+LOCAL:1 = CFLAG:ARG:링케이지참가자1
+CALL GUN_SINGLE,ARG,LOCAL,4805
+CALL DEAD_CHARA	 , LOCAL:1
+
+;====================================================
+;実行内容ここまで
+;====================================================
+
+;　 説明文の표시
+@SKILL_EXPLAIN_4805
+PRINTL COMP에 저장된 동료마의 모든 생명력을 사용해 적 1체에게 비구＋만능상성의 특대 데미지。
+
+;継承に필요な部位
+@継承部位_4805,ARG
+RETURN 0
+
+;사용조건
+@SKILL_SPECIAL_ACTIONABLE_4805,ARG
+CALL CHECK_COST,ARG,4805
+SIF RESULT == 0
+	RETURN 0
+RETURN 1
+;とくにない
+
+
+;=====================================================
+;링케이지설정
+;=====================================================
+@LINKAGE_4805
+RETURN 1
+
+@참가人数_4805
+RETURN 1
+
+@참가조건표시_4805, ARG
+SELECTCASE ARG
+	CASE 1
+		PRINTFORM 자폭 or 옥쇄파 or 바이널스트라이크
+	CASE 2
+		PRINTFORM 캐릭터 세츠나 or 캐릭터 미라이 or 킹라이저 장비
+ENDSELECT
+
+@発動者조건_4805 , ARG
+IF GROUPMATCH(NO:ARG,[[キャラ:세츠나]],[[キャラ:미라이]])
+	RETURN 1
+;킹라이저장비した純서머너でも可能(未実装)
+ELSEIF EQUIP:ARG:악세사리 == [[아이템:킹라이저]]
+	RETURN 1
+ENDIF
+RETURN 0
+
+@참가者조건_4805, ARG , ARG:1
+SIF CPOS(ARG) < 1 || CPOS(ARG) > 6
+	RETURN 0
+;인간はダメ
+SIF IS_HUMAN(ARG)
+	RETURN 0
+CALL CHECK_COST_LINCAGE, ARG, 4805, ARG:1
+SIF RESULT == 0
+	RETURN 0
+SELECTCASE ARG:1
+	CASE 1
+		;자폭系特技を使えること
+		IF CHECK_SKILL(ARG, [[스킬:자폭]])
+			CALL CHECK_ACTIONABLE , ARG , [[스킬:자폭]]
+			SIF RESULT
+				RETURN 1
+		ENDIF
+		IF CHECK_SKILL(ARG, [[스킬:옥쇄파]])
+			CALL CHECK_ACTIONABLE , ARG , [[스킬:옥쇄파]]
+			SIF RESULT
+				RETURN 1
+		ENDIF
+		IF CHECK_SKILL(ARG, [[스킬:바이널스트라이크]])
+			CALL CHECK_ACTIONABLE , ARG , [[스킬:바이널스트라이크]]
+			SIF RESULT
+				RETURN 1
+		ENDIF
+		RETURN 0
+ENDSELECT
+
+@링케이지コスト타입_4805, ARG
+SELECTCASE ARG
+	CASE 1
+		RETURN 1
+ENDSELECT
+
+;소비をHP15%→MP40に변경
+;1체技だが인수라の지고의마탄が위력640で소비50なのでこの程度が妥当かと
+@링케이지コスト_4805, ARG
+SELECTCASE ARG
+	CASE 1
+		RETURN 40
+ENDSELECT

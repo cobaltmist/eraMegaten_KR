@@ -1,0 +1,659 @@
+﻿;-------------------------------------------------
+;윤간
+;-------------------------------------------------
+@CHECK_COM_ABLE201
+
+;全裸でないとダメ（양말、特殊は除く）
+SIF (TEQUIP:음순노출 != -1 && TALENT:오토코노코 == 0) || TEQUIP:둔부노출 != -1
+	RETURN 0
+;남자もだめ
+SIF TALENT:남자 && TALENT:오토코노코 == 0
+	RETURN 0
+;야외플레이中かつ야외플레이확장기능ありじゃないとダメ
+SIF TEQUIP:야외플레이 == 0 || FLAG:야외노출강화 == 0
+	RETURN 0
+;人が５人以上いないとダメ
+SIF TEQUIP:구경꾼수 < 5
+	RETURN 0
+;興奮度が60以上ないとダメ
+SIF TEQUIP:구경꾼흥분도 < 60
+	RETURN 0
+RETURN 1
+
+;最初に표시
+@ACT_COM201
+;윤간
+
+PRINTL 윤간
+TSTR:0 = 윤간
+
+;-------------------------------------------------
+;ソースの計算
+;-------------------------------------------------
+;소비체력、기력
+;윤간중독によって、소비체력、기력が変わる（최대30%減）
+;LOCAL:42 = (100 - MIN(30, EXP:윤간경험/5))
+;LOSEBASE:체력 += (750 + (15 * TEQUIP:구경꾼수 / 2)) * LOCAL:42 / 100
+;LOSEBASE:기력 += (1000 + (10 * TEQUIP:구경꾼수)) * LOCAL:42 / 100
+LOSEBASE:체력 += (1500 + (30 * TEQUIP:구경꾼수 / 2)) / (2 * (1 + ABL:윤간중독))
+LOSEBASE:기력 += (2000 + (20 * TEQUIP:구경꾼수)) / (2 * (1 + ABL:윤간중독))
+
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;억압、저항持ちには、억울소스추가
+SIF TALENT:억압 || TALENT:저항
+	SOURCE:울굴 += 20
+
+TFLAG:야외노출確立変動 = 0
+LOCAL:35 = 0
+LOCAL:40 = 0
+;奴隷C
+LOCAL:32 = RAND:(TEQUIP:구경꾼수 * TEQUIP:구경꾼흥분도 / 50) + 1
+;奴隷B
+LOCAL:33 = RAND:(TEQUIP:구경꾼수 * TEQUIP:구경꾼흥분도 / 50) + 1
+;奴隷A
+LOCAL:34 = RAND:(TEQUIP:구경꾼수 * TEQUIP:구경꾼흥분도 / 50) + 1
+;奴隷V
+SIF TALENT:오토코노코 == 0
+	LOCAL:35 = RAND:(TEQUIP:구경꾼수 * TEQUIP:구경꾼흥분도 / 50) + 1
+;奴隷M
+LOCAL:36 = RAND:(TEQUIP:구경꾼수 * TEQUIP:구경꾼흥분도 / 50) + 1
+;조교者C
+LOCAL:37 = RAND:(TEQUIP:구경꾼수 * TEQUIP:구경꾼흥분도 / 50) + 1
+;조교者B
+LOCAL:38 = RAND:(TEQUIP:구경꾼수 * TEQUIP:구경꾼흥분도 / 50) + 1
+;조교者A
+LOCAL:39 = RAND:(TEQUIP:구경꾼수 * TEQUIP:구경꾼흥분도 / 50) + 1
+;조교者V
+SIF TALENT:PLAYER:오토코노코 ==0
+	LOCAL:40 = RAND:(TEQUIP:구경꾼수 * TEQUIP:구경꾼흥분도 / 50) + 1
+;조교者M
+LOCAL:41 = RAND:(TEQUIP:구경꾼수 * TEQUIP:구경꾼흥분도 / 50) + 1
+;취득金OR아이템
+TFLAG:야외노출儲け = (LOCAL:32+LOCAL:33+LOCAL:34+LOCAL:35+LOCAL:36)
+
+SIF (TEQUIP:PLAYER:음순노출 == -1 || TALENT:PLAYER:오토코노코) && TEQUIP:PLAYER:둔부노출 == -1 && (TALENT:PLAYER:남자 == 0 || TALENT:PLAYER:오토코노코)
+	TFLAG:야외노출確立変動 = RAND:100
+;당신が女性または오토코노코で尻とか出してる場合、7割の확률で당신も윤간に巻き込まれる
+SIF TFLAG:야외노출確立変動 >= 70
+	TFLAG:야외노출儲け += (LOCAL:37+LOCAL:38+LOCAL:39+LOCAL:40+LOCAL:41)
+	
+;CALL KOJO_MESSAGE_COM
+
+CALL ADDS_EXP("윤간경험", ((TEQUIP:구경꾼수 / 10)+1), TARGET)
+CALL ADDS_EXP("펠라경험", LOCAL:36, TARGET)
+CALL ADDS_EXP("Ａ경험", LOCAL:34, TARGET)
+CALL ADDS_EXP("키스경험", LOCAL:36/2, TARGET)
+IF LOCAL:35 && TALENT:남자 == 0
+	CALL ADDS_EXP("Ｖ경험", LOCAL:35, TARGET)
+	IF TALENT:처녀
+		PRINTFORML 처녀상실
+		CALL ADDS_ABNORMAL_EXP("처녀상실（윤간）", TARGET)
+	ELSEIF TALENT:재생처녀
+		PRINTFORML 재생처녀상실
+	ENDIF
+ENDIF
+;V経験を伴うコマンドのフラグ(처녀膜재생対応)
+TFLAG:19 = 1
+CALL ADDS_EXP("성교경험", LOCAL:35+34, TARGET)
+CALL ADDS_EXP("정액경험", (LOCAL:35+LOCAL:34+LOCAL:36)*2, TARGET)
+IF CFLAG:자궁내피임결계 == 0 && TALENT:남자 == 0
+	CALL ADDS_EXP("질사경험", LOCAL:35*2, TARGET)
+	CFLAG:顧客の中出氏による임신판정 += LOCAL:35*2
+ELSE
+	PRINTFORML <피임결계>
+ENDIF
+SOURCE:쾌Ｃ += LOCAL:32*500
+SOURCE:쾌Ｖ += LOCAL:35*500
+SOURCE:쾌Ａ += LOCAL:34*500
+SOURCE:쾌Ｂ += LOCAL:33*500
+SOURCE:복종 += LOCAL:33*100*(1+ABL:순종)
+SOURCE:굴종 += ((LOCAL:35*10*(1+ABL:Ｖ감각)+LOCAL:34*10*(1+ABL:Ａ감각)+LOCAL:36*10*(1+ABL:봉사정신)+LOCAL:32*10*(1+ABL:Ｂ감각)+LOCAL:33*10*(1+ABL:Ｃ감각))/(11-(ABL:욕망)))*10
+SOURCE:욕정 += (LOCAL:35*10*(1+ABL:Ｖ감각)+LOCAL:34*10*(1+ABL:Ａ감각)+LOCAL:32*10*(1+ABL:Ｂ감각)+LOCAL:33*10*(1+ABL:Ｃ감각))*10
+SOURCE:성행위 += (LOCAL:36*50+LOCAL:35*60+LOCAL:34*40+LOCAL:33*40)*10
+SOURCE:노출 += ((LOCAL:36*2+LOCAL:35+LOCAL:34+LOCAL:32*3)*10*(1+ABL:노출증))*10
+SOURCE:아픔 += (LOCAL:35*5*(10-ABL:Ｖ감각)+LOCAL:34*5*(10-ABL:Ａ감각))*10
+SOURCE:무서움 += (LOCAL:35*5*(10-ABL:Ｖ감각)+LOCAL:34*5*(10-ABL:Ａ감각))*10
+SOURCE:반감 += 100*(1+MARK:반발각인)*(1+MARK:반발각인)*10/MAX(1,ABL:순종)
+
+;PRINTFORML ＭＡＧ +{(LOCAL:35*2+LOCAL:34*2+LOCAL:36*1)*BASE:LV}
+;CALL CONTROL_MAG,TARGET,(LOCAL:35*2+LOCAL:34*2+LOCAL:36*1)*BASE:LV
+
+IF TFLAG:야외노출確立変動 >= 70
+	SOURCE:PLAYER:쾌Ｃ += LOCAL:37*500
+	SOURCE:PLAYER:쾌Ａ += LOCAL:39*500
+	SOURCE:PLAYER:쾌Ｂ += LOCAL:38*500
+	CALL ADDS_EXP("윤간경험", ((TEQUIP:구경꾼수 / 10)+1), PLAYER)
+	CALL ADDS_EXP("키스경험", LOCAL:41/2, PLAYER)
+	CALL ADDS_EXP("펠라경험", LOCAL:41, PLAYER)
+	CALL ADDS_EXP("Ａ경험", LOCAL:39, PLAYER)
+	IF LOCAL:40
+		SOURCE:PLAYER:쾌Ｖ += LOCAL:40*500
+		CALL ADDS_EXP("Ｖ경험", LOCAL:40, PLAYER)
+		IF TALENT:PLAYER:처녀
+			PRINTFORML 처녀상실(%CALLNAME:PLAYER%)
+			CALL ADDS_ABNORMAL_EXP("처녀상실（윤간）", PLAYER)
+			TALENT:PLAYER:처녀 = 0
+		ELSEIF TALENT:PLAYER:재생처녀
+			PRINTFORML 재생처녀상실(%CALLNAME:PLAYER%)
+			TALENT:PLAYER:재생처녀 = 0
+		ENDIF
+	ENDIF
+	CALL ADDS_EXP("성교경험", LOCAL:40+LOCAL:39, PLAYER)
+	CALL ADDS_EXP("정액경험", (LOCAL:40+LOCAL:39+LOCAL:41)*2, PLAYER)
+	IF CFLAG:PLAYER:자궁내피임결계 == 0
+		CALL ADDS_EXP("질사경험", LOCAL:40*2, PLAYER)
+		CFLAG:PLAYER:顧客の中出氏による임신판정 += (LOCAL:40)*2
+	ELSE
+		PRINTFORML <피임결계>(%CALLNAME:PLAYER%)
+	ENDIF
+;	PRINTFORML ＭＡＧ +{(LOCAL:40*2+LOCAL:39*2+LOCAL:41*1)*BASE:PLAYER:LV}(%CALLNAME:PLAYER%)
+;	CALL CONTROL_MAG,PLAYER,(LOCAL:40*2+LOCAL:39*2+LOCAL:41*1)*BASE:PLAYER:LV
+ENDIF
+PRINTFORML ＭＡＧ +{(LOCAL:35*2+LOCAL:34*2+LOCAL:36*1)*BASE:LV}
+CALL CONTROL_MAG,TARGET,(LOCAL:35*2+LOCAL:34*2+LOCAL:36*1)*BASE:LV
+IF TFLAG:야외노출確立変動 >= 70
+	PRINTFORML ＭＡＧ +{(LOCAL:40*2+LOCAL:39*2+LOCAL:41*1)*BASE:PLAYER:LV}(%CALLNAME:PLAYER%)
+	CALL CONTROL_MAG,PLAYER,(LOCAL:40*2+LOCAL:39*2+LOCAL:41*1)*BASE:PLAYER:LV
+ENDIF
+MONEY += TFLAG:야외노출儲け
+;PRINTFORMW 彼らが去った跡には￥{TFLAG:야외노출儲け}残されていた
+;의존도ベクトル
+TFLAG:33 = 5
+
+CALL SET_STAIN("입", "정액", TARGET)
+CALL SET_STAIN("입", "페니스", TARGET)
+CALL SET_STAIN("가슴", "정액", TARGET)
+CALL SET_STAIN("가슴", "페니스", TARGET)
+CALL SET_STAIN("손", "정액", TARGET)
+CALL SET_STAIN("손", "페니스", TARGET)
+CALL SET_STAIN("머리카락", "정액", TARGET)
+CALL SET_STAIN("머리카락", "페니스", TARGET)
+CALL SET_STAIN("애널", "정액", TARGET)
+CALL SET_STAIN("애널", "페니스", TARGET)
+IF !TALENT:남자
+	CALL SET_STAIN("바기나", "정액", TARGET)
+	CALL SET_STAIN("바기나", "페니스", TARGET)
+	IF CFLAG:자궁내피임결계 == 0
+		CALL SET_STAIN("질내", "정액", TARGET)
+	ENDIF
+ENDIF
+RETURN 1
+
+;二番눈に표시
+@MESSAGE_COM201
+#DIM LCOUNT
+;関数まとめ
+;A:男限定、B:ハード行為禁止フラグ、C:一回あたりの帰宅人数、D：興奮度増加(及び減少)
+;E:人数記憶、F:総帰宅人数、G:描写繰り返し횟수、H:描写繰り返し횟수記憶
+;
+;
+
+PRINTFORML %조사처리(CALLNAME:PLAYER,"는")% %타겟을()% 흥분한 사람들에게 밀어넣었다
+IF TALENT:처녀 || TALENT:재생처녀
+	PRINTFORML 흥분한 사람들의 시선은 실오라기하나 두르지 않고 넘어진 %CALLNAME:TARGET%에게 향한다。
+	PRINTFORML 아직 처녀인 것을 눈치챈 사람들은 앞다투어 %CALLNAME:TARGET%에게 몰려들어、
+	PRINTFORMW 위에서 덮치듯이 자신의 굵고 긴 장대로 %타겟을()% 꿰뚫었다。
+ELSE
+	PRINTFORMW 흥분한 사람들은 %CALLNAME:TARGET%의 몸에 쇄도했다
+ENDIF
+IF TFLAG:야외노출確立変動 >= 70
+	PRINTFORML 더욱 흥분한 사람들은 %CALLNAME:PLAYER%에게 덤벼들었다
+	IF TALENT:PLAYER:0 || TALENT:PLAYER:1
+		PRINTFORML %CALLNAME:PLAYER%(이)가 아직 처녀인 것을 눈치챈 사람들은 앞다투어 %CALLNAME:PLAYER%에게 몰려들어、
+		PRINTFORMW 위에서 덮치듯이 자신의 굵고 긴 장대로 %조사처리(CALLNAME:PLAYER,"를")% 꿰뚫었다。
+	ELSE
+		PRINTFORMW 흥분한 사람들은 %CALLNAME:PLAYER%의 몸에 쇄도했다
+	ENDIF
+ENDIF
+;ハード行為フラグOFF
+B = 0
+FOR LCOUNT,0,20
+	SIF TEQUIP:구경꾼수 == 0
+		BREAK
+	SIF TFLAG:야외노출確立変動 >= 70
+		BREAK
+	PRINTFORML  
+	DRAWLINE
+	PRINTFORML  
+	PRINTFORM [윤간중]
+	PRINTFORM [윤간인수{TEQUIP:구경꾼수}인]
+	PRINTFORM [흥분도：
+		IF TEQUIP:구경꾼흥분도 > 100
+			PRINTFORML 　대흥분]
+		ELSEIF TEQUIP:구경꾼흥분도 > 60
+			PRINTFORML 　흥분]
+		ELSEIF TEQUIP:구경꾼흥분도 > 40
+			PRINTFORML 　약간흥분]
+		ELSEIF TEQUIP:구경꾼흥분도 > 20
+			PRINTFORML 　보통]
+		ELSE
+			PRINTFORML 　냉정]
+		ENDIF
+	PRINTFORM [{LCOUNT*30+RAND:10}분 경과]
+	IF B == 0
+		PRINTFORM [하드한 행위：없음]
+	ELSE
+		PRINTFORM [하드한 행위：있음]
+	ENDIF
+	PRINTFORML 　
+	PRINTFORML 　
+	PRINTFORML ＞어떻게 합니까？
+	D = 0
+	IF B == 0
+		CALL INPUT_SELECT(1, "지켜본다",2, "부추긴다", 3, "쫓아낸다", 5, "하드한 행위 해금", 9, "산책한다")
+	ELSE
+		CALL INPUT_SELECT(1, "지켜본다",2, "부추긴다", 3, "쫓아낸다", 5, "하드한 행위 권장", 6, "하드한 행위 금지", 9, "산책한다")
+	ENDIF
+	SELECTCASE RESULT
+		CASE 1
+			PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% 범해지고 있는 %타겟을()% 지켜보았다
+		CASE 2
+			PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% 주변의 남자들을 부추겼다
+			PRINTFORMW 남자들은 더욱더 흥분한 것같다
+			D = 30
+		CASE 3
+			PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% 마음에 들지않는 주변의 남자들을 내쫓았다
+			PRINTFORMW 남자들의 흥분도가 내려간 것 같다
+			D -= 30
+	;本当は「당신」も윤간に加わる選択肢を入れる予定だったけど구상が増えそうだったのとソースの획득をいじらなきゃいけないから今はナシ
+	;	CASE 4
+	;		PRINTFORMW %CALLNAME:PLAYER%는 욱씬거리는 몸을 주체하지 못하고, 스스로 윤간의 굴레에 뛰어들었다…
+	;		TFLAG:76 = 70
+		CASE 5
+			IF B == 0
+				PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% 모여든 남자들에게 뭐든지 해도 좋다고 말했다
+				PRINTFORMW 남자들의 흥분도가 올라간 것같다！
+				D += 20
+				B = 1
+			ELSE
+				PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% 모여든 남자들에게 좀더 하드하게 범해도 좋다고 말했다
+				PRINTFORMW 남자들의 흥분도가 조금 올라간 것같다！
+				D += 10
+				B += 1
+			ENDIF
+		CASE 6
+				PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% 모여든 남자들에게 지나치게 하드한 행위를 하지 말하고 말했다
+				PRINTFORMW 남자들의 흥분도가 조금 내려간 것같다
+				D -= 10
+				B = 0
+		CASE 9
+			PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% 범해지고 있는 %타겟을()% 방치하고 산책을 하기 시작했다…
+			PRINTFORMW 오늘은 좋은 날씨다…！
+			BREAK
+	ENDSELECT
+	PRINTFORML 　
+	;こっから描写
+	PRINTFORM 남자들은 
+		IF TEQUIP:구경꾼흥분도 > 100
+			PRINTFORM 폭주한 모습으로 
+			G = 6
+		ELSEIF TEQUIP:구경꾼흥분도 > 60
+			PRINTFORM 거친 숨을 내쉬면서 
+			G = 5
+		ELSEIF TEQUIP:구경꾼흥분도 > 40
+			PRINTFORM 콧김을 난폭하게 내뿜으면서 
+			G = 4
+		ELSEIF TEQUIP:구경꾼흥분도 > 20
+			PRINTFORM 여유를 보이며
+			G = 3
+		ELSE
+			PRINTFORM 싸늘한 태도로 
+			G = 2
+		ENDIF
+	PRINTFORMW %타겟을()% 범하고 있다
+	PRINTFORMW  
+	E = TEQUIP:46
+		;興奮度に応じて描写リピート
+		FOR H,0,G
+			PRINTFORMW ……
+			;「男」を랜덤で決定
+				IF RAND:5 == 0
+					LOCALS:1 = 부랑자
+				ELSEIF RAND:4 == 0
+					LOCALS:1 = 젊은 학생
+				ELSEIF RAND:3 == 0
+					LOCALS:1 = 금발의 양아치
+				ELSEIF RAND:2 == 0
+					LOCALS:1 = 기름진 중년아저씨
+				ELSE
+					LOCALS:1 = 살찐 오타쿠
+				ENDIF
+			;使いにくいけど体位を랜덤で決定
+				IF RAND:3 == 0
+					LOCALS:2 = 정상위
+				ELSEIF RAND:2 == 0
+					LOCALS:2 = 기승위
+				ELSE
+					LOCALS:2 = 후배위
+				ENDIF
+				;ハードモード체크
+			IF B >= 1 && RAND:4 <= B
+			;ハード描写(主に暴힘行為、性行為以外の屈辱的行為)
+				;済：[HARD]거유なら가슴を踏んづけられるとか
+				;済？まだだ、まだ발りんよ：[HARD]暴힘振るわれるとか
+				;済：[HARD]タバコの火を押し付けられるとか
+				;[HARD]地面に垂れた정액舐めとらせるとか
+				;半済、まだまだエロく出来る：[HARD]尻突き上げてバックから犯されつつ、머리を踏んづけられて屈辱で涙눈상태とか
+				
+				CALL KOJO_MESSAGE_RINKAN,0,1
+				IF RESULT == 0
+				;IF RAND:3 == 0 && (TALENT:3 !| TALENT:4 !| TALENT:5 !| TALENT:6 !| TALENT:7 !| TALENT:8)
+					IF RAND:4 == 0
+						;거유、폭유もち
+						IF RAND:2 == 0 && (TALENT:거유 || TALENT:폭유 || TALENT:魔乳) && (TALENT:3 !| TALENT:4 !| TALENT:5 !| TALENT:6 !| TALENT:7 !| TALENT:8)
+							PRINTFORMW 전라의 %조사처리(CALLNAME:TARGET, "가")% 지면에 널브러져 있다
+							PRINTFORMW 한명의 %조사처리(LOCALS:1, "가")% %CALLNAME:TARGET%에게 다가가더니,
+							PRINTFORMW 더러운 발바닥으로 %CALLNAME:TARGET%의 풍만한 유방을 짓밟았다
+							PRINTFORMW 비명을 지르는 %CALLNAME:TARGET%의 모습을 보고 흥분한 %조사처리(LOCALS:1, "는")%, 더욱 세게 짓밟고있다
+							
+							CALL KOJO_MESSAGE_RINKAN,1,1
+						ELSE
+							PRINTFORMW 전라의 %조사처리(CALLNAME:TARGET, "는")% %LOCALS:1%들에게 도게자를 강요받았다
+							PRINTFORMW 명령받은대로 납작 엎드려, 지면에 머리를 대는 %CALLNAME:TARGET%
+							IF TALENT:3 !| TALENT:4 !| TALENT:5 !| TALENT:6 !| TALENT:7 !| TALENT:8
+								PRINTW 그 모습에 흥분한
+							ELSE
+								PRINTW 그 모습에 가학적인 마음을 부추겨진,
+							ENDIF
+							PRINTFORMW 한명의 %조사처리(LOCALS:1, "가")% %CALLNAME:TARGET%에게 다가왔다,
+							PRINTFORMW 남자는 %CALLNAME:TARGET%의 머리를 붙잡고 얼굴을 바닥에 짓눌렀다
+							PRINTFORM 불결한 발로 %조사처리(CALLNAME:TARGET, "를")% 짓밟자 %조사처리(CALLNAME:TARGET, "는")% 
+							IF TALENT:마조
+								PRINTW 피학의 즐거움에 빠져 있었다
+							ELSEIF TALENT:3 !| TALENT:4 !| TALENT:5 !| TALENT:6 !| TALENT:7 !| TALENT:8
+								PRINTW 자신의 입장을 알게되었다.
+							ELSE
+								PRINTW 견디고 있었다.
+							ENDIF
+							
+							CALL KOJO_MESSAGE_RINKAN,2,1
+						ENDIF
+						C = RAND:2+2
+						D += 3
+					;ELSEIF RAND:3 == 0 && (TALENT:3 !| TALENT:4 !| TALENT:5 !| TALENT:6 !| TALENT:7 !| TALENT:8)
+					ELSEIF RAND:4 == 0 
+						;暴힘を振るわれる
+						IF RAND:3 == 0 && (TALENT:거유 || TALENT:폭유 || TALENT:魔乳) && (TALENT:3 !| TALENT:4 !| TALENT:5 !| TALENT:6 !| TALENT:7 !| TALENT:8)
+							PRINTFORMW %LOCALS:1%에게 범해지는 %CALLNAME:TARGET%의 풍만한 가슴을 다른%LOCALS:1%가 난폭하게 움켜쥐었다
+							PRINTFORMW 아픔에 비명을 지르는 %CALLNAME:TARGET%
+							PRINTFORMW 경쾌한 소리와 함께 %조사처리(LOCALS:1, "가")% 유방을 손바닥으로 한번, 두번 후려친다
+							PRINTFORMW 고통을 참고, %조사처리(CALLNAME:TARGET, "는")% 스스로 허리를 움직이며 자비를 구걸하지만
+							PRINTFORMW 남자들은 용서없이 더욱 고통을 계속 준다.
+						ELSE
+							PRINTFORM %조사처리(CALLNAME:TARGET, "는")% %LOCALS:1%에게 %조사처리(LOCALS:2, "로")% 범해지면서
+							IF (TALENT:거유 || TALENT:폭유 || TALENT:魔乳) && (TALENT:3 !| TALENT:4 !| TALENT:5 !| TALENT:6 !| TALENT:7 !| TALENT:8)
+								PRINTW 울부짖고 있다
+							ELSE
+								PRINTW 교성을 올리고 있다
+							ENDIF
+							PRINTFORMW 그 소리가 거슬렸는지, %LOCALS:1%가 %CALLNAME:TARGET%의 뺨을 세게 후려쳤다！
+							PRINTW 찰싹！
+							PRINTW 찰싹、찰싹！
+							IF TALENT:3 !| TALENT:4 !| TALENT:5 !| TALENT:6 !| TALENT:7 !| TALENT:8
+								PRINTFORMW 처음에는 아프다고 울부짖던 %CALLNAME:TARGET%도, 단념한듯이 조용히 스스로 허리를 움직이기 시작했다.
+								PRINTFORMW %조사처리(CALLNAME:TARGET, "는")% 아픔과 굴욕에 눈물을 흘리고 있다
+							ELSE
+								PRINTFORMW 체벌을 받은 %조사처리(CALLNAME:TARGET, "는")% 사죄의 말을 하며 스스로 허리를 흔들기 시작했다
+							ENDIF
+							PRINTFORMW …범하고 있던 남자는 조임이 좋아졌다고 기뻐하면서 허리를 흔들고있다
+						ENDIF
+						CALL KOJO_MESSAGE_RINKAN,3,1
+						C = RAND:3
+						D += 3
+					ELSEIF RAND:2 == 0 && TEQUIP:47<=40 &&(TALENT:11 || TALENT:12 || TALENT:15 || TALENT:16 ||TALENT:34)
+					;興奮度が低く、반항적、꿋꿋함、프라이드높음、거만함、저항を持っている
+						PRINTFORMW 조금 진정한 남자들이、%조사처리(LOCALS:2, "로")% 범해지고 있는 %CALLNAME:TARGET%의 주변에서 담배를 피우기 시작했다
+						PRINTFORMW %타겟은()% 범해지면서도、자신을 범하고 있는 남자들에 대해서 강한 눈빛으로 부정의 의지를 표시하고 있다
+						PRINTFORMW 그 눈빛이 마음에 들지 않았는지、담배를 피우던 %조사처리(LOCALS:1, "가")% %CALLNAME:TARGET%에게 다가갔다
+						PRINTFORM 범해져서 몸을 흔들고 있는 %CALLNAME:TARGET%의 
+							IF RAND:4 == 0
+								PRINT 팔뚝
+							ELSEIF RAND:3 == 0
+								PRINT 배
+							ELSEIF RAND:2 ==0
+								PRINT 허벅지
+							ELSE
+								PRINT 등
+							ENDIF
+						PRINTFORMW 에 자신이 피고 있던 담배를 눌러붙였다…！
+						PRINTFORMW %타겟은()% 커다란 비명을 질렀다
+						PRINTFORMW …범하고 있는 남자는 조임이 좋아졌다고 기뻐하며 허리를 흔들고 있다
+						C = RAND:3+3
+						D = RAND:4
+						CALL KOJO_MESSAGE_RINKAN,4,1
+					;ELSEIF RAND:3 == 0 && ABL:마조끼 >= 3 && (TALENT:3 !| TALENT:4 !| TALENT:5 !| TALENT:6 !| TALENT:7 !| TALENT:8)
+					ELSEIF RAND:3 == 0 && ABL:마조끼 >= 3
+						;地面に垂れた정액舐めとらせる
+						PRINTFORMW %LOCALS:1%에게 입으로 봉하고있던 %CALLNAME:TARGET%의 입안에 대량의 정액이 쏟아부어져
+						PRINT 입에서 흘러내린 정액이
+						;야외플레이中(廃ビル)
+						IF TEQUIP:29 & 1
+							PRINT 폐 빌딩의 바닥
+						ELSE
+							PRINT 지면
+						ENDIF
+						PRINTFORMW 을 더렵혀간다
+						PRINTFORMW %LOCALS:1%중 한명이 장난삼아 %CALLNAME:TARGET%에게
+						;야외플레이中(廃ビル)
+						IF TEQUIP:29 & 1
+							PRINT 바닥
+						ELSE
+							PRINT 지면
+						ENDIF
+						PRINTFORMW 의 정액을 핥으라고 명령했다
+						IF TALENT:3 !| TALENT:4 !| TALENT:5 !| TALENT:6 !| TALENT:7 !| TALENT:8
+							PRINTW 따르지 않으면 무엇을당할지 모른다
+							PRINTFORMW 각오한 %조사처리(CALLNAME:TARGET, "는")% %LOCALS:1%들의 시선을 느끼면서 천천히
+						ELSE
+							PRINTFORMW %조사처리(CALLNAME:TARGET, "는")% %LOCALS:1%의 시선을 느끼면서 천천히
+						ENDIF
+						;야외플레이中(廃ビル)
+						IF TEQUIP:29 & 1
+							PRINT 바닥
+						ELSE
+							PRINT 지면
+						ENDIF
+						PRINTFORMW 에 혀를 가져다대었다……
+						CALL KOJO_MESSAGE_RINKAN,5,1
+						C = RAND:3
+						D += 3
+					ELSEIF RAND:2 == 0
+						PRINTFORMW %조사처리(LOCALS:2, "로")% 범해지고 있는 %CALLNAME:TARGET%에게 매직을 든 %LOCALS:1%들이 가까이 오고 있다
+						PRINTFORMW %CALLNAME:TARGET%의 몸을 억누르고、%LOCALS:1%들은 추잡한 글들을 써내려갔다
+						SIF TALENT:3 || TALENT:6
+							PRINTFORM 『연인만으로는 부족해%UNICODE(0x2661)%』
+						SIF TALENT:4 || TALENT:7
+							PRINTFORM 『자지님 좋아%UNICODE(0x2661)%』
+						SIF TALENT:5 || TALENT:8
+							PRINTFORM 『USE FREE!%UNICODE(0x2661)%』
+						SIF TALENT:153
+							PRINTFORM 『자궁 안쪽까지 찔러줘%UNICODE(0x2661)%』
+						SIF TALENT:170
+							PRINTFORM 『당신보다 기분 좋아%UNICODE(0x2661)%』
+						IF RAND:3 == 0
+							PRINTFORM 『공중%UNICODE(0x2661)%변소』
+						ELSEIF RAND:2 == 0
+							PRINTFORM 『보지%UNICODE(0x2661)%』
+						ELSE
+							PRINTFORM 『자지먹고싶어%UNICODE(0x2661)%』
+						ENDIF
+						PRINTW ……
+						PRINTFORMW %CALLNAME:TARGET%의 몸은 추잡한 낙서로 가득채워졌다
+						C = 4
+						CALL KOJO_MESSAGE_RINKAN,6,1
+					ELSE
+						;尻突き上げてバックから犯されつつ、머리を踏んづけられて屈辱で涙눈상태
+						IF RAND:2 == 0
+							PRINTFORMW 뒤에서부터 범해지고있는 %CALLNAME:TARGET%의 머리를, 앞에 서있던 %조사처리(LOCALS:1, "가")% 짓밟고있다
+							PRINTFORMW 지면에 얼굴을 부비는듯한 자세를 강요받아, %조사처리(CALLNAME:TARGET, "는")% 굴욕으로 눈물을 글썽이고있다
+							PRINTFORMW …범하고 있는 남자들은 조임이 좋아졌다고 기뻐하면서 허리를 흔들고 있다
+						ELSE
+							PRINTFORMW 뒤에서 손목을 붙잡혀 짐승과도 같은 포즈로 범해지는 %CALLNAME:TARGET%
+							;야외플레이中(廃ビル)
+							IF TEQUIP:29 & 1
+								PRINT 바닥
+							ELSE
+								PRINT 지면
+							ENDIF
+							PRINTFORMW %LOCALS:1%에게 지면에 얼굴이 닿을정도로 머리를 짓밟힌 %CALLNAME:TARGET%의 눈동자에는 눈물이 떠오른다
+							PRINTFORMW 굴욕을 견디는듯한 모습이 남자들의 가학심을 부추겼는지 더 심한 행위를 강요받게 되었다
+						ENDIF
+						C = 3
+						D = 2
+						CALL KOJO_MESSAGE_RINKAN,7,1
+					ENDIF
+				ENDIF
+			ELSE
+				;ノーマル描写(落ち着け、윤간の時点ですでにハードだ)
+					;済：駅弁상태でサンドイッチとか
+					;輸姦後の後始末描写で、本人정액でどろどろにされてるのに周囲の男達の肉棒を舌で掃除させられてるとか
+				;거유以上のキャラだと「その乳は飾りか？遊ばせてるんじゃねえ」とか罵られるとか
+				;挿れられるのだけは회피しようと必死に입と손で群がるチンポにご봉사する女の子が好きです
+				;済：全身にぶっかけられるとか→랜덤描写の中に入れず、別のシステムとして興奮度と同期してぶっかけてもいいかも
+				;両穴突かれながら無理やり笑顔とピースサインとらされて記念촬영とかいいよね
+				;음란系で눈の前に棒並べられて、どれが欲しいか選ばせるとか
+				;[左舷弾幕薄いよ！何やってんの！]
+				
+				CALL KOJO_MESSAGE_RINKAN,0,0
+				IF RESULT == 0
+					;음란系で눈の前に棒並べられて、どれが欲しいか選ばせるとか
+					IF RAND:11 == 0 && (TALENT:음란 || TALENT:창부)
+						PRINTFORMW 눈앞에 늘어서있는것은 %LOCALS:1%들의 자지
+						PRINTFORMW 어느게 좋을지 골라보던%조사처리(CALLNAME:TARGET, "는")% 기쁜듯이 남자들중에서도제일 커다란 자지을 골랐다
+						PRINTFORMW 황홀한 표정을 띄우며 스스로 자지에 키스하고서는 박아줬으면 좋겠다고 음란하게 허리를 흔들며 졸라대었다
+						C = RAND:3
+						CALL KOJO_MESSAGE_RINKAN,8,0
+					;거유以上のキャラだと「その乳は飾りか？遊ばせてるんじゃねえ」とか罵られる
+					ELSEIF RAND:10 == 0 && (TALENT:거유 || TALENT:폭유 || TALENT:魔乳)
+						PRINTFORMW 여러 남자들에게 둘러싸여 범해지는 %CALLNAME:TARGET%
+						PRINTFORMW 기승위로 필사적으로 허리를 흔드는 %CALLNAME:TARGET%에게 %LOCALS:1%들은
+						PRINTFORMW 그 가슴은 장식이냐고, 놀려두는게 아니라면서 매도하더니 섹스하면서 가슴으로 봉사하도록 명령했다
+						CALL KOJO_MESSAGE_RINKAN,9,0
+					;挿れられるのだけは회피しようと必死に입と손で群がるチンポにご봉사する女の子が好きです
+					ELSEIF RAND:9 == 0 && (TALENT:연모 || TALENT:친애)
+						PRINTFORMW 삽입만은 하지 말아달라고 간청하는 %CALLNAME:TARGET%에게 %LOCALS:1%들은 입과 손으로 전원을 만족시키면 생각해보겠다고 조건을 제시했다
+						PRINTFORMW 명령받은대로 생면부지의 남자들의 노리개가 된 %CALLNAME:TARGET%
+						PRINT 혐오감을 드러내면서도
+						IF RAND:2 == 0 && (TALENT:거유 || TALENT:폭유 || TALENT:魔乳)
+							PRINTFORMW 커다란 가슴을 써서 필사적으로 봉사하는 %CALLNAME:TARGET%
+						ELSE
+							PRINTFORMW 봉사하는%CALLNAME:TARGET%
+						ENDIF
+						PRINTFORMW 한명이서 다 봉사하지 못할 정도의 인원수가 모인 %LOCALS:1%들이 그런 행위만으로 만족할 수 있을리도 없고
+						PRINTFORMW 흥분의 도가니에 몸을 던진 %CALLNAME:TARGET%에 대한 남자들의 과격한 요구는 점점 에스컬레이트 해나갔다
+						CALL KOJO_MESSAGE_RINKAN,10,0
+					;両穴突かれながら無理やり笑顔とピースサインとらされて記念촬영（오토코노코除く
+					ELSEIF RAND:8 == 0
+						PRINTFORMW %LOCALS:1%들에 의해 \@TALENT:남자 ? 항문 # 양구멍\@에 물건이 삽입된 %CALLNAME:TARGET%에 남자들은 기념 촬영한다고 말했다
+						PRINTFORMW 웃는 얼굴로 브이 사인을 하도록 명령받아
+						IF TALENT:광기 || TALENT:붕괴
+							PRINTFORMW 빛을 잃어버린 탁한 눈동자로 카메라를 향해 희미하게 미소를 지어보였다
+						ELSEIF TALENT:복종 || TALENT:예속 
+							IF RAND:2 == 0
+								PRINTW 빛이 없는 눈으로 카메라를 향해 서글프게 미소 지엇다
+							ELSE
+								PRINTW 순종하며 피스 싸인을 만들고 미소를 지었다.
+							ENDIF
+						ELSEIF (TALENT:연모 || TALENT:친애)
+							PRINTFORMW %CALLNAME:TARGET%는 지금이라도 울먹일듯이 눈동자에 눈물을 띄우며, 경련하듯이 미소를 지어보였다
+						ELSEIF (TALENT:음란 || TALENT:창부)
+							PRINTFORMW 황홀한 표정을 띄우고서 단정하지 못하게 입을 벌리고 양손으로 브이사인을 그리고, 스스로 허리를 흔들어댔다
+						ELSE
+							PRINTW 어쩔 수없이 미소를 지으며 피스했다.
+						ENDIF
+						CALL KOJO_MESSAGE_RINKAN,11,0
+					;輸姦後の後始末描写で、本人정액でどろどろにされてるのに周囲の男達の肉棒を舌で掃除させられてる
+					ELSEIF RAND:7 == 0
+						PRINTFORMW 남자들에게 윤간당하는 것도 끝나고 %조사처리(CALLNAME:TARGET, "는")% 온몸이 정액으로 질퍽해질 정도로 더럽혀져있었다
+						PRINTFORMW 행위를 끝낸 남자들이 자지를 가져다 대자 범해지고 있었던 %조사처리(CALLNAME:TARGET, "는")% 명령받지 않아도
+						PRINTFORMW 스스로 나서 입으로 자지를 물고서 깨끗해질때까지 일심불란하게 혀를 움직였다
+						CALL KOJO_MESSAGE_RINKAN,12,0
+					;[左舷弾幕薄いよ！何やってんの！]
+					ELSEIF RAND:6 == 0 && FLAG:DEBUG
+						PRINTFORMW 『좌현 탄막이 얇다！뭘하고 있는거냐！』
+						PRINTFORMW 적 모빌슈츠%LOCALS:1%에 대한 %CALLNAME:TARGET%의 공세가 무른것에 짜증을 느낀 %CALLNAME:MASTER%는 무심코 소리쳤다
+					ELSEIF RAND:5 == 0
+						PRINTFORMW %LOCALS:1%들은 %타겟을()% 쉼없이 %조사처리(LOCALS:2, "로")% 범하고 있다
+						PRINTFORMW 삽입 중인 %LOCALS:1%(이)가 부르르 몸을 떨고 페니스를 뽑자、
+						PRINTFORMW 주르륵%CALLNAME:TARGET%의\@TALENT:남자 ? 항문 # 질\@에서 정액이 흘러 내린다
+						PRINTFORMW 그리고 다음%LOCALS:1%의 페니스를\@TALENT:남자 ? 항문 # 질\@에 삽입하고 허리를 흔들기 시작했다.
+						CALL KOJO_MESSAGE_RINKAN,13,0
+						C = RAND:2+2
+					ELSEIF RAND:4 == 0
+						PRINTFORMW %LOCALS:2%로 범해지고 있는 %타겟을()% 보고 주변의 %LOCALS:1%들이 자신의 물건을 훑기 시작했다
+						PRINTFORMW %CALLNAME:TARGET%의 신음소리를 들으며、주변의 흥분과 훑는 속도가 급격히 올라간다
+						PRINTFORMW %타겟이()% 한층더 신음소리를 올리는 동시에 %LOCALS:1%들이 일제히 사정했다…！
+						PRINTFORMW %CALLNAME:TARGET%의 얼굴、가슴、몸 전체에 정액이 늘어져간다
+						C = RAND:3
+						CALL KOJO_MESSAGE_RINKAN,14,0
+					ELSEIF RAND:3 == 0
+						IF RAND:2 == 0
+							PRINTFORMW %타겟은()% %LOCALS:1%의 위에 올라가 기승위 자세로 범해지고 있다
+						ELSE
+							PRINTFORMW %조사처리(CALLNAME:TARGET, "는")% %LOCALS:1%에게 안아 올려져 \@TALENT:남자 ? 항문 # 질\@을 범해지고 있다
+						ENDIF
+						PRINTFORMW %CALLNAME:TARGET%의\@TALENT:남자 ? 항문 # 질\@뿐만 아니라\@TALENT:남자 ? 입 # 항문\@에도 페니스가 삽입 된다
+						PRINTFORMW 페니스가 \@TALENT:남자 ? 입 # 질\@을 찌를 때마다 엉덩이 구멍도 동시에 찔려 몸이 흔들리고있다
+						PRINTFORMW %조사처리(CALLNAME:TARGET, "가")% \@TALENT:남자 ? くぐもった # \@교성을 올릴 때 남자들이 몸을 떨었다
+						PRINTFORMW 남자들이 페니스를 빼면 주르륵 %CALLNAME:TARGET%의 \@TALENT:남자 ? 입 # 질\@과 항문에서 정액이 흘러내린다
+						C = RAND:3+3
+						CALL KOJO_MESSAGE_RINKAN,15,0
+					ELSEIF RAND:2 == 0
+						PRINTFORMW 기승위 자세로 범해지고 있는 %CALLNAME:TARGET%의 양쪽에 남자들이 서있다
+						PRINTFORMW %LOCALS:1%에게 지시받아、%타겟은()% 양쪽 두사람의 페니스를 훑고 있다
+						PRINTFORMW 양쪽의 남자들이 사정하는 것과 동시에,%CALLNAME:TARGET%의 \@TALENT:남자 ? 항문내 # 질내\@에도 정액이 쏟아진 것 같다
+						C = 2
+						CALL KOJO_MESSAGE_RINKAN,16,0
+					ELSE
+						PRINTFORMW 뒤로 범해지던 %CALLNAME:TARGET%의 입을、얼굴 앞에 선 %LOCALS:1%(이)가 범하고 있다
+						PRINTFORMW 앞뒤에서 동시에 꿰뚫려、%CALLNAME:TARGET%의 몸이 앞뒤로 흔들리고 있다
+						PRINTFORMW %LOCALS:1%가 입에 사정하는 것과 동시에,%CALLNAME:TARGET%의 \@TALENT:남자 ? 항문내 # 질내\@에도 정액이 쏟아진 것 같다
+						C = 3
+						CALL KOJO_MESSAGE_RINKAN,17,0
+					ENDIF
+				ENDIF
+			ENDIF
+		TEQUIP:구경꾼수 -= C
+		TEQUIP:구경꾼흥분도 -= C-D
+		IF TEQUIP:구경꾼수 <=0
+			TEQUIP:구경꾼수 = 0
+			F = E
+		ELSE
+			F += C
+		ENDIF
+		NEXT
+	PRINTFORMW ……
+	IF F==1
+		PRINTFORMW {F}인의 남자가 남족해서 떠난 것 같다
+	ELSE
+		PRINTFORMW {F}인의 남자들이 만족해서 떠난 것같다
+	ENDIF
+NEXT
+
+IF TEQUIP:46 >=0
+	PRINTW ………
+	PRINTW ……
+	PRINTW …
+	PRINTW 
+ENDIF
+PRINTFORML  
+DRAWLINE
+PRINTFORML  
+PRINTFORMW 그들이 떠난 자리에는 ￥{TFLAG:77}이 남아있었다
+
+TEQUIP:바이브 = 0
+TEQUIP:애널바이브 = 0
+TEQUIP:애널비즈 = 0
+TEQUIP:야외플레이위험도 = 0
+TEQUIP:구경꾼수 = 0
+TEQUIP:구경꾼흥분도 = 0
+;===================================================
+;조교타입
+;===================================================
+@COMTYPE_201
+RETURN COMTYPE("특수커맨드계")
+
+

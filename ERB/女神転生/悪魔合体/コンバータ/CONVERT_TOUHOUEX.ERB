@@ -1,0 +1,181 @@
+﻿@CONVERT_TOUHOUEX, ARG , ARG:1 , ARG:2 , ARG:3 = -1
+;ARG ,악마１
+;ARG:1　악마２
+;ARG:2　악마３
+;ARG:3　元々のRESULT
+;
+
+;LOCAL ：악마１종족
+;LOCAL:1 ：악마２종족0
+;LOCAL:2 ：악마３종족
+;LOCAL:3 ：악마종족
+;LOCAL:4 ：악마LV
+
+#LOCALSSIZE 5
+
+;合体処理をもう一度行う
+;合体結果の종족を検索
+IF ARG:2 > 0
+	LOCAL = ABL:(ARG:0):종족
+	LOCAL:1 = ABL:(ARG:1):종족
+	LOCAL:2 = ABL:(ARG:2):종족
+	;バブルソートもどき
+	SIF LOCAL > LOCAL:1
+		SWAP LOCAL , LOCAL:1
+	SIF LOCAL:1 > LOCAL:2
+		SWAP LOCAL:1 , LOCAL:2
+	SIF LOCAL > LOCAL:1
+		SWAP LOCAL , LOCAL:1
+	CALL SEARCH_RACE, LOCAL , LOCAL:1
+	SIF RESULT == 13
+		RESULT = LOCAL
+	CALL SEARCH_RACE, MIN(RESULT , LOCAL:2), MAX(RESULT , LOCAL:2)
+	IF RESULT == 13
+		RETURN ARG:3
+	ELSE
+	
+	ENDIF
+ELSE
+	CALL SEARCH_RACE,MIN(ABL:ARG:종족,ABL:(ARG:1):종족),MAX(ABL:ARG:종족,ABL:(ARG:1):종족)
+	SIF RESULT == 13
+		RETURN ARG:3
+ENDIF
+;その종족の악마をリスト化 Ｄあたりにリストを入れる
+;女専用종족を男で作ろうとする場合、남자専用종족に変換する。
+IF RESULT == 1 && TALENT:ARG:남자
+	RESULT = 15
+ELSEIF RESULT == 2 && TALENT:ARG:남자
+	RESULT = 16
+ENDIF
+LOCAL:3 = RESULT
+	;合体불가の組み合わせなら0を返す
+SIF LOCAL:3 == 0
+	RETURN 0
+
+;作成したリストから二体の平均레벨に合わせて악마を選ぶ
+IF ARG:2 > 0
+	;平均に발す레벨
+	IF EQUIP:MASTER:파라켈수스 == 0
+		LOCAL:4 = (CSVBASE(NO:ARG,GETNUM(BASE,"LV"),0) + CSVBASE(NO:(ARG:1),GETNUM(BASE,"LV"),0) + CSVBASE(NO:(ARG:2),GETNUM(BASE,"LV"),0))/3 + FUSION_PLUS_LV(3,1)
+	ELSE
+		LOCAL:4 = (BASE:ARG:LV + BASE:(ARG:1):LV + BASE:(ARG:2):LV)/3 + FUSION_PLUS_LV(3,1)
+	ENDIF
+ELSE
+	;平均に발す레벨
+	IF EQUIP:MASTER:파라켈수스 == 0
+		LOCAL:4 = (CSVBASE(NO:ARG,GETNUM(BASE,"LV"),0) + CSVBASE(NO:(ARG:1),GETNUM(BASE,"LV"),0))/2 + FUSION_PLUS_LV(2,1)
+	ELSE
+		LOCAL:4 = (BASE:ARG:LV + BASE:(ARG:1):LV)/2 + FUSION_PLUS_LV(2,1)
+	ENDIF
+ENDIF
+
+;디버그용
+;PRINTFORML 종족 ＝ {LOCAL:3}
+;PRINTFORML 元キャラ레벨 ＝ {LOCAL:4}
+
+SELECTCASE LOCAL:3
+	;지모신
+	;CASE 1
+	;여신
+	;CASE 2
+	;마왕
+	;CASE 3
+	;천사
+	;CASE 4
+	;요마
+	CASE 5
+		;35以上、테이레이다 마이
+			SIF LOCAL:4 >= 35
+			RETURN 5823
+		;34以下、니시다 사토노
+			RETURN 5822
+	;요정
+	CASE 6
+		;30以上、햇빛에그을린치르노
+			SIF LOCAL:4 >= 30
+			RETURN 5825
+		;それ以下、이터니티 라바
+			RETURN 5818
+	;요귀
+	CASE 7	
+		;20以上、우시자키 우루미
+			SIF LOCAL:4 >= 20
+			RETURN 5829	
+		;19以下、사카타 네무노。
+			RETURN 5819
+	;竜王
+	CASE 8
+		;킷초 야치에。
+			RETURN 5831
+	;마수
+	CASE 9
+		;25以上、쿠로코마 사키
+			SIF LOCAL:4 >= 24
+			RETURN 5834
+		;24以下、코마노 아운
+			RETURN 5820
+	;요조
+	CASE 10
+		;庭渡 쿠타카
+			RETURN 5830
+	;외도
+	CASE 11
+		;27以上、조온
+			SIF LOCAL:4 >= 27
+			RETURN 5826
+		;20以上26以下、시온(TH)
+			SIF LOCAL:4 >= 20
+			RETURN 5827
+		;19以下、戎 에이카
+			RETURN 5828
+
+
+	;CASE 13
+	;귀신
+	CASE 15
+		;現状他になし。야타데라 나루미。
+			RETURN 5821
+	;마신
+	CASE 16
+		;하니야스신 케이키
+			SIF LOCAL:4 >= 45
+			RETURN 5833
+		;44以下、조토구 마유미
+			RETURN 5832
+
+ENDSELECT
+
+
+;コンバート先がない場合、そのまま返す
+RETURN ARG:3
+
+;特殊合体枠
+;=====================================================
+;조마＊丁礼田舞or爾子田里乃　＝　마타라 오키나
+;=====================================================
+@FUSION_SPECIAL_4402_5823,ARG,ARG:1
+RETURN 5824
+@FUSION_SPECIAL_4402_5822,ARG,ARG:1
+RETURN 5824
+;憑パッチで今更추가する上確認の労힘を惜しむ屑
+@FUSION_SPECIAL_5822_5823,ARG,ARG:1
+RETURN 5824
+@FUSION_SPECIAL_5823_5822,ARG,ARG:1
+RETURN 5824
+
+;=====================================================
+;丁礼田舞or爾子田里乃＊치르노　＝　햇빛에그을린치르노
+;=====================================================
+@FUSION_SPECIAL_5823_4804,ARG,ARG:1
+RETURN 5825
+@FUSION_SPECIAL_5822_4804,ARG,ARG:1
+RETURN 5825
+
+
+;=====================================================
+;조마＊依神女苑or依神紫苑　＝　もう片方
+;=====================================================
+@FUSION_SPECIAL_4402_5826,ARG,ARG:1
+RETURN 5827
+@FUSION_SPECIAL_4402_5827,ARG,ARG:1
+RETURN 5826

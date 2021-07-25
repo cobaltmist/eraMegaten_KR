@@ -1,0 +1,3805 @@
+﻿;천상낙원
+;ボス・쿠니노사기리
+;
+;던전ナンバー74
+
+
+;フラグ
+;던전フラグ:74:1	천상낙원クリアフラグ、0:未クリア、1:クリア済み（나나코救出）、2:クリア済み（나나코救出、붕괴）、3:クリア済み（나나코奴隷）
+;던전フラグ:74:2	나나코の知り合い何人いるかフラグ
+;던전フラグ:74:3	천상낙원の霧状況、0:霧、1:霧晴れた
+;던전フラグ:74:4	나나코状況、0:無事、1:붕괴確定
+;던전フラグ:74:5	천상낙원進行状況、0:突入이벤트前、1:突入이벤트済み、4:第４天、5:第５天、6:第６天、7第７天:、8:第７天中ボス、9:第８天、10:第９天、11:第１０天入り입、12:第１０天ボス
+;던전フラグ:74:6	천상낙원進行状況（霧晴れ）、0:突入이벤트前、1:突入이벤트済み、9:第８天、10:第９天、11:第１０天入り입、12:第１０天ボス
+
+;던전フラグ:74:7	마가렛戦、1:전투前、2:전투後
+
+
+
+;나나코加入フラグ
+;間に合わなかった加入、섀도우に촉수윤간済み
+;CFLAG:LOCAL:이벤트加入 == 1
+
+;=======================================================================
+;攻略조건
+;=======================================================================
+@PREREQUISITE_DUNGEON_74
+
+;천상낙원開始済みか천상낙원クリア済み
+IF 이벤트フラグ:12:0 == 4 || 던전フラグ:74:1 >= 1
+	RETURN 1
+ENDIF
+RETURN 0
+
+;=======================================================================
+;던전名
+;=======================================================================
+@GET_DUNGEON_NAME_74
+RESULTS = 천상낙원
+
+;=======================================================================
+;フ로어名표시
+;=======================================================================
+@FLOORNAME_74
+PRINT 천상낙원　
+SELECTCASE FLAG:現M
+	CASE 0
+		PRINTL   제１천
+	CASE 1
+		PRINTL   제２천
+	CASE 2
+		PRINTL   제３천
+	CASE 3
+		PRINTL   제４천
+	CASE 4
+		PRINTL   제５천
+	CASE 5
+		PRINTL   제６천
+	CASE 6
+		PRINTL   제７천
+	CASE 7
+		PRINTL   제８천
+	CASE 8
+		PRINTL   제９천
+	CASE 9
+		PRINTL   제１０천
+	CASEELSE
+		PRINTL
+ENDSELECT
+
+;=======================================================================
+;스타ト地点입력
+;=======================================================================
+@START_DUNGEON_74, ARG
+FLAG:現M = 0
+FLAG:現X = 16
+FLAG:現Y = 17
+;CALL AUTOMAP
+RETURN 0
+
+;=======================================================================
+;攻略開始時の이벤트
+;=======================================================================
+@EVENT_DUNGEON_START_74
+
+;천상낙원進行状況、初回
+IF 던전フラグ:74:5 == 0
+	CALL DUNGEON_74_FE
+	CALL DUNGEON_74_ADD_KUMA
+	
+;천상낙원の霧状況：霧晴れた、かつ천상낙원進行状況（霧晴れ）進行０
+ELSEIF 던전フラグ:74:3 == 1 && 던전フラグ:74:6 == 0
+	CALL DUNGEON_74_SE
+ENDIF
+
+
+;마가렛戦
+IF 이벤트フラグ:16:0 == 1 && 던전フラグ:74:7 == 0
+	PRINTFORMW 이전에 방문했을때와 변함없이 아름다운 풍경의 천상낙토。
+	PRINTFORMW 이곳의 가장 안쪽에 초대장의 주인이 있을 터이다……
+	
+	;마가렛戦フラグ전투前へ
+	던전フラグ:74:7 = 1
+ENDIF
+
+;=======================================================================
+;탈출時の이벤트
+;=======================================================================
+@EVENT_DUNGEON_END_74
+
+;나나코の知り合い何人いるかフラグを리셋しておく
+던전フラグ:74:2 = 0
+
+
+;霧이벤트後で未クリアだと나나코붕괴確定に
+;천상낙원の霧状況：霧晴れた、かつ천상낙원未クリア
+IF 던전フラグ:74:3 == 1 && 던전フラグ:74:1 == 0
+	PRINTFORMW 귀환하는 도중 뒤를 돌아보니、천상낙토에는 이미 어렴풋한 안개의 흔적만이 남아있었다。
+	PRINTFORMW 그리고、안개가 개어져감과 함께 섀도우의 기운이 짙어져간다。
+	PRINTFORMW 다음에 다시 방문한다고 해도、나나코는 이미……
+	
+	;나나코状況:붕괴確定へ
+	던전フラグ:74:4 = 1
+ENDIF
+
+;=======================================================================
+;指定したマスに進入가능か
+;=======================================================================
+@CAN_ENTER_74, ARG, ARG:1
+SELECTCASE DA:ARG:(ARG:1)
+ENDSELECT
+CALL CAN_ENTER,ARG,ARG:1
+RETURN RESULT
+
+;=======================================================================
+;フ로어데이터
+;=======================================================================
+;0：壁　1：床또는通路　2：扉　3：宝箱　4：이벤트　5：罠　6：上り階段 7：下り階段　8：出입　9：그외特殊処理等
+;これらの内、3～9が代入されているマスに、個別の번호を与える処理を実行します。
+;この処理を行った後、これらのマスには 「マップ번호*1000 + そのマスがそのマップで左上から数えて何個눈のARG타입のマスか*10 + ARG」が代入されます
+;例えば 2003 であった場合、「2番のマップ＝３Ｆで、左上から数えて0個눈の3＝宝箱である」という事を意味しています
+;尚、0～2はどのマップにも大量に設置されるので、ここでは기본的に個別の번호を与えません。
+@MAKE_FLOOR_74
+SELECTCASE FLAG:現M
+	CASE 0
+	;第１天
+		FLAG:최대X = 19
+		FLAG:최대Y = 19
+;								  0000000000111111111
+;								  0123456789012345678
+		CALL MAKE_FLOOR_LINE, 0, "                  "
+		CALL MAKE_FLOOR_LINE, 1, "  31              "
+		CALL MAKE_FLOOR_LINE, 2, "  11211    61     "
+		CALL MAKE_FLOOR_LINE, 3, "      1    11211  "
+		CALL MAKE_FLOOR_LINE, 4, "      11       1  "
+		CALL MAKE_FLOOR_LINE, 5, "       1       1  "
+		CALL MAKE_FLOOR_LINE, 6, "       2  111121  "
+		CALL MAKE_FLOOR_LINE, 7, "  111111111    1  "
+		CALL MAKE_FLOOR_LINE, 8, "  1            1  "
+		CALL MAKE_FLOOR_LINE, 9, "  2            1  "
+		CALL MAKE_FLOOR_LINE,10, " 11            1  "
+		CALL MAKE_FLOOR_LINE,11, " 41            11 "
+		CALL MAKE_FLOOR_LINE,12, "                1 "
+		CALL MAKE_FLOOR_LINE,13, "          11    1 "
+		CALL MAKE_FLOOR_LINE,14, "          1121121 "
+		CALL MAKE_FLOOR_LINE,15, "                1 "
+		CALL MAKE_FLOOR_LINE,16, "                1 "
+		CALL MAKE_FLOOR_LINE,17, "                8 "
+		CALL MAKE_FLOOR_LINE,18, "                  "
+		
+	CASE 1
+	;第２天
+		FLAG:최대X = 19
+		FLAG:최대Y = 14
+;								  0000000000111111111
+;								  0123456789012345678
+		CALL MAKE_FLOOR_LINE, 0, "                  "
+		CALL MAKE_FLOOR_LINE, 1, "    1111111111111 "
+		CALL MAKE_FLOOR_LINE, 2, "    1     2     2 "
+		CALL MAKE_FLOOR_LINE, 3, "    1   3 1    11 "
+		CALL MAKE_FLOOR_LINE, 4, "    12111 1    61 "
+		CALL MAKE_FLOOR_LINE, 5, "    1     1       "
+		CALL MAKE_FLOOR_LINE, 6, "    1     11      "
+		CALL MAKE_FLOOR_LINE, 7, "    1      1      "
+		CALL MAKE_FLOOR_LINE, 8, "    11     2      "
+		CALL MAKE_FLOOR_LINE, 9, "     1 31111111   "
+		CALL MAKE_FLOOR_LINE,10, "     2            "
+		CALL MAKE_FLOOR_LINE,11, " 7111111211       "
+		CALL MAKE_FLOOR_LINE,12, "         11       "
+		CALL MAKE_FLOOR_LINE,13, "                  "
+		
+	CASE 2
+	;第３天
+		FLAG:최대X = 19
+		FLAG:최대Y = 16
+;									  0000000000111111111
+;									  0123456789012345678
+			CALL MAKE_FLOOR_LINE, 0, "                  "
+			CALL MAKE_FLOOR_LINE, 1, "           14     "
+			CALL MAKE_FLOOR_LINE, 2, "           11     "
+			CALL MAKE_FLOOR_LINE, 3, "           2      "
+			CALL MAKE_FLOOR_LINE, 4, "           1      "
+			CALL MAKE_FLOOR_LINE, 5, "           11     "
+			CALL MAKE_FLOOR_LINE, 6, "            1     "
+			CALL MAKE_FLOOR_LINE, 7, "            2     "
+			CALL MAKE_FLOOR_LINE, 8, "   1111111111111  "
+			CALL MAKE_FLOOR_LINE, 9, " 111           11 "
+			CALL MAKE_FLOOR_LINE,10, " 1              1 "
+			CALL MAKE_FLOOR_LINE,11, " 1              1 "
+			CALL MAKE_FLOOR_LINE,12, " 12111211       2 "
+			CALL MAKE_FLOOR_LINE,13, " 1     11      11 "
+			CALL MAKE_FLOOR_LINE,14, " 117           61 "
+			CALL MAKE_FLOOR_LINE,15, "                  "
+			
+	CASE 3
+	;第４天
+		FLAG:최대X = 17
+		FLAG:최대Y = 19
+;								  00000000001111111
+;								  01234567890123456
+		CALL MAKE_FLOOR_LINE, 0, "                "
+		CALL MAKE_FLOOR_LINE, 1, "     13         "
+		CALL MAKE_FLOOR_LINE, 2, "     11         "
+		CALL MAKE_FLOOR_LINE, 3, "     2          "
+		CALL MAKE_FLOOR_LINE, 4, "     1          "
+		CALL MAKE_FLOOR_LINE, 5, "     1          "
+		CALL MAKE_FLOOR_LINE, 6, " 11111111111    "
+		CALL MAKE_FLOOR_LINE, 7, "     2  2  1    "
+		CALL MAKE_FLOOR_LINE, 8, " 7   1  1  1    "
+		CALL MAKE_FLOOR_LINE, 9, " 1   11 3  1    "
+		CALL MAKE_FLOOR_LINE,10, " 1    1    1211 "
+		CALL MAKE_FLOOR_LINE,11, " 11   2    1    "
+		CALL MAKE_FLOOR_LINE,12, "  1  11    1    "
+		CALL MAKE_FLOOR_LINE,13, "  1  61 1121    "
+		CALL MAKE_FLOOR_LINE,14, "  1        1    "
+		CALL MAKE_FLOOR_LINE,15, "  1  11    1    "
+		CALL MAKE_FLOOR_LINE,16, "  1211111111    "
+		CALL MAKE_FLOOR_LINE,17, "  1  11         "
+		CALL MAKE_FLOOR_LINE,18, "                "
+		
+		;第４天初回이벤트前以外
+		CALL SET_TILE, 5 , 16 , 던전フラグ:74:5 , 1 , 3004
+		
+	CASE 4
+	;第５天
+		FLAG:최대X = 14
+		FLAG:최대Y = 21
+;								  00000000001111
+;								  01234567890123
+		CALL MAKE_FLOOR_LINE, 0, "             "
+		CALL MAKE_FLOOR_LINE, 1, "   16        "
+		CALL MAKE_FLOOR_LINE, 2, "   11        "
+		CALL MAKE_FLOOR_LINE, 3, "   2         "
+		CALL MAKE_FLOOR_LINE, 4, "   1         "
+		CALL MAKE_FLOOR_LINE, 5, "   1         "
+		CALL MAKE_FLOOR_LINE, 6, "   12111211  "
+		CALL MAKE_FLOOR_LINE, 7, "   1     14  "
+		CALL MAKE_FLOOR_LINE, 8, "   1         "
+		CALL MAKE_FLOOR_LINE, 9, "   11        "
+		CALL MAKE_FLOOR_LINE,10, "    1        "
+		CALL MAKE_FLOOR_LINE,11, "    1        "
+		CALL MAKE_FLOOR_LINE,12, "    12111211 "
+		CALL MAKE_FLOOR_LINE,13, "    1     11 "
+		CALL MAKE_FLOOR_LINE,14, "    1        "
+		CALL MAKE_FLOOR_LINE,15, "    11       "
+		CALL MAKE_FLOOR_LINE,16, "     1       "
+		CALL MAKE_FLOOR_LINE,17, "     1       "
+		CALL MAKE_FLOOR_LINE,18, "     2       "
+		CALL MAKE_FLOOR_LINE,19, " 3111111417  "
+		CALL MAKE_FLOOR_LINE,20, "             "
+		
+		;第５天初回이벤트前以外
+		CALL SET_TILE, 8 , 19 , 던전フラグ:74:5 , 1 , 4001
+		CALL SET_TILE, 8 , 19 , 던전フラグ:74:5 , 5 , 4001
+		CALL SET_TILE, 8 , 19 , 던전フラグ:74:5 , 6 , 4001
+		CALL SET_TILE, 8 , 19 , 던전フラグ:74:5 , 7 , 4001
+		CALL SET_TILE, 8 , 19 , 던전フラグ:74:5 , 8 , 4001
+		CALL SET_TILE, 8 , 19 , 던전フラグ:74:5 , 9 , 4001
+		CALL SET_TILE, 8 , 19 , 던전フラグ:74:5 , 10 , 4001
+		CALL SET_TILE, 8 , 19 , 던전フラグ:74:5 , 11 , 4001
+		CALL SET_TILE, 8 , 19 , 던전フラグ:74:5 , 12 , 4001
+		CALL SET_TILE, 8 , 19 , 던전フラグ:74:5 , 13 , 4001
+		
+	CASE 5
+	;第６天
+		FLAG:최대X = 19
+		FLAG:최대Y = 20
+;								  0000000000111111111
+;								  0123456789012345678
+		CALL MAKE_FLOOR_LINE, 0, "                  "
+		CALL MAKE_FLOOR_LINE, 1, " 111111111        "
+		CALL MAKE_FLOOR_LINE, 2, " 1   2   1        "
+		CALL MAKE_FLOOR_LINE, 3, " 1   1   1        "
+		CALL MAKE_FLOOR_LINE, 4, " 11  1   1        "
+		CALL MAKE_FLOOR_LINE, 5, "  1  3   1        "
+		CALL MAKE_FLOOR_LINE, 6, "  7      1        "
+		CALL MAKE_FLOOR_LINE, 7, "         1211211  "
+		CALL MAKE_FLOOR_LINE, 8, "         1    16  "
+		CALL MAKE_FLOOR_LINE, 9, "         1        "
+		CALL MAKE_FLOOR_LINE,10, "         11       "
+		CALL MAKE_FLOOR_LINE,11, "          1       "
+		CALL MAKE_FLOOR_LINE,12, "          1       "
+		CALL MAKE_FLOOR_LINE,13, "          111111  "
+		CALL MAKE_FLOOR_LINE,14, "          1       "
+		CALL MAKE_FLOOR_LINE,15, "          11      "
+		CALL MAKE_FLOOR_LINE,16, "           1      "
+		CALL MAKE_FLOOR_LINE,17, "           111211 "
+		CALL MAKE_FLOOR_LINE,18, "               13 "
+		CALL MAKE_FLOOR_LINE,19, "                  "
+		
+		;第６天初回이벤트前以外
+		CALL SET_TILE, 2 , 4 , 던전フラグ:74:5 , 5 , 5004
+		
+	CASE 6
+	;第７天
+		FLAG:최대X = 18
+		FLAG:최대Y = 23
+;								  000000000011111111
+;								  012345678901234567
+		CALL MAKE_FLOOR_LINE, 0, "                 "
+		CALL MAKE_FLOOR_LINE, 1, "   16            "
+		CALL MAKE_FLOOR_LINE, 2, "   11            "
+		CALL MAKE_FLOOR_LINE, 3, "   2             "
+		CALL MAKE_FLOOR_LINE, 4, "   1    1111111  "
+		CALL MAKE_FLOOR_LINE, 5, "   1          1  "
+		CALL MAKE_FLOOR_LINE, 6, "   1          1  "
+		CALL MAKE_FLOOR_LINE, 7, "   121111111111  "
+		CALL MAKE_FLOOR_LINE, 8, "   1     2       "
+		CALL MAKE_FLOOR_LINE, 9, "   1     1       "
+		CALL MAKE_FLOOR_LINE,10, "   2     1       "
+		CALL MAKE_FLOOR_LINE,11, "  11     1    11 "
+		CALL MAKE_FLOOR_LINE,12, "  31    111   11 "
+		CALL MAKE_FLOOR_LINE,13, "        141   2  "
+		CALL MAKE_FLOOR_LINE,14, "         1    1  "
+		CALL MAKE_FLOOR_LINE,15, "         2    1  "
+		CALL MAKE_FLOOR_LINE,16, "   111111411121  "
+		CALL MAKE_FLOOR_LINE,17, "   1          1  "
+		CALL MAKE_FLOOR_LINE,18, "   1          1  "
+		CALL MAKE_FLOOR_LINE,19, "   4     111111  "
+		CALL MAKE_FLOOR_LINE,20, "   1             "
+		CALL MAKE_FLOOR_LINE,21, "   7             "
+		CALL MAKE_FLOOR_LINE,22, "                 "
+		
+		;第７天初回이벤트前以外
+		CALL SET_TILE, 3 , 19 , 던전フラグ:74:5 , 1 , 6001
+		CALL SET_TILE, 3 , 19 , 던전フラグ:74:5 , 4 , 6001
+		CALL SET_TILE, 3 , 19 , 던전フラグ:74:5 , 5 , 6001
+		;CALL SET_TILE, 3 , 19 , 던전フラグ:74:5 , 7 , 6001
+		;CALL SET_TILE, 3 , 19 , 던전フラグ:74:5 , 8 , 6001
+		CALL SET_TILE, 3 , 19 , 던전フラグ:74:5 , 9 , 6001
+		CALL SET_TILE, 3 , 19 , 던전フラグ:74:5 , 10 , 6001
+		CALL SET_TILE, 3 , 19 , 던전フラグ:74:5 , 11 , 6001
+		CALL SET_TILE, 3 , 19 , 던전フラグ:74:5 , 12 , 6001
+		CALL SET_TILE, 3 , 19 , 던전フラグ:74:5 , 13 , 6001
+		
+		;第７天中ボス前以外
+		CALL SET_TILE, 9 , 16 , 던전フラグ:74:5 , 1 , 6001
+		CALL SET_TILE, 9 , 16 , 던전フラグ:74:5 , 4 , 6001
+		CALL SET_TILE, 9 , 16 , 던전フラグ:74:5 , 5 , 6001
+		;CALL SET_TILE, 9 , 16 , 던전フラグ:74:5 , 6 , 6001
+		;CALL SET_TILE, 9 , 16 , 던전フラグ:74:5 , 8 , 6001
+		CALL SET_TILE, 9 , 16 , 던전フラグ:74:5 , 9 , 6001
+		CALL SET_TILE, 9 , 16 , 던전フラグ:74:5 , 10 , 6001
+		CALL SET_TILE, 9 , 16 , 던전フラグ:74:5 , 11 , 6001
+		CALL SET_TILE, 9 , 16 , 던전フラグ:74:5 , 12 , 6001
+		CALL SET_TILE, 9 , 16 , 던전フラグ:74:5 , 13 , 6001
+		
+		;第７天中ボス前以外
+		CALL SET_TILE, 9 , 13 , 던전フラグ:74:5 , 1 , 6001
+		CALL SET_TILE, 9 , 13 , 던전フラグ:74:5 , 4 , 6001
+		CALL SET_TILE, 9 , 13 , 던전フラグ:74:5 , 5 , 6001
+		;CALL SET_TILE, 9 , 13 , 던전フラグ:74:5 , 6 , 6001
+		;CALL SET_TILE, 9 , 13 , 던전フラグ:74:5 , 7 , 6001
+		CALL SET_TILE, 9 , 13 , 던전フラグ:74:5 , 9 , 6001
+		CALL SET_TILE, 9 , 13 , 던전フラグ:74:5 , 10 , 6001
+		CALL SET_TILE, 9 , 13 , 던전フラグ:74:5 , 11 , 6001
+		CALL SET_TILE, 9 , 13 , 던전フラグ:74:5 , 12 , 6001
+		CALL SET_TILE, 9 , 13 , 던전フラグ:74:5 , 13 , 6001
+		
+	CASE 7
+	;第８天
+		FLAG:최대X = 15
+		FLAG:최대Y = 20
+;								  000000000011111
+;								  012345678901234
+		CALL MAKE_FLOOR_LINE, 0, "              "
+		CALL MAKE_FLOOR_LINE, 1, "           11 "
+		CALL MAKE_FLOOR_LINE, 2, "           11 "
+		CALL MAKE_FLOOR_LINE, 3, "           2  "
+		CALL MAKE_FLOOR_LINE, 4, "           1  "
+		CALL MAKE_FLOOR_LINE, 5, " 111       1  "
+		CALL MAKE_FLOOR_LINE, 6, " 1 1   11121  "
+		CALL MAKE_FLOOR_LINE, 7, " 1 12111   1  "
+		CALL MAKE_FLOOR_LINE, 8, " 1 1       1  "
+		CALL MAKE_FLOOR_LINE, 9, " 3 1       1  "
+		CALL MAKE_FLOOR_LINE,10, "   1       2  "
+		CALL MAKE_FLOOR_LINE,11, "   11     11  "
+		CALL MAKE_FLOOR_LINE,12, "    1     61  "
+		CALL MAKE_FLOOR_LINE,13, "    1         "
+		CALL MAKE_FLOOR_LINE,14, "    1211211   "
+		CALL MAKE_FLOOR_LINE,15, "    1    13   "
+		CALL MAKE_FLOOR_LINE,16, "    11        "
+		CALL MAKE_FLOOR_LINE,17, "     1        "
+		CALL MAKE_FLOOR_LINE,18, "     117      "
+		CALL MAKE_FLOOR_LINE,19, "              "
+		
+		;第８天初回이벤트前以外
+		CALL SET_TILE, 5 , 18 , 던전フラグ:74:5 , 9 , 7004
+		
+		;第８天、霧晴れ後、初回이벤트前以外
+		CALL SET_TILE, 5 , 18 , 던전フラグ:74:6 , 1 , 7004
+		
+	CASE 8
+	;第９天
+		FLAG:최대X = 17
+		FLAG:최대Y = 20
+;								  000000000011111111
+;								  012345678901234567
+		CALL MAKE_FLOOR_LINE, 0, "                 "
+		CALL MAKE_FLOOR_LINE, 1, "             16  "
+		CALL MAKE_FLOOR_LINE, 2, "             11  "
+		CALL MAKE_FLOOR_LINE, 3, "             2   "
+		CALL MAKE_FLOOR_LINE, 4, "  1111111111 1   "
+		CALL MAKE_FLOOR_LINE, 5, " 11   2      1   "
+		CALL MAKE_FLOOR_LINE, 6, " 1    1      1   "
+		CALL MAKE_FLOOR_LINE, 7, " 7    11     1   "
+		CALL MAKE_FLOOR_LINE, 8, "       1     1   "
+		CALL MAKE_FLOOR_LINE, 9, "       1111121   "
+		CALL MAKE_FLOOR_LINE,10, "             1   "
+		CALL MAKE_FLOOR_LINE,11, "             1   "
+		CALL MAKE_FLOOR_LINE,12, "             1   "
+		CALL MAKE_FLOOR_LINE,13, "             11  "
+		CALL MAKE_FLOOR_LINE,14, "              1  "
+		CALL MAKE_FLOOR_LINE,15, "              1  "
+		CALL MAKE_FLOOR_LINE,16, "              2  "
+		CALL MAKE_FLOOR_LINE,17, "              11 "
+		CALL MAKE_FLOOR_LINE,18, "              11 "
+		CALL MAKE_FLOOR_LINE,19, "                 "
+		
+		;第９天初回이벤트前以外
+		CALL SET_TILE, 2 , 5 , 던전フラグ:74:5 , 10 , 8004
+		
+		;第９天、霧晴れ後、初回이벤트前以外
+		CALL SET_TILE, 2 , 5 , 던전フラグ:74:6 , 10 , 8004
+		
+	CASE 9
+	;第１０天
+		FLAG:최대X = 10
+		FLAG:최대Y = 13
+;								  0000000000
+;								  0123456789
+		CALL MAKE_FLOOR_LINE, 0, "         "
+		CALL MAKE_FLOOR_LINE, 1, "   111   "
+		CALL MAKE_FLOOR_LINE, 2, "  11111  "
+		CALL MAKE_FLOOR_LINE, 3, " 1114111 "
+		CALL MAKE_FLOOR_LINE, 4, "  11111  "
+		CALL MAKE_FLOOR_LINE, 5, "   111   "
+		CALL MAKE_FLOOR_LINE, 6, "    1    "
+		CALL MAKE_FLOOR_LINE, 7, "    1    "
+		CALL MAKE_FLOOR_LINE, 8, "    2    "
+		CALL MAKE_FLOOR_LINE, 9, "    4    "
+		CALL MAKE_FLOOR_LINE,10, "    1    "
+		CALL MAKE_FLOOR_LINE,11, "    7    "
+		CALL MAKE_FLOOR_LINE,12, "         "
+		
+		
+		IF 던전フラグ:74:5 == 11 || 던전フラグ:74:6 == 11
+			
+		ELSE
+		;第１０天初回이벤트前以外
+		CALL SET_TILE, 4 , 9 , 던전フラグ:74:5 , 1 , 9001
+		CALL SET_TILE, 4 , 9 , 던전フラグ:74:5 , 4 , 9001
+		CALL SET_TILE, 4 , 9 , 던전フラグ:74:5 , 5 , 9001
+		CALL SET_TILE, 4 , 9 , 던전フラグ:74:5 , 6 , 9001
+		CALL SET_TILE, 4 , 9 , 던전フラグ:74:5 , 7 , 9001
+		CALL SET_TILE, 4 , 9 , 던전フラグ:74:5 , 8 , 9001
+		CALL SET_TILE, 4 , 9 , 던전フラグ:74:5 , 9 , 9001
+		CALL SET_TILE, 4 , 9 , 던전フラグ:74:5 , 10 , 9001
+		CALL SET_TILE, 4 , 9 , 던전フラグ:74:5 , 12 , 9001
+		CALL SET_TILE, 4 , 9 , 던전フラグ:74:5 , 13 , 9001
+		
+		;第１０天、霧晴れ後、初回이벤트前以外
+		CALL SET_TILE, 4 , 9 , 던전フラグ:74:6 , 1 , 9001
+		CALL SET_TILE, 4 , 9 , 던전フラグ:74:6 , 4 , 9001
+		CALL SET_TILE, 4 , 9 , 던전フラグ:74:6 , 5 , 9001
+		CALL SET_TILE, 4 , 9 , 던전フラグ:74:6 , 6 , 9001
+		CALL SET_TILE, 4 , 9 , 던전フラグ:74:6 , 7 , 9001
+		CALL SET_TILE, 4 , 9 , 던전フラグ:74:6 , 8 , 9001
+		CALL SET_TILE, 4 , 9 , 던전フラグ:74:6 , 9 , 9001
+		CALL SET_TILE, 4 , 9 , 던전フラグ:74:6 , 10 , 9001
+		CALL SET_TILE, 4 , 9 , 던전フラグ:74:6 , 12 , 9001
+		CALL SET_TILE, 4 , 9 , 던전フラグ:74:6 , 13 , 9001
+		ENDIF
+		
+	CASEELSE
+
+ENDSELECT
+
+;=======================================================================
+;タイル調整
+;=======================================================================
+@MAKE_FLOOR_LINE_COMMON_74, ARG, ARG:1, ARG:2
+#LOCALSIZE 10
+;LOCAL:0～9 それぞれ何個눈のARGなのかを記憶しています
+;LOCAL:3 宝箱→사용フラグは던전フラグ:70~74
+;指定された座標が(0,0)である場合、つまり新しいマップを読み込んだ時はLOCALを소거します
+SIF ARG:1 == 0 && ARG:2 == 0
+	VARSET LOCAL
+SELECTCASE ARG
+	CASE 3
+		;宝箱は多くの場合、開けたフラグが立っていると床を代入します
+		;そのマップでどの宝箱を開けたかは、そのマップの宝箱管理用変数の何番눈のビットが立っているかで判断します
+		IF GETBIT(던전フラグ:(FLAG:現던전):(FLAG:現M+70), LOCAL:3)
+			DA:(ARG:1):(ARG:2) = 1
+		ELSE
+			DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:3 * 10 + 3
+		ENDIF
+		LOCAL:3++
+	CASE 4 TO 9
+		DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:ARG * 10 + ARG
+		LOCAL:ARG++
+	
+ENDSELECT
+
+;=======================================================================
+;特殊タイル표시
+;TILE_MARK_COMMON_{FLAG:現던전}_X
+;=======================================================================
+;ARG:1、ARG:2がX座標とY座標
+;ARGはそこに代入されている値
+;RESULTSに代入した문자がマップに표시されますが、必ず全角1문자分になるようにしてください。そうでないと표시が崩れます。
+
+;이벤트タイル特殊표시
+;末꼬리の_4は이벤트であることを示す4
+@TILE_MARK_COMMON_74_4, ARG , ARG:1 , ARG:2
+SELECTCASE ARG / 10
+	;メッセンジャーを緑色で"ｍ"と표시
+	CASE 0 , 200 , 400
+		SETCOLOR 0x00ff00
+		RESULTS = ｍ
+	CASEELSE
+		;特に설정しない場合、"！"と표시されます
+		RETURN 1
+ENDSELECT
+
+;=======================================================================
+;[5]조사　実行時の이벤트
+;=======================================================================
+@EVENT_CHECK_DUNGEON_74
+
+;==========
+;出입の処理
+;==========
+IF DA:(FLAG:現X):(FLAG:現Y) == 8
+	CALL DUNGEON_EXIT
+	RETURN 1
+
+;========
+;宝の処理
+;========
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 3
+	CALL TREASURE_74
+	RETURN RESULT
+;=======
+;階段
+;=======
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 6
+	CALL UPSTAIRS_74
+	RETURN RESULT
+
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 7
+	CALL DOWNSTAIRS_74
+	RETURN RESULT
+;========
+;이벤트
+;========
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 4
+	SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+		;第１天이벤트
+		CASE 0
+			;신사악마
+			CALL DUNGEON_74_SE_01
+		;第２天이벤트
+		CASE 100
+			
+			
+		;第３天이벤트
+		CASE 200
+			;天然서머너
+			CALL DUNGEON_74_SE_03
+		;第４天이벤트
+		CASE 300
+			
+			
+			
+		;第５天이벤트
+		CASE 400
+			;악마の회화、가인系
+			CALL DUNGEON_74_SE_02
+		CASE 401
+			
+			
+		;第６天이벤트
+		CASE 500
+			
+			
+		;第７天이벤트
+		CASE 600
+			
+			
+		;第８天이벤트
+		CASE 700
+			
+		;第９天이벤트
+		CASE 800
+			
+		;第１０天이벤트
+		CASE 900
+			;마가렛戦
+			IF 이벤트フラグ:16:0 == 1 &&  던전フラグ:74:1 >= 1 && 던전フラグ:74:7 == 1
+				
+				
+				
+				
+				
+				
+				
+				
+				던전フラグ:74:7 = 2
+				
+				
+			;第１０天ボス、霧晴れる前
+			ELSEIF 던전フラグ:74:5 == 12 && 던전フラグ:74:3 == 0
+				
+				CALL DUNGEON_74_13
+			;第１０天ボス、霧晴れ後
+			ELSEIF 던전フラグ:74:5 == 11 && 던전フラグ:74:6 == 11 && 던전フラグ:74:3 == 1
+				
+				CALL DUNGEON_74_13A
+			ELSE
+				PRINTFORMW 아무도 없다……
+			ENDIF
+		CASE 901
+			
+	ENDSELECT
+ELSE
+	PRINTFORMW 아무것도 없는 것 같다
+	RETURN 0
+ENDIF
+
+;=======================================================================
+;タイル進入時の이벤트
+;=======================================================================
+@EVENT_ENTER_DUNGEON_74,ARG
+;==========
+;出입の処理
+;==========
+IF DA:(FLAG:現X):(FLAG:現Y) % 10 == 8
+	CALL DUNGEON_EXIT
+	RETURN 1
+;========
+;宝の処理
+;========
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 3
+	CALL TREASURE_74
+	RETURN RESULT
+;=======
+;階段
+;=======
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 6
+	CALL UPSTAIRS_74
+	RETURN RESULT
+
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 7
+	CALL DOWNSTAIRS_74
+	RETURN RESULT
+
+;==========
+;扉の処理
+;==========
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 2
+	CALL DUNGEON_DOOR,ARG
+	RETURN 1
+
+;========
+;이벤트
+;========
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 4
+	SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+		;第１天이벤트
+		CASE 0
+			;신사악마
+			CALL DUNGEON_74_SE_01
+		;第２天이벤트
+		CASE 100
+			
+			
+		;第３天이벤트
+		CASE 200
+			;天然서머너
+			CALL DUNGEON_74_SE_03
+		;第４天이벤트
+		CASE 300
+			;第４天、初めて入ったとき
+			IF 던전フラグ:74:5 == 1
+				
+				CALL DUNGEON_74_04
+				CALL SET_TILE, 5 , 16 , 던전フラグ:74:5 , 4 , 3001
+			ENDIF
+		;第５天이벤트
+		CASE 400
+			;악마の회화、가인系
+			CALL DUNGEON_74_SE_02
+		CASE 401
+			;第５天、初めて入ったとき
+			IF 던전フラグ:74:5 == 4
+				
+				CALL DUNGEON_74_05
+				CALL SET_TILE, 8 , 19 , 던전フラグ:74:5 , 5 , 4001
+			ENDIF
+		;第６天이벤트
+		CASE 500
+			;第６天、初めて入ったとき
+			IF 던전フラグ:74:5 == 5
+				
+				CALL DUNGEON_74_06
+				CALL SET_TILE, 2 , 4 , 던전フラグ:74:5 , 6 , 5001
+			ENDIF
+		;第７天이벤트
+		CASE 600
+			;第７天、中ボス
+			IF 던전フラグ:74:5 == 8
+				
+				CALL DUNGEON_74_09
+				
+				CALL SET_TILE, 9 , 13 , 던전フラグ:74:5 , 9 , 6001
+			ENDIF
+		CASE 601
+			;第７天、中ボス前
+			IF 던전フラグ:74:5 == 7
+				
+				CALL DUNGEON_74_08
+				CALL SET_TILE, 9 , 16 , 던전フラグ:74:5 , 8 , 6001
+			ENDIF
+		CASE 602
+			;第７天、初めて入ったとき
+			IF 던전フラグ:74:5 == 6
+				
+				CALL DUNGEON_74_07
+				CALL SET_TILE, 3 , 19 , 던전フラグ:74:5 , 7 , 6001
+			ENDIF
+		;第８天이벤트
+		CASE 700
+			;第８天到達時、霧晴れる前
+			IF 던전フラグ:74:5 == 9 && 던전フラグ:74:3 == 0
+				
+				CALL DUNGEON_74_10
+				CALL SET_TILE, 5 , 18 , 던전フラグ:74:5 , 10 , 7001
+			;第８天到達時、천상낙원進行状況（霧晴れ）、霧晴れ後、
+			ELSEIF 던전フラグ:74:6 == 1 && 던전フラグ:74:3 == 1
+				
+				CALL DUNGEON_74_10A
+				CALL SET_TILE, 5 , 18 , 던전フラグ:74:6 , 10 , 7001
+			ENDIF
+		;第９天이벤트
+		CASE 800
+			;第９天到達時、霧晴れる前
+			IF 던전フラグ:74:5 == 10 && 던전フラグ:74:3 == 0
+				
+				CALL DUNGEON_74_11
+				CALL SET_TILE, 2 , 5 , 던전フラグ:74:5 , 11 , 8001
+			;第９天到達時、천상낙원進行状況（霧晴れ）、霧晴れ後、
+			ELSEIF 던전フラグ:74:6 == 10 && 던전フラグ:74:3 == 1
+				
+				CALL DUNGEON_74_11A
+				CALL SET_TILE, 2 , 5 , 던전フラグ:74:6 , 11 , 8001
+			ENDIF
+		;第１０天이벤트
+		CASE 900
+			;마가렛戦
+			IF 이벤트フラグ:16:0 == 1 &&  던전フラグ:74:1 >= 1 && 던전フラグ:74:7 == 1
+				
+				
+				
+				
+				
+				
+				
+				
+				던전フラグ:74:7 = 2
+				
+				
+			;第１０天ボス、霧晴れる前
+			ELSEIF 던전フラグ:74:5 == 12 && 던전フラグ:74:3 == 0
+				
+				CALL DUNGEON_74_13
+			;第１０天ボス、霧晴れ後
+			ELSEIF 던전フラグ:74:6 == 12 && 던전フラグ:74:3 == 1
+				
+				CALL DUNGEON_74_13A
+			ELSE
+				PRINTFORMW 아무도 없다……
+			ENDIF
+		CASE 901
+			;第１０天到達時、霧晴れる前
+			IF 던전フラグ:74:5 == 11 && 던전フラグ:74:3 == 0
+				
+				CALL DUNGEON_74_12
+				CALL SET_TILE, 4 , 9 , 던전フラグ:74:5 , 12 , 9001
+			;第１０天到達時、천상낙원進行状況（霧晴れ）、霧晴れ後、
+			ELSEIF 던전フラグ:74:6 == 11 && 던전フラグ:74:3 == 1
+				
+				CALL DUNGEON_74_12A
+				CALL SET_TILE, 4 , 9 , 던전フラグ:74:6 , 12 , 9001
+			ENDIF
+			
+			
+	ENDSELECT
+ENDIF
+RETURN 0
+
+;=======================================================================
+;エンカウント率
+;=======================================================================
+@ENCOUNT_RATE_74
+SELECTCASE FLAG:現M
+	CASE 0 , 1 , 2 , 3 , 4 , 5 , 6 , 7 , 8
+		FLAG:エンカウント率 = FLAG:未遭遇歩数 * 5
+	CASE 9
+		FLAG:エンカウント率 = 0
+	CASEELSE
+		FLAG:エンカウント率 = FLAG:未遭遇歩数 * 5
+ENDSELECT
+SIF FLAG:未遭遇歩数 < 5
+	FLAG:エンカウント率 = 0
+;=======================================================================
+;필요레벨눈安
+;권장LV 雑물고기최저LV 雑물고기最高LV ボスLV 
+;=======================================================================
+@GET_DUNGEON_LV_74
+RETURN 45, 41, 50, 55
+;=======================================================================
+;エンカウント処理
+;=======================================================================
+@CHECK_ENCOUNT_74
+IF RAND:100 < FLAG:エンカウント率
+	CALL ENEMY_TABLE
+	RETURN 1
+ELSE
+	FLAG:未遭遇歩数 += 1
+	RETURN 0
+ENDIF
+;=======================================================================
+;적の종족の종류数
+;RETURN X でXが종류の数になります
+;あまりいろんなのが混ざっているとCOOPがとりにくくなったり
+;적の공격속성が多くなる傾向にあるので、
+;종류の数は1・2종류を主体に時々3종류くらいを기본にするのが望ましいと思われます
+;=======================================================================
+@CLASS_NUM_74
+SELECTCASE FLAG:現M
+	CASE 0 , 1
+		SELECTCASE RAND:100
+			CASE IS < 50
+				RETURN 1
+			CASEELSE
+				RETURN 2
+		ENDSELECT
+	CASE 2 , 3
+		SELECTCASE RAND:100
+			CASE IS < 70
+				RETURN 1
+			CASEELSE
+				RETURN 2
+		ENDSELECT
+	CASE 4 , 5
+		SELECTCASE RAND:100
+			CASE IS < 60
+				RETURN 1
+			CASE IS < 80
+				RETURN 2
+			CASEELSE
+				RETURN 3
+		ENDSELECT
+	CASE 6 , 7
+		SELECTCASE RAND:100
+			CASE IS < 70
+				RETURN 2
+			CASEELSE
+				RETURN 3
+		ENDSELECT
+	CASE 8
+		SELECTCASE RAND:100
+			CASE IS < 50
+				RETURN 2
+			CASEELSE
+				RETURN 3
+		ENDSELECT
+ENDSELECT
+
+;=======================================================================
+;적の総数
+;ARGは出現する적の종류です
+;RAND(X, Y)はX～Y-1のうち중 하나になるRANDです
+;なお、ここで帰った数字は下限を종족数、上限を10として自動的に調整されます
+;=======================================================================
+@ENEMY_NUM_74, ARG
+SELECTCASE FLAG:現M
+	CASE 0 , 1 
+		RETURN RAND(ARG, ARG*2+1)
+	CASE 2 , 3 , 4 , 5 , 6
+		RETURN RAND(ARG, ARG*2+2)
+	CASE 7 , 8
+		RETURN RAND(ARG, ARG*2+3)
+ENDSELECT
+;=======================================================================
+;적の종류
+;=======================================================================
+@ENEMY_74, ARG
+SELECTCASE FLAG:現M
+	CASE 0 , 1
+		SELECTCASE RAND:100
+			CASE IS < 20
+				RETURN [[キャラ:비비안]],41
+			CASE IS < 30
+				RETURN [[キャラ:비비안]],42
+			CASE IS < 50
+				RETURN [[キャラ:버쳐]],42
+			CASE IS < 60
+				RETURN [[キャラ:버쳐]],43
+			CASE IS < 70
+				RETURN [[キャラ:도미니온]],42
+			CASE IS < 80
+				RETURN [[キャラ:도미니온]],43
+			CASE IS < 95
+				RETURN [[キャラ:드라이테키]],42
+			CASE IS < 100
+				RETURN [[キャラ:드라이테키]],43
+		ENDSELECT
+	CASE 2 , 3
+		SELECTCASE RAND:100
+			CASE IS < 20
+				RETURN [[キャラ:버쳐]],43
+			CASE IS < 30
+				RETURN [[キャラ:버쳐]],44
+			CASE IS < 50
+				RETURN [[キャラ:도미니온]],43
+			CASE IS < 60
+				RETURN [[キャラ:도미니온]],44
+			CASE IS < 70
+				RETURN [[キャラ:미노타4호]],41
+			CASE IS < 80
+				RETURN [[キャラ:미노타4호]],42
+			CASE IS < 95
+				RETURN [[キャラ:드라이테키]],42
+			CASE IS < 100
+				RETURN [[キャラ:드라이테키]],43
+			ENDSELECT
+	CASE 4 , 5
+		SELECTCASE RAND:100
+			CASE IS < 20
+				RETURN [[キャラ:모리안]],47
+			CASE IS < 30
+				RETURN [[キャラ:알마티]],46
+			CASE IS < 50
+				RETURN [[キャラ:미노타4호]],42
+			CASE IS < 60
+				RETURN [[キャラ:미노타4호]],43
+			CASE IS < 70
+				RETURN [[キャラ:천계의페세]],45
+			CASE IS < 80
+				RETURN [[キャラ:천계의페세]],46
+			CASE IS < 90
+				RETURN [[キャラ:드라이테키]],43
+			CASE IS < 100
+				RETURN [[キャラ:드라이테키]],44
+		ENDSELECT
+	CASE 6 , 7
+		SELECTCASE RAND:100
+			CASE IS < 20
+				RETURN [[キャラ:모리안]],47
+			CASE IS < 30
+				RETURN [[キャラ:모리안]],48
+			CASE IS < 50
+				RETURN [[キャラ:알마티]],46
+			CASE IS < 60
+				RETURN [[キャラ:알마티]],47
+			CASE IS < 75
+				RETURN [[キャラ:천계의페세]],46
+			CASE IS < 85
+				RETURN [[キャラ:천계의페세]],47
+			CASE IS < 99
+				RETURN [[キャラ:심판의검]],48
+			CASE IS < 100
+				;霧晴れてる、비ー자갈의성は레어にしておく
+				IF 던전フラグ:74:3 == 1
+					RETURN [[キャラ:비ー자갈의성]],49
+				ELSE
+					RETURN [[キャラ:심판의검]],49
+				ENDIF
+		ENDSELECT
+	CASE 8
+		SELECTCASE RAND:100
+			CASE IS < 15
+				RETURN [[キャラ:모리안]],48
+			CASE IS < 25
+				RETURN [[キャラ:모리안]],49
+			CASE IS < 40
+				RETURN [[キャラ:알마티]],47
+			CASE IS < 55
+				RETURN [[キャラ:알마티]],48
+			CASE IS < 60
+				RETURN [[キャラ:천계의페세]],21
+			CASE IS < 70
+				RETURN [[キャラ:천계의페세]],22
+			CASE IS < 80
+				RETURN [[キャラ:피의헤카톤케이르]],21
+			CASE IS < 88
+				RETURN [[キャラ:피의헤카톤케이르]],22
+			CASE IS < 99
+				RETURN [[キャラ:심판의검]],49
+			CASE IS < 100
+				;霧晴れてる、비ー자갈의성は레어にしておく
+				IF 던전フラグ:74:3 == 1
+					RETURN [[キャラ:비ー자갈의성]],50
+				ELSE
+					RETURN [[キャラ:심판의검]],50
+				ENDIF
+		ENDSELECT
+ENDSELECT
+;=======================================================================
+;宝箱の中身
+;=======================================================================
+@TREASURE_74
+#LOCALSIZE 3
+LOCAL = FLAG:現M + 70
+LOCAL:1 = (DA:(FLAG:現X):(FLAG:現Y) / 10) % 100
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+	;マップ번호*100+そのマップで何番눈の宝箱かを示す数値でどの宝箱かを判別します。
+	;例えば0の場合、0版のマップの0番눈の宝箱であることを表しています。
+	;第１天
+	CASE 0
+		CALL GET_TREASURE, [[아이템:스킬카드【몽견침】]] , 1 , FLAG:現던전, LOCAL , LOCAL:1
+	;第２天
+	CASE 100
+		CALL GET_TREASURE, [[아이템:마반경]] , 1 , FLAG:現던전, LOCAL , LOCAL:1
+	CASE 101
+		CALL GET_TREASURE, [[아이템:선행의돌]] , 1 , FLAG:現던전, LOCAL , LOCAL:1
+	;第３天
+	;CASE 200
+		
+	;第４天
+	CASE 300
+		CALL GET_TREASURE, [[아이템:반혼향]] , 1 , FLAG:現던전, LOCAL , LOCAL:1
+	CASE 301
+		CALL GET_TREASURE, [[아이템:질서의돌]] , 1 , FLAG:現던전, LOCAL , LOCAL:1
+	;第５天
+	CASE 400
+		CALL GET_TREASURE_MONEY, 1 , 300 , FLAG:現던전, LOCAL , LOCAL:1
+	;第６天
+	CASE 500
+		CALL GET_TREASURE, [[아이템:스킬카드【데스바운드】]] , 1 , FLAG:現던전, LOCAL , LOCAL:1
+	CASE 501
+		CALL GET_TREASURE, [[아이템:질서의돌]] , 1 , FLAG:現던전, LOCAL , LOCAL:1
+	;第７天
+	CASE 600
+		CALL GET_TREASURE, [[아이템:선행의돌]] , 1 , FLAG:現던전, LOCAL , LOCAL:1
+	;第８天
+	CASE 700
+		CALL GET_TREASURE, [[아이템:스킬카드【하마온】]] , 1 , FLAG:現던전, LOCAL , LOCAL:1
+	CASE 701
+		CALL GET_TREASURE, [[아이템:마력의향]] , 1 , FLAG:現던전, LOCAL , LOCAL:1
+	;第９天
+	;CASE 800
+		
+ENDSELECT
+RETURN 1
+;=======================================================================
+;階段置き場
+;=======================================================================
+;上り階段処理
+@UPSTAIRS_74
+;SELECTCASE DA:(FLAG:現X):(FLAG:現Y) /10
+;	;IDで分岐
+;	;１Ｆ上り階段
+;	CASE 0
+;			;@DUNGEON_UPSTAIRS_ID , 階段を進んだ先のマップ번호 , 移動先のタイルのID
+;			;２Ｆ＝マップ번호1番の0番눈の下り階段 = 1 * 1000 + 0 * 10 + 7 = 1007へと飛ぶ
+;			CALL DUNGEON_UPSTAIRS_ID, 1 , 1007
+;	CASE 100
+;			CALL DUNGEON_UPSTAIRS_ID, 2 , 2007
+;	CASE 200
+;			CALL DUNGEON_UPSTAIRS_ID, 3 , 3007
+;	CASE 300
+;			CALL DUNGEON_UPSTAIRS_ID, 4 , 4007
+;	CASEELSE
+;ENDSELECT
+
+;入り組んだ던전で階段がたくさん入り乱れている상태であれば、上記のように階段毎に指定してあげる필요があります。
+;しかしこの에코빌딩は1つのマップに上り階段が１つ、下り階段が１つ、上の階に進む＝マップ번호が一つ増えるという구조になっています
+;なので、下記のように書けば一行で済みます
+CALL DUNGEON_UPSTAIRS_ID, FLAG:現M+1 , (FLAG:現M + 1) * 1000 + 7
+RETURN 1
+
+;下り階段処理
+@DOWNSTAIRS_74
+;上り階段同様に、에코빌딩は下り階段も1行で記述できます
+CALL DUNGEON_DOWNSTAIRS_ID, FLAG:現M-1 , (FLAG:現M - 1) * 1000 + 6
+RETURN 1
+;=======================================================================
+;特殊調整
+;=======================================================================
+@SET_ENEMY_STATUS_74, ARG
+IF ABL:ARG:종족 == 32
+	SELECTCASE RAND:100
+		CASE IS < 40
+			ABL:ARG:아이템3 = GETNUM(ITEM, "납메달")
+		CASE IS < 60
+			ABL:ARG:아이템3 = GETNUM(ITEM, "강철메달")
+		CASE IS < 80
+			ABL:ARG:아이템3 = GETNUM(ITEM, "은메달")
+		CASE IS < 95
+			ABL:ARG:아이템3 = GETNUM(ITEM, "금메달")
+		CASEELSE
+			ABL:ARG:아이템3 = GETNUM(ITEM, "백금메달")
+	ENDSELECT
+	ABL:ARG:입수확률3 = ITEM:(ABL:ARG:아이템3) >= 10 ? 0 # 10
+ENDIF
+;=======================================================================
+;윤간참가악마
+;=======================================================================
+@DUNGEON_RAPE_DEVIL_74
+;랜덤にどの악마が出るか決定
+;RETURN CSV번호 , 人数 , 레벨
+SELECTCASE RAND:5
+	CASE 0
+		RETURN [[キャラ:도미니온]] , 3 + RAND:10 , CSVBASE([[キャラ:도미니온]] , GETNUM(BASE , "LV") , 0) + RAND:3
+	CASE 1
+		RETURN [[キャラ:미노타4호]] , 3 + RAND:10 , CSVBASE([[キャラ:미노타4호]] , GETNUM(BASE , "LV") , 0) + RAND:3
+	CASE 2
+		RETURN [[キャラ:피의헤카톤케이르]] , 3 + RAND:10 , CSVBASE([[キャラ:피의헤카톤케이르]] , GETNUM(BASE , "LV") , 0) + RAND:3
+	CASE 3
+		;霧晴れてる
+		IF 던전フラグ:74:3 == 1
+			RETURN [[キャラ:비ー자갈의성]] , 3 + RAND:10 , CSVBASE([[キャラ:비ー자갈의성]] , GETNUM(BASE , "LV") , 0) + RAND:3
+		ELSE
+			RETURN [[キャラ:심판의검]] , 3 + RAND:10 , CSVBASE([[キャラ:심판의검]] , GETNUM(BASE , "LV") , 0) + RAND:3
+		ENDIF
+	CASE 4
+		RETURN [[キャラ:심판의검]] , 3 + RAND:10 , CSVBASE([[キャラ:심판의검]] , GETNUM(BASE , "LV") , 0) + RAND:3
+ENDSELECT
+
+
+;==================================================================
+;이벤트
+;==================================================================
+;------------------------------------------------------------------
+;던전突入時の이벤트
+;初回
+;------------------------------------------------------------------
+@DUNGEON_74_FE
+
+;パーティに健在な나나코の知り合いが何人いるかを測定しておく。
+CALL DUNGEON_74_PT_NF
+
+PRINTFORML 　
+PRINTFORMW 곰이 가르쳐준 길을 따라가본 곳에는 아름다운 꽃들로 장식된 새하얀 문이 있엇다。
+PRINTFORML 　
+;유키코がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:유키코]]) == 2
+	PRINTFORMW 「여기가、나나코의……。」
+	PRINTFORML 　
+ENDIF
+;칸지がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:칸지]]) == 2
+	PRINTFORMW 「이건……。」
+	PRINTFORML 　
+ENDIF
+;요스케がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:요스케]]) == 2
+	PRINTFORMW 「천국……같군…。」
+	PRINTFORML 　
+ENDIF
+;치에がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:치에]]) == 2
+	PRINTFORMW 「역시、외로웠던 걸까……。」
+	PRINTFORML 　
+ENDIF
+PRINTFORMW 사별했다는 나나코의 모친。
+PRINTFORMW 어머니를 보고싶어하는 외로운 마음이 이 장소를 만들어낸 것인가？
+PRINTFORML 　
+;나나코の知り合い何人いるかフラグ１（知り合いが一人きてる。）
+IF 던전フラグ:74:2 == 1
+	;P4주인공がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+		PRINTFORMW 「……힘을 빌려줘。」
+		PRINTFORMW %CALLNAME:(FINDCHARA(NO, [[キャラ:P4주인공]]))%이 건내는 말을 들으며 문을 향해 걸어간다……
+	ELSE
+		PRINTFORMW 나나코를 걱정하는 말을 들으며 문을 향해 걸어간다……
+	ENDIF
+;나나코の知り合い何人いるかフラグ２이상（知り合いが二人이상きてる。）
+ELSEIF 던전フラグ:74:2 >= 2
+	;P4주인공がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+		PRINTFORMW 「……힘을 빌려줘。」
+		PRINTFORMW 나나코를 걱정하는 %CALLNAME:(FINDCHARA(NO, [[キャラ:P4주인공]]))%와 모두의 말을 들으며 문을 향해 걸어간다……
+	ELSE
+		PRINTFORMW 나나코를 걱정하는 모두의 말을 들으며 문을 향해 걸어간다……
+	ENDIF
+;それ以外（知り合いが一人もきていない。）
+ELSE
+	PRINTFORMW 천국처럼 보이는 장소……。
+	PRINTFORMW 그렇다고해도 방심할 수는 없다。
+	PRINTFORMW 주위의 분위기에 휩쓸리지 않도록 주의하면서 문을 향해 걸어간다……
+ENDIF
+
+;천상낙원進行状況、突入이벤트済み
+던전フラグ:74:5 = 1
+
+;------------------------------------------------------------------
+;곰加入이벤트
+;곰섀도우戦とか無視して無理矢理加入
+;誰かが作ったら、そっち優先で
+;------------------------------------------------------------------
+@DUNGEON_74_ADD_KUMA
+CUSTOMDRAWLINE =
+PRINTFORML 　
+PRINTFORML 　
+PRINTFORMW 　
+PRINTFORMW 「자암ーーーーーー까안、기다려곰！！」
+PRINTFORMW 이제 막 출발하려고 발을 내딛은 %CALLNAME:MASTER% 일행의 뒤쪽에서 소란스런 목소리가 울려퍼졌다。
+PRINTFORMW 그 뒤를 이어、독특한 발소리를 내며 달려온 것은 전체적으로 동글동글한 모양의 분장인형……곰이었다。
+PRINTFORML 　
+;치에がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:치에]]) == 2
+	PRINTFORMW 「앗、곰군！」
+	PRINTFORML 　
+;유키코がパーティメンバーにいる。
+ELSEIF FINDCHARA_B([[キャラ:유키코]]) == 2
+	PRINTFORMW 「곰씨？」
+	PRINTFORML 　
+;요스케がパーティメンバーにいる。
+ELSEIF FINDCHARA_B([[キャラ:요스케]]) == 2
+	PRINTFORMW 「앗！　곰이잖아。」
+	PRINTFORML 　
+ENDIF
+;칸지がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:칸지]]) == 2
+	PRINTFORMW 「곰 녀석、뭐하러 온걸까요？」
+	PRINTFORML 　
+ENDIF
+PRINTFORMW 「나나코를 구하는 데、곰을 빼놓고 가다니 너무해곰！」
+PRINTFORMW 「곰도 같이 갈거야곰！」
+;요스케がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:요스케]]) == 2
+	PRINTFORML 　
+	PRINTFORMW 「아니 같이 가겠다고 해도、넌 싸울 수 없잖아？」
+	PRINTFORML 　
+;유키코がパーティメンバーにいる。
+ELSEIF FINDCHARA_B([[キャラ:유키코]]) == 2
+	PRINTFORML 　
+	PRINTFORMW 「……위험하다구？」
+	PRINTFORML 　
+;치에がパーティメンバーにいる。
+ELSEIF FINDCHARA_B([[キャラ:치에]]) == 2
+	PRINTFORML 　
+	PRINTFORMW 「같이 가겠다니……위험하지 않을까？」
+	PRINTFORML 　
+ELSE
+	PRINTFORMW 나나코의 위기에 앞뒤재지않고 달려든 곰이었지만、전력으로 삼기엔 어려워보인다。
+	PRINTFORML 　
+ENDIF
+PRINTFORMW 「……훗훗후。」
+PRINTFORMW 미적지근한 일행들의 시선을 외면하고、어색하게 웃으면서 곰은 인형옷의 지퍼를 열었다。
+PRINTFORML 　
+PRINTFORMW 요스케로부터 들은바에 따르면、저 인형옷의 안쪽은 텅 비어있다고 했을터……
+PRINTFORML 　
+PRINTFORMW 「짜잔ー！」
+PRINTFORMW 씩씩한 등장음과 함께 인형옷의 머리부분이 떨어져나가고、그 안이 드러난다。
+PRINTFORMW 나타난것은 금발벽안의 미소년이었다……
+PRINTFORML 　
+PRINTFORMW 전라의……
+PRINTFORML 　
+;요스케がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:요스케]]) == 2
+	PRINTFORMW 「아니 너……안은 텅 비었던 게……。」
+	PRINTFORML 　
+ENDIF
+;치에がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:치에]]) == 2
+	PRINTFORMW 「거、거짓말……。」
+	PRINTFORML 　
+ENDIF
+;유키코がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:유키코]]) == 2
+	PRINTFORMW 「고、곰씨……인거야？」
+	PRINTFORML 　
+ENDIF
+PRINTFORMW 「곰은、선생님들을 돕고 싶어서……나나코를 구하기위해서、열심히 노력했어곰！」
+PRINTFORMW 「그랬더니、속이 있는 곰이 된거야곰！」
+PRINTFORML 　
+;칸지がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:칸지]]) == 2
+	PRINTFORMW 「안에…“인간”이 생겨난거냐？」
+	PRINTFORML 　
+ENDIF
+;요스케がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:요스케]]) == 2
+	PRINTFORMW 「엄청난데ー。」
+	PRINTFORML 　
+ENDIF
+PRINTFORMW 「페르소나도 쓸 수 있으니까、같이 갈 수 있어곰！」
+;나나코の知り合い何人いるかフラグ１（知り合いが一人きてる。）
+IF 던전フラグ:74:2 == 1
+;치에か유키코がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:치에]]) == 2 || FINDCHARA_B([[キャラ:유키코]]) == 2
+		PRINTFORM 전라인 채로、어때 대단하지라고 얼굴로 말하며 가슴을 쭉 편 곰에게 
+		IF FINDCHARA_B([[キャラ:치에]]) == 2
+			PRINTFORM 치에
+		ELSEIF FINDCHARA_B([[キャラ:유키코]]) == 2
+			PRINTFORM 유키코
+		ENDIF
+		PRINTFORMW 는 얼굴을 붉히고 외면했다……
+	ELSE
+		PRINTFORM 전라인 채로、어때 대단하지라고 얼굴로 말하며 가슴을 쭉 편 곰에게 
+		CALL DUNGEON_74_PT_NAME
+		PRINTFORMW 는 기가막힌 표정을 지었다……
+	ENDIF
+;나나코の知り合い何人いるかフラグ２이상（知り合いが二人이상きてる。）
+ELSEIF 던전フラグ:74:2 >= 2
+;치에か유키코がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:치에]]) == 2 ||FINDCHARA_B([[キャラ:유키코]]) == 2
+		PRINTFORM 전라인 채로、어때 대단하지라고 얼굴로 말하고있는 곰에게 
+		IF FINDCHARA_B([[キャラ:치에]]) == 2 && FINDCHARA_B([[キャラ:유키코]]) == 2
+			PRINTFORM 치에와 유키코
+		ELSEIF FINDCHARA_B([[キャラ:치에]]) == 2
+			PRINTFORM 치에
+		ELSEIF FINDCHARA_B([[キャラ:유키코]]) == 2
+			PRINTFORM 유키코
+		ENDIF
+		PRINTFORMW 는 얼굴을 붉히며 외면했다……
+	ELSE
+		PRINTFORM 전라인 채로、어때 대단하지라고 얼굴로 말하며 가슴을 쭉 편 곰에게 
+		CALL DUNGEON_74_PT_NAME
+		PRINTFORMW 일행은 기가막힌 표정을 지었다……
+	ENDIF
+;それ以外（知り合いが一人もきていない。）
+ELSE
+	PRINTFORMW 전라인채로、어때 대단하지라고 얼굴로 말하며 가슴을 쭉 편 곰을 보고있자니 머리가 아파온다……
+ENDIF
+PRINTFORML 　
+PRINTFORMW 「선생님！　앞으로 잘부탁해곰！」
+PRINTFORMW 곰이 중마로 들어왔다。
+PRINTFORML 　
+PRINTFORMW 여유가 있다면、곰의 준비를 위해서 돌아가는것도 괜찮을 지 모르겠다……
+PRINTFORML 　
+
+CALL ADD_NEW_COMPANION, 4567, 1000
+;전투참가가능で加入するが、조교で전투참가불가능になる
+SIF RESULT
+	CFLAG:(RESULT:1):전투참가불가능 = -1
+
+;------------------------------------------------------------------
+;霧が晴れているとき
+;------------------------------------------------------------------
+@DUNGEON_74_SE
+
+;パーティに健在な나나코の知り合いが何人いるかを測定しておく。
+CALL DUNGEON_74_PT_NF
+
+PRINTFORMW 나나코를 찾기 위하여、천상낙토를 방문한 것은 몇번째일까？
+PRINTFORMW 처음 찾아왔을 때는 짙었던 안개가、주위의 경관이 확연하게 보일만큼 옅어져있다。
+PRINTFORML 　
+;유키코がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:유키코]]) == 2
+	PRINTFORMW 「안개가 옅어졌네……。」
+	;칸지がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:칸지]]) == 2
+		PRINTFORML 　
+		PRINTFORMW 「안개가 걷어지면 섀도우가 더 날뛰는것같지요？」
+		;곰がパーティメンバーにいる。4567
+		IF FINDCHARA_B([[キャラ:곰]]) == 2
+			PRINTFORMW 「그래곰！」
+			PRINTFORML 　
+		ENDIF
+		;치에がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:치에]]) == 2
+			PRINTFORML 　
+			PRINTFORMW 「서두르지않으면、나나코가！」
+		ELSE
+			PRINTFORML 　
+			PRINTFORMW 「그렇네……서둘러야겠어！」
+		ENDIF
+	;치에がパーティメンバーにいる。
+	ELSEIF FINDCHARA_B([[キャラ:치에]]) == 2
+		PRINTFORMW 「안개가 걷어지면 안되는거지？」
+		PRINTFORML 　
+		PRINTFORMW 「그래……서둘러야겠어！」
+	ELSE
+		PRINTFORMW 「맑아지면 나나코가……。　서두르자！」
+	ENDIF
+	PRINTFORML 　
+;요스케がパーティメンバーにいる。
+ELSEIF FINDCHARA_B([[キャラ:요스케]]) == 2
+	PRINTFORMW 「안개가……옅어졌군……。」
+	;칸지がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:칸지]]) == 2
+		PRINTFORML 　
+		PRINTFORMW 「안개가 개이면 섀도우가 날뛰게 되지요？」
+		;곰がパーティメンバーにいる。4567
+		IF FINDCHARA_B([[キャラ:곰]]) == 2
+			PRINTFORMW 「그래곰！」
+			PRINTFORML 　
+		ENDIF
+		;치에がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:치에]]) == 2
+			PRINTFORML 　
+			PRINTFORMW 「서두르지않으면、나나코가！」
+		ELSE
+			PRINTFORML 　
+			PRINTFORMW 「위험한데……。　서두르자！」
+		ENDIF
+	;치에がパーティメンバーにいる。
+	ELSEIF FINDCHARA_B([[キャラ:치에]]) == 2
+		PRINTFORML 　
+		PRINTFORMW 「얼른 가지않으면、나나코가！」
+	ELSE
+		PRINTFORMW 「섀도우가 날뛰기 전에 어서 끝내도록하자！」
+	ENDIF
+	PRINTFORML 　
+;치에がパーティメンバーにいる。
+ELSEIF FINDCHARA_B([[キャラ:치에]]) == 2
+	PRINTFORMW 「안개、제법 옅어졌어……。」
+	;칸지がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:칸지]]) == 2
+		PRINTFORML 　
+		PRINTFORMW 「안개가 걷히면 섀도우가 날뛰는거죠？」
+		PRINTFORML 　
+		;곰がパーティメンバーにいる。4567
+		IF FINDCHARA_B([[キャラ:곰]]) == 2
+			PRINTFORMW 「그래곰！　이제、그다지 시간이 없어곰！」
+		ELSE
+			PRINTFORMW 「그렇지……、어서 가자！」
+		ENDIF
+	ELSE
+		PRINTFORMW 「서두르지 않으면、나나코가 위험해！」
+	ENDIF
+	PRINTFORML 　
+;칸지がパーティメンバーにいる。
+ELSEIF FINDCHARA_B([[キャラ:칸지]]) == 2
+	PRINTFORMW 「안개……제법 옅어졌네요……。」
+	;곰がパーティメンバーにいる。4567
+	IF FINDCHARA_B([[キャラ:곰]]) == 2
+		PRINTFORML 　
+		PRINTFORMW 「이제、시간이 얼마 없어곰……。」
+		PRINTFORML 　
+	ENDIF
+	PRINTFORMW 「좋-아、섀도우가 날뛰기 전에 다 끝장내주마！」
+	PRINTFORML 　
+;곰がパーティメンバーにいる。4567
+ELSEIF FINDCHARA_B([[キャラ:곰]]) == 2
+	PRINTFORMW 「선생님！　이제、시간이 얼마 없어곰……。」
+	PRINTFORMW 「서두르지 않으면 나나코가 위험해곰！」
+	PRINTFORML 　
+ENDIF
+;나나코の知り合い何人いるかフラグ１（知り合いが一人きてる。）
+IF 던전フラグ:74:2 == 1
+	;P4주인공がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+		PRINTFORMW 곰의 이야기에 의하면 안개가 완전히 걷히게 되면、섀도우가 날뛰기 시작한다는듯 하다。
+		PRINTFORML 　
+		PRINTFORMW 「…………큭！」
+		PRINTFORM 옅어진 안개에 초조함을 보이는
+		CALL DUNGEON_74_PT_NAME
+		PRINTFORMW 와 함께 전진했다……
+	ELSE
+		PRINTFORM 옅어진 안개에 초조함을 보이는
+		CALL DUNGEON_74_PT_NAME
+		PRINTFORMW 와 함께 전진했다……
+	ENDIF
+;나나코の知り合い何人いるかフラグ２이상（知り合いが二人이상きてる。）
+ELSEIF 던전フラグ:74:2 >= 2
+	;P4주인공がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+		PRINTFORMW 「…………큭！」
+		PRINTFORM 옅어진 안개에 초조함을 보이는
+		CALL DUNGEON_74_PT_NAME
+		PRINTFORM 와 함께 전진했다……
+	ELSE
+		PRINTFORM 옅어진 안개에 초조함을 보이는
+		CALL DUNGEON_74_PT_NAME
+		PRINTFORMW 와 함께 전진했다……
+	ENDIF
+;それ以外（知り合いが一人もきていない。）
+ELSE
+	PRINTFORMW 곰의 이야기에 의하면 안개가 완전히 사라지면、섀도우가 날뛰기 시작한다는듯하다。
+	PRINTFORMW 지금 헤매고 있는 순간에도 조금씩 안개가 거두어지고 있는 느낌이 든다。……
+ENDIF
+
+;천상낙원進行状況（霧晴れ）、突入이벤트済み
+던전フラグ:74:6 = 1
+
+;------------------------------------------------------------------
+;第４天、初めて入ったとき
+;------------------------------------------------------------------
+@DUNGEON_74_04
+
+;パーティに健在な나나코の知り合いが何人いるかを測定しておく。
+CALL DUNGEON_74_PT_NF
+
+PRINTFORMW 어린 아이의 목소리가 들린다……
+PRINTFORML 　
+PRINTFORMW 「엄마……。」
+;유키코がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:유키코]]) == 2
+	PRINTFORML 　
+	PRINTFORMW 「이 목소리……、나나코！？」
+	PRINTFORML 　
+	PRINTFORMW 「엄마……。」
+ENDIF
+
+PRINTFORMW 「어디에 있는거야……。」
+PRINTFORML 　
+PRINTFORMW 「왜 사라져버린거야……。」
+PRINTFORMW 「어째서 나나코를 버리고 간거야……。」
+PRINTFORML 　
+PRINTFORMW 「싫어……돌아와줘……。」
+PRINTFORML 　
+;치에がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:치에]]) == 2
+	PRINTFORMW 「나나코의……마음 속에 있던、소리일까……」
+	PRINTFORML 　
+ELSE
+	PRINTFORML 　
+ENDIF
+PRINTFORMW 「그래도、외롭지않아……。　아빠가 있으니까……。」
+PRINTFORML 　
+PRINTFORMW 「항상、집에 돌아오는게 늦지만……。」
+PRINTFORMW 「바쁘다고、놀아주지도 않지만……。」
+PRINTFORML 　
+PRINTFORMW 「밥도 해주지않고、빨래도 잘 못하지만……。」
+PRINTFORML 　
+PRINTFORMW 「상냥하기도 하고、가끔은 혼을 내기도 하지만……。」
+PRINTFORMW 「아빠、좋아해……。」
+PRINTFORML 　
+;;P4주인공が仲間にいる
+IF FINDCHARA_B([[キャラ:P4주인공]]) >= 1
+	;;P4주인공が協힘者포지션、조교한다と전투참가불가に
+	IF CFLAG:GETCHARA([[キャラ:P4주인공]]):전투참가불가능 == -1
+		PRINTFORMW 「오늘은 오빠도 있으니까……。」
+		PRINTFORMW 「나나코、혼자가 아니야……。」
+		PRINTFORML 　
+	;P4주인공が전투참가가능＝조교함락済み
+	ELSEIF CFLAG:GETCHARA([[キャラ:P4주인공]]):전투참가불가능 == 0
+		;P4주인공が조교されてるときは表向きは帰ったという感じ？
+		PRINTFORMW 「오빠……돌아가버렸지만……。」
+		PRINTFORML 　
+	ENDIF
+ELSE
+	;P4주인공がいないときは表向きは帰ったという感じ？
+	PRINTFORMW 「오빠……돌아가버렸지만……。」
+	PRINTFORML 　
+ENDIF
+PRINTFORMW 「외롭거나 하지않아……。」
+PRINTFORML 　
+;칸지がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:칸지]]) == 2
+	PRINTFORMW 「아직 어린데도、외롭지 않다고、스스로에게 들려보이면서、버티고있는거군요……。」
+	PRINTFORML 　
+	;요스케がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:요스케]]) == 2
+		PRINTFORMW 「바보、우리가 침울해져서 어떻게해。　평소대로 대해주라고。」
+		PRINTFORML 　
+	ENDIF
+;요스케がパーティメンバーにいる。
+ELSEIF FINDCHARA_B([[キャラ:요스케]]) == 2
+	PRINTFORMW 「쥬네스에 왔을때는 즐거워보였지만……、역시 외로웠던걸까……。」
+	PRINTFORML 　
+ENDIF
+;곰がパーティメンバーにいる。4567
+IF FINDCHARA_B([[キャラ:곰]]) == 2
+	PRINTFORMW 「나나코……。」
+	PRINTFORML 　
+ENDIF
+PRINTFORML 　
+;나나코の知り合い何人いるかフラグ１（知り合いが一人きてる。）
+IF 던전フラグ:74:2 == 1
+	;P4주인공がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+		PRINTFORM 나나코의 본심을 듣고 침울해하는
+		CALL DUNGEON_74_PT_NAME
+		PRINTFORMW 들을 격려하며 앞으로 나아갔다……
+	ELSE
+		PRINTFORM 나나코의 본심을 듣고 침울해하는
+		CALL DUNGEON_74_PT_NAME
+		PRINTFORMW 들을 격려하며 앞으로 나아갔다……
+	ENDIF
+;나나코の知り合い何人いるかフラグ２이상（知り合いが二人이상きてる。）
+ELSEIF 던전フラグ:74:2 >= 2
+	;P4주인공がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+		PRINTFORM 나나코의 본심을 듣고 침울해하는
+		CALL DUNGEON_74_PT_NAME
+		PRINTFORMW 들을 격려하며 앞으로 나아갔다……
+	ELSE
+		PRINTFORM 나나코의 본심을 듣고 침울해하는
+		CALL DUNGEON_74_PT_NAME
+		PRINTFORMW 들을 격려하며 앞으로 나아갔다……
+	ENDIF
+;それ以外（知り合いが一人もきていない。）
+ELSE
+	PRINTFORMW 일단 상황을 보아 나나코는 아직 무사한것같다。
+	PRINTFORMW 그러나、앞으로 어떻게 될 지는 알 수 없다。　서두르도록 하자……
+ENDIF
+
+;천상낙원進行状況、第４天
+던전フラグ:74:5 = 4
+
+;------------------------------------------------------------------
+;第５天、初めて入ったとき
+;------------------------------------------------------------------
+@DUNGEON_74_05
+PRINTFORMW 어디에선지도 모르게 남자의 목소리가 들려온다……
+PRINTFORML 　
+PRINTFORMW 「아……아니야……。」
+PRINTFORMW 「아니라고……。」
+PRINTFORML 　
+PRINTFORMW 「그저 조용하게 지내고 싶었어」
+PRINTFORMW 「그것뿐이었다고……。」
+PRINTFORML 　
+PRINTFORMW 그것을 마지막으로 남자의 목소리는 들리지않는다……。
+PRINTFORMW 이것이、범인……나마타메의 목소리인가？
+
+;천상낙원進行状況、第５天
+던전フラグ:74:5 = 5
+
+
+;------------------------------------------------------------------
+;第６天、初めて入ったとき
+;------------------------------------------------------------------
+@DUNGEON_74_06
+
+;パーティに健在な나나코の知り合いが何人いるかを測定しておく。
+CALL DUNGEON_74_PT_NF
+
+PRINTFORMW 어디선지모르게 나마타메의 목소리가 들려온다……
+PRINTFORML 　
+PRINTFORMW 「이곳은 좋군……。」
+PRINTFORMW 「고요하고……。」
+PRINTFORML 　
+PRINTFORMW 「…………。」
+PRINTFORML 　
+PRINTFORMW 「여기서 지내고 싶었어……。」
+PRINTFORMW 「같이 이곳에서……。」
+PRINTFORML 　
+PRINTFORML 　
+;칸지がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:칸지]]) == 2
+	PRINTFORMW 「같이라니……나나코랑……이란걸까요？」
+	PRINTFORML 　
+ENDIF
+;치에がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:치에]]) == 2
+	PRINTFORMW 「우와ー。　지내다니……변태같아……。」
+	PRINTFORML 　
+	;곰がパーティメンバーにいる。4567
+	IF FINDCHARA_B([[キャラ:곰]]) == 2
+		PRINTFORMW 「그런、부럽……아니 못된짓은 곰이 용서하지않아곰！」
+		PRINTFORML 　
+		;요스케がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:요스케]]) == 2
+			PRINTFORMW 「곰、넌 입을 열지마라……。」
+			PRINTFORML 　
+		ENDIF
+	ENDIF
+	;요스케がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:요스케]]) == 2
+		PRINTFORMW 「그렇지……。」
+		PRINTFORML 　
+	ENDIF
+;요스케がパーティメンバーにいる。
+ELSEIF FINDCHARA_B([[キャラ:요스케]]) == 2
+	PRINTFORMW 「지내다니……아니、변태냐！」
+	PRINTFORML 　
+	;곰がパーティメンバーにいる。4567
+	IF FINDCHARA_B([[キャラ:곰]]) == 2
+		PRINTFORMW 「그런、부럽……아니 못된짓은 곰이 용서하지 않아곰！」
+		PRINTFORML 　
+		PRINTFORMW 「곰、넌 입을 열지마라……。」
+		PRINTFORML 　
+	ENDIF
+ENDIF
+;유키코がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:유키코]]) == 2
+	PRINTFORMW 「다들……서두르자！」
+	PRINTFORML 　
+	;P4주인공がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+		PRINTFORMW 「……응。」
+		PRINTFORM 나마타메의 목소리에 초조해하는
+		CALL DUNGEON_74_PT_NAME
+		PRINTFORMW 들을 진정시키며 앞으로 나아갔다……
+	ENDIF
+;P4주인공がパーティメンバーにいる。
+ELSEIF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+	PRINTFORMW 「……서두르자！」
+	PRINTFORM 나마타메의 목소리에 초조해하는
+	CALL DUNGEON_74_PT_NAME
+	PRINTFORMW 들을 진정시키며 앞으로 나아갔다……
+ELSE
+	;나나코の知り合い何人いるかフラグ１（知り合いが一人きてる。）
+	IF 던전フラグ:74:2 == 1
+		PRINTFORM 나마타메의 목소리에 초조해하는
+		CALL DUNGEON_74_PT_NAME
+		PRINTFORMW 들을 진정시키며 앞으로 나아갔다……
+	;나나코の知り合い何人いるかフラグ２以上（知り合いが二人以上きてる。）
+	ELSEIF 던전フラグ:74:2 >= 2
+		PRINTFORM 나마타메의 목소리에 초조해하는
+		CALL DUNGEON_74_PT_NAME
+		PRINTFORMW 들을 진정시키며 앞으로 나아갔다……
+	;それ以外（知り合いが一人もきていない。）
+	ELSE
+		PRINTFORMW 멀리서부터 들려오는듯하지만 조금은 가까워진 나마타메의 목소리。
+		PRINTFORMW 그것을 의지삼아 앞으로 나아간다……
+	ENDIF
+ENDIF
+;천상낙원進行状況、第６天
+던전フラグ:74:5 = 6
+
+;------------------------------------------------------------------
+;第７天、初めて入ったとき
+;------------------------------------------------------------------
+@DUNGEON_74_07
+PRINTFORMW 어디선지 모르게 나마타메의 목소리가 들려온다……
+PRINTFORML 　
+PRINTFORMW 「나는……。」
+PRINTFORMW 「나는 신세계의 존재를 알게됐어……。」
+PRINTFORMW 「나는 타인을 구하지않으면 안돼……。」
+PRINTFORMW 「그래、바로 내가……。」
+PRINTFORML 　
+PRINTFORMW 들려오는 나마타메의 목소리는 이전보다 더 커진듯한 느낌이 든다。
+PRINTFORMW 나나코와 나마타메가 있는 장소는 확실히 가까워지고있는 것 같다……
+;天上楽土進行状況、第７天
+던전フラグ:74:5 = 7
+
+;------------------------------------------------------------------
+;第７天、中ボス前
+;------------------------------------------------------------------
+@DUNGEON_74_08
+PRINTFORMW 문의 너머에서 나마타메의 목소리가 들린다……
+PRINTFORML 　
+PRINTFORMW 「돌아가！」
+PRINTFORMW 「이 이상、나의 방해를 하지 마라！」
+PRINTFORML 　
+PRINTFORMW 여기에 나나코가 있는것일까？
+;天上楽土進行状況、第７天
+던전フラグ:74:5 = 8
+
+;------------------------------------------------------------------
+;第７天、中ボス
+;------------------------------------------------------------------
+@DUNGEON_74_09
+PRINTFORMW 「어째서 방해하는거냐！」
+PRINTFORMW 「이 아이는 내가……。」
+PRINTFORMW 「내가 구할테다！」
+PRINTFORML 　
+PRINTFORML 문을 열자 그곳에 있는것은 나나코와 나마타메가 아니라、
+;마가렛이벤트から拝借
+PRINTFORMW 천칭같은 받침잔을 머리 위에 얹은、거대한 십자가를 연상시키는 모양의 섀도우였다。
+PRINTFORMW 이것을 쓰러뜨리지 않으면 앞으로 나아갈 수 없어보인다……
+
+;전투、전능의밸런서
+FLAG:도주불가フラグ = 1
+FLAG:회화불능フラグ = 1
+FLAG:선제기습취소 = 1
+
+CUSTOMDRAWLINE =
+
+CALL SET_ENEMY,9,[[キャラ:전능의밸런서]],50,0,1
+CFLAG:(CHARANUM-1):行動횟수 = 1
+CFLAG:(CHARANUM-1):ＨＰ보정 += 1000
+ABL:(CHARANUM-1):스킬1 = [[스킬:아기다인]]
+ABL:(CHARANUM-1):스킬2 = [[스킬:부후다인]]
+ABL:(CHARANUM-1):스킬3 = [[스킬:지오다인]]
+ABL:(CHARANUM-1):스킬4 = [[스킬:갈다인]]
+
+ABL:(CHARANUM-1):스킬5 = [[스킬:마그다인]]
+ABL:(CHARANUM-1):스킬6 = [[스킬:아쿠아다인]]
+ABL:(CHARANUM-1):스킬7 = [[스킬:컨센트레이트]]
+ABL:(CHARANUM-1):스킬8 = 0
+
+CALL SYNC_STATUS,(CHARANUM-1)
+CALL HEALTH_CHARA,(CHARANUM-1)
+
+CALL BATTLE_START
+
+CUSTOMDRAWLINE =
+
+FLAG:도주불가フラグ = 0
+FLAG:회화불능フラグ = 0
+FLAG:선제기습취소 = 0
+
+
+PRINTFORML 　
+;P4주인공がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+	PRINTFORMW 「…………。」
+	PRINTFORMW 섀도우를 쓰러뜨리고、아무말없이 앞을 바라보고있는 %CALLNAME:(FINDCHARA(NO, [[キャラ:P4주인공]]))%와 함께 걸어가기 시작했다……
+;요스케がパーティメンバーにいる。
+ELSEIF FINDCHARA_B([[キャラ:요스케]]) == 2
+	PRINTFORMW 「젠장……、여기에 있는게 아니었나！」
+	PRINTFORMW 나나코가 없다는것을 알고 초조해진 요스케를 다독여 앞으로 나아갔다……
+;치에がパーティメンバーにいる。
+ELSEIF FINDCHARA_B([[キャラ:치에]]) == 2
+	PRINTFORMW 「여기일거라 생각했는데！」
+	PRINTFORMW 나나코가 없다는것을 알고 초조해진 치에를 다독여 앞으로 나아갔다……
+;유키코がパーティメンバーにいる。
+ELSEIF FINDCHARA_B([[キャラ:유키코]]) == 2
+	PRINTFORMW 「나나코、여기엔 없구나……。」
+	PRINTFORMW 나나코가 없다는것을 알고 낙담한 유키코를 다독여 앞으로 나아갔다……
+;칸지がパーティメンバーにいる。
+ELSEIF FINDCHARA_B([[キャラ:칸지]]) == 2
+	PRINTFORMW 「치잇……、여기가 아니었던거냐……。」
+	PRINTFORMW 나나코가 없다는것을 알고 초조해진 칸지를 다독여 앞으로 나아갔다……
+;곰がパーティメンバーにいる。4567
+ELSEIF FINDCHARA_B([[キャラ:곰]]) == 2
+	PRINTFORMW 「여기엔、없는것 같아곰……。」
+	PRINTFORMW 나나코가 없다는 것을 알고 낙담한 곰을 다독여 앞으로 나아갔다……
+ELSE
+	PRINTFORMW 섀도우를 쓰러뜨렸지만、여기에 나나코는 없는것같다。
+	PRINTFORMW 서두르도록 하자……
+ENDIF
+
+;천상낙원進行状況、第７天中ボス
+던전フラグ:74:5 = 9
+
+;------------------------------------------------------------------
+;第８天
+;------------------------------------------------------------------
+;第８天到達時、霧晴れる前
+@DUNGEON_74_10
+
+;パーティに健在な나나코の知り合いが何人いるかを測定しておく。
+CALL DUNGEON_74_PT_NF
+
+PRINTFORMW 어디선지 모르게 나마타메의 목소리가 들려온다……
+PRINTFORML 　
+PRINTFORMW 「이 아이는 넘기지 않아……。」
+PRINTFORMW 「절대로 넘기지않아……。」
+PRINTFORMW 「이번에야말로……절대로……。」
+PRINTFORML 　
+PRINTFORML 　
+;요스케がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:요스케]]) == 2
+	PRINTFORMW 「아니 그런데、좀 위험한 분위기인데……。」
+	PRINTFORML 　
+	;칸지がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:칸지]]) == 2
+		PRINTFORMW 「그렇네요……。」
+		PRINTFORML 　
+	ENDIF
+;칸지がパーティメンバーにいる。
+ELSEIF FINDCHARA_B([[キャラ:칸지]]) == 2
+	PRINTFORMW 「나마타메 자식、이상해져버린 것 같군요……。」
+	PRINTFORML 　
+ENDIF
+;치에がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:치에]]) == 2
+	PRINTFORMW 「동반자살이라든지……하는건 아니겠지？」
+	PRINTFORML 　
+	;유키코がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:유키코]]) == 2
+		PRINTFORMW 「……그런！」
+		PRINTFORML 　
+	ENDIF
+;유키코がパーティメンバーにいる。
+ELSEIF FINDCHARA_B([[キャラ:유키코]]) == 2
+	PRINTFORMW 「나나코……괜찮은거지？」
+	PRINTFORML 　
+ENDIF
+;곰がパーティメンバーにいる。4567
+IF FINDCHARA_B([[キャラ:곰]]) == 2
+	PRINTFORMW 「선생님！　서둘러곰！」
+	PRINTFORML 　
+ENDIF
+;P4주인공がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+	PRINTFORMW 「……큭！」
+	PRINTFORM 나나코를 걱정하며 험한 표정을 짓는
+	CALL DUNGEON_74_PT_NAME
+	PRINTFORMW 과 함께 서둘러 발걸음을 옮겼다……
+;나나코の知り合い何人いるかフラグ１（知り合いが一人きてる。）
+ELSEIF 던전フラグ:74:2 == 1
+	PRINTFORM 나나코를 걱정하며 험한 표정을 짓는
+	CALL DUNGEON_74_PT_NAME
+	PRINTFORMW 과 함께 서둘러 발걸음을 옮겼다……
+;나나코の知り合い何人いるかフラグ２以上（知り合いが二人以上きてる。）
+ELSEIF 던전フラグ:74:2 >= 2
+	PRINTFORM 나나코를 걱정하며 험한 표정을 짓는
+	CALL DUNGEON_74_PT_NAME
+	PRINTFORMW 과 함께 서둘러 발걸음을 옮겼다……
+;それ以外（知り合いが一人もきていない。）
+ELSE
+	PRINTFORMW 나마타메가 제정신을 잃어가고있는 느낌이 든다。
+	PRINTFORMW 서두르는 편이 좋을지도 모르겠다……
+ENDIF
+;천상낙원進行状況、第８天
+던전フラグ:74:5 = 10
+;------------------------------------------------------------------
+;第８天到達時、霧晴れ後
+@DUNGEON_74_10A
+
+;パーティに健在な나나코の知り合いが何人いるかを測定しておく。
+CALL DUNGEON_74_PT_NF
+
+PRINTFORMW 어디선지 모르게 나마타메의 목소리가 들려온다……
+PRINTFORML 　
+PRINTFORMW 「이 아이는 넘기지 않아……。」
+PRINTFORMW 「절대로 넘기지않아……。」
+PRINTFORMW 「이번에야말로……절대……。」
+PRINTFORML 　
+PRINTFORMW 「…………히익！？」
+PRINTFORML 　
+PRINTFORMW 「기、기분탓인가……。　뭔가……있는듯 했는데……。」
+PRINTFORMW 「괜찮아……무서워하지 않아도 돼……。」
+PRINTFORMW 「내가……구해、줄테니까……。」
+PRINTFORML 　
+PRINTFORML 　
+;칸지がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:칸지]]) == 2
+	PRINTFORMW 「뭐……우리들을 얘기하는걸까요？」
+	;요스케がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:요스케]]) == 2
+		PRINTFORML 　
+		PRINTFORMW 「아니、그건 아니겠지……。」
+		;곰がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:곰]]) == 2
+			PRINTFORML 　
+			PRINTFORMW 「그래곰……。　이건……섀도우야곰！」
+			;치에がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:치에]]) == 2
+				PRINTFORML 　
+				PRINTFORMW 「저건……위험하지않아？」
+				;유키코がパーティメンバーにいる。
+				IF FINDCHARA_B([[キャラ:유키코]]) == 2
+					PRINTFORML 　
+					PRINTFORMW 「응、서두르자！」
+				ELSE
+					PRINTFORMW 「서둘러야해！」
+				ENDIF
+			ELSE
+				PRINTFORML 　
+				PRINTFORMW 「위험하네요……。」
+				;유키코がパーティメンバーにいる。
+				IF FINDCHARA_B([[キャラ:유키코]]) == 2
+					PRINTFORML 　
+					PRINTFORMW 「응、서두르자！」
+				ELSE
+					PRINTFORMW 「서둘러야해！」
+				ENDIF
+			ENDIF
+		;치에がパーティメンバーにいる。
+		ELSEIF FINDCHARA_B([[キャラ:치에]]) == 2
+			PRINTFORML 　
+			PRINTFORMW 「어찌됐든、위험해보여……。」
+			;유키코がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:유키코]]) == 2
+				PRINTFORML 　
+				PRINTFORMW 「응、서두르자！」
+			ELSE
+				PRINTFORMW 「서둘러야해！」
+			ENDIF
+		ELSE
+			PRINTFORML 　
+			PRINTFORMW 「어느쪽이든、위험해보이는군요……。」
+			;유키코がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:유키코]]) == 2
+				PRINTFORML 　
+				PRINTFORMW 「응、서두르자！」
+			ELSE
+				PRINTFORMW 「서둘러야해！」
+			ENDIF
+		ENDIF
+	;유키코がパーティメンバーにいる。
+	ELSEIF FINDCHARA_B([[キャラ:유키코]]) == 2
+		PRINTFORML 　
+		PRINTFORMW 「아니라고 생각해。」
+		;곰がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:곰]]) == 2
+			PRINTFORML 　
+			PRINTFORMW 「그래곰……。　이건……섀도우야곰！」
+			;치에がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:치에]]) == 2
+				PRINTFORML 　
+				PRINTFORMW 「그런……위험한거아냐？」
+				PRINTFORML 　
+				PRINTFORMW 「응、서두르자！」
+			ELSE
+				PRINTFORML 　
+				PRINTFORMW 「위험하군요……。」
+				PRINTFORML 　
+				PRINTFORMW 「응、서두르자！」
+			ENDIF
+		;치에がパーティメンバーにいる。
+		ELSEIF FINDCHARA_B([[キャラ:치에]]) == 2
+			PRINTFORML 　
+			PRINTFORMW 「응……왠지、위험해보여……！」
+			PRINTFORML 　
+			PRINTFORMW 「옙！　서두르죠！」
+		ELSE
+			PRINTFORML 　
+			PRINTFORMW 「뭐가됐든、위험해보이는군요……。」
+			PRINTFORML 　
+			PRINTFORMW 「응、서두르자！」
+		ENDIF
+	;치에がパーティメンバーにいる。
+	ELSEIF FINDCHARA_B([[キャラ:치에]]) == 2
+		PRINTFORML 　
+		PRINTFORMW 「아니겠지。」
+		;곰がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:곰]]) == 2
+			PRINTFORML 　
+			PRINTFORMW 「그래곰……。　이건……섀도우야곰！」
+			PRINTFORML 　
+			PRINTFORMW 「그렇다면……역시 위험하겠지？」
+			PRINTFORML 　
+			PRINTFORMW 「그렇네요……서두르지요！」
+		ELSE
+			PRINTFORML 　
+			PRINTFORMW 「……뭐가 됐든、위험해보이는군요……。」
+			PRINTFORML 　
+			PRINTFORMW 「응、서두르자！」
+		ENDIF
+	;곰がパーティメンバーにいる。
+	ELSEIF FINDCHARA_B([[キャラ:곰]]) == 2
+		PRINTFORML 　
+		PRINTFORMW 「아니야곰……。　이건……섀도우곰！」
+		PRINTFORML 　
+		PRINTFORMW 「섀도우……서두르자！」
+	ELSE
+		PRINTFORMW 「뭐가 됐든、서두르지 않으면 위험해보이는군요……。」
+	ENDIF
+	PRINTFORML 　
+;치에がパーティメンバーにいる。
+ELSEIF FINDCHARA_B([[キャラ:치에]]) == 2
+	PRINTFORMW 「무언가……있다니、우리들을 얘기하고 있는건 아닌것같지……。」
+	;곰がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:곰]]) == 2
+		PRINTFORML 　
+		PRINTFORMW 「그래곰……。　이건……섀도우야곰！」
+		PRINTFORML 　
+		PRINTFORMW 「……섀도우！」
+		;요스케がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:요스케]]) == 2
+			PRINTFORML 　
+			PRINTFORMW 「벌써 날뛰기 시작한건가！？」
+			PRINTFORML 　
+			PRINTFORMW 「큭！　그렇다면、나나코가 위험해져！」
+		;유키코がパーティメンバーにいる。
+		ELSEIF FINDCHARA_B([[キャラ:유키코]]) == 2
+			PRINTFORML 　
+			PRINTFORMW 「그런！　벌써 날뛰기 시작한거야！？」
+			PRINTFORML 　
+			PRINTFORMW 「그렇담、서두르지 않으면 나나코가 위험해져！」
+		ELSE
+			PRINTFORMW 「그렇담、서두르지 않으면 나나코가 위험해져！」
+		ENDIF
+	;요스케がパーティメンバーにいる。
+	ELSEIF FINDCHARA_B([[キャラ:요스케]]) == 2
+		PRINTFORML 　
+		PRINTFORMW 「그래……우리들이라기보다는……。」
+		PRINTFORML 　
+		PRINTFORMW 「……섀도우？」
+		;유키코がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:유키코]]) == 2
+			PRINTFORML 　
+			PRINTFORMW 「그렇네……벌써 날뛰기 시작했는지도……。」
+			PRINTFORML 　
+			PRINTFORMW 「뭐！　그거 위험하지않아？　어서 가자！」
+		ELSE
+			PRINTFORML 　
+			PRINTFORMW 「그렇네……。」
+			PRINTFORML 　
+			PRINTFORMW 「큭！　그렇다면、어서 가지 않다간 나나코가！」
+		ENDIF
+	;유키코がパーティメンバーにいる。
+	ELSEIF FINDCHARA_B([[キャラ:유키코]]) == 2
+		PRINTFORML 　
+		PRINTFORMW 「……아마도……섀도우라고 생각해……。」
+		PRINTFORML 　
+		PRINTFORMW 「그럼……나나코가！」
+		PRINTFORML 　
+		PRINTFORMW 「치에、서두르자！」
+	ELSE
+		PRINTFORMW 「섀도우를 말하는……걸까？」
+		PRINTFORMW 「그렇다면、어서 가야해！」
+	ENDIF
+	PRINTFORML 　
+;요스케がパーティメンバーにいる。
+ELSEIF FINDCHARA_B([[キャラ:요스케]]) == 2
+	PRINTFORMW 「무언가라니……우리들 이외에 말인가？」
+	;곰がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:곰]]) == 2
+		PRINTFORML 　
+		PRINTFORMW 「……섀도우야곰……。」
+		PRINTFORML 　
+		PRINTFORMW 「뭣！　그럼 위험하잖아？　얼른 가자！」
+	;유키코がパーティメンバーにいる。
+	ELSEIF FINDCHARA_B([[キャラ:유키코]]) == 2
+		PRINTFORML 　
+		PRINTFORMW 「……아마도……섀도우라고 생각해……。」
+		PRINTFORML 　
+		PRINTFORMW 「뭣！　그럼 위험하잖아？　어서 가자！」
+	ELSE
+		PRINTFORMW 「그런、안좋은 생각밖에 들지않아！　빨리 가자！」
+	ENDIF
+	PRINTFORML 　
+;유키코がパーティメンバーにいる。
+ELSEIF FINDCHARA_B([[キャラ:유키코]]) == 2
+	PRINTFORMW 「뭔가가……있다구？」
+	;곰がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:곰]]) == 2
+		PRINTFORMW 「분명、섀도우를 말하는거야곰！」
+		PRINTFORML 　
+		PRINTFORMW 「그런！　벌써 날뛰기 시작한거야！？」
+	ELSE
+		PRINTFORMW 「섀도우일까？　안좋은 예감이 들어……。」
+	ENDIF
+	PRINTFORML 　
+ENDIF
+;나나코の知り合い何人いるかフラグ１（知り合いが一人きてる。）
+IF 던전フラグ:74:2 == 1
+	;P4주인공がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+		PRINTFORMW 「…………。」
+		PRINTFORML 　
+		PRINTFORM 나마타메의 말에 반응하지 않고 묵묵히 걷기 시작한
+		CALL DUNGEON_74_PT_NAME
+		PRINTFORMW 를 뒤쫓아갔다……
+	ELSE
+		PRINTFORM 나마타메의 말에 안좋은 예감을 받은
+		CALL DUNGEON_74_PT_NAME
+		PRINTFORMW 와 함께 발길을 재촉했다……
+	ENDIF
+;나나코の知り合い何人いるかフラグ２이상（知り合いが二人이상きてる。）
+ELSEIF 던전フラグ:74:2 >= 2
+	;P4주인공がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+		PRINTFORMW 「…………。」
+		PRINTFORML 　
+		PRINTFORM 나마타메의 말에 반응하지 않고 묵묵히 걷기 시작한
+		CALL DUNGEON_74_PT_NAME
+		PRINTFORMW 를 뒤쫓아갔다……
+	ELSE
+		PRINTFORM 나마타메의 말에 안좋은 예감을 받은
+		CALL DUNGEON_74_PT_NAME
+		PRINTFORMW 들과 함께 발길을 재촉했다……
+	ENDIF
+;それ以外（知り合いが一人もきていない。）
+ELSE
+	PRINTFORMW 안개가 옅어지고 섀도우가 활발하게 움직이기 시작한 것일지도 모른다……
+	PRINTFORMW 서둘러 진행하는것이 좋아보인다……
+ENDIF
+
+;천상낙원進行状況（霧晴れ）、第８天
+던전フラグ:74:6 = 10
+;------------------------------------------------------------------
+;第９天
+;------------------------------------------------------------------
+;第９天到達時、霧晴れる前
+@DUNGEON_74_11
+
+;パーティに健在な나나코の知り合いが何人いるかを測定しておく。
+CALL DUNGEON_74_PT_NF
+
+PRINTFORMW 나나코의 목소리가 들려온다……
+PRINTFORML 　
+PRINTFORMW 「무서워……。」
+PRINTFORMW 「어딨는거야……엄마……。」
+PRINTFORMW 「구해줘……아빠……。」
+PRINTFORML 　
+PRINTFORML 　
+;치에がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:치에]]) == 2
+	PRINTFORMW 「바로 근처에서 들려！」
+	PRINTFORML 　
+	;요스케がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:요스케]]) == 2
+		PRINTFORMW 「그렇군……。」
+		PRINTFORML 　
+	ENDIF
+	;곰がパーティメンバーにいる。4567
+	IF FINDCHARA_B([[キャラ:곰]]) == 2
+		PRINTFORMW 「곰의 코에도、확확 오고있어곰！」
+		PRINTFORML 　
+	ENDIF
+	;칸지がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:칸지]]) == 2
+		PRINTFORMW 「이제 조금만 더……、기합넣고 간다！」
+		PRINTFORML 　
+	ENDIF
+;유키코がパーティメンバーにいる。
+ELSEIF FINDCHARA_B([[キャラ:유키코]]) == 2
+	PRINTFORMW 「나나코의 목소리……바로 근처인 것 같아！」
+	PRINTFORML 　
+	;요스케がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:요스케]]) == 2
+		PRINTFORMW 「그렇지……。」
+		PRINTFORML 　
+	ENDIF
+	;곰がパーティメンバーにいる。4567
+	IF FINDCHARA_B([[キャラ:곰]]) == 2
+		PRINTFORMW 「곰의 코에도、확확 오고있어곰！」
+		PRINTFORML 　
+	ENDIF
+	;칸지がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:칸지]]) == 2
+		PRINTFORMW 「이제 조금만 더……、기합넣고 간다！」
+		PRINTFORML 　
+	ENDIF
+;요스케がパーティメンバーにいる。
+ELSEIF FINDCHARA_B([[キャラ:요스케]]) == 2
+	PRINTFORMW 「……바로 윗층이란거지？」
+	PRINTFORML 　
+	;곰がパーティメンバーにいる。4567
+	IF FINDCHARA_B([[キャラ:곰]]) == 2
+		PRINTFORMW 「곰의 코로 느끼기도、그런 느낌이야곰！」
+		PRINTFORML 　
+	ENDIF
+	;칸지がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:칸지]]) == 2
+		PRINTFORMW 「그렇네요……。」
+		PRINTFORML 　
+	ENDIF
+;칸지がパーティメンバーにいる。
+ELSEIF FINDCHARA_B([[キャラ:칸지]]) == 2
+	PRINTFORMW 「가깝군요……。」
+	PRINTFORML 　
+	;곰がパーティメンバーにいる。4567
+	IF FINDCHARA_B([[キャラ:곰]]) == 2
+		PRINTFORMW 「곰의 코가 맡은것으로 봐서는 다음층이야곰！」
+		PRINTFORML 　
+	ENDIF
+;곰がパーティメンバーにいる。4567
+ELSEIF FINDCHARA_B([[キャラ:곰]]) == 2
+	PRINTFORMW 「킁킁！　곰의 코에 의하면 다음층에 나나코가 있어곰！」
+	PRINTFORML 　
+ENDIF
+;P4주인공がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+	PRINTFORMW 「……가자。」
+	PRINTFORMW 가까운 곳에서 들려오는 나나코의 목소리。
+	PRINTFORM 진지한 표정의 
+	CALL DUNGEON_74_PT_NAME
+	PRINTFORMW 와 함께 앞으로 나아간다……
+;나나코の知り合い何人いるかフラグ１（知り合いが一人きてる。）
+ELSEIF 던전フラグ:74:2 == 1
+	PRINTFORMW 가까운 곳에서 들려오는 나나코의 목소리。
+	PRINTFORM 진지한 표정의 
+	CALL DUNGEON_74_PT_NAME
+	PRINTFORMW 와 함께 앞으로 나아간다……
+;나나코の知り合い何人いるかフラグ２以上（知り合いが二人以上きてる。）
+ELSEIF 던전フラグ:74:2 >= 2
+	PRINTFORMW 가까운 곳에서 들려오는 나나코의 목소리。
+	PRINTFORM 진지한 표정의 
+	CALL DUNGEON_74_PT_NAME
+	PRINTFORMW 들과 함께 앞으로 나아간다……
+;それ以外（知り合いが一人もきていない。）
+ELSE
+	PRINTFORMW 가까운 곳에서 들려오는 나나코의 목소리。
+	PRINTFORMW 상황으로 봤을때 나나코가 있는곳은 바로 윗층이겠지……
+ENDIF
+;천상낙원進行状況、第９天
+던전フラグ:74:5 = 11
+;------------------------------------------------------------------
+;第９天到達時、霧晴れ後
+@DUNGEON_74_11A
+
+;パーティに健在な나나코の知り合いが何人いるかを測定しておく。
+CALL DUNGEON_74_PT_NF
+
+PRINTFORMW 어디선지 모르게 나마타메의 목소리가 들려온다……
+PRINTFORML 　
+PRINTFORMW 「히익！　뭐、뭐야……이녀석들은……。」
+PRINTFORMW 「이、이쪽으로 오지마라！　저리가……가까이오지마！」
+PRINTFORML 　
+PRINTFORML 　
+PRINTFORMW 「그만……둿！」
+PRINTFORMW 「이 아이는……내가……구할거야！」
+PRINTFORMW 「우아아아아아아악！！」
+PRINTFORML 　
+PRINTFORML 　
+;유키코がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:유키코]]) == 2
+	PRINTFORMW 「이건……。」
+	PRINTFORML 　
+ENDIF
+;곰がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:곰]]) == 2
+	PRINTFORMW 「바로 위에서、이상한 기척이 있어곰！」
+	PRINTFORML 　
+ENDIF
+;요스케がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:요스케]]) == 2
+	PRINTFORMW 「뭐、뭔가 일어난건가！？」
+	;치에がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:치에]]) == 2
+		PRINTFORML 　
+		PRINTFORMW 「어쩐지、위험한것같아！　빨리 가자！」
+	ELSE
+		PRINTFORMW 「뭐가됐든、위험할것같아……서두르자！」
+	ENDIF
+	PRINTFORML 　
+;칸지がパーティメンバーにいる。
+ELSEIF FINDCHARA_B([[キャラ:칸지]]) == 2
+	PRINTFORMW 「대체 뭐가 어떻게 돌아가는거야！？」
+	;치에がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:치에]]) == 2
+		PRINTFORML 　
+		PRINTFORMW 「몰라！　그래도、위험한건 틀림없어！　서둘러야해！」
+	ELSE
+		PRINTFORMW 「치잇……위험한 냄새가 질리도록 나는군……서둘러야겠어！」
+	ENDIF
+	PRINTFORML 　
+ENDIF
+;나나코の知り合い何人いるかフラグ１（知り合いが一人きてる。）
+IF 던전フラグ:74:2 == 1
+	PRINTFORMW 갑자기 들려온 나마타메의 절규。
+	PRINTFORMW 결국에는 섀도우가 날뛰어버린 것일지도 모른다。
+	PRINTFORML 　
+	;P4주인공がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+		PRINTFORMW 「…………！？」
+		PRINTFORM 무언가 일어나고 있다는 사실에 얼굴을 험악하게 일그러뜨리는
+		CALL DUNGEON_74_PT_NAME
+		PRINTFORMW 와 함께 발길을 재촉했다……
+	ELSE
+		PRINTFORM 무언가 일어나고 있다는 사실에 얼굴을 험악하게 일그러뜨리는
+		CALL DUNGEON_74_PT_NAME
+		PRINTFORMW 와 함께 발길을 재촉했다……
+	ENDIF
+;나나코の知り合い何人いるかフラグ２이상（知り合いが二人이상きてる。）
+ELSEIF 던전フラグ:74:2 >= 2
+	;P4주인공がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+		PRINTFORMW 「…………！？」
+		PRINTFORM 나마타메의 비명소리에 얼굴을 험악하게 일그러뜨리는
+		CALL DUNGEON_74_PT_NAME
+		PRINTFORMW 일행과 함께 발길을 재촉했다……
+	ELSE
+		PRINTFORM 나마타메의 비명소리에 얼굴을 험악하게 일그러뜨리는
+		CALL DUNGEON_74_PT_NAME
+		PRINTFORMW 일행과 함께 발길을 재촉했다……
+	ENDIF
+;それ以外（知り合いが一人もきていない。）
+ELSE
+	PRINTFORMW 갑작스레 들려온 나마타메의 절규。
+	PRINTFORMW 결국에는 섀도우가 날뛰어버린 것일지도 모른다。
+	PRINTFORMW 마음을 단단히 먹고 나아가기로 했다……
+ENDIF
+
+;천상낙원進行状況（霧晴れ）、第９天
+던전フラグ:74:6 = 11
+;------------------------------------------------------------------
+;第１０天
+;------------------------------------------------------------------
+;第１０天到達時、霧晴れる前
+@DUNGEON_74_12
+PRINTFORMW 여기가 최상층인 듯 하다。
+PRINTFORMW 이 문의 너머에 나나코와 나마타메가 있음이 틀림없다……
+
+;천상낙원進行状況、１０天入り입
+던전フラグ:74:5 = 12
+
+;------------------------------------------------------------------
+;第１０天到達時、霧晴れ後
+@DUNGEON_74_12A
+PRINTFORMW 여기가 최상층인 듯 하다。
+PRINTFORMW 이 문의 너머에 나나코와 나마타메가 있음이 틀림없다……
+PRINTFORML 　
+PRINTFORMW 그렇지만、문의 반대편에서 비명소리나 무언가가 무서지는 소리가 들린다。
+PRINTFORMW 도대체 무슨 일이 벌어지고 있는 것인가……
+
+;천상낙원進行状況（霧晴れ）、第１０天入り입
+던전フラグ:74:6 = 12
+
+;------------------------------------------------------------------
+;第１０天ボス、霧晴れる前
+@DUNGEON_74_13
+
+;パーティに健在な나나코の知り合いが何人いるかを測定しておく。
+CALL DUNGEON_74_PT_NF
+
+PRINTFORMW 문을 열고 현수교를 건너간다。
+PRINTFORMW 그곳을 지난 광장같은 장소에 있는것은、운송업자같은 복장을 한 남자와 어린 아이……나나코였다。
+PRINTFORML 　
+;나나코の知り合い何人いるかフラグ１（知り合いが一人きてる。）
+IF 던전フラグ:74:2 == 1
+	;P4주인공がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+		PRINTFORMW 「나나코-！」
+	ELSE
+		;곰がパーティメンバーにいる。4567
+		IF FINDCHARA_B([[キャラ:곰]]) == 2
+			PRINTFORMW 「나나코！」
+		ELSE
+			PRINTFORMW 「나나코！」
+		ENDIF
+	ENDIF
+	PRINTFORML 　
+;나나코の知り合い何人いるかフラグ２이상（知り合いが二人이상きてる。）
+ELSEIF 던전フラグ:74:2 >= 2
+	;P4주인공がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+		PRINTFORMW 「나나코-！」
+	ELSE
+		PRINTFORMW 「나나코！」
+	ENDIF
+	PRINTFORML 　
+;나나코の知り合い何人いるか０
+ELSE
+	PRINTFORML 　
+ENDIF
+;P4주인공がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+	PRINTFORMW 「오……、오빠！！」
+ELSE
+	PRINTFORMW 「앗……。」
+ENDIF
+PRINTFORML 　
+PRINTFORMW 「가、가면 안돼！」
+PRINTFORMW 일행을 발견하고 달려오려하는 나나코。
+PRINTFORMW 그러나、그것을 남자가 억눌러 막는다。
+PRINTFORML 　
+;P4주인공がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+	PRINTFORMW 「나마타메냐？」
+	PRINTFORML 　
+	PRINTFORMW 「나를……알고있나？」
+	PRINTFORMW %CALLNAME:(FINDCHARA(NO, [[キャラ:P4주인공]]))%로부터의 질문에 겁내면서도 답하는 나마타메。
+ELSE
+	PRINTFORMW 「나를……알고있나？」
+	PRINTFORMW 이쪽의 물음에 겁내면서도 답하는 나마타메。
+ENDIF
+PRINTFORML 　
+;요스케がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:요스케]]) == 2
+	PRINTFORMW 「네놈이……선배를……。」
+	PRINTFORML 　
+ENDIF
+;유키코がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:유키코]]) == 2
+	PRINTFORMW 「나나코를 돌려줘！！」
+	PRINTFORML 　
+;곰がパーティメンバーにいる。4567
+ELSEIF FINDCHARA_B([[キャラ:곰]]) == 2
+	PRINTFORMW 「나나코를 돌려줘곰！」
+	PRINTFORML 　
+ENDIF
+;유키코、칸지がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:유키코]]) == 2 && FINDCHARA_B([[キャラ:칸지]]) == 2
+	PRINTFORMW 「아……하하、내가……구해줬던、아이들이군……。」
+	PRINTFORMW 「이 아이도……구해주겠어……。」
+;유키코か칸지がパーティメンバーにいる。
+ELSEIF FINDCHARA_B([[キャラ:유키코]]) == 2 || FINDCHARA_B([[キャラ:칸지]]) == 2
+	PRINTFORMW 「아……하하、내가……구해줬던、아이군……。」
+	PRINTFORMW 「이 아이도……구해주겠어……。」
+ELSE
+	PRINTFORMW 「아……하하、내가……구하겠어……。」
+	PRINTFORMW 「이 아이를……구해줘야해……。」
+	PRINTFORMW 나마타메는、초점없는 눈으로 나나코를 바라보고있다。
+ENDIF
+PRINTFORML 　
+;칸지がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:칸지]]) == 2
+	PRINTFORMW 「하……？　뭐야 이자식、뭐라 씨부리는거야？」
+	PRINTFORMW 「알아듣지도 못할 헛소리 씨부리지마！　얼른 그 애를 돌려달라고！！」
+	PRINTFORML 　
+ENDIF
+PRINTFORMW 「가、가까이 오지마라……。」
+PRINTFORMW 나나코를 구하려해도、이대로는 다가서는것조차 어렵다。
+PRINTFORML 　
+PRINTFORMW 「구할거야……、내가……TV에 넣어서……。」
+PRINTFORMW 「비가오는날……신호……。　구해야해……。」
+PRINTFORML 　
+;요스케がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:요스케]]) == 2
+	PRINTFORMW 「아까부터 구한다구한다……살해하는 게、네녀석이 말하는“구원”이냐！？」
+	PRINTFORML 　
+	PRINTFORMW 「죽여……？」
+	PRINTFORMW 「아、니야、구하는것이다……。」
+	PRINTFORML 　
+	PRINTFORMW 「어딜봐서！？」
+	PRINTFORMW 「네가 저지르고있는건、살인이다！」
+	PRINTFORML 　
+	PRINTFORMW 「하、하……。」
+	PRINTFORMW 「그렇게 생각하고 싶다면、그래라……。」
+	PRINTFORML 　
+	PRINTFORMW 요스케와 회화를 이어가는 도중에도 나마타메의 사태는 점점 이상해져간다。
+ELSE
+	PRINTFORMW 나마타메는 정신이 불안정해져있는 것인지、계속해서 무언가를 중얼거리고 있다。
+ENDIF
+;악마をつれた서머너の場合、殺しに来たとしか見えないよな……
+PRINTFORML 　
+PRINTFORMW 「이런곳까지、쫓아와서……。」
+PRINTFORMW 「알고있다、네녀석들……죽일 셈이지……。」
+PRINTFORMW 「하、하하……안됐、구나……。」
+PRINTFORMW 「이 아이는 내、가、구했다……。」
+PRINTFORML 　
+;칸지がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:칸지]]) == 2
+	PRINTFORMW 「이 새끼……어지간히 해라！！」
+	PRINTFORML 　
+	PRINTFORMW 「시끄러、닥쳐！！」
+	PRINTFORMW 칸지의 말에 큰 소리를 내지른 나마타메의 상태가、갑작스레 돌변했다。
+ELSE
+	PRINTFORMW 나나코를 붙잡은채로 중얼거리고 있던 나마타메의 상태가、갑작스레 돌변했다。
+ENDIF
+PRINTFORMW 저것은、치에나 유키코、칸지의 경우에도 보였던 본인의 억압된 마음이 표출된 것……섀도우인 것인가？
+PRINTFORML 　
+PRINTFORMW 「근사한 세계다……。」
+PRINTFORMW 「아늑한 안개、누구에게도 발견되지 않는 장소……。　나는 구세주다……。」
+PRINTFORMW 「“저쪽”은 더럽다 ……。　나쁜녀석들이 잔뜩 있지……。」
+PRINTFORMW 「그러니 내가 구하는거다……。」
+PRINTFORMW 「나는 구세주……정의의……히어로……다……。」
+PRINTFORML 　
+;유키코がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:유키코]]) == 2
+	PRINTFORMW 「저건……섀도우……？」
+ENDIF
+PRINTFORML 　
+PRINTFORMW 구한다는 말과는 모순적으로 섀도우화한 뒤로 나나코에 대한 주의는 상당히 소홀해져있다。
+;나나코の知り合い何人いるかフラグ１（知り合いが一人きてる。）
+IF 던전フラグ:74:2 == 1
+	PRINTFORM 그 틈을 찔러 
+	CALL DUNGEON_74_PT_NAME
+	PRINTFORMW 와 함께 나나코를 데려오는 데 성공했다。
+;나나코の知り合い何人いるかフラグ２以上（知り合いが二人以上きてる。）
+ELSEIF 던전フラグ:74:2 >= 2
+	PRINTFORM 그 틈을 찔러 
+	CALL DUNGEON_74_PT_NAME
+	PRINTFORMW 일행과 함께 나나코를 데려오는 데 성공했다。
+;それ以外（知り合いが一人もきていない。）
+ELSE
+	PRINTFORMW 그 틈을 질러 나나코를 데려오는 데 성공했다。
+ENDIF
+PRINTFORML 　
+;곰がパーティメンバーにいる。4567
+IF FINDCHARA_B([[キャラ:곰]]) == 2
+	PRINTFORMW 「나나코！！」
+	PRINTFORML 　
+ENDIF
+;유키코がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:유키코]]) == 2
+	PRINTFORMW 「나나코……나나코！！」
+	PRINTFORML 　
+ENDIF
+;치에がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:치에]]) == 2
+	PRINTFORMW 「저녀석……、정말로、용서하지 않을거야！！」
+	PRINTFORML 　
+ENDIF
+PRINTFORMW 「그 아이를……돌려내라……。」
+PRINTFORMW 「그 아이는……내가……。　내가 구한다아아아아아아！！！」
+PRINTFORMW 나나코를 빼앗긴 것에 격분한 나마타메의 몸에 주위의 섀도우들이 달라붙어간다……
+PRINTFORML 　
+PRINTFORMW 「내가……내가、구할거야……！」
+PRINTFORMW 「방해하지마라아아아！」
+PRINTFORMW 섀도우가 달라붙어 그로테스크한 천사와 유사한 모습으로 변한 나마타메……쿠니노사기리가 습격해왔다！
+PRINTFORML 　
+CUSTOMDRAWLINE =
+
+;전투、쿠니노사기리
+FLAG:도주불가フラグ = 1
+FLAG:회화불능フラグ = 1
+FLAG:선제기습취소 = 1
+
+CALL SET_ENEMY,9,[[キャラ:쿠니노사기리]],55,0,1
+CFLAG:(CHARANUM-1):行動횟수 = 1
+CFLAG:(CHARANUM-1):ＨＰ보정 += 1500
+CFLAG:(CHARANUM-1):ＭＰ보정 += 2000
+
+CSTR:(CHARANUM-1):사고패턴 = 3243
+
+BASE:(CHARANUM-1):힘 += 10
+BASE:(CHARANUM-1):지혜 += 10
+BASE:(CHARANUM-1):마력 += 10
+BASE:(CHARANUM-1):인내력 += 10
+BASE:(CHARANUM-1):운 += 10
+
+;ABL:(CHARANUM-1):스킬1 = [[스킬:마하・라기다인]]
+;ABL:(CHARANUM-1):스킬2 = [[스킬:마하・부후다인]]
+;ABL:(CHARANUM-1):스킬3 = [[스킬:마하・지오다인]]
+;ABL:(CHARANUM-1):스킬4 = [[스킬:마하・갈다인]]
+
+;ABL:(CHARANUM-1):스킬5 = 0
+;ABL:(CHARANUM-1):스킬6 = 0
+;ABL:(CHARANUM-1):스킬7 = 0
+;ABL:(CHARANUM-1):스킬8 = 0
+
+CALL SYNC_STATUS,(CHARANUM-1)
+CALL HEALTH_CHARA,(CHARANUM-1)
+
+CALL BATTLE_START
+
+FLAG:도주불가フラグ = 0
+FLAG:회화불능フラグ = 0
+FLAG:선제기습취소 = 0
+
+;パーティに健在な나나코の知り合いが何人いるかを測定しておく。
+CALL DUNGEON_74_PT_NF
+
+PRINTFORMW 「제、젠장……어째서……。」
+PRINTFORMW 쓰러진 쿠니노사기리는 나마타메를 남기고 안개처럼 사라져갔다……
+PRINTFORMW 나마타메는 기절했으니 대충 밖에 던져낸다고 치고、나나코는 무사한것인가？
+PRINTFORML 　
+;나나코の知り合い何人いるかフラグ１（知り合いが一人きてる。）
+IF 던전フラグ:74:2 == 1
+	;P4주인공がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+		PRINTFORMW 「나나코-！」
+		PRINTFORML 　
+		CALL DUNGEON_74_PT_NAME
+		PRINTFORMW 가 걱정스런 표정으로 나나코의 곁에 눌러앉아 계속해서 말을 걸고있다。
+	;곰がパーティメンバーにいる。
+	ELSEIF FINDCHARA_B([[キャラ:곰]]) == 2
+		PRINTFORMW 「나나코！」
+		PRINTFORML 　
+		PRINTFORMW 곰이 걱정스런 표정으로 나나코의 곁에 눌러앉아 계속해서 말을 걸고있다。
+	ELSE
+		PRINTFORMW 「나나코！」
+		PRINTFORML 　
+		CALL DUNGEON_74_PT_NAME
+		PRINTFORMW 가 걱정스런 표정으로 나나코의 곁에 눌러앉아 계속해서 말을 걸고있다。
+	ENDIF
+	PRINTFORML 　
+;나나코の知り合い何人いるかフラグ２이상（知り合いが二人이상きてる。）
+ELSEIF 던전フラグ:74:2 >= 2
+	;P4주인공がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+		PRINTFORMW 「나나코-！」
+		;곰がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:곰]]) == 2
+			PRINTFORMW 「나나코！」
+		ENDIF
+		PRINTFORML 　
+		CALL DUNGEON_74_PT_NAME
+		PRINTFORMW 일행이 걱정스런 표정으로 나나코의 곁에 눌러앉아 계속해서 말을 걸고있다。
+	ELSE
+		PRINTFORMW 「나나코！」
+		;곰がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:곰]]) == 2
+			PRINTFORMW 「나나코！」
+		ENDIF
+		PRINTFORML 　
+		CALL DUNGEON_74_PT_NAME
+		PRINTFORMW 일행이 걱정스런 표정으로 나나코의 곁에 눌러앉아 계속해서 말을 걸고있다。
+	ENDIF
+	PRINTFORML 　
+	;나나코の知り合い何人いるか０
+ELSE
+	PRINTFORML 　
+ENDIF
+PRINTFORMW 「하아……하아……。」
+PRINTFORMW 그냥 기절했을 뿐인 나마타메와는 달리 나나코는 괴로워 보인다……
+PRINTFORMW 특이한 장소이기 때문인지、혹은 아직 어리기 때문인지 굉장히 위험한 상태로 보인다。
+PRINTFORML 　
+PRINTFORMW 이대로 돌아간다고 해도、이 공간이 원인이라면 일반인 의사라면 뭘 어떻게 해볼 도리도 없을 것이다。
+PRINTFORMW 그러나、문제는 그 부분이 아니다。치료는 기지의 의사에게 부탁하면 어떻게든 될 것이다。
+PRINTFORML 　
+PRINTFORMW 그 후에 어떻게 할 것인가、다……
+CALL INPUT_SELECT,1,"집에 돌려보내주자",2,"노예로 한다"
+SELECTCASE RESULT
+	CASE 1
+		PRINTFORMW 나나코를 의사인 지인에게 치료시킨 뒤、중개업자를 시켜 집으로 돌려보내주었다。
+		PRINTFORML 　
+		PRINTFORML 　
+		PRINTFORMW 그리고 얼마 뒤에、업자를 통해 왔다는 남자로부터 택배를 전달받았다。
+		PRINTFORMW 안에는、답례라고 생각되는 10만엔과 지점토로 만들어진 팔찌가 들어있었다。
+		PRINTFORMW ……이 팔찌는 나나코로부터의 선물인가？
+		PRINTFORML 　
+		PRINTFORMW \100000과 지점토의팔찌를 손에 넣었다
+		
+		MONEY += 100000
+		
+		;지점토의팔찌입수
+		ITEM:지점토의팔찌 += 1
+		
+		;ライトロウになる
+		CALL INCREASE_LD,10
+		CALL INCREASE_LC,10
+		
+		FLAG:탈출 = 1
+		
+		;천상낙원クリアフラグ:クリア済み（나나코救出）へ
+		던전フラグ:74:1 = 1
+	CASE 2
+		PRINTFORMW 나나코를 의사인 지인에게 치료시킨 뒤、노예로 삼아 세이프하우스에 감금했다。
+		PRINTFORMW 이만한 용모와 연령이라면、써먹을 곳이라면 얼마든지 있다……
+		
+		CALL ADD_NEW_COMPANION,4583,0
+		IF RESULT == 1
+			LOCAL = RESULT:1
+			
+			;ダークカオスになる
+			CALL INCREASE_LD,-15
+			CALL INCREASE_LC,-15
+		ENDIF
+		
+		FLAG:탈출 = 1
+		
+		;천상낙원クリアフラグ:クリア済み（나나코奴隷）へ
+		던전フラグ:74:1 = 3
+ENDSELECT
+;천상낙원進行状況、第１０天ボス済み
+던전フラグ:74:5 = 13
+
+;------------------------------------------------------------------
+;第１０天ボス、霧晴れ後
+@DUNGEON_74_13A
+
+;パーティに健在な나나코の知り合いが何人いるかを測定しておく。
+CALL DUNGEON_74_PT_NF
+
+;間に合わない
+;나나코状況、붕괴確定
+IF 던전フラグ:74:4 == 1
+	PRINTFORMW 현수교를 건너 광장에 가까워진 %CALLNAME:MASTER%의 눈에 들어온 것은、무수한 섀도우와 천사같은 괴물의 싸움이 끝난 순간이었다。
+	PRINTFORML 　
+	PRINTFORMW 섀도우에게 밀집당한 기괴한 천사같은 괴물이 지면으로 떨어진다。
+	PRINTFORMW 거체가 소리를 내며 쓰러지자、그 속에서 작업복을 입은 남자가 지면으로 내던져졌다。
+	PRINTFORMW 저것이 나마타메일까……라고、생각할 겨를도 없이 섀도우들이、%CALLNAME:MASTER%를 향해 온다。
+	PRINTFORML 　
+	;나나코の知り合い何人いるかフラグ１（知り合いが一人きてる。）
+	IF 던전フラグ:74:2 == 1
+		;P4주인공がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+			PRINTFORMW 「나나코！」
+			PRINTFORM 조금 떨어진 위치에 쓰러져있는 나나코에게도 섀도우들이 향하는 것을 본%CALLNAME:(FINDCHARA(NO, [[キャラ:P4주인공]]))%의 고함이 울려퍼졌다。
+		;곰がパーティメンバーにいる。
+		ELSEIF FINDCHARA_B([[キャラ:곰]]) == 2
+			PRINTFORMW 「나나짱！」
+			PRINTFORMW 조금 떨어진 위치에 쓰러져있는 나나코에게도 섀도우들이 향하는 것을 본 곰의 고함이 울려퍼졌다。
+		ELSE
+			PRINTFORMW 「나나코짱！」
+			PRINTFORM 조금 떨어진 위치에 쓰러져있는 나나코에게도 섀도우들이 향하는 것이 보였다
+			CALL DUNGEON_74_PT_NAME
+			PRINTFORMW 의 고함이 울려퍼졌다。
+		ENDIF
+		PRINTFORML 　
+	;나나코の知り合い何人いるかフラグ２이상（知り合いが二人이상きてる。）
+	ELSEIF 던전フラグ:74:2 >= 2
+		;P4주인공がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+			PRINTFORMW 「나나코！」
+			;곰がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:곰]]) == 2
+				PRINTFORMW 「나나짱！」
+			ENDIF
+			PRINTFORMW 조금 떨어진 위치에 쓰러져있는 나나코에게도 섀도우들이 향하는 것을 본 %CALLNAME:(FINDCHARA(NO, [[キャラ:P4주인공]]))%들의 고함이 울려퍼졌다。
+		ELSE
+			PRINTFORMW 「나나코짱！」
+			;곰がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:곰]]) == 2
+				PRINTFORMW 「나나짱！」
+			ENDIF
+			PRINTFORM 조금 떨어진 위치에 쓰러져있는 나나코에게도 섀도우들이 향하는 것이 보였다
+			CALL DUNGEON_74_PT_NAME
+			PRINTFORMW 들의 고함이 울려퍼졌다。
+		ENDIF
+		PRINTFORML 　
+	;나나코の知り合い何人いるか０
+	ELSE
+		PRINTFORMW 섀도우와의 싸움을 대비하는 %CALLNAME:MASTER%의 시야 구석에서、다른 섀도우들이 넘어져있는 나나코에게 향하는 것이 보였다。
+		PRINTFORML 　
+	ENDIF
+	;요스케がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:요스케]]) == 2
+		PRINTFORMW 「젠장……수가 너무 많다고……。」
+		PRINTFORML 　
+	ENDIF
+	;칸지がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:칸지]]) == 2
+		PRINTFORMW 「칫……꺼져라고옷！」
+		PRINTFORML 　
+	ENDIF
+	;유키코がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:유키코]]) == 2
+		PRINTFORMW 「그런……아직……나오고 있어！」
+		PRINTFORML 　
+	ENDIF
+	;치에がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:치에]]) == 2
+		PRINTFORMW 「안돼……닿지않아！」
+		PRINTFORML 　
+	ENDIF
+	PRINTFORMW 차례차례로 밀어닥치는 섀도우를 넘어뜨리지만、그 수가 많아 나나코의 근처로 가까워지는 것조차 할 수 없었다。
+	;나나코の知り合い何人いるかフラグ１（知り合いが一人きてる。）
+	IF 던전フラグ:74:2 == 1
+		;P4주인공がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+			PRINTFORMW 그렇게하는 동안에、%CALLNAME:(FINDCHARA(NO, [[キャラ:P4주인공]]))%의 분전에도 허무하게、섀도우가 나나코의 근처에 도착했다。
+		ELSE
+			PRINTFORM 그렇게하는 동안에、
+			CALL DUNGEON_74_PT_NAME
+			PRINTFORMW 의 분전에도 허무하게、섀도우가 나나코의 근처에 도착했다。
+		ENDIF
+	;나나코の知り合い何人いるかフラグ２이상（知り合いが二人이상きてる。）
+	ELSEIF 던전フラグ:74:2 >= 2
+		;P4주인공がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+			PRINTFORMW 그렇게하는 동안에、%CALLNAME:(FINDCHARA(NO, [[キャラ:P4주인공]]))%들의 분전에도 허무하게、섀도우들이 나나코의 근처에 도착했다。
+		ELSE
+			PRINTFORM 그렇게하는 동안에、
+			CALL DUNGEON_74_PT_NAME
+			PRINTFORMW 들의 분전에도 허무하게、섀도우들이 나나코의 근처에 도착했다。
+		ENDIF
+	;それ以外（知り合いが一人もきていない。）
+	ELSE
+		PRINTFORMW 그렇게하는동안、%CALLNAME:MASTER%의 분전에도 허무하게、섀도우가 나나코의 근처에 도착했다。
+	ENDIF
+	PRINTFORMW 그리고、몸의 일부를 촉수와 같이 변화시키고 작은 몸을 휘감아갔다……
+	PRINTFORML 　
+	
+	;エロシーン
+	PRINTFORMW 「으……응……。」
+	PRINTFORMW 녹초가된 나나코를 휘감은 촉수가 옷을 벗겨내、얼룩 하나 없는 피부가 노출되었다。
+	;나나코の知り合い何人いるかフラグ１（知り合いが一人きてる。）
+	IF 던전フラグ:74:2 == 1
+		;P4주인공がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+			PRINTFORML 　
+			PRINTFORMW 「……으윽！！」
+			PRINTFORMW 핑크색의 원피스가 헝겊이 되어 가는 광경에 %CALLNAME:(FINDCHARA(NO, [[キャラ:P4주인공]]))%의 입으로부터 비통한 소리가 흘러나왔다。
+		ELSE
+			PRINTFORML 　
+			;유키코がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:유키코]]) == 2
+				PRINTFORMW 「빨리 돕지 않으면！」
+				PRINTFORML 　
+			;요스케がパーティメンバーにいる。
+			ELSEIF FINDCHARA_B([[キャラ:요스케]]) == 2
+				PRINTFORMW 「진짜 위험해！　빨리 가지않으면！」
+				PRINTFORML 　
+			;치에がパーティメンバーにいる。
+			ELSEIF FINDCHARA_B([[キャラ:치에]]) == 2
+				PRINTFORMW 「빨리 가지않으면……나나코짱！」
+				PRINTFORML 　
+			;칸지がパーティメンバーにいる。
+			ELSEIF FINDCHARA_B([[キャラ:칸지]]) == 2
+				PRINTFORMW 「꺼져！　꺼져라고……오오오오옷！」
+				PRINTFORML 　
+			;곰がパーティメンバーにいる。
+			ELSEIF FINDCHARA_B([[キャラ:곰]]) == 2
+				PRINTFORMW 「나나짱에게 뭘하냐곰！」
+				PRINTFORML 　
+			ENDIF
+			PRINTFORM 핑크색의 원피스가 헝겊이 되어 가는 광경에
+			CALL DUNGEON_74_PT_NAME
+			PRINTFORMW 의 입으로부터 비통한 소리가 흘려나왔다。
+		ENDIF
+		PRINTFORML 　
+	;나나코の知り合い何人いるかフラグ２이상（知り合いが二人이상きてる。）
+	ELSEIF 던전フラグ:74:2 >= 2
+		;P4주인공がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+			PRINTFORML 　
+			PRINTFORMW 「……으윽！！」
+			PRINTFORMW 핑크색의 원피스가 헝겊이 되어 가는 광경에%CALLNAME:(FINDCHARA(NO, [[キャラ:P4주인공]]))%들의 입에서 비통한 소리가 흘러나왔다。
+		ELSE
+			PRINTFORML 　
+			;곰がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:곰]]) == 2
+				PRINTFORMW 「나나짱에게 뭘하냐곰！」
+				PRINTFORML 　
+			ENDIF
+			;유키코がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:유키코]]) == 2
+				PRINTFORMW 「빨리 돕지 않으면！」
+				PRINTFORML 　
+				;치에がパーティメンバーにいる。
+				IF FINDCHARA_B([[キャラ:치에]]) == 2
+					PRINTFORMW 「알고있어!　하지만！」
+					PRINTFORML 　
+				ENDIF
+			;요스케がパーティメンバーにいる。
+			ELSEIF FINDCHARA_B([[キャラ:요스케]]) == 2
+				PRINTFORMW 「진짜 위험해！　빨리 가지않으면！」
+				PRINTFORML 　
+				;칸지がパーティメンバーにいる。
+				IF FINDCHARA_B([[キャラ:칸지]]) == 2
+					PRINTFORMW 「알고 있지만……젠장！」
+					PRINTFORML 　
+				ENDIF
+			;치에がパーティメンバーにいる。
+			ELSEIF FINDCHARA_B([[キャラ:치에]]) == 2
+				PRINTFORMW 「빨리 가지 않으면……나나코짱！」
+				PRINTFORML  　
+			        ;칸지がパーティメンバーにいる。
+			        IF FINDCHARA_B([[キャラ:칸지]]) == 2
+				        PRINTFORMW 「알고 있지만……젠장！」
+				        PRINTFORML 　
+                                ENDIF
+			;칸지がパーティメンバーにいる。
+			ELSEIF FINDCHARA_B([[キャラ:칸지]]) == 2
+				PRINTFORMW 「꺼져！　꺼지라고……오오오오오옷！」
+				PRINTFORML 
+			ENDIF
+			PRINTFORM 핑크색의 원피스가 헝겊이 되어 가는 광경에
+			CALL DUNGEON_74_PT_NAME
+			PRINTFORMW 들의 입에서 비통한 소리가 세어나왔다。
+		ENDIF
+		PRINTFORML 　
+	ELSE
+		PRINTFORML 　
+	ENDIF
+	PRINTFORMW 섀도우들의 촉수가 몸을 기어가며 옷을 찢어도、정신을 잃고 있는지 나나코는 작게 몸을 움직일 뿐이였다。
+	PRINTFORMW 이대로 의식이 없는 편이、이 미쳐 버릴 것 같은 광경을 알지 못하고 넘어가는 행운일지도 모른다。
+	PRINTFORMW しかし……
+	PRINTFORML 　
+	PRINTFORML 「……에……？　뭐……야……？」
+	PRINTFORMW 「아……시、싫어어어어어어엇！」
+	PRINTFORMW 나나코의 입에서 부터 울려퍼지는 절규가 그녀의 행운의 끝과 끔직한 광경의 시작을 알리는 신호가 되었다。
+	PRINTFORML 　
+	PRINTFORML 「뭐、뭐야 이거！　앗！　누가……도와줘！」
+	PRINTFORMW 「아빠！　오빠！　힛……아읏！」
+	PRINTFORML 여성 특유의 성장이 전혀 없는 어린 몸을 무수한 촉수로 희롱당해、혐오와 공포로부터 도망치려듯이 몸부림치며 소리를 지르는 나나코。
+	PRINTFORMW 그러나、섀도우가 손발을 휘감고 있어 도망칠 수가 없었다。
+	PRINTFORML 　
+	PRINTFORML 「싫어……거기、싫어어어……。」
+	PRINTFORMW 「이거……꿈……？　아……히익！」
+	PRINTFORMW 싫어하는 나나코의 체내로 혀로 빨듯이 촉수가 기어들어왔다。
+	PRINTFORML 보통 사람이라면 성의 쾌락을 알고 있엇다고 해도 받아들이지 못할 인외의 손에 의한 능욕。
+	PRINTFORML 거기에 노출된 번뇌에서 벗어난 순수한 사고는、자신을 지키기 위해서 현실로부터 도피하려 하고 있었다。
+	PRINTFORMW 그러나、안개가 완전하게 개여 폭주한 섀도우는、그것조차 허락하지 않는 것처럼 새로운 촉수를 나나코에게 뻗어가기 시작했다。
+	PRINTFORML 　
+	PRINTFORMW 「아……시……。　뭐……하는 거야……？」
+	PRINTFORMW 바깥보다 한층 굵은、끝부분이 귀두와 같이 생긴 촉수가 나나코의 비렬을 더듬어간다。
+	PRINTFORMW 자신에게 한층 더 능욕이 강요되고 있지만 성에 대한 지식이 없는지 공포에 떠는 것 밖에 할 수 없었다。
+	PRINTFORMW 무서워하는 나나코의 미성숙한 구멍은 먼저 젖은 귀두로 꽉 눌러져、닫혀 있던 틈이 조금 열렸다。
+	;나나코の知り合い何人いるかフラグ１（知り合いが一人きてる。）
+	IF 던전フラグ:74:2 == 1
+		PRINTFORML 　
+		;P4주인공がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+			PRINTFORMW 「……뭐！！」
+			PRINTFORMW 섀도우들과 싸우면서도、최악의 사태를 알아차린 %CALLNAME:(FINDCHARA(NO, [[キャラ:P4주인공]]))%가 소리를 지른다。
+		ELSE
+			;칸지がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:칸지]]) == 2
+				PRINTFORMW 「뭐야……！　니놈！」
+			;요스케がパーティメンバーにいる。
+			ELSEIF FINDCHARA_B([[キャラ:요스케]]) == 2
+				PRINTFORMW 「저녀석……、무슨 짓을！」
+			;유키코がパーティメンバーにいる。
+			ELSEIF FINDCHARA_B([[キャラ:유키코]]) == 2
+				PRINTFORMW 「그、그런 짓을！」
+			;치에がパーティメンバーにいる。
+			ELSEIF FINDCHARA_B([[キャラ:치에]]) == 2
+				PRINTFORMW 「안돼에에엣！！」
+			;곰がパーティメンバーにいる。
+			ELSEIF FINDCHARA_B([[キャラ:곰]]) == 2
+				PRINTFORMW 「그、그만해고ー옴！」
+			ENDIF
+			PRINTFORM 섀도우들과 싸우면서도、최악의 사태를 알아차린
+			CALL DUNGEON_74_PT_NAME
+			PRINTFORMW 가 소리를 지른다。
+		ENDIF
+		PRINTFORML 　
+	;나나코の知り合い何人いるかフラグ２이상（知り合いが二人이상きてる。）
+	ELSEIF 던전フラグ:74:2 >= 2
+		PRINTFORML 　
+		;P4주인공がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+			PRINTFORMW 「……뭐！！」
+			PRINTFORML 　
+			;칸지がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:칸지]]) == 2
+				PRINTFORMW 「니、니놈！」
+				PRINTFORML 　
+			ENDIF
+			;요스케がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:요스케]]) == 2
+				PRINTFORMW 「젠장！　비켜、비켜라고！」
+				PRINTFORML 　
+			ENDIF
+			;유키코がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:유키코]]) == 2
+				PRINTFORMW 「그、그런！」
+				PRINTFORML 　
+			ENDIF
+			;곰がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:곰]]) == 2
+				PRINTFORMW 「그、그만해고ー옴！」
+			ENDIF
+			;치에がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:치에]]) == 2
+				PRINTFORMW 「안돼에에엣！！」
+				PRINTFORML 　
+			ENDIF
+			PRINTFORMW 섀도우들과 싸우면서도、최악의 사태를 알아차린 %CALLNAME:(FINDCHARA(NO, [[キャラ:P4주인공]]))%들이 소리를 지른다。
+		ELSE
+			;칸지がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:칸지]]) == 2
+				PRINTFORMW 「뭐……！　니놈！」
+				PRINTFORML 　
+			ENDIF
+			;요스케がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:요스케]]) == 2
+				PRINTFORMW 「젠장！　비켜、비켜라고！」
+				PRINTFORML 　
+			ENDIF
+			;유키코がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:유키코]]) == 2
+				PRINTFORMW 「그、그런！」
+				PRINTFORML 　
+			ENDIF
+			;곰がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:곰]]) == 2
+				PRINTFORMW 「그、그만해고ー옴！」
+			ENDIF
+			;치에がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:치에]]) == 2
+				PRINTFORMW 「안돼에에엣！！」
+				PRINTFORML 　
+			ENDIF
+			PRINTFORM 섀도우들과 싸우면서도、최악의 사태를 알아차린
+			CALL DUNGEON_74_PT_NAME
+			PRINTFORMW 들이 소리를 지른다。
+		ENDIF
+		PRINTFORML 　
+	ELSE
+		PRINTFORML 　
+	ENDIF
+	PRINTFORML 「에……？　아、아긋！　힛……히이익！」
+	PRINTFORMW 「아、아팟！　그만ㄷ……아아아아아앗！！」
+	;나나코の知り合い何人いるかフラグ１（知り合いが一人きてる。）
+	IF 던전フラグ:74:2 == 1
+		PRINTFORMW 그 소리를 비웃는 것 같이 촉수가 손가락마저도 들어가지 못할것 같은 틈을 확대해、 진입해 갔다。
+	;나나코の知り合い何人いるかフラグ２以上（知り合いが二人以上きてる。）
+	ELSEIF 던전フラグ:74:2 >= 2
+		CALL DUNGEON_74_PT_NAME
+		PRINTFORMW 들을 비웃는 것 같이 촉수가 손가락마저도 들어가지 못할것 같은 틈을 확대해、진입해 갔다。
+	ELSE
+		PRINTFORMW 그리고、촉수가 손가락마저도 들어가지 못할 것 같은 틈을 확대해、진입해 갔다。
+	ENDIF
+	PRINTFORML 　
+	PRINTFORML 「우윽！　아……도와……악、하앗……！」
+	PRINTFORML 「이제、그만……둬……。　하아……하아……。」
+	PRINTFORML 처녀구멍을 단번에 꿰뚫어 가장 안쪽까지 닿았는지 촉수의 움직임이 멈췄다。
+	PRINTFORMW 그 틈에 나나코는、고통에 허덕이면서 허약한 소리를 입밖에 냈다。
+	PRINTFORML 검디검은 촉수와 한계까지 넓혀진 어린 성기의 결합부로부터 세어나오는 파과의 피와、
+	PRINTFORMW 나나코의 아픔과 눈물로 뒤범벅이 된 얼굴이、눈을 돌리고 싶어지는 광경을 만들고 있었다。
+	PRINTFORML 　
+	PRINTFORML 「우……아아아앗……힛、아악！」
+	PRINTFORMW 섀도우들은 그저 들어간 것만으로 만족하지않고、욕망에 맡긴 교합을 시작하여 다시 나나코의 비명이 울려 퍼졌다。
+	PRINTFORML 　
+	PRINTFORML 「아、가앗！　나、나나코……죽어버려……。　아、우아아아앗！」
+	PRINTFORMW 신체가 부들부들하고 흔들릴 정도의 기세로 미성숙한 질을 문질러져 고통의 소리가 높아진다。
+	PRINTFORML 나나코가 아무리 비통한 절규를 질러도 섀도우의 움직임은 멈추지 않고、
+	PRINTFORMW 그 뿐만 아니라 다른 섀도우들로부터 촉수가 뻗어져、열려있는 구멍를 찾기 시작했다。
+	PRINTFORML 　
+	PRINTFORML 「……우……아……？　에……？」
+	PRINTFORML 「아아앗……히、히갸앗！　우긋！　우읏……응으읏！」
+	PRINTFORMW 나타난 촉수의 다른 한쪽이 나나코의 닫혀진 애널을 목표로 정하고 천천히 진입해 들어가고、남아있던 뒷구멍을 꿰뚫려 아픔에 허덕이는 입을 막는다。
+	PRINTFORML 　
+	PRINTFORML 「으므읏！　아……구읏……가앗！」
+	PRINTFORML 「우……야……우엣……우읍！　앗……우읏！」
+	PRINTFORMW 양손양발을 촉수로 구속된 채로 ３개의 구멍이 유린당한、나나코는 눈물을 흘리며 고통스럽게 신음을 흘렸다。
+	PRINTFORML 　
+	PRINTFORML 「응그읏！ 후하앗！　콜록……아……우으……。」
+	PRINTFORML 「그……부읏！　읏、그읏！　우읍……우윽！」
+	PRINTFORML 주르륵、하는 소리와 같이 작은 몸에 들어올 수 없을것같은 길이의 촉수가 뽑아지고、다시 들어가졌다。
+	PRINTFORMW 그 움직임은 점차 속도를 붙였고、거기에 맞춰 나나코의 비명이 울려 퍼졌다。
+	PRINTFORML 　
+	PRINTFORML 「으읏……우읍……우……아……읏……우아……。」
+	PRINTFORML 「じゅぷ……じゅぽっ……ぁ……じゅっ……ぁ……。　じゅぶ！　じゅぽっ！　じゅぶぶ！」
+	PRINTFORMW 끝없이 계속되는 교합에 소리조차 낼 수 없게 된 나나코를 자기 마음대로 범하고 있던 움직임이 일순간 격렬해져 경련했다。
+	PRINTFORML 　
+	PRINTFORML 「우엣！　콜록……아……응후읏！　응으ーー읏！！」
+	PRINTFORML 「읏、응읏！　우읍！　아……아……。　우으……우에에……。」
+	PRINTFORMW ３개의 구멍에 대량의 오액이 쏟아져、들어가지 못한 것들은 역류해 틈새로부터 넘쳐 갔다。
+	PRINTFORMW 그대로 마지막 한 방울까지 토해내자、만족했는지 범하고 있던 섀도우들은 촉수를 빼내어 나나코로부터 멀어져 갔다。
+	PRINTFORML 　
+	PRINTFORML 「아……우으……。　하아……하아……。」
+	PRINTFORMW 힘없이 쓰러진 나나코의 호흡에 맞추어、뻥 벌려진 질과 애널로부터 백탁의액체가 주르륵하고 흘러나온다。
+	PRINTFORML 나나코는 의식이 있는지 없는 것인지、거의 움직이지 않고 작은 신음을 흘리고 있을 뿐이다。
+	PRINTFORMW 거기에 새로운 섀도우가 가까워져 가、천천히 촉수를 늘린다……
+	PRINTFORML 　
+	PRINTFORML 　
+	;치에がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:치에]]) == 2
+		PRINTFORMW 「핫！　야아앗！」
+		PRINTFORML 　
+	;칸지がパーティメンバーにいる。
+	ELSEIF FINDCHARA_B([[キャラ:칸지]]) == 2
+		PRINTFORMW 「우랴앗！　빨리 꺼져버려！！」
+		PRINTFORML 　
+	;요스케がパーティメンバーにいる。
+	ELSEIF FINDCHARA_B([[キャラ:요스케]]) == 2
+		PRINTFORMW 「이야앗！　이걸……로！」
+		PRINTFORML 　
+	;곰がパーティメンバーにいる。
+	ELSEIF FINDCHARA_B([[キャラ:곰]]) == 2
+		PRINTFORMW 「곰샤앗ー！」
+		PRINTFORML 　
+	ENDIF
+	;유키코がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:유키코]]) == 2
+		PRINTFORMW 「나나코짱！」
+		PRINTFORML 　
+	ENDIF
+	;나나코の知り合い何人いるかフラグ１（知り合いが一人きてる。）
+	IF 던전フラグ:74:2 == 1
+		;P4주인공がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+			PRINTFORMW 「나나코！！」
+			PRINTFORMW 나나코를 덮치고 있었던 섀도우의 무리를 쓰러트리고、%CALLNAME:(FINDCHARA(NO, [[キャラ:P4주인공]]))%과 함께 달려갔다。
+			PRINTFORMW 그러나、%CALLNAME:(FINDCHARA(NO, [[キャラ:P4주인공]]))%가 다가와도、나나코는 변변한 반응을 보이지 않았다。
+		ELSE
+			PRINTFORM 나나코를 덮치고 있었던 섀도우의 무리를 쓰러트리고、
+			CALL DUNGEON_74_PT_NAME
+			PRINTFORMW 와 함꼐 달려갔다。
+			;곰がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:곰]]) == 2
+				PRINTFORMW 「나、나나짱……。」
+				PRINTFORML 　
+			ENDIF
+			;요스케がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:요스케]]) == 2
+				PRINTFORMW 「제길！　선배도……이렇게……。」
+				PRINTFORML 　
+			;칸지がパーティメンバーにいる。
+			ELSEIF FINDCHARA_B([[キャラ:칸지]]) == 2
+				PRINTFORMW 「어쨰서、이런……꼬맹이가앗！」
+				PRINTFORML 　
+			;유키코がパーティメンバーにいる。
+			ELSEIF FINDCHARA_B([[キャラ:유키코]]) == 2
+				PRINTFORMW 「……너、너무해……。」
+				PRINTFORML 　
+			;치에がパーティメンバーにいる。
+			ELSEIF FINDCHARA_B([[キャラ:치에]]) == 2
+				PRINTFORMW 「빨리……병원에 보내지 않으면！」
+				PRINTFORML 　
+			ENDIF
+			CALL DUNGEON_74_PT_NAME
+			PRINTFORMW 와 가까워져도、나나코는 변변한 반응을 보이지 않았다。
+		ENDIF
+	;나나코の知り合い何人いるかフラグ２이상（知り合いが二人이상きてる。）
+	ELSEIF 던전フラグ:74:2 >= 2
+		;P4주인공がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+			PRINTFORMW 「나나코！！」
+			PRINTFORMW 나나코를 덮치고 있었던 섀도우의 무리를 쓰러트리고、%CALLNAME:(FINDCHARA(NO, [[キャラ:P4주인공]]))%들과 함께 달려갔다。
+			PRINTFORML 　
+			;요스케がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:요스케]]) == 2
+				PRINTFORMW 「제길！　선배도……이렇게……。」
+				PRINTFORML 　
+			;칸지がパーティメンバーにいる。
+			ELSEIF FINDCHARA_B([[キャラ:칸지]]) == 2
+				PRINTFORMW 「어째서、이런……꼬맹이가앗！」
+				PRINTFORML 　
+			ENDIF
+			;곰がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:곰]]) == 2
+				PRINTFORMW 「나、나나짱……。」
+				PRINTFORML 　
+			ENDIF
+			;유키코がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:유키코]]) == 2
+				PRINTFORMW 「……이、이대로는！」
+				PRINTFORML 　
+			ENDIF
+			;치에がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:치에]]) == 2
+				PRINTFORMW 「빨리……병원에！」
+				PRINTFORML 　
+			ENDIF
+			PRINTFORMW %CALLNAME:(FINDCHARA(NO, [[キャラ:P4주인공]]))%들이 다가와도、나나코는 변변한 반응을 보이지 않았다。
+		ELSE
+			PRINTFORMW 「……나나코……짱……。」
+			PRINTFORM 나나코를 덮치고 있었던 섀도우의 무리를 쓰러트리고、
+			CALL DUNGEON_74_PT_NAME
+			PRINTFORMW 들과 함께 달려갔다。
+			;요스케がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:요스케]]) == 2
+				PRINTFORMW 「제길！　선배도……이렇게……。」
+				PRINTFORML 　
+			;칸지がパーティメンバーにいる。
+			ELSEIF FINDCHARA_B([[キャラ:칸지]]) == 2
+				PRINTFORMW 「어째서、이런……꼬맹이가앗！」
+				PRINTFORML 　
+			ENDIF
+			;곰がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:곰]]) == 2
+				PRINTFORMW 「나、나나짱……。」
+				PRINTFORML 　
+			ENDIF
+			;유키코がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:유키코]]) == 2
+				PRINTFORMW 「……이、이대로는！」
+				PRINTFORML 　
+			ENDIF
+			;치에がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:치에]]) == 2
+				PRINTFORMW 「빨리……병원에！」
+				PRINTFORML 　
+			ENDIF
+			CALL DUNGEON_74_PT_NAME
+			PRINTFORMW 들이 다가와도、나나코는 변변한 반응을 보이지 않았다。
+		ENDIF
+	ELSE
+		PRINTFORMW 머리를 세우고 있는 촉수를 짓밟아、나나코에게 다시 모이려 하고 있는 섀도우들을 쓰러트렸다。
+		PRINTFORML 　
+		PRINTFORML 「아……으……。　으……。」
+		PRINTFORMW 주위에 있었던 섀도우들을 쓰러트리고、쓰러져있는 나나코를 들여다봤다。
+	ENDIF
+	
+	PRINTFORMW 조금 움직이고 있는 것으로봐서 살아 있는 것은 틀림없지만、초점을 잃은 눈동자와 힘없이 쳐저있는 사지、백탁으로 더럽혀진 입은 신음 소리 밖에 내지 않았다。
+	PRINTFORMW 어른이라도 재정신을 유지하는 것이 어려운 섀도우에 의한 폭력에、어린 마음과 몸은 견디지 못하고 망가져 버린 것임에 틀림없다……
+	PRINTFORML 　
+	PRINTFORML 　
+	PRINTFORMW 기절했을 뿐인 나마타메는 밖에 내던져버린다 치고、나나코는 적절한 치료를 하지 않으면 살아나지 못할것이다……
+	PRINTFORML 　
+	;나나코の知り合い何人いるかフラグ１（知り合いが一人きてる。）
+	IF 던전フラグ:74:2 == 1
+		;P4주인공がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+			PRINTFORMW 「나나코！」
+			PRINTFORML 　
+			PRINTFORMW %CALLNAME:(FINDCHARA(NO, [[キャラ:P4주인공]]))%가 눈물을 흘리며 나나코의 곁에 주저앉아 말을 꺼내고 있다。
+		;곰がパーティメンバーにいる。
+		ELSEIF FINDCHARA_B([[キャラ:곰]]) == 2
+			PRINTFORMW 「나나짱！」
+			PRINTFORML 　
+			PRINTFORMW 곰이 눈물을 흘리면서 나나코의 곁에 주저 앉아 말을 꺼내고 있다。
+		ELSE
+			PRINTFORMW 「나나코짱！」
+			PRINTFORML 　
+			CALL DUNGEON_74_PT_NAME
+			PRINTFORMW 가 눈물을 흘리면서 나나코의 곁에 주저 앉아 말을 꺼내고 있다。
+		ENDIF
+		PRINTFORML 　
+	;나나코の知り合い何人いるかフラグ２이상（知り合いが二人이상きてる。）
+	ELSEIF 던전フラグ:74:2 >= 2
+		;P4주인공がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+			PRINTFORMW 「나나코！」
+			;곰がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:곰]]) == 2
+				PRINTFORMW 「나나짱！」
+			ENDIF
+			PRINTFORML 　
+			PRINTFORMW %CALLNAME:(FINDCHARA(NO, [[キャラ:P4주인공]]))%들이 눈물을 흘리면서 나나코의 곁에 주저 앉아 말을 꺼내고 있다。
+		ELSE
+			PRINTFORMW 「나나코짱！」
+			;곰がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:곰]]) == 2
+				PRINTFORMW 「나나짱！」
+			ENDIF
+			PRINTFORML 　
+			CALL DUNGEON_74_PT_NAME
+			PRINTFORMW 들이 눈물을 흘리면서 나나코의 곁에 주저 앉아 말을 꺼내고 있다。
+		ENDIF
+		PRINTFORML 　
+	;나나코の知り合い何人いるか０
+	ELSE
+		PRINTFORML 　
+	ENDIF
+	PRINTFORMW 치료는 알고있는 의사에게 맡긴다 치고、그 후는 어떻게 하지？
+	CALL INPUT_SELECT,1,"집에 돌려보낸다",2,"노예로 만든다"
+	SELECTCASE RESULT
+		CASE 1
+			PRINTFORMW 나나코를 아는 의사에게 치료시킨 후、중개업자를 통해 집으로 돌려 보냈다。
+			PRINTFORML 　
+			PRINTFORML 　
+			PRINTFORMW 그 후 잠시 뒤、업자를 통해서 도지마라고 하는 사람으로부터 돈이 보내져 왔다。
+			PRINTFORMW 치료비와 그외를 빼도 나쁘지않은 수익이다……
+			PRINTFORML 　
+			PRINTFORMW \50000손에 넣었다
+			
+			MONEY += 50000
+			
+			FLAG:탈출 = 1
+			
+				;천상낙원クリアフラグ:クリア済み（나나코救出、붕괴）へ
+				던전フラグ:74:1 = 2
+		CASE 2
+			PRINTFORMW 나나코를 아는 의사에게 치료시킨 후、노예로서 세이프 하우스에 데리고 돌아왔다。
+			PRINTFORMW 마음은 망가져 버렸어도、이 용모다……무언가에 사용할 수 있을지도 모른다。
+			
+			CALL ADD_NEW_COMPANION,4583,0
+			IF RESULT == 1
+				LOCAL = RESULT:1
+				
+				;間に合わなかった加入
+				CFLAG:LOCAL:이벤트加入 = 1
+				
+				TALENT:LOCAL:붕괴 = 1
+				TALENT:LOCAL:처녀 = 0
+				
+				EXP:LOCAL:Ｖ경험 += 1
+				EXP:LOCAL:Ａ경험 += 1
+				EXP:LOCAL:펠라경험 += 1
+				EXP:LOCAL:윤간경험 += 3
+				
+				EXP:LOCAL:정액경험 += 3
+				EXP:LOCAL:질사경험 += 1
+				EXP:LOCAL:성교경험 += 2
+				EXP:LOCAL:촉수경험 += 2
+				
+				MARK:LOCAL:고통각인 = 3
+				
+				
+				
+				
+				CALL ADDS_ABNORMAL_EXP, "처녀상실（윤간）", LOCAL
+				CALL ADDS_ABNORMAL_EXP, "촉수첫경험", LOCAL
+				CALL ADDS_ABNORMAL_EXP, "고통각인LV3", LOCAL
+				CALL ADDS_ABNORMAL_EXP, "확장첫경험", LOCAL
+				CALL SHOW_ABNORMAL_EXP , LOCAL, 0
+				
+				;비ー자갈의성の아이を임신する가능性ある
+				IF FLAG:임신기능 && RAND:4
+					CALL SET_ENEMY,14,3242,11,1,1
+					CFLAG:LOCAL:출산予定日 = DAY + 6
+					CFLAG:LOCAL:임신時の父親の판정 = 4
+					CFLAG:LOCAL:임신確定後の父親の판정 = NO:POS(14)
+					CFLAG:LOCAL:父親の固有번호親 = -1
+					CSTR:LOCAL:父親명칭 = %CALLNAME:POS(14)%
+					CALL DELENEMY
+				;심판의검の아이を임신する가능性ある
+				;나나코ちゃんに俺の가랑이の심판의검をぶち込みたいです。ってCSVにあったから…
+				ELSEIF FLAG:임신기능 && RAND:3
+					CALL SET_ENEMY,14,3278,11,1,1
+					CFLAG:LOCAL:출산予定日 = DAY + 6
+					CFLAG:LOCAL:임신時の父親の판정 = 4
+					CFLAG:LOCAL:임신確定後の父親の판정 = NO:POS(14)
+					CFLAG:LOCAL:父親の固有번호親 = -1
+					CSTR:LOCAL:父親명칭 = %CALLNAME:POS(14)%
+					CALL DELENEMY
+				ENDIF
+				
+				;少しだけダークカオスになる
+				CALL INCREASE_LD,-10
+				CALL INCREASE_LC,-10
+			ENDIF
+			
+			FLAG:탈출 = 1
+			
+			;천상낙원クリアフラグ:クリア済み（나나코奴隷）へ
+			던전フラグ:74:1 = 3
+	ENDSELECT
+ELSE
+;間に合った
+	PRINTFORMW 현수교를 건너 광장에 가까워진 %CALLNAME:MASTER%의 눈에 들어온 것은、무수한 섀도우와 천사같은 괴물의 싸움이였다。
+	PRINTFORMW 검붉은 천사가 계속 쏟아낸 마법이 섀도우의 무리를 직격한다。
+	PRINTFORML 　
+	
+	;나나코の知り合い何人いるかフラグ１（知り合いが一人きてる。）
+	IF 던전フラグ:74:2 == 1
+		;P4주인공がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+			PRINTFORMW 「나나코！」
+			PRINTFORML 　
+			PRINTFORMW 천사와 섀도우의 빈틈을 찔러、%CALLNAME:(FINDCHARA(NO, [[キャラ:P4주인공]]))%과 쓰러져있는 나나코의 근처로 달려갔다。
+		;곰がパーティメンバーにいる。
+		ELSEIF FINDCHARA_B([[キャラ:곰]]) == 2
+			PRINTFORMW 「나나짱！」
+			PRINTFORML 　
+			PRINTFORMW 천사와 섀도우의 빈틈을 찔러、곰과 함께 쓰러져있는 나나코의 근처로 달려갔다。
+		ELSE
+			PRINTFORMW 「나、나나코짱！」
+			PRINTFORML 　
+			PRINTFORM 천사와 섀도우의 빈틈을 찔러、
+			CALL DUNGEON_74_PT_NAME
+			PRINTFORMW 와 쓰러져있는 나나코의 근처로 달려갔다。
+		ENDIF
+		PRINTFORML 　
+		;치에がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:치에]]) == 2
+			PRINTFORMW 「괜찮아、살아있어！」
+			PRINTFORMW 나나코의 무사를 확인하고 안도하는 치에。
+		ENDIF
+		;요스케がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:요스케]]) == 2
+			PRINTFORMW 「무사……한거같아！」
+			PRINTFORMW 나나코의 무사를 확인하고 안도하는 요스케。
+		ENDIF
+		;칸지がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:칸지]]) == 2
+			PRINTFORMW 「상처는、없어보임다만！」
+			PRINTFORMW 나나코의 무사를 확인하고 안도하는 칸지。
+		ENDIF
+		;유키코がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:유키코]]) == 2
+			PRINTFORMW 「빨리 데리고 돌아가지 않으면！」
+			PRINTFORMW 나나코의 무사를 확인하고 안도하는 유키코。
+		ENDIF
+		PRINTFORM そこへ
+	;나나코の知り合い何人いるかフラグ２이상（知り合いが二人이상きてる。）
+	ELSEIF 던전フラグ:74:2 >= 2
+		;P4주인공がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+			PRINTFORMW 「나나코！」
+			;곰がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:곰]]) == 2
+				PRINTFORMW 「나나짱！」
+			ENDIF
+			PRINTFORML 　
+			PRINTFORMW 천사와 섀도우의 빈틈을 찔러、%CALLNAME:(FINDCHARA(NO, [[キャラ:P4주인공]]))%들은 쓰러져있는 나나코의 근처로 달려갔다。
+		;곰がパーティメンバーにいる。
+		ELSEIF FINDCHARA_B([[キャラ:곰]]) == 2
+			PRINTFORML 「나나짱！」
+			PRINTFORMW 「나、나나코짱！」
+			PRINTFORML 　
+			PRINTFORMW 천사와 섀도우의 빈틈을 노려、곰들과 쓰러져있는 나나코의 근처로 달려갔다。
+		ELSE
+			PRINTFORMW 「나、나나코짱！」
+			PRINTFORML 　
+			PRINTFORM 천사와 섀도우의 빈틈을 찔러、
+			CALL DUNGEON_74_PT_NAME
+			PRINTFORMW 들과 쓰러져있는 나나코의 근처로 달려갔다。
+		ENDIF
+		PRINTFORML 　
+		;치에がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:치에]]) == 2
+			PRINTFORMW 「괜찮아、살아있어！」
+		ENDIF
+		;요스케がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:요스케]]) == 2
+			PRINTFORMW 「무사……한거같아！」
+		ENDIF
+		;칸지がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:칸지]]) == 2
+			PRINTFORMW 「상처는、없어보임다만！」
+		ENDIF
+		;유키코がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:유키코]]) == 2
+			PRINTFORMW 「다행이다……。」
+		ENDIF
+		PRINTFORM 나나코의 무사를 확인하고 안도하는
+		CALL DUNGEON_74_PT_NAME
+		PRINTFORMW 들。
+		PRINTFORM 거기에
+	;それ以外（知り合いが一人もきていない。）
+	ELSE
+		PRINTFORM 천사와 섀도우의 틈을 찔러、쓰러져있는 나나코의 근처로 달려갔다。
+		PRINTFORML 　
+		PRINTFORMW 「우읏……。」
+		PRINTFORMW 의식은 없는 것 같지만 생명에 이상은 없는 것 같다。
+		PRINTFORM 나나코의 무사를 확인하고 안도할 틈도 없이、
+	ENDIF
+	PRINTFORMW 섀도우의 무리와의 싸움에서 승리한 그로테스크한 천사가 다가온다。
+	PRINTFORML 　
+	PRINTFORMW 「구원한다……그거、구원한다……！」
+	PRINTFORML 　
+	PRINTFORMW 언동으로 확인해볼때 저것이 나마타메인가？
+	PRINTFORMW 그의 몸에 무엇이 일어났는지 모르겠지만 싸움은 피할 수 없어보인다……
+	PRINTFORML 　
+	PRINTFORMW 쿠니노사기리가 덤벼왔다！
+	PRINTFORML 　
+	CUSTOMDRAWLINE =
+	
+	;전투
+	;쿠니노사기리、섀도우と전투後なので少し弱体化
+	;전투、쿠니노사기리
+	FLAG:도주불가フラグ = 1
+	FLAG:회화불능フラグ = 1
+	FLAG:선제기습취소 = 1
+	
+	CALL SET_ENEMY,9,[[キャラ:쿠니노사기리]],55,0,1
+	CFLAG:(CHARANUM-1):行動횟수 = 1
+	CFLAG:(CHARANUM-1):ＨＰ보정 += 700
+	CFLAG:(CHARANUM-1):ＭＰ보정 += 1500
+	
+	CSTR:(CHARANUM-1):사고패턴 = 3243
+	
+	BASE:(CHARANUM-1):힘 += 5
+	BASE:(CHARANUM-1):지혜 += 5
+	BASE:(CHARANUM-1):마력 += 5
+	BASE:(CHARANUM-1):인내력 += 5
+	BASE:(CHARANUM-1):운 += 5
+	
+;	ABL:(CHARANUM-1):스킬1 = [[스킬:마하・라기다인]]
+;	ABL:(CHARANUM-1):스킬2 = [[스킬:마하・부후다인]]
+;	ABL:(CHARANUM-1):스킬3 = [[스킬:마하・지오다인]]
+;	ABL:(CHARANUM-1):스킬4 = [[스킬:마하・갈다인]]
+;	
+;	ABL:(CHARANUM-1):스킬5 = 0
+;	ABL:(CHARANUM-1):스킬6 = 0
+;	ABL:(CHARANUM-1):스킬7 = 0
+;	ABL:(CHARANUM-1):스킬8 = 0
+	
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	
+	CALL BATTLE_START
+	
+	FLAG:도주불가フラグ = 0
+	FLAG:회화불능フラグ = 0
+	FLAG:선제기습취소 = 0	
+	
+	;パーティに健在な나나코の知り合いが何人いるかを測定しておく。
+	CALL DUNGEON_74_PT_NF
+	
+	PRINTFORMW 「제、젠장……어째서……。」
+	PRINTFORMW 지면으로 떨어진 쿠니노사기리는 나마타메를 남기고 아낵와 같이 사라져 갔다……
+	PRINTFORMW 나마타메는 기절한 채로 밖에라도 내던진다 치고、나나코는 괜찮은것인가？
+	PRINTFORML 　
+	;나나코の知り合い何人いるかフラグ１（知り合いが一人きてる。）
+	IF 던전フラグ:74:2 == 1
+		;P4주인공がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+			PRINTFORMW 「나나코！」
+			PRINTFORML 　
+			PRINTFORMW %CALLNAME:(FINDCHARA(NO, [[キャラ:P4주인공]]))%가 걱정스런 표정으로 나나코 곁에 들어앉아 말을 꺼내고있다。
+		;곰がパーティメンバーにいる。
+		ELSEIF FINDCHARA_B([[キャラ:곰]]) == 2
+			PRINTFORMW 「나나짱！」
+			PRINTFORML 　
+			PRINTFORMW 곰가 걱정스런 표정으로 나나코 곁에 들어앉아 말을 꺼내고 있다。
+		ELSE
+			PRINTFORMW 「나나코짱！」
+			PRINTFORML 　
+			CALL DUNGEON_74_PT_NAME
+			PRINTFORMW 이 걱정스런 표정으로 나나코 곁에 들어앉아 말을 꺼내고 있다。
+		ENDIF
+		PRINTFORML 　
+	;나나코の知り合い何人いるかフラグ２이상（知り合いが二人이상きてる。）
+	ELSEIF 던전フラグ:74:2 >= 2
+		;P4주인공がパーティメンバーにいる。
+		IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+			PRINTFORMW 「나나코！」
+			;곰がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:곰]]) == 2
+				PRINTFORMW 「나나짱！」
+			ENDIF
+			PRINTFORML 　
+			PRINTFORMW %CALLNAME:(FINDCHARA(NO, [[キャラ:P4주인공]]))%들이 걱정스런 표정으로 나나코 곁에 들어앉아 말을 꺼내고 있다。
+		ELSE
+			PRINTFORMW 「나나코ちゃん！」
+			;곰がパーティメンバーにいる。
+			IF FINDCHARA_B([[キャラ:곰]]) == 2
+				PRINTFORMW 「ナナチャン！」
+			ENDIF
+			PRINTFORML 　
+			CALL DUNGEON_74_PT_NAME
+			PRINTFORMW 들이 걱정스런 표정으로 나나코 곁에 들어앉아 말을 꺼내고 있다。
+		ENDIF
+		PRINTFORML 　
+	;나나코の知り合い何人いるか０
+	ELSE
+		PRINTFORML 　
+	ENDIF
+	PRINTFORMW 「하아……하아……。」
+	PRINTFORMW 기절해 있을 뿐인 나카타마와 달리 나나코는 괴로운 듯하다……
+	PRINTFORMW 특이한 장소 탓인지、그렇지 않으면 어려서 그런지 위험한 상태로 보인다。
+	PRINTFORML 　
+	PRINTFORMW 이대로 돌아간다고 해도、이 공간이 원인이라면 보통 의사로선 해결 할 도리가 없을 것이다。
+	PRINTFORMW 그렇지만、문제는 그것이 아니다、치료는 알고 있는 의사에게 부탁해내면 된다。
+	PRINTFORML 　
+	PRINTFORMW 그 다음이 문제인데……
+	CALL INPUT_SELECT,1,"집에 돌려보낸다",2,"노예로 가세한다"
+	SELECTCASE RESULT
+		CASE 1
+			PRINTFORMW 나나코를 아는 의사에게 치료 시킨 후、중개업자를 통해 집으로 돌려보냈다。
+			PRINTFORML 　
+			PRINTFORML 　
+			PRINTFORMW 그 후 얼마 뒤、업자를 통해 도지마라고 하는 남자로부터 짐이 보내져 왔다。
+			PRINTFORMW 안에는、답례라고 생각되는 10만엔과 지점토로 만들어진 팔찌가 들어있었다。
+			PRINTFORMW ……이 팔찌는 나나코가 보낸건가？
+			PRINTFORML 　
+			PRINTFORMW \100000과 지점토의팔찌를 손에 넣었다
+			
+			MONEY += 100000
+			
+			;지점토의팔찌입수
+			ITEM:지점토의팔찌 += 1
+			
+			;ライトロウになる
+			CALL INCREASE_LD,10
+			CALL INCREASE_LC,10
+			
+			FLAG:탈출 = 1
+			
+			;천상낙원クリアフラグ:クリア済み（나나코救出）へ
+			던전フラグ:74:1 = 1
+		CASE 2
+			PRINTFORMW 나나코를 아는 의사에게 치료시킨 후、노예로서 세이프 하우스에 감금했다。
+			PRINTFORMW 이 용모와 연령、용도는 얼마든지 있다……
+			
+			CALL ADD_NEW_COMPANION,4583,0
+			IF RESULT == 1
+				LOCAL = RESULT:1
+				
+				;ダークカオスになる
+				CALL INCREASE_LD,-15
+				CALL INCREASE_LC,-15
+			ENDIF
+			
+			FLAG:탈출 = 1
+			
+			;천상낙원クリアフラグ:クリア済み（나나코奴隷）へ
+			던전フラグ:74:1 = 3
+	ENDSELECT
+ENDIF
+
+;천상낙원進行状況（霧晴れ）、第１０天ボス済み
+던전フラグ:74:6 = 13
+;천상낙원の霧状況、霧に戻しておく
+던전フラグ:74:3 = 0
+;------------------------------------------------------------------
+;パーティにいるキャラの이름を呼び出す関数
+;------------------------------------------------------------------
+@DUNGEON_74_PT_NAME
+;P4주인공がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+	PRINTFORM %CALLNAME:(FINDCHARA(NO, [[キャラ:P4주인공]]))%
+;요스케がパーティメンバーにいる。
+ELSEIF FINDCHARA_B([[キャラ:요스케]]) == 2
+	PRINTFORM 요스케
+;치에がパーティメンバーにいる。
+ELSEIF FINDCHARA_B([[キャラ:치에]]) == 2
+	PRINTFORM 치에
+;유키코がパーティメンバーにいる。
+ELSEIF FINDCHARA_B([[キャラ:유키코]]) == 2
+	PRINTFORM 유키코
+;칸지がパーティメンバーにいる。
+ELSEIF FINDCHARA_B([[キャラ:칸지]]) == 2
+	PRINTFORM 칸지
+;곰がパーティメンバーにいる。
+ELSEIF FINDCHARA_B([[キャラ:곰]]) == 2
+	PRINTFORM 곰
+ENDIF
+;------------------------------------------------------------------
+;パーティに健在な나나코の知り合いが何人いるか
+;------------------------------------------------------------------
+@DUNGEON_74_PT_NF
+;초기化
+던전フラグ:74:2 = 0
+;P4주인공がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:P4주인공]]) == 2
+	;나나코の知り合い何人いるかフラグ+1
+	던전フラグ:74:2 += 1
+ENDIF
+;요스케がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:요스케]]) == 2
+	;나나코の知り合い何人いるかフラグ+1
+	던전フラグ:74:2 += 1
+ENDIF
+;치에がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:치에]]) == 2
+	;나나코の知り合い何人いるかフラグ+1
+	던전フラグ:74:2 += 1
+ENDIF
+;유키코がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:유키코]]) == 2
+	;나나코の知り合い何人いるかフラグ+1
+	던전フラグ:74:2 += 1
+ENDIF
+;칸지がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:칸지]]) == 2
+	;나나코の知り合い何人いるかフラグ+1
+	던전フラグ:74:2 += 1
+ENDIF
+;곰がパーティメンバーにいる。
+IF FINDCHARA_B([[キャラ:곰]]) == 2
+	;나나코の知り合い何人いるかフラグ+1
+	던전フラグ:74:2 += 1
+ENDIF
+
+;------------------------------------------------------------------
+;サブ이벤트群
+;------------------------------------------------------------------
+;신사악마、천사系を想定
+@DUNGEON_74_SE_01
+PRINTW 천사가 서성거리고 있다……
+PRINTL 
+;천상낙원の霧状況、霧晴れた
+IF 던전フラグ:74:3 == 1
+	PRINTW 「이곳은 멋지네요。」
+	PRINTW 「하지만、섀도우가 소란을 피우는것이 마음에 걸려요……。」
+	PRINTW 「어느쪽이든 사람의 마음이 낳은것인데……。」
+	PRINTL 　
+	PRINTW 조금 초조해하는 천사에게 작별을 고하고、그 장소에서 멀어졌다……
+ELSE
+	PRINTW 「이곳은 멋지네요。」
+	PRINTW 「이런 장소가 인간의 아이의 마음으로부터 만들어진 곳이라니……。」
+	PRINTW 「후후……、우리들의 인도의 성과로군요。」
+	PRINTL 　
+	;유키코か칸지がパーティメンバーにいる。
+	IF FINDCHARA_B([[キャラ:유키코]]) == 2 && FINDCHARA_B([[キャラ:칸지]]) == 2
+		PRINTW 「……。」
+		PRINTW 평온해보이는 천사와 대조적으로、유키코와 칸지는 그다지 기분이 좋아보이지 않는다。
+	;유키코がパーティメンバーにいる。
+	ELSEIF FINDCHARA_B([[キャラ:유키코]]) == 2
+		PRINTW 「……。」
+		PRINTW 평온해보이는 천사와는 대조적으로、유키코는 얼굴을 빨갛게 물들이고 씨근대고있다。
+	;칸지がパーティメンバーにいる。
+	ELSEIF FINDCHARA_B([[キャラ:칸지]]) == 2
+		PRINTW 「……。」
+		PRINTW 평온해보이는 천사와는 대조적으로、칸지는 그다지 기분이 좋아보이지 않는다。
+	ELSE
+		PRINTW 천사를 평온을 즐기며 이야기하고는、다시금 경치를 돌아보기 시작했다……
+	ENDIF
+ENDIF
+;------------------------------------------------------------------
+;악마の회화、가인系
+@DUNGEON_74_SE_02
+PRINTW 천상낙토와는 분위기가 어울리지 않는 악마가 있다……
+PRINTL 
+;천상낙원の霧状況、霧晴れた
+IF 던전フラグ:74:3 == 1
+	PRINTW 「뭔가 소란스러워 졌군。」
+	PRINTW 「느긋하게만 있을수도 없고、슬슬 가야할까、이스탄불……。」
+	PRINTW 고민하고 있는 악마를 내버려두고、그 장소에서 벗어났다……
+ELSE
+	PRINTW 「여기는 안락하고 좋군。」
+	PRINTW 「이스탄불에 갈 생각이었지만、당분간 여기서 지낼까。」
+	PRINTW 즐거워보이는 악마를 내버려두고、그 장소에서 벗어났다……
+ENDIF
+;------------------------------------------------------------------
+;天然서머너
+@DUNGEON_74_SE_03
+PRINTL 천연계로 보이는 서머너가 있다……
+PRINTL 
+;천상낙원の霧状況、霧晴れた
+IF 던전フラグ:74:3 == 1
+	PRINTL 「어쩐지、소란스러워 졌네요～。」
+	PRINTL 「방금 전에도、섀도우가 덮쳐와서 큰 일이었답니다～。」
+	PRINTW 
+	PRINTW 「우리 애들이 있으면、위험하지는 않겠지만……。」
+	PRINTL 「조금……성가시네요～。」
+	PRINTW 
+	PRINTW 천연계의 서머너와 인사를 나누고、그 장소에서 벗어났다……
+ELSE
+	PRINTW 「이 메기도의 스킬카드、리림에게 사용할까……。」
+	PRINTW 「아니면……고민되네～。」
+	PRINTL 「앗、안녕하세요～。」
+	PRINTW 
+	PRINTW 「변이하는 아이들은、어쩐지 애착이 생겨버린답니다～。」
+	PRINTL 「당신도、그런 경우가 있지않나요？」
+	PRINTW 
+	PRINTW 「그건、그렇고……」
+	PRINTL 「여긴 대체、어디인걸까요～。」
+	PRINTL 「다른 생각을 좀 하면서 걸었더니、어느샌가 이상한 장소에 와버렸답니다～。」
+	PRINTW 
+	PRINTW 천연계의 서머너와 인사를 나누고、그 장소에서 벗어났다……
+ENDIF
+
+;------------------------------------------------------------------
+;쿠니노사기리AI
+@SET_ACTION_3243, ARG
+;천상낙원の霧状況、霧晴れた
+IF 던전フラグ:74:3 == 1
+	LOCAL = RAND:100
+	IF LOCAL < 30
+		CFLAG:ARG:입력行動 = [[스킬:메기도라온]]
+		CALL RANDOM_TARGET,ARG,[[스킬:메기도라온]]
+	ELSEIF LOCAL < 50
+		CFLAG:ARG:입력行動 = [[스킬:유혹의안개]]
+		CALL RANDOM_TARGET,ARG,[[스킬:유혹의안개]]
+	ELSE
+		SELECTCASE RAND:4
+			CASE 0
+				CFLAG:ARG:입력行動 = [[스킬:마하・라기다인]]
+				CALL RANDOM_TARGET,ARG,[[스킬:마하・라기다인]]
+			CASE 1
+				CFLAG:ARG:입력行動 = [[스킬:마하・부후다인]]
+				CALL RANDOM_TARGET,ARG,[[스킬:마하・부후다인]]
+			CASE 2
+				CFLAG:ARG:입력行動 = [[스킬:마하・지오다인]]
+				CALL RANDOM_TARGET,ARG,[[스킬:마하・지오다인]]
+			CASE 3
+				CFLAG:ARG:입력行動 = [[스킬:마하・갈다인]]
+				CALL RANDOM_TARGET,ARG,[[스킬:마하・갈다인]]
+		ENDSELECT
+	ENDIF
+ELSE
+	;HP30%미만
+	IF 現HP割合(ARG) < 20 && RAND:3 == 0
+		CFLAG:ARG:입력行動 = [[스킬:메기도라온]]
+		CALL RANDOM_TARGET,ARG,[[스킬:메기도라온]]
+	;HP60%미만、1/5
+	ELSEIF 現HP割合(ARG) < 40 && RAND:5 == 0
+		CFLAG:ARG:입력行動 = [[스킬:유혹의안개]]
+		CALL RANDOM_TARGET,ARG,[[스킬:유혹의안개]]
+	ELSE
+		SELECTCASE RAND:4
+			CASE 0
+				CFLAG:ARG:입력行動 = [[스킬:마하・라기다인]]
+				CALL RANDOM_TARGET,ARG,[[스킬:마하・라기다인]]
+			CASE 1
+				CFLAG:ARG:입력行動 = [[스킬:마하・부후다인]]
+				CALL RANDOM_TARGET,ARG,[[스킬:마하・부후다인]]
+			CASE 2
+				CFLAG:ARG:입력行動 = [[스킬:마하・지오다인]]
+				CALL RANDOM_TARGET,ARG,[[스킬:마하・지오다인]]
+			CASE 3
+				CFLAG:ARG:입력行動 = [[스킬:마하・갈다인]]
+				CALL RANDOM_TARGET,ARG,[[스킬:마하・갈다인]]
+		ENDSELECT
+	ENDIF
+ENDIF

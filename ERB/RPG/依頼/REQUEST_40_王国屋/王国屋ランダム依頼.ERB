@@ -1,0 +1,492 @@
+﻿;-------------------------------------------------------------
+;랜덤의뢰はABL/TALENT/종족/스킬/속성の5종류
+;なお의뢰はSAVESTR:王国屋랜덤의뢰Xの中に
+;0/    /1     /   2/     3/   4/     5
+;ABL_LV/TALENT/종족/스킬/속성/報酬보정 でしまう
+;-------------------------------------------------------------
+@SET_OUKOKUYA, ARG
+#DIM ABL의뢰
+#DIM TALENT의뢰
+#DIM 종족의뢰
+#DIM 스킬의뢰
+#DIM 속성의뢰
+#DIM 報酬보정
+#DIM 主人랭크
+#DIMS 의뢰
+
+;-------------------------------------------------------------
+;乱数を固定
+;種は操作손段がかなり限られてくるＥＸＰと毎日変わるDAYを使ってみる
+;先の日付まで확인して이용するのはEXPさえ変動させなければ가능という裏ワザが残るけどまぁたぶんこのくらいなら問題ない
+;-------------------------------------------------------------
+RANDOMIZE BASE:MASTER:ＥＸＰ * DAY + ARG
+
+;-------------------------------------------------------------
+;フラグ초기化
+;-------------------------------------------------------------
+ABL의뢰 = 0
+TALENT의뢰 = 0
+종족의뢰 = 0
+스킬의뢰 = 0
+속성의뢰 = 0
+報酬보정 = 0
+의뢰 = 
+;-------------------------------------------------------------
+;의뢰패턴설정
+;絶対にABLかTALENTの1つは絡ませる
+;ABLは보정が高いのと複数つくことで時間経過のロスが現象しやすいので1個限定にする
+;-------------------------------------------------------------
+SELECTCASE RAND:100
+	CASE IS < 20
+		ABL의뢰 = 1
+	CASE IS < 40
+		ABL의뢰 = 1
+		TALENT의뢰 = 1
+	CASE IS < 60
+		TALENT의뢰 = 1
+	CASE IS < 70
+		TALENT의뢰 = 2
+	CASE IS < 75
+		TALENT의뢰 = 2
+	CASE IS < 80
+		종족의뢰 = 1
+		TALENT의뢰 = RAND:2
+		ABL의뢰 = RAND:2
+	CASE IS < 90
+		스킬의뢰 = 1
+		TALENT의뢰 = RAND:2
+		ABL의뢰 = RAND:2
+	CASEELSE
+		속성의뢰 = 1 + !RAND:4
+		TALENT의뢰 = RAND:2
+		ABL의뢰 = RAND:2
+ENDSELECT
+
+;----------------------------------------------------------------------------------------------------
+;ABL의뢰のセット
+;순종기교욕망は4・5のみ
+;그외は3・4・5
+;
+;BLっ気・BL중독・촬영・요리・가창はとりあえず가격定義はしてあるけど選考から除外
+;また、가격定義の問題
+;----------------------------------------------------------------------------------------------------
+IF ABL의뢰
+	LOCALS = %RAND_SPLIT("순종/기교/Ｃ감각/Ｖ감각/Ａ감각/Ｂ감각/봉사정신/노출증/마조끼/새드끼/레즈끼/레즈중독/자위중독/정액중독/섹스중독/분유중독/수간중독/촉수중독/윤간중독/키스중독", "/")%
+	IF GETNUM(ABL, LOCALS) == -1
+		PRINTFORMW 왕국점의뢰에 존재하지 않는 ABL「%LOCALS%」이 지정되었으므로 처리를 중단합니다,
+		RETURN 0
+	ENDIF
+	LOCAL = RAND(3 + GROUPMATCH(LOCALS, "순종", "기교", "욕망"), 6)
+	報酬보정 += OUKOKUYA_PRICE_ABL(LOCALS, LOCAL)
+	의뢰 += @"%LOCALS%_{LOCAL}"
+ENDIF
+의뢰 += "/"
+
+;----------------------------------------------------------------------------------------------------
+;TALENT의뢰のセット
+;순종기교욕망は4・5のみ
+;그외は3・4・5
+;
+;BLっ気・BL중독・촬영・요리・가창はとりあえず가격定義はしてあるけど選考から除外
+;また、가격定義の問題
+;----------------------------------------------------------------------------------------------------
+LOCALS = 
+WHILE TALENT의뢰
+	LOCAL = RAND:200
+	;가격が定義されてないものを弾く
+	SIF !OUKOKUYA_PRICE_TALENT(TALENTNAME:LOCAL)
+		CONTINUE
+	;すでに選定されているかの체크
+	SIF STRCOUNT(의뢰, TALENTNAME:LOCAL)
+		CONTINUE
+	;両立能な소질の체크
+	SELECTCASE TALENTNAME:LOCAL
+		CASE "프라이드높음"
+			SIF STRCOUNT(의뢰, "프라이드낮음")
+				CONTINUE
+		CASE "프라이드낮음"
+			SIF STRCOUNT(의뢰, "프라이드높음")
+				CONTINUE
+		CASE "호기심"
+			SIF STRCOUNT(의뢰, "보수적")
+				CONTINUE
+		CASE "보수적"
+			SIF STRCOUNT(의뢰, "호기심")
+				CONTINUE
+		CASE "낙관적"
+			SIF STRCOUNT(의뢰, "비관적")
+				CONTINUE
+		CASE "비관적"
+			SIF STRCOUNT(의뢰, "낙관적")
+				CONTINUE
+		CASE "정조관념"
+			SIF STRCOUNT(의뢰, "정조관결여")
+				CONTINUE
+		CASE "정조관결여"
+			SIF STRCOUNT(의뢰, "정조관념")
+				CONTINUE
+		CASE "해방"
+			SIF STRCOUNT(의뢰, "억압")
+				CONTINUE
+		CASE "억압"
+			SIF STRCOUNT(의뢰, "해방")
+				CONTINUE
+		CASE "아픔에강함"
+			SIF STRCOUNT(의뢰, "아픔에약함")
+				CONTINUE
+		CASE "아픔에약함"
+			SIF STRCOUNT(의뢰, "아픔에강함")
+				CONTINUE
+		CASE "젖기어려움"
+			SIF STRCOUNT(의뢰, "젖기쉬움")
+				CONTINUE
+		CASE "젖기쉬움"
+			SIF STRCOUNT(의뢰, "젖기어려움")
+				CONTINUE
+		CASE "습득빠름"
+			SIF STRCOUNT(의뢰, "습득느림")
+				CONTINUE
+		CASE "습득느림"
+			SIF STRCOUNT(의뢰, "습득빠름")
+				CONTINUE
+		CASE "악취민감"
+			SIF STRCOUNT(의뢰, "악취둔감")
+				CONTINUE
+		CASE "악취둔감"
+			SIF STRCOUNT(의뢰, "악취민감")
+				CONTINUE
+	ENDSELECT
+	報酬보정 += OUKOKUYA_PRICE_TALENT(TALENTNAME:LOCAL)
+	의뢰 +=TALENTNAME:LOCAL
+	SIF TALENT의뢰 -- > 1
+		의뢰 += "_"
+	
+WEND
+의뢰 += "/"
+;----------------------------------------------------------------------------------------------------
+;종족설정
+;종족번호 1 - 11まで(つまり기본的な종족のみ)
+;----------------------------------------------------------------------------------------------------
+IF 종족의뢰
+	의뢰 += STR:RAND(1, 12)
+	報酬보정 += 30
+ENDIF
+의뢰 += "/"
+;---------------------------------------------------------------------------------------------------
+;스킬설정
+;
+;指定される스킬の候補は主人の레벨に依存する
+;가격보정はカード用意の손間が若干のMAGと全書の呼び出し代くらいしか違いでないのと
+;低랭크のほうが高레벨악마に持たせにくいのと、ここで上昇かけると二次関数的に가격上昇かかるので一律で30％に
+;---------------------------------------------------------------------------------------------------
+IF 스킬의뢰
+	SELECTCASE BASE:MASTER:LV
+		CASE IS < 8
+			主人랭크 = 2
+		CASE IS < 15
+			主人랭크 = 3
+		CASE IS < 25
+			主人랭크 = 4
+		CASE IS < 35
+			主人랭크 = 5
+		CASE IS < 40
+			主人랭크 = 6
+		CASE IS < 45
+			主人랭크 = 8
+		CASE IS < 50
+			主人랭크 = 9
+		CASE IS < 55
+			主人랭크 = 11
+		CASE IS < 60
+			主人랭크 = 12
+		CASE IS < 65
+			主人랭크 = 13
+		CASE IS < 70
+			主人랭크 = 14
+		CASEELSE
+			主人랭크 = 15
+	ENDSELECT
+	WHILE 1
+		LOCAL = RAND(1, 2500)
+		;총・기본스킬は除く
+		SIF RANGE(LOCAL, 2101, 2399)
+			CONTINUE
+		;랭크を見る
+		TRYCCALLFORM SKILL_RANK_{LOCAL}
+			SIF RESULT > 主人랭크
+				CONTINUE
+		CATCH
+			CONTINUE
+		ENDCATCH
+		TRYCCALLFORM 적専用_{LOCAL}
+			SIF RESULT
+				CONTINUE
+		CATCH
+		ENDCATCH
+		TRYCCALLFORM 継承不能_{LOCAL}
+			SIF RESULT
+				CONTINUE
+		CATCH
+		ENDCATCH
+		의뢰 += @"{LOCAL}"
+		報酬보정 += 30
+		BREAK
+	WEND
+ENDIF
+의뢰 += "/"
+IF 속성의뢰
+	LOCALS = %RAND_SPLIT("LIGHT/NEUTRAL(LD軸)/DARK/LAW/NEUTRAL(LC軸)/CHAOS", "/")%
+	의뢰 += LOCALS
+	IF 속성의뢰 == 2
+		WHILE 1
+			LOCALS:1 = %RAND_SPLIT("LIGHT/NEUTRAL(LD軸)/DARK/LAW/NEUTRAL(LC軸)/CHAOS", "/")%
+			SIF LOCALS == LOCALS:1
+				CONTINUE
+			의뢰 += "_" + LOCALS:1
+			BREAK
+		WEND
+	ENDIF
+	報酬보정 += 속성의뢰 == 2 ? 50 # 20
+ENDIF
+
+SAVESTR:@"王国屋의뢰{ARG}" = %의뢰%/{報酬보정}
+RETURN 1
+;-----------------------------------------------------------------------------------------------------
+;TALENTの가격定義
+;가격の基準は難度上昇소질　＞　難度저하소질　かつ　難度저하소질の中で가격저하するもの　＞上昇するもの
+;つまり、難度面・가격面で扱いにくい소질ほど高가격になる
+;
+;ARGS	TALENT명칭
+;-----------------------------------------------------------------------------------------------------
+@OUKOKUYA_PRICE_TALENT, ARGS
+#FUNCTION
+SELECTCASE ARGS
+	CASE "자위광", "섹스광", "애널광", "음유"
+		RETURNF 100
+	CASE "꿋꿋함", "반항적", "자제심", "일선을넘지않음", "약독내성", "쾌감을부정", "새드", "마조", "여성혐오", "남성혐오", "회복느림"
+		RETURNF 50
+	CASE "무관심", "프라이드높음", "건방짐", "감정결핍", "정조관념", "부끄럼쟁이", "부끄럼없음", "아픔에강함", "젖기어려움", "습득느림"
+		RETURNF 40
+	CASE "솔직함", "얌전함", "츤데레", "보수적", "겁쟁이", "프라이드낮음", "정조관결여", "아픔에약함", "쾌감에솔직"
+		RETURNF 30
+	CASE "호기심", "눈에띄고싶어함", "해방", "젖기쉬움", "습득빠름", "혀놀림", "자위하기쉬움", "도착적", "소악마", "헌신적", "매력", "매혹", "회복빠름"
+		RETURNF 20
+ENDSELECT
+;LVは0-5を返す
+;-------------------------------------------------
+;ABLの가격定義
+;他のカテゴリーは用意の손間があるものの時間経過しないものの
+;このカテゴリーは用意の손間こそほとんどないものの確実に時間ロスするので
+;高めに설정
+;なお、6레벨이상は明らかに用意コストが高くなりすぎるのでとりあえず置いておく
+;
+;ARGS	ABL명칭
+;ARG	ABL레벨
+;-------------------------------------------------
+@OUKOKUYA_PRICE_ABL, ARGS, ARG
+#FUNCTION
+SELECTCASE ARGS
+	CASE "순종", "기교", "욕망"
+		SELECTCASE ARG
+			CASE 4
+				RETURNF 20
+			CASE 5
+				RETURNF 30
+		ENDSELECT
+	CASE "Ｃ감각", "Ｂ감각", "Ｖ감각", "Ａ감각"
+		SELECTCASE ARG
+			CASE 3
+				RETURNF 10
+			CASE 4
+				RETURNF 15
+			CASE 5
+				RETURNF 20
+		ENDSELECT
+	CASE "봉사정신", "노출증", "마조끼", "새드끼", "레즈끼", "ＢＬ끼"
+		SELECTCASE ARG
+			CASE 3
+				RETURNF 15
+			CASE 4
+				RETURNF 30
+			CASE 5
+				RETURNF 50
+		ENDSELECT
+	CASE "자위중독", "정액중독", "레즈중독", "섹스중독", "분유중독", "키스중독"
+		SELECTCASE ARG
+			CASE 3
+				RETURNF 25
+			CASE 4
+				RETURNF 50
+			CASE 5
+				RETURNF 75
+		ENDSELECT
+	CASE "수간중독", "촉수중독", "윤간중독", "가창기능", "요리기능", "촬영기능"
+		SELECTCASE ARG
+			CASE 3
+				RETURNF 30
+			CASE 4
+				RETURNF 60
+			CASE 5
+				RETURNF 100
+		ENDSELECT
+ENDSELECT
+
+@SHOW_OUKOKUYA_REQ_RANDOM, ARG
+#DIMS 표시内容
+#LOCALSSIZE 6
+SPLIT SAVESTR:@"王国屋의뢰{ARG}", "/", LOCALS
+표시内容 = 
+표시内容 += @"/일반의뢰{ARG}%\@GETBIT(의뢰フラグ:40:0, ARG) ?(예약중)#\@%/"
+표시内容 += @"난이도:☆%"☆"* (TOINT(LOCALS:5) / 20)%/"
+표시内容 += "보수:조건을 만족시킨 악마의 가치에 상응하는 마카/"
+표시内容 += "/조건/"
+IF LOCALS != ""
+	SPLIT LOCALS, "_", RESULTS
+	표시内容 += @"능력 [%RESULTS%] Lv %RESULTS:1%이상/"
+ENDIF
+IF LOCALS:1 != ""
+	SPLIT LOCALS:1, "_", RESULTS
+	FOR LOCAL, 0, RESULT
+		표시内容 += @"소질 [%RESULTS:LOCAL%] 소지/"
+	NEXT
+ENDIF
+SIF LOCALS:2 != ""
+	표시内容 += @"종족が[%LOCALS:2%]である/"
+IF LOCALS:3 != ""
+	CALLFORM SKILL_NAME_%LOCALS:3%
+	표시内容 += @"스킬 [%RESULTS%] 소지/"
+ENDIF
+IF LOCALS:4 != ""
+	SPLIT LOCALS:4, "_", RESULTS
+	표시内容 += @"속성이 [%RESULTS%]이다/"
+	SIF RESULT > 1
+		표시内容 += @"속성이 [%RESULTS:1%]이다/"
+ENDIF
+표시内容 += "/" * (17 - STRCOUNT(표시内容, "/"))
+CALL SHOW_PICTURE, "NONFLOORD", "ペットSHOP 王国屋", 표시内容
+
+@CHARASELLABLE_OUKOKUYA_REQ(ARG:0)
+#LOCALSSIZE 6
+;매각가능でないとだめ
+SIF !GET_CHARASELLABLE(ARG:0)
+	RETURN 0
+;악마でないとだめ
+SIF !GET_DEVIL(ARG:0)
+	RETURN 0
+;Rは의뢰번호
+;1～3の時は랜덤의뢰
+IF RANGE(R, 1, 3)
+	SPLIT SAVESTR:@"王国屋의뢰{R}", "/", LOCALS
+	;一つ눈はABL
+	IF LOCALS != ""
+		SPLIT LOCALS, "_", RESULTS
+		SIF ABL:(ARG:0):RESULTS < TOINT(RESULTS:1)
+			RETURN 0
+	ENDIF
+	IF LOCALS:1 != ""
+		SPLIT LOCALS:1, "_", RESULTS
+		FOR LOCAL, 0, RESULT
+			SIF !TALENT:(ARG:0):(RESULTS:LOCAL)
+				RETURN 0
+		NEXT
+	ENDIF
+	IF LOCALS:2 != ""
+		SIF STR:(ABL:(ARG:0):종족) != LOCALS:2
+			RETURN 0
+	ENDIF
+	IF LOCALS:3 != ""
+		SIF !HAVE_SKILL(ARG:0, TOINT(LOCALS:3))
+			RETURN 0
+	ENDIF
+	IF LOCALS:4 != ""
+		SPLIT LOCALS:4, "_", RESULTS
+		FOR LOCAL, 0, RESULT
+			SELECTCASE RESULTS:LOCAL
+				CASE "LIGHT"
+					SIF ABL:(ARG:0):속성LD != 1
+						RETURN 0
+				CASE "NEUTRAL(LD軸)"
+					PRINTFORMW %CALLNAME:(ARG:0)%の속성LDは{ABL:(ARG:0):속성LD}
+					SIF ABL:(ARG:0):속성LD != 2
+						RETURN 0
+				CASE "DARK"
+					SIF ABL:(ARG:0):속성LD != 3
+						RETURN 0
+				CASE "LAW"
+					SIF ABL:(ARG:0):속성LC != 1
+						RETURN 0
+				CASE "NEUTRAL(LC軸)"
+					SIF ABL:(ARG:0):속성LC != 2
+						RETURN 0
+				CASE "CHAOS"
+					SIF ABL:(ARG:0):속성LC != 3
+						RETURN 0
+			ENDSELECT
+		NEXT
+	ENDIF
+ELSE
+	CALLFORM CHARASELLABLE_OUKOKUYA_REQ_{R}(ARG:0)
+	SIF !RESULT
+		RETURN 0
+ENDIF
+RETURN 1
+
+
+@CHARATALENTCHECK_OUKOKUYA_REQ(ARG)
+#LOCALSSIZE 6
+;악마でないとだめ
+SIF !GET_DEVIL(ARG)
+	RETURN 0
+;Rは의뢰번호
+;1～3の時は랜덤의뢰
+IF RANGE(R, 1, 3)
+	SPLIT SAVESTR:@"王国屋의뢰{R}", "/", LOCALS
+	;一つ눈はABL
+	IF LOCALS:1 != ""
+		SPLIT LOCALS:1, "_", RESULTS
+		FOR LOCAL, 0, RESULT
+			SIF !TALENT:ARG:(RESULTS:LOCAL)
+				RETURN 0
+		NEXT
+	ENDIF
+	IF LOCALS:2 != ""
+		SIF STR:(ABL:ARG:종족) != LOCALS:2
+			RETURN 0
+	ENDIF
+	IF LOCALS:3 != ""
+		SIF !HAVE_SKILL(ARG, TOINT(LOCALS:3))
+			RETURN 0
+	ENDIF
+	IF LOCALS:4 != ""
+		SPLIT LOCALS:4, "_", RESULTS
+		FOR LOCAL, 0, RESULT
+			SELECTCASE RESULTS:LOCAL
+				CASE "LIGHT"
+					SIF ABL:ARG:속성LD != 1
+						RETURN 0
+				CASE "NEUTRAL(LD軸)"
+					PRINTFORMW %CALLNAME:ARG%の속성LDは{ABL:ARG:속성LD}
+					SIF ABL:ARG:속성LD != 2
+						RETURN 0
+				CASE "DARK"
+					SIF ABL:ARG:속성LD != 3
+						RETURN 0
+				CASE "LAW"
+					SIF ABL:ARG:속성LC != 1
+						RETURN 0
+				CASE "NEUTRAL(LC軸)"
+					SIF ABL:ARG:속성LC != 2
+						RETURN 0
+				CASE "CHAOS"
+					SIF ABL:ARG:속성LC != 3
+						RETURN 0
+			ENDSELECT
+		NEXT
+	ENDIF
+ELSE
+	CALLFORM CHARATALENTCHECK_OUKOKUYA_REQ_{R}(ARG)
+	SIF !RESULT
+		RETURN 0
+ENDIF
+RETURN 1
+

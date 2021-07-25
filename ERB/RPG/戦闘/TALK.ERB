@@ -1,0 +1,159 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:TALK.ERB
+;	Facility	:전투中のTALK選択時の処理を行う
+;
+;	Licence		:ライセンスフリー。
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		20XX/XX/XX		----					新規作成
+;	002		2011/01/10		Ｎ鳥					TALK_COMMONを사용するように변경。
+;	003		2012/02/09		ネトリス				魅了상태時の処理추가
+;	004		2013/03/12		ネトリス				命乞い処理を추가
+;	005		2020/05/05		がめら					セカンドハロー対応。「ヤラせてもらう」「犯してもらう」の판정をTALK PLAYERの素質・能力で緩和するように。
+;	005		2021/04/23		JK好き					主人以外TALKでの分岐条件不足を解消
+;
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;=====================================================================
+;전투中の악마회화の処理
+;=====================================================================
+
+;=====================================================================
+;악마회화
+;=====================================================================
+@TALK,ARG
+#DIM LCOUNT
+
+SIF GETBIT(FLAG:命乞いフラグ, 1) || GETBIT(FLAG:命乞いフラグ, 2)
+	GOTO 命乞い
+
+PLAYER = MASTER
+
+
+
+IF CFLAG:ARG:アンノウンフラグ == 1
+	PRINTFORMW 정체를 알수 없어、컨택트 할 수 없다
+	RETURN 0
+ENDIF
+
+IF CFLAG:ARG:決裂フラグ == 1
+	PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 싸울 생각이다
+	RETURN 0
+ENDIF
+
+IF ABL:ARG:회화타입 == 331
+	IF CFLAG:ARG:TALK時特殊메시지行数 > 0
+		CALL MESSAGE_B,CFLAG:ARG:TALK時特殊메시지行数,CSTR:ARG:TALK時特殊메시지1,CSTR:ARG:TALK時特殊메시지2,CSTR:ARG:TALK時特殊메시지3,CSTR:ARG:TALK時特殊메시지4,CSTR:ARG:TALK時特殊메시지5
+	ELSE
+		PRINTFORMW 말이 통하지 않아！
+		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 싸울 생각이다다
+	ENDIF
+	CFLAG:ARG:決裂フラグ = 1
+	RETURN 0
+ENDIF
+
+
+;簡易処理
+IF FLAG:主人以外TALK가능 && (CFLAG:(FINDCHARA(NO,NO:ARG)):PTフラグ == 0 || SOFT_ON("세컨드헬로") || (CFLAG:(FINDCHARA(NO,NO:ARG)):PTフラグ == 1 && CFLAG:(FINDCHARA(NO,NO:ARG)):所属ＣＯＭＰ == -1))
+	;魅了상태の仲間がいる場合、10％の확률で勝손に회화をする
+	IF FLAG:ムフフ전개
+		FOR LCOUNT, 1, 6
+			SIF POS(LCOUNT) == -1
+				CONTINUE
+			SIF !(CFLAG:(POS(LCOUNT)):ステート == GET_STATE_NUM("CHARM"))
+				CONTINUE
+			SIF TALENT:(POS(LCOUNT)):남자 == 1
+				CONTINUE
+			IF RAND:100 < 10
+				PRINTFORMW %조사처리(CALLNAME:(POS(LCOUNT)),"가")% 휘청휘청 %CALLNAME:ARG%의 앞으로 걸어나왔다
+				PLAYER = POS(LCOUNT)
+				GOTO 매료회화
+			ENDIF
+		NEXT
+	ENDIF
+	CALL SHOW_NOW_FORMATION_P,0,2,0
+	PRINTL 누가 대화합니까？
+	$INPUT_LOOP
+	ONEINPUT
+	LOCAL = RESULT
+	IF LOCAL > 0 && LOCAL < 7
+		SIF POS(LOCAL) == -1
+			GOTO INPUT_LOOP
+		SIF  함락(POS(LOCAL)) == 0 && POS(LOCAL) != MASTER
+			CALL INPUTABLE_CHARA,POS(LOCAL)
+		SIF RESULT == 0
+			GOTO INPUT_LOOP
+		PLAYER = POS(LOCAL)
+	ELSE
+		GOTO INPUT_LOOP
+	ENDIF
+ELSE
+	PLAYER = MASTER
+ENDIF
+$매료회화
+$命乞い
+CUSTOMDRAWLINE ・
+CALL TALK_COMMON,ARG
+
+PRINTL
+
+;RESULT: 1 なかま2 ものもらい3 襲われる4 おこらせる5 가운に회화종료　6立ち去る
+
+SELECTCASE RESULT
+	CASE 1,2,6
+		RETURN 1
+	CASE 4,5
+		RETURN 0
+	CASE 3
+		RETURN 2
+	CASEELSE
+		RETURN 0
+
+ENDSELECT
+
+
+;=====================================================================
+;仲魔を外す処理
+;=====================================================================
+
+;=====================================================================
+;物をもらう
+;=====================================================================
+@GIFT_PUBLIC,ARG
+$GIFT
+SIF RAND:100 + RAND:(MAXBASE:PLAYER:지혜+MAXBASE:PLAYER:운/2) + CFLAG:ARG:友好度 < 50
+	GOTO GET_DAMAGE
+SIF RAND:2 == 0
+	GOTO GETMONEY
+GOTO GETMAG
+
+
+$GETMONEY
+LOCAL:2 = CSVBASE(NO:ARG,GETNUM(BASE,"LV"),0) * (300 + RAND:1000) * 5 /100
+PRINTFORMW %조사처리(CALLNAME:MASTER,"는")% ￥{LOCAL:2} 손에 넣었다
+MONEY += LOCAL:2
+RETURN 5
+
+$GETMAG
+LOCAL:2 = CSVBASE(NO:ARG,GETNUM(BASE,"LV"),0) * (600 + RAND:1500) * 5 /100
+PRINTFORMW %조사처리(CALLNAME:MASTER,"는")% {LOCAL:2}MAG를 손에 넣었다
+CALL CONTROL_MAG,PLAYER,LOCAL:2
+RETURN 5
+
+$GET_DAMAGE
+PRINTFORMW %조사처리(CALLNAME:MASTER,"는")% 데미지를 받았다
+CALL VAR_HP,PLAYER,-MAXBASE:PLAYER:ＨＰ/5,0
+RETURN 5
+
+;=====================================================================
+;式中関数
+;=====================================================================
+@捧げたキャラ()
+#FUNCTION
+RETURNF TFLAG:捧げたキャラ
+@交渉대상()
+#FUNCTION
+RETURNF TFLAG:交渉대상
+

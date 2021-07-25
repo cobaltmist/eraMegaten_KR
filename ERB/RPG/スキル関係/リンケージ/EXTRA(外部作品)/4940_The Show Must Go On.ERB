@@ -1,0 +1,518 @@
+﻿;2020/xx/xx		001	マリーちゃんの中の人		新規作成
+;2020/08/20		002	kamedakeisuke(ﾟдﾟ)			バグってたので直した
+;2021/05/17		003	Schrott						最大威力300のハズが倍々化していたバグの修正、攻撃属性の複合化、アイドル経験によるキャップアップ機能追加。説明の変更。
+;2021/05/20		004	kamedakeisuke(ﾟдﾟ)			せっかくなのでいろいろ弄らせて頂いた。
+
+
+;天堂真矢と西條 クロ디무ーヌ限定リンケージ
+;手を繋いだ二人の連携による콤비네이션スピンからの大회전베기。続いて円形の斬撃。
+;真矢＆クロ디무ーヌスタイリッシュ決めポーズ。
+;相手は死ぬ。アイエエエエ！
+
+;--- 004 START ---
+;という内容だったんですが
+;せっかくなので舞台少女すべてに拡張し、
+;いろいろ大改造いたしました。
+;--- 004 END ---
+
+;スキル名
+@SKILL_NAME_4940,ARG
+RESULTS = The Show Must Go On
+;　명중
+@SKILL_HITRATE_4940, ARG
+;천군의검相当
+RETURN 130
+
+;　위력
+@SKILL_POWER_4940, ARG
+;위력キャップの눈安を아이돌EDとする
+;IF TARGET >0 && ABL:가창기능 >= 10 && EXP:라이브경험 >= 300 && TALENT:인기 == 1
+
+LOCAL = 0
+;ARG=リンケージの発動者
+;リンケージ参加者はCFLAGに保存されている
+LOCAL:1 = ARG
+LOCAL:2 = CFLAG:ARG:링케이지참가자1
+
+;Schrott：ちゃんとLOCALを0にしておかないと威力計算のたびに５倍の倍々ゲームで６撃目には威力６桁になっちゃうので修正
+;例：真矢クロ初期値の場合、最低歌唱技能Lv3+3.合計6*5で威力30
+LOCAL:3 = 0
+LOCAL:3 += ABL:(LOCAL:1):가창기능
+LOCAL:3 += ABL:(LOCAL:2):가창기능
+LOCAL:3 *= 10
+
+;Schrott：影響は少ないけどこちらも0でLOCALをリセット
+;例：真矢クロ初期値の場合、ライブ経験75+150.合計225/5で45　上と足して75
+LOCAL:4 = 0
+LOCAL:4 += EXP:(LOCAL:1):라이브경험
+LOCAL:4 += EXP:(LOCAL:2):라이브경험
+LOCAL:4 /= 5
+
+;무대소녀の再演。무대소녀は一人では輝けません。舞台を共に作り上げる仲間。そして、舞台に熱狂する人々の熱意こそが彼女達の力の源なのです
+;体力を強化＆大劇場確保しておけば一瞬で１００ぐらいになる（인기　by古代の生みの親
+;例：真矢クロ初期値の場合、人気0のままなら威力75/2=37⇒最低保証の100、
+;　　　　　　　　　　　　　100ずつ貯めれば100+100+75=275　275/2=　137
+;　　　　　　　　　　　　　アイドルはファンの力で輝くってハッキリわかります
+;Schrott：影響は少ないけどこちらも0でLOCALをリセット
+LOCAL:5 = 0
+LOCAL:5 += CFLAG:(LOCAL:1):아이돌인기
+LOCAL:5 += CFLAG:(LOCAL:2):아이돌인기
+	
+;ここで威力をすべて合計
+LOCAL += LOCAL:3
+LOCAL += LOCAL:4
+LOCAL += LOCAL:5
+
+;最低保証100
+SIF LOCAL < 100
+	LOCAL = 100
+
+;--- 004 START ---
+;デバッグ用の記述を外す
+
+;CFLGA:ポジションゼロ
+;IF FLAG:DEBUG
+	;천군의검相当
+	;Schrott：とりあえずこっちも直しときましょう
+;	IF FLAG:공격횟수 == 1
+;		RETURN MIN(999, LOCAL)
+;	ELSE
+;		RETURN MIN(999, LOCAL)
+;	ENDIF
+;ELSE
+	;歌唱技能により上下する。暫定で300/300を上限とする
+	;Schrott：上限と下限が間違えていたのとLOCAL:3のリセットが無く倍々ゲーム化していたので修正。
+	;最低威力保証100を追加。ついでにアイドル人気が両方とも300以上の場合天井を上昇
+	IF CFLAG:(LOCAL:1):아이돌인기 >= 300 && CFLAG:(LOCAL:2):아이돌인기 >= 300
+		RETURN MIN(300, LOCAL)
+	ELSE
+		RETURN MIN(200, LOCAL)
+	ENDIF
+;ENDIF
+;--- 004 END ---
+
+
+;　최저공격횟수
+@SKILL_MINATTACKNUMBER_4940,ARG
+RETURN 2
+
+;　최대공격횟수
+@SKILL_MAXATTACKNUMBER_4940,ARG
+RETURN 2
+
+;　ＨＰ2を支払うかＭＰ3を支払うか
+@SKILL_COSTTYPE_4940, ARG
+	RETURN 3
+;소비なし＝1
+
+;コストの量
+@SKILL_COST_4940, ARG, ARG:1
+;--- 004 START ---
+#LOCALSIZE 3
+LOCAL = 0
+;ARG=リンケージの発動者
+;リンケージ参加者はCFLAGに保存されている
+LOCAL:1 = ARG
+LOCAL:2 = CFLAG:ARG:링케이지참가자1
+IF CFLAG:(LOCAL:1):아이돌인기 >= 200
+	RETURN 20
+ELSEIF CFLAG:(LOCAL:1):아이돌인기 >= 100
+	RETURN 12
+ELSE
+	RETURN 8
+ENDIF
+;--- 004 END ---
+
+;　相性
+@SKILL_TYPE_4940,ARG
+;Schrott：複合でいいじゃない？
+#LOCALSSIZE 5
+#LOCALSIZE 4
+SIF ARG < 0 || 스킬속성표시中
+	RETURN GET_TYPE_NUM("검격")
+SIF CFLAG:ARG:ターゲット > 16 || CFLAG:ARG:ターゲット < 1
+	RETURN GET_TYPE_NUM("검격")
+LOCAL = POS(CFLAG:ARG:ターゲット)
+SIF LOCAL < 0
+	RETURN GET_TYPE_NUM("검격")
+	
+LOCAL:2 = -300
+;--- 004 START ---
+;最初に全属性を仮置き（なんかチョンボしててもいいように）
+LOCALS = 검격
+LOCALS:1 = 검격
+LOCALS:2 = 검격
+LOCALS:3 = 검격
+
+;発動者で基本相性変更
+;これは手持ちの武器で
+IF NO:(LOCAL:1) == [[キャラ:카렌（무대소녀）]]
+	LOCALS = 검격
+	LOCALS:1 = 검격
+	LOCALS:2 = 검격
+	LOCALS:3 = 검격
+ELSEIF NO:(LOCAL:1) == [[キャラ:히카리]]
+	LOCALS = 검격
+	LOCALS:1 = 검격
+	LOCALS:2 = 검격
+	LOCALS:3 = 검격
+ELSEIF NO:(LOCAL:1) == [[キャラ:마히루]]
+	LOCALS = 타격
+	LOCALS:1 = 타격
+	LOCALS:2 = 타격
+	LOCALS:3 = 타격
+ELSEIF NO:(LOCAL:1) == [[キャラ:쥰나]]
+	LOCALS = 비구
+	LOCALS:1 = 비구
+	LOCALS:2 = 비구
+	LOCALS:3 = 비구
+ELSEIF NO:(LOCAL:1) == [[キャラ:후타바（무대소녀）]]
+	LOCALS = 검격
+	LOCALS:1 = 검격
+	LOCALS:2 = 검격
+	LOCALS:3 = 검격
+ELSEIF NO:(LOCAL:1) == [[キャラ:카오루코]]
+	LOCALS = 검격
+	LOCALS:1 = 검격
+	LOCALS:2 = 검격
+	LOCALS:3 = 검격
+ELSEIF NO:(LOCAL:1) == [[キャラ:나나]]
+	;でぇばは戦技で
+	LOCALS = 전술
+	LOCALS:1 = 전술
+	LOCALS:2 = 전술
+	LOCALS:3 = 전술
+ELSEIF NO:(LOCAL:1) == [[キャラ:마야（무대소녀）]]
+	LOCALS = 검격
+	LOCALS:1 = 검격
+	LOCALS:2 = 검격
+	LOCALS:3 = 검격
+ELSEIF NO:(LOCAL:1) == [[キャラ:클로딘]]
+	LOCALS = 검격
+	LOCALS:1 = 검격
+	LOCALS:2 = 검격
+	LOCALS:3 = 검격
+ENDIF
+
+;発動者がアイドル人気100以上（人気取得）で相性追加
+IF CFLAG:(LOCAL:1):아이돌인기 >= 100
+	;発動者で追加相性変更
+	;相性はスタリラちゃんの星４【무대소녀】シリーズを見ながらそれっぽいものを（被る場合はまた考える）
+	IF NO:(LOCAL:1) == [[キャラ:카렌（무대소녀）]]
+		;花
+		LOCALS:2 = 핵열
+	ELSEIF NO:(LOCAL:1) == [[キャラ:히카리]]
+		;月
+		LOCALS:2 = 정신
+	ELSEIF NO:(LOCAL:1) == [[キャラ:마히루]]
+		;花……は被るので地属性で
+		LOCALS:2 = 지변
+	ELSEIF NO:(LOCAL:1) == [[キャラ:쥰나]]
+		;雪
+		LOCALS:2 = 빙결
+	ELSEIF NO:(LOCAL:1) == [[キャラ:후타바（무대소녀）]]
+		;宙
+		LOCALS:2 = 중력
+	ELSEIF NO:(LOCAL:1) == [[キャラ:카오루코]]
+		;風
+		LOCALS:2 = 질풍
+	ELSEIF NO:(LOCAL:1) == [[キャラ:나나]]
+		;雲……雲ってなんだ？　達人なので微妙な属性に
+		LOCALS:2 = 주살
+	ELSEIF NO:(LOCAL:1) == [[キャラ:마야（무대소녀）]]
+		;月　達人なので微妙な属性に
+		LOCALS:2 = 파마
+	ELSEIF NO:(LOCAL:1) == [[キャラ:클로딘]]
+		;雲……雲ってなんだ？（二度目）
+		LOCALS:2 = 전격
+	;それ以外（バグ抑制）は……暫定的に神経でも入れておこうか（他と被らないし）
+	ELSE
+		LOCALS:2 = 신경
+	ENDIF
+ENDIF
+
+;発動者がアイドル人気200以上で万能追加
+IF CFLAG:(LOCAL:1):아이돌인기 >= 200
+	LOCALS:3 = 만능
+ENDIF
+	
+FOR LOCAL:1, 1, 4
+	;判定用に数値を仕舞う。反射は-200扱い
+	LOCAL:3 = MAXBASE:LOCAL:(LOCALS:(LOCAL:1)) == 999 ? -200 # MAXBASE:LOCAL:(LOCALS:(LOCAL:1))
+	LOCAL:3 = !(HAVE_SKILL(ARG,[[스킬:영세라이도우]]) || HAVE_SKILL(ARG,2947)) && CFLAG:LOCAL:(LOCALS:(LOCAL:1)+"무효화횟수") ? -5 # LOCAL:3
+	LOCAL:3 = CFLAG:LOCAL:(LOCALS:(LOCAL:1)+"가드킬") && LOCAL:3 < 100 ? 100 # LOCAL:3
+	SELECTCASE LOCAL:1
+		CASE 1
+			LOCAL:3 = CFLAG:LOCAL:물리반사フラグ ? -200 # LOCAL:3
+		CASE 1 TO 3
+			LOCAL:3 = CFLAG:LOCAL:마법반사フラグ ? -200 # LOCAL:3
+		CASEELSE
+	ENDSELECT
+	IF LOCAL:3 > LOCAL:2
+		LOCAL:2 = LOCAL:3
+		LOCALS = %LOCALS:(LOCAL:1)%
+	ENDIF
+NEXT
+PRINT 属性相性：
+PRINTS LOCALS
+PRINTL ！
+RETURN GET_TYPE_NUM(LOCALS)
+;--- 004 END ---
+
+;　1EXTRAか2MAGICか
+
+@SKILL_DECIDE_TYPE_4940, ARG
+RETURN 0
+
+;　1물리데미지で計算するか2마법데미지で計算するか
+@SKILL_DAMAGETYPE_4940, ARG
+RETURN 1
+
+;　대상が1적か2아군か3場전체か4特殊か
+@SKILL_TARGET_4940
+RETURN 1
+
+;　사거리
+@SKILL_RANGE_4940,ARG
+RETURN 1
+
+;　범위　1１체　2１열　3전체　4　적아군 전체
+@SKILL_SPHERE_4940,ARG
+RETURN 2
+
+;　 効果の타입　1공격、2회복、3상태변화、4特殊、5상태회복
+@SKILL_EFECT_4940
+RETURN 1
+
+;　 特殊処理の有無、及び処理内容
+@SKILL_SPECIALEFECT_4940,ARG
+;ARG = 1だった場合は処理の有無を返します
+SIF ARG == 1
+	RETURN 0
+;以下に特殊な処理を記述します
+
+;계승타입
+@SKILL_SUCCESSION_TYPE_4940
+RETURN 0
+;無し
+
+;속도보정
+@SKILL_SPEED_4940, ARG = -1
+RETURN 30
+
+;　구상の표시とその타입
+@SKILL_MESSAGE_4940,ARG
+
+;전투時이외に사용できるか
+@SKILL_ACTIONABLE_FIELD_4940
+RETURN 0
+
+;스킬변화？用랭크
+@SKILL_RANK_4940
+RETURN 0
+
+@SKILL_RANKUP_4940
+RETURN 0
+
+;テン플레이트用、추가효과시리즈
+;추가효과스테이터스
+@SKILL_ADDTIONAL_STATE_4940,ARG
+RETURN 0
+
+;추가효과상성
+@SKILL_ADDTIONAL_TYPE_4940,ARG
+RETURN 0
+
+;추가효과기본부여확률
+@SKILL_ADDTIONAL_BASE_RATE_4940,ARG
+RETURN 0
+
+;추가효과부여확률上限
+@SKILL_ADDTIONAL_MAX_RATE_4940,ARG
+RETURN 0
+;====================================================
+;스킬及び行動の実行
+;====================================================
+@ACTION_4940,ARG,ARG:1
+CALL ATTACK_FIELD, ARG, ARG:1, 4940
+
+;====================================================
+;実行内容ここまで
+;====================================================
+
+;　 설명文の표시
+@SKILL_EXPLAIN_4940
+IF (U > 0 && U < CHARANUM && NO:U == [[キャラ:카렌（무대소녀）]])
+	SETCOLOR 0xff0033
+	IF CFLAG:(LOCAL:1):아이돌인기 > 199
+		PRINT 검격・핵열・万能複合
+	ELSEIF CFLAG:(LOCAL:1):아이돌인기 > 99
+		PRINT 검격・核熱複合
+	ELSE
+		PRINT 검격
+	ENDIF
+ELSEIF (U > 0 && U < CHARANUM && NO:U == [[キャラ:히카리]])
+	SETCOLOR 0x5687e6
+	IF CFLAG:(LOCAL:1):아이돌인기 > 199
+		PRINT 검격・정신・万能複合
+	ELSEIF CFLAG:(LOCAL:1):아이돌인기 > 99
+		PRINT 검격・精神複合
+	ELSE
+		PRINT 검격
+	ENDIF
+ELSEIF (U > 0 && U < CHARANUM && NO:U == [[キャラ:마히루]])
+	SETCOLOR 0x56b78e
+	IF CFLAG:(LOCAL:1):아이돌인기 > 199
+		PRINT 타격・지변・만능
+	ELSEIF CFLAG:(LOCAL:1):아이돌인기 > 99
+		PRINT 타격・地変複合
+	ELSE
+		PRINT 타격
+	ENDIF
+ELSEIF (U > 0 && U < CHARANUM && NO:U == [[キャラ:쥰나]])
+	SETCOLOR 0x8ac4ec
+	IF CFLAG:(LOCAL:1):아이돌인기 > 199
+		PRINT 비구・빙결・万能複合相性
+	ELSEIF CFLAG:(LOCAL:1):아이돌인기 > 99
+		PRINT 비구・氷結複合
+	ELSE
+		PRINT 비구
+	ENDIF
+ELSEIF (U > 0 && U < CHARANUM && NO:U == [[キャラ:후타바（무대소녀）]])
+	SETCOLOR 0x815ca1
+	IF CFLAG:(LOCAL:1):아이돌인기 > 199
+		PRINT 검격・중력・万能複合
+	ELSEIF CFLAG:(LOCAL:1):아이돌인기 > 99
+		PRINT 검격・重力複合
+	ELSE
+		PRINT 검격
+	ENDIF
+ELSEIF (U > 0 && U < CHARANUM && NO:U == [[キャラ:카오루코]])
+	SETCOLOR 0xdc7b8c
+	IF CFLAG:(LOCAL:1):아이돌인기 > 199
+		PRINT 검격 질풍 万能複合
+	ELSEIF CFLAG:(LOCAL:1):아이돌인기 > 99
+		PRINT 검격 疾風複合
+	ELSE
+		PRINT 검격
+	ENDIF
+ELSEIF (U > 0 && U < CHARANUM && NO:U == [[キャラ:나나]])
+	SETCOLOR 0xfdca57
+	IF CFLAG:(LOCAL:1):아이돌인기 > 199
+		PRINT 전술・주살・万能複合
+	ELSEIF CFLAG:(LOCAL:1):아이돌인기 > 99
+		PRINT 전술・呪殺複合
+	ELSE
+		PRINT 전술
+	ENDIF
+ELSEIF (U > 0 && U < CHARANUM && NO:U == [[キャラ:마야（무대소녀）]])
+	SETCOLOR 0xffffff
+	IF CFLAG:(LOCAL:1):아이돌인기 > 199
+		PRINT 검격・파마・万能複合
+	ELSEIF CFLAG:(LOCAL:1):아이돌인기 > 99
+		PRINT 검격・破魔複合相性
+	ELSE
+		PRINT 검격
+	ENDIF
+ELSEIF (U > 0 && U < CHARANUM && NO:U == [[キャラ:클로딘]])
+	SETCOLOR 0xff8e48
+	IF CFLAG:(LOCAL:1):아이돌인기 > 199
+		PRINT 검격・전격・万能複合
+	ELSEIF CFLAG:(LOCAL:1):아이돌인기 > 99
+		PRINT 검격・전격複合
+	ELSE
+		PRINT 검격
+	ENDIF
+ELSE
+	IF CFLAG:(LOCAL:1):아이돌인기 > 199
+		PRINT 검격・신경・万能複合
+	ELSEIF CFLAG:(LOCAL:1):아이돌인기 > 99
+		PRINT 검격・神経複合
+	ELSE
+		PRINT 검격
+	ENDIF
+ENDIF
+RESETCOLOR
+PRINTL ２回攻撃、高速・高命中。性能は歌唱技能 라이브경험 アイドル人気に依存
+PRINTL 最大威力300×２。추가효과：両者のアイドル人気が300以上ある場合、更に最大威力上昇（400）
+
+;リンケージくんの仕様上数行にわたると表示枠を圧迫するので申し訳ないが説明文変更
+;勿体ないのでコメントアウトで残しておく
+;PRINTL 敵一列に剣撃相性＋疾風相性の데미지
+;PRINTL 
+;PRINTL 【무대소녀 天堂真矢】と【西條 クロ디무ーヌ】限定リンケージ
+;PRINTL ──무대소녀としての経験により威力が上昇します
+;PRINTL 
+;PRINTL 검의 윤무. 둘의 호흡을 맞춘 콤비네이션 스핀을 통한 큰 회전베기.
+;PRINTL 계속해서 원형의 참격이 주위를 베어낸다.
+;PRINTL 마야＆클로딘. 스타일리쉬한 결정적 포즈.
+;PRINTL 이러한 현상은 기적이나 마법이 아닌, 모두 개념에 의한 것이다.
+;PRINTL 베였다고 착각한 자는 베이고, 참격을 당했다 생각하는 자는 날아가버린다.
+;PRINTL 무대소녀가 지닌 반짝임은 보는 자를 매료시켜, 현실을 개변한다.
+
+
+;継承に필요한部位
+@継承部位_4940,ARG
+RETURN 0
+
+;사용조건
+@SKILL_SPECIAL_ACTIONABLE_4940,ARG
+CALL CHECK_COST,ARG,4940
+SIF RESULT == 0
+	RETURN 0
+RETURN 1
+;とくにない
+
+
+;=====================================================
+;링케이지설정
+;=====================================================
+@LINKAGE_4940
+RETURN 1
+
+@참가人数_4940
+RETURN 1
+
+@참가조건표시_4940, ARG
+SELECTCASE ARG
+	CASE 1
+		PRINTFORM 종족명：【무대소녀】
+	CASE 2
+		PRINTFORM 종족명：【무대소녀】
+ENDSELECT
+
+@発動者조건_4940 , ARG
+;舞台少女である
+SIF CSTR:ARG:종족명 == "무대소녀"
+	RETURN 1
+RETURN 0
+
+
+@참가者조건_4940, ARG , ARG:1
+SIF CPOS(ARG) < 1 || CPOS(ARG) > 6
+	RETURN 0
+CALL CHECK_COST_LINCAGE, ARG, 4940, ARG:1
+SIF RESULT == 0
+	RETURN 0
+SELECTCASE ARG:1
+	CASE 1
+		SIF CSTR:ARG:종족명 == "무대소녀"
+			RETURN 1
+		RETURN 0
+ENDSELECT
+
+@링케이지능력参照者_4940, ARG
+	SIF FLAG:공격횟수 == 1
+		RETURN 1
+	RETURN 0
+
+@링케이지コスト타입_4940, ARG
+SELECTCASE ARG
+	CASE 1
+		RETURN 3
+ENDSELECT
+@링케이지コスト_4940, ARG
+SELECTCASE ARG
+	CASE 1
+		RETURN 10
+ENDSELECT

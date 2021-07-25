@@ -1,0 +1,513 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:SHOP_NEWGAME.ERB
+;	Facility	:캐릭터정렬に関する関数群です
+;
+;	Licence		:ライセンスフリー
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		20XX/XX/XX		----					新規作成
+;	002		2011/10/16		黒天					キャラの挿入による位置변경기능を추가
+;													二人눈のキャラ選択を一人눈のキャラ選択と同じ処理で行うよう변경
+;	003		2012/03/26		初改造者				自動ソートにキャラ番号でのソートを추가
+;	004		2013/11/24		ひみつ					リスト표시数설정
+;	005		2014/03/21		√						自動ソートに계약素質でのソートを추가
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+
+@SHOPCOMABLE_666
+RESULT:1 = 4
+RESULTS = 캐릭터정렬
+SIF CHARANUM < 3
+	RETURN 0
+RETURN 1
+
+
+
+
+;---------------------------------------------------------------------
+;キャラ入れ替え・ソート
+;ここで사용する変数---------------------------------------------------
+; LOCAL:0  : 20限定表記に사용 現在ページ
+; LOCAL:1  : 入れ替え／挿入に사용   一人めの奴隷번호
+; LOCAL:2  : 入れ替え／挿入に사용   二人めの奴隷번호
+; LOCAL:4  : 20限定表記に사용 表記できる奴隷の人数
+; LOCAL:5  : 20限定表記に사용 ↑を20で割ったもの・최대ページの산출に使う
+; LOCAL:6  : TARGETのIDを保存
+; LOCAL:7  : ASSIのIDを保存
+; LOCAL:8  : 奴隷一人눈の出演번호
+; LOCAL:9  : 奴隷一人눈の出演번호
+; LOCAL:10 : 奴隷二人눈の出演번호
+; LOCAL:11 : 奴隷二人눈の出演번호
+; LOCAL:12 : 出演점포판정
+; LOCAL:13 : 並べ替え順序保存に사용
+; LOCAL:14 : 入れ替え／挿入판정用(0:入れ替え／1:挿入)
+; LOCAL:15 : 挿入時のループ処理での入れ替えキャラ번호保存用
+; LOCAL:99 : 20限定表記に사용 現在ページの保存・再現
+; MARK:98  : 1 = 存在 2 = 조교대상 3 = 조수
+; S,T,U    : ソート時に사용
+; TFLAG:0  : オートソート時に사용
+; TFLAG:1  : オートソート時に사용
+; TFLAG:2  : オートソート時に사용
+; TFLAG:4  : 入れ替えに사용   一人눈に選んだ奴隷번호を二度눈に除外するために使う
+
+@SHOP_COM_666
+#LOCALSIZE 100
+#DIM LCOUNT
+TFLAG:4 = -1
+
+LOCAL:1 = 0
+LOCAL:2 = 0
+LOCAL:8 = -1
+LOCAL:9 = -1
+LOCAL:10 = -1
+LOCAL:11 = -1
+;LOCAL:14 = 0
+P = 0
+;표시させるキャラを抽出（Q:*に표시するキャラの등록번호、LOCAL:2に人数）
+VARSET Q, -1
+A = 0
+FOR LCOUNT, 0, CHARANUM
+	MARK:LCOUNT:98 = 0
+	;主人公は除外
+	SIF LCOUNT == 0
+		CONTINUE
+	;失踪中も除外
+	SIF CFLAG:LCOUNT:この場に居ないフラグ
+		CONTINUE
+	;조교대상と조수を保存する
+;	IF LCOUNT == TARGET
+;		MARK:LCOUNT:98 = 2
+;	ELSEIF LCOUNT == ASSI
+;		MARK:LCOUNT:98 = 3
+;	ELSE
+		MARK:LCOUNT:98 = 1
+;	ENDIF
+	Q:A = LCOUNT
+	A += 1
+NEXT
+LOCAL:3 = A
+LOCAL:6 = TARGET >= 0 ? CFLAG:TARGET:キャラ固有の번호 # -1
+LOCAL:7 = ASSI >= 0 ? CFLAG:ASSI:キャラ固有の번호 # -1
+IF LOCAL:3 < 1
+	PRINTW 정렬 가능한 노예가 없습니다
+	RETURN 0
+ELSE
+	PRINTFORML 순서를 정렬합니다
+ENDIF
+
+;一人눈選択
+$CHARA_SORT_FIRST
+DRAWLINE
+IF LOCAL:14
+	IF LOCAL:1
+		PRINTFORML 어디에 삽입합니까？(현재 {LOCAL:1}.%조사처리(CALLNAME:(LOCAL:1), "를")% 선택중) ＜page.{P+1} / {((LOCAL:3-1)/リスト표시数()+1)}＞
+	ELSE
+		PRINTFORML 누구를 삽입합니까？　＜page.{P+1} / {((LOCAL:3-1)/リスト표시数()+1)}＞
+	ENDIF
+ELSE
+	IF LOCAL:1
+		PRINTFORML 누구와 바꿔넣습니까？(현재 {LOCAL:1}.%조사처리(CALLNAME:(LOCAL:1), "를")% 선택중) ＜page.{P+1} / {((LOCAL:3-1)/リスト표시数()+1)}＞
+	ELSE
+		PRINTFORML 누구를 바꿔넣습니까？　＜page.{P+1} / {((LOCAL:3-1)/リスト표시数()+1)}＞
+	ENDIF
+ENDIF
+DRAWLINE
+CALL SHOW_CHARA_SORT
+DRAWLINE
+PRINTFORMLC \@(P <= 0) ? %" " * 16% # [1007]이전 페이지\@
+PRINTLC [1000]돌아간다
+PRINTFORMLC \@(P >= (LOCAL:3 - 1) / リスト표시数()) ? %" " * 16% # [1009]다음 페이지\@
+SIF LOCAL:1 == 0
+PRINTLC [1100]자동정렬
+PRINTL
+PRINTFORMLC [1101]정렬 방법 변경(\@LOCAL:14 ? 삽입→바꿔넣기 # 바꿔넣기→삽입\@)
+
+$INPUT_LOOP_1
+INPUT
+IF RESULT == 1000
+	IF LOCAL:1
+		;二人눈選択中
+		LOCAL:1 = 0
+		TFLAG:4 = -1
+		GOTO CHARA_SORT_FIRST
+	ELSE
+		RETURN 0
+	ENDIF
+ELSEIF RESULT == 1007
+	IF P > 0
+		P -= 1
+		GOTO CHARA_SORT_FIRST
+	ELSE
+		GOTO INPUT_LOOP_1
+	ENDIF
+ELSEIF RESULT == 1009
+	LOCAL = (LOCAL:3 - 1) / リスト표시数()
+	IF P < LOCAL
+		P += 1
+		GOTO CHARA_SORT_FIRST
+	ELSE
+		GOTO INPUT_LOOP_1
+	ENDIF
+ELSEIF RESULT == 1100
+
+	$SORTSELECT_ROOP
+	DRAWLINE
+	PRINTL 정렬 기준을 선택하십시오
+	DRAWLINE
+
+	PRINTL [10]ＬＶ
+	PRINTL [20]최대ＨＰ
+	PRINTL [30]최대ＭＰ
+	PRINTL [40]충성도
+	PRINTL [50]최대체력
+	PRINTL [60]최대기력
+	PRINTL [70]스트레스
+	PRINTL [80]ＭＡＧ
+	PRINTL [90]함락소질
+	PRINTL [100]가슴의 크기
+	PRINTL [110]종족
+	PRINTL [120]성별
+	PRINTL [130]캐릭터번호
+	PRINTL [140]계약 소질
+	PRINTL [1000]돌아간다
+
+	CALL INPUTINT(10,20,30,40,50,60,70,80,90,100,110,120,130,140,1000)
+
+	IF RESULT == 1000
+		GOTO CHARA_SORT_FIRST
+	ENDIF
+
+	LOCAL:13 = RESULT
+
+	DRAWLINE
+	PRINTL 정렬순서를 선택해주세요
+	DRAWLINE
+
+	PRINTL [1]오름차순（낮은쪽에서 높은쪽으로）
+	PRINTL [2]내림차순（높은쪽에서 낮은쪽으로）
+	PRINTL [1000]돌아간다
+
+	CALL INPUTINT(1,2,1000)
+
+	IF RESULT == 1000
+		GOTO SORTSELECT_ROOP
+	ENDIF
+	
+	SELECTCASE LOCAL:13
+		CASE 10
+			PRINT 캐릭터리스트를 ＬＶ의 
+			IF RESULT == 1
+				SORTCHARA BASE:LV
+			ELSE
+				SORTCHARA BASE:LV,BACK
+			ENDIF
+		CASE 20
+			PRINT 캐릭터리스트를 최대ＨＰ의 
+			IF RESULT == 1
+				SORTCHARA MAXBASE:ＨＰ
+			ELSE
+				SORTCHARA MAXBASE:ＨＰ,BACK
+			ENDIF
+		CASE 30
+			PRINT 캐릭터리스트를 최대ＭＰ의 
+			IF RESULT == 1
+				SORTCHARA MAXBASE:ＭＰ
+			ELSE
+				SORTCHARA MAXBASE:ＭＰ,BACK
+			ENDIF
+		CASE 40
+			PRINT 캐릭터리스트를 충성도의 
+			IF RESULT == 1
+				SORTCHARA BASE:충성도
+			ELSE
+				SORTCHARA BASE:충성도,BACK
+			ENDIF
+		CASE 50
+			PRINT 캐릭터리스트를 최대체력의 
+			IF RESULT == 1
+				SORTCHARA MAXBASE:체력
+			ELSE
+				SORTCHARA MAXBASE:체력,BACK
+			ENDIF
+		CASE 60
+			PRINT 캐릭터리스트를 최대기력의 
+			IF RESULT == 1
+				SORTCHARA MAXBASE:기력
+			ELSE
+				SORTCHARA MAXBASE:기력,BACK
+			ENDIF
+		CASE 70
+			PRINT 캐릭터리스트를 스트레스의 
+			IF RESULT == 1
+				SORTCHARA CFLAG:스트레스치
+			ELSE
+				SORTCHARA CFLAG:스트레스치,BACK
+			ENDIF
+		CASE 80
+			PRINT 캐릭터리스트를 ＭＡＧ의 
+			IF RESULT == 1
+				SORTCHARA BASE:ＭＡＧ
+			ELSE
+				SORTCHARA BASE:ＭＡＧ,BACK
+			ENDIF
+		CASE 90
+			PRINT 캐릭터리스트를 함락소질의 
+			IF RESULT == 1
+				SORTCHARA TALENT:연모
+				SORTCHARA TALENT:친애
+				SORTCHARA TALENT:음란
+				SORTCHARA TALENT:창부
+				SORTCHARA TALENT:복종
+				SORTCHARA TALENT:예속
+				SORTCHARA TALENT:붕괴
+			ELSE
+				SORTCHARA TALENT:연모,BACK
+				SORTCHARA TALENT:친애,BACK
+				SORTCHARA TALENT:음란,BACK
+				SORTCHARA TALENT:창부,BACK
+				SORTCHARA TALENT:복종,BACK
+				SORTCHARA TALENT:예속,BACK
+				SORTCHARA TALENT:붕괴,BACK
+			ENDIF
+		CASE 100
+			PRINT 캐릭터리스트를 가슴크기의 
+			IF RESULT == 1
+			;	SORTCHARA TALENT:거유
+			;	SORTCHARA TALENT:폭유
+			;	SORTCHARA TALENT:빈유,BACK
+			;	SORTCHARA TALENT:절벽,BACK
+			;ELSE
+			;	SORTCHARA TALENT:빈유
+			;	SORTCHARA TALENT:절벽
+			;	SORTCHARA TALENT:거유,BACK
+			;	SORTCHARA TALENT:폭유,BACK
+			;ENDIF
+				SORTCHARA BASE:바스트
+				SORTCHARA TALENT:거유
+				SORTCHARA TALENT:폭유
+				SORTCHARA TALENT:魔乳
+				SORTCHARA TALENT:빈유,BACK
+				SORTCHARA TALENT:절벽,BACK
+			ELSE
+				SORTCHARA BASE:바스트,BACK
+				SORTCHARA TALENT:빈유
+				SORTCHARA TALENT:절벽
+				SORTCHARA TALENT:거유,BACK
+				SORTCHARA TALENT:폭유,BACK
+				SORTCHARA TALENT:魔乳,BACK
+			ENDIF
+		CASE 110
+			PRINT 캐릭터리스트를 종족의 
+			IF RESULT == 1
+				SORTCHARA ABL:종족
+			ELSE
+				SORTCHARA ABL:종족,BACK
+			ENDIF
+		CASE 120
+			PRINT 캐릭터리스트를 성별의 
+			IF RESULT == 1
+				SORTCHARA TALENT:후타나리,BACK
+				SORTCHARA TALENT:오토코노코
+				SORTCHARA TALENT:남자,BACK
+			ELSE
+				SORTCHARA TALENT:후타나리
+				SORTCHARA TALENT:오토코노코,BACK
+				SORTCHARA TALENT:남자
+			ENDIF
+		CASE 130
+			PRINT 캐릭터 리스트를 캐릭터 번호의 
+			IF RESULT == 1
+				SORTCHARA NO:U
+			ELSE
+				SORTCHARA NO:U,BACK
+			ENDIF
+		CASE 140
+			PRINT 캐릭터 리스트를 계약 소질의 
+			IF RESULT == 1
+				SORTCHARA TALENT:아내
+				SORTCHARA TALENT:음마
+				SORTCHARA TALENT:노리개
+				SORTCHARA TALENT:맹우
+			ELSE
+				SORTCHARA TALENT:아내,BACK
+				SORTCHARA TALENT:음마,BACK
+				SORTCHARA TALENT:노리개,BACK
+				SORTCHARA TALENT:맹우,BACK
+			ENDIF
+	ENDSELECT
+
+	IF RESULT == 1
+		PRINTW 오름차순으로 정렬했습니다
+	ELSE
+		PRINTW 내림차순으로 정렬했습니다
+	ENDIF
+
+	;FOR LOCAL:14, 1, CHARANUM
+	;	IF CFLAG:(LOCAL:14):노역フラグ >= 10 && (CFLAG:(LOCAL:14):노역점포) > 0
+	;		DE:(50+(CFLAG:(LOCAL:14):劇場出演順番 - 1)):((CFLAG:(LOCAL:14):노역점포) - 1)= LOCAL:14
+	;	ENDIF
+	;NEXT
+
+	PRINTL
+
+	GOTO CHARA_SORT_END
+ELSEIF RESULT == 1101
+	;ソート方法변경
+	INVERTBIT LOCAL:14 , 0
+	PRINTFORML 정렬 방법을 \@ LOCAL:14 ? 삽입 #바꿔넣기\@(으)로 변경했습니다。
+	GOTO CHARA_SORT_FIRST
+ELSEIF RESULT < 0 || RESULT >= CHARANUM || MARK:RESULT:98 == 0
+	PRINTL 무효값입니다
+	GOTO CHARA_SORT_FIRST
+ENDIF
+
+IF LOCAL:1 == 0
+	LOCAL:1 = RESULT
+	TFLAG:4 = LOCAL:1
+	GOTO CHARA_SORT_FIRST
+ENDIF
+;DRAWLINE
+;DRAWLINE
+;二人눈選択
+;$CHARA_SORT_SECOND
+;PRINTFORML 누구를 바꿔 넣습니까？(현재 {LOCAL:1}.%조사처리(CALLNAME:(LOCAL:1), "를")% 선택중) ＜page.{P}＞
+;DRAWLINE
+;CALL SHOW_CHARA_SORT
+;DRAWLINE
+;PRINTFORMLC \@(P <= 0) ? %" " * 16% # [1007]이전 페이지\@
+;PRINTLC [1000]돌아간다
+;PRINTFORMLC \@(P >= (LOCAL:3 - 1) / 20) ? %" " * 16% # [1009]다음 페이지\@
+;INPUT
+
+;IF RESULT == 1000
+;	GOTO CHARA_SORT_FIRST
+;ELSEIF RESULT == 1007
+;	IF P > 0
+;		P -= 1
+;		GOTO CHARA_SORT_SECOND
+;	ELSE
+;		GOTO INPUT_LOOP_1
+;	ENDIF
+;ELSEIF RESULT == 1009
+;	LOCAL = (LOCAL:3 - 1) / 20
+;	IF P < LOCAL
+;		P += 1
+;		GOTO CHARA_SORT_SECOND
+;	ELSE
+;		GOTO INPUT_LOOP_1
+;	ENDIF
+;ELSEIF RESULT < 0 || RESULT >= CHARANUM || RESULT == TFLAG:4 || MARK:RESULT:98 == 0
+;	PRINTL 無効な値です
+;	GOTO CHARA_SORT_SECOND
+;ENDIF
+
+LOCAL:2 = RESULT
+;FOR LCOUNT, 0, 10
+;	FOR LOCAL:12, 0, 10
+;		IF DE:(50+(LOCAL:12)):LCOUNT == LOCAL:2
+;			LOCAL:10 = 50+(LOCAL:12)
+;			LOCAL:11 = LCOUNT
+;		ENDIF
+;	NEXT
+;NEXT
+IF LOCAL:14
+	;挿入
+	PRINTFORMW %조사처리(CALLNAME:(LOCAL:1), "를")% %CALLNAME:(LOCAL:2)%의 앞으로 보냈습니다
+	IF LOCAL:1 > LOCAL:2
+		;後ろのキャラを前に挿入する패턴
+		FOR LOCAL:15, LOCAL:1, LOCAL:2, -1
+			SWAPCHARA LOCAL:15,LOCAL:15-1
+		NEXT
+	ELSE
+		;이전 캐릭터を後ろに挿入する패턴
+		FOR LOCAL:15, LOCAL:1, LOCAL:2 - 1
+			SWAPCHARA LOCAL:15,LOCAL:15+1
+		NEXT
+	ENDIF
+ELSE
+	;入れ替え
+	PRINTFORMW %조사처리(CALLNAME:(LOCAL:1), "과")% %조사처리(CALLNAME:(LOCAL:2), "를")% 교체했습니다
+	SWAPCHARA LOCAL:1,LOCAL:2
+ENDIF
+;IF LOCAL:8 >= 0 && LOCAL:10 >= 0
+;	LOCAL:12 = DE:(LOCAL:10):(LOCAL:11)
+;	DE:(LOCAL:10):(LOCAL:11) = DE:(LOCAL:8):(LOCAL:9)
+;	DE:(LOCAL:8):(LOCAL:9) = LOCAL:12
+;ELSEIF LOCAL:8 >= 0
+;	DE:(LOCAL:8):(LOCAL:9) = LOCAL:2
+;ELSEIF LOCAL:10 >= 0
+;	DE:(LOCAL:10):(LOCAL:11) = LOCAL:1
+;ENDIF
+
+$CHARA_SORT_END
+;조교대상と조수を保存していたものにする
+TARGET = LOCAL:6 >= 0 ? FINDCHARA_ID(LOCAL:6) # -1
+ASSI = LOCAL:7 >= 0 ? FINDCHARA_ID(LOCAL:7) # -1
+;FOR LCOUNT, 0, CHARANUM
+;	SIF MARK:LCOUNT:98 == 2
+;		TARGET = LCOUNT
+;	SIF MARK:LCOUNT:98 == 3
+;		ASSI = LCOUNT
+;NEXT
+;포지션に齟齬が発生するので、FLAG側を초기化＋CFLAG側から読み込み
+CALL REFRESH_POS
+
+RESTART
+
+
+;-------------------------------------------------
+;キャラ一覧표시処理(SORT用)
+;-------------------------------------------------
+@SHOW_CHARA_SORT
+#DIM LCOUNT
+LOCAL:3 = 0
+FOR LCOUNT, 0, リスト표시数()
+	LOCAL = Q:(LCOUNT + P * リスト표시数())
+	SIF TFLAG:4 == LOCAL
+		CONTINUE
+	SIF LOCAL < 0
+		CONTINUE
+	SIF CFLAG:LOCAL:この場に居ないフラグ == 1
+		CONTINUE
+	IF LOCAL == TARGET
+		PRINT ☆
+	ELSEIF LOCAL == ASSI
+		PRINT ★
+	ELSEIF CFLAG:LOCAL:この場に居ないフラグ == 4
+		PRINT ◆
+		LOCAL:3 |= 1
+	ELSEIF CFLAG:LOCAL:この場に居ないフラグ == 8
+		PRINT ▲
+		LOCAL:3 |= 2
+	ELSEIF CFLAG:LOCAL:この場に居ないフラグ & 1024
+		PRINT ◇
+		LOCAL:3 |= 4
+	ELSEIF ISASSI:LOCAL == 1
+		PRINT ●
+	ELSEIF CFLAG:LOCAL:매각가능 == 2
+		PRINT ○
+	ELSE
+		PRINT 　
+	ENDIF
+	CALL ARRANGE_CHARALIST, LOCAL
+	CALL ARRANGE_CHARALIFE, LOCAL
+	CALL ARRANGE_CHARAPOSITION, LOCAL
+	
+	SIF FLAG:SHOPコマンド == 122
+		PRINTFORM 　　MAG:{BASE:LOCAL:ＭＡＧ,5}/{MAXBASE:LOCAL:ＭＡＧ,5}
+	PRINTL 
+	;一言呼び出し
+NEXT
+IF E >= 1
+	PRINT 　　　☆:조교중 ★:조수 ○:조수가 ●:원조수
+	SIF FLAG:15 & 4096 && FLAG:75 & 32768 && LOCAL:3 & 1
+		PRINT  ◆:촉수유폐중
+;	SIF FLAG:15 & 4096 && LOCAL:3 & 2
+;		PRINT  ▲:함유폐중
+	SIF LOCAL:3 & 4 && FLAG:13 & 1024
+		PRINT  ◇：매춘중
+	PRINTL 　을 나타내고 있습니다
+ENDIF
+

@@ -1,0 +1,438 @@
+﻿
+;===============================================================================
+;===============================================================================
+@SHOW_TENT_ABL(ARG,ARGS)
+#FUNCTION
+SELECTCASE ARG
+CASE -2 ;슬라임
+	RETURNF ARGS == "자위중독" ? 0 # 4
+CASE -3 ;오크
+	RETURNF ARGS == "자위중독" ? 0 # 6
+CASE -4 ;이누가미
+	RETURNF ARGS == "자위중독" ? 0 # 7
+CASE -5 ; 바포멧트
+	RETURNF ARGS == "자위중독" ? 0 # 10
+CASE -6 ; 케르베로스(경험よりMAG重視)
+	RETURNF ARGS == "자위중독" ? 0 # 8
+CASEELSE
+	RETURNF ABL:ARG:ARGS
+ENDSELECT
+
+;===============================================================================
+;===============================================================================
+@SHOW_TENT_TALENT(ARG,ARGS)
+#FUNCTION
+SELECTCASE ARG
+CASE IS < 0
+	LOCAL = CSVTALENT(SHOW_TENT_ACTNO(ARG),GETNUM(TALENT,ARGS),0)
+	RETURNF LOCAL
+CASEELSE
+	RETURNF TALENT:ARG:ARGS
+ENDSELECT
+
+;===============================================================================
+;SHOW_TENT_COM0 자위
+;기본値   = 욕망＋자위중독
+;消耗係数 = 10
+;客反応   = 4
+;客不評   = 자위레벨 * 10
+;===============================================================================
+@SHOW_TENT_COM0(ARG,ARG:1)
+LOCAL = SHOW_TENT_ABL(ARG,"욕망") + SHOW_TENT_ABL(ARG,"자위중독")
+LOCAL:1 = LOCAL * 4 - SHOW_TENT_ONA(ARG) * 10
+;#; PRINTFORM {LOCAL,2}回자위
+IF ARG > 0
+	DOWNBASE:ARG:0 += LOCAL * 10
+	TCVAR:ARG:획득자위경험 += LOCAL
+ENDIF
+RETURN LOCAL:1
+
+;===============================================================================
+;SHOW_TENT_COM1 Ｖを犯す
+;기본値   = 犯す側の욕망 + 犯される側の욕망/2 + 섹스중독
+;消耗係数 = 挿入側10、被挿入側10(Ｖ확장時15)
+;MAG係数  = 10(대상が흡수)
+;客反応   = 8
+;客不評   = 대상Ｖ레벨*10
+;===============================================================================
+@SHOW_TENT_COM1(ARG,ARG:1)
+LOCAL = SHOW_TENT_ABL(ARG,"욕망") + SHOW_TENT_ABL(ARG:1,"욕망") / 2 + SHOW_TENT_ABL(ARG:1,"섹스중독")
+LOCAL:1 = LOCAL * 8 - SHOW_TENT_VAGINA(ARG:1) * 10
+;#; PRINTFORM {LOCAL,2}回%SHOW_TENT_ACTNAME(ARG:1),20,LEFT%のＶを犯す
+IF ARG >= 0
+	DOWNBASE:ARG:0 += LOCAL * 5
+	TCVAR:ARG:획득성교경험 += LOCAL
+	LOCAL:2 = LOCAL / 2
+	EX:ARG:0 += LOCAL:2
+	TCVAR:ARG:획득사정경험 += LOCAL:2
+	TCVAR:ARG:획득질사경험 += LOCAL:2
+ELSE
+	LOCAL:2 = LOCAL / 2
+ENDIF
+IF ARG:1 >= 0
+	LOCAL:1 = LOCAL * 10
+	TCVAR:(ARG:1):획득Ｖ경험 += LOCAL
+	TCVAR:(ARG:1):획득정액경험 += LOCAL:2
+	TCVAR:(ARG:1):획득질사경험 += LOCAL:2
+	EX:(ARG:1):1 += LOCAL / 2
+	;수간경험
+	SIF SHOW_TENT_수간(ARG) && !SHOW_TENT_수간(ARG:1)
+			TCVAR:(ARG:1):획득수간경험 += LOCAL
+	;体格差に応じた확장경험
+	IF ( ARG >= 0 && 体格差(ARG,ARG:1) > 2 ) || ( ARG < 0 && TALENT:(ARG:1):소인체형 )
+		TCVAR:(ARG:1):획득Ａ확장경험 += LOCAL
+		LOCAL:1 += LOCAL * 5
+	ENDIF
+	DOWNBASE:(ARG:1):0 += LOCAL:1
+	SIF BASE:(ARG:1):1 >= DOWNBASE:(ARG:1):0
+		DOWNBASE:(ARG:1):0 += LOCAL:1 / 2
+	SIF TALENT:(ARG:1):처녀 || TALENT:(ARG:1):재생처녀
+		LOCAL:1 += 20
+
+	;노역中임신のフラグを부여]
+	CALL 노역中出し(ARG,ARG:1,LOCAL/2,"+")
+	;子宮現在容量加算
+	IF !IS_MALE(ARG:1)
+		CFLAG:(ARG:1):子宮現在容量 +=  LOCAL:2 * 5
+	ENDIF
+
+ENDIF
+
+CALL SHOW_TENT_MAG_EXCHANGE(ARG,ARG:1,LOCAL,10)
+CALL SHOW_TENT_SEX_SAME(ARG,ARG:1,LOCAL)
+
+RETURN LOCAL:1
+
+
+;===============================================================================
+;SHOW_TENT_COM2 Ａを犯す
+;기본値   = 犯す側の욕망 + 犯される側の욕망/2 + 섹스중독/2
+;消耗係数 = 挿入側10、被挿入側12(Ｖ확장時20)
+;MAG係数  = 8(대상が흡수)
+;客反応   = 10
+;客不評   = 대상Ａ레벨 * 10
+;===============================================================================
+@SHOW_TENT_COM2(ARG,ARG:1)
+LOCAL = SHOW_TENT_ABL(ARG,"욕망") + SHOW_TENT_ABL(ARG:1,"욕망") / 2 + SHOW_TENT_ABL(ARG:1,"섹스중독") / 2
+LOCAL:1 = LOCAL * 8 - SHOW_TENT_ANUS(ARG:1) * 10
+;#; PRINTFORM {LOCAL,2}回%SHOW_TENT_ACTNAME(ARG:1),20,LEFT%のＡを犯す
+IF ARG >= 0
+	DOWNBASE:ARG:0 += LOCAL * 10
+	TCVAR:ARG:획득성교경험 = LOCAL
+	TCVAR:ARG:획득사정경험 = LOCAL / 2
+	EX:ARG:0+=LOCAL/2
+ENDIF
+IF ARG:1 >= 0
+	LOCAL:1 = LOCAL * 12
+	TCVAR:(ARG:1):획득Ａ경험 += LOCAL
+	EX:(ARG:1):2 += LOCAL / 2
+	;수간경험
+	SIF SHOW_TENT_수간(ARG) && !SHOW_TENT_수간(ARG:1)
+			TCVAR:(ARG:1):획득수간경험 += LOCAL
+	;体格差に応じた확장경험
+	IF ( ARG >= 0 && 体格差(ARG,ARG:1) > 2 ) || ( ARG < 0 && TALENT:(ARG:1):소인체형 )
+		TCVAR:(ARG:1):획득Ａ확장경험 += LOCAL
+		LOCAL:1 += LOCAL * 8
+	ENDIF
+	DOWNBASE:(ARG:1):0 += LOCAL:1
+	SIF BASE:(ARG:1):1 >= DOWNBASE:(ARG:1):0
+		DOWNBASE:(ARG:1):0 += LOCAL:1 / 2
+		
+	;노역中임신のフラグを부여
+	IF TALENT:(ARG:1):오토코노코
+		SIF CFLAG:(ARG:1):노역中の中出氏による暫定父親 == -1 || !RAND:3
+			CFLAG:(ARG:1):노역中の中出氏による暫定父親 = ARG
+		CFLAG:(ARG:1):顧客の中出氏による임신판정 += LOCAL / 2
+	ENDIF
+	;子宮現在容量加算
+	IF TALENT:(ARG:1):오토코노코
+		CFLAG:(ARG:1):子宮現在容量 += LOCAL * 5
+	ENDIF
+ENDIF
+CALL SHOW_TENT_MAG_EXCHANGE(ARG,ARG:1,LOCAL,10)
+CALL SHOW_TENT_SEX_SAME(ARG,ARG:1,LOCAL)
+
+
+RETURN LOCAL:1
+
+;===============================================================================
+;SHOW_TENT_COM3 喉を犯す
+;기본値   = 犯す側の욕망 + 犯される側の기교/2 + 犯される側の정액중독
+;消耗係数 = 挿入側5、被挿入側5～15(기교で変化)
+;MAG係数  = 7(대상が흡수)
+;客反応   = 7
+;客不評   = 대상입레벨 * 5
+;===============================================================================
+@SHOW_TENT_COM3(ARG,ARG:1)
+LOCAL = SHOW_TENT_ABL(ARG,"욕망") + SHOW_TENT_ABL(ARG:1,"기교") / 2 + SHOW_TENT_ABL(ARG:1,"정액중독")
+LOCAL:1 = LOCAL * 7 - SHOW_TENT_MOUSE(ARG:1) * 5
+;#; PRINTFORM {LOCAL,2}回%SHOW_TENT_ACTNAME(ARG:1),20,LEFT%の喉を犯す
+IF ARG >= 0
+	TCVAR:ARG:획득사정경험 += LOCAL / 2
+ENDIF
+IF ARG:1 >= 0
+	IF ABL:(ARG:1):기교 < 4
+		LOCAL:1 = LOCAL * 15
+		TCVAR:(ARG:1):획득펠라경험 += MAX(1,LOCAL/4)
+	ELSE
+		LOCAL:1 = LOCAL * ( ABL:(ARG:1):기교 < 7 ? 15 # 10 )
+		TCVAR:(ARG:1):획득펠라경험 += LOCAL
+	ENDIF
+	TCVAR:(ARG:1):획득정액경험 += MAX(1,LOCAL / 2)
+	DOWNBASE:(ARG:1):0 += LOCAL:1
+	SIF BASE:(ARG:1):1 >= DOWNBASE:(ARG:1):0
+		DOWNBASE:(ARG:1):0 += LOCAL:1 / 2
+ENDIF
+CALL SHOW_TENT_MAG_EXCHANGE(ARG,ARG:1,LOCAL,7)
+CALL SHOW_TENT_SEX_SAME(ARG,ARG:1,LOCAL)
+
+RETURN LOCAL:1
+
+;===============================================================================
+;SHOW_TENT_COM4 Ｃを애무
+;기본値   = 犯す側の욕망 + 犯される側の욕망 / 2
+;消耗係数 = 実行者10、대상10
+;MAG係数  = 4(実行者が흡수)
+;客反応   = 4
+;客不評   = 대상V레벨 * 10
+;===============================================================================
+@SHOW_TENT_COM4(ARG,ARG:1)
+LOCAL = SHOW_TENT_ABL(ARG,"욕망") + SHOW_TENT_ABL(ARG:1,"욕망") / 2
+LOCAL:1 = LOCAL * 4 - SHOW_TENT_VAGINA(ARG:1) * 10
+;#; PRINTFORM {LOCAL,2}回%SHOW_TENT_ACTNAME(ARG:1),20,LEFT%のＣを애무
+
+IF ARG >= 0
+	DOWNBASE:ARG:0 += LOCAL * 10
+ENDIF
+IF ARG:1 >= 0
+	LOCAL:1 = LOCAL * 10
+	EX:(ARG:1):0 += LOCAL
+	DOWNBASE:(ARG:1):0 += LOCAL:1
+	SIF BASE:(ARG:1):1 >= DOWNBASE:(ARG:1):0
+		DOWNBASE:(ARG:1):0 += LOCAL:1 / 2
+ENDIF
+;MAG変換(犯す側が흡수)
+CALL SHOW_TENT_MAG_EXCHANGE(ARG:1,ARG,LOCAL,4)
+CALL SHOW_TENT_SEX_SAME(ARG,ARG:1,LOCAL)
+
+RETURN LOCAL:1
+
+;===============================================================================
+;SHOW_TENT_COM5 펠라치오
+;기본値   = 犯す側の욕망 + 기교/2 + 정액중독
+;消耗係数 = 実行者10、대상20
+;MAG係数  = 7(実行者が흡수)
+;客反応   = 6
+;客不評   = 実行者입레벨 * 5
+;===============================================================================
+@SHOW_TENT_COM5(ARG,ARG:1)
+LOCAL = SHOW_TENT_ABL(ARG,"욕망") + SHOW_TENT_ABL(ARG,"기교") / 2 + SHOW_TENT_ABL(ARG,"정액중독")
+LOCAL:1 = LOCAL * 6 - SHOW_TENT_MOUSE(ARG) * 5
+
+;#; PRINTFORM {LOCAL,2}回%SHOW_TENT_ACTNAME(ARG:1),20,LEFT%に펠라치오
+
+IF ARG >= 0
+	DOWNBASE:ARG:0 += LOCAL * 10
+	TCVAR:(ARG:1):획득펠라경험 += LOCAL
+	TCVAR:(ARG:1):획득정액경험 += LOCAL / 2
+ENDIF
+IF ARG:1 >= 0
+	TCVAR:(ARG:1):획득사정경험 += LOCAL / 2
+	EX:(ARG:1):0 += LOCAL
+	LOCAL:1 = LOCAL * 20
+	DOWNBASE:(ARG:1):0 += LOCAL:1
+	SIF BASE:(ARG:1):1 >= DOWNBASE:(ARG:1):0
+		DOWNBASE:(ARG:1):0 += LOCAL:1 / 2
+ENDIF
+;MAG変換(犯す側が흡수)
+CALL SHOW_TENT_MAG_EXCHANGE(ARG:1,ARG,LOCAL,7)
+CALL SHOW_TENT_SEX_SAME(ARG,ARG:1,LOCAL/2)
+
+RETURN LOCAL:1
+
+;===============================================================================
+;SHOW_TENT_COM6 Ａを애무
+;기본値   = 犯す側の욕망 / 2 + 犯される側の욕망
+;消耗係数 = 実行者10、대상15
+;MAG係数  = 4(実行者が흡수)
+;客反応   = 3
+;客不評   = 대상Ａ레벨*10
+;===============================================================================
+@SHOW_TENT_COM6(ARG,ARG:1)
+LOCAL = SHOW_TENT_ABL(ARG,"욕망") / 2 + SHOW_TENT_ABL(ARG:1,"욕망")
+LOCAL:1 = LOCAL * 3 - SHOW_TENT_ANUS(ARG:1) * 10
+;#; PRINTFORM {LOCAL,2}回%SHOW_TENT_ACTNAME(ARG:1),20,LEFT%のＡを애무
+
+IF ARG >= 0
+	DOWNBASE:ARG:0 += LOCAL * 10
+ENDIF
+IF ARG:1 >= 0
+	TCVAR:(ARG:1):획득Ａ경험 += LOCAL
+	EX:(ARG:1):2 += LOCAL
+	LOCAL:1 = LOCAL * 15
+	DOWNBASE:(ARG:1):0 += LOCAL:1
+	SIF BASE:(ARG:1):1 >= DOWNBASE:(ARG:1):0
+		DOWNBASE:(ARG:1):0 += LOCAL:1 / 2
+ENDIF
+CALL SHOW_TENT_SEX_SAME(ARG,ARG:1,LOCAL/2)
+CALL SHOW_TENT_MAG_EXCHANGE(ARG:1,ARG,LOCAL,4)
+
+RETURN LOCAL:1
+
+;===============================================================================
+;SHOW_TENT_COM7 키스
+;기본値   = 犯す側の욕망 + 犯される側の욕망
+;消耗係数 = 実行者5、대상5
+;MAG係数  = 1(相互)
+;客反応   = 2
+;各不評   = 実行者입레벨 + 대상입레벨
+;===============================================================================
+@SHOW_TENT_COM7(ARG,ARG:1)
+LOCAL = SHOW_TENT_ABL(ARG,"욕망") + SHOW_TENT_ABL(ARG:1,"욕망")
+LOCAL:1 = LOCAL * 2 - SHOW_TENT_MOUSE(ARG) - SHOW_TENT_MOUSE(ARG:1)
+;#; PRINTFORM {LOCAL,2}回%SHOW_TENT_ACTNAME(ARG:1),20,LEFT%と키스
+
+IF ARG >= 0
+	DOWNBASE:ARG:0 += LOCAL * 5
+ENDIF
+IF ARG >= 0
+	DOWNBASE:ARG:0 += LOCAL * 5
+ENDIF
+CALL SHOW_TENT_SEX_SAME(ARG,ARG:1,LOCAL)
+CALL SHOW_TENT_MAG_EXCHANGE(ARG,ARG:1,LOCAL,1)
+CALL SHOW_TENT_MAG_EXCHANGE(ARG:1,ARG,LOCAL,1)
+RETURN LOCAL:1
+
+;===============================================================================
+;레즈・ＢＬプ레이による경험増加
+;===============================================================================
+@SHOW_TENT_SEX_SAME(ARG,ARG:1,ARG:2)
+SIF SHOW_TENT_SEX(ARG) != SHOW_TENT_SEX(ARG:1)
+	RETURN
+IF SHOW_TENT_SEX(ARG)
+	SIF ARG >= 0
+		TCVAR:ARG:획득ＢＬ경험 += ARG:2
+	SIF ARG:1 >= 0
+		TCVAR:(ARG:1):획득ＢＬ경험 += ARG:2
+ELSE
+	SIF ARG >= 0
+		TCVAR:ARG:획득레즈경험 += ARG:2
+	SIF ARG:1 >= 0
+		TCVAR:(ARG:1):획득레즈경험 += ARG:2
+ENDIF
+
+;===============================================================================
+;SHOW_TENT_SEX 性別
+;===============================================================================
+@SHOW_TENT_SEX(ARG)
+#FUNCTION
+SELECTCASE ARG
+CASE IS < 0
+	RETURNF 1
+CASEELSE
+	RETURNF IS_MALE(ARG)
+ENDSELECT
+
+
+
+;===============================================================================
+;Ｖ使いたい度(高い程使いたくない)
+;===============================================================================
+;0 今すぐ突っこませろ
+;1 実用範囲内
+;2 필요とあらば
+;3 どうしても필요とあらば
+;4 絶対に嫌
+;5 無理
+@SHOW_TENT_VAGINA(ARG)
+#FUNCTION
+SIF ARG < 0 || !HAVE_VAGINA(ARG)
+	RETURNF 5
+LOCAL =  1 - ABL:ARG:Ｖ감각 / 3
+;처녀はさっさとブチ破りたい
+SIF TALENT:ARG:처녀
+	LOCAL -= 3
+;음란
+SIF IS_BITCHY(ARG)
+	LOCAL -= 1
+SIF TALENT:ARG:섹스광
+	LOCAL -= 1
+SIF 위험일(ARG)
+	LOCAL -= MIN(위험일(ARG),2)
+SIF TALENT:ARG:후타나리
+	LOCAL += 1
+SIF IS_BEAST(ARG)
+	LOCAL += 3
+;主のヨメなんて손が出せるか
+SIF IS_LOVER(ARG)
+	LOCAL += 함락(ARG)
+RETURNF LIMIT(LOCAL,0,4)
+
+;===============================================================================
+;Ａ使いたい度(高い程使いたくない)
+;===============================================================================
+@SHOW_TENT_ANUS(ARG)
+#FUNCTION
+SIF ARG < 0
+	RETURNF 5
+LOCAL =  1 - ABL:ARG:Ａ감각 / 3
+;음란か복종
+SIF IS_BITCHY(ARG) || IS_SLAVERY(ARG)
+	LOCAL -= 함락(ARG)
+SIF TALENT:ARG:애널광
+	LOCAL -= 1
+SIF IS_LOOKSLIKE_MALE(ARG)
+	LOCAL += 3
+SIF IS_BEAST(ARG)
+	LOCAL += 3
+;ヨメでも尻なら少し저항が薄い
+SIF IS_ENGAGE(ARG)
+	LOCAL += 함락(ARG)-1
+RETURNF LIMIT(LOCAL,0,5)
+
+;===============================================================================
+;おしゃぶり레벨(高い程下손)
+;===============================================================================
+@SHOW_TENT_MOUSE(ARG)
+#FUNCTION
+SIF ARG < 0
+	RETURNF 5
+LOCAL =  1 - ABL:ARG:기교 / 3
+;복종
+SIF IS_SLAVERY(ARG)
+	LOCAL -= 함락(ARG)
+SIF TALENT:ARG:혀놀림
+	LOCAL -= 1
+SIF TALENT:ARG:헌신적
+	LOCAL -= 1
+SIF IS_LOOKSLIKE_MALE(ARG)
+	LOCAL += 3
+SIF IS_BEAST(ARG)
+	LOCAL += 3
+;ヨメでも입ならかなり저항が薄い
+SIF IS_ENGAGE(ARG)
+	LOCAL += 1
+RETURNF LIMIT(LOCAL,0,5)
+
+;===============================================================================
+;자위레벨
+;===============================================================================
+@SHOW_TENT_ONA(ARG)
+#FUNCTION
+SIF ARG < 0
+	RETURNF 5
+LOCAL =  5 - ABL:ARG:자위중독 / 3 - ABL:ARG:기교 / 4
+;음란
+SIF IS_BITCHY(ARG)
+	LOCAL -= 함락(ARG)
+SIF TALENT:ARG:자위광
+	LOCAL -= 2
+SIF TALENT:ARG:자위하기쉬움
+	LOCAL -= 1
+SIF IS_MALE(ARG)
+	LOCAL += 2
+SIF IS_LOOKSLIKE_MALE(ARG)
+	LOCAL += 3
+SIF IS_BEAST(ARG)
+	LOCAL += 5
+RETURNF LIMIT(LOCAL,0,5)

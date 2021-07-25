@@ -1,0 +1,127 @@
+﻿
+;====================
+;조건
+;====================
+@PLAYABLE_REQUEST_10
+IF 던전フラグ:1:1 > 0 && MONEY >= 5000
+	RESULTS = 공동모금의 안내
+	RETURN 1
+ENDIF
+RETURN 0
+;====================
+;설명
+;====================
+@EXPLAIN_REQUEST_10
+
+PRINTL 
+PRINTFORML 모금 단체로부터 편지가 도착했다
+PRINTFORML 단체는 2곳
+PRINTFORML 하나는 백합공동모금
+PRINTFORML 다른 하나는 흑합공동모금인 것 같다
+PRINTFORML 가끔씩은 모금이라도 해볼까?
+
+;====================
+;内容
+;====================
+@REQUEST_10
+PRINTFORML 어느 쪽에 모금할까?
+PRINTFORML [0] 백합공동모금에 원조
+PRINTFORML [1] 흑합공동모금에 원조
+PRINTFORML [2] 지금은 관두자
+ONEINPUT
+
+IF RESULT == 0
+	PRINTL
+	PRINTFORML 언제나 백합공동모금에 협력해 주셔서 감사합니다.
+	PRINTFORML 이 단체는 재해지원, 지역의 복지충실,
+	PRINTFORML 해외・국내 관계없이 아이들의 의료비의 부담 등을 위해 모금활동을 하고 있습니다.
+	PRINTFORML 여러분이 모르는 장소에서 괴로워하는 사람들을 여러분이 구할 수 있습니다.
+	PRINTFORML 협력을 부탁합니다.
+	PRINTL
+	
+	PRINTFORML 모금은 한 번에 ￥5000입니다
+	
+	IF MONEY >= 5000
+		PRINTFORML 몇 번 모금하겠습니까? (0으로 취소)
+		PRINTFORML [0] [1] \@ MONEY >= 25000 ? [5]#\@ \@ MONEY >= 50000 ? [10] #\@ [{MONEY/5000}]
+			$INPUT_LOOP
+			INPUT
+			IF RESULT == 0
+				RETURN 0
+			ELSEIF RESULT < 0 || MONEY < RESULT * 5000
+				GOTO INPUT_LOOP
+			ENDIF
+			PRINTFORMW {RESULT}입, 합계 ￥{RESULT * 5000}을 백합 공동모금에 송금했습니다
+			MONEY -= RESULT * 5000
+			의뢰フラグ:10:0 += RESULT
+			의뢰フラグ:10:1 -= RESULT
+			CALL INCREASE_LD,RESULT
+		ELSE
+			PRINTFORMW 충분한 자금을 가지고 있지 않습니다
+			RETURN 0
+	ENDIF
+	
+ELSEIF RESULT == 1
+	PRINTL
+	PRINTFORML 안녕하십니까, 흑합공동모금 접수처에 어서 오십시오。
+	PRINTFORML 당 단체는 올바른 세계를 만들기 위해서 활동하는 분들을 위해
+	PRINTFORML 보다 좋은 물자를 제공하여, 보다 많은 혼란을 일으킬 수 있도록 모금 활동을 실시하고 있습니다.
+	PRINTFORML 당신의 "선의"가 세계에 혼란과 공포, 혼돈을 퍼트리는 힘이 됩니다.
+	PRINTFORML 올바른 세계를 위해서 협력을 부탁합니다.
+	PRINTL
+	
+	PRINTFORML 모금은 한 번에 ￥5000입니다
+	
+	IF MONEY >= 5000
+		PRINTFORML 몇 번 모금하겠습니까? (0으로 취소)
+		PRINTFORML [0] [1] \@ MONEY >= 25000 ? [5]#\@ \@ MONEY >= 50000 ? [10] #\@ [{MONEY/5000}]
+		$INPUT_LOOP2
+		INPUT
+		IF RESULT == 0
+			RETURN 0
+		ELSEIF RESULT < 0 || MONEY < RESULT * 5000
+			GOTO INPUT_LOOP2
+		ENDIF
+		PRINTFORMW {RESULT}입, 합계 ￥{RESULT * 5000}을 흑합 공동모금에 송금했습니다
+		MONEY -= RESULT * 5000
+		의뢰フラグ:10:0 -= RESULT
+		의뢰フラグ:10:1 += RESULT
+		CALL INCREASE_LD,-RESULT
+	ELSE
+		PRINTFORML 충분한 자금을 가지고 있지 않습니다
+		RETURN 0
+	ENDIF
+ELSEIF RESULT == 2
+	PRINTFORMW 나중에 하기로 할까‥‥.
+	RETURN 0
+ENDIF
+;10万送金する
+IF 의뢰フラグ:10:0 >= 20 && ITEM:해피버스데이 == 0
+	WAIT
+	PRINTL 편지가 도착했다
+	PRINTW ……열어보니 아이들이 보낸 감사의 편지였다
+	PRINTW 문장은 서투르지만, 진지한 감사가 전해져온다
+	PRINTW 읽기를 끝내고 편지를 놓으니 조금 더러운 디스크가 테이블 위에 놓여져 있는 것을 깨달았다.
+	PRINTW 인스톨 소프트 「해피버스데이」을 얻었다
+	ITEM:해피버스데이 = 1
+ENDIF
+;50万이상送金する＆속성がLight/Lawだと가브리엘解禁
+IF 의뢰フラグ:10:0 >= 100 && ABL:MASTER:속성LD != 3 && FLAG:10303 == 0
+	WAIT
+	PRINTL 사무소에 백합이 장식된 순백의 꽃병이 도착했다
+	PRINTW ……누가 보내준 거지?
+	CALL LIFTING_A_BAN([[キャラ:가브리엘]])
+	;FLAG:10303 = 1
+ENDIF
+;100万以上送金する＆속성がLight以外でルキフグス解禁
+IF 의뢰フラグ:10:1 >= 200 && ABL:MASTER:속성LD != 1 && FLAG:10244 == 0
+	WAIT
+	PRINTL 
+	PRINTW 어디선가 코인이 떨어지는 소리나 났다……는 생각이 든다
+	PRINTL 
+	CALL LIFTING_A_BAN([[キャラ:루키프구스]])
+	;FLAG:10244 = 1
+ENDIF
+
+
+RETURN 0

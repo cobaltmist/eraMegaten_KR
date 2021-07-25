@@ -1,0 +1,278 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		20XX/XX/XX		----					新規作成
+;	002		2011/02/16		Ｎ鳥					악마서버전송기능추가
+;	003		2011/03/23		UNP						셋업화면での誤爆クリックを予防
+;	004		2011/03/23		Ｐ						플러그인소프트の装着処理呼び出しを추가
+;	005		2013/02/25		총Ｐ					악마서버전송に함락소질표시と포지션표시を추가
+;	006		2013/03/05		총Ｐ					악마서버전송のリストで最初のページと最後のページを行き来できるように加筆
+;	007		2013/11/24		ひみつ					リスト표시数설정
+;	008		2013/12/02		ひみつ					リスト표시数설정。장비변경화면のチラつき抑止
+;	009		2017/06/23		kuni					キャラ표시でINPUT_CHARA_LISTを사용するように변경
+;	010		2017/12/03		開発スレ【알프LV7】の448さん		치요＆유리코＆악마인の同行・待機바꾸기가능に변경
+;	011		2017/12/21		수정野郎				악마서버전송の리스트표시の一部に固定値が使われていたのを변경
+;	012		2019/08/28		空気					데빌챔버사용時の挙動を수정
+;	013		2021/02/11		Rsp暇人 				セットアップ画面からリンケージ一覧を呼び出せるように
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+
+;전투や탐색の準備を行う화면
+
+
+@SHOPCOMABLE_106
+#LOCALSIZE 2
+RESULT:1 = 2
+RESULTS = 셋업
+IF CHARANUM > 0
+	RETURN 1
+ELSE
+	RETURN 0
+ENDIF
+
+
+
+@SHOP_COM_106
+#DIM LREDRAW
+;メイン메뉴표시
+PRINTL
+DRAWLINE
+DRAWLINE
+CALL SHOW_NOW_FORMATION_P,0,2, 3, 1
+PRINTL
+DRAWLINE
+IF FLAG:カスタムゲーム화면
+	PRINTL 　　　　　　　　　　　　　　[1] - 소환/편입 　　　　　[2] - 포지션변경　　　　[3] - 귀환/제외
+	PRINTL 　　　　　　　　　　　　　　[4] - 장비변경  　　　　　[5] - 인스톨소프트　　[6] - 동료마해방
+;---- EDIT 013 MOD START ---------------------------
+	;---- EDIT 004 MOD START -------------------------
+	PRINTL 　　　　　　　　　　　　　　[7] - 악마서버전송　　　[8] - 플러그인소프트　　　[9] - 링케이지스킬확인
+	;---- EDIT 004 MOD END   -------------------------
+;---- EDIT 013 MOD END ---------------------------
+ELSE
+	PRINTL 　　　　　　　　　　[1] - 소환/편입 　　[2] - 포지션변경 　　 [3] - 귀환/제외
+	PRINTL 　　　　　　　　　　[4] - 장비변경  　　[5] - 인스톨소프트    [6] - 동료마해방
+;---- EDIT 013 MOD START ---------------------------
+	;---- EDIT 004 MOD START -------------------------
+	PRINTL 　　　　　　　　　　[7] - 악마서버전송  [8] - 플러그인소프트 　 [9] - 링케이지스킬확인
+	;---- EDIT 004 MOD END   -------------------------
+;---- EDIT 013 MOD END ---------------------------
+ENDIF
+PRINTL
+DRAWLINE
+PRINTC [110] - 능력확인
+
+PRINTC [100] - 돌아간다
+PRINTC  
+PRINTFORMC [120] - 약점표시[\@ FLAG:相性等표시ON == 0 ? OFF # ON \@]
+
+$INPUT_LOOP
+INPUT
+IF RESULT ==1
+	CALL SETUP_SUMON
+ELSEIF RESULT == 2
+	CALL SETUP_FORMATION
+ELSEIF RESULT == 4
+	LREDRAW = CURRENTREDRAW()
+	SIF LREDRAW != 2
+		REDRAW 2
+	CALL EQUIPMENT
+	SIF LREDRAW != 2
+		REDRAW LREDRAW
+ELSEIF RESULT == 3
+	CALL SETUP_REMOVE
+ELSEIF RESULT == 5
+	CALL SETUP_SOFT
+;ELSEIF RESULT == 6 && NUM_NAKAMA() > 0
+ELSEIF RESULT == 6
+	CALL SETUP_PARTING
+ELSEIF RESULT == 7
+	CALL DEVIL_STORAGE
+;---- EDIT 004 ADD START -------------------------
+ELSEIF RESULT == 8
+	CALL EQUIP_PLUGIN_SOFT
+;---- EDIT 013 MOD START ---------------------------
+ELSEIF RESULT == 9
+	CALL SHOW_LINKAGE
+;---- EDIT 013 MOD END ---------------------------
+ELSEIF RANGE(RESULT, 21, 26)
+	RESULT = POS(RESULT - 20)
+	IF RESULT >= 0
+		LOCAL:1 = 0
+		FOR LOCAL, 1, 7
+			SIF POS(LOCAL) < 0
+				CONTINUE
+			Q:(LOCAL:1) = POS(LOCAL)
+			LOCAL:1++
+		NEXT
+		CALL SHOW_CHARADATA_PAGE, 2, LOCAL:1
+	ENDIF
+;---- EDIT 004 ADD END   -------------------------
+ELSEIF RESULT == 110
+	CALL SHOP_COM_110
+ELSEIF RESULT == 120
+	FLAG:相性等표시ON += 1
+	SIF FLAG:相性等표시ON > 1
+		FLAG:相性等표시ON = 0
+ELSEIF RESULT == 100
+	RETURN 0
+ENDIF
+RESTART
+
+
+
+;=================================================================
+;동료마해방
+;=================================================================
+@SETUP_PARTING
+CALL INPUT_CHARA_LIST("누구를 동료마에서 제외합니까？", "CASTING_SETUP_PARTING")
+IF RESULT == 1000
+	RETURN 0
+ELSE
+	SIF CFLAG:RESULT:12 > 0
+		RESTART
+	LOCAL:20 = RESULT
+	IF ABL:(LOCAL:20):종족 != 0
+		;PRINTFORML %NAME:(LOCAL:20)%의 데이터를 ＣＯＭＰ에서 지웁니까？
+		PRINTFORML %NAME:(LOCAL:20)%의 데이터를 삭제합니까？
+	ELSE
+		PRINTFORML %조사처리(NAME:(LOCAL:20),"를")% 해방합니까？
+	ENDIF
+	
+	CALL INPUT_YN,"Yes","No",2
+
+	SELECTCASE RESULT
+		CASE 0
+			;死んでるか石化してる仲魔だったら主人속성値ダウン
+			IF CFLAG:(LOCAL:20):ステート == GET_STATE_NUM("DYING") || CFLAG:(LOCAL:20):ステート == GET_STATE_NUM("STONE")
+				CALL INCREASE_LD,-5
+			ENDIF
+			CALL キャラ삭제, LOCAL:20
+		CASE 1
+			RESTART
+	ENDSELECT
+
+	;フォーメーション再読み込み
+	CALL REFRESH_POS
+
+ENDIF
+
+@CASTING_SETUP_PARTING(ARG:0)
+SIF ARG:0 == MASTER
+	RETURN 0
+SIF (ABL:(ARG:0):종족 == 0 || ABL:(ARG:0):종족 > 44) && NO:(ARG:0) != 3501 && NO:(ARG:0) != 3502
+	RETURN 0
+SIF CFLAG:(ARG:0):この場に居ないフラグ == 1
+	RETURN 0
+SIF CFLAG:(ARG:0):所属ＣＯＭＰ == -1 && FLAG:SHOPコマンド ==[[SHOP:탐색]]
+	RETURN 0
+RETURN 1
+
+
+;=================================================================
+;악마서버전송
+;=================================================================
+@DEVIL_STORAGE
+#DIM LCOUNT
+
+P = 0
+;표시させるキャラを抽出（Q:*に표시するキャラの등록번호、LOCAL:2に人数）
+VARSET Q, -1
+LOCAL:2 = 0
+FOR LCOUNT, 0, CHARANUM
+	SIF LCOUNT == MASTER
+		CONTINUE
+	SIF (ABL:LCOUNT:종족 == 0 || ABL:LCOUNT:종족 > 45) && ABL:LCOUNT:종족 != 73
+		CONTINUE
+	IF TALENT:LCOUNT:인수라
+		CFLAG:LCOUNT:所属ＣＯＭＰ = -1
+		CONTINUE
+	ENDIF
+	SIF CFLAG:LCOUNT:この場に居ないフラグ == 1
+		CONTINUE
+	;SIF CFLAG:LCOUNT:용량未사용
+	;	CONTINUE
+	Q:(LOCAL:2) = LCOUNT
+	LOCAL:2 ++
+NEXT
+
+DRAWLINE
+
+$PRINT_LIST
+PRINTFORML ＣＯＭＰ-자택서버 간에 전송시킬 악마를 선택하십시오　＜page.{P + 1}＞　ＣＯＭＰ：{NUM_NAKAMA()+ソフト용량()}/{FLAG:ＣＯＭＰ용량}
+FOR LOCAL, P * リスト표시数() , MIN(P * リスト표시数() + リスト표시数(), LOCAL:2)
+	CALL ARRANGE_CHARALIST, Q:LOCAL
+	CALL ARRANGE_CHARALIFE, Q:LOCAL
+;---- EDIT 005 MOD START -------------------------
+	PRINTFORM 　
+	CALL ARRANGE_FALLTALENT, Q:LOCAL
+	PRINTFORM %AUTO_SPLIT(" 　　, ①　, ②　, ③　, 　④, 　⑤, 　⑥",",",CFLAG:(Q:LOCAL):포지션)%
+;---- EDIT 005 MOD END   -------------------------
+	IF CFLAG:(Q:LOCAL):용량未사용 || ABL:(Q:LOCAL):종족 == 73
+		PRINTFORML [\@ CFLAG:(Q:LOCAL):所属ＣＯＭＰ == -1 ? 대기중 # 동행중 \@]
+	ELSE
+		PRINTFORML [\@ CFLAG:(Q:LOCAL):所属ＣＯＭＰ == -1 ? 자택서버 # ＣＯＭＰ \@]
+	ENDIF
+
+NEXT
+;---- EDIT 006 MOD START -------------------------
+DRAWLINE
+PRINTFORMLC \@ LOCAL:2 > リスト표시数() ?[1007]이전 페이지# [----] \@
+PRINTLC [1000]돌아간다
+PRINTFORMLC \@ LOCAL:2 > リスト표시数() ?[1009]다음 페이지# [----] \@
+
+$INPUT_LOOP_1
+INPUT
+IF RESULT == 1000
+	RETURN 0
+ELSEIF RESULT == 1007
+	IF P > 0
+		P -= 1
+		GOTO PRINT_LIST
+	ELSEIF P == 0
+		P =(LOCAL:2-1) / リスト표시数() 
+		GOTO PRINT_LIST
+	ELSE
+		GOTO INPUT_LOOP_1
+	ENDIF
+ELSEIF RESULT == 1009
+	IF P == (LOCAL:2-1) / リスト표시数()
+		P = 0
+		GOTO PRINT_LIST
+	ELSEIF P < (LOCAL:2-1) / リスト표시数()
+		P += 1
+		GOTO PRINT_LIST
+	ENDIF
+;---- EDIT 006 MOD END   -------------------------
+ELSEIF RESULT < 1 || RESULT >= CHARANUM || MATCH(Q,RESULT,0) == 0
+	GOTO INPUT_LOOP_1
+ELSE
+	IF CFLAG:RESULT:所属ＣＯＭＰ == -1
+		LOCAL = RESULT
+		;---- EDIT 004 MOD START -------------------------
+		IF ＣＯＭＰ空き容量() < 1 && EQUIP:MASTER:데빌챔버 && NUM_NAKAMA_HEADCOUNT() == 6
+			PRINTW ＣＯＭＰ안의 악마가 ６체를 넘으면 데빌챔버의 효과가 사라져 용량이 오버됩니다！
+			CLEARLINE 2
+			GOTO INPUT_LOOP_1
+		ELSEIF ＣＯＭＰ空き容量() < 1
+		;---- EDIT 004 MOD END ---------------------------
+			PRINTW PRINTW ＣＯＭＰ 용량이 가득 찼습니다
+			CLEARLINE 2
+			GOTO INPUT_LOOP_1
+		ENDIF
+		IF NO:LOCAL != 3501 && NO:LOCAL != 3502 && NO:LOCAL != 4402
+			FOR LOCAL:1,0,CHARANUM
+				IF 계약(LOCAL:1) == 0 && NO:(LOCAL:1) == NO:LOCAL && 계약(LOCAL) == 0 && CFLAG:(LOCAL:1):所属ＣＯＭＰ != -1
+					PRINTW 같은 악마가 ＣＯＭＰ 안에 있습니다
+					CLEARLINE 2
+					GOTO INPUT_LOOP_1
+				ENDIF
+			NEXT
+		ENDIF
+		CFLAG:RESULT:所属ＣＯＭＰ = 0
+	ELSE
+		CFLAG:RESULT:所属ＣＯＭＰ = -1
+	ENDIF
+	GOTO PRINT_LIST
+ENDIF

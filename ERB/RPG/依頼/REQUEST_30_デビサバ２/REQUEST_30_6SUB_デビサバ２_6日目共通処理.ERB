@@ -1,0 +1,1609 @@
+﻿
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:REQUEST_xxx_yyy.ERB
+;	Facility	:의뢰:030(데빌서바이버２) ６日눈ENEMY。
+;				 REQUEST_30のサ부후ァイル。
+;				 ６日눈の전투に関する処理を管理する。
+;
+;	Licence		:ライセンスフリー。
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001	2014/12/20		セーロGUN				新規作成
+;	002	2014/01/15		セーロGUN				단테AIを元に야마토簡易AI搭載
+;										分岐処理をFLAG参照して적PTを構成するように변경
+;										通天閣야마토、마신이오ちゃん、輔쇼우、폴라리스天を추가し、그외の적のバランスを변경しました
+;	003	2015/01/28		セーロGUN				各전투を調整。마신이오の処理삭제
+;	004	2015/03/01		セーロGUN				憂う者ルートの전투をこちらに移し替え。베네트나쉬戦の処理も변경してこちらに移し替え
+;										다이치ルートの전투추가。各전투を調整してみる
+;
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+
+;-------------------------------------------------------------------------------
+; 【フラグついて】
+; フラグは下記のみ사용。
+;
+; ・;(의뢰にて사용)
+; [1000～1999]야마토ルート
+; [2000～2999]로나우도ルート
+; [3000～3999]다이치ルート
+; [4000～4999]사다크ルート
+;
+;
+;------------------------------------------------------------------------------
+; 【メモ】
+; ・特になし
+;
+;-------------------------------------------------------------------------------
+
+;=================================================
+;   sub REQUEST_30_6BATTLE_SUB
+;=================================================
+;   의뢰:デビサバ２ ６日눈共通전투処理
+;-------------------------------------------------
+; Input:
+;  ARG:0			적の레벨
+;-------------------------------------------------
+@REQUEST_30_6BATTLE_SUB(ARG = 40)
+#DIM L_ENEMY_LV
+#DIM L_CNT
+#DIM L_TMP
+#DIM LCOUNT
+L_ENEMY_LV = ARG
+
+
+;- 전투前処理
+FLAG:도주불가フラグ = 1
+FLAG:회화불능フラグ = 1
+FLAG:선제기습취소 = 1
+
+SELECTCASE FLAG:デビサバ２進行度
+	;対東京戦
+	CASE 1005 , 2005 , 4005
+		SETCOLOR 0xDD0000
+		PRINTL 시바：
+		PRINTFORMW 『후… 절망하는 것이 좋아. 나와 너의 차이를 뼈저리게 알게 해주겠어…！』
+		RESETCOLOR
+		PRINTL
+		CUSTOMDRAWLINE =
+		PRINTL 파괴신　시바가 1명 나왔다！
+		CUSTOMDRAWLINE =
+		WAIT
+		
+		;SETしヴぁ
+		CALL SET_ENEMY,9,[[キャラ:시바]],95,1,1
+		CFLAG:(CHARANUM-1):行動횟수 = 3
+		;물리반사
+		FOR LOCAL,GETNUM(MAXBASE,"검격"),GETNUM(MAXBASE,"전술") + 1
+			BASE:(CHARANUM-1):LOCAL = 999
+		NEXT
+		ABL:(CHARANUM-1):스킬1 = [[스킬:천열찌르기]]
+		ABL:(CHARANUM-1):스킬2 = [[스킬:만마의일격]]
+		ABL:(CHARANUM-1):스킬3 = [[스킬:섬머솔트]]
+		ABL:(CHARANUM-1):스킬4 = 0
+		CALL SYNC_STATUS,(CHARANUM-1)
+		
+		;- 전투開始
+		CALL BATTLE_START
+		
+		SETCOLOR 0xDD0000
+		PRINTL 시바：
+		PRINTW 『호오…제법이군。나를 능가한 그 실력, 훌륭하다…！』
+		RESETCOLOR
+		PRINTW 시바는 불기둥이 되어 소멸했다…。
+		CUSTOMDRAWLINE =
+	;다이치戦
+	CASE 1006 , 2006 , 4006
+		PRINTL 다이치：
+		PRINTFORMW 「왜야…왜 이런 식으로 동료끼리 싸우지 않으면 안 된닷!」
+		PRINTL
+		CUSTOMDRAWLINE =
+		PRINTL 인간　히어로가 1명 나왔다！
+		PRINTL 인간　시지마 다이치가 1명 나왔다！
+		PRINTL 인간　쿠죠 히나코가 1명 나왔다！
+		PRINTL 인간　토리이 쥰고가 1명 나왔다！
+		CUSTOMDRAWLINE =
+		WAIT
+		
+		;SETジュンゴ
+		CALL SET_ENEMY,8,[[キャラ:쥰고]],L_ENEMY_LV,1,1
+		ABL:(CHARANUM-1):종족 = 43
+		CFLAG:(CHARANUM-1):속도보정 = 15
+		CFLAG:(CHARANUM-1):行動횟수 = 2
+		;물리무효
+		FOR LOCAL,GETNUM(MAXBASE,"검격"),GETNUM(MAXBASE,"전술") + 1
+			BASE:(CHARANUM-1):LOCAL = 0
+		NEXT
+		
+		ABL:(CHARANUM-1):스킬1 = [[스킬:메테오피스트]]
+		ABL:(CHARANUM-1):스킬2 = [[스킬:비공찌르기]]
+		ABL:(CHARANUM-1):스킬3 = [[스킬:만마의일격]]
+		ABL:(CHARANUM-1):스킬4 = 0
+		ABL:(CHARANUM-1):스킬5 = 0
+		ABL:(CHARANUM-1):스킬6 = 0
+		ABL:(CHARANUM-1):스킬7 = 0
+		ABL:(CHARANUM-1):스킬8 = 0
+		CALL SYNC_STATUS,(CHARANUM-1)
+		CALL HEALTH_CHARA,(CHARANUM-1)
+		
+		;- SET:다이치
+		CALL SET_ENEMY,9,[[キャラ:다이치]],L_ENEMY_LV,1,1
+		CFLAG:(CHARANUM-1):속도보정 = 5
+		CFLAG:(CHARANUM-1):行動횟수 = 2
+		
+		;全門내성
+		FOR LOCAL,GETNUM(MAXBASE,"화염"),GETNUM(MAXBASE,"만능")
+			BASE:(CHARANUM-1):LOCAL = MAXBASE:(CHARANUM-1):LOCAL
+		NEXT
+		
+		ABL:(CHARANUM-1):스킬1 = [[스킬:이악물기]]
+		ABL:(CHARANUM-1):스킬2 = [[스킬:기합]]
+		ABL:(CHARANUM-1):스킬3 = [[스킬:천열찌르기]]
+		ABL:(CHARANUM-1):스킬4 = [[스킬:헬스트라이크]]
+		ABL:(CHARANUM-1):스킬5 = [[스킬:포효]]
+		ABL:(CHARANUM-1):스킬6 = 0
+		ABL:(CHARANUM-1):스킬7 = 0
+		ABL:(CHARANUM-1):스킬8 = 0
+		
+		;SET主人公
+		CALL SET_ENEMY,10,[[キャラ:데빌서바２주인공]],L_ENEMY_LV,1,1
+		NAME:(CHARANUM-1) = 히어로
+		CALLNAME:(CHARANUM-1) = 히어로
+		CFLAG:(CHARANUM-1):속도보정 = 10
+		CFLAG:(CHARANUM-1):行動횟수 = 2
+		
+		ABL:(CHARANUM-1):스킬1 = [[스킬:마카・카쟈]]
+		ABL:(CHARANUM-1):스킬2 = [[스킬:메기도]]
+		ABL:(CHARANUM-1):스킬3 = [[스킬:얼음의난무]]
+		ABL:(CHARANUM-1):스킬4 = [[스킬:번개의난무]]
+		ABL:(CHARANUM-1):스킬5 = 0
+		ABL:(CHARANUM-1):스킬6 = 0
+		ABL:(CHARANUM-1):스킬7 = 0
+		ABL:(CHARANUM-1):스킬8 = 0
+		
+		;- SET:히나코
+		CALL SET_ENEMY,11,[[キャラ:히나코]],L_ENEMY_LV,1,1
+		CFLAG:(CHARANUM-1):속도보정 = 5
+		CFLAG:(CHARANUM-1):行動횟수 = 2
+		
+		;全門내성
+		FOR LOCAL,GETNUM(MAXBASE,"화염"),GETNUM(MAXBASE,"만능")
+			SIF BASE:(CHARANUM-1):LOCAL == 100
+				BASE:(CHARANUM-1):LOCAL = 50
+		NEXT
+		
+		ABL:(CHARANUM-1):스킬1 = [[스킬:이악물기]]
+		ABL:(CHARANUM-1):스킬2 = [[스킬:메기도]]
+		ABL:(CHARANUM-1):스킬3 = [[스킬:섹시댄스]]
+		ABL:(CHARANUM-1):스킬4 = [[스킬:스쿠・카쟈]]
+		ABL:(CHARANUM-1):스킬5 = [[스킬:타루・카쟈]]
+		ABL:(CHARANUM-1):스킬6 = 0
+		ABL:(CHARANUM-1):스킬7 = 0
+		ABL:(CHARANUM-1):스킬8 = 0
+		
+		FOR LOCAL , 7 , 17
+			SIF POS(LOCAL) <= 0
+				CONTINUE
+			ABL:POS(LOCAL):종족 = 43
+			CALL SYNC_STATUS,POS(LOCAL)
+			CALL HEALTH_CHARA,POS(LOCAL)
+		NEXT
+
+		;SET雑물고기
+		CALL SET_ENEMY,7,[[キャラ:누에]],L_ENEMY_LV
+		CALL SET_ENEMY,12,[[キャラ:하트호르]],L_ENEMY_LV
+		CALL SET_ENEMY,13,[[キャラ:파이몬]],L_ENEMY_LV
+		CALL SET_ENEMY,14,[[キャラ:퓌톤]],L_ENEMY_LV
+		CALL SET_ENEMY,15,[[キャラ:후지무스메]],L_ENEMY_LV
+		CALL SET_ENEMY,16,[[キャラ:서큐버스]],L_ENEMY_LV
+
+		;- 전투開始
+		CALL BATTLE_START
+
+		PRINTL 쥰고：
+		PRINTL 「그엇…싫어…。이런거…！」
+		PRINTL 히나코：
+		PRINTL 「큿…안되나。나는 멈출수가 없어…！」
+		PRINTL 다이치：
+		PRINTL 「그악…！젠장…역시 나론 못이겨」
+		CUSTOMDRAWLINE =
+	;마코토후미ケイタ戦
+	CASE 2015 , 3005 
+		PRINTL
+		CUSTOMDRAWLINE =
+		PRINTL 인간　후미가 1명 나왔다！
+		PRINTL 인간　마코토가 1명 나왔다！
+		PRINTL 인간　케이타가 1명 나왔다！
+		CUSTOMDRAWLINE =
+		WAIT
+		
+		;- SET:마코토
+		CALL SET_ENEMY,8,[[キャラ:마코토]],L_ENEMY_LV,1,1
+		ABL:(CHARANUM-1):종족 = 43
+		CFLAG:(CHARANUM-1):ＨＰ보정 = 1000
+		CFLAG:(CHARANUM-1):속도보정 = 5
+		CFLAG:(CHARANUM-1):行動횟수 = 2
+		
+		;빙결충격무효
+		BASE:(CHARANUM-1):빙결 = 0
+		BASE:(CHARANUM-1):충격 = 0
+		
+		;스킬構成は原作전투時を参考
+		ABL:(CHARANUM - 1):스킬1 = [[스킬:팔상발파]]
+		ABL:(CHARANUM - 1):스킬2 = [[스킬:마하・잔다인]]
+		ABL:(CHARANUM - 1):스킬3 = [[스킬:메・디아라마]]
+		ABL:(CHARANUM - 1):스킬4 = [[스킬:삼할의활천]]
+		ABL:(CHARANUM - 1):스킬5 = [[스킬:스쿠・카쟈]]
+		ABL:(CHARANUM - 1):스킬6 = [[스킬:스쿤・다]]
+		ABL:(CHARANUM - 1):스킬7 = 0
+		ABL:(CHARANUM - 1):스킬8 = 0
+		CALL SYNC_STATUS,(CHARANUM-1)
+		CALL HEALTH_CHARA,(CHARANUM-1)
+		
+		;- SET:후미
+		CALL SET_ENEMY,9,[[キャラ:후미]],L_ENEMY_LV,1,1
+		ABL:(CHARANUM-1):종족 = 43
+		CFLAG:(CHARANUM-1):ＭＰ보정 = 1000
+		CFLAG:(CHARANUM-1):속도보정 = 5
+		CFLAG:(CHARANUM-1):行動횟수 = 2
+		
+		;물리반사
+		FOR LOCAL,GETNUM(MAXBASE,"검격"),GETNUM(MAXBASE,"전술") + 1
+			BASE:(CHARANUM-1):LOCAL = 999
+		NEXT
+		
+		;스킬構成は原作전투時を参考
+		ABL:(CHARANUM - 1):스킬1 = [[스킬:메기도라]]
+		ABL:(CHARANUM - 1):스킬2 = [[스킬:타룬・다]]
+		ABL:(CHARANUM - 1):스킬3 = [[스킬:마카・카쟈]]
+		ABL:(CHARANUM - 1):스킬4 = [[스킬:테트라칸]]
+		ABL:(CHARANUM - 1):스킬5 = [[스킬:마카라칸]]
+		ABL:(CHARANUM - 1):스킬6 = 0
+		ABL:(CHARANUM - 1):스킬7 = 0
+		ABL:(CHARANUM - 1):스킬8 = 0
+		CALL SYNC_STATUS,(CHARANUM-1)
+		CALL HEALTH_CHARA,(CHARANUM-1)
+		
+		;- SET:케이타
+		CALL SET_ENEMY,10,[[キャラ:케이타]],L_ENEMY_LV,1,1
+		ABL:(CHARANUM-1):종족 = 43
+		CFLAG:(CHARANUM-1):ＨＰ보정 = 1000
+		CFLAG:(CHARANUM-1):속도보정 = 5
+		CFLAG:(CHARANUM-1):行動횟수 = 2
+		
+		;화염핵열무효
+		BASE:(CHARANUM-1):화염 = 0
+		BASE:(CHARANUM-1):핵열 = 0
+		
+		;스킬構成は原作전투時を参考
+		ABL:(CHARANUM - 1):스킬1 = [[스킬:베어넘기기]]
+		ABL:(CHARANUM - 1):스킬2 = [[스킬:메테오피스트]]
+		ABL:(CHARANUM - 1):스킬3 = [[스킬:헬스트라이크]]
+		ABL:(CHARANUM - 1):스킬4 = [[스킬:라쿤・다]]
+		ABL:(CHARANUM - 1):스킬5 = [[스킬:타루・카쟈]]
+		ABL:(CHARANUM - 1):스킬6 = 0
+		ABL:(CHARANUM - 1):스킬7 = 0
+		ABL:(CHARANUM - 1):스킬8 = 0
+		CALL SYNC_STATUS,(CHARANUM-1)
+		CALL HEALTH_CHARA,(CHARANUM-1)
+		
+		;- SET:雑물고기
+		CALL SET_ENEMY,13,[[キャラ:아르테미스]],L_ENEMY_LV
+		CALL SET_ENEMY,14,[[キャラ:아타파구]],L_ENEMY_LV
+		CALL SET_ENEMY,15,[[キャラ:빠챠카마쿠]],L_ENEMY_LV
+		CALL SET_ENEMY,7,[[キャラ:스퀼라]],L_ENEMY_LV
+		CALL SET_ENEMY,11,[[キャラ:트리글라프]],L_ENEMY_LV
+
+		;- 전투開始
+		CALL BATTLE_START
+		
+		PRINTL 마코토：
+		PRINTL 「큿…안되나。너희들은 강하다…나정도로는」
+		PRINTL 후미：
+		PRINTL 「하하…져버렸다, 이렇게 강할줄이야…어쩔수없지, 여기는 철퇴~」
+		PRINTL 케이타：
+		PRINTL 「…강하구먼, 너。이길것 같지가 않아…」
+		CUSTOMDRAWLINE =
+	;마코토후미戦
+	CASE 4015
+		PRINTL
+		CUSTOMDRAWLINE =
+		PRINTL 인간 마코토가 1명 나왔다！
+		PRINTL 인간 후미가 1명 나왔다！
+		CUSTOMDRAWLINE =
+		WAIT
+		
+		;- SET:마코토
+		CALL SET_ENEMY,9,[[キャラ:마코토]],L_ENEMY_LV,1,1
+		ABL:(CHARANUM-1):종족 = 43
+		CFLAG:(CHARANUM-1):ＨＰ보정 = 2000
+		CFLAG:(CHARANUM-1):ＭＰ보정 = 1000
+		CFLAG:(CHARANUM-1):속도보정 = 10
+		CFLAG:(CHARANUM-1):行動횟수 = 2
+		
+		;빙결충격무효
+		BASE:(CHARANUM-1):빙결 = 0
+		BASE:(CHARANUM-1):충격 = 0
+		
+		;스킬構成は原作전투時を参考
+		ABL:(CHARANUM - 1):스킬1 = [[스킬:팔상발파]]
+		ABL:(CHARANUM - 1):스킬2 = [[스킬:마하・잔다인]]
+		ABL:(CHARANUM - 1):스킬3 = [[스킬:메・디아라마]]
+		ABL:(CHARANUM - 1):스킬4 = [[스킬:삼할의활천]]
+		ABL:(CHARANUM - 1):스킬5 = [[스킬:스쿠・카쟈]]
+		ABL:(CHARANUM - 1):스킬6 = [[스킬:타룬・다]]
+		ABL:(CHARANUM - 1):스킬7 = [[스킬:관통]]
+		ABL:(CHARANUM - 1):스킬8 = 0
+		CALL SYNC_STATUS,(CHARANUM-1)
+		CALL HEALTH_CHARA,(CHARANUM-1)
+		
+		;- SET:후미
+		CALL SET_ENEMY,14,[[キャラ:후미]],L_ENEMY_LV,1,1
+		ABL:(CHARANUM-1):종족 = 43
+		CFLAG:(CHARANUM-1):ＭＰ보정 = 2000
+		CFLAG:(CHARANUM-1):속도보정 = 10
+		CFLAG:(CHARANUM-1):行動횟수 = 2
+		
+		;물리반사
+		FOR LOCAL,GETNUM(MAXBASE,"검격"),GETNUM(MAXBASE,"전술") + 1
+			BASE:(CHARANUM-1):LOCAL = 999
+		NEXT
+		
+		;스킬構成は原作전투時を参考
+		ABL:(CHARANUM - 1):스킬1 = [[스킬:메기도라]]
+		ABL:(CHARANUM - 1):스킬2 = [[스킬:중재의뇌화]]
+		ABL:(CHARANUM - 1):스킬3 = [[스킬:수호의방패]]
+		ABL:(CHARANUM - 1):스킬4 = [[스킬:치유촉진(소)]]
+		ABL:(CHARANUM - 1):스킬5 = 0
+		ABL:(CHARANUM - 1):스킬6 = 0
+		ABL:(CHARANUM - 1):스킬7 = 0
+		ABL:(CHARANUM - 1):스킬8 = 0
+		CALL SYNC_STATUS,(CHARANUM-1)
+		CALL HEALTH_CHARA,(CHARANUM-1)
+		
+		;- SET:雑물고기
+		CALL SET_ENEMY,7,[[キャラ:베르세르크]],L_ENEMY_LV
+		CALL SET_ENEMY,8,[[キャラ:아타파구]],L_ENEMY_LV
+		CALL SET_ENEMY,10,[[キャラ:바스테트]],L_ENEMY_LV
+		CALL SET_ENEMY,11,[[キャラ:오토히메]],L_ENEMY_LV
+		CALL SET_ENEMY,12,[[キャラ:파주주]],L_ENEMY_LV
+		CALL SET_ENEMY,13,[[キャラ:킨마몬]],L_ENEMY_LV
+		CALL SET_ENEMY,15,[[キャラ:스프리건]],L_ENEMY_LV
+		CALL SET_ENEMY,16,[[キャラ:뉵스]],L_ENEMY_LV
+				
+		;- 전투開始
+		CALL BATTLE_START
+		
+		PRINTL 마코토：
+		PRINTL 「큿…안되나。너희들은 강하다…나정도로는」
+		PRINTL 후미：
+		PRINTL 「하하…져버렸다。너무강하다고, 정말」
+		CUSTOMDRAWLINE =
+	;ケイタ戦
+	CASE 4025
+		PRINTL
+		CUSTOMDRAWLINE =
+		PRINTL 인간 케이타가 1명 나왔다！
+		CUSTOMDRAWLINE =
+		WAIT
+		
+		;- SET:케이타
+		CALL SET_ENEMY,9,[[キャラ:케이타]],L_ENEMY_LV,1,1
+		ABL:(CHARANUM-1):종족 = 43
+		CFLAG:(CHARANUM-1):ＨＰ보정 = 2000
+		CFLAG:(CHARANUM-1):ＭＰ보정 = 2000
+		CFLAG:(CHARANUM-1):속도보정 = 10
+		CFLAG:(CHARANUM-1):行動횟수 = 2
+		
+		;男なら拳一つで勝負せんかい내성
+		BASE:(CHARANUM-1):검격 = 0
+		BASE:(CHARANUM-1):비구 = 0
+		BASE:(CHARANUM-1):화염 = 0
+		BASE:(CHARANUM-1):핵열 = 0
+		
+		;스킬構成は原作전투時を参考
+		ABL:(CHARANUM - 1):스킬1 = [[스킬:데스바운드]]
+		ABL:(CHARANUM - 1):스킬2 = [[스킬:마구날뛰기]]
+		ABL:(CHARANUM - 1):스킬3 = [[스킬:헬스트라이크]]
+		ABL:(CHARANUM - 1):스킬4 = [[스킬:치유촉진(대)]]
+		ABL:(CHARANUM - 1):스킬5 = [[스킬:타루・카쟈]]
+		ABL:(CHARANUM - 1):스킬6 = [[스킬:스쿤・다]]
+		ABL:(CHARANUM - 1):스킬7 = [[스킬:관통]]
+		ABL:(CHARANUM - 1):스킬8 = 0
+		CALL SYNC_STATUS,(CHARANUM-1)
+		CALL HEALTH_CHARA,(CHARANUM-1)
+		
+		;- SET:雑물고기
+		CALL SET_ENEMY,8,[[キャラ:후츠누시]],L_ENEMY_LV
+		CALL SET_ENEMY,10,[[キャラ:페리]],L_ENEMY_LV
+		
+		;- 전투開始
+		CALL BATTLE_START
+
+	;ロナウドジョー戦
+	CASE 1025 , 3015 , 4035
+		CUSTOMDRAWLINE =
+		PRINTL 인간　쿠리키 로나우도가 1명 나왔다！
+		PRINTL 인간　아키에 유즈루가 1명 나왔다！
+		CUSTOMDRAWLINE =
+		WAIT
+		
+		;SETロナウド
+		CALL SET_ENEMY,9,[[キャラ:로나우도]],L_ENEMY_LV,1,1
+		ABL:(CHARANUM-1):종족 = 43
+		CFLAG:(CHARANUM-1):ＨＰ보정 = 1000
+		CFLAG:(CHARANUM-1):속도보정 = 10
+		CFLAG:(CHARANUM-1):行動횟수 = 2
+		
+		;물리반사화염무효
+		FOR LOCAL,GETNUM(MAXBASE,"검격"),GETNUM(MAXBASE,"전술")+1
+			BASE:(CHARANUM-1):LOCAL = 999
+		NEXT
+		BASE:(CHARANUM-1):화염 = 0
+	
+		;原作の스킬構成を参考。데스바운드(デビサバ２版)吸魔(魔依存対1명만능공격)관통아기다인
+		ABL:(CHARANUM-1):스킬1 = [[스킬:메테오피스트]]
+		ABL:(CHARANUM-1):스킬2 = [[스킬:만마의일격]]
+		ABL:(CHARANUM-1):스킬3 = [[스킬:마하・라기다인]]
+		ABL:(CHARANUM-1):스킬4 = [[스킬:관통]]
+		CALL SYNC_STATUS,(CHARANUM-1)
+		CALL HEALTH_CHARA,(CHARANUM-1)
+		
+		;SETジョー
+		CALL SET_ENEMY,14,[[キャラ:죠]],L_ENEMY_LV,1,1
+		ABL:(CHARANUM-1):종족 = 43
+		CFLAG:(CHARANUM-1):ＭＰ보정 = 1000
+		CFLAG:(CHARANUM-1):속도보정 = 5
+		CFLAG:(CHARANUM-1):行動횟수 = 2
+		
+		;충격반사
+		BASE:(CHARANUM-1):충격 = 999
+		BASE:(CHARANUM-1):질풍 = 999
+		
+		;原作は사신邪神で後方から嫌がらせする編成だったので、지원型に
+		ABL:(CHARANUM-1):스킬1 = [[스킬:만마의난무]]
+		ABL:(CHARANUM-1):스킬2 = [[스킬:포효]]
+		ABL:(CHARANUM-1):스킬3 = [[스킬:포그브레스]]
+		ABL:(CHARANUM-1):스킬4 = [[스킬:메・디아라마]]
+		ABL:(CHARANUM-1):스킬5 = 0
+		ABL:(CHARANUM-1):스킬6 = 0
+		ABL:(CHARANUM-1):스킬7 = 0
+		ABL:(CHARANUM-1):스킬8 = 0
+		CALL SYNC_STATUS,(CHARANUM-1)
+		CALL HEALTH_CHARA,(CHARANUM-1)
+		
+		;SET雑물고기
+		CALL SET_ENEMY,7,[[キャラ:아메노후토타마]],L_ENEMY_LV
+		CALL SET_ENEMY,8,[[キャラ:트리글라프]],L_ENEMY_LV
+		CALL SET_ENEMY,10,[[キャラ:아타파구]],L_ENEMY_LV
+		CALL SET_ENEMY,11,[[キャラ:란다]],L_ENEMY_LV
+
+		;- 전투開始
+		CALL BATTLE_START
+		
+		PRINTL 로나우도：
+		PRINTL 「바보같은…！내가…내 이상을 담은 주먹이！진다고 하는건가…！？」
+		PRINTL 죠：
+		PRINTL 「구엑…이건 안되겠네。하하, 세네…못이기겠어」
+		CUSTOMDRAWLINE =
+	;HIGHヤマト戦
+	CASE 2025 , 3025
+		PRINTL
+		PRINTFORMW ＞야마토의 몸이 공중에 떠올라, 통천각의 꼭대기까지 올라 간다
+		PRINTFORMW ＞통천각이 황금에 밝게 빛났다….
+		PRINTL
+		PRINTFORMW 『후후후후…』
+		PRINTFORMW 『%CALLNAME:MASTER%여…내가 아무 의미도 없이, 이장소를 결전장으로 정했다고 생각했나！』
+		PRINTFORMW 『이 통천각은, 원래부터 용맥을 결계로서 이용하기 위해, 용맥을 활성화 시키는 설비를 갖추고 있다…！』
+		PRINTFORMW 『그 기능을 사람에게 쓰면, 인체를 도는 힘을 활성화 시켜서, 능력을 강화할 수 있는거다！』
+		PRINTFORMW 야마토가 다시 땅에 내려서고, 이쪽을 향해 달려들었다――――。
+		PRINTL
+		CUSTOMDRAWLINE =
+		PRINTL 인간 호츠인 야마토가 1명 나왔다！
+		CUSTOMDRAWLINE =
+		WAIT
+
+		;SETヤマト
+		CALL SET_ENEMY,9,[[キャラ:야마토]],60,1,1
+		ABL:(CHARANUM-1):종족 = 43
+		CFLAG:(CHARANUM-1):ＨＰ보정 = 1000
+		CFLAG:(CHARANUM-1):ＭＰ보정 = 2000
+		CFLAG:(CHARANUM-1):속도보정 = 10
+		CFLAG:(CHARANUM-1):行動횟수 = 3
+		CSTR:(CHARANUM-1):사고패턴 = HIGHヤマト
+		;常世、메기도、중재의뇌화、MP회복(本当はお供の스킬)
+		ABL:(CHARANUM-1):스킬1 = [[스킬:메・디아라한]]
+		ABL:(CHARANUM-1):스킬2 = [[스킬:메기도라]]
+		ABL:(CHARANUM-1):스킬3 = [[스킬:중재의뇌화]]
+		ABL:(CHARANUM-1):스킬4 = [[스킬:데・쿤다]]
+		ABL:(CHARANUM-1):스킬5 = 0
+		ABL:(CHARANUM-1):스킬6 = 0
+		ABL:(CHARANUM-1):스킬7 = 0
+		ABL:(CHARANUM-1):스킬8 = 0
+		CALL SYNC_STATUS,(CHARANUM-1)
+		CALL HEALTH_CHARA,(CHARANUM-1)
+		
+		;SET雑물고기
+		CALL SET_ENEMY,7,[[キャラ:듀라한]],L_ENEMY_LV
+		CALL SET_ENEMY,8,[[キャラ:쿠치사케]],L_ENEMY_LV
+		CALL SET_ENEMY,10,[[キャラ:아마존]],L_ENEMY_LV
+		CALL SET_ENEMY,11,[[キャラ:도올]],L_ENEMY_LV
+		CALL SET_ENEMY,12,[[キャラ:바르바토스]],L_ENEMY_LV
+		CALL SET_ENEMY,13,[[キャラ:얌]],L_ENEMY_LV
+		CALL SET_ENEMY,15,[[キャラ:루흐]],L_ENEMY_LV
+		CALL SET_ENEMY,16,[[キャラ:빠챠카마쿠]],L_ENEMY_LV
+
+		;- 전투開始
+		CALL BATTLE_START
+		
+	;베네트나쉬戦１
+	CASE 1035 , 2035 , 3045 , 4045
+		;COMPに入ってる악마の所属COMPをサーバーにする処理
+		VARSET LOCAL, -1
+		L_CNT = 0
+		FOR LCOUNT, 0, CHARANUM
+			SIF ARG == MASTER
+				CONTINUE
+			SIF ABL:LCOUNT:종족 == 0 || ABL:LCOUNT:종족 > 45
+				CONTINUE
+			SIF TALENT:LCOUNT:인수라 && CFLAG:LCOUNT:所属ＣＯＭＰ == -1
+				CONTINUE
+			SIF CFLAG:LCOUNT:この場に居ないフラグ == 1 
+				CONTINUE
+			SIF CFLAG:LCOUNT:所属ＣＯＭＰ < 0 || CFLAG:LCOUNT:용량未사용
+				CONTINUE
+			
+			CFLAG:LCOUNT:所属ＣＯＭＰ = -1
+			LOCAL:L_CNT = LCOUNT
+			
+			L_CNT ++
+		NEXT
+		PRINTL 
+		CUSTOMDRAWLINE =
+		PRINTFORML 셉텐트리온 파군성 베네트나쉬가 1명 나왔다！
+		CUSTOMDRAWLINE =
+		WAIT
+		
+		;- 악마解析度증가処理(1000でMAX)
+		CALL INCREASE_ANALYZE([[キャラ:베네트나쉬]],1000)
+		
+		CALL SET_ENEMY,9,[[キャラ:베네트나쉬]],60,1,1
+		CFLAG:(CHARANUM-1):속도보정 = 10
+		CFLAG:(CHARANUM-1):行動횟수 = 2
+
+		ABL:(CHARANUM-1):스킬1 = [[스킬:연성의불꽃]]
+		ABL:(CHARANUM-1):스킬2 = [[스킬:주극의거포]]
+		ABL:(CHARANUM-1):스킬3 = [[스킬:주성의압격]]
+		ABL:(CHARANUM-1):스킬4 = [[스킬:파괴의성풍]]
+		ABL:(CHARANUM-1):스킬5 = [[스킬:인간불가침]]
+		ABL:(CHARANUM-1):스킬6 = 0
+		ABL:(CHARANUM-1):스킬7 = 0
+		ABL:(CHARANUM-1):스킬8 = 0
+		CALL SYNC_STATUS,(CHARANUM-1)
+
+		;- 전투開始
+		CALL BATTLE_START
+
+		PRINTW 베네트나쉬의 몸에 선이 그어지고, 4개로 나뉘었다…。
+		PRINTW 단면에서 지금까지 싸워왔던 셉텐트리온들의 일부가 보이고있다…。
+		PRINTW 아무래도 베네트나쉬는 분열한 모양이다…。
+		PRINTW 이 모든것을 쓰러뜨리지 않으면, 결판이 나지 않겠지…。
+		PRINTL
+		CUSTOMDRAWLINE =
+		PRINTL 셉텐트리온 파군의 딸 베네트나쉬가 4체 나왔다！
+		CUSTOMDRAWLINE =
+		WAIT
+		
+		;SET本体
+		CALL SET_ENEMY,8,[[キャラ:베네트나쉬]],60,1,1
+		CFLAG:(CHARANUM-1):속도보정 = 5
+		CFLAG:(CHARANUM-1):行動횟수 = 2
+		
+		;화염내성추가
+		BASE:(CHARANUM-1):화염 = 50
+		
+		;메기도라온をアルカイドの代用として습득
+		ABL:(CHARANUM-1):스킬1 = [[스킬:메기도라온]]
+		ABL:(CHARANUM-1):스킬2 = [[스킬:닿지않는기도]]
+		ABL:(CHARANUM-1):스킬3 = [[스킬:인간불가침]]
+		ABL:(CHARANUM-1):스킬4 = 0
+		ABL:(CHARANUM-1):스킬5 = 0
+		ABL:(CHARANUM-1):스킬6 = 0
+		ABL:(CHARANUM-1):스킬7 = 0
+		ABL:(CHARANUM-1):스킬8 = 0
+		CALL SYNC_STATUS,(CHARANUM-1)
+		
+		;SET두베메그레즈
+		CALL SET_ENEMY,9,[[キャラ:베네트나쉬]],60
+		NAME:(CHARANUM-1) = 破軍の娘
+		CALLNAME:(CHARANUM-1) = 破軍の娘
+		CFLAG:(CHARANUM-1):속도보정 = 15
+		CFLAG:(CHARANUM-1):行動횟수 = 2
+		
+		;두베메그레즈＋α내성
+		FOR L_TMP , GETNUM(MAXBASE,"검격") , GETNUM(MAXBASE,"만능")
+			MAXBASE:(CHARANUM-1):L_TMP = 0
+		NEXT
+		BASE:(CHARANUM-1):검격 = 50
+		BASE:(CHARANUM-1):타격 = 50
+		BASE:(CHARANUM-1):전술 = 50
+		BASE:(CHARANUM-1):빙결 = 100
+		BASE:(CHARANUM-1):충격 = 100
+		
+		ABL:(CHARANUM-1):스킬1 = [[스킬:연성의불꽃]]
+		ABL:(CHARANUM-1):스킬2 = [[스킬:파괴의성풍]]
+		ABL:(CHARANUM-1):스킬3 = [[스킬:치유촉진(대)]]
+		ABL:(CHARANUM-1):스킬4 = 0
+		ABL:(CHARANUM-1):스킬5 = 0
+		ABL:(CHARANUM-1):스킬6 = 0
+		ABL:(CHARANUM-1):스킬7 = 0
+		ABL:(CHARANUM-1):스킬8 = 0
+		CALL SYNC_STATUS,(CHARANUM-1)
+		
+		;SET메라크페크다
+		CALL SET_ENEMY,10,[[キャラ:베네트나쉬]],60
+		NAME:(CHARANUM-1) = 破軍の娘
+		CALLNAME:(CHARANUM-1) = 破軍の娘
+		CFLAG:(CHARANUM-1):속도보정 = 5
+		CFLAG:(CHARANUM-1):行動횟수 = 2
+		
+		;물리약점 他무효
+		FOR L_TMP , GETNUM(MAXBASE,"검격") , GETNUM(MAXBASE,"만능")
+			BASE:(CHARANUM-1):L_TMP = 0
+		NEXT
+		BASE:(CHARANUM-1):검격 = 150
+		BASE:(CHARANUM-1):타격 = 150
+		BASE:(CHARANUM-1):전술 = 150
+		BASE:(CHARANUM-1):질풍 = 150
+		
+		ABL:(CHARANUM-1):스킬1 = [[스킬:주극의거포]]
+		ABL:(CHARANUM-1):스킬2 = [[스킬:암흑의뇌광]]
+		ABL:(CHARANUM-1):스킬3 = [[스킬:베어넘기기]]
+		ABL:(CHARANUM-1):스킬4 = 0
+		ABL:(CHARANUM-1):스킬5 = 0
+		ABL:(CHARANUM-1):스킬6 = 0
+		ABL:(CHARANUM-1):스킬7 = 0
+		ABL:(CHARANUM-1):스킬8 = 0
+		CALL SYNC_STATUS,(CHARANUM-1)
+		
+		;SET미자르알리오츠
+		CALL SET_ENEMY,11,[[キャラ:베네트나쉬]],60
+		NAME:(CHARANUM-1) = 破軍の娘
+		CALLNAME:(CHARANUM-1) = 破軍の娘
+		CFLAG:(CHARANUM-1):속도보정 = 20
+		CFLAG:(CHARANUM-1):行動횟수 = 2
+
+		;미자르알리오츠＋α내성
+		BASE:(CHARANUM-1):검격 = 50
+		BASE:(CHARANUM-1):비구 = 0
+		BASE:(CHARANUM-1):타격 = 50
+		BASE:(CHARANUM-1):전술 = 50
+		BASE:(CHARANUM-1):화염 = 100
+		BASE:(CHARANUM-1):빙결 = 100
+		BASE:(CHARANUM-1):전격 = 0
+		BASE:(CHARANUM-1):충격 = -100
+		BASE:(CHARANUM-1):신경 = 100
+		BASE:(CHARANUM-1):정신 = 100
+		BASE:(CHARANUM-1):파마 = 100
+		BASE:(CHARANUM-1):주살 = 100
+		BASE:(CHARANUM-1):수격 = 0
+		
+		ABL:(CHARANUM-1):스킬1 = [[스킬:주성의압격]]
+		ABL:(CHARANUM-1):스킬2 = [[스킬:각인의날개]]
+		ABL:(CHARANUM-1):스킬3 = [[스킬:지오다인]]
+		ABL:(CHARANUM-1):스킬4 = 0
+		ABL:(CHARANUM-1):스킬5 = 0
+		ABL:(CHARANUM-1):스킬6 = 0
+		ABL:(CHARANUM-1):스킬7 = 0
+		ABL:(CHARANUM-1):스킬8 = 0
+		CALL SYNC_STATUS,(CHARANUM-1)
+		
+		;- 전투開始
+		CALL BATTLE_START
+		
+		;所属COMPを戻す処理
+		FOR LCOUNT, 0, L_CNT + 1
+			SIF LOCAL:LCOUNT > 0
+				CFLAG:(LOCAL:LCOUNT):所属ＣＯＭＰ = 0
+		NEXT
+	;알코르
+	CASE 1045 , 2045 , 3125
+		PRINTL
+		PRINTL 알코르
+		PRINTFORMW 『그대는 정말로 강해졌구나…』
+		PRINTFORMW 『내 상상도 미치지 못할 정도로, 강한 빛을 내는 존재가 됬다』
+		PRINTFORMW 『자 나를 쓰러뜨려 봐라』
+		PRINTFORMW 『그리고 그대가 원하는 세계를 만드는거다』
+		PRINTFORMW 『빛나는 자…%NAME:MASTER%여！』
+		PRINTL
+		CUSTOMDRAWLINE =
+		PRINTL 셉텐트리온 보성 알코르가 1명 나왔다！
+		CUSTOMDRAWLINE =
+		WAIT
+		
+		;- 악마解析度증가処理(1000でMAX)
+		CALL INCREASE_ANALYZE(3008,1000)
+		
+		;SET本体
+		CALL SET_ENEMY,9,3008,65,1,1
+		CFLAG:(CHARANUM-1):ＨＰ보정 = 1000
+		CFLAG:(CHARANUM-1):ＭＰ보정 = 1000
+		CFLAG:(CHARANUM-1):속도보정 = 5
+		CFLAG:(CHARANUM-1):行動횟수 = 3
+		
+		;伴星の凶兆(혼탁의장기で代用)、중재의뇌화、勝利の美酒
+		ABL:(CHARANUM-1):스킬1 = [[스킬:혼탁의장기]]
+		ABL:(CHARANUM-1):스킬2 = [[스킬:중재의뇌화]]
+		ABL:(CHARANUM-1):스킬3 = [[스킬:마하・잔다인]]
+		ABL:(CHARANUM-1):스킬4 = [[스킬:치유촉진(대)]]
+		ABL:(CHARANUM-1):스킬5 = 0
+		ABL:(CHARANUM-1):스킬6 = 0
+		ABL:(CHARANUM-1):스킬7 = 0
+		ABL:(CHARANUM-1):스킬8 = 0
+		CALL SYNC_STATUS,(CHARANUM-1)
+		CALL HEALTH_CHARA,(CHARANUM-1)
+		
+		;SET보티스
+		CALL SET_ENEMY,8,[[キャラ:보티스]],60,1,1
+		CFLAG:(CHARANUM-1):行動횟수 = 2
+		
+		;SETビフロンス
+		CALL SET_ENEMY,10,[[キャラ:비프론스]],60,1,1
+		CFLAG:(CHARANUM-1):行動횟수 = 2
+
+		;- 전투開始
+		CALL BATTLE_START
+		
+		PRINTL 알코르：
+		PRINTL 『그읏…！이것이…가능성의 힘…』
+		CUSTOMDRAWLINE =
+
+	;前座ヤマト戦
+	CASE 4055
+		PRINTL
+		CUSTOMDRAWLINE =
+		PRINTL 인간 호츠인 야마토가 1명 나왔다！
+		CUSTOMDRAWLINE =
+		
+		;- SET:야마토
+		CALL SET_ENEMY,9,[[キャラ:야마토]],65,1,1
+		ABL:(CHARANUM-1):종족 = 43
+		CFLAG:(CHARANUM-1):ＨＰ보정 = 1000
+		CFLAG:(CHARANUM-1):ＭＰ보정 = 1000
+		CFLAG:(CHARANUM-1):속도보정 = 10
+		CFLAG:(CHARANUM-1):行動횟수 = 3
+		CSTR:(CHARANUM-1):사고패턴 = 前座ヤマト
+		
+		;デビサバ２진・전문내성＋마력무효
+		FOR LOCAL,GETNUM(MAXBASE,"검격"),GETNUM(MAXBASE,"만능")
+			BASE:(CHARANUM-1):LOCAL = 50
+		NEXT
+		BASE:(CHARANUM-1):주살 = 0
+		BASE:(CHARANUM-1):신경 = 0
+		BASE:(CHARANUM-1):정신 = 0
+		
+		;메기도라온、S魔道결계・陽(마카카쟈と컨센트레이트で代用)、영세의기도(디아라한代用)
+		ABL:(CHARANUM - 1):스킬1 = [[스킬:메기도라온]]
+		ABL:(CHARANUM - 1):스킬2 = [[스킬:데・쿤다]]
+		ABL:(CHARANUM - 1):스킬3 = [[스킬:마카・카쟈]]
+		ABL:(CHARANUM - 1):스킬4 = [[스킬:디아라한]]
+		ABL:(CHARANUM - 1):스킬5 = [[스킬:컨센트레이트]]
+		ABL:(CHARANUM - 1):스킬6 = 0
+		ABL:(CHARANUM - 1):스킬7 = 0
+		ABL:(CHARANUM - 1):스킬8 = 0
+		CALL SYNC_STATUS,(CHARANUM-1)
+		CALL HEALTH_CHARA,(CHARANUM-1)
+		
+		;- 전투開始
+		CALL BATTLE_START
+		
+	;- ニセモノ戦１
+	CASE 3135
+		PRINTL
+		CUSTOMDRAWLINE =
+		PRINTL 외도 폴라리스의 거짓된 그림자가 9체 나왔다！
+		CUSTOMDRAWLINE =
+		WAIT
+		
+		;- SET:오토메
+		CALL SET_ENEMY,7,[[キャラ:오토메]],L_ENEMY_LV,1,1
+
+		;전격신경정신주살무효물리약점
+		FOR LOCAL,GETNUM(MAXBASE,"검격"),GETNUM(MAXBASE,"전술") + 1
+			BASE:(CHARANUM-1):LOCAL = 200
+		NEXT
+		BASE:(CHARANUM-1):전격 = 0
+		BASE:(CHARANUM-1):신경 = 0
+		BASE:(CHARANUM-1):정신 = 0
+		BASE:(CHARANUM-1):주살 = 0
+		
+		;스킬構成は原作전투時を参考
+		ABL:(CHARANUM - 1):스킬1 = [[스킬:마하・잔다인]]
+		ABL:(CHARANUM - 1):스킬2 = [[스킬:사마리캄]]
+		ABL:(CHARANUM - 1):스킬3 = [[스킬:메・디아라한]]
+		ABL:(CHARANUM - 1):스킬4 = 0
+		ABL:(CHARANUM - 1):스킬5 = 0
+		ABL:(CHARANUM - 1):스킬6 = 0
+		ABL:(CHARANUM - 1):스킬7 = 0
+		ABL:(CHARANUM - 1):스킬8 = 0
+			
+		;- SET:다이치
+		CALL SET_ENEMY,8,[[キャラ:다이치]],L_ENEMY_LV,1,1
+		CFLAG:(CHARANUM-1):속도보정 = 10
+		
+		;화염흡수빙결약점
+		BASE:(CHARANUM-1):화염 = -200
+		BASE:(CHARANUM-1):빙결 = 150
+		
+		;스킬構成は原作전투時を参考
+		ABL:(CHARANUM - 1):스킬1 = [[스킬:천열찌르기]]
+		ABL:(CHARANUM - 1):스킬2 = [[스킬:베어넘기기]]
+		ABL:(CHARANUM - 1):스킬3 = [[스킬:어드바이스]]
+		ABL:(CHARANUM - 1):스킬4 = [[스킬:하이퍼카운터]]
+		ABL:(CHARANUM - 1):스킬5 = 0
+		ABL:(CHARANUM - 1):스킬6 = 0
+		ABL:(CHARANUM - 1):스킬7 = 0
+		ABL:(CHARANUM - 1):스킬8 = 0
+		
+		;- SET:마코토
+		CALL SET_ENEMY,9,[[キャラ:마코토]],L_ENEMY_LV,1,1
+		CFLAG:(CHARANUM-1):속도보정 = 5
+
+		;물리무효화염약점빙결반사
+		FOR LOCAL,GETNUM(MAXBASE,"검격"),GETNUM(MAXBASE,"전술") + 1
+			BASE:(CHARANUM-1):LOCAL = 0
+		NEXT
+		BASE:(CHARANUM-1):화염 = 200
+		BASE:(CHARANUM-1):빙결 = 999
+		
+		;스킬構成は原作전투時を参考
+		ABL:(CHARANUM - 1):스킬1 = [[스킬:마하・아쿠다인]]
+		ABL:(CHARANUM - 1):스킬2 = [[스킬:테트라칸]]
+		ABL:(CHARANUM - 1):스킬3 = [[스킬:리캄]]
+		ABL:(CHARANUM - 1):스킬4 = [[스킬:하이퍼카운터]]
+		ABL:(CHARANUM - 1):스킬5 = 0
+		ABL:(CHARANUM - 1):스킬6 = 0
+		ABL:(CHARANUM - 1):스킬7 = 0
+		ABL:(CHARANUM - 1):스킬8 = 0
+		
+		;- SET:쥰고
+		CALL SET_ENEMY,10,[[キャラ:쥰고]],L_ENEMY_LV,1,1
+		CFLAG:(CHARANUM-1):속도보정 = 5
+		
+		;충격반사전격정신신경파마주살약점
+		BASE:(CHARANUM-1):전격 = 150
+		BASE:(CHARANUM-1):충격 = 999
+		BASE:(CHARANUM-1):신경 = 150
+		BASE:(CHARANUM-1):정신 = 150
+		BASE:(CHARANUM-1):파마 = 150
+		BASE:(CHARANUM-1):주살 = 150
+		
+		;스킬構成は原作전투時を参考
+		ABL:(CHARANUM - 1):스킬1 = [[스킬:기합]]
+		ABL:(CHARANUM - 1):스킬2 = [[스킬:관통]]
+		ABL:(CHARANUM - 1):스킬3 = [[스킬:어드바이스]]
+		ABL:(CHARANUM - 1):스킬4 = 0
+		ABL:(CHARANUM - 1):스킬5 = 0
+		ABL:(CHARANUM - 1):스킬6 = 0
+		ABL:(CHARANUM - 1):스킬7 = 0
+		ABL:(CHARANUM - 1):스킬8 = 0
+		
+		;- SET:로나우도
+		CALL SET_ENEMY,11,[[キャラ:로나우도]],L_ENEMY_LV,1,1
+		CFLAG:(CHARANUM-1):속도보정 = 5
+		
+		;물리흡수화염무효
+		FOR LOCAL,GETNUM(MAXBASE,"검격"),GETNUM(MAXBASE,"전술") + 1
+			BASE:(CHARANUM-1):LOCAL = -150
+		NEXT
+		BASE:(CHARANUM-1):화염 = 0
+		BASE:(CHARANUM-1):전격 = 150
+		BASE:(CHARANUM-1):충격 = 150
+		BASE:(CHARANUM-1):신경 = 0
+		BASE:(CHARANUM-1):정신 = 0
+		BASE:(CHARANUM-1):주살 = 0
+		
+		;스킬構成は原作전투時を参考
+		ABL:(CHARANUM - 1):스킬1 = [[스킬:팔상발파]]
+		ABL:(CHARANUM - 1):스킬2 = [[스킬:마하・라기다인]]
+		ABL:(CHARANUM - 1):스킬3 = [[스킬:만마의난무]]
+		ABL:(CHARANUM - 1):스킬4 = 0
+		ABL:(CHARANUM - 1):스킬5 = 0
+		ABL:(CHARANUM - 1):스킬6 = 0
+		ABL:(CHARANUM - 1):스킬7 = 0
+		ABL:(CHARANUM - 1):스킬8 = 0
+		
+		;- SET:히나코
+		CALL SET_ENEMY,12,[[キャラ:히나코]],L_ENEMY_LV,1,1
+		CFLAG:(CHARANUM-1):속도보정 = 10
+		
+		;화염약점빙결흡수신경정신주살무효
+		BASE:(CHARANUM-1):화염 = 200
+		BASE:(CHARANUM-1):빙결 = -150
+		BASE:(CHARANUM-1):신경 = 0
+		BASE:(CHARANUM-1):정신 = 0
+		BASE:(CHARANUM-1):주살 = 0
+		
+		;스킬構成は原作전투時を参考
+		ABL:(CHARANUM - 1):스킬1 = [[스킬:파이널누드]]
+		ABL:(CHARANUM - 1):스킬2 = [[스킬:디아라한]]
+		ABL:(CHARANUM - 1):스킬3 = [[스킬:스쿠・카쟈]]
+		ABL:(CHARANUM - 1):스킬4 = [[스킬:타루・카쟈]]
+		ABL:(CHARANUM - 1):스킬5 = 0
+		ABL:(CHARANUM - 1):스킬6 = 0
+		ABL:(CHARANUM - 1):스킬7 = 0
+		ABL:(CHARANUM - 1):스킬8 = 0
+		
+		;- SET:죠
+		CALL SET_ENEMY,13,[[キャラ:죠]],L_ENEMY_LV,1,1
+		CFLAG:(CHARANUM-1):속도보정 = 10
+		
+		;전격약점충격흡수신경정신주살무효
+		BASE:(CHARANUM-1):전격 = 150
+		BASE:(CHARANUM-1):충격 = -150
+		BASE:(CHARANUM-1):신경 = 0
+		BASE:(CHARANUM-1):정신 = 0
+		BASE:(CHARANUM-1):주살 = 0
+		
+		;스킬構成は原作전투時を参考
+		ABL:(CHARANUM - 1):스킬1 = [[스킬:독가스브레스]]
+		ABL:(CHARANUM - 1):스킬2 = [[스킬:무거운한숨]]
+		ABL:(CHARANUM - 1):스킬3 = [[스킬:용해브레스]]
+		ABL:(CHARANUM - 1):스킬4 = [[스킬:포효]]
+		ABL:(CHARANUM - 1):스킬5 = 0
+		ABL:(CHARANUM - 1):스킬6 = 0
+		ABL:(CHARANUM - 1):스킬7 = 0
+		ABL:(CHARANUM - 1):스킬8 = 0
+		
+		;- SET:후미
+		CALL SET_ENEMY,15,[[キャラ:후미]],L_ENEMY_LV,1,1
+		CFLAG:(CHARANUM-1):속도보정 = 10
+		
+		;화염약점빙결흡수신경정신주살무효
+		BASE:(CHARANUM-1):화염 = 200
+		BASE:(CHARANUM-1):빙결 = 999
+		BASE:(CHARANUM-1):신경 = 0
+		BASE:(CHARANUM-1):정신 = 0
+		BASE:(CHARANUM-1):주살 = 0
+		
+		;스킬構成は原作전투時を参考
+		ABL:(CHARANUM - 1):스킬1 = [[스킬:마하・부후다인]]
+		ABL:(CHARANUM - 1):스킬2 = [[스킬:마계의조사]]
+		ABL:(CHARANUM - 1):스킬3 = 0
+		ABL:(CHARANUM - 1):스킬4 = 0
+		ABL:(CHARANUM - 1):스킬5 = 0
+		ABL:(CHARANUM - 1):스킬6 = 0
+		ABL:(CHARANUM - 1):스킬7 = 0
+		ABL:(CHARANUM - 1):스킬8 = 0
+		
+		;- SET:아이리
+		CALL SET_ENEMY,16,[[キャラ:아이리]],L_ENEMY_LV,1,1
+		CFLAG:(CHARANUM-1):속도보정 = 15
+		
+		;화염빙결약점전격충격무효
+		BASE:(CHARANUM-1):화염 = 150
+		BASE:(CHARANUM-1):빙결 = 150
+		BASE:(CHARANUM-1):전격 = 0
+		BASE:(CHARANUM-1):충격 = 0
+		
+		;스킬構成は原作전투時を参考
+		ABL:(CHARANUM - 1):스킬1 = [[스킬:스쿤・다]]
+		ABL:(CHARANUM - 1):스킬2 = [[스킬:라쿠・카쟈]]
+		ABL:(CHARANUM - 1):스킬3 = [[스킬:마카・카쟈]]
+		ABL:(CHARANUM - 1):스킬4 = [[스킬:캔디보이스]]
+		ABL:(CHARANUM - 1):스킬5 = [[스킬:마카라칸]]
+		ABL:(CHARANUM - 1):스킬6 = 0
+		ABL:(CHARANUM - 1):스킬7 = 0
+		ABL:(CHARANUM - 1):스킬8 = 0
+		
+		FOR LOCAL , 7 , 17
+			SIF POS(LOCAL) <= 0
+				CONTINUE
+			ABL:POS(LOCAL):종족 = 10
+			CALL SYNC_STATUS,POS(LOCAL)
+			CALL HEALTH_CHARA,POS(LOCAL)
+		NEXT
+		
+		;- 전투開始
+		CALL BATTLE_START
+		
+		
+	;- ニセモノ戦２
+	CASE 3136
+		PRINTL
+		CUSTOMDRAWLINE =
+		PRINTL 외도 폴라리스의 거짓된 그림자가 3체 나왔다！
+		CUSTOMDRAWLINE =
+		WAIT
+		
+		;- SET:이오
+		CALL SET_ENEMY,8,[[キャラ:이오]],L_ENEMY_LV,1,1
+		CFLAG:(CHARANUM-1):속도보정 = 10
+		CFLAG:(CHARANUM-1):行動횟수 = 2
+		ABL:(CHARANUM-1):종족 = 10
+		
+		BASE:(CHARANUM-1):전격 = 999
+		BASE:(CHARANUM-1):신경 = 0
+		BASE:(CHARANUM-1):정신 = 0
+		BASE:(CHARANUM-1):주살 = 0
+		
+		;스킬構成は原作전투時を参考
+		ABL:(CHARANUM - 1):스킬1 = [[스킬:마하・지오다인]]
+		ABL:(CHARANUM - 1):스킬2 = [[스킬:디아라한]]
+		ABL:(CHARANUM - 1):스킬3 = [[스킬:메기도라]]
+		ABL:(CHARANUM - 1):스킬4 = 0
+		ABL:(CHARANUM - 1):스킬5 = 0
+		ABL:(CHARANUM - 1):스킬6 = 0
+		ABL:(CHARANUM - 1):스킬7 = 0
+		ABL:(CHARANUM - 1):스킬8 = 0
+		CALL SYNC_STATUS,(CHARANUM-1)
+		CALL HEALTH_CHARA,(CHARANUM-1)
+		
+		;- SET:야마토
+		CALL SET_ENEMY,9,[[キャラ:야마토]],L_ENEMY_LV,1,1
+		CFLAG:(CHARANUM-1):속도보정 = 10
+		CFLAG:(CHARANUM-1):行動횟수 = 2
+		ABL:(CHARANUM-1):종족 = 10
+		
+		FOR LOCAL,GETNUM(MAXBASE,"검격"),GETNUM(MAXBASE,"전술") + 1
+			BASE:(CHARANUM-1):LOCAL = 999
+		NEXT
+		BASE:(CHARANUM-1):신경 = 0
+		BASE:(CHARANUM-1):정신 = 0
+		BASE:(CHARANUM-1):주살 = 0
+			
+		;스킬構成は原作전투時を参考
+		ABL:(CHARANUM - 1):스킬1 = [[스킬:만마의일격]]
+		ABL:(CHARANUM - 1):스킬2 = [[스킬:랜더마이저]]
+		ABL:(CHARANUM - 1):스킬3 = 0
+		ABL:(CHARANUM - 1):스킬4 = 0
+		ABL:(CHARANUM - 1):스킬5 = 0
+		ABL:(CHARANUM - 1):스킬6 = 0
+		ABL:(CHARANUM - 1):스킬7 = 0
+		ABL:(CHARANUM - 1):스킬8 = 0
+		CALL SYNC_STATUS,(CHARANUM-1)
+		CALL HEALTH_CHARA,(CHARANUM-1)
+		
+		;- SET:케이타
+		CALL SET_ENEMY,10,[[キャラ:케이타]],L_ENEMY_LV,1,1
+		CFLAG:(CHARANUM-1):속도보정 = 15
+		CFLAG:(CHARANUM-1):行動횟수 = 2
+		ABL:(CHARANUM-1):종족 = 10
+		
+		BASE:(CHARANUM-1):화염 = 999
+		
+		;스킬構成は原作전투時を参考
+		ABL:(CHARANUM - 1):스킬1 = [[스킬:메테오피스트]]
+		ABL:(CHARANUM - 1):스킬2 = [[스킬:소닉펀치]]
+		ABL:(CHARANUM - 1):스킬3 = 0
+		ABL:(CHARANUM - 1):스킬4 = 0
+		ABL:(CHARANUM - 1):스킬5 = 0
+		ABL:(CHARANUM - 1):스킬6 = 0
+		ABL:(CHARANUM - 1):스킬7 = 0
+		ABL:(CHARANUM - 1):스킬8 = 0
+		CALL SYNC_STATUS,(CHARANUM-1)
+		CALL HEALTH_CHARA,(CHARANUM-1)
+		
+		;- 전투開始
+		CALL BATTLE_START
+		
+	;폴라리스
+	CASE 1047, 2047, 3127, 3137,4057
+		PRINTL
+		CUSTOMDRAWLINE =
+		;- 악마解析度증가処理(1000でMAX)
+		CALL INCREASE_ANALYZE([[キャラ:폴라리스]],1000)
+		PRINTL 북극성　폴라리스A가 1명 나왔다！
+		
+		;SET本体
+		CALL SET_ENEMY,9,[[キャラ:폴라리스]],75,1,1
+		CFLAG:(CHARANUM-1):ＨＰ보정 = 2000
+		CFLAG:(CHARANUM-1):ＭＰ보정 = 2000
+		CFLAG:(CHARANUM-1):속도보정 = 10
+		CFLAG:(CHARANUM-1):行動횟수 = 4
+		ABL:(CHARANUM-1):공격범위 = 1
+		
+		;ケフェイド、슈퍼노바、메기도라온、封技추가。現在はスーパーノヴァ未実装
+		ABL:(CHARANUM-1):스킬1 = [[스킬:묵시록]]
+		ABL:(CHARANUM-1):스킬2 = [[스킬:메기도라온]]
+		ABL:(CHARANUM-1):스킬3 = [[스킬:관통]]
+		ABL:(CHARANUM-1):스킬4 = 0
+		ABL:(CHARANUM-1):스킬5 = 0
+		ABL:(CHARANUM-1):스킬6 = 0
+		ABL:(CHARANUM-1):스킬7 = 0
+		ABL:(CHARANUM-1):스킬8 = 0
+		
+		;SETオトモ
+		
+		;摂理
+		IF FLAG:デビサバ２進行度 == 3127 || FLAG:デビサバ２進行度 ==  3137 || FLAG:デビサバ２進行度 ==  4057
+			PRINTL 섭리의 창　폴라리스B가 1명 나왔다！
+			PRINTL 섭리의 방패　폴라리스Ab가 1명 나왔다！
+			
+			CALL SET_ENEMY,8,[[キャラ:폴라리스]],70,1,0
+			NAME:(CHARANUM-1) = 폴라리스B
+			CALLNAME:(CHARANUM-1) = 폴라리스B
+			CSTR:(CHARANUM-1):종족명 =  섭리의 창
+			CFLAG:(CHARANUM-1):ＨＰ보정 = 500
+			CFLAG:(CHARANUM-1):속도보정 = 10
+			CFLAG:(CHARANUM-1):行動횟수 = 2
+			
+			;공격전체化、데스바운드(デビサバ版)、천열찌르기、クリティカル＋、반격
+			ABL:(CHARANUM-1):스킬1 = [[스킬:메테오피스트]]
+			ABL:(CHARANUM-1):스킬2 = [[스킬:천열찌르기]]
+			ABL:(CHARANUM-1):스킬3 = [[스킬:어드바이스]]
+			ABL:(CHARANUM-1):스킬4 = [[스킬:하이퍼카운터]]
+			ABL:(CHARANUM-1):스킬5 = 0
+			ABL:(CHARANUM-1):스킬6 = 0
+			ABL:(CHARANUM-1):스킬7 = 0
+			ABL:(CHARANUM-1):스킬8 = 0
+			
+			;물리흡수빙결전격수격반사
+			BASE:(CHARANUM-1):검격 = -100
+			BASE:(CHARANUM-1):비구 = -100
+			BASE:(CHARANUM-1):타격 = -100
+			BASE:(CHARANUM-1):전술 = -100
+			BASE:(CHARANUM-1):빙결 = 999
+			BASE:(CHARANUM-1):전격 = 999
+			BASE:(CHARANUM-1):수격 = 0
+			BASE:(CHARANUM-1):질풍 = 0
+			
+			CALL SET_ENEMY,10,[[キャラ:폴라리스]],70,1,0
+			NAME:(CHARANUM-1) = 폴라리스Ab
+			CALLNAME:(CHARANUM-1) = 폴라리스Ab
+			CSTR:(CHARANUM-1):종족명 =  섭리의 방패
+			CFLAG:(CHARANUM-1):ＨＰ보정 = 500
+			CFLAG:(CHARANUM-1):속도보정 = 10
+			CFLAG:(CHARANUM-1):行動횟수 = 2
+			ABL:(CHARANUM-1):공격범위 = 1
+			
+			;화염무효전격내성충격흡수
+			BASE:(CHARANUM-1):화염 = 0
+			BASE:(CHARANUM-1):전격 = 50
+			BASE:(CHARANUM-1):충격 = -100
+			
+			;摂理ポラリスは殺しに来てるポラリスなので殺意に塗れた스킬構成に
+			ABL:(CHARANUM-1):스킬1 = [[스킬:티없는위광]]
+			ABL:(CHARANUM-1):스킬2 = [[스킬:천년의저주]]
+			ABL:(CHARANUM-1):스킬3 = [[스킬:랜더마이저]]
+			ABL:(CHARANUM-1):스킬4 = [[스킬:히트라이저]]
+			ABL:(CHARANUM-1):스킬5 = 0
+			ABL:(CHARANUM-1):스킬6 = 0
+			ABL:(CHARANUM-1):스킬7 = 0
+			ABL:(CHARANUM-1):스킬8 = 0
+		;天
+		ELSE
+			PRINTL 하늘의 창 폴라리스B가 1명 나왔다！
+			PRINTL 하늘의 방패 폴라리스Ab가 1명 나왔다！
+			
+			CALL SET_ENEMY,8,[[キャラ:폴라리스]],70,1,0
+			NAME:(CHARANUM-1) = 폴라리스B
+			CALLNAME:(CHARANUM-1) = 폴라리스B
+			CSTR:(CHARANUM-1):종족명 =  하늘의 창
+			CFLAG:(CHARANUM-1):行動횟수 = 2
+		
+			;공격전체化、데스바운드(デビサバ版)、천열찌르기、クリティカル＋、반격
+			ABL:(CHARANUM-1):스킬1 = [[스킬:메테오피스트]]
+			ABL:(CHARANUM-1):스킬2 = [[스킬:천열찌르기]]
+			ABL:(CHARANUM-1):스킬3 = [[스킬:어드바이스]]
+			ABL:(CHARANUM-1):스킬4 = [[스킬:하이퍼카운터]]
+			ABL:(CHARANUM-1):스킬5 = 0
+			ABL:(CHARANUM-1):스킬6 = 0
+			ABL:(CHARANUM-1):스킬7 = 0
+			ABL:(CHARANUM-1):스킬8 = 0
+			
+			;물리흡수빙결전격수격반사
+			BASE:(CHARANUM-1):검격 = -100
+			BASE:(CHARANUM-1):비구 = -100
+			BASE:(CHARANUM-1):타격 = -100
+			BASE:(CHARANUM-1):전술 = -100
+			BASE:(CHARANUM-1):빙결 = 999
+			BASE:(CHARANUM-1):전격 = 999
+			BASE:(CHARANUM-1):수격 = 0
+			BASE:(CHARANUM-1):질풍 = 0
+			
+			CALL SET_ENEMY,10,[[キャラ:폴라리스]],70,1,0
+			NAME:(CHARANUM-1) = 폴라리스Ab
+			CALLNAME:(CHARANUM-1) = 폴라리스Ab
+			CSTR:(CHARANUM-1):종족명 =  하늘의 방패
+			CFLAG:(CHARANUM-1):行動횟수 = 2
+			ABL:(CHARANUM-1):공격범위 = 1
+			
+			;화염무효전격내성충격흡수
+			BASE:(CHARANUM-1):화염 = 0
+			BASE:(CHARANUM-1):전격 = 50
+			BASE:(CHARANUM-1):충격 = -100
+			
+			;ペトラ레이(무도하마온で代用)、마하・잔다인、チャクラ、종족스킬も含めて전투지원を行う적なので、지원系で
+			ABL:(CHARANUM-1):스킬1 = [[스킬:어둠의심판]]
+			ABL:(CHARANUM-1):스킬2 = [[스킬:빛의심판]]
+			ABL:(CHARANUM-1):스킬3 = [[스킬:데・쿤다]]
+			ABL:(CHARANUM-1):스킬4 = [[스킬:테트라칸]]
+			ABL:(CHARANUM-1):스킬5 = [[스킬:마카라칸]]
+			ABL:(CHARANUM-1):스킬6 = 0
+			ABL:(CHARANUM-1):스킬7 = 0
+			ABL:(CHARANUM-1):스킬8 = 0
+			
+		ENDIF
+		
+		
+		FOR LOCAL , 7 , 17
+			SIF POS(LOCAL) <= 0
+				CONTINUE
+			CALL SYNC_STATUS,POS(LOCAL)
+			CALL HEALTH_CHARA,POS(LOCAL)
+		NEXT
+		
+		CUSTOMDRAWLINE =
+		WAIT
+		
+		;- 전투開始
+		CALL BATTLE_START
+		
+ENDSELECT
+	
+;- 전투종료
+FLAG:도주불가フラグ = 0
+FLAG:회화불능フラグ = 0
+FLAG:선제기습취소 = 0
+
+;=================================================
+;   sub EVENT_BATTLE_TURN_END_REQUEST30_6
+;=================================================
+;   의뢰:전투中処理(ターン종료시)
+;-------------------------------------------------
+;   6日눈、7日눈用の전투中処理(ターン종료시)
+;-------------------------------------------------
+;   FLAG:勝利フラグに1をセットすると、전투を強制종료出来る
+;   FLAG:敗北フラグに1をセットすると、ゲームオーバーに出来る
+;-------------------------------------------------
+@EVENT_BATTLE_TURNEND_REQUEST30_6
+#DIM L_POSITION
+#DIM L_NO
+#DIM L_CNT
+L_CNT = 0
+
+;-----------------------------
+;- 処理開始
+;-----------------------------
+SELECTCASE FLAG:デビサバ２進行度
+		
+	;-----------------------------
+	;- 2025:전투中(対HIGHヤマト)
+	;-----------------------------
+	CASE 2025 , 3025
+		
+		FOR LOCAL, 7 , 17
+			L_POSITION = POS(LOCAL)
+			
+			;該当位置に誰もいない
+			IF L_POSITION < 0
+				CONTINUE
+			;該当位置がヤマト
+			ELSEIF NO:L_POSITION == [[キャラ:야마토]]
+				L_NO = L_POSITION
+			;該当する位置のキャラが死んでない
+			ELSEIF CFLAG:L_POSITION:ステート != GET_STATE_NUM("DYING")
+				L_CNT ++
+			ENDIF
+		NEXT
+		;ヤマトが死んでたら
+		SIF CFLAG:L_NO:ステート == GET_STATE_NUM("DYING")
+			RETURN
+		
+		;ヤマトの行動횟수調整
+		IF (L_CNT == 0 || 現HP割合(L_NO) < 30) && CFLAG:L_NO:行動횟수 <= 4
+			CUSTOMDRAWLINE =
+			SETCOLOR 0xDD0000
+			CALL MESSAGE_BL(1,"야마토: 후하하핫…！흐럅, 계속 간다！네놈들은 따라잡을수 없다！")
+			RESETCOLOR
+			CUSTOMDRAWLINE =
+			CALL MESSAGE_B(3,,"야마토의 움직임이 빨라졌다！",)
+			
+			CFLAG:L_NO:行動횟수 = 5
+			CFLAG:L_NO:속도보정 = 25
+			CALL SYNC_STATUS,L_NO
+		ELSEIF (L_CNT <= 4 || 現HP割合(L_NO) < 60) && CFLAG:L_NO:行動횟수 == 3
+			CUSTOMDRAWLINE =
+			SETCOLOR 0xDD0000
+			CALL MESSAGE_BL(1,"야마토：아직이다…아직 더있다！자 따라잡아 봐라…！")
+			RESETCOLOR
+			CUSTOMDRAWLINE =
+			CALL MESSAGE_B(3,,"야마토의 움직임이 빨라졌다！",)
+			
+			CFLAG:L_NO:行動횟수 = 4
+			CFLAG:L_NO:속도보정 = 15
+			CALL SYNC_STATUS,L_NO
+		ENDIF
+	;-----------------------------
+	;- 1045 , 2045:전투中(알코르)
+	;-----------------------------
+	CASE 1045 , 2045 , 3115 , 3125
+		LOCAL = FINDCHARA_ENEMY(3008)
+		L_NO = RESULT:1
+		SIF L_NO < 0 || CPOS(L_NO) <= 0 || LOCAL == 0 || LOCAL == 3
+			RETURN
+		
+		IF FLAG:経過ターン数 % 6 == 0
+			
+			;물리무효それ以外내성
+			BASE:L_NO:검격 = 0
+			BASE:L_NO:타격 = 0
+			BASE:L_NO:전술 = 0
+			BASE:L_NO:화염 = 50
+			BASE:L_NO:빙결 = 50
+			BASE:L_NO:전격 = 50
+			BASE:L_NO:충격 = 50
+			BASE:L_NO:지변 = 50
+			BASE:L_NO:수격 = 50
+			BASE:L_NO:질풍 = 50
+			BASE:L_NO:중력 = 50
+			BASE:L_NO:만능 = 100
+			CALL SYNC_STATUS,(L_NO)
+
+			ABL:L_NO:스킬1 = [[스킬:혼탁의장기]]
+			ABL:L_NO:스킬2 = [[스킬:중재의뇌화]]
+			ABL:L_NO:스킬3 = [[스킬:마하・잔다인]]
+			ABL:L_NO:스킬4 = [[스킬:치유촉진(대)]]
+			
+			CALL MESSAGE_B(3,"알코르의 모습이 큐브가 되었다！","알코르의 내성이 변했다！","알코르의 스킬이 변했다！")
+		ELSEIF FLAG:経過ターン数 % 3 == 0
+			LOCAL = FINDCHARA_ENEMY(3008)
+			L_NO = RESULT:1
+			SIF L_NO < 0 || CPOS(L_NO) <= 0 || LOCAL == 0 || LOCAL == 3
+				RETURN
+			
+			;물리충격질풍약점만능내성それ以外반사
+			BASE:L_NO:검격 = 150
+			BASE:L_NO:타격 = 150
+			BASE:L_NO:전술 = 150
+			BASE:L_NO:화염 = 999
+			BASE:L_NO:빙결 = 999
+			BASE:L_NO:전격 = 999
+			BASE:L_NO:충격 = 150
+			BASE:L_NO:지변 = 999
+			BASE:L_NO:수격 = 999
+			BASE:L_NO:질풍 = 150
+			BASE:L_NO:중력 = 999
+			BASE:L_NO:만능 = 50
+			CALL SYNC_STATUS,(L_NO)
+			
+			;混沌の波紋(하이퍼카운터で代用)、데스바운드(메테오피스트、연속사격)、만마의난무
+			ABL:L_NO:스킬1 = [[스킬:하이퍼카운터]]
+			ABL:L_NO:스킬2 = [[스킬:메테오피스트]]
+			ABL:L_NO:스킬3 = [[스킬:연속사격]]
+			ABL:L_NO:스킬4 = [[스킬:만마의난무]]
+			
+			CALL MESSAGE_B(3,"알코르의 모습이 가시모양이 되었다！","알코르의 내성이 변했다！","알코르의 스킬이 변했다！")
+		ENDIF
+	;-----------------------------
+	;- 4057:전투中(真ポラリス戦　摂理)
+	;-----------------------------
+	CASE 4057 , 3137 , 3147
+		L_CNT = 1
+		
+		FOR LOCAL, 7 , 17
+			L_POSITION = POS(LOCAL)
+			
+			;ポラリスじゃない、あるいは誰もいない
+			SIF L_POSITION < 0 || NO:L_POSITION != 3311
+				CONTINUE
+			
+			;ボスフラグついた本体だったら
+			SIF CFLAG:L_POSITION:ボスフラグ == 1
+				L_NO = L_POSITION
+				
+			;該当するキャラが死んでない
+			IF CFLAG:L_POSITION:ステート != GET_STATE_NUM("DYING")
+				L_CNT ++
+			;取り巻きが死んで３ターン立った
+			ELSEIF !CFLAG:L_POSITION:ボスフラグ && CFLAG:L_POSITION:ステート経過ターン > 2
+				CALL MESSAGE_BL(3,,CALLNAME:L_POSITION+"가 재생했다",)
+				CFLAG:L_POSITION:ステート = 0
+				CFLAG:L_POSITION:ステート経過ターン = 0
+				CALL HEALTH_CHARA,(L_POSITION)
+				
+				L_CNT ++
+			ENDIF
+		NEXT
+		
+		
+		;本体が死んでたら
+		IF CFLAG:L_NO:ステート == GET_STATE_NUM("DYING")
+			FLAG:勝利フラグ = 1
+		;당신が死んでたら
+		ELSEIF CFLAG:MASTER:ステート == GET_STATE_NUM("DYING")
+			FLAG:敗北フラグ = 1
+		;ポラリスの行動횟수調整
+		ELSEIF L_CNT < CFLAG:L_NO:行動횟수
+			CFLAG:L_NO:行動횟수 = L_CNT
+			CALL MESSAGE_B(3,,"폴라리스의 行動횟수가 감소했다！",)
+		ELSEIF L_CNT > CFLAG:L_NO:行動횟수
+			CFLAG:L_NO:行動횟수 = L_CNT
+			CALL MESSAGE_B(3,,"폴라리스의 行動횟수가 늘어났다！",)
+		ENDIF
+ENDSELECT
+
+
+;HIGHヤマトの사고패턴
+@SET_ACTION_HIGHヤマト,ARG
+;ＨＰ15％以下
+IF 現HP割合(ARG) < 15 && RAND:2 == 0
+	CALL CHECK_ACTIONABLE,ARG,[[스킬:메・디아라한]]
+	SIF RESULT == 0
+		GOTO DECIDE_ACTION
+	CFLAG:ARG:입력行動 = [[스킬:메・디아라한]]
+	CALL RANDOM_TARGET,ARG,[[스킬:메・디아라한]]
+	RETURN 1
+;ＨＰ15％이상
+ELSEIF 現HP割合(ARG) >= 15
+	IF CFLAG:ARG:명중강화 < 0 || CFLAG:ARG:마법위력강화 < 0
+		CALL CHECK_ACTIONABLE,ARG,[[스킬:데・쿤다]]
+		SIF RESULT == 0
+			GOTO DECIDE_ACTION
+		CFLAG:ARG:입력行動 = [[스킬:데・쿤다]]
+		CALL RANDOM_TARGET,ARG,[[스킬:데・쿤다]]
+		RETURN 1
+	ELSE
+		SELECTCASE RAND:100
+			;80％
+			CASE IS < 80
+				CALL CHECK_ACTIONABLE,ARG,[[스킬:메기도라]]
+				SIF RESULT == 0
+					GOTO DECIDE_ACTION
+				CFLAG:ARG:입력行動 = [[스킬:메기도라]]
+				CALL RANDOM_TARGET,ARG,[[스킬:메기도라]]
+				RETURN 1
+			;20％
+			CASE IS < 100
+				CALL CHECK_ACTIONABLE,ARG,[[스킬:중재의뇌화]]
+				SIF RESULT == 0
+					GOTO DECIDE_ACTION
+				CFLAG:ARG:입력行動 = [[스킬:중재의뇌화]]
+				CALL RANDOM_TARGET,ARG,[[스킬:중재의뇌화]]
+				RETURN 1
+		ENDSELECT
+	ENDIF
+ELSE
+	$DECIDE_ACTION
+	CALL SEARCH_ACT,ARG
+	IF RESULT == 0
+		CFLAG:ARG:입력行動 = -1
+		CFLAG:ARG:방어フラグ = 1
+		RETURN 0
+	ENDIF
+	LOCAL = RAND:RESULT
+	;스킬번호決定
+	LOCAL:1 = S:(10+LOCAL)
+	$TARGET_LOOP
+	
+	CALL RANDOM_TARGET,ARG,LOCAL:1
+	CALLFORM SKILL_TARGET_{LOCAL:1}
+	;ここで스킬번호を行動内容に代入
+	SIF CFLAG:ARG:ターゲット == -1
+		GOTO DECIDE_ACTION
+	CFLAG:ARG:입력行動 = LOCAL:1
+
+ENDIF
+
+;前座ヤマトの사고패턴
+@SET_ACTION_前座ヤマト,ARG
+;1more
+IF CFLAG:ARG:１moreフラグ > 0
+	;메기도라온
+	CALL CHECK_ACTIONABLE,ARG,[[스킬:메기도라온]]
+	SIF RESULT == 0
+		GOTO DECIDE_ACTION
+	CFLAG:ARG:입력行動 = [[스킬:메기도라온]]
+	CALL RANDOM_TARGET,ARG,[[스킬:메기도라온]]
+;ＨＰ10％以下
+ELSEIF 現HP割合(ARG) < 10
+	IF CFLAG:ARG:集中フラグ == 1
+		CALL CHECK_ACTIONABLE,ARG,[[스킬:메기도라온]]
+		SIF RESULT == 0
+			GOTO DECIDE_ACTION
+		CFLAG:ARG:입력行動 = [[스킬:메기도라온]]
+		CALL RANDOM_TARGET,ARG,[[스킬:메기도라온]]
+		RETURN 1
+	ELSE
+		CALL CHECK_ACTIONABLE,ARG,[[스킬:디아라한]]
+		SIF RESULT == 0
+			GOTO DECIDE_ACTION
+		CFLAG:ARG:입력行動 = [[스킬:디아라한]]
+		CALL RANDOM_TARGET,ARG,[[스킬:디아라한]]
+		RETURN 1
+	ENDIF
+;ＨＰ10％이상
+ELSEIF 現HP割合(ARG) >= 10
+	IF CFLAG:ARG:集中フラグ == 1
+		CALL CHECK_ACTIONABLE,ARG,[[스킬:메기도라온]]
+		SIF RESULT == 0
+			GOTO DECIDE_ACTION
+		CFLAG:ARG:입력行動 = [[스킬:메기도라온]]
+		CALL RANDOM_TARGET,ARG,[[스킬:메기도라온]]
+		RETURN 1
+	ELSEIF CFLAG:ARG:명중강화 < -2 || CFLAG:ARG:마법위력강화 < -2
+		CALL CHECK_ACTIONABLE,ARG,[[스킬:데・쿤다]]
+		SIF RESULT == 0
+			GOTO DECIDE_ACTION
+		CFLAG:ARG:입력行動 = [[스킬:데・쿤다]]
+		CALL RANDOM_TARGET,ARG,[[스킬:데・쿤다]]
+		RETURN 1
+	ELSEIF CFLAG:ARG:行動した횟수 == 0
+		SELECTCASE RAND:100
+			;40％
+			CASE IS < 40
+				CALL CHECK_ACTIONABLE,ARG,[[스킬:컨센트레이트]]
+				SIF RESULT == 0
+					GOTO DECIDE_ACTION
+				CFLAG:ARG:입력行動 = [[스킬:컨센트레이트]]
+				CALL RANDOM_TARGET,ARG,[[스킬:컨센트레이트]]
+				RETURN 1
+			;40％
+			CASE IS < 80
+				CALL CHECK_ACTIONABLE,ARG,[[스킬:마카・카쟈]]
+				SIF RESULT == 0
+					GOTO DECIDE_ACTION
+				CFLAG:ARG:입력行動 = [[스킬:마카・카쟈]]
+				CALL RANDOM_TARGET,ARG,[[스킬:마카・카쟈]]
+				RETURN 1
+			;20％
+			CASE IS < 100
+				CALL CHECK_ACTIONABLE,ARG,[[스킬:메기도라온]]
+				SIF RESULT == 0
+					GOTO DECIDE_ACTION
+				CFLAG:ARG:입력行動 = [[스킬:메기도라온]]
+				CALL RANDOM_TARGET,ARG,[[스킬:메기도라온]]
+				RETURN 1
+		ENDSELECT
+	ELSE
+		SELECTCASE RAND:100
+			;60％
+			CASE IS < 60
+				CALL CHECK_ACTIONABLE,ARG,[[스킬:메기도라온]]
+				SIF RESULT == 0
+					GOTO DECIDE_ACTION
+				CFLAG:ARG:입력行動 = [[스킬:메기도라온]]
+				CALL RANDOM_TARGET,ARG,[[스킬:메기도라온]]
+				RETURN 1
+			;30％
+			CASE IS < 90
+				CALL CHECK_ACTIONABLE,ARG,[[스킬:마카・카쟈]]
+				SIF RESULT == 0
+					GOTO DECIDE_ACTION
+				CFLAG:ARG:입력行動 = [[스킬:마카・카쟈]]
+				CALL RANDOM_TARGET,ARG,[[스킬:마카・카쟈]]
+				RETURN 1
+			;10％
+			CASE IS < 100
+				CALL CHECK_ACTIONABLE,ARG,[[스킬:컨센트레이트]]
+				SIF RESULT == 0
+					GOTO DECIDE_ACTION
+				CFLAG:ARG:입력行動 = [[스킬:컨센트레이트]]
+				CALL RANDOM_TARGET,ARG,[[스킬:컨센트레이트]]
+				RETURN 1
+		ENDSELECT
+	ENDIF
+ELSE
+	$DECIDE_ACTION
+	CALL SEARCH_ACT,ARG
+	IF RESULT == 0
+		CFLAG:ARG:입력行動 = -1
+		CFLAG:ARG:방어フラグ = 1
+		RETURN 0
+	ENDIF
+	LOCAL = RAND:RESULT
+	;스킬번호決定
+	LOCAL:1 = S:(10+LOCAL)
+	$TARGET_LOOP
+	
+	CALL RANDOM_TARGET,ARG,LOCAL:1
+	CALLFORM SKILL_TARGET_{LOCAL:1}
+	;ここで스킬번호を行動内容に代入
+	SIF CFLAG:ARG:ターゲット == -1
+		GOTO DECIDE_ACTION
+	CFLAG:ARG:입력行動 = LOCAL:1
+
+ENDIF

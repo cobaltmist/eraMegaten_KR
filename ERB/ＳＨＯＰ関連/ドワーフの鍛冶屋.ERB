@@ -1,0 +1,2642 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#;	Edit	Date			Author					Reason
+;	000		20xx/xx/xx		Jガン					新規作成
+;	001		2020/08/20		Jガン					내성강화をバステと合わせて5回までに
+;	002		2021/01/29		Jガン					改造装備選択を2列に、改造装備紛失処理を追加
+;	003		2021/03/19		Jガン					装備が強くなりすぎないように修正
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+
+@SHOPCOMABLE_118
+IF 鍛冶屋見直し == 0
+	FOR LOCAL,0,60
+		FOR LOCAL:1,0,8
+			能力値강화:LOCAL:(LOCAL:1) = 能力値강화:LOCAL:(LOCAL:1) / 10
+		NEXT
+		FOR LOCAL:1,0,7
+			パラメータ강화:LOCAL:(LOCAL:1) = パラメータ강화:LOCAL:(LOCAL:1) / 4
+		NEXT
+		FOR LOCAL:1,0,17
+			속성내성강화:LOCAL:(LOCAL:1) = 속성내성강화:LOCAL:(LOCAL:1) / 35
+		NEXT
+		FOR LOCAL:1,0,21
+			バステ내성강화:LOCAL:(LOCAL:1) = バステ내성강화:LOCAL:(LOCAL:1) / 50
+		NEXT
+		
+	NEXT
+	鍛冶屋見直し = 1
+ENDIF
+IF 鍛冶屋見直し < 2
+	FOR LOCAL,0,60
+		강화횟수:LOCAL += 장비軽量化:LOCAL
+	NEXT
+	鍛冶屋見直し = 2
+ENDIF
+IF 鍛冶屋見直し < 3
+	FOR LOCAL,0,60
+		SIF ベース장비番号:LOCAL < 1
+			CONTINUE
+		CALL 플러스상한,ベース장비番号:LOCAL
+		IF プラス数:LOCAL > RESULT
+			プラス数:LOCAL = RESULT
+			PRINTFORMW %개조장비명칭(LOCAL)%の플러스상한が変わりました
+		ENDIF
+		
+		LOCAL:2 = 0
+		FOR LOCAL:1,0,6
+			LOCAL:2 += 能力値강화:LOCAL:(LOCAL:1)
+			能力値강화:LOCAL:(LOCAL:1) = 0
+		NEXT
+		IF LOCAL:2 > 0
+			강화횟수:LOCAL -= LOCAL:2
+			RESULT = 1
+			TRYCALLFORM 필요레벨_{개조장비아이템ナンバー(LOCAL)}
+			RESULT = MIN(MAX(1,RESULT),99)
+			MONEY += RESULT * 500 * LOCAL:2 * 3 / 2
+			PRINTFORML %개조장비명칭(LOCAL)%の仕様変更により能力値강화が無くなり
+			PRINTFORMW ￥{RESULT * 500 * LOCAL:2 * 3 / 2}を取得しました。
+		ENDIF
+		
+		LOCAL:2 = 0
+		FOR LOCAL:1,1,7
+			IF パラメータ강화:LOCAL:(LOCAL:1) > 10
+				LOCAL:2 += パラメータ강화:LOCAL:(LOCAL:1) - 10
+				パラメータ강화:LOCAL:(LOCAL:1) = 10
+			ENDIF
+		NEXT
+		IF LOCAL:2 > 0
+			강화횟수:LOCAL -= LOCAL:2
+			RESULT = 1
+			TRYCALLFORM 필요레벨_{개조장비아이템ナンバー(LOCAL)}
+			RESULT = MIN(MAX(1,RESULT),99)
+			MONEY += RESULT * 500 * LOCAL:2 * 11 / 10
+			PRINTFORML %개조장비명칭(LOCAL)%のパラメータ강화の仕様変更により
+			PRINTFORMW ￥{RESULT * 500 * LOCAL:2 * 11 / 10}を取得しました。
+		ENDIF
+	NEXT
+	鍛冶屋見直し = 3
+ENDIF
+;------ ADD 002 -------
+FOR LOCAL,0,60
+	IF ベース장비番号:LOCAL > 0 && ITEM:(개조장비아이템ナンバー(LOCAL)) < 1 && EQUIPMENT_COUNT(개조장비아이템ナンバー(LOCAL)) < 1
+		PRINTFORMW %개조장비명칭(LOCAL)%が紛失したので改造を해제します。
+		CALL 개조장비해제,LOCAL
+	ENDIF
+NEXT
+
+RESULT:1 = 3
+IF 이벤트フラグ:33:1 == 4 || FLAG:DEBUG	
+	RESULTS = 드워프의 대장간
+	RETURN 1
+ELSE
+	RESULTS = ？？？？？
+	RETURN 0
+ENDIF
+
+@SHOP_COM_118
+RESULT = 0
+CUSTOMDRAWLINE =
+PRINTL 드워프：
+PRINTFORML 「장비의 개조를 해주지」
+DRAWLINE
+PRINTL
+PRINTL
+PRINTL
+DRAWLINE
+;ALIGNMENT CENTER
+PRINTL [CLICK]
+;ALIGNMENT LEFT
+TWAIT 2000,0
+CLEARLINE 8
+$SHOP_START
+PRINTL 드워프：
+PRINTFORML 「뭘 하길 원하는가？」
+DRAWLINE
+
+PRINTL [1]장비개조
+PRINTL [2]소재 판매
+PRINTL [99]설명
+SIF FLAG:DEBUG
+	PRINTL [2000] 소재를 받는다
+	DRAWLINE
+PRINTL [0]가게를 나온다
+CALL INPUTINT(0,1,2,99)
+IF RESULT == 0
+	CLEARLINE 10
+	IF !ドワーフ周回フラグ && ドワ鍛冶사용金額 >= 500000
+		PRINTL 드워프：
+		PRINTW 「그대…그동안 우리 가게에 많이 찾아왔었지」
+		PRINTW 「어엿한 단골 손님이니, 이렇게 하지」
+		PRINTW 「이 아이템은 무기도 장비도 아니지만、갖고 있으면 손해는 없다네」
+		PRINTW 무지개 망치를 손에 넣었다　※２주차부터 대장간이 1일부터 사용가능해집니다
+		ドワーフ周回フラグ = 1
+		CLEARLINE 5
+	ENDIF
+	PRINTL 드워프：
+	PRINTL 「또보세」
+	DRAWLINE
+	PRINTL
+	PRINTL
+	PRINTL
+	DRAWLINE
+	PRINTL
+	TWAIT 2000,0
+	RETURN 0
+ELSEIF RESULT == 1
+	CALL 장비改造セット
+ELSEIF RESULT == 2
+	CALL 장비소재매각
+ELSEIF RESULT == 99
+	CALL 장비改造説明
+ELSEIF RESULT == 2000 && FLAG:DEBUG
+	FOR LOCAL,0,26
+		SIF LOCAL == 1
+			CONTINUE
+		ITEM:(248 + LOCAL) += 30
+	NEXT
+ELSE
+	CLEARLINE 1
+ENDIF
+IF RESULT == 0
+	IF !ドワーフ周回フラグ && ドワ鍛冶사용金額 >= 500000
+		PRINTL 드워프：
+		PRINTW 「그대…그동안 우리 가게에 많이 찾아왔었지」
+		PRINTW 「어엿한 단골 손님이니, 이렇게 하지」
+		PRINTW 「이 아이템은 무기도 장비도 아니지만、갖고 있으면 손해는 없다네」
+		PRINTW 무지개 망치를 손에 넣었다　※２주차부터 대장간이 1일부터 사용가능해집니다
+		ドワーフ周回フラグ = 1
+		CLEARLINE 5
+	ENDIF
+	DRAWLINE
+	PRINTL
+	PRINTL 드워프：
+	PRINTL 「또보세」
+	DRAWLINE
+	PRINTL
+	PRINTL
+	PRINTL
+	DRAWLINE
+	PRINTL
+	TWAIT 2000,0
+	RETURN 0
+ENDIF
+IF RESULT == -1
+	CUSTOMDRAWLINE =
+	GOTO SHOP_START
+ENDIF
+GOTO SHOP_START
+
+@장비소재매각
+VARSET LOCAL
+LOCAL:30 = LINECOUNT
+$LP
+CLEARLINE LINECOUNT - LOCAL:30
+PRINTL 드워프:
+PRINTL 어떤 소재를 사고 싶은건가？
+CUSTOMDRAWLINE -
+PRINTL 미타마의조각……\1000
+PRINTL 어령즙……… \10000
+PRINTL 정화즙…………\5000
+PRINTL 마정석…………\2000
+PRINTL 괘옥……………\3000
+CUSTOMDRAWLINE -
+LOCAL:30 = 0
+FOR LOCAL,0,26
+	SIF LOCAL == 1
+		CONTINUE
+	PRINTFORML %ITEMNAME:(248 + LOCAL),16,LEFT%현재:{ITEM:(248 + LOCAL),2}개　매각:{LOCAL:(LOCAL + 1),2}개[{LOCAL * 2,2}]+ [{LOCAL * 2 + 1,2}]-
+	IF LOCAL == 0
+		LOCAL:30 += 1000 * LOCAL:(LOCAL + 1)
+	ELSEIF LOCAL < 6
+		LOCAL:30 += 10000 * LOCAL:(LOCAL + 1)
+	ELSEIF LOCAL < 10
+		LOCAL:30 += 5000 * LOCAL:(LOCAL + 1)
+	ELSEIF LOCAL < 18
+		LOCAL:30 += 2000 * LOCAL:(LOCAL + 1)
+	ELSE
+		LOCAL:30 += 3000 * LOCAL:(LOCAL + 1)
+	ENDIF
+NEXT
+PRINTFORML
+PRINTFORML 매각액:{LOCAL:30}
+CUSTOMDRAWLINE =
+PRINTFORML [100]돌아간다 [200]매각
+INPUT
+IF RESULT == 2 && RESULT == 3
+ELSEIF RESULT >= 0 && RESULT < 52
+	IF RESULT % 2 == 0
+		LOCAL = RESULT / 2
+		LOCAL:(LOCAL + 1) ++
+		SIF ITEM:(248 + LOCAL) < LOCAL:(LOCAL + 1)
+			LOCAL:(LOCAL + 1) = ITEM:(248 + LOCAL)
+	ELSE
+		LOCAL = RESULT / 2
+		LOCAL:(LOCAL + 1) --
+		SIF 0 > LOCAL:(LOCAL + 1)
+			LOCAL:(LOCAL + 1) = 0
+	ENDIF
+ELSEIF RESULT == 200
+	FOR LOCAL,0,26
+		SIF LOCAL == 1
+			CONTINUE
+		SIF LOCAL:(LOCAL + 1) < 1
+			CONTINUE
+		PRINTFORML %ITEMNAME:(248 + LOCAL),16,LEFT%　{ITEM:(248 + LOCAL),2}個→{ITEM:(248 + LOCAL) - LOCAL:(LOCAL + 1),2}個
+	NEXT
+	PRINTL 드워프:
+	PRINTL 이 소재들을 사들이지
+	PRINTL 
+	PRINTFORML 매각액:{LOCAL:30}
+	CALL INPUT_YN
+	IF RESULT == 0
+		MONEY += LOCAL:30
+		FOR LOCAL,0,26
+			SIF LOCAL == 1
+				CONTINUE
+			ITEM:(248 + LOCAL) -= LOCAL:(LOCAL + 1)
+		NEXT
+		VARSET LOCAL
+	ENDIF
+ELSEIF RESULT == 100
+	RETURN -1
+ENDIF
+GOTO LP
+
+
+@장비改造説明
+$LP
+PRINTL 드워프：
+PRINTFORML 「どの항목を聞きたいんじゃ？」
+CUSTOMDRAWLINE =
+PRINTL [1]장비改造とは？
+PRINTL [2]장비改造の内容
+PRINTL [3]강화の限度
+PRINTL [4]プラスとは？
+PRINTL [5]전투능력강화とは？
+PRINTL [6]パラメータ강화とは？
+PRINTL [7]속성내성강화とは？
+PRINTL [8]バステ내성강화とは？
+PRINTL [20]軽量化とは？
+
+CUSTOMDRAWLINE =
+PRINTL [99]돌아간다
+INPUT
+
+SELECTCASE RESULT
+	CASE 1
+		PRINTL 드워프：
+		PRINTL 
+		PRINTW ここではお主の持っている장비を改造して강화できるんじゃ
+		PRINTW 장비の종류を강화しているのではなく、一つの장비を강화しておる
+		PRINTW 어택나이프を강화してもほかの어택나이프が강화していることはないぞ
+		PRINTW そして、改造した장비は인간ではないと장비ができないんじゃ
+		PRINTW 장비の강화はできるが、ワシら악마は不器用でうまく使いこなせなくての
+		PRINTW もし장비지식の持った악마がいても장비できないと깨달음えておいてくれ
+		PRINTL 
+		PRINTW …あと、セット장비のセット効果もなくなってしまうんじゃ
+		PRINTW 中にはセット効果が無くならないこともあるが…それは장비の中身次第じゃ
+	CASE 2
+		PRINTL 드워프：
+		PRINTL 
+		PRINTW それぞれ강화できる内容はこんなもんじゃ
+		PRINTL 
+		PRINTL 全共通:プラス、軽量化、힘・마력などのパラメータ6種
+		PRINTL 　　검:공격、명중、마법위력、마법효과
+		PRINTL 　　총:총공격、총명중
+		PRINTL 　防具:방어、회피、마법효과、속성내성、バステ내성
+		PRINTW
+		PRINTW 검の방어や회피を강화したり、내성を付けることはできんぞ
+	CASE 3
+		PRINTL 드워프：
+		PRINTL 
+		PRINTW 강화の限度はその장비の強さに準じておる
+		PRINTW 強い장비ほど丈남편じゃからの、壊れにくく강화しやすいんじゃ
+		PRINTL 例えば、어택나이프と귀신丸国重では
+		PRINTL 한계플러스수는　　　 1と　　　　42、
+		PRINTW 강화횟수는　　　　　 4と　　　　 9じゃ
+		PRINTW 강화는 어느 장비라도 최저 4회 할 수 있네
+		PRINTW 장비が強ければもっと強くできる、깨달음えておいてくれ
+	CASE 4
+		PRINTL 드워프：
+		PRINTL 
+		PRINTW この강화は素材は필요한く、金だけで강화できる
+		PRINTW プラス강화すれば이름の後に「+○○」が付くぞ
+		PRINTW プラス一つにつき1％장비の전투능력が上がるぞ
+		PRINTW 전투능력全てに適用されるから방어の上がる검の방어も上がるぞ
+		PRINTW 具体的にはこんな感じじゃ
+		PRINTL 
+		PRINTL 　　검:공격、명중、마법위력…+1ごとに1上がる
+		PRINTL 　　　 마법효과…………………+2ごとに1上がる
+		PRINTL 　　총:총공격、총명중…………+1ごとに1上がる
+		PRINTL 　防具:방어、회피、마법효과…+4ごとに1上がる
+		PRINTL 　　　 마법효과…………………+8ごとに1上がる
+		PRINTL 
+		; PRINTL 　　　 上記共通…………………+を최대강화で1上がる
+		; PRINTL 　　　 그외	……………………1이상あると+10ごとに1上がる(최대ボーナス無し)
+		PRINTW この効果は装備の能力が低いほどたくさん付けられぞ
+		PRINTW 能力の高い装備だと元からプラスが付かんこともあるぞい
+		PRINTW 
+	CASE 5
+		PRINTL 드워프：
+		PRINTL 
+		PRINTW この강화は강화횟수を使って장비の素の전투能力を上げていくぞ
+		PRINTW この강화はプラス강화にも影響されるぞ
+		PRINTW 소재は어령汁と浄化汁を使うぞ
+		PRINTW 両方とも어령という종족の악마を倒せば손に入る
+		PRINTL 어령汁のみを使うと能力が+10されるが
+		PRINTW 浄化汁と組み合わせると能力が+20される
+		PRINTW その代わり別の能力が-10されるがの
+		PRINTW 具体的にはこんな感じじゃ
+		PRINTL 
+		PRINTL 　　검:공격+・・・・・어령즙・황　공격-・・・・・정화즙・황
+		PRINTL 　　　 명중+・・・・・어령즙・기　명중-・・・・・정화즙・기
+		PRINTL 　　　 마법위력+・・・어령즙・화　마법위력-・・・정화즙・화
+		PRINTL 　　　 마법효과+・・・어령즙・행　마법효과-・・・정화즙・행
+		PRINTL
+		PRINTL 　　총:총공격+・・・어령즙・황、어령즙・화　총공격-・・・정화즙・황、정화즙・화
+		PRINTL        총명중+・・・어령즙・기、어령즙・행　총명중-・・・정화즙・기、정화즙・행
+		PRINTL
+		PRINTL 　防具:방어+・・・・・어령즙・황、어령즙・화
+		PRINTL        방어-・・・・・정화즙・황、정화즙・화
+		PRINTL        회피+・・・・・어령즙・기　회피-・・・・・정화즙・기
+		PRINTL        마법효과+・・・어령즙・행　마법효과-・・・정화즙・행
+		PRINTW 
+		PRINTL 검を강화するとき어령즙・황のみでは　공격+10、
+		PRINTW 어령즙・황と정화즙・화の組み合わせで공격+20、마법위력-10となる
+		PRINTW だたし、능력が9以下だと능력を下げることはできんぞ
+		PRINTW ちなみに어령즙・황と정화즙・황、
+		PRINTW 防具での어령즙・황と정화즙・화の組み合わせはできんぞ
+		PRINTW ほかにも弱化もできて강화した능력を下げ강화횟수を増やすことができる
+		PRINTW ただし、素材は戻ってこんし、弱化は浄化汁と組み合わせた강화が優先されるぞ
+		PRINTL 
+		PRINTW 어령はいつの間にか出てくるぞ。金を稼いだ時にいつの間にか出てくることもある
+		PRINTW おぬしらの技術で던전に어령を呼びだすこともできるらしいがの
+	CASE 6
+		PRINTL 드워프：
+		PRINTL 
+		PRINTW この강화は강화횟수を使って장비のパラメータを上げていくぞ
+		PRINTW パラメータとは、힘、지혜、마력、인내력、속도、운の事じゃ
+		PRINTW この강화はその능력を무기は+4、防具は+1することができるぞ
+		PRINTW 素材は미타마의조각を3つ使うぞ
+		PRINTW 어령という종족の악마を倒せば必ず손に入る
+		PRINTW ほかにも弱化もできて강화した능력を下げ강화횟수を増やすことができるぞ
+		PRINTW ただし、素材は戻ってこんし、강화した능력だけじゃ。勘違いする出ないぞ
+		PRINTL 
+		PRINTW 어령はいつの間にか出てくるぞ。金を稼いだ時にいつの間にか出てくることもある
+		PRINTW おぬしらの技術で던전に어령を呼びだすこともできるらしいがの
+	CASE 7
+		PRINTL 드워프：
+		PRINTL 
+		PRINTW この강화は강화횟수を使って속성내성を上げていくぞ
+		PRINTW 검격～핵열までの17종류の내성を付けることができる
+		PRINTW 一回강화するごとに+20の내성が付くぞ。
+		PRINTW ただし、내성と弱点だけだし、내성は無効まで、弱点は等倍までじゃ
+		PRINTW 防具だけ강화することができる。검や총のは上げれんぞ
+		PRINTW 소재は卦玉という特殊な소재を使う、全部で8종류あるぞ
+		PRINTL
+		PRINTL 적색구슬・이위화、청색구슬・태위택、황색구슬・진위뢰、녹색구슬・간위산
+		PRINTL 갈색구슬・곤위지、남색구슬・감위수、취색구슬・손위풍、자색구슬・건위천
+		PRINTL
+		PRINTW これらの소재を필요とするんじゃ
+		PRINTW 강화の組み合わせはこんな感じじゃ
+		PRINTL 
+		PRINTL 검격　적색구슬・이위화×1　청색구슬・태위택×1　황색구슬・진위뢰×1
+		PRINTL 비구　청색구슬・태위택×1　녹색구슬・간위산×1　남색구슬・감위수×1
+		PRINTL 타격　황색구슬・진위뢰×1　취색구슬・손위풍×1　갈색구슬・곤위지×1
+		PRINTL 전술　적색구슬・이위화×1　갈색구슬・곤위지×1　녹색구슬・간위산×1
+		PRINTL 화염　적색구슬・이위화×2
+		PRINTL 빙결　청색구슬・태위택×2
+		PRINTL 전격　황색구슬・진위뢰×2
+		PRINTL 충격　녹색구슬・간위산×2
+		PRINTL 신경　황색구슬・진위뢰×1　남색구슬・감위수×1　자색구슬・건위천×1
+		PRINTL 정신　녹색구슬・간위산×1　자색구슬・건위천×1　갈색구슬・곤위지×1
+		PRINTL 파마　남색구슬・감위수×1　취색구슬・손위풍×1　적색구슬・이위화×1
+		PRINTL 주살　청색구슬・태위택×1　자색구슬・건위천×1　취색구슬・손위풍×1
+		PRINTL 지변　갈색구슬・곤위지×2
+		PRINTL 수격　남색구슬・감위수×2
+		PRINTL 질풍　취색구슬・손위풍×2
+		PRINTL 중력　자색구슬・건위천×2
+		PRINTL 핵열　적색구슬・이위화×1　자색구슬・건위천×1
+		PRINTL 
+		PRINTW 
+		PRINTW 속성내성강화はバステ내성강화含めて5回までしかできんぞ
+		PRINTW ほかにも弱化もできて강화した내성を下げ강화횟수を増やすことができるぞ
+		PRINTW ただし、소재は戻ってこんし、강화した내성だけじゃ。勘違いする出ないぞ
+		PRINTL 
+		PRINTW 卦玉はラグが持っておるぞ
+		PRINTW もちろん、宝石をもっていかんと손に入らんぞ
+	CASE 8
+		PRINTL 드워프：
+		PRINTL 
+		PRINTW この강화は강화횟수を使って상태이상내성を上げていくぞ
+		PRINTW 17종류の상태이상내성を付けることができる。HEAT等の意味のないものは除いてあるぞ
+		PRINTW 一回강화するごとに+50の내성が付くぞ
+		PRINTW ただし、防具だけじゃ。검や총のは上げれんぞ
+		PRINTW 소재は마정石という特殊な소재を使う、全部で8종류あるぞ
+		PRINTL 
+		PRINTL 묘목석、호목석、황수정、홍수정
+		PRINTL 공작석、비취  、감람석、마노
+		PRINTL
+		PRINTW これらの소재を필요とするんじゃ
+		PRINTW 강화の組み合わせはこんな感じじゃ
+		PRINTL 
+		PRINTL HAPPY   묘목석×2
+		PRINTL SHOCK   묘목석×1　호목석×1
+		PRINTL PANIC   공작석×1　황수정×1　묘목석×1
+		PRINTL SLEEP   마노×2
+		PRINTL FREEZE  황수정×1　홍수정×1
+		PRINTL BIND    마노×1　　묘목석×1　홍수정×1
+		PRINTL CLOSE   마노×1　　묘목석×1　홍수정×1
+		PRINTL POISON  홍수정×2
+		PRINTL BOMB    황수정×2
+		PRINTL CHARM   감람석×1　비취×1　　호목석×1
+		PRINTL PALYZE  감람석×1　호목석×1　황수정×1
+		PRINTL CURSE   비취×2
+		PRINTL STONE   공작석×1　마노×1　　호목석×1
+		PRINTL DYING   감람석×1　비취×1　　마노×1
+		PRINTL FLAME   공작석×2
+		PRINTL SLIP    공작석×1　비취×1
+		PRINTL BRAND   감람석×2
+		PRINTW 
+		PRINTW バステ내성강화は속성내성강화含めて5回までしかできんぞ
+		PRINTW ほかにも弱化もできて강화した내성を下げ강화횟수を増やすことができるぞ
+		PRINTW ただし、소재は戻ってこんし、강화した내성だけじゃ。勘違いする出ないぞ
+		PRINTL 
+		PRINTW これらの소재は炭鉱で노역すると손に入るぞ
+		PRINTW 働く者の지혜や마력、운が高いと손に入りやすいぞ
+	CASE 20
+		PRINTL 드워프：
+		PRINTL 
+		PRINTW この강화は소재は필요なく、金だけで강화できる
+		PRINTW 강화횟수を使って레벨や性別などの장비조건を緩くすることができるぞ
+		PRINTW 강화できるのはこんな感じじゃ
+		PRINTL 
+		PRINTL 필요레벨　　 -10（重ね掛け可能）
+		PRINTL 필요パラメータ -10（重ね掛け可能）
+		PRINTL 男女性別無視
+		PRINTL LD,LC속성무시
+		PRINTW 
+		PRINTW もちろん軽量化の해제もできるぞ
+		PRINTW ただし、장비を外していないと軽量化はできん、面倒だと思うがそこはよろしく頼むぞ
+ENDSELECT
+SIF RESULT == 99
+	RETURN -1
+GOTO LP
+
+@장비改造セット
+$LP
+PRINTL 드워프：
+PRINTFORML 「어떤 부위를 개조하고 싶은가？」
+;FOR LOCAL,0,60
+;	IF LOCAL % 10 == 0
+;		PRINTFORML 
+;		PRINTFORML %GET_EQUIP(LOCAL / 10)%
+;	ENDIF
+;	PRINTFORM [{LOCAL}]
+;	IF ベース장비番号:LOCAL < 1
+;		SETCOLOR 0x999999
+;		PRINTFORML 未セット
+;		RESETCOLOR
+;	ELSE
+;		PRINTFORM %개조장비명칭(LOCAL)%
+;		SIF ITEM:(개조장비아이템ナンバー(LOCAL)) < 1 && EQUIPMENT_COUNT(개조장비아이템ナンバー(LOCAL)) < 1
+;			PRINT （紛失）
+;		PRINTL
+;	ENDIF
+;NEXT
+;------ ADD 002 -------CALL SET_PICTURE , , , "消去"
+CALL SET_PICTURE , , , "소거"
+LOCAL:1 = 0
+FOR LOCAL,0,60
+	SIF LOCAL == 30
+		LOCAL:1 = 0
+	IF LOCAL % 10 == 0
+		CALL SET_PICTURE , "　　" , LOCAL:1 ++ , , LOCAL/30*40
+		CALL SET_PICTURE , GET_EQUIP(LOCAL / 10) , LOCAL:1 ++ , , LOCAL/30*40
+	ENDIF
+	;PRINTFORM [{LOCAL,2}]
+	CALL SET_PICTURE , @"[{LOCAL,2}]" , LOCAL:1 , , LOCAL/30*40
+	LOCAL:2 = 4
+	IF ベース장비番号:LOCAL < 1
+		CALL SET_PICTURE , @"_未セット,{COLOR("DARK-GRAY")}_" , LOCAL:1 ++ , , LOCAL/30*40+LOCAL:2
+	ELSE
+		IF ITEM:(개조장비아이템ナンバー(LOCAL)) < 1 && EQUIPMENT_COUNT(개조장비아이템ナンバー(LOCAL)) < 1
+			CALL SET_PICTURE , @"_紛失,{COLOR("RED")}_" , LOCAL:1 , , LOCAL/30*40+LOCAL:2
+			LOCAL:2 += 4
+		ENDIF
+		CALL SET_PICTURE , 개조장비명칭(LOCAL) , LOCAL:1 ++ , , LOCAL/30*40+LOCAL:2
+	ENDIF
+NEXT
+CALL SET_PICTURE ,  , 0 , "표시" , LOCAL:1
+DRAWLINE
+PRINTL [99]돌아간다
+PRINTL [100]가게를 나온다
+INPUT
+
+SIF -1 < RESULT && RESULT < 60
+	CALL 장비改造,RESULT
+SIF RESULT == 99
+	RETURN -1
+SIF RESULT == 100
+	RETURN 0
+GOTO LP
+
+
+@장비改造,ARG
+$LP
+IF ベース장비番号:ARG < 1
+	PRINTL 드워프：
+	PRINTFORML 어떤 장비를 개조하고 싶은가？
+	CUSTOMDRAWLINE =
+	PRINTFORML 　　　　　　　　　　　　　　　　　　　플러스상한　강화횟수상한
+	;         ;[0000]　　　　　　　　　　　　　　　　****+***XX****+****+XX****+****+**XX
+	FOR LOCAL,2000,5000
+		SIF 마정장비(LOCAL)
+			CONTINUE
+		SIF 개조장비(LOCAL)
+			CONTINUE
+		SIF !ITEM:LOCAL
+			CONTINUE
+			
+		TRYCCALLFORM 장비箇所_{LOCAL}
+			SIF (ARG / 10) != RESULT
+				CONTINUE
+			LOCAL:2 = RESULT
+		CATCH
+			CONTINUE
+		ENDCATCH
+		TRYCCALLFORM 필요레벨_{LOCAL}
+			LOCAL:1 = RESULT
+			SIF !LOCAL:1
+				LOCAL:1 = 1
+			SIF 99 < LOCAL:1
+				LOCAL:1 = 99
+		CATCH
+			LOCAL:1 = 1
+		ENDCATCH
+		CALL 플러스상한(LOCAL)
+		LOCAL:3 = RESULT	
+
+		PRINTFORM [{LOCAL}]%ITEMNAME:LOCAL,32,LEFT%
+		PRINTFORM {LOCAL:1,10}
+		PRINTFORM {LOCAL:3,12}
+		;IF ARG < 20
+		;	PRINTFORM {LOCAL:1 / 5 + 1,14}
+		;ELSE
+		;	PRINTFORM {LOCAL:1 / 20 + 1,14}
+		;ENDIF
+		PRINTFORM {MAX(LOCAL:1 / 5 + 1, 4), 14}
+		PRINTFORML
+	NEXT
+	CUSTOMDRAWLINE =
+	PRINTL [99]돌아간다
+	PRINTL [100]가게를 나온다
+	INPUT
+	SIF RESULT == 99
+		RETURN 0
+	SIF RESULT == 100
+		RETURN 100
+		
+	SIF 마정장비(RESULT)
+		GOTO LP
+	SIF 개조장비(RESULT)
+		GOTO LP
+	SIF !ITEM:RESULT
+		GOTO LP
+	
+	LOCAL = ARG / 10
+	LOCAL:3 = RESULT
+	TRYCCALLFORM 장비箇所_{LOCAL:3}
+		LOCAL:2 = RESULT
+	CATCH
+		LOCAL:2 = 99
+	ENDCATCH
+		TRYCCALLFORM 필요레벨_{LOCAL:3}
+			LOCAL:4 = RESULT
+			SIF !LOCAL:4
+				LOCAL:4 = 1
+		CATCH
+			LOCAL:4 = 1
+		ENDCATCH
+	CALL 플러스상한(LOCAL:3)
+	LOCAL:5 = RESULT
+	;PRINTFORML {ITEM:(LOCAL:3)}	{LOCAL}	{LOCAL:2}
+	IF ITEM:(LOCAL:3) && LOCAL == LOCAL:2
+		CUSTOMDRAWLINE =
+		PRINTFORML 개조する장비:%ITEMNAME:(LOCAL:3)%
+		PRINTFORML 필요레벨:{LOCAL:4}
+		PRINTFORM 플러스상한:{LOCAL:4}　강화횟수上限:
+		;IF ARG < 20
+		;	PRINTFORML {LOCAL:4 / 5 + 1}
+		;ELSE
+		;	PRINTFORML {LOCAL:4 / 20 + 1}
+		;ENDIF
+		PRINTFORML {MAX(LOCAL:4 / 5 + 1, 4)}
+		PRINTL 드워프：
+		PRINTFORML 이 장비로 하겠나？
+		PRINTL [0]네　　[1]아니오
+		INPUT
+		IF !RESULT
+			ベース장비番号:ARG = LOCAL:3
+			ITEM:(LOCAL:3) --
+			ITEM:(개조장비아이템ナンバー(ARG)) ++
+			개조장비名:ARG = %ITEMNAME:(LOCAL:3)%
+		ENDIF
+	ENDIF
+	SIF ベース장비番号:ARG < 1
+		GOTO LP
+ENDIF
+;LOCAL:0　장비箇所
+;LOCAL;1　장비레벨
+;LOCAL;2　강화횟수
+;LOCAL:3　개조장비아이템ナンバー
+
+LOCAL:3 = 개조장비아이템ナンバー(ARG)
+TRYCCALLFORM 필요레벨_{LOCAL:3}
+	LOCAL:1 = RESULT
+	SIF !LOCAL:1
+		LOCAL:1 = 1
+	SIF 99 < LOCAL:1
+		LOCAL:1 = 99
+CATCH
+	LOCAL:1 = 1
+ENDCATCH
+
+TRYCCALLFORM 장비箇所_{LOCAL:3}
+	LOCAL = RESULT
+	;IF 1 < RESULT
+	;	LOCAL:2 = LOCAL:1 / 20 + 1
+	;ELSE
+	;	LOCAL:2 = LOCAL:1 / 5 + 1
+	;ENDIF
+	LOCAL:2 = MAX(LOCAL:1 / 5 + 1, 4)
+CATCH
+ENDCATCH
+		
+
+PRINTL 
+PRINTL 드워프：
+PRINTFORML 어떤 개조를 하겠는가？
+CUSTOMDRAWLINE =
+PRINTFORML %개조장비명칭(ARG)%
+PRINTFORML
+	IF LOCAL == 1
+		CALLFORM 총공격_{LOCAL:3}
+		PRINTFORM 　총공격:{RESULT,4,LEFT}　　
+		CALLFORM 총명중_{LOCAL:3}
+		PRINTFORM 　총명중:{RESULT,4,LEFT}　　
+		PRINTFORML
+		PRINTFORML
+	ENDIF
+	FOR LOCAL:4,0,FLAG:전투능력数
+		PRINTFORM %GET_BATTLESTATUS(LOCAL:4),8%:
+		CALLFORM 전투능력수정_{LOCAL:3},LOCAL:4
+		IF RESULT == 0
+			SETCOLOR 0x404040
+		ELSEIF RESULT < 0
+			SETCOLOR 0xEE1010
+		ENDIF
+		PRINTFORM {RESULT,4,LEFT}　　
+		RESETCOLOR
+		SIF LOCAL:4 == 2
+			PRINTFORML
+	NEXT
+	PRINTFORML
+	PRINTFORML
+	FOR LOCAL:4,1,FLAG:기본능력수
+		PRINTFORM %GET_BASESTATUS(LOCAL:4),4%:
+		CALLFORM 기본능력수정_{LOCAL:3},LOCAL:4
+		IF RESULT == 0
+			SETCOLOR 0x404040
+		ELSEIF RESULT < 0
+			SETCOLOR 0xEE1010
+		ENDIF
+		PRINTFORM {RESULT,4,LEFT}　
+		RESETCOLOR
+	NEXT
+	PRINTFORML
+	IF LOCAL > 1
+		CUSTOMDRAWLINE -
+		FOR LOCAL:4,0,FLAG:相性数-1
+			PRINTFORM %GET_TYPE(LOCAL:4),4,LEFT%
+			CALLFORM 방어상성_{LOCAL:3},LOCAL:4
+			CALL SET_AISYOU_COLOR, RESULT
+			IF RESULT == 999
+				PRINT 　반사　
+			ELSE
+				PRINTFORM  %\@(RESULT < 0) ? 吸 # 　\@%{ABS(RESULT),3}　
+			ENDIF
+			RESETCOLOR
+			SIF LOCAL:4 % 4 == 3
+				PRINTFORML
+		NEXT
+		PRINTFORML
+		CUSTOMDRAWLINE -
+		LOCAL:5 = 0
+		TRYCCALLFORM バステ내성_{LOCAL:3},0
+			FOR LOCAL:4,1,FLAG:ステート数
+				TRYCCALLFORM バステ내성_{LOCAL:3},LOCAL:4
+					SIF RESULT == 0
+						CONTINUE
+					PRINTFORM %GET_STATE(LOCAL:4),8,LEFT%:{100+RESULT,3}％　
+					SIF LOCAL:5 % 4 == 3
+						PRINTL 
+					LOCAL:5 ++
+				CATCH
+				ENDCATCH
+			NEXT
+			PRINTL
+		CATCH
+		ENDCATCH
+	ENDIF
+CUSTOMDRAWLINE -
+
+PRINTFORML 남은 강화횟수:{LOCAL:2 - 강화횟수:ARG}
+PRINTL [0]이름변경
+PRINTL [1]플러스 상한 증가(강화횟수 사용 안함)
+PRINTL [2]전투능력강화
+PRINTL [3]패러미터 상승 강화
+IF LOCAL > 1
+	PRINTL [4]속성내성강화
+	PRINTL [5]스테이터스내성강화
+ENDIF
+PRINTL [20]경량화
+PRINTL
+PRINTL [90]개조장비해제
+CUSTOMDRAWLINE =
+PRINTL [99]돌아간다
+PRINTL [100]가게를 나온다
+INPUT
+SIF RESULT == 0
+	CALL 개조장비명칭변경,ARG
+SIF RESULT == 1
+	CALL プラス増加,ARG,LOCAL:1
+SIF RESULT == 2
+					;No   箇所　강화횟수
+	CALL 전투능력강화,ARG,LOCAL,LOCAL:2,LOCAL:1
+SIF RESULT == 3
+	CALL パラメータ강화,ARG,LOCAL:3,LOCAL:2,LOCAL:1
+SIF RESULT == 4 && LOCAL > 1
+	CALL 속성내성강화,ARG,LOCAL:3,LOCAL:2,LOCAL:1
+SIF RESULT == 5 && LOCAL > 1
+	CALL バステ내성강화,ARG,LOCAL:3,LOCAL:2,LOCAL:1
+SIF RESULT == 20
+	CALL 軽量化,ARG,LOCAL:3,LOCAL:2,LOCAL:1
+SIF RESULT == 90
+	CALL 개조장비해제選択,ARG
+SIF RESULT == 99
+	RETURN 0
+SIF RESULT == 100
+	RETURN 100
+
+GOTO LP
+
+
+@개조장비명칭변경,ARG
+PRINTL 개조장비의 이름을 입력하세요
+INPUTS
+IF RESULTS == ""
+	LOCALS = %ITEMNAME:(ベース장비番号:ARG)%
+ELSE
+	LOCALS = %RESULTS%
+ENDIF
+PRINTFORML 장비명:%LOCALS%
+PRINTL 이걸로 괜찮겠습니까？
+CALL INPUT_YN
+SIF RESULT == 0
+	개조장비名:ARG = %LOCALS%
+RETURN 200
+
+@プラス増加,ARG,ARG:1
+#DIM L_MAXP
+CALL 플러스상한,ベース장비番号:ARG
+L_MAXP = RESULT
+IF ARG:1 <= プラス数:ARG || L_MAXP <= プラス数:ARG
+	PRINTFORMW 드워프：안됐지만、이 이상은 불가능하네
+	RETURN 200
+ENDIF
+LOCAL = 0
+$LP
+PRINTFORML 드워프：얼마나 늘리겠는가？
+PRINTL
+PRINTFORML [-10][-1] {LOCAL,2} [+1][+10]
+PRINTL
+PRINTFORML 소지금:{MONEY}
+PRINTFORM 　금액:
+LOCAL:2 = 0
+FOR LOCAL:1,プラス数:ARG,プラス数:ARG + LOCAL
+	LOCAL:3 = (ARG:1 * ARG:1 / 10) * (LOCAL:1 + 1) / 4 + (LOCAL:1 + 1) * 10
+	; IF ARG < 20
+		LOCAL:2 += LOCAL:3
+	; ELSE
+	; 	LOCAL:2 += LOCAL:3 / 4
+	; ENDIF
+NEXT
+PRINTFORML {LOCAL:2}
+CUSTOMDRAWLINE =
+PRINTL [20]강화한다　[200]돌아간다
+INPUT
+SELECTCASE RESULT
+	CASE -1,-10
+		LOCAL += RESULT
+		SIF LOCAL < 0
+			LOCAL = 0
+		CLEARLINE 9
+		GOTO LP
+	CASE 1,10
+		LOCAL += RESULT
+		SIF LOCAL + プラス数:ARG > L_MAXP
+			LOCAL = L_MAXP - プラス数:ARG
+		CLEARLINE 9
+		GOTO LP
+	CASE 20
+		SIF !LOCAL
+			RETURN 200
+		IF MONEY < LOCAL:2
+			PRINTFORMW 드워프：돈이 모자라는군
+			CLEARLINE 10
+			GOTO LP
+		ELSE
+			PRINTFORML 드워프：￥{LOCAL:2}으로 플러스 횟수를 늘릴 수 있네（강화횟수는 늘어나지 않습니다）
+			CALL INPUT_YN
+			IF RESULT == 0
+				MONEY -= LOCAL:2
+				ドワ鍛冶사용金額 += LOCAL:2
+				プラス数:ARG += LOCAL
+				RETURN 200
+			ENDIF
+		ENDIF
+ENDSELECT
+RETURN 200
+
+;플러스상한(ベース장비番号:ARG)
+@플러스상한,ARG
+;ARG	アイテム番号
+#DIM E_LV
+#DIM E_SUM
+#DIM L_COUNT
+
+E_SUM = 0
+FOR L_COUNT,0,6
+	CALLFORM 전투능력수정_{ARG},L_COUNT
+	E_SUM += RESULT
+NEXT
+E_LV = 1
+TRYCALLFORM 필요레벨_{ARG}
+E_LV = MAX(MIN(99,RESULT),1)
+
+CALLFORM 장비箇所_{ARG}
+SELECTCASE RESULT
+CASE GET_EQUIPNUM("검")
+	LOCAL = (1440 + E_LV * 62) / 10
+	LOCAL:1 = (LOCAL - E_SUM) * 2 / 7
+CASE GET_EQUIPNUM("머리")
+	LOCAL = (210 + E_LV * 8) / 10
+	LOCAL:1 = (LOCAL - E_SUM) * 2 / 5
+CASE GET_EQUIPNUM("몸통")
+	LOCAL = (302 + E_LV * 12) / 10
+	LOCAL:1 = (LOCAL - E_SUM) * 2 / 5
+CASE GET_EQUIPNUM("팔")
+	LOCAL = (190 + E_LV * 8) / 10
+	LOCAL:1 = (LOCAL - E_SUM) * 2 / 5
+CASE GET_EQUIPNUM("발")
+	LOCAL = (250 + E_LV * 9) / 10
+	LOCAL:1 = (LOCAL - E_SUM) * 2 / 5
+CASE GET_EQUIPNUM("총")
+	CALLFORM 총공격_{ARG}
+	E_SUM += RESULT
+	CALLFORM 총명중_{ARG}
+	E_SUM += RESULT
+	CALLFORM 총타입_{ARG}
+	SELECTCASE RESULT
+	CASE 1
+		LOCAL = (1063 + E_LV * 37) / 10
+	CASE 2
+		LOCAL = (1059 + E_LV * 41) / 10
+	CASE 3
+		LOCAL = (583 + E_LV * 27) / 10
+	CASE 4
+		LOCAL = (1436 + E_LV * 43) / 10
+	CASEELSE
+		LOCAL = (705 + E_LV * 24) / 10
+	ENDSELECT
+	LOCAL:1 = LOCAL - E_SUM / 2
+ENDSELECT
+RETURN MIN(MAX(0,LOCAL:1),MAX(20,E_LV))
+	
+@능력상한,ARG
+;ARG	アイテム番号
+#LOCALSIZE 8
+#DIM E_LV
+VARSET LOCAL
+E_LV = 1
+TRYCALLFORM 필요레벨_{ARG}
+E_LV = MAX(MIN(99,RESULT),1)
+
+CALLFORM 장비箇所_{ARG}
+SELECTCASE RESULT
+CASE GET_EQUIPNUM("검")
+	LOCAL:0 = (474 + E_LV * 26) / 10
+	LOCAL:1 = (435 + E_LV * 15) / 10
+	LOCAL:4 = (474 + E_LV * 26) / 10
+	LOCAL:5 = (199 + E_LV *  9) / 10
+CASE GET_EQUIPNUM("머리")
+	LOCAL:2 = (86 + E_LV * 3) / 10 + (E_LV / 99)
+	LOCAL:3 = (57 + E_LV * 2) / 10 + (E_LV / 49)
+	LOCAL:5 = (67 + E_LV * 3) / 10
+CASE GET_EQUIPNUM("몸통")
+	LOCAL:2 = (163 + E_LV * 6) / 10 + (E_LV / 24)
+	LOCAL:3 = (115 + E_LV * 4) / 10 + (E_LV / 24)
+	LOCAL:5 = (31  + E_LV * 1) / 10 + (E_LV / 19)
+CASE GET_EQUIPNUM("팔")
+	LOCAL:2 = (96 + E_LV * 4) / 10
+	LOCAL:3 = (57 + E_LV * 2) / 10 + (E_LV / 49)
+	LOCAL:5 = (31 + E_LV * 1) / 10 + (E_LV / 19)
+CASE GET_EQUIPNUM("발")
+	LOCAL:2 = (67  + E_LV * 2) / 10 + (E_LV / 33)
+	LOCAL:3 = (143 + E_LV * 6) / 10 + (E_LV / 49)
+	LOCAL:5 = (31  + E_LV * 1) / 10 + (E_LV / 19)
+CASE GET_EQUIPNUM("총")
+	CALLFORM 총타입_{ARG}
+	SELECTCASE RESULT
+	CASE 1
+		LOCAL:6 = (507 + E_LV * 22) / 10
+		LOCAL:7 = (565 + E_LV * 15) / 10
+	CASE 2
+		LOCAL:6 = (600 + E_LV * 26) / 10
+		LOCAL:7 = (465 + E_LV * 15) / 10
+	CASE 3
+		LOCAL:6 = (277 + E_LV * 12) / 10
+		LOCAL:7 = (315 + E_LV * 15) / 10
+	CASEELSE
+		LOCAL:6 = (230 + E_LV * 10) / 10
+		LOCAL:7 = (465 + E_LV * 15) / 10
+	ENDSELECT
+ENDSELECT
+RETURN LOCAL:0,LOCAL:1,LOCAL:2,LOCAL:3,LOCAL:4,LOCAL:5,LOCAL:6,LOCAL:7
+
+
+@전투능력강화,ARG,ARG:1,ARG:2,ARG:3
+;ARG:0 No
+;ARG:1 箇所
+;ARG:2 강화횟수
+;ARG:3 必要レベル
+#DIM L_MAXREI,8 ;能力ごとの강화条件
+#DIM L_MAXP		;플러스상한
+#DIM L_BPOS		;ビット演算で可不可検索
+
+CALL 플러스상한,ベース장비番号:ARG
+L_MAXP = RESULT
+
+;LOCAL:0~7 素能力
+;LOCAL:10  色々
+;LOCAL:11  ライン
+;LOCAL:12  사용아이템
+;LOCAL:13  上昇能力
+;LOCAL:14  사용아이템2
+;LOCAL:15  下降能力
+IF ARG:1 == 1
+	CALLFORM 총공격_{ベース장비番号:ARG}
+	LOCAL:6 = RESULT
+	CALLFORM 총명중_{ベース장비番号:ARG}
+	LOCAL:7 = RESULT
+ENDIF
+FOR LOCAL:10,0,6
+	CALLFORM 전투능력수정_{ベース장비番号:ARG},LOCAL:10
+	LOCAL:(LOCAL:10) = RESULT
+NEXT
+
+VARSET L_MAXREI
+CALL 능력상한,ベース장비番号:ARG
+IF ARG:1 == 0
+	L_MAXREI:0 = (RESULT:0 -(LOCAL:0 + L_MAXP)) / 10 + (((RESULT:0 -(LOCAL:0 + L_MAXP)) % 10) > 0)
+	L_MAXREI:1 = (RESULT:1 -(LOCAL:1 + L_MAXP)) / 10 + (((RESULT:1 -(LOCAL:1 + L_MAXP)) % 10) > 0)
+	L_MAXREI:4 = (RESULT:4 -(LOCAL:4 + L_MAXP)) / 10 + (((RESULT:4 -(LOCAL:4 + L_MAXP)) % 10) > 0)
+	L_MAXREI:5 = (RESULT:5 -(LOCAL:5 + L_MAXP/2))/10 + (((RESULT:5 -(LOCAL:5 + L_MAXP/2)) % 10) > 0)
+ELSEIF ARG:1 == 1
+	L_MAXREI:6 = (RESULT:6 -(LOCAL:6 + L_MAXP)) / 10 + (((RESULT:6 -(LOCAL:6 + L_MAXP)) % 10) > 0)
+	L_MAXREI:7 = (RESULT:7 -(LOCAL:7 + L_MAXP)) / 10 + (((RESULT:7 -(LOCAL:7 + L_MAXP)) % 10) > 0)
+ELSE
+	L_MAXREI:2 = (RESULT:2 -(LOCAL:2 + L_MAXP)) / 5 + (((RESULT:2 -(LOCAL:2 + L_MAXP)) % 5) > 0)
+	L_MAXREI:3 = (RESULT:3 -(LOCAL:3 + L_MAXP)) / 5 + (((RESULT:3 -(LOCAL:3 + L_MAXP)) % 5) > 0)
+	L_MAXREI:5 = (RESULT:5 -(LOCAL:5 + L_MAXP/2))/5 + (((RESULT:5 -(LOCAL:5 + L_MAXP/2)) % 5) > 0)
+ENDIF
+
+
+
+;能力値(素)　공격:1111　명중:1111　魔威:1111　魔効:1111
+;강화能力値　공격:1111　명중:1111　魔威:1111　魔効:1111
+LOCAL:11 = LINECOUNT
+$LP
+LOCAL:12 = 0
+LOCAL:13 = -1
+LOCAL:14 = 0
+LOCAL:15 = -1
+L_BPOS = 0
+IF ARG:1 == 1
+	CALLFORM 총공격_{개조장비아이템ナンバー(ARG)}
+	LOCAL:6 = RESULT
+	CALLFORM 총명중_{개조장비아이템ナンバー(ARG)}
+	LOCAL:7 = RESULT
+ELSE
+	FOR LOCAL:10,0,6
+		CALLFORM 전투능력수정_{개조장비아이템ナンバー(ARG)},LOCAL:10
+		LOCAL:(LOCAL:10) = RESULT
+	NEXT
+ENDIF
+CLEARLINE LINECOUNT - LOCAL:11
+
+PRINTL 드워프：어떤 능력을 강화하겠는가？
+CUSTOMDRAWLINE =
+PRINTFORML 소지금　　　　{MONEY}
+PRINTFORML 강화비용　　　{ARG:3 * 500}
+PRINTFORML 남은 강화횟수　{ARG:2 - 강화횟수:ARG}
+CUSTOMDRAWLINE -
+FOR LOCAL:10,0,8
+	PRINTFORM %ITEMNAME:(250 + LOCAL:10)% {ITEM:(250 + LOCAL:10),2}個　
+	SIF LOCAL:10 % 4 == 3
+		PRINTL
+NEXT
+FOR LOCAL:10,1,5
+	IF ITEM:(249 + LOCAL:10) > 0
+		FOR LOCAL:9,1,5
+			SIF ITEM:(253 + LOCAL:9) > 0
+				SETBIT L_BPOS,LOCAL:10 * 10 + LOCAL:9
+		NEXT
+	ENDIF
+NEXT
+
+CUSTOMDRAWLINE -
+PRINT 능력치(소)　
+IF ARG:1 == 0
+	FOR LOCAL:10,0,6
+		SIF LOCAL:10 == 2 || LOCAL:10 == 3
+			CONTINUE
+		SIF LOCAL:10 == 0
+			LOCAL:9 = 1
+		SIF LOCAL:10 == 1
+			LOCAL:9 = 3
+		SIF LOCAL:10 == 4
+			LOCAL:9 = 2
+		SIF LOCAL:10 == 5
+			LOCAL:9 = 4
+		PRINTFORM %GET_BATTLESTATUS(LOCAL:10)%:
+		SIF 能力値강화:ARG:(LOCAL:10) > 0
+			SETCOLOR 0x0099cc
+		SIF 能力値강화:ARG:(LOCAL:10) < 0
+			SETCOLOR COLOR("ピンク")
+		SIF LOCAL:(LOCAL:10) < 10
+			SETCOLOR 0xEE1010
+		SIF 能力値강화:ARG:(LOCAL:10) >= L_MAXREI:(LOCAL:10)
+			SETCOLOR COLOR("黄色")
+		IF 能力値강화:ARG:(LOCAL:10) > 0 || LOCAL:(LOCAL:10) < 10
+			CLEARBIT L_BPOS,10 + LOCAL:9
+			CLEARBIT L_BPOS,20 + LOCAL:9
+			CLEARBIT L_BPOS,30 + LOCAL:9
+			CLEARBIT L_BPOS,40 + LOCAL:9
+		ENDIF
+		IF 能力値강화:ARG:(LOCAL:10) < 0 || 能力値강화:ARG:(LOCAL:10) >= L_MAXREI:(LOCAL:10)
+			CLEARBIT L_BPOS,LOCAL:9 * 10 + 1
+			CLEARBIT L_BPOS,LOCAL:9 * 10 + 2
+			CLEARBIT L_BPOS,LOCAL:9 * 10 + 3
+			CLEARBIT L_BPOS,LOCAL:9 * 10 + 4
+		ENDIF
+		PRINTFORM {LOCAL:(LOCAL:10),4}　
+		RESETCOLOR
+	NEXT
+	PRINTL
+	; PRINT 능력상승치　
+	; FOR LOCAL:10,0,6
+	; 	SIF LOCAL:10 == 2 || LOCAL:10 == 3
+	; 		CONTINUE
+	; 	PRINTFORM %GET_BATTLESTATUS(LOCAL:10)%:
+	; 	IF 能力値강화:ARG:(LOCAL:10) < 0
+	; 		SETCOLOR 0xEE1010
+	; 	ELSEIF 能力値강화:ARG:(LOCAL:10) > 0
+	; 		SETCOLOR 0x0099cc
+	; 	ENDIF
+	; 	PRINTFORM {能力値강화:ARG:(LOCAL:10) * 10,4}　
+	; 	RESETCOLOR
+	; NEXT
+	; PRINTL
+	CUSTOMDRAWLINE -
+	PRINTL 필요아이템
+	PRINTL 공격+・・・・・어령즙・황　공격-・・・・・정화즙・황
+	PRINTL 명중+・・・・・어령즙・기　명중-・・・・・정화즙・기
+	PRINTL 마법위력+・・・어령즙・화　마법위력-・・・정화즙・화
+	PRINTL 마법효과+・・・어령즙・행　마법효과-・・・정화즙・행
+	CUSTOMDRAWLINE -
+	SIF GETBIT(L_BPOS,13)
+		PRINT [13]공격+10　　 명중-10　　 
+	SIF GETBIT(L_BPOS,12)
+		PRINT [12]공격+10　　 마법위력-10 
+	SIF GETBIT(L_BPOS,14)
+		PRINT [14]공격+10　　 마법효과-10 
+	SIF GETBIT(L_BPOS,12) || GETBIT(L_BPOS,13) || GETBIT(L_BPOS,14)
+		PRINTL
+
+	SIF GETBIT(L_BPOS,31)
+		PRINT [31]명중+10　　 공격-10　　 
+	SIF GETBIT(L_BPOS,32)
+		PRINT [32]명중+10　　 마법위력-10 
+	SIF GETBIT(L_BPOS,34)
+		PRINT [34]명중+10　　 마법효과-10 
+	SIF GETBIT(L_BPOS,31) || GETBIT(L_BPOS,32) || GETBIT(L_BPOS,34)
+		PRINTL
+		
+	SIF GETBIT(L_BPOS,21)
+		PRINT [21]마법위력+10 공격-10　　 
+	SIF GETBIT(L_BPOS,23)
+		PRINT [23]마법위력+10 명중-10　　 
+	SIF GETBIT(L_BPOS,24)
+		PRINT [24]마법위력+10 마법효과-10 
+	SIF GETBIT(L_BPOS,21) || GETBIT(L_BPOS,23) || GETBIT(L_BPOS,24)
+		PRINTL
+			
+	SIF GETBIT(L_BPOS,41)
+		PRINT [41]마법효과+10 공격-10　　 
+	SIF GETBIT(L_BPOS,43)
+		PRINT [43]마법효과+10 명중-10　　 
+	SIF GETBIT(L_BPOS,42)
+		PRINT [42]마법효과+10 마법위력-10 
+	SIF GETBIT(L_BPOS,41) || GETBIT(L_BPOS,42) || GETBIT(L_BPOS,43)
+		PRINTL
+		
+ELSEIF ARG:1 == 1
+	FOR LOCAL:10,0,2
+		PRINTFORM 총%GET_BATTLESTATUS(LOCAL:10)%:
+		SIF 能力値강화:ARG:(6+LOCAL:10) > 0
+			SETCOLOR 0x0099cc
+		SIF 能力値강화:ARG:(6+LOCAL:10) < 0
+			SETCOLOR COLOR("ピンク")
+		SIF LOCAL:(6+LOCAL:10) < 10
+			SETCOLOR 0xEE1010
+		SIF 能力値강화:ARG:(6+LOCAL:10) >= L_MAXREI:(6+LOCAL:10)
+			SETCOLOR COLOR("黄色")
+		IF 能力値강화:ARG:(6+LOCAL:10) > 0 || LOCAL:(6+LOCAL:10) < 10
+			CLEARBIT L_BPOS,10 + LOCAL:10 * 2 + 1
+			CLEARBIT L_BPOS,20 + LOCAL:10 * 2 + 1
+			CLEARBIT L_BPOS,30 + LOCAL:10 * 2 + 1
+			CLEARBIT L_BPOS,40 + LOCAL:10 * 2 + 1
+			CLEARBIT L_BPOS,10 + LOCAL:10 * 2 + 2
+			CLEARBIT L_BPOS,20 + LOCAL:10 * 2 + 2
+			CLEARBIT L_BPOS,30 + LOCAL:10 * 2 + 2
+			CLEARBIT L_BPOS,40 + LOCAL:10 * 2 + 2
+		ENDIF
+		IF 能力値강화:ARG:(6+LOCAL:10) < 0 || 能力値강화:ARG:(6+LOCAL:10) >= L_MAXREI:(6+LOCAL:10)
+			CLEARBIT L_BPOS,(LOCAL:10 * 2 + 1) * 10 + 1
+			CLEARBIT L_BPOS,(LOCAL:10 * 2 + 1) * 10 + 2
+			CLEARBIT L_BPOS,(LOCAL:10 * 2 + 1) * 10 + 3
+			CLEARBIT L_BPOS,(LOCAL:10 * 2 + 1) * 10 + 4
+			CLEARBIT L_BPOS,(LOCAL:10 * 2 + 2) * 10 + 1
+			CLEARBIT L_BPOS,(LOCAL:10 * 2 + 2) * 10 + 2
+			CLEARBIT L_BPOS,(LOCAL:10 * 2 + 2) * 10 + 3
+			CLEARBIT L_BPOS,(LOCAL:10 * 2 + 2) * 10 + 4
+		ENDIF
+		;SIF RESULT < 0
+		;	SETCOLOR 0xEE1010
+		PRINTFORM {LOCAL:(6+LOCAL:10),4}　
+		RESETCOLOR
+	NEXT
+	PRINTL
+	; PRINT 능력상승치　
+	; FOR LOCAL:10,0,2
+	; 	PRINTFORM 총%GET_BATTLESTATUS(LOCAL:10)%:
+	; 	IF 能力値강화:ARG:(6+LOCAL:10) < 0
+	; 		SETCOLOR 0xEE1010
+	; 	ELSEIF 能力値강화:ARG:(6+LOCAL:10) > 0
+	; 		SETCOLOR 0x0099cc
+	; 	ENDIF
+	; 	PRINTFORM {能力値강화:ARG:(6+LOCAL:10) * 10,4}　
+	; 	RESETCOLOR
+	; NEXT
+	; PRINTL
+	CUSTOMDRAWLINE -
+	PRINTL 필요아이템
+	PRINTL 총공격+・・・어령즙・황、어령즙・화　총공격-・・・정화즙・황、정화즙・화
+	PRINTL 총명중+・・・어령즙・기、어령즙・행　총명중-・・・정화즙・기、정화즙・행
+	CUSTOMDRAWLINE -
+	
+	SIF GETBIT(L_BPOS,13)
+		PRINT [13]총공격+10(荒) 총명중-10(奇) 
+	SIF GETBIT(L_BPOS,14)
+		PRINT [14]총공격+10(荒) 총명중-10(幸) 
+	SIF GETBIT(L_BPOS,23)
+		PRINT [23]총공격+10(和) 총명중-10(奇) 
+	SIF GETBIT(L_BPOS,24)
+		PRINT [24]총공격+10(和) 총명중-10(幸) 
+	SIF GETBIT(L_BPOS,13) || GETBIT(L_BPOS,14) || GETBIT(L_BPOS,23) || GETBIT(L_BPOS,24)
+		PRINTL
+		
+	SIF GETBIT(L_BPOS,31)
+		PRINT [31]총명중+10(奇) 총공격-10(荒) 
+	SIF GETBIT(L_BPOS,32)
+		PRINT [32]총명중+10(奇) 총공격-10(和) 
+	SIF GETBIT(L_BPOS,41)
+		PRINT [41]총명중+10(幸) 총공격-10(荒) 
+	SIF GETBIT(L_BPOS,42)
+		PRINT [42]총명중+10(幸) 총공격-10(和) 
+	SIF GETBIT(L_BPOS,31) || GETBIT(L_BPOS,41) || GETBIT(L_BPOS,32) || GETBIT(L_BPOS,42)
+		PRINTL
+ELSE
+	FOR LOCAL:10,0,6
+		SIF LOCAL:10 == 0 || LOCAL:10 == 1 || LOCAL:10 == 4
+			CONTINUE
+		SIF LOCAL:10 == 2
+			LOCAL:9 = 1
+		SIF LOCAL:10 == 3
+			LOCAL:9 = 3
+		SIF LOCAL:10 == 5
+			LOCAL:9 = 4
+		PRINTFORM %GET_BATTLESTATUS(LOCAL:10)%:
+		SIF 能力値강화:ARG:(LOCAL:10) > 0
+			SETCOLOR 0x0099cc
+		SIF 能力値강화:ARG:(LOCAL:10) < 0
+			SETCOLOR COLOR("ピンク")
+		SIF LOCAL:(LOCAL:10) < 5
+			SETCOLOR 0xEE1010
+		SIF 能力値강화:ARG:(LOCAL:10) >= L_MAXREI:(LOCAL:10)
+			SETCOLOR COLOR("黄色")
+		IF 能力値강화:ARG:(LOCAL:10) > 0 || LOCAL:(LOCAL:10) < 5
+			CLEARBIT L_BPOS,10 + LOCAL:9
+			CLEARBIT L_BPOS,20 + LOCAL:9
+			CLEARBIT L_BPOS,30 + LOCAL:9
+			CLEARBIT L_BPOS,40 + LOCAL:9
+			IF LOCAL:9 == 1
+				CLEARBIT L_BPOS,10 + LOCAL:9 + 1
+				CLEARBIT L_BPOS,20 + LOCAL:9 + 1
+				CLEARBIT L_BPOS,30 + LOCAL:9 + 1
+				CLEARBIT L_BPOS,40 + LOCAL:9 + 1
+			ENDIF
+		ENDIF
+		IF 能力値강화:ARG:(LOCAL:10) < 0 || 能力値강화:ARG:(LOCAL:10) >= L_MAXREI:(LOCAL:10)
+			CLEARBIT L_BPOS,LOCAL:9 * 10 + 1
+			CLEARBIT L_BPOS,LOCAL:9 * 10 + 2
+			CLEARBIT L_BPOS,LOCAL:9 * 10 + 3
+			CLEARBIT L_BPOS,LOCAL:9 * 10 + 4
+			IF LOCAL:9 == 1
+				CLEARBIT L_BPOS,(LOCAL:9 + 1) * 10 + 1
+				CLEARBIT L_BPOS,(LOCAL:9 + 1) * 10 + 2
+				CLEARBIT L_BPOS,(LOCAL:9 + 1) * 10 + 3
+				CLEARBIT L_BPOS,(LOCAL:9 + 1) * 10 + 4
+			ENDIF
+		ENDIF
+		;SIF LOCAL:(LOCAL:10) < 0
+		;	SETCOLOR 0xEE1010
+		PRINTFORM {LOCAL:(LOCAL:10),4}　
+		RESETCOLOR
+	NEXT
+	PRINTL
+;	PRINT 能力上昇値　
+;	FOR LOCAL:10,0,6
+;		SIF LOCAL:10 == 0 || LOCAL:10 == 1 || LOCAL:10 == 4
+;			CONTINUE
+;		PRINTFORM %GET_BATTLESTATUS(LOCAL:10)%:
+;		IF 能力値강화:ARG:(LOCAL:10) < 0
+;			SETCOLOR 0xEE1010
+;		ELSEIF 能力値강화:ARG:(LOCAL:10) > 0
+;			SETCOLOR 0x0099cc
+;		ENDIF
+;		PRINTFORM {能力値강화:ARG:(LOCAL:10) * 3,4}　
+;		RESETCOLOR
+;	NEXT
+;	PRINTL	
+	CUSTOMDRAWLINE -
+	PRINTL 필요아이템
+	PRINTL 방어+・・・・・어령즙・황、어령즙・화
+	PRINTL 방어-・・・・・정화즙・황、정화즙・화
+	PRINTL 회피+・・・・・어령즙・기　회피-・・・・・정화즙・기
+	PRINTL 마법효과+・・・어령즙・행　마법효과-・・・정화즙・행
+	CUSTOMDRAWLINE -
+	SIF GETBIT(L_BPOS,13)
+		PRINT [13]방어+5(荒) 회피-5　　 
+	SIF GETBIT(L_BPOS,14)
+		PRINT [14]방어+5(荒) 마법효과-5
+	SIF GETBIT(L_BPOS,23)
+		PRINT [23]방어+5(和) 회피-5　　 
+	SIF GETBIT(L_BPOS,24)
+		PRINT [24]방어+5(和) 마법효과-5
+	SIF GETBIT(L_BPOS,13) || GETBIT(L_BPOS,14) || GETBIT(L_BPOS,23) || GETBIT(L_BPOS,24)
+		PRINTL
+	
+	SIF GETBIT(L_BPOS,31)
+		PRINT [31]회피+5　　 방어-5(荒) 
+	SIF GETBIT(L_BPOS,32)
+		PRINT [32]회피+5　　 방어-5(和) 
+	SIF GETBIT(L_BPOS,34)
+		PRINT [34]회피+5　　 마법효과-5 
+	SIF GETBIT(L_BPOS,31) || GETBIT(L_BPOS,32) || GETBIT(L_BPOS,34)
+		PRINTL
+		
+	SIF GETBIT(L_BPOS,41)
+		PRINT [41]마법효과+5 방어-5(荒) 
+	SIF GETBIT(L_BPOS,42)
+		PRINT [42]마법효과+5 방어-5(和) 
+	SIF GETBIT(L_BPOS,43)
+		PRINT [43]마법효과+5 회피-5　　 
+	SIF GETBIT(L_BPOS,41) || GETBIT(L_BPOS,42) || GETBIT(L_BPOS,43)
+		PRINTL
+		
+ENDIF
+CUSTOMDRAWLINE =
+IF 강화횟수:ARG && (能力値강화:ARG:0 || 能力値강화:ARG:1 || 能力値강화:ARG:2 || 能力値강화:ARG:3 || 能力値강화:ARG:4 || 能力値강화:ARG:5 || 能力値강화:ARG:6 || 能力値강화:ARG:7)
+	PRINT [100]약화　
+ENDIF
+PRINTL [200]돌아간다
+INPUT
+IF RESULT == 200
+	RETURN RESULT
+ENDIF
+IF RESULT < 100 && 강화횟수:ARG >= ARG:2 
+	PRINTW 드워프：이 이상은 강화할 수 없네
+	GOTO LP
+ENDIF
+IF RESULT < 100 && ARG:3 * 500 > MONEY
+	PRINTW 드워프：돈이 부족하네
+	GOTO LP
+ENDIF
+IF ARG:1 == 0 && RESULT > 0 && RESULT < 45
+	LOCAL:10 = RESULT
+	;어령즙・황
+		IF LOCAL:10 / 10 == 1
+			LOCAL:12 = 250
+		SIF ARG:1 == 0
+			LOCAL:13 = 0
+		SIF ARG:1 == 1
+			LOCAL:13 = 6
+		SIF ARG:1 > 1
+		LOCAL:13 = 2
+	;어령즙・화
+	ELSEIF LOCAL:10 / 10 == 2
+			LOCAL:12 = 251
+		SIF ARG:1 == 0
+			LOCAL:13 = 4
+		SIF ARG:1 == 1
+			LOCAL:13 = 6
+		SIF ARG:1 > 1
+			LOCAL:13 = 2
+	;어령즙・기
+	ELSEIF LOCAL:10 / 10 == 3
+		LOCAL:12 = 252
+		SIF ARG:1 == 0
+			LOCAL:13 = 1
+		SIF ARG:1 == 1
+			LOCAL:13 = 7
+		SIF ARG:1 > 1
+			LOCAL:13 = 4
+	;어령즙・행
+	ELSEIF LOCAL:10 / 10 == 4
+		LOCAL:12 = 253
+		SIF ARG:1 == 0
+			LOCAL:13 = 5
+		SIF ARG:1 == 1
+			LOCAL:13 = 7
+		SIF ARG:1 > 1
+			LOCAL:13 = 5
+	ENDIF
+	
+	;정화즙・황
+	IF LOCAL:10 % 10 == 1
+		LOCAL:14 = 254
+		SIF ARG:1 == 0
+			LOCAL:15 = 0
+		SIF ARG:1 == 1
+			LOCAL:15 = 6
+		SIF ARG:1 > 1
+			LOCAL:15 = 2
+	;정화즙・화
+	ELSEIF LOCAL:10 % 10 == 2
+		LOCAL:14 = 255
+		SIF ARG:1 == 0
+			LOCAL:15 = 4
+		SIF ARG:1 == 1
+			LOCAL:15 = 6
+		SIF ARG:1 > 1
+			LOCAL:15 = 2
+	;정화즙・기
+	ELSEIF LOCAL:10 % 10 == 3
+		LOCAL:14 = 256
+		SIF ARG:1 == 0
+			LOCAL:15 = 1
+		SIF ARG:1 == 1
+			LOCAL:15 = 7
+		SIF ARG:1 > 1
+			LOCAL:15 = 4
+	;정화즙・행
+	ELSEIF LOCAL:10 % 10 == 4
+		LOCAL:14 = 257
+		SIF ARG:1 == 0
+			LOCAL:15 = 5
+		SIF ARG:1 == 1
+			LOCAL:15 = 7
+		SIF ARG:1 > 1
+			LOCAL:15 = 5
+	ENDIF
+ENDIF
+
+IF LOCAL:12 && LOCAL:14 && (LOCAL:13 != LOCAL:15)
+	IF !ITEM:(LOCAL:12) || !ITEM:(LOCAL:14)
+		PRINTW 드워프：필요한 아이템이 없다고
+		GOTO LP
+	ENDIF
+	IF (ARG:1 <= 1 && LOCAL:(LOCAL:15) < 10) || (ARG:1 > 1 && LOCAL:(LOCAL:15) < 3 )
+		PRINTW 드워프：그 능력은 더 이상 내릴 수 없어
+		GOTO LP
+	ENDIF
+	PRINTL 드워프：장비의 강화를 해주지
+	
+	PRINTL
+	PRINT 사용아이템　
+	PRINTFORM %ITEMNAME:(LOCAL:12)%
+	PRINTFORM 　%ITEMNAME:(LOCAL:14)%
+	PRINTL
+	PRINT 상승능력　　　
+	IF ARG:1 <= 1
+		PRINTFORML %GET_BATTLESTATUS(LOCAL:13)%+10　%GET_BATTLESTATUS(LOCAL:15)%-10
+	ELSE
+		PRINTFORML %GET_BATTLESTATUS(LOCAL:13)%+5　%GET_BATTLESTATUS(LOCAL:15)%-5
+	ENDIF
+	PRINTL
+	CALL INPUT_YN
+	IF RESULT == 0
+		能力値강화:ARG:(LOCAL:13) += 1
+		能力値강화:ARG:(LOCAL:15) -= 1
+		MONEY -= ARG:3 * 500
+		ドワ鍛冶사용金額 += ARG:3 * 500
+		ITEM:(LOCAL:12) --
+		ITEM:(LOCAL:14) --
+		강화횟수:ARG ++
+	ENDIF
+ENDIF
+IF 강화횟수:ARG && RESULT == 100 && (能力値강화:ARG:0 || 能力値강화:ARG:1 || 能力値강화:ARG:2 || 能力値강화:ARG:3 || 能力値강화:ARG:4 || 能力値강화:ARG:5 || 能力値강화:ARG:6 || 能力値강화:ARG:7)
+
+;LOCAL:9
+;LOCAL:12  選択肢1
+;LOCAL:13  選択肢2
+;LOCAL:14  選択肢3
+;LOCAL:15  選択肢4
+;LOCAL:16  選択肢5
+;LOCAL:17  上昇量
+	LOCAL:12 = 0
+	LOCAL:13 = 0
+	LOCAL:14 = 0
+	LOCAL:15 = 0
+	LOCAL:16 = 0
+	LOCAL:17 = ARG:1 <= 1 ? 10 # 3
+	PRINTL 드워프：어느 능력을 약화할 거냐？(소재는 반환되지 않습니다)
+	CUSTOMDRAWLINE =
+	LOCAL:8 = 12
+	FOR LOCAL:10,0,8
+		IF 能力値강화:ARG:(LOCAL:10) > 0
+			FOR LOCAL:9,0,8
+				IF 能力値강화:ARG:(LOCAL:9) < 0
+					PRINTFORML [{LOCAL:10 * 10 + LOCAL:9}]%GET_BATTLESTATUS(LOCAL:10)%-{LOCAL:17}　%GET_BATTLESTATUS(LOCAL:9)%+{LOCAL:17}
+					LOCAL:(LOCAL:8 ++) = LOCAL:10 * 10 + LOCAL:9
+				ENDIF
+			NEXT
+		ENDIF
+	NEXT
+	CUSTOMDRAWLINE =
+	PRINTFORML [100]돌아간다
+	LOCAL:(LOCAL:8) = 100
+	CALL INPUTINT,LOCAL:12,LOCAL:13,LOCAL:14,LOCAL:15,LOCAL:16
+	IF RESULT < 1
+	ELSEIF RESULT < 100 && RESULT % 10 == 8
+	ELSEIF RESULT < 100 && RESULT % 10 != 0
+		能力値강화:ARG:(RESULT / 10) -= 1
+		能力値강화:ARG:(RESULT % 10) += 1
+		강화횟수:ARG --
+	ENDIF
+ENDIF
+GOTO LP
+
+@パラメータ강화,ARG,ARG:1,ARG:2,ARG:3
+#DIM L_MAX
+#DIM L_BPOS		;ビット演算で可不可検索
+				;2~13可能パラ　偶:御　奇:浄
+L_MAX = 10
+$LP
+L_BPOS = 0
+CLEARLINE LINECOUNT - LOCAL:11
+PRINTL 드워프：어느 능력을 강화할 거냐？
+CUSTOMDRAWLINE =
+PRINTFORML 소지금　　　　{MONEY}
+PRINTFORML 강화가격　　　{ARG:3 * 500}
+PRINTFORML 남은강화횟수　{ARG:2 - 강화횟수:ARG}
+CUSTOMDRAWLINE -
+LOCAL:1 = 250
+LOCAL:2 = 252
+LOCAL:3 = 251
+LOCAL:4 = 253
+LOCAL:5 = 252
+LOCAL:6 = 253
+PRINT 강화値　:
+FOR LOCAL:10,1,7
+	IF ITEM:248 > 1
+		SIF ITEM:(LOCAL:(LOCAL:10)) > 0
+			SETBIT L_BPOS,LOCAL:10 * 2
+		SIF ITEM:(LOCAL:(LOCAL:10)+4) > 0
+			SETBIT L_BPOS,LOCAL:10 * 2 + 1
+	ENDIF
+	SIF パラメータ강화:ARG:(LOCAL:10) > 0
+		SETCOLOR 0x0099cc
+	IF パラメータ강화:ARG:(LOCAL:10) >= L_MAX
+		SETCOLOR COLOR("黄色")
+		CLEARBIT L_BPOS,LOCAL:10 * 2
+		CLEARBIT L_BPOS,LOCAL:10 * 2 + 1
+	ENDIF
+	PRINTFORM %GET_BASESTATUS(LOCAL:10)%:{パラメータ강화:ARG:(LOCAL:10),2}　
+	RESETCOLOR
+NEXT
+PRINTL
+PRINT 現能力値:
+FOR LOCAL:10,1,7
+	CALLFORM 기본능력수정_{ARG:1},LOCAL:10
+	PRINTFORM %GET_BASESTATUS(LOCAL:10)%:
+	SIF RESULT < 0
+		SETCOLOR 0xEE1010
+	PRINTFORM {RESULT,2}　
+	RESETCOLOR
+NEXT
+PRINTL
+CUSTOMDRAWLINE -
+PRINTFORML %ITEMNAME:248% {ITEM:248,2}個
+FOR LOCAL:10,0,8
+	PRINTFORM %ITEMNAME:(250 + LOCAL:10)% {ITEM:(250 + LOCAL:10),2}個　
+	SIF LOCAL:10 % 4 == 3
+		PRINTL
+	NEXT
+PRINTL
+IF ARG > 19
+	LOCAL:9 = 1
+ELSE
+	LOCAL:9 = 2
+ENDIF
+FOR LOCAL:10,2,14
+	SIF GETBIT(L_BPOS,LOCAL:10)
+		PRINTFORML [{LOCAL:10-2,2}]%GET_BASESTATUS(LOCAL:10/2)%+{LOCAL:9}（%ITEMNAME:(LOCAL:(LOCAL:10/2) + (4*(LOCAL:10%2)))%）
+NEXT
+CUSTOMDRAWLINE =
+IF 강화횟수:ARG && (パラメータ강화:ARG:1 || パラメータ강화:ARG:2 || パラメータ강화:ARG:3 || パラメータ강화:ARG:4 || パラメータ강화:ARG:5 || パラメータ강화:ARG:6)
+	PRINT [100]弱化　
+ENDIF
+PRINTL [200]돌아간다
+INPUT
+IF RESULT < 100 && 강화횟수:ARG >= ARG:2 
+	PRINTW 드워프：이 이상은 강화할 수 없네
+	GOTO LP
+ENDIF
+IF RESULT < 100 && ARG:3 * 500 > MONEY
+	PRINTW 드워프：돈이 부족하네
+	GOTO LP
+ENDIF
+IF RESULT >= 0 && RESULT < 12 && GETBIT(L_BPOS,RESULT+2) && ITEM:248 > 1
+	LOCAL:10 = (RESULT + 2) / 2
+	LOCAL:9  = LOCAL:(LOCAL:10) + (4 * (RESULT%2))
+	PRINTL 드워프：이걸로 좋나？
+	PRINTL
+	PRINTFORML 금액　{ARG:3 * 500}
+	PRINTFORML 소비　미타마의조각×2　%ITEMNAME:(LOCAL:9)%×1
+	IF ARG >= 20
+		PRINTFORML 강화　%GET_BASESTATUS(LOCAL:10)%+1
+	ELSE		
+		PRINTFORML 강화　%GET_BASESTATUS(LOCAL:10)%+4
+	ENDIF
+	PRINTL
+	CALL INPUT_YN
+	IF RESULT == 0
+		パラメータ강화:ARG:(LOCAL:10) += 1
+		MONEY -= ARG:3 * 500
+		ドワ鍛冶사용金額 += ARG:3 * 500
+		; IF ARG >= 20
+			ITEM:248 -= 2
+			ITEM:(LOCAL:9) --		
+		; ELSE
+		; 	ITEM:248 -= 3
+		; ENDIF
+		강화횟수:ARG ++
+	ENDIF
+ELSEIF RESULT == 100 && 강화횟수:ARG && (パラメータ강화:ARG:1 || パラメータ강화:ARG:2 || パラメータ강화:ARG:3 || パラメータ강화:ARG:4 || パラメータ강화:ARG:5 || パラメータ강화:ARG:6)
+	PRINTL 드워프：어느 능력을 약화할 거냐？(소재는 반환되지 않습니다)
+	CUSTOMDRAWLINE =
+	FOR LOCAL:10,1,7
+		IF パラメータ강화:ARG:(LOCAL:10)
+			IF ARG > 19
+				PRINTFORML [{LOCAL:10}]%GET_BASESTATUS(LOCAL:10)%-1
+			ELSE
+				PRINTFORML [{LOCAL:10}]%GET_BASESTATUS(LOCAL:10)%-4
+			ENDIF
+		ENDIF
+	NEXT
+	CUSTOMDRAWLINE =
+	PRINTFORML [100]돌아간다
+	INPUT
+	IF RESULT > 0 && RESULT < 7 && パラメータ강화:ARG:RESULT && 강화횟수:ARG
+		LOCAL:10 = RESULT
+		PRINTL 드워프：이걸로 좋나？
+		PRINTL
+		IF ARG > 29
+			PRINTFORML 약화　%GET_BASESTATUS(LOCAL:10)%-1
+		ELSE
+			PRINTFORML 약화　%GET_BASESTATUS(LOCAL:10)%-4
+		ENDIF
+		CALL INPUT_YN
+		IF RESULT == 0
+			パラメータ강화:ARG:(LOCAL:10) -= 1
+			강화횟수:ARG --
+		ENDIF
+	ENDIF
+ELSEIF RESULT == 200
+	RETURN RESULT
+ENDIF
+GOTO LP
+
+@속성내성강화,ARG,ARG:1,ARG:2,ARG:3
+#DIM 속성내성, 17
+FOR LOCAL,0,17
+	CALLFORM 방어상성_{ARG:1},LOCAL
+	속성내성:LOCAL = RESULT
+NEXT
+LOCAL:11 = LINECOUNT
+$LP
+LOCAL:12 = 0
+LOCAL:13 = 0
+LOCAL:14 = 0
+LOCAL:15 = 0
+LOCAL:16 = 0
+LOCAL:17 = 0
+CLEARLINE LINECOUNT - LOCAL:11
+
+PRINTL 드워프：어느 속성에 내성을 붙일거냐？
+CUSTOMDRAWLINE =
+PRINTFORML 소지금　　　　{MONEY}
+PRINTFORML 강화가격　　　{ARG:3 * 500}
+;---- EDIT 001 MOD -------------------------
+PRINTFORML 남은강화횟수　{MIN(ARG:2 - 강화횟수:ARG,5 - 내성강화数(ARG))}
+CUSTOMDRAWLINE -
+;검격 　100　비구 　100　타격 　100　전술 　100　
+FOR LOCAL:9,0,4
+	LOCAL:8 = (LOCAL:9 * 4) + 4
+	SIF LOCAL:9 == 3
+		LOCAL:8 ++
+	FOR LOCAL:10,LOCAL:9 * 4,LOCAL:8
+		PRINTFORM %GET_TYPE(LOCAL:10),4,LEFT%
+		CALL SET_AISYOU_COLOR, 속성내성:(LOCAL:10)
+		IF 속성내성:(LOCAL:10) == 999
+			PRINT 　반사　
+		ELSE
+			PRINTFORM  %\@(속성내성:(LOCAL:10) < 0) ? 吸 # 　\@%{ABS(속성내성:(LOCAL:10)),3}　
+		ENDIF
+		RESETCOLOR
+	NEXT
+	PRINTL 
+	FOR LOCAL:10,LOCAL:9 * 4,LOCAL:8
+		PRINTFORM 　　　 {속성내성강화:ARG:(LOCAL:10),3}　
+	NEXT
+	PRINTL 
+	SIF LOCAL:9 < 3
+		PRINTL 
+NEXT
+CUSTOMDRAWLINE -
+FOR LOCAL:10,0,8
+	PRINTFORM %ITEMNAME:(266 + LOCAL:10)% {ITEM:(266 + LOCAL:10),2}個　
+	SIF LOCAL:10 % 4 == 3
+		PRINTL
+NEXT
+CUSTOMDRAWLINE -
+FOR LOCAL:10,0,17
+	LOCAL:12 = 0
+	LOCAL:13 = 0
+	LOCAL:14 = 0
+	LOCAL:15 = 0
+	LOCAL:16 = 0
+	LOCAL:17 = 0
+	SELECTCASE LOCAL:10
+	CASE 0
+		LOCAL:12 = 266
+		LOCAL:13 = 1
+		LOCAL:14 = 267
+		LOCAL:15 = 1
+		LOCAL:16 = 268
+		LOCAL:17 = 1
+	CASE 1
+		LOCAL:12 = 267
+		LOCAL:13 = 1
+		LOCAL:14 = 269
+		LOCAL:15 = 1
+		LOCAL:16 = 271
+		LOCAL:17 = 1
+	CASE 2
+		LOCAL:12 = 268
+		LOCAL:13 = 1
+		LOCAL:14 = 272
+		LOCAL:15 = 1
+		LOCAL:16 = 270
+		LOCAL:17 = 1
+	CASE 3
+		LOCAL:12 = 266
+		LOCAL:13 = 1
+		LOCAL:14 = 270
+		LOCAL:15 = 1
+		LOCAL:16 = 269
+		LOCAL:17 = 1
+	CASE 4
+		LOCAL:12 = 266
+		LOCAL:13 = 2
+	CASE 5
+		LOCAL:12 = 267
+		LOCAL:13 = 2
+	CASE 6
+		LOCAL:12 = 268
+		LOCAL:13 = 2
+	CASE 7
+		LOCAL:12 = 269
+		LOCAL:13 = 2
+	CASE 8
+		LOCAL:12 = 268
+		LOCAL:13 = 1
+		LOCAL:14 = 271
+		LOCAL:15 = 1
+		LOCAL:16 = 273
+		LOCAL:17 = 1
+	CASE 9
+		LOCAL:12 = 269
+		LOCAL:13 = 1
+		LOCAL:14 = 273
+		LOCAL:15 = 1
+		LOCAL:16 = 270
+		LOCAL:17 = 1
+	CASE 10
+		LOCAL:12 = 271
+		LOCAL:13 = 1
+		LOCAL:14 = 272
+		LOCAL:15 = 1
+		LOCAL:16 = 266
+		LOCAL:17 = 1
+	CASE 11
+		LOCAL:12 = 267
+		LOCAL:13 = 1
+		LOCAL:14 = 273
+		LOCAL:15 = 1
+		LOCAL:16 = 272
+		LOCAL:17 = 1
+	CASE 12
+		LOCAL:12 = 270
+		LOCAL:13 = 2
+	CASE 13
+		LOCAL:12 = 271
+		LOCAL:13 = 2
+	CASE 14
+		LOCAL:12 = 272
+		LOCAL:13 = 2
+	CASE 15
+		LOCAL:12 = 273
+		LOCAL:13 = 2
+	CASE 16
+		LOCAL:12 = 266
+		LOCAL:13 = 1
+		LOCAL:14 = 273
+		LOCAL:15 = 1
+	ENDSELECT
+	SIF LOCAL:12 && ITEM:(LOCAL:12) < LOCAL:13
+		CONTINUE
+	SIF LOCAL:14 && ITEM:(LOCAL:14) < LOCAL:15
+		CONTINUE
+	SIF LOCAL:16 && ITEM:(LOCAL:16) < LOCAL:17
+		CONTINUE
+	IF 속성내성:(LOCAL:10) > 0 && 속성내성:(LOCAL:10) != 999 && 속성내성:(LOCAL:10) != 100
+		PRINTFORM [{LOCAL:10,2}]%GET_TYPE(LOCAL:10)%　
+		PRINTFORM %ITEMNAME:(LOCAL:12)%×{LOCAL:13}
+		SIF LOCAL:14
+			PRINTFORM 　%ITEMNAME:(LOCAL:14)%×{LOCAL:15}
+		SIF LOCAL:16
+			PRINTFORM 　%ITEMNAME:(LOCAL:16)%×{LOCAL:17}
+		PRINTL
+	ENDIF
+NEXT
+LOCAL:12 = 0
+LOCAL:13 = 0
+LOCAL:14 = 0
+LOCAL:15 = 0
+LOCAL:16 = 0
+LOCAL:17 = 0
+CUSTOMDRAWLINE =
+IF 강화횟수:ARG
+	FOR LOCAL:10,0,17
+		IF 속성내성강화:ARG:(LOCAL:10)
+			PRINT [100]약화　
+			BREAK
+		ENDIF
+	NEXT
+ENDIF
+PRINTL [200]돌아간다
+INPUT
+;---- EDIT 001 MOD -------------------------
+IF RESULT < 17 && (강화횟수:ARG >= ARG:2 || 내성강화数(ARG) > 4 || 속성내성:RESULT < 1 || 속성내성:RESULT == 999 || 속성내성:RESULT == 100)
+	PRINTW 드워프：이 이상은 강화할 수 없네
+	GOTO LP
+ENDIF
+IF RESULT < 100 && ARG:3 * 500 > MONEY
+	PRINTW 드워프：돈이 부족하네
+	GOTO LP
+ENDIF
+SELECTCASE RESULT
+CASE 0
+	LOCAL:12 = 266
+	LOCAL:13 = 1
+	LOCAL:14 = 267
+	LOCAL:15 = 1
+	LOCAL:16 = 268
+	LOCAL:17 = 1
+CASE 1
+	LOCAL:12 = 267
+	LOCAL:13 = 1
+	LOCAL:14 = 269
+	LOCAL:15 = 1
+	LOCAL:16 = 271
+	LOCAL:17 = 1
+CASE 2
+	LOCAL:12 = 268
+	LOCAL:13 = 1
+	LOCAL:14 = 272
+	LOCAL:15 = 1
+	LOCAL:16 = 270
+	LOCAL:17 = 1
+CASE 3
+	LOCAL:12 = 266
+	LOCAL:13 = 1
+	LOCAL:14 = 270
+	LOCAL:15 = 1
+	LOCAL:16 = 269
+	LOCAL:17 = 1
+CASE 4
+	LOCAL:12 = 266
+	LOCAL:13 = 2
+CASE 5
+	LOCAL:12 = 267
+	LOCAL:13 = 2
+CASE 6
+	LOCAL:12 = 268
+	LOCAL:13 = 2
+CASE 7
+	LOCAL:12 = 269
+	LOCAL:13 = 2
+CASE 8
+	LOCAL:12 = 268
+	LOCAL:13 = 1
+	LOCAL:14 = 271
+	LOCAL:15 = 1
+	LOCAL:16 = 273
+	LOCAL:17 = 1
+CASE 9
+	LOCAL:12 = 269
+	LOCAL:13 = 1
+	LOCAL:14 = 273
+	LOCAL:15 = 1
+	LOCAL:16 = 270
+	LOCAL:17 = 1
+CASE 10
+	LOCAL:12 = 271
+	LOCAL:13 = 1
+	LOCAL:14 = 272
+	LOCAL:15 = 1
+	LOCAL:16 = 266
+	LOCAL:17 = 1
+CASE 11
+	LOCAL:12 = 267
+	LOCAL:13 = 1
+	LOCAL:14 = 273
+	LOCAL:15 = 1
+	LOCAL:16 = 272
+	LOCAL:17 = 1
+CASE 12
+	LOCAL:12 = 270
+	LOCAL:13 = 2
+CASE 13
+	LOCAL:12 = 271
+	LOCAL:13 = 2
+CASE 14
+	LOCAL:12 = 272
+	LOCAL:13 = 2
+CASE 15
+	LOCAL:12 = 273
+	LOCAL:13 = 2
+CASE 16
+	LOCAL:12 = 266
+	LOCAL:13 = 1
+	LOCAL:14 = 273
+	LOCAL:15 = 1
+ENDSELECT
+
+IF LOCAL:12 && ITEM:(LOCAL:12) >= LOCAL:13 && RESULT < 18
+	SIF LOCAL:14 && ITEM:(LOCAL:14) < LOCAL:15
+		GOTO LP
+	SIF LOCAL:16 && ITEM:(LOCAL:16) < LOCAL:17
+		GOTO LP
+	PRINTL 드워프：장비의 강화를 해주지
+	PRINTL
+	PRINT 사용아이템　
+	PRINTFORM %ITEMNAME:(LOCAL:12)%×{LOCAL:13}
+	SIF LOCAL:14
+		PRINTFORM 　%ITEMNAME:(LOCAL:14)%×{LOCAL:15}
+	SIF LOCAL:16
+		PRINTFORM 　%ITEMNAME:(LOCAL:16)%×{LOCAL:17}
+	PRINTL
+	PRINTFORML 강화내성　%GET_TYPE(RESULT)%내성+20
+	LOCAL:10 = RESULT
+	CALL INPUT_YN
+	IF RESULT == 0
+		속성내성강화:ARG:(LOCAL:10) += 1
+		MONEY -= ARG:3 * 500
+		ドワ鍛冶사용金額 += ARG:3 * 500
+		ITEM:(LOCAL:12) -= LOCAL:13
+		SIF LOCAL:14
+			ITEM:(LOCAL:14) -= LOCAL:15
+		SIF LOCAL:16
+			ITEM:(LOCAL:16) -= LOCAL:17
+		강화횟수:ARG ++
+	ENDIF
+ELSEIF RESULT == 100
+	PRINTL 드워프：어느 내성을 약화시킬거냐？(소재는 반환되지 않습니다)
+	CUSTOMDRAWLINE =
+	FOR LOCAL:10,0,17
+		SIF 속성내성강화:ARG:(LOCAL:10)
+			PRINTFORML [{LOCAL:10}]%GET_TYPE(LOCAL:10)%
+	NEXT
+	CUSTOMDRAWLINE =
+	PRINTFORML [100]돌아간다
+	INPUT
+	IF RESULT >= 0 && RESULT < 17 && 속성내성강화:ARG:RESULT && 강화횟수:ARG
+		LOCAL:10 = RESULT
+		PRINTL 드워프：이걸로 좋나？
+		PRINTL
+		PRINTFORML 약화　%GET_TYPE(LOCAL:10)%
+		CALL INPUT_YN
+		IF RESULT == 0
+			속성내성강화:ARG:(LOCAL:10) -= 1
+			강화횟수:ARG --
+		ENDIF
+	ENDIF
+	
+	
+ELSEIF RESULT == 200
+	RETURN RESULT
+ENDIF
+FOR LOCAL,0,17
+	CALLFORM 방어상성_{ARG:1},LOCAL
+	속성내성:LOCAL = RESULT
+NEXT
+GOTO LP
+
+@バステ내성강화,ARG,ARG:1,ARG:2,ARG:3
+#DIM バステ내성, 21
+FOR LOCAL,0,21
+	CALLFORM バステ내성_{ARG:1},LOCAL
+	バステ내성:LOCAL = 100 + RESULT
+NEXT
+LOCAL:10 = 20
+;[1]HAPPY
+LOCAL:(LOCAL:10 ++) = 258
+LOCAL:(LOCAL:10 ++) = 2
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+;[2]SHOCK
+LOCAL:(LOCAL:10 ++) = 258
+LOCAL:(LOCAL:10 ++) = 1
+LOCAL:(LOCAL:10 ++) = 259
+LOCAL:(LOCAL:10 ++) = 1
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+;[3]PANIC
+LOCAL:(LOCAL:10 ++) = 262
+LOCAL:(LOCAL:10 ++) = 1
+LOCAL:(LOCAL:10 ++) = 260
+LOCAL:(LOCAL:10 ++) = 1
+LOCAL:(LOCAL:10 ++) = 258
+LOCAL:(LOCAL:10 ++) = 1
+;[4]SLEEP
+LOCAL:(LOCAL:10 ++) = 265
+LOCAL:(LOCAL:10 ++) = 2
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+;[5]FREEZE
+LOCAL:(LOCAL:10 ++) = 260
+LOCAL:(LOCAL:10 ++) = 1
+LOCAL:(LOCAL:10 ++) = 261
+LOCAL:(LOCAL:10 ++) = 1
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+;[6]BIND
+LOCAL:(LOCAL:10 ++) = 265
+LOCAL:(LOCAL:10 ++) = 1
+LOCAL:(LOCAL:10 ++) = 258
+LOCAL:(LOCAL:10 ++) = 1
+LOCAL:(LOCAL:10 ++) = 261
+LOCAL:(LOCAL:10 ++) = 1
+;[7]CLOSE
+LOCAL:(LOCAL:10 ++) = 265
+LOCAL:(LOCAL:10 ++) = 1
+LOCAL:(LOCAL:10 ++) = 258
+LOCAL:(LOCAL:10 ++) = 1
+LOCAL:(LOCAL:10 ++) = 261
+LOCAL:(LOCAL:10 ++) = 1
+;[8]POISON
+LOCAL:(LOCAL:10 ++) = 261
+LOCAL:(LOCAL:10 ++) = 2
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+;[9]BOMB
+LOCAL:(LOCAL:10 ++) = 260
+LOCAL:(LOCAL:10 ++) = 2
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+;[10]CHARM
+LOCAL:(LOCAL:10 ++) = 264
+LOCAL:(LOCAL:10 ++) = 1
+LOCAL:(LOCAL:10 ++) = 263
+LOCAL:(LOCAL:10 ++) = 1
+LOCAL:(LOCAL:10 ++) = 259
+LOCAL:(LOCAL:10 ++) = 1
+;[11]PALYZE
+LOCAL:(LOCAL:10 ++) = 264
+LOCAL:(LOCAL:10 ++) = 1
+LOCAL:(LOCAL:10 ++) = 259
+LOCAL:(LOCAL:10 ++) = 1
+LOCAL:(LOCAL:10 ++) = 260
+LOCAL:(LOCAL:10 ++) = 1
+;[12]CURSE
+LOCAL:(LOCAL:10 ++) = 263
+LOCAL:(LOCAL:10 ++) = 2
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+;[13]
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+;[14]STONE
+LOCAL:(LOCAL:10 ++) = 262
+LOCAL:(LOCAL:10 ++) = 1
+LOCAL:(LOCAL:10 ++) = 265
+LOCAL:(LOCAL:10 ++) = 1
+LOCAL:(LOCAL:10 ++) = 259
+LOCAL:(LOCAL:10 ++) = 1
+;[15]DYING
+LOCAL:(LOCAL:10 ++) = 264
+LOCAL:(LOCAL:10 ++) = 1
+LOCAL:(LOCAL:10 ++) = 263
+LOCAL:(LOCAL:10 ++) = 1
+LOCAL:(LOCAL:10 ++) = 265
+LOCAL:(LOCAL:10 ++) = 1
+;[16]
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+;[17]
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+;[18]FLAME
+LOCAL:(LOCAL:10 ++) = 262
+LOCAL:(LOCAL:10 ++) = 2
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+;[19]SLIP
+LOCAL:(LOCAL:10 ++) = 262
+LOCAL:(LOCAL:10 ++) = 1
+LOCAL:(LOCAL:10 ++) = 263
+LOCAL:(LOCAL:10 ++) = 1
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+;[20]BRAND
+LOCAL:(LOCAL:10 ++) = 264
+LOCAL:(LOCAL:10 ++) = 2
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+LOCAL:(LOCAL:10 ++) = 0
+
+
+
+
+
+LOCAL:11 = LINECOUNT
+$LP
+LOCAL:0 = 0
+LOCAL:1 = 0
+LOCAL:2 = 0
+LOCAL:3 = 0
+LOCAL:4 = 0
+LOCAL:5 = 0
+LOCAL:12 = 0
+LOCAL:13 = 0
+LOCAL:14 = 0
+LOCAL:15 = 0
+LOCAL:16 = 0
+LOCAL:17 = 0
+CLEARLINE LINECOUNT - LOCAL:11
+
+PRINTL 드워프：어느 상태이상에 내성을 붙일거냐？
+CUSTOMDRAWLINE =
+PRINTFORML 소지금　　　　{MONEY}
+PRINTFORML 강화금액　　　{ARG:3 * 500}
+;---- EDIT 001 MOD -------------------------
+PRINTFORML 남은강화횟수　{MIN(ARG:2 - 강화횟수:ARG,5 - 내성강화数(ARG))}
+CUSTOMDRAWLINE -
+LOCAL:8 = 0
+FOR LOCAL:9,1,21
+	SIF LOCAL:9 == 0 || LOCAL:9 == 13 || LOCAL:9 == 16 || LOCAL:9 == 17
+		CONTINUE
+	LOCAL:(LOCAL:8 ++) = LOCAL:9
+	SIF LOCAL:8 < 4 && LOCAL:9 < 20
+		CONTINUE
+	LOCAL:8 = 0
+	FOR LOCAL:10,0,4
+		PRINTFORM %GET_STATE(LOCAL:(LOCAL:10)),8,LEFT%
+		CALL SET_AISYOU_COLOR, バステ내성:(LOCAL:(LOCAL:10))
+		PRINTFORM {バステ내성:(LOCAL:(LOCAL:10)),4}　
+		RESETCOLOR
+		SIF LOCAL:(LOCAL:10) == 20
+			BREAK
+	NEXT
+	PRINTL 
+	FOR LOCAL:10,0,4
+				;;　　　　
+		PRINTFORM 　　　　{バステ내성강화:ARG:(LOCAL:(LOCAL:10)),4}　
+		SIF LOCAL:(LOCAL:10) == 20
+			BREAK
+	NEXT
+	PRINTL 
+	SIF LOCAL:9 < 20
+		PRINTL 
+NEXT
+CUSTOMDRAWLINE -
+FOR LOCAL:10,0,8
+	PRINTFORM %ITEMNAME:(258 + LOCAL:10),6,LEFT% {ITEM:(258 + LOCAL:10),2}個　
+	SIF LOCAL:10 % 4 == 3
+		PRINTL
+NEXT
+CUSTOMDRAWLINE -
+FOR LOCAL:10,1,21
+	SIF LOCAL:10 == 0 || LOCAL:10 == 13 || LOCAL:10 == 16 || LOCAL:10 == 17
+		CONTINUE
+	LOCAL:9 = 14 + LOCAL:10 * 6
+	;PRINTFORML {LOCAL:9}　{LOCAL:(LOCAL:9)}
+	LOCAL:0 = LOCAL:(LOCAL:9 ++)
+	LOCAL:1 = LOCAL:(LOCAL:9 ++)
+	LOCAL:2 = LOCAL:(LOCAL:9 ++)
+	LOCAL:3 = LOCAL:(LOCAL:9 ++)
+	LOCAL:4 = LOCAL:(LOCAL:9 ++)
+	LOCAL:5 = LOCAL:(LOCAL:9 ++)
+	
+	SIF LOCAL:0 && ITEM:(LOCAL:0) < LOCAL:1
+		CONTINUE
+	SIF LOCAL:2 && ITEM:(LOCAL:2) < LOCAL:3
+		CONTINUE
+	SIF LOCAL:4 && ITEM:(LOCAL:4) < LOCAL:5
+		CONTINUE
+	IF バステ내성:(LOCAL:10) && LOCAL:0
+		PRINTFORM [{LOCAL:10,2}]%GET_STATE(LOCAL:10),8,LEFT%
+		PRINTFORM %ITEMNAME:(LOCAL:0)%×{LOCAL:1}
+		SIF LOCAL:2
+			PRINTFORM 　%ITEMNAME:(LOCAL:2)%×{LOCAL:3}
+		SIF LOCAL:4
+			PRINTFORM 　%ITEMNAME:(LOCAL:4)%×{LOCAL:5}
+		PRINTL
+	ENDIF
+NEXT
+CUSTOMDRAWLINE =
+IF 강화횟수:ARG
+	FOR LOCAL:10,0,21
+		IF バステ내성강화:ARG:(LOCAL:10)
+			PRINT [100]약화　
+			BREAK
+		ENDIF
+	NEXT
+ENDIF
+PRINTL [200]돌아간다
+INPUT
+IF RESULT == 0 || RESULT == 13 || RESULT == 16 || RESULT == 17
+	PRINTW 드워프：그 상태이상은 강화해도 의미가 없다고
+	GOTO LP
+ENDIF
+;---- EDIT 001 MOD -------------------------
+IF RESULT > 0 && RESULT < 21 && (강화횟수:ARG >= ARG:2 || 내성강화数(ARG) > 4 || バステ내성:RESULT < 1)
+	PRINTW 드워프：이 이상은 강화할 수 없네
+	GOTO LP
+ENDIF
+IF RESULT > 0 && RESULT < 21 && ARG:3 * 500 > MONEY
+	PRINTW 드워프：돈이 부족하네
+	GOTO LP
+ENDIF
+IF RESULT > 0 && RESULT < 21
+	LOCAL:9 = 14 + RESULT * 6
+	LOCAL:12 = LOCAL:(LOCAL:9 ++)
+	LOCAL:13 = LOCAL:(LOCAL:9 ++)
+	LOCAL:14 = LOCAL:(LOCAL:9 ++)
+	LOCAL:15 = LOCAL:(LOCAL:9 ++)
+	LOCAL:16 = LOCAL:(LOCAL:9 ++)
+	LOCAL:17 = LOCAL:(LOCAL:9 ++)
+ENDIF
+IF LOCAL:12 && ITEM:(LOCAL:12) >= LOCAL:13 && RESULT > 0 && RESULT < 21
+	SIF LOCAL:14 && ITEM:(LOCAL:14) < LOCAL:15
+		GOTO LP
+	SIF LOCAL:16 && ITEM:(LOCAL:16) < LOCAL:17
+		GOTO LP
+	PRINTL 드워프：장비의 강화를 해주지
+	PRINTL
+	PRINT 사용아이템　
+	PRINTFORM %ITEMNAME:(LOCAL:12)%×{LOCAL:13}
+	SIF LOCAL:14
+		PRINTFORM 　%ITEMNAME:(LOCAL:14)%×{LOCAL:15}
+	SIF LOCAL:16
+		PRINTFORM 　%ITEMNAME:(LOCAL:16)%×{LOCAL:17}
+	PRINTL
+	PRINTFORML バステ내성　%GET_STATE(RESULT)%내성+50
+	LOCAL:10 = RESULT
+	CALL INPUT_YN
+	IF RESULT == 0
+		バステ내성강화:ARG:(LOCAL:10) += 1
+		MONEY -= ARG:3 * 500
+		ドワ鍛冶사용金額 += ARG:3 * 500
+		ITEM:(LOCAL:12) -= LOCAL:13
+		SIF LOCAL:14
+			ITEM:(LOCAL:14) -= LOCAL:15
+		SIF LOCAL:16
+			ITEM:(LOCAL:16) -= LOCAL:17
+		강화횟수:ARG ++
+	ENDIF
+ELSEIF RESULT == 100
+	PRINTL 드워프：어느 상태이상를 약화시킬거냐？(소재는 반환되지 않습니다)
+	CUSTOMDRAWLINE =
+	FOR LOCAL:10,0,21
+		SIF バステ내성강화:ARG:(LOCAL:10)
+			PRINTFORML [{LOCAL:10}]%GET_STATE(LOCAL:10)%
+	NEXT
+	CUSTOMDRAWLINE =
+	PRINTFORML [100]돌아간다
+	INPUT
+	IF RESULT > 0 && RESULT < 21 && バステ내성강화:ARG:RESULT && 강화횟수:ARG
+		LOCAL:10 = RESULT
+		PRINTL 드워프：이걸로 좋나？
+		PRINTL
+		PRINTFORML 약화　%GET_STATE(LOCAL:10)%
+		CALL INPUT_YN
+		IF RESULT == 0
+			バステ내성강화:ARG:(LOCAL:10) -= 1
+			강화횟수:ARG --
+		ENDIF
+	ENDIF
+ELSEIF RESULT == 200
+	RETURN RESULT
+ENDIF
+FOR LOCAL,0,21
+	CALLFORM バステ내성_{ARG:1},LOCAL
+	バステ내성:LOCAL = 100 + RESULT
+NEXT
+GOTO LP
+
+
+
+
+@軽量化,ARG,ARG:1,ARG:2,ARG:3
+IF !ITEM:(ARG:1)
+	PRINTFORMW 드워프：우선、장비를 벗어주지 않겠나
+	RETURN 200
+ENDIF
+LOCAL:11 = LINECOUNT
+$LP
+CLEARLINE LINECOUNT - LOCAL:11
+PRINTL 드워프：어느 경량화를 할 거냐？
+CUSTOMDRAWLINE =
+PRINTFORML 소지금　　　　{MONEY}
+PRINTFORML 강화금액　　　{ARG:3 * 500}
+PRINTFORML 남은강화횟수　{ARG:2 - 강화횟수:ARG}
+CUSTOMDRAWLINE -
+TRYCCALLFORM 장비조건설명_{ARG:1}
+CATCH
+ENDCATCH
+CUSTOMDRAWLINE -
+IF (ARG:2 - 강화횟수:ARG) > 0 && MONEY >= ARG:3 * 500
+	PRINTFORML 경량화
+	PRINTFORML [0]필요레벨　　 -10
+	PRINTFORML [1]필요파라메터 -10
+	SIF !장비男女軽量化:ARG
+		PRINTFORML [2]성별무시
+	SIF !장비アライメント軽量化:ARG
+		PRINTFORML [3]LD,LC속성무시
+	PRINTFORML 
+ENDIF
+IF 軽量化数(ARG)
+	PRINTFORML 중량화
+	SIF 장비軽量化:ARG
+		PRINTFORML [4]필요레벨　　 +10
+	SIF 장비パラ値軽量化:ARG
+		PRINTFORML [5]필요파라메터 +10
+	SIF 장비男女軽量化:ARG
+		PRINTFORML [2]성별무시해제
+	SIF 장비アライメント軽量化:ARG
+		PRINTFORML [3]LD,LC속성무시해제
+ENDIF
+CUSTOMDRAWLINE =
+PRINTL [200]돌아간다
+INPUT
+IF RESULT == 0 && (ARG:2 - 강화횟수:ARG) > 0 && MONEY >= ARG:3 * 500
+	PRINTL 드워프：이걸로 좋나？
+	PRINTL
+	PRINTFORML 금액　　{ARG:3 * 500}
+	PRINTFORML 경량화　필요레벨 -10
+	PRINTL
+	CALL INPUT_YN
+	IF RESULT == 0
+		MONEY -= ARG:3 * 500
+		ドワ鍛冶사용金額 += ARG:3 * 500
+		장비軽量化:ARG ++
+		강화횟수:ARG ++
+	ENDIF
+ELSEIF RESULT == 1 && (ARG:2 - 강화횟수:ARG) > 0 && MONEY >= ARG:3 * 500
+	PRINTL 드워프：이걸로 좋나？
+	PRINTL
+	PRINTFORML 금액　　{ARG:3 * 500}
+	PRINTFORML 경량화　필요파라메터 -10
+	PRINTL
+	CALL INPUT_YN
+	IF RESULT == 0
+		MONEY -= ARG:3 * 500
+		ドワ鍛冶사용金額 += ARG:3 * 500
+		장비パラ値軽量化:ARG ++
+		강화횟수:ARG ++
+	ENDIF
+ELSEIF RESULT == 4 && 장비軽量化:ARG > 0
+	PRINTL 드워프：이걸로 좋나？
+	PRINTL
+	PRINTFORML 중량화　필요레벨 +10
+	PRINTL
+	CALL INPUT_YN
+	IF RESULT == 0
+		장비軽量化:ARG --
+		강화횟수:ARG --
+	ENDIF
+ELSEIF RESULT == 5 && 장비パラ値軽量化:ARG > 0
+	PRINTL 드워프：이걸로 좋나？
+	PRINTL
+	PRINTFORML 중량화　필요파라메터 +10
+	PRINTL
+	CALL INPUT_YN
+	IF RESULT == 0
+		장비パラ値軽量化:ARG --
+		강화횟수:ARG --
+	ENDIF
+ELSEIF RESULT == 2
+	IF 장비男女軽量化:ARG
+		PRINTL 드워프：이걸로 좋나？
+		PRINTL
+		PRINTFORML 중량화　성별무시해제
+		PRINTL
+		CALL INPUT_YN
+		IF RESULT == 0
+			장비男女軽量化:ARG = !장비男女軽量化:ARG
+			강화횟수:ARG --
+		ENDIF
+	ELSEIF (ARG:2 - 강화횟수:ARG) > 0 && MONEY >= ARG:3 * 500
+		PRINTL 드워프：이걸로 좋나？
+		PRINTL
+		PRINTFORML 금액　　{ARG:3 * 500}
+		PRINTFORML 경량화　성별무시
+		PRINTL
+		CALL INPUT_YN
+		IF RESULT == 0
+			MONEY -= ARG:3 * 500
+			ドワ鍛冶사용金額 += ARG:3 * 500
+			장비男女軽量化:ARG = !장비男女軽量化:ARG
+			강화횟수:ARG ++
+		ENDIF
+	ENDIF
+ELSEIF RESULT == 3
+	IF 장비アライメント軽量化:ARG
+		PRINTL 드워프：이걸로 좋나？
+		PRINTL
+		PRINTFORML 중량화　LD,LC속성무시해제
+		PRINTL
+		CALL INPUT_YN
+		IF RESULT == 0
+			장비アライメント軽量化:ARG = !장비アライメント軽量化:ARG
+			강화횟수:ARG --
+		ENDIF
+	ELSEIF (ARG:2 - 강화횟수:ARG) > 0 && MONEY >= ARG:3 * 500
+		PRINTL 드워프：이걸로 좋나の？
+		PRINTL
+		PRINTFORML 금액　　{ARG:3 * 500}
+		PRINTFORML 경량화　LD,LC속성무시
+		PRINTL
+		CALL INPUT_YN
+		IF RESULT == 0
+			MONEY -= ARG:3 * 500
+			ドワ鍛冶사용金額 += ARG:3 * 500
+			장비アライメント軽量化:ARG = !장비アライメント軽量化:ARG
+			강화횟수:ARG ++
+		ENDIF
+	ENDIF
+ELSEIF RESULT == 200
+	RETURN 200
+ENDIF
+GOTO LP
+
+
+
+@개조장비해제選択,ARG
+;IF !ITEM:(개조장비아이템ナンバー(ARG))
+IF EQUIPMENT_COUNT(개조장비아이템ナンバー(ARG)) > 0
+	PRINTFORMW 드워프：우선、장비를 벗어주지 않겠나
+	RETURN 200
+ENDIF
+PRINTL 드워프：강화에 쓴 돈이나 소재는 돌려주지 않아
+PRINTL 　　　　　정말로 해제할 거냐？
+CALL INPUT_YN
+IF RESULT == 0
+	IF ITEM:(개조장비아이템ナンバー(ARG)) > 0
+		ITEM:(개조장비아이템ナンバー(ARG)) --
+		ITEM:(ベース장비番号:ARG) ++
+	ENDIF
+	CALL 개조장비해제,ARG
+	RETURN 99
+ENDIF
+RETURN 200
+
+@개조장비해제,ARG
+	개조장비名:ARG = 
+	ベース장비番号:ARG = 0
+	プラス数:ARG = 0
+	FOR LOCAL,0,8
+		能力値강화:ARG:LOCAL = 0
+	NEXT
+	FOR LOCAL,0,7
+		パラメータ강화:ARG:LOCAL = 0
+	NEXT
+	FOR LOCAL,0,17
+		속성내성강화:ARG:LOCAL = 0
+	NEXT
+	FOR LOCAL,0,21
+		バステ내성강화:ARG:LOCAL = 0
+	NEXT
+	장비軽量化:ARG = 0
+	장비パラ値軽量化:ARG = 0
+	장비男女軽量化:ARG = 0
+	장비アライメント軽量化:ARG = 0
+	강화횟수:ARG = 0
+
+
+@軽量化処理,ARG,ARG:1
+;0　キャラ
+;1　장비
+;LOCAL:2 = CFLAG:ARG:포지션
+軽量キャラ사용 = 1
+LOCAL = 0
+
+TRYCCALLFORM 장비조건_{ARG:1},ARG
+	LOCAL = RESULT
+	SIF LOCAL > 0
+		GOTO END
+CATCH
+	GOTO END
+ENDCATCH
+LOCAL:2 = 10
+FOR LOCAL:1,30,37
+	LOCAL:(LOCAL:2++) = BASE:ARG:(LOCAL:1)
+	LOCAL:(LOCAL:2++) = MAXBASE:ARG:(LOCAL:1)
+NEXT
+LOCAL:(LOCAL:2++) = ABL:ARG:속성LD;14
+LOCAL:(LOCAL:2++) = ABL:ARG:속성LC;15
+LOCAL:(LOCAL:2++) = TALENT:ARG:남자;16
+
+IF 장비軽量化:개조장비番号(ARG:1) > 0
+	BASE:ARG:LV += 장비軽量化:개조장비番号(ARG:1) * 10
+	MAXBASE:ARG:LV += 장비軽量化:개조장비番号(ARG:1) * 10
+ENDIF
+IF 장비パラ値軽量化:개조장비番号(ARG:1) > 0
+	FOR LOCAL:1,31,37
+		BASE:ARG:(LOCAL:1) += 장비パラ値軽量化:개조장비番号(ARG:1) * 10
+		MAXBASE:ARG:(LOCAL:1) += 장비パラ値軽量化:개조장비番号(ARG:1) * 10
+	NEXT
+ENDIF
+$LP
+IF 장비アライメント軽量化:개조장비番号(ARG:1) > 0
+	FOR LOCAL:1,0,9
+		ABL:ARG:속성LD = LOCAL:1 / 3 + 1
+		ABL:ARG:속성LC = LOCAL:1 % 3 + 1
+		TRYCCALLFORM 장비조건_{ARG:1},ARG
+			LOCAL = RESULT
+			SIF LOCAL > 0
+				GOTO END2
+		CATCH
+			GOTO END2
+		ENDCATCH
+	NEXT
+ELSE
+	TRYCCALLFORM 장비조건_{ARG:1},ARG
+		LOCAL = RESULT
+		SIF LOCAL > 0
+			GOTO END2
+	CATCH
+		GOTO END2
+	ENDCATCH
+ENDIF
+IF 장비男女軽量化:개조장비番号(ARG:1) > 0 && LOCAL == 0 && TALENT:ARG:남자 == LOCAL:26
+	TALENT:ARG:남자 = !TALENT:ARG:남자
+	GOTO LP
+ENDIF
+$END2
+LOCAL:2 = 10
+FOR LOCAL:1,30,37
+	BASE:ARG:(LOCAL:1) = LOCAL:(LOCAL:2++)
+	MAXBASE:ARG:(LOCAL:1) = LOCAL:(LOCAL:2++)
+NEXT
+ABL:ARG:속성LD = LOCAL:(LOCAL:2++);14
+ABL:ARG:속성LC = LOCAL:(LOCAL:2++);15
+TALENT:ARG:남자 = LOCAL:(LOCAL:2++);16
+;IF 장비男女軽量化:개조장비番号(ARG:1) > 0 && LOCAL == 0 && IS_LOOKSLIKE_MALE(ARG) == IS_LOOKSLIKE_MALEARG
+;IF 0 < (LOCAL:2) && (LOCAL:2) < 17
+;	CFLAG:ARG:포지션 = LOCAL:2
+;	LOCALS = 포지션{LOCAL:2}
+;	FLAG:LOCALS = ARG
+;ENDIF
+$END
+軽量キャラ사용 = 0
+RETURN LOCAL
+
+;---- EDIT 001 MOD START -------------------------
+@내성강화数(ARG)
+#FUNCTION
+#LOCALSIZE 1
+#DIM 강화数
+강화数 = 0
+FOR LOCAL,0,17
+	강화数 += 속성내성강화:ARG:LOCAL
+NEXT
+FOR LOCAL,0,21
+	강화数 += バステ내성강화:ARG:LOCAL
+NEXT
+RETURNF 강화数
+;---- EDIT 001 MOD END -------------------------
+
+
+@軽量化数(ARG)
+#FUNCTION
+RETURNF 장비軽量化:ARG + 장비パラ値軽量化:ARG + 장비男女軽量化:ARG + 장비アライメント軽量化:ARG
+
+@개조장비명칭(ARG)
+#FUNCTIONS
+LOCALS = %개조장비名:ARG%
+IF プラス数:ARG
+	LOCALS = %개조장비名:ARG%+{プラス数:ARG}
+ENDIF
+RETURNF LOCALS
+
+@개조장비(ARG)
+#FUNCTION
+SELECTCASE ARG
+	CASE 2390 TO 2399 , 2940 TO 2949 , 3440 TO 3449, 3940 TO 3949 , 4400 TO 4409, 4940 TO 4949 
+		RETURNF 1
+ENDSELECT
+
+@개조장비番号(ARG)
+#FUNCTION
+LOCAL:1 = 0
+FOR LOCAL,2000,5000
+	SELECTCASE LOCAL
+		CASE 2390 TO 2399 , 2940 TO 2949 , 3440 TO 3449, 3940 TO 3949 , 4400 TO 4409, 4940 TO 4949 
+			SIF ARG == LOCAL
+				RETURNF LOCAL:1
+			LOCAL:1 ++
+	ENDSELECT
+NEXT
+
+@개조장비아이템ナンバー(ARG)
+#FUNCTION
+LOCAL:1 = 0
+FOR LOCAL,2000,5000
+	SELECTCASE LOCAL
+		CASE 2390 TO 2399 , 2940 TO 2949 , 3440 TO 3449, 3940 TO 3949 , 4400 TO 4409, 4940 TO 4949 
+			SIF ARG == LOCAL:1
+				RETURNF LOCAL
+			LOCAL:1 ++
+	ENDSELECT
+NEXT

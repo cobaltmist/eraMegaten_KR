@@ -1,0 +1,464 @@
+;あなた合体用処理を記述したファイルです
+
+
+@FUSION_WITH_YOU
+;LOCAL:1　あなたの登録番号
+;LOCAL:2　造魔、素材の登録番号
+#DIM 完成品 , 1
+LOCAL:1 = 0
+LOCAL:2 = -1
+$START_FUSION
+LOCAL:6 = 0
+
+;キャラリストを表示
+
+P = 0
+;表示させるキャラを抽出（Q:*に表示するキャラの登録番号、LOCAL:3に人数）
+VARSET Q, -1
+A = 0
+REPEAT CHARANUM
+	;素材は契約済みのみ、人間不可
+	SIF (契約(COUNT) == 0 || ABL:COUNT:種族 == 0)
+		CONTINUE
+	SIF COUNT == LOCAL:1 || COUNT == LOCAL:2
+		CONTINUE
+	SIF CFLAG:COUNT:労役フラグ == 3
+		CONTINUE
+	SIF CFLAG:COUNT:合体不可
+		CONTINUE
+	SIF CFLAG:COUNT:この場に居ないフラグ == 1
+		CONTINUE
+
+	Q:A = COUNT
+	A += 1
+REND
+LOCAL:5 = A
+
+$PRINT_LIST
+DRAWLINE
+PRINTFORML %CALLNAME:MASTER%と融合する悪魔を選んでください　＜page.{P + 1}＞
+DRAWLINE
+CALL SHOW_CHARA_LIST
+DRAWLINE
+PRINTFORMLC \@(P <= 0) ? %" " * 16% # [1001]前のページ\@
+PRINTLC [1000]戻る
+PRINTFORMLC \@(P >= (LOCAL:5 - 1) / リスト表示数()) ? %" " * 16% # [1009]次のページ\@
+SIF LOCAL:2 > -1
+	PRINTFORML 生贄:%CALLNAME:(LOCAL:2)%
+
+$INPUT_LOOP_1
+INPUT
+IF RESULT == 1000
+	RETURN 0
+ELSEIF RESULT == 1001
+	IF P > 0
+		P -= 1
+		GOTO PRINT_LIST
+	ELSE
+		GOTO INPUT_LOOP_1
+	ENDIF
+ELSEIF RESULT == 1009
+	LOCAL = (LOCAL:5 - 1) / リスト表示数()
+	IF P < LOCAL
+		P += 1
+		GOTO PRINT_LIST
+	ELSE
+		GOTO INPUT_LOOP_1
+	ENDIF
+ELSEIF RESULT < 0 || RESULT >= CHARANUM || MATCH(Q,RESULT,0) == 0
+	GOTO INPUT_LOOP_1
+ENDIF
+
+	LOCAL:2 = RESULT
+	
+	完成品 = CHARANUM
+	ADDCOPYCHARA LOCAL:1
+	LOCAL:7 = RESULT
+	
+	;取得する経験値を計算
+	LOCAL:4 = CFLAG:(LOCAL:2):初期LV
+	LOCAL:3 = BASE:(LOCAL:2):ＥＸＰ - 5*(LOCAL:4-1)*(LOCAL:4+1)*(LOCAL:4)/3
+	;香で強化されている場合経験値にボーナス
+	LOCAL:3 += MAX(0, BASE:(LOCAL:2):力 + BASE:(LOCAL:2):知恵 + BASE:(LOCAL:2):魔力 + BASE:(LOCAL:2):耐力 + BASE:(LOCAL:2):速さ + BASE:(LOCAL:2):運 - 18 - MAXBASE:(LOCAL:2):LV * 3 / 2) * 100
+	SIF BASE:(LOCAL:1):LV > LOCAL:4
+		LOCAL:3 /= (BASE:(LOCAL:1):LV - LOCAL:4)/4+1
+	SIF BASE:(LOCAL:1):LV < LOCAL:4
+		LOCAL:3 *= POWER(2, MIN(( LOCAL:4 - BASE:(LOCAL:1):LV)/4,4))
+	TIMES LOCAL:3 , 0.70
+	;取得するＭＡＧを記録
+	LOCAL:4 = BASE:(LOCAL:2):ＭＡＧ
+	;素質の引継ぎチェック
+	IF TALENT:(LOCAL:2):爆乳 == 1
+		TALENT:完成品:爆乳 = 1
+		TALENT:完成品:巨乳 = 0
+		TALENT:完成品:貧乳 = 0
+		TALENT:完成品:絶壁 = 0
+	ELSEIF TALENT:(LOCAL:2):巨乳 == 1
+		TALENT:完成品:爆乳 = 0
+		TALENT:完成品:巨乳 = 1
+		TALENT:完成品:貧乳 = 0
+		TALENT:完成品:絶壁 = 0
+	ELSEIF TALENT:(LOCAL:2):貧乳 == 1
+		TALENT:完成品:爆乳 = 0
+		TALENT:完成品:巨乳 = 0
+		TALENT:完成品:貧乳 = 1
+		TALENT:完成品:絶壁 = 0
+	ELSEIF TALENT:(LOCAL:2):絶壁 == 1
+		TALENT:完成品:爆乳 = 0
+		TALENT:完成品:巨乳 = 0
+		TALENT:完成品:貧乳 = 0
+		TALENT:完成品:絶壁 = 1
+	ELSE
+		TALENT:完成品:爆乳 = 0
+		TALENT:完成品:巨乳 = 0
+		TALENT:完成品:貧乳 = 0
+		TALENT:完成品:絶壁 = 0
+	ENDIF
+	IF (TALENT:完成品:オトコ == 1 && TALENT:(LOCAL:2):オトコ == 0) || (TALENT:完成品:オトコ == 0 && TALENT:(LOCAL:2):オトコ == 1) || TALENT:(LOCAL:2):ふたなり == 1
+		TALENT:完成品:ふたなり = 1
+		TALENT:完成品:男の娘 = 0
+	ENDIF
+	SIF TALENT:(LOCAL:2):動物耳 == 1
+		TALENT:完成品:動物耳 = 1
+	SIF TALENT:(LOCAL:2):鉤爪 == 1
+		TALENT:完成品:鉤爪 = 1
+	SIF TALENT:(LOCAL:2):羽 == 1
+		TALENT:完成品:羽 = 1
+	SIF TALENT:(LOCAL:2):尾 == 1
+		TALENT:完成品:尾 = 1
+	SIF TALENT:(LOCAL:2):鉤足 == 1
+		TALENT:完成品:鉤足 = 1
+	IF TALENT:(LOCAL:2):魚 == 1
+		TALENT:完成品:魚 = 1
+		TALENT:完成品:尾 = 1
+		TALENT:完成品:足 = 0
+		;人魚になります…多分
+	ENDIF
+	SIF TALENT:(LOCAL:2):機械の乙女 == 1 || ABL:(LOCAL:2):種族 == 12
+		TALENT:完成品:機械の乙女 = 1
+		;実質クリス・ザ・カーとの合体時専用？一応種族:マシンとの合体時にも機械の乙女に変化するように設計したつもり…
+	SIF TALENT:(LOCAL:2):不定形 == 1
+		TALENT:完成品:不定形 = 1
+	CALL SUCCESS_TALENT,完成品,完成品,LOCAL:2,LOCAL:10
+	CUSTOMDRAWLINE =
+	PRINTFORML %CALLNAME:(LOCAL:1)% LV{MAXBASE:(LOCAL:1):LV}({BASE:(LOCAL:1):LV})
+	PRINTFORML 　　　　ＥＸＰ:＋{MAX(LOCAL:3,0)}　　ＭＡＧ：＋{LOCAL:4}
+	CUSTOMDRAWLINE =
+	;合体結果のステータスを表示
+	U = 完成品
+	PRINTFORML %STR:(ABL:U:80)%　　%CALLNAME:U%　　
+	CALL SHOW_INFO_PAGE_1
+	CUSTOMDRAWLINE =
+	
+	
+	;合体するかどうか　→　合体実行
+	PRINTL 以上の結果になりますがよろしいですか？
+	CALL INPUT_YN,"Yes","No",2
+
+	IF RESULT == 1
+		DELCHARA 完成品
+		RESTART
+	ENDIF
+	
+	DELCHARA 完成品
+	
+	
+	;素質の引継ぎ
+	CALL SUCCESS_TALENT,LOCAL:1,LOCAL:1,LOCAL:2,LOCAL:10
+	
+	;経験値加算
+	BASE:(LOCAL:1):ＥＸＰ += LOCAL:3
+	CALL CHECK_LEVEL_UP,LOCAL:1
+	;ＭＡＧ加算
+	BASE:(LOCAL:1):ＭＡＧ += LOCAL:4
+	
+	;手紙システム
+	CALL FUSION_LETTER_WITH_YOU,LOCAL:2
+	
+	
+	IF TALENT:(LOCAL:2):爆乳 == 1
+		TALENT:(LOCAL:1):爆乳 = 1
+		TALENT:(LOCAL:1):巨乳 = 0
+		TALENT:(LOCAL:1):貧乳 = 0
+		TALENT:(LOCAL:1):絶壁 = 0
+	ELSEIF TALENT:(LOCAL:2):巨乳 == 1
+		TALENT:(LOCAL:1):爆乳 = 0
+		TALENT:(LOCAL:1):巨乳 = 1
+		TALENT:(LOCAL:1):貧乳 = 0
+		TALENT:(LOCAL:1):絶壁 = 0
+	ELSEIF TALENT:(LOCAL:2):貧乳 == 1
+		TALENT:(LOCAL:1):爆乳 = 0
+		TALENT:(LOCAL:1):巨乳 = 0
+		TALENT:(LOCAL:1):貧乳 = 1
+		TALENT:(LOCAL:1):絶壁 = 0
+	ELSEIF TALENT:(LOCAL:2):絶壁 == 1
+		TALENT:(LOCAL:1):爆乳 = 0
+		TALENT:(LOCAL:1):巨乳 = 0
+		TALENT:(LOCAL:1):貧乳 = 0
+		TALENT:(LOCAL:1):絶壁 = 1
+	ELSE
+		TALENT:(LOCAL:1):爆乳 = 0
+		TALENT:(LOCAL:1):巨乳 = 0
+		TALENT:(LOCAL:1):貧乳 = 0
+		TALENT:(LOCAL:1):絶壁 = 0
+	ENDIF
+	IF (TALENT:(LOCAL:1):オトコ == 1 && TALENT:(LOCAL:2):オトコ == 0) || (TALENT:(LOCAL:1):オトコ == 0 && TALENT:(LOCAL:2):オトコ == 1) || (TALENT:(LOCAL:1):ふたなり == 0 &&TALENT:(LOCAL:2):ふたなり == 1)
+		PRINTFORML
+		PRINTFORML %CALLNAME:(LOCAL:1)%はふたなりになった…
+		IF TALENT:(LOCAL:1):オトコ == 1
+			PRINTFORM %CALLNAME:(LOCAL:1)%は生まれ変わった体で
+			IF EXP:(LOCAL:1):Ｖ経験 > 0
+				PRINTFORM 久しぶりの
+			ELSE
+				PRINTFORM 初めての
+			ENDIF
+			PRINTFORML 「女」としての悦びを思う存分味わった…
+			IF TALENT:(LOCAL:1):爆乳 == 1 || TALENT:(LOCAL:1):巨乳 == 1
+				PRINTFORML しかしこの体、%CALLNAME:(LOCAL:2)%に似て胸が大きい。女物の下着が必要だろう。
+				IF TALENT:(LOCAL:1):108 ;B敏感
+					PRINTFORML おまけにこのサイズにも拘らず敏感で、触っただけで体に電流が流れるかのようだ。
+				ENDIF
+				IF TALENT:(LOCAL:1):爆乳
+					PRINTFORML それにしても肩が重い。%CALLNAME:(LOCAL:2)%は普段からこんなものをぶら下げていたのか。
+				ENDIF
+			ELSEIF TALENT:(LOCAL:1):貧乳 == 1 || TALENT:(LOCAL:1):絶壁 == 1
+				IF TALENT:(LOCAL:1):108 ;B敏感
+					PRINTFORML 胸は%CALLNAME:(LOCAL:2)%に似て小さいのだが、大分敏感だ。　下着はなるべくすぐ用意しよう…
+				ELSE
+					PRINTFORML 幸いというべきか、%CALLNAME:(LOCAL:2)%に似て胸は小さい。　下着などは後回しで十分だろう。
+				ENDIF
+			ELSE
+				PRINTFORM ただ、この体はそれなりに胸がある。
+				IF TALENT:(LOCAL:1):108 ;B敏感
+					PRINTFORML おまけに敏感すぎて、服が擦れるだけで思わず体がのけ反ってしまう。
+				ENDIF
+				PRINTFORML 女物の下着を用意した方が良いかもしれない。
+			ENDIF
+		ELSE
+			PRINTFORM %CALLNAME:(LOCAL:1)%は%CALLNAME:(LOCAL:2)%と一つになった体で
+			IF EXP:(LOCAL:1):射精経験 > 0
+				PRINTFORM 久しぶりの
+			ELSE
+				PRINTFORM 初めての
+				EXP:(LOCAL:1):射精経験 += 10
+			ENDIF
+			PRINTFORML 射精感を息が切れるまで味わった…
+			IF TALENT:(LOCAL:1):102 ;C敏感、全角半角の自信がないため数値入力
+				IF EXP:(LOCAL:1):射精経験 > 0
+					PRINTFORML しかし、どうも以前よりもペニスが気持ち良い気がする。
+					PRINTFORML 悪魔から得た部分故に、より敏感になっているのだろうか。
+				ELSE
+					PRINTFORML しかし、ペニスというものがここまで敏感だとは思っていなかった。
+				ENDIF
+				PRINTFORML これは女物の下着では締め付けられすぎるだろう。
+				PRINTFORML もうパンティは履けないかもしれない。
+			ELSEIF TALENT:(LOCAL:1):大業物
+				PRINTFORML しかし、%CALLNAME:(LOCAL:2)%のペニスはここまで大きかっただろうか。
+				PRINTFORML どうも余計に大きくなっているような気がするが…
+				PRINTFORML これはもう、パンティは履けないだろう。　いや、ズボンも不味い。
+			ELSE
+				PRINTFORML ただ、こんなものが付いていてはもうパンティは履けないだろう。
+			ENDIF
+		ENDIF
+		PRINTFORM %CALLNAME:(LOCAL:1)%は新たな身体から噴き出した
+		SIF TALENT:(LOCAL:1):母乳体質
+			PRINTFORM 母乳と
+		SIF TALENT:(LOCAL:1):104
+			PRINTFORM 愛液と
+		PRINTFORMW 精液で白濁した部屋で、息を切らしてそんなことを考えた…
+		TALENT:(LOCAL:1):ふたなり = 1
+		TALENT:(LOCAL:1):男の娘 = 0
+		TALENT:(LOCAL:1):オトコ = 0
+	ENDIF
+	
+	IF TALENT:(LOCAL:2):動物耳 == 1 && TALENT:(LOCAL:1):動物耳 == 0
+		PRINTFORML
+		TALENT:(LOCAL:1):動物耳 = 1
+		PRINTFORM %CALLNAME:(LOCAL:1)%の耳は
+		IF TALENT:(LOCAL:2):狐 == 1
+			PRINTFORM %CALLNAME:(LOCAL:2)%に似た狐のような
+		ELSEIF CSTR:(LOCAL:2):相性グループ == "猫"
+			PRINTFORM %CALLNAME:(LOCAL:2)%に似た猫に近い
+		ELSEIF CSTR:(LOCAL:2):相性グループ == "犬"
+			PRINTFORM %CALLNAME:(LOCAL:2)%に似た犬らしい
+		ELSE
+			PRINTFORM %CALLNAME:(LOCAL:2)%によく似た動物の
+		ENDIF
+		PRINTFORML 形に変化した。
+		PRINTFORML 耳が髪にくすぐられてこそばゆい…　慣れるまでは時間がかかるかもしれない。
+		PRINTFORMW 何にせよ、早急に帽子か何かを買ってこなくては。
+	ENDIF
+	IF TALENT:(LOCAL:2):鉤爪 == 1 && TALENT:(LOCAL:1):鉤爪 == 0
+		PRINTFORML
+		TALENT:(LOCAL:1):鉤爪 = 1
+		PRINTFORML %CALLNAME:(LOCAL:1)%の手から鉤爪が生えた。
+		PRINTFORML 幸いにも出し入れが可能なようだが、暫くは勝手に出てこないように慣らさなければいけないだろう。
+		PRINTFORMW もしＣＯＭＰの操作中に勝手に鉤爪が出てきたら、などと考えると恐ろしい。
+	ENDIF
+	IF TALENT:(LOCAL:2):羽 == 1 && TALENT:(LOCAL:1):羽 == 0
+		PRINTFORML
+		TALENT:(LOCAL:1):羽 = 1
+		PRINTFORM %CALLNAME:(LOCAL:1)%の背中から%CALLNAME:(LOCAL:2)%
+		IF TALENT:(LOCAL:2):天使 == 1
+			PRINTFORM に似た純白の
+		ELSEIF TALENT:(LOCAL:2):堕天使 == 1
+			PRINTFORM に似て漆黒の
+		ELSEIF TALENT:(LOCAL:2):鳥 == 1
+			PRINTFORM のような鳥の
+		ELSE 
+			PRINTFORM のものによく似た
+		ENDIF
+		PRINTFORML 翼が生えた。
+		PRINTFORML 何度か試してみたが、如何やら%CALLNAME:(LOCAL:1)%が宙に浮くくらいの力はあるようだ。
+		PRINTFORMW ただ、かなり大きな翼なので隠すのは難しそうだ。マントでも羽織ろうか…？
+	ENDIF
+	IF TALENT:(LOCAL:2):尾 == 1 && TALENT:(LOCAL:1):尾 == 0 && TALENT:(LOCAL:2):魚 == 0
+		PRINTFORML
+		TALENT:(LOCAL:1):尾 = 1
+		PRINTFORM %CALLNAME:(LOCAL:1)%の臀裂の上部から
+		IF TALENT:(LOCAL:2):狐 == 1
+			PRINTFORM %CALLNAME:(LOCAL:2)%に似た狐のような
+		ELSEIF CSTR:(LOCAL:2):相性グループ == "猫"
+			PRINTFORM %CALLNAME:(LOCAL:2)%に似た猫に近い
+		ELSEIF CSTR:(LOCAL:2):相性グループ == "犬"
+			PRINTFORM %CALLNAME:(LOCAL:2)%に似た犬らしい
+		ELSEIF TALENT:(LOCAL:2):爬虫類 == 1
+			PRINTFORM %CALLNAME:(LOCAL:2)%に似たトカゲを思わせる
+		ELSE
+			PRINTFORM %CALLNAME:(LOCAL:2)%によく似た
+		ENDIF
+		PRINTFORML 尾が生えた。
+		PRINTFORML どうも此方の感情に合わせて勝手に動いてしまっているようだ。
+		PRINTFORMW 少々気恥ずかしいな…
+	ENDIF
+	IF TALENT:(LOCAL:2):魚 == 1 && TALENT:(LOCAL:1):魚 == 0
+		PRINTFORML
+		TALENT:(LOCAL:1):魚 = 1
+		TALENT:(LOCAL:1):尾 = 1
+		TALENT:(LOCAL:1):足 = 0
+		PRINTFORMW なんと%CALLNAME:(LOCAL:1)%の足が魚の尾になってしまった！
+		PRINTFORML 幸いにも悪魔の力故か、陸上では浮き上がることで以前と同じように動くことができた。
+		PRINTFORMW しかし、これは…　今後はスカートでも履かなければ日常生活も厳しいかもしれない…
+	ENDIF
+	IF TALENT:(LOCAL:2):鉤足 == 1 && TALENT:(LOCAL:1):鉤足 == 0 && TALENT:(LOCAL:1):魚 == 0
+		PRINTFORML
+		TALENT:(LOCAL:1):鉤足 = 1
+		PRINTFORM %CALLNAME:(LOCAL:1)%の足首から先が
+		IF TALENT:(LOCAL:2):獣
+			PRINTFORML 獣のような形になった。
+			PRINTFORML 肉球が地面を踏みしめる感触が何とも言えず気持ちが良い…
+		ELSE 
+			PRINTFORML 鳥のような形になった。
+			PRINTFORML 指が足首の後ろにある、という感覚がどうにも不思議だ…
+		ENDIF
+		PRINTFORMW とりあえず、しばらくは仲魔用の靴を履いておくことにしようか。
+	ENDIF
+	
+	IF TALENT:(LOCAL:2):機械の乙女 == 1 || ABL:(LOCAL:2):種族 == 12
+		;伽耶ちゃんもゴーレムと合体して機械の乙女になるし、多分マシンと合体したらなるよね…？
+		;機械の乙女所持者の都合上女orふたなりだから問題はないはず
+		;マシンが仲魔になる機会があるのか、が分からないので無駄になるかも…
+		PRINTFORML
+		TALENT:(LOCAL:1):機械の乙女 = 1
+		PRINTFORML %CALLNAME:(LOCAL:1)%の身体は機械化された…
+		PRINTFORML ぱっと見てそうは思えないのだが、体を動かすとわずかに振動を感じるし、関節が球体パーツのようになっている。
+		PRINTFORML 一方何度も触って確かめてみたが、どういう訳か触られた感触も、中で機器が動く感触もある。
+		PRINTFORML 考えてみれば、%CALLNAME:(LOCAL:2)%は自分が調教していたのだからその位は感じ取れるはずだ。
+		PRINTFORMW それにしても折角機械の身体になったのだ、いっそＣＯＭＰを組み込んでみても面白いかもしれないな…
+	ENDIF
+	IF TALENT:(LOCAL:2):不定形 == 1 && TALENT:(LOCAL:1):不定形 == 0
+		PRINTFORML
+		TALENT:(LOCAL:1):不定形 = 1
+		PRINTFORMW ？　何やら体の触り心地に違和感がある…
+		PRINTFORMW なんと%CALLNAME:(LOCAL:1)%の身体の一部は%CALLNAME:(LOCAL:2)%のようにとろけてしまっていた！
+		PRINTFORML 基本的には人型を保っているのだが、場所によっては指で押してみるとそのまま埋まっていく…
+		PRINTFORML 如何やら一部がスライム状の肉体になっているらしい。
+		PRINTFORML しかしこの身体、何かあったら溶けてしまうんじゃないだろうか。
+		PRINTFORMW %CALLNAME:(LOCAL:1)%は今更ながら%CALLNAME:(LOCAL:2)%の苦労に思いを馳せた…
+	ENDIF
+	
+	EXP:(LOCAL:1):85 += 1 ;あなた合体の回数を確認
+	
+	;合体素材の悪魔を消去
+	CALL キャラ削除, LOCAL:2
+	RETURN 0
+
+GOTO START_FUSION
+
+
+@FUSION_LETTER_WITH_YOU,ARG
+PRINTL 手紙があります。読みますか？		
+
+CALL INPUT_YN,"Yes","NO"
+IF RESULT == 0
+	PRINTFORMW %CALLNAME:(ARG)%からの手紙だ。
+	CALL FUSION_LETTER_MESSAGE_WITH_YOU_PUB,ARG
+ENDIF
+
+
+@FUSION_LETTER_MESSAGE_WITH_YOU_PUB,ARG
+
+;恋慕、親愛
+IF TALENT:(ARG):3 || TALENT:(ARG):6
+	IF TALENT:(ARG):妊娠 && (RAND:2)
+		PRINTFORMW お腹の子供共々、あなたの力になると書かれている。
+	ELSEIF TALENT:(ARG):処女 && (RAND:2)
+		PRINTFORMW あなたに処女を捧げたかったと書かれている。
+	ELSE
+		SELECTCASE RAND:13
+			CASE 0
+				PRINTFORMW この先もあなたの力になると、強い決意が書かれている
+			CASE 1
+				PRINTFORMW 浮気したらあなたの中から呪ってやると記されている。
+			CASE 2
+				PRINTFORMW あなたへの愛が書き連ねられている…
+			CASE 3
+				PRINTFORMW あなたへの想いが丁寧に綴られていた…
+			CASE 4
+				PRINTFORMW あなたを気遣う優しい言葉に溢れていた
+			CASE 5
+				PRINTFORMW あなたへの気持ちが詰っていた…
+			CASE 6
+				PRINTFORMW 「ありがとう」
+			CASE 7
+				PRINTFORMW 涙でにじんで読むことができない・・・
+			CASE 8
+				PRINTFORMW あなたとの思い出が記されている。
+			CASE 9
+				PRINTFORMW 手紙から、良い匂いがする・・・
+			CASE 10
+				PRINTFORMW あなたと一つになれることへの喜びがしたためられている・・・
+			CASE 11
+				PRINTFORMW 例え死んでも一緒に居られると興奮気味の文章が書き連ねられている。
+			CASEELSE
+				PRINTFORMW 手紙には、まだ%CALLNAME:(ARG)%のぬくもりが残っていた。
+		ENDSELECT
+	ENDIF
+	
+;淫乱、娼婦
+ELSEIF TALENT:(ARG):4 || TALENT:(ARG):7
+	SELECTCASE RAND:5
+	CASE 0
+		PRINTFORMW なんと！あなたあてではなかった。
+	CASE 1
+		PRINTFORMW 雑誌投稿用の体験談が記されていた。
+	CASE 2
+		PRINTFORMW 初体験のことが書かれている。
+	CASE 3
+		PRINTFORMW あなたと共に更なる体験ができる悦びに満ち溢れている。
+	CASEELSE
+		PRINTFORMW 手紙には、まだ%CALLNAME:(ARG)%の淫靡な匂いが残っていた。
+	ENDSELECT
+
+;服従、隷属
+ELSEIF TALENT:(ARG):5 || TALENT:(ARG):8
+	SELECTCASE RAND:3
+	CASE 0
+		PRINTFORMW なぜか、悪魔の半生が記されている	
+	CASE 1
+		PRINTFORMW あなたの一部として永遠の忠誠を誓うと記されていた。
+	CASEELSE
+		PRINTFORMW あなたへの忠誠心について書かれている。
+	ENDSELECT
+
+ENDIF

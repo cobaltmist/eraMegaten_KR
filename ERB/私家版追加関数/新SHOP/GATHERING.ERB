@@ -1,0 +1,206 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:CONTLOR_SELF.ERB
+;	Facility	:キャラクタの요바이허가/불허가바꾸기
+;
+;	Licence		:ライセンスフリー。
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		2020/04/22		Jガン					新規作成
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;この설정がONだと조교コマンド時に相손によって一時的に함락が変わる
+
+@SHOPCOMABLE_663
+#LOCALSIZE 3
+RESULT:1 = 1
+LOCAL:1 = 0
+LOCAL:2 = 0
+VARSET T,-1
+;一応、マ스타しかいないときは除外
+FOR LOCAL,0, CHARANUM
+	CALL CASTING_GATHERING(LOCAL)
+	SIF RESULT
+		LOCAL:1++
+	IF LOCAL:1 > 1
+		LOCAL:2 = 1
+		BREAK
+	ENDIF
+NEXT
+VARSET T
+;SIF GETBIT(FLAG:교류フラグ,1)
+;	LOCAL:1 = 0
+RESULTS = 집회
+RETURN LOCAL:2
+
+@CASTING_GATHERING(ARG)
+;主人を除外
+;SIF ARG == MASTER
+;	RETURN 0
+;인간이외함락済みのみ
+SIF ABL:ARG:종족 != 0 && !함락(ARG)
+	RETURN 0
+;비전투원の場合함락してない場合조교してるとダメ
+SIF TALENT:ARG:비전투원 && !함락(ARG) && CFLAG:ARG:被조교횟수 < 1
+	RETURN 0
+;この場にいない불가
+SIF CFLAG:ARG:この場に居ないフラグ
+	RETURN 0
+;전투참가불가능を除外
+SIF CFLAG:ARG:전투참가불가능 == 1
+	RETURN 0
+;예속を除外
+;SIF TALENT:ARG:복종 || TALENT:ARG:예속
+;	RETURN 0
+;選択済みは除外
+SIF MATCH(T,ARG) > 0
+	RETURN 0
+;一日に二度は交流、集会できない
+SIF GETBIT(CFLAG:ARG:교류済フラグ,1)
+	RETURN 0
+RETURN 1
+
+@SHOP_COM_663
+#LOCALSIZE 4
+#LOCALSSIZE 1
+#DIM CAST
+#DIM N_PEOPLE
+#DIM STOCK
+;LOCAL:0 
+;M_COUNT = 1 + ( TALENT:MASTER:수수께끼의매력 || TALENT:MASTER:매력 || TALENT:MASTER:매혹)
+REDRAW 0
+VARSET T,-2
+$RET
+
+DRAWLINE
+PRINTFORML 누구를 집회에 참가시킵니까？
+DRAWLINE
+PRINTFORML [0]\@ T:0 >= 0 ? %CALLNAME:(T:0),20,LEFT%　[10]제외 # ＜없음＞ \@
+PRINTFORML [1]\@ T:1 >= 0 ? %CALLNAME:(T:1),20,LEFT%　[11]제외 # ＜없음＞ \@
+PRINTFORML [2]\@ T:2 >= 0 ? %CALLNAME:(T:2),20,LEFT%　[12]제외 # ＜없음＞ \@
+PRINTFORML [3]\@ T:3 >= 0 ? %CALLNAME:(T:3),20,LEFT%　[13]제외 # ＜없음＞ \@
+PRINTFORML [4]\@ T:4 >= 0 ? %CALLNAME:(T:4),20,LEFT%　[14]제외 # ＜없음＞ \@
+DRAWLINE
+N_PEOPLE = 0
+FOR LOCAL,0,5
+	SIF T:LOCAL >= 0
+		N_PEOPLE ++
+NEXT
+;                          　　　　　　　
+PRINTFORM \@ N_PEOPLE > 1 ? [2000]집회개시 # 　　　　　　　 \@　
+PRINTFORML [1000]돌아간다
+INPUT
+IF RESULT == 1000
+	VARSET T
+	RETURN 0
+ELSEIF RESULT >= 0 && RESULT < 5
+	LOCAL = RESULT
+	LOCALS = 누구를 설정합니까？
+	CALL INPUT_CHARA_LIST( LOCALS,"CASTING_GATHERING")
+	REDRAW 1
+	SIF RESULT != 1000
+		T:LOCAL = RESULT
+	GOTO RET
+ELSEIF RESULT >= 10 && RESULT < 15
+	T:(RESULT - 10) = -2
+	GOTO RET
+ELSEIF RESULT == 2000 && N_PEOPLE > 1
+	DRAWLINE
+	PRINTFORML 이 멤버로 집회를 합니까？
+	DRAWLINE
+	CALL INPUT_YN
+	SIF RESULT == 1
+		GOTO RET
+ELSE
+	CLEARLINE 1
+	GOTO RET
+ENDIF
+DRAWLINE
+PRINTFORMW 이 멤버끼리 집회를 하기로 했다。
+DRAWLINE
+PRINTFORML
+
+;SETBIT FLAG:교류フラグ,0
+STOCK = TARGET
+LOCAL:2 = (5 + RAND:6)
+FOR LOCAL:1,0,5
+	TARGET = T:(LOCAL:1)
+	SIF TARGET < 0
+		CONTINUE
+	SETBIT CFLAG:TARGET:교류済フラグ,1
+	TFLAG:13 = 95
+	CALL KOJO_MESSAGE_EVENT
+	;KOJO_MESSAGE_EVENT内で MATCH(T,GETCHARA(○○)) > 0 を使うと誰かがいたときに구상を변화させることができる
+	EXP:교류경험 ++
+	FOR LOCAL,0,5
+		CAST = T:LOCAL
+		SIF CAST < 1
+			CONTINUE
+		SIF CAST == TARGET
+			CONTINUE
+		R = 0
+		;ABL:순종をみる
+		SIF TARGET == 0
+			R += ABL:0*2
+		;ABL:봉사정신をみる
+		R += ABL:CAST:7
+		;난이도を見る
+		;EASY
+		IF FLAG:4 == 1
+			R += 1
+		;NORMAL
+		ELSEIF FLAG:4 == 2
+			R += 0
+		;HARD
+		ELSEIF FLAG:4 == 3
+			R -= 1
+		ENDIF
+		;소질による増減
+		;함락소질
+		;연모
+		SIF 함락(CAST,TARGET) == 1 && RESULTS == "연모"
+			R += 5
+		;친애
+		SIF 함락(CAST,TARGET) == 2 && RESULTS == "연모"
+			R += 7
+		;망신
+		SIF TALENT:CAST:86
+			R += 2
+		;主人の매력
+		SIF TALENT:TARGET:92
+			R += 2
+		;主人の매혹
+		SIF TALENT:TARGET:93
+			R += 3
+		;主人の수수께끼의매력
+		SIF TALENT:TARGET:94
+			R += 5
+		SIF R < 1
+			R = 1
+
+		LOCAL:3 = LOCAL:2 * GET_RELATION(CAST,TARGET) / 100
+		LOCAL:3 = MAX(R/2 * LOCAL:3 / ( N_PEOPLE - 1 ),1)
+		;CFLAG:CAST:(CFLAG:TARGET:キャラ固有の번호 + 2100) += LOCAL:3
+		CDFLAG:CAST:キャラ間好感度:(CFLAG:TARGET:キャラ固有の번호 + 100) += LOCAL:3
+	NEXT
+	
+NEXT
+TARGET = STOCK
+
+PRINTFORMW 모두는 전보다 친해졌을 것이다。
+;CFLAG:構ったフラグ = 1
+;EXP:주인과의교류경험 ++
+
+;EXP:MASTER:교류경험 ++
+;IF I_COUNT < M_COUNT
+;		PRINTL 
+;		PRINTFORML 다음에는 다른 사람들과 교류를 할까요？
+;		PRINTL 
+;		CALL INPUT_YN
+;		SIF RESULT == 0
+;			GOTO RET
+;ENDIF
+
+R = 0
+VARSET T

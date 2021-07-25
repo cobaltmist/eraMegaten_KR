@@ -1,0 +1,1182 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:SYSTEM_LEVELUP.ERB
+;	Facility	:레벨アップ時に行う処理群
+;
+;	Licence		:ライセンスフリー。
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		20XX/XX/XX		----					新規作成
+;	002		2011/01/27		P						식노の스킬습득に関するバグを修正
+;	003		2011/02/02		P						002の修正に不備があったのでさらに修正
+;	004		2011/02/03		nameless				002の修正に不備があったのでさらに修正
+;	005		2011/02/06		Rsp暇人					複数습득可能스킬に対応。ついでに能力値選択をINPUTINT対応に
+;	006		2011/02/13		P						能力アップ系アプリの挙動を修正し、発動率を調整・ソース系악세사리の処理を추가
+;	007		2011/02/20		Ｎ鳥					변신中のキャラの스킬습득が反映されてなかったのを修正、레벨アップ時のボーナス計算・ステアップ効果を修正
+;	008		2011/05/26		P						스킬습득時に스킬の説明を표시するように
+;	009		2013/11/30		ひみつ					변이時に文字列関係で更新してもよさそうなものを更新するように。
+;													변경可能なものについて변경されている場合は更新しないように。
+;													인간側(변신前の側)でも스킬を깨달음えるような데빌시프터や식노に対応。
+;													스킬속성표시の適用範囲拡大
+;	010		2013/12/02		ひみつ					변이時に文字列関係で更新してもよさそうなものを更新するように。
+;													변경可能なものについて변경されている場合は更新しないように。
+;													인간側(변신前の側)でも스킬を깨달음えるような데빌시프터や식노に対応。
+;													스킬속성표시の適用範囲拡大。스킬속성표시にキャラ情報を渡すように
+;	011		2015/04/12		54-762					엔젤の변이パッチ用に修正。
+;													종족천사の악마が【음란】【복종】系の함락素養を持っていたら【타천사】を
+;													그외の場合【천사】の素質を後付で부여するように修正
+;	012		2015/12/11		JK好き					이능자用の스킬습득処理を추가
+;	013		2017/02/07		名無し					自動레벨ＵＰを추가
+;	014		2017/12/21		修正野郎				변이後の악마からも코딩を입수できるように
+;	015		2018/06/21		JK好き					인수라스킬枠増加処理
+;	016		2018/06/22		JK好き					ソフトや악세사리ーの処理をLVUP_BOOSTERに統一
+;	017		2018/04/28		TR(SAYA)				ステ振り自動I/F改を추가
+;	018		2018/08/27		空気					변이時に함락履歴を記録するように。변이後に조교すれば記録されるのでバランス的にも問題ないはず
+;	019		2019/11/16		JK好き					변이後にキャラが死ぬパターンが発見されたため변이後にHP회복する様に추가
+;	020		2020/01/31		Jガン					레벨アップ時、구상を出せる処理を추가
+;	021		2020/02/19		JK好き					オート레벨アップ時のPRINT_ALIGNMENTの引数설정を誤っていた問題を修正
+;	022		2020/06/19		JK好き					@LEARN_SKILLに一文字関数Uに레벨업したキャラを入れておく
+;	023		2020/08/27		Jガン					스킬취득時の스킬ゲージ処理추가
+;	024		2021/03/05		JK好き					@TRANSFORMに進化時に信頼・相棒の함락履歴を保存するように追加　上位함락を確認したら下位함락の함락履歴を埋めるように修正
+;	025		2021/04/07		Jガン					LEARN_SKILLにスキルロックの設定追加(「スキルロック」で検索すると変更場所がわかります)
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+@GET_NEXT_EXP, ARG, ARG:1, ARG:2
+#FUNCTION
+RETURNF 5 * ARG * (ARG+1) * (ARG+2) / 3 * (ARG:1 ? 5 # 4) / 4
+
+;===============================
+;레벨アップ판정＆処理
+;;===============================
+@CHECK_LEVEL_UP,ARG
+	IF FLAG:레벨アップ時インターフェース설정 == 0
+		CALL CHECK_LEVEL_UP_DEF, ARG
+	ELSEIF FLAG:레벨アップ時インターフェース설정 == 1
+		CALL CHECK_LEVEL_UP_NEW, ARG
+	ELSEIF FLAG:레벨アップ時インターフェース설정 == 2
+		CALL CHECK_LEVEL_UP_AUTO, ARG
+	ELSEIF FLAG:레벨アップ時インターフェース설정 == 3
+		CALL CHECK_LEVEL_UP_AUTO2, ARG
+	ENDIF
+
+;===============================
+;레벨アップ판정＆処理　디폴트式
+;===============================
+@CHECK_LEVEL_UP_DEF,ARG
+#DIM LCOUNT
+	;LOCAL:1 레벨アップ횟수
+	;LOCAL 能力選択횟수
+	;LOCAL:2-7 対応した능력의상승値
+	FOR LCOUNT, 0, 8
+		LOCAL:LCOUNT = 0
+	NEXT
+	LOCAL:1 = 0
+	LOCAL:10 = 0
+	WHILE BASE:ARG:ＥＸＰ >= GET_NEXT_EXP(BASE:ARG:LV+LOCAL:1, ABL:ARG:종족 != 0 && !함락(ARG))
+	;BASE:ARG:ＥＸＰ >= 5*(BASE:ARG:LV+LOCAL:1)*(BASE:ARG:LV+1+LOCAL:1)*(BASE:ARG:LV+2+LOCAL:1)/3 * (ABL:ARG:종족 != 0 && !함락(ARG) ? 5 # 4 ) / 4
+		SIF (BASE:ARG:LV + LOCAL:1 ) % 2 == 1
+			LOCAL:10 += 1
+		LOCAL:1 += 1
+	WEND
+
+	;主人非対応にしようか悩む＞1.5倍化
+	LOCAL:10 += LOCAL:1
+
+	;비전투원はここまで
+	IF TALENT:ARG:비전투원 && LOCAL:1
+		PRINTFORML LEVEL UP!
+		BASE:ARG:LV += LOCAL:1
+		CALL SYNC_STATUS , ARG
+		RETURN 0
+	ENDIF
+
+	IF LOCAL:10
+		;現在の최대ＨＰ・ＭＰを記憶
+		LOCAL:8 = MAXBASE:ARG:ＨＰ
+		LOCAL:9 = MAXBASE:ARG:ＭＰ
+
+		LOCAL = 0
+		PRINTFORMW %조사처리(NAME:ARG,"는")% 레벨이 올랐다!
+		;---- EDIT 020 MOD START -------------------------
+		SETCOLOR 0x33ffcc
+		TFLAG:전투이벤트 = 91
+		SWAP ARG,TARGET
+		CALL BATTLE_EVENT,TARGET
+		SWAP ARG,TARGET
+		RESETCOLOR
+		;---- EDIT 020 MOD END ---------------------------
+	;	SIF ARG != MASTER
+	;		GOTO NO_MASTER
+		PRINTL
+		PRINTL
+		$INPUT_UP_STATUS
+		LOCAL = 0
+		FOR LCOUNT, 0, 6
+			LOCAL:(LCOUNT+2) = 0
+		NEXT
+		WHILE LOCAL:10 > LOCAL
+			DRAWLINE
+			PRINTFORML %종족명(ARG)%　　%CALLNAME:ARG%　　
+			PRINTFORML 　　LV{BASE:ARG:30+LOCAL:1,3}　　　%GET_ALI1(ABL:ARG:속성LD),7%/%GET_ALI2(ABL:ARG:속성LC),7%
+			CUSTOMDRAWLINE ･
+			PRINTL 어느 능력을 올리겠습니까?
+			LOCAL:11 = LOCAL:10 - LOCAL
+			PRINTFORML 나머지 {LOCAL:11,2}포인트
+			FOR LCOUNT, 0, 6
+				PRINTFORML [{LCOUNT+1}]%GET_BASESTATUS(LCOUNT+1),4%：{MAXBASE:ARG:(GET_BASESTATUS(LCOUNT+1)) + LOCAL:(LCOUNT+2),4}【+{LOCAL:(LCOUNT+2),3}】\@LOCAL:11 > 5 ?　[{LCOUNT+1+10}]+5#\@\@LOCAL:11 > 10 ?　[{LCOUNT+1+20}]+10#\@\@LOCAL:11 >= 2 ?　[{LCOUNT+1+30}]+{LOCAL:11,2}#\@
+			NEXT
+				DRAWLINE
+				PRINTL [0]리셋
+				$INPUT_LOOP
+				INPUT
+					IF RESULT < 7 && RESULT > 0
+						LOCAL:(1+RESULT) += 1
+						LOCAL += 1
+					ELSEIF RESULT < 17 && RESULT > 10 && LOCAL:11 >= 5
+						LOCAL:(1+RESULT-10) += 5
+						LOCAL += 5
+					ELSEIF RESULT < 27 && RESULT > 20 && LOCAL:11 >= 10
+						LOCAL:(1+RESULT-20) += 10
+						LOCAL += 10
+					ELSEIF RESULT < 37 && RESULT > 30
+						LOCAL:(1+RESULT-30) +=LOCAL:11
+						LOCAL += LOCAL:11
+					ELSE
+						GOTO INPUT_UP_STATUS
+					ENDIF
+		WEND
+			PRINTL
+			CUSTOMDRAWLINE ･
+		FOR LCOUNT, 0, 6
+			PRINTFORML %GET_BASESTATUS(LCOUNT+1),4%：{MAXBASE:ARG:(GET_BASESTATUS(LCOUNT+1)) + LOCAL:(LCOUNT+2),4}(+{LOCAL:(LCOUNT+2),3})
+		NEXT
+		PRINTL
+		PRINTL 좋습니까?
+		CALL INPUT_YN
+		SIF RESULT == 1
+			GOTO INPUT_UP_STATUS
+
+		$NO_MASTER
+
+		;新インターフェース側と同じ処理に변경
+		;インス토르ソフト・악세사리等の特殊ボーナス
+		CALL LVUP_BOOSTER(ARG,LOCAL:10)
+		CALL LVUP_BOOSTER_MAGATAMA(ARG,LOCAL:10)
+
+;一応残す;LVUP_BOOSTERと中身がだいぶ違うような…
+;		;---- EDIT 006 MOD START -------------------------
+;		;LOCAL:10→LOCAL:1
+;		FOR LCOUNT, 0, LOCAL:1
+;		;---- EDIT 006 MOD END   -------------------------
+;			;インス토르ソフト数
+;			LOCAL:8 = SUMARRAY(EQUIP:MASTER:0 , GETNUM(EQUIP, "헤라클레스") , GETNUM(EQUIP, "헤라클레스")+7)
+;			FOR LOCAL,1, 7
+;				LOCALS = %GET_BASESTATUS(LOCAL)%
+;				IF ABL:ARG:종족 > 0
+;					;---- EDIT 006 MOD START -------------------------
+;					;강화の発動率の減少速度を/5から/3に
+;					;また、コストが安いマニアック以上に関しては減少速度をおそめる
+;					SIF !EQUIP:MASTER:(GETNUM(EQUIP, "헤라클레스") + LOCAL - 1)
+;						CONTINUE
+;					SIF !NUM_SUMMONER()
+;						CONTINUE
+;					IF FLAG:전투난이도 > 3
+;						SIF RAND:100 > (50 - MIN(40, CFLAG:ARG:능력강화횟수 / 4)) / MAX(1,LOCAL:8)
+;							CONTINUE
+;					ELSE
+;						SIF RAND:100 > (50 - MIN(40, CFLAG:ARG:능력강화횟수 / 2)) / MAX(1,LOCAL:8)
+;							CONTINUE
+;					ENDIF
+;					;최대と最小の差 * 10 * 15
+;					LOCAL:11 = (MAX(MAXBASE:ARG:힘, MAXBASE:ARG:지혜, MAXBASE:ARG:마력, MAXBASE:ARG:인내력, MAXBASE:ARG:속도, MAXBASE:ARG:운) - MIN(MAXBASE:ARG:힘, MAXBASE:ARG:지혜, MAXBASE:ARG:마력, MAXBASE:ARG:인내력, MAXBASE:ARG:속도, MAXBASE:ARG:운))
+;					LOCAL:11 = MAX(1,(LOCAL:11 * 10 + 14) / 15)
+;					LOCAL:12 = (MAXBASE:ARG:LOCALS - MIN(MAXBASE:ARG:힘, MAXBASE:ARG:지혜, MAXBASE:ARG:마력, MAXBASE:ARG:인내력, MAXBASE:ARG:속도, MAXBASE:ARG:운)) * 10 / LOCAL:11 * 5
+;					SIF RAND:100 < LOCAL:12
+;						CONTINUE
+;					PRINTFORML %EQUIPNAME:(GETNUM(EQUIP, "헤라클레스") + LOCAL - 1)%の効果で%LOCALS%がさらに+１
+;					CFLAG:ARG:능력강화횟수 += 1
+;					LOCALS += "강화횟수"
+;					CFLAG:ARG:LOCALS += 1
+;					;---- EDIT 006 MOD END   -------------------------
+;				;---- EDIT 006 ADD START -------------------------
+;				;インス토르ソフトとは挙動がだいぶ違うので注意
+;				;基礎発動率は25%~50%で강화횟수によって減少していく
+;				;さらに能力値の高低差により、100%~25%が乗算されるので、1/2~1/16の間で動くことになる
+;				ELSE
+;					SIF EQUIP:ARG:악세사리 != GETNUM(ITEM, "스트렝스소스") + LOCAL - 1
+;						CONTINUE
+;					IF FLAG:전투난이도 > 3
+;						SIF RAND:80 > 50 - MIN(40, CFLAG:ARG:능력강화횟수 / 4)
+;							CONTINUE
+;					ELSE
+;						SIF RAND:80 > 50 - MIN(40, CFLAG:ARG:능력강화횟수 / 2)
+;							CONTINUE
+;					ENDIF
+;					;최대と最小の差 * 10 * 15
+;					LOCAL:11 = (MAX(MAXBASE:ARG:힘, MAXBASE:ARG:지혜, MAXBASE:ARG:마력, MAXBASE:ARG:인내력, MAXBASE:ARG:속도, MAXBASE:ARG:운) - MIN(MAXBASE:ARG:힘, MAXBASE:ARG:지혜, MAXBASE:ARG:마력, MAXBASE:ARG:인내력, MAXBASE:ARG:속도, MAXBASE:ARG:운))
+;					LOCAL:11 = MAX(1,(LOCAL:11 * 10 + 14) / 15)
+;					LOCAL:12 = (MAXBASE:ARG:LOCALS - MIN(MAXBASE:ARG:힘, MAXBASE:ARG:지혜, MAXBASE:ARG:마력, MAXBASE:ARG:인내력, MAXBASE:ARG:속도, MAXBASE:ARG:운)) * 10 / LOCAL:11 * 5
+;					SIF RAND:200 < LOCAL:12
+;						CONTINUE
+;					PRINTFORML %ITEMNAME:(EQUIP:ARG:악세사리)%の効果で%LOCALS%がさらに+１
+;					CFLAG:ARG:능력강화횟수 += 1
+;					LOCALS += "강화횟수"
+;					CFLAG:ARG:LOCALS += 1
+;				ENDIF
+;				;---- EDIT 006 ADD END   -------------------------
+;			NEXT
+;		NEXT
+;		
+		FOR LCOUNT, 0, 7
+			BASE:ARG:(GET_BASESTATUS(1*LCOUNT)) += LOCAL:(1+LCOUNT)
+		NEXT
+		
+		
+		CALLFORM EVENT_LEVELUP,ARG,LOCAL:1
+		TRYCALLFORM EVENT_LEVELUP_{NO:ARG},LOCAL:1
+		CALL SYNC_STATUS,ARG
+		
+		;増加分だけＨＰとＭＰが회복
+		CALL VAR_HP,ARG,MAXBASE:ARG:ＨＰ - LOCAL:8,3
+		CALL VAR_MP,ARG,MAXBASE:ARG:ＭＰ - LOCAL:9,3
+		
+		;인간なら全회복
+		IF ABL:ARG:종족 == 0 || ABL:ARG:종족 > 45
+			BASE:ARG:ＨＰ = MAXBASE:ARG:ＨＰ
+			CFLAG:ARG:ステート = GET_STATE_NUM("GOOD")
+		ENDIF
+	ENDIF
+
+;===============================
+;레벨アップ판정＆処理　新I/F
+;===============================
+@CHECK_LEVEL_UP_NEW,ARG
+	#DIM 레벨上昇値,1
+	#DIM ボーナス포인트,1
+	#DIM 事前최대ＨＰ,1
+	#DIM 事前최대ＭＰ,1
+	ARRAYREMOVE ボーナス포인트,0,0
+	레벨上昇値 = 0
+	ボーナス포인트 = 0
+	事前최대ＨＰ = MAXBASE:ARG:ＨＰ
+	事前최대ＭＰ = MAXBASE:ARG:ＭＰ
+
+	WHILE BASE:ARG:ＥＸＰ >= GET_NEXT_EXP(BASE:ARG:LV+레벨上昇値, ABL:ARG:종족 != 0 && !함락(ARG))
+		SIF (BASE:ARG:LV + 레벨上昇値 ) % 2 == 1
+			ボーナス포인트 += 1
+		레벨上昇値 += 1
+	WEND
+	ボーナス포인트 += 레벨上昇値
+
+	SIF !ボーナス포인트
+	RETURN 0
+	PRINTFORML %NAME:ARG%의 레벨이(가) 올랐다！
+	;---- EDIT 020 MOD START -------------------------
+	SETCOLOR 0x33ffcc
+	TFLAG:전투이벤트 = 91
+	SWAP ARG,TARGET
+	CALL BATTLE_EVENT,TARGET
+	SWAP ARG,TARGET
+	RESETCOLOR
+	;---- EDIT 020 MOD END ---------------------------
+	BASE:ARG:LV += 레벨上昇値
+
+	;비전투원はここまで
+	IF TALENT:ARG:비전투원 && 레벨上昇値
+	CALL SYNC_STATUS , ARG
+	RETURN 0
+	ENDIF
+
+	;레벨アップに伴う能力値ボーナス
+	CALL STATUS_BONUS(ARG,ボーナス포인트)
+
+	;インス토르ソフト・악세사리等の特殊ボーナス
+	CALL LVUP_BOOSTER(ARG,ボーナス포인트)
+	CALL LVUP_BOOSTER_MAGATAMA(ARG,ボーナス포인트)
+
+	CALLFORM EVENT_LEVELUP,ARG,LOCAL:1
+	TRYCALLFORM EVENT_LEVELUP_{NO:ARG},LOCAL:1
+	CALL SYNC_STATUS,ARG
+
+	;増加分だけＨＰとＭＰが회복
+	CALL VAR_HP,ARG,MAXBASE:ARG:ＨＰ - 事前최대ＨＰ,3
+	CALL VAR_MP,ARG,MAXBASE:ARG:ＭＰ - 事前최대ＭＰ,3
+
+	;인간なら全회복
+	IF IS_HUMAN(ARG)
+		BASE:ARG:ＨＰ = MAXBASE:ARG:ＨＰ
+		CFLAG:ARG:ステート = GET_STATE_NUM("GOOD")
+	ENDIF
+
+;===============================
+;레벨アップ판정＆処理　AUTO
+;===============================
+@CHECK_LEVEL_UP_AUTO,ARG
+#DIM LCOUNT
+		;LOCAL:1 레벨アップ횟수
+	;LOCAL 能力選択횟수
+	;LOCAL:2-7 対応した능력의상승値
+	FOR LCOUNT, 0, 8
+		LOCAL:LCOUNT = 0
+	NEXT
+	LOCAL:1 = 0
+	LOCAL:10 = 0
+	WHILE BASE:ARG:ＥＸＰ >= GET_NEXT_EXP(BASE:ARG:LV+LOCAL:1, ABL:ARG:종족 != 0 && !함락(ARG))
+	;BASE:ARG:ＥＸＰ >= 5*(BASE:ARG:LV+LOCAL:1)*(BASE:ARG:LV+1+LOCAL:1)*(BASE:ARG:LV+2+LOCAL:1)/3 * (ABL:ARG:종족 != 0 && !함락(ARG) ? 5 # 4 ) / 4
+		SIF (BASE:ARG:LV + LOCAL:1 ) % 2 == 1
+			LOCAL:10 += 1
+		LOCAL:1 += 1
+	WEND
+
+	;主人非対応にしようか悩む＞1.5倍化
+	LOCAL:10 += LOCAL:1
+
+	;비전투원はここまで
+	IF TALENT:ARG:비전투원 && LOCAL:1
+		PRINTFORML LEVEL UP!
+		BASE:ARG:LV += LOCAL:1
+		CALL SYNC_STATUS , ARG
+		RETURN 0
+	ENDIF
+
+	IF LOCAL:10
+		;現在の최대ＨＰ・ＭＰを記憶
+		LOCAL:8 = MAXBASE:ARG:ＨＰ
+		LOCAL:9 = MAXBASE:ARG:ＭＰ
+
+		LOCAL = 0
+		PRINTFORMW %조사처리(NAME:ARG,"는")% 레벨이 올랐다!
+		;---- EDIT 020 MOD START -------------------------
+		SETCOLOR 0x33ffcc
+		TFLAG:전투이벤트 = 91
+		SWAP ARG,TARGET
+		CALL BATTLE_EVENT,TARGET
+		SWAP ARG,TARGET
+		RESETCOLOR
+		;---- EDIT 020 MOD END ---------------------------
+	;	SIF ARG != MASTER
+	;		GOTO NO_MASTER
+		PRINTL 
+		PRINTL
+		$INPUT_UP_STATUS
+		LOCAL = 0
+		FOR LCOUNT, 0, 6
+			LOCAL:(LCOUNT+2) = 0
+		NEXT
+		DRAWLINE
+			PRINTFORML %종족명(ARG)%　　%CALLNAME:ARG%　　
+			PRINTFORM 　　LV{BASE:ARG:30+LOCAL:1,3}　　　
+			CALL PRINT_ALIGNMENT,ARG,0,0
+			PRINTFORML 
+			CUSTOMDRAWLINE ･
+			PRINTFORML 능력상승{LOCAL:10,3}포인트
+		WHILE LOCAL:10 > LOCAL
+			LOCAL:11 = LOCAL:10 - LOCAL
+			$AUTO_LEVELUP_LOOP
+			;特定のキャラの레벨アップをある程度方向づけたい場合
+			;例、魔=知>耐＝速>운>힘の場合
+			IF ARG == GETCHARA([[キャラ:에이린]])
+				SELECTCASE RAND:17
+					CASE 0
+						LOCAL:2 += 1
+						LOCAL += 1
+					CASE 1,6,11,12
+						LOCAL:3 += 1
+						LOCAL += 1
+					CASE 2,7,13,14
+						LOCAL:4 += 1
+						LOCAL += 1
+					CASE 3,8,15
+						LOCAL:5 += 1
+						LOCAL += 1
+					CASE 4,9,16
+						LOCAL:6 += 1
+						LOCAL += 1
+					CASE 5,10
+						LOCAL:7 += 1
+						LOCAL += 1
+				ENDSELECT
+			;素質で分類してみた
+			ELSEIF TALENT:ARG:영맹 || TALENT:ARG:잔학
+			;힘、速が少し伸びやすく、知、魔が少し伸びにくい
+				SELECTCASE RAND:17
+					CASE 0,6,10
+						LOCAL:2 += 1
+						LOCAL += 1
+					CASE 1
+						LOCAL:3 += 1
+						LOCAL += 1
+					CASE 2
+						LOCAL:4 += 1
+						LOCAL += 1
+					CASE 3,7
+						LOCAL:5 += 1
+						LOCAL += 1
+					CASE 4,8,11
+						LOCAL:6 += 1
+						LOCAL += 1
+					CASE 5,9
+						LOCAL:7 += 1
+						LOCAL += 1
+				ENDSELECT
+			ELSEIF TALENT:ARG:우애 || TALENT:ARG:천사
+			;힘が少し伸びにくく、耐がすこし伸びやすい
+				SELECTCASE RAND:17
+					CASE 0
+						LOCAL:2 += 1
+						LOCAL += 1
+					CASE 1,6
+						LOCAL:3 += 1
+						LOCAL += 1
+					CASE 2,7
+						LOCAL:4 += 1
+						LOCAL += 1
+					CASE 3,8,11
+						LOCAL:5 += 1
+						LOCAL += 1
+					CASE 4,9
+						LOCAL:6 += 1
+						LOCAL += 1
+					CASE 5,10
+						LOCAL:7 += 1
+						LOCAL += 1
+				ENDSELECT
+			ELSEIF TALENT:ARG:냉정 || TALENT:ARG:현명 
+			;知が伸びやすい
+				SELECTCASE RAND:17
+					CASE 0
+						LOCAL:2 += 1
+						LOCAL += 1
+					CASE 1,6,7
+						LOCAL:3 += 1
+						LOCAL += 1
+					CASE 2
+						LOCAL:4 += 1
+						LOCAL += 1
+					CASE 3
+						LOCAL:5 += 1
+						LOCAL += 1
+					CASE 4
+						LOCAL:6 += 1
+						LOCAL += 1
+					CASE 5
+						LOCAL:7 += 1
+						LOCAL += 1
+				ENDSELECT
+			ELSEIF TALENT:ARG:교활
+			;知、速が少し伸びやすい
+				SELECTCASE RAND:17
+					CASE 0
+						LOCAL:2 += 1
+						LOCAL += 1
+					CASE 1,6
+						LOCAL:3 += 1
+						LOCAL += 1
+					CASE 2
+						LOCAL:4 += 1
+						LOCAL += 1
+					CASE 3
+						LOCAL:5 += 1
+						LOCAL += 1
+					CASE 4,7
+						LOCAL:6 += 1
+						LOCAL += 1
+					CASE 5
+						LOCAL:7 += 1
+						LOCAL += 1
+				ENDSELECT
+			ELSEIF TALENT:ARG:우둔 || TALENT:ARG:좀비 || TALENT:ARG:허심
+			;知、速が伸びにくい
+				SELECTCASE RAND:17
+					CASE 0,6,10
+						LOCAL:2 += 1
+						LOCAL += 1
+					CASE 1
+						LOCAL:3 += 1
+						LOCAL += 1
+					CASE 2,7,11
+						LOCAL:4 += 1
+						LOCAL += 1
+					CASE 3,8,12
+						LOCAL:5 += 1
+						LOCAL += 1
+					CASE 4
+						LOCAL:6 += 1
+						LOCAL += 1
+					CASE 5,9,13
+						LOCAL:7 += 1
+						LOCAL += 1
+				ENDSELECT
+			ELSEIF TALENT:ARG:교만 || TALENT:ARG:타천사
+			;知、魔がすこし伸びやすい
+				SELECTCASE RAND:17
+					CASE 0
+						LOCAL:2 += 1
+						LOCAL += 1
+					CASE 1,7
+						LOCAL:3 += 1
+						LOCAL += 1
+					CASE 2,8
+						LOCAL:4 += 1
+						LOCAL += 1
+					CASE 3
+						LOCAL:5 += 1
+						LOCAL += 1
+					CASE 4
+						LOCAL:6 += 1
+						LOCAL += 1
+					CASE 5
+						LOCAL:7 += 1
+						LOCAL += 1
+				ENDSELECT
+			;特に素質がない男の場合、힘が上がりやすくする
+			ELSEIF TALENT:ARG:남자
+				SELECTCASE RAND:7
+					CASE 0,6
+						LOCAL:2 += 1
+						LOCAL += 1
+					CASE 1
+						LOCAL:3 += 1
+						LOCAL += 1
+					CASE 2
+						LOCAL:4 += 1
+						LOCAL += 1
+					CASE 3
+						LOCAL:5 += 1
+						LOCAL += 1
+					CASE 4
+						LOCAL:6 += 1
+						LOCAL += 1
+					CASE 5
+						LOCAL:7 += 1
+						LOCAL += 1
+				ENDSELECT
+			;特に素質がない女の場合、마력が上がりやすくする
+			ELSEIF !TALENT:ARG:남자
+				SELECTCASE RAND:7
+					CASE 0
+						LOCAL:2 += 1
+						LOCAL += 1
+					CASE 1
+						LOCAL:3 += 1
+						LOCAL += 1
+					CASE 2,6
+						LOCAL:4 += 1
+						LOCAL += 1
+					CASE 3
+						LOCAL:5 += 1
+						LOCAL += 1
+					CASE 4
+						LOCAL:6 += 1
+						LOCAL += 1
+					CASE 5
+						LOCAL:7 += 1
+						LOCAL += 1
+				ENDSELECT
+			;それ以外は完全に랜덤
+			ELSE
+				SELECTCASE RAND:6
+					CASE 0
+						LOCAL:2 += 1
+						LOCAL += 1
+					CASE 1
+						LOCAL:3 += 1
+						LOCAL += 1
+					CASE 2
+						LOCAL:4 += 1
+						LOCAL += 1
+					CASE 3
+						LOCAL:5 += 1
+						LOCAL += 1
+					CASE 4
+						LOCAL:6 += 1
+						LOCAL += 1
+					CASE 5
+						LOCAL:7 += 1
+						LOCAL += 1
+				ENDSELECT
+			ENDIF
+		WEND
+			CUSTOMDRAWLINE ･
+		FOR LCOUNT, 0, 6
+			PRINTFORML %GET_BASESTATUS(LCOUNT+1),4%：{MAXBASE:ARG:(GET_BASESTATUS(LCOUNT+1)) + LOCAL:(LCOUNT+2),4}(+{LOCAL:(LCOUNT+2),3})
+		NEXT
+			PRINTW 
+		$NO_MASTER
+
+		;新インターフェース側と同じ処理に변경
+		;インス토르ソフト・악세사리等の特殊ボーナス
+		CALL LVUP_BOOSTER(ARG,LOCAL:10)
+		CALL LVUP_BOOSTER_MAGATAMA(ARG,LOCAL:10)
+
+		FOR LCOUNT, 0, 7
+			BASE:ARG:(GET_BASESTATUS(1*LCOUNT)) += LOCAL:(1+LCOUNT)
+		NEXT
+		
+		
+		CALLFORM EVENT_LEVELUP,ARG,LOCAL:1
+		TRYCALLFORM EVENT_LEVELUP_{NO:ARG},LOCAL:1
+		CALL SYNC_STATUS,ARG
+		
+		;増加分だけＨＰとＭＰが회복
+		CALL VAR_HP,ARG,MAXBASE:ARG:ＨＰ - LOCAL:8,3
+		CALL VAR_MP,ARG,MAXBASE:ARG:ＭＰ - LOCAL:9,3
+		
+		;인간なら全회복
+		IF ABL:ARG:종족 == 0 || ABL:ARG:종족 > 45
+			BASE:ARG:ＨＰ = MAXBASE:ARG:ＨＰ
+			CFLAG:ARG:ステート = GET_STATE_NUM("GOOD")
+		ENDIF
+	ENDIF
+	
+;===============================
+;레벨アップ판정＆処理　AUTO改
+;===============================
+@CHECK_LEVEL_UP_AUTO2,ARG
+#DIM LCOUNT
+VARSET LOCAL
+		;LOCAL:1 레벨アップ횟수
+	;LOCAL 能力選択횟수
+	LOCAL:1 = 0
+	LOCAL:10 = 0
+	WHILE BASE:ARG:ＥＸＰ >= GET_NEXT_EXP(BASE:ARG:LV+LOCAL:1, ABL:ARG:종족 != 0 && !함락(ARG))
+	;BASE:ARG:ＥＸＰ >= 5*(BASE:ARG:LV+LOCAL:1)*(BASE:ARG:LV+1+LOCAL:1)*(BASE:ARG:LV+2+LOCAL:1)/3 * (ABL:ARG:종족 != 0 && !함락(ARG) ? 5 # 4 ) / 4
+		SIF (BASE:ARG:LV + LOCAL:1 ) % 2 == 1
+			LOCAL:10 += 1
+		LOCAL:1 += 1
+	WEND
+
+	LOCAL:10 += LOCAL:1
+	
+	SIF !LOCAL:1
+		RETURN
+
+	;비전투원はここまで
+	IF TALENT:ARG:비전투원
+		PRINTFORML LEVEL UP!
+		BASE:ARG:LV += LOCAL:1
+		CALL SYNC_STATUS , ARG
+		RETURN 0
+	ENDIF
+	
+	;上昇比率が설정されていない場合ここで설정
+	;特定のキャラ()
+	IF CFLAG:ARG:힘上昇率 == 0
+		CALL LVUP_AUTOIF2_DEFAULT(ARG)
+		;DRAWLINE
+		;PRINTFORML %CALLNAME:ARG%に成長比率を설정しました
+		;DRAWLINE
+		LOCAL:2 = SUMARRAY(CFLAG:ARG:0,GETNUM(CFLAG,"힘上昇率"),GETNUM(CFLAG,"운上昇率")+1)
+		FOR LCOUNT,0,6
+			LOCAL = CFLAG:ARG:(GETNUM(CFLAG,"힘上昇率")+LCOUNT) * 1000 / LOCAL:2
+			;PRINTFORML %CFLAGNAME:((GETNUM(CFLAG,"힘上昇率")+LCOUNT))% ... {LOCAL/10}.{LOCAL%10}\%
+		NEXT
+		DRAWLINE
+	ENDIF
+	VARSET LOCAL,0,2,8
+
+	IF LOCAL:10
+		;現在の최대ＨＰ・ＭＰを記憶
+		LOCAL:8 = MAXBASE:ARG:ＨＰ
+		LOCAL:9 = MAXBASE:ARG:ＭＰ
+
+		PRINTFORMW %조사처리(NAME:ARG,"는")% 레벨이 올랐다!
+		;---- EDIT 020 MOD START -------------------------
+		SETCOLOR 0x33ffcc
+		TFLAG:전투이벤트 = 91
+		SWAP ARG,TARGET
+		CALL BATTLE_EVENT,TARGET
+		SWAP ARG,TARGET
+		RESETCOLOR
+		;---- EDIT 020 MOD END ---------------------------
+		PRINTL 
+		PRINTL
+		$INPUT_UP_STATUS
+		DRAWLINE
+			PRINTFORML %종족명(ARG)%　　%CALLNAME:ARG%　　
+			PRINTFORM 　　LV{BASE:ARG:30+LOCAL:1,3}　　　
+			CALL PRINT_ALIGNMENT,ARG,0,0
+			PRINTFORML 
+			CUSTOMDRAWLINE ･
+			PRINTFORML 능력상승{LOCAL:10,3}포인트
+		LOCAL = 0
+		WHILE LOCAL:10 > LOCAL
+			LOCAL:11 = LOCAL:10 - LOCAL
+			$AUTO_LEVELUP_LOOP
+			;ここに記述
+			SELECTCASE RAND:SUMARRAY(CFLAG:ARG:0,GETNUM(CFLAG,"힘上昇率"),GETNUM(CFLAG,"운上昇率")+1)
+			CASE IS < CFLAG:ARG:힘上昇率
+				LOCAL:2++
+			CASE IS < SUMARRAY(CFLAG:ARG:0,GETNUM(CFLAG,"힘上昇率"),GETNUM(CFLAG,"知上昇率")+1)
+				LOCAL:3++
+			CASE IS < SUMARRAY(CFLAG:ARG:0,GETNUM(CFLAG,"힘上昇率"),GETNUM(CFLAG,"魔上昇率")+1)
+				LOCAL:4++
+			CASE IS < SUMARRAY(CFLAG:ARG:0,GETNUM(CFLAG,"힘上昇率"),GETNUM(CFLAG,"耐上昇率")+1)
+				LOCAL:5++
+			CASE IS < SUMARRAY(CFLAG:ARG:0,GETNUM(CFLAG,"힘上昇率"),GETNUM(CFLAG,"速上昇率")+1)
+				LOCAL:6++
+			CASEELSE
+				LOCAL:7++
+			ENDSELECT
+			LOCAL++
+		WEND
+			CUSTOMDRAWLINE ･
+		FOR LCOUNT, 0, 6
+			PRINTFORML %GET_BASESTATUS(LCOUNT+1),4%：{MAXBASE:ARG:(GET_BASESTATUS(LCOUNT+1)) + LOCAL:(LCOUNT+2),4}(+{LOCAL:(LCOUNT+2),3})
+		NEXT
+			PRINTW 
+		$NO_MASTER
+
+		;新インターフェース側と同じ処理に변경
+		;インス토르ソフト・악세사리等の特殊ボーナス
+		CALL LVUP_BOOSTER(ARG,LOCAL:10)
+		CALL LVUP_BOOSTER_MAGATAMA(ARG,LOCAL:10)
+
+		FOR LCOUNT, 0, 7
+			BASE:ARG:(GET_BASESTATUS(1*LCOUNT)) += LOCAL:(1+LCOUNT)
+		NEXT
+		
+		
+		CALLFORM EVENT_LEVELUP,ARG,LOCAL:1
+		TRYCALLFORM EVENT_LEVELUP_{NO:ARG},LOCAL:1
+		CALL SYNC_STATUS,ARG
+		
+		;増加分だけＨＰとＭＰが회복
+		CALL VAR_HP,ARG,MAXBASE:ARG:ＨＰ - LOCAL:8,3
+		CALL VAR_MP,ARG,MAXBASE:ARG:ＭＰ - LOCAL:9,3
+		
+		;인간なら全회복
+		IF ABL:ARG:종족 == 0 || ABL:ARG:종족 > 45
+			BASE:ARG:ＨＰ = MAXBASE:ARG:ＨＰ
+			CFLAG:ARG:ステート = GET_STATE_NUM("GOOD")
+		ENDIF
+	ENDIF
+
+;===============================
+;레벨アップ時の이벤트
+;===============================
+@EVENT_LEVELUP,ARG,ARG:1
+;스킬습득판정
+;暫定的に습득스킬は20個までとします
+IF TALENT:ARG:인수라
+	;인수라は特殊
+	IF EQUIP:ARG:(GET_EQUIP(6))
+		FOR LOCAL,0,20
+			RESULT = 0
+			TRYCALLFORM P습득스킬_{EQUIP:ARG:(GET_EQUIP(6))},LOCAL
+			LOCAL:9 = RESULT
+			LOCAL:10 = RESULT:1
+			;장비品に습득스킬&LVが存在してて、かつ습득経験が無いことが조건
+			LOCAL:2 = (EQUIP:ARG:(GET_EQUIP(6)))%5 +1
+			LOCAL:3 = (EQUIP:ARG:(GET_EQUIP(6))-8000)/5
+			IF LOCAL:9 > 0 && LOCAL:10 > 0 && !(CDFLAG:ARG:(LOCAL:2):(LOCAL:3) & POWER(2,LOCAL))
+				IF LOCAL:10 <= BASE:ARG:LV
+					CALL LEARN_SKILL,ARG,LOCAL:9
+					CDFLAG:ARG:(LOCAL:2):(LOCAL:3) |= POWER(2,LOCAL)
+				ENDIF
+			ENDIF
+		NEXT
+	ENDIF
+ELSE
+	FOR LOCAL,1,21
+		IF ABL:ARG:("습득스킬"+TOSTR(LOCAL)) > 0
+			IF ABL:ARG:("습득LV"+TOSTR(LOCAL)) <= BASE:ARG:LV
+				CALL LEARN_SKILL,ARG,ABL:ARG:("습득스킬"+TOSTR(LOCAL))
+				ABL:ARG:("습득스킬"+TOSTR(LOCAL)) = 0
+				ABL:ARG:("습득LV"+TOSTR(LOCAL)) = 0
+			ENDIF
+		ENDIF
+	NEXT
+ENDIF
+IF TALENT:ARG:데빌시프터 || TALENT:ARG:식노 || TALENT:ARG:악마빙의자
+	FOR LOCAL,1,21
+		IF ABL:ARG:("초기변신악마습득스킬"+TOSTR(LOCAL)) > 0
+			IF ABL:ARG:("초기변신악마습득LV"+TOSTR(LOCAL)) <= BASE:ARG:LV
+				IF TALENT:ARG:식노
+					IF ABL:ARG:("초기변신악마습득LV"+TOSTR(LOCAL)) >= 0
+						PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 전술의 폭을 넓혔다!
+						CALL LEARN_SKILL,ARG,ABL:ARG:("초기변신악마습득스킬"+TOSTR(LOCAL)),1
+						ABL:ARG:("초기변신악마습득LV"+TOSTR(LOCAL)) = -1
+					ENDIF
+				ELSE
+					CALL LEARN_SKILL,ARG,ABL:ARG:("초기변신악마습득스킬"+TOSTR(LOCAL)),1
+					ABL:ARG:("초기변신악마습득스킬"+TOSTR(LOCAL)) = 0
+					ABL:ARG:("초기변신악마습득LV"+TOSTR(LOCAL)) = 0
+				ENDIF
+			ENDIF
+		ENDIF
+	NEXT
+ENDIF
+
+;변이판정
+IF ABL:ARG:변이 > 0
+	IF ABL:ARG:변이레벨 <= BASE:ARG:LV && CSVBASE(ABL:ARG:변이,GETNUM(BASE,"LV"),0) <= MAXBASE:MASTER:LV + 5 + FLAG:周回횟수*2 
+	SIF FINDCHARA_NO_C(ABL:ARG:변이) == -1
+		CALL TRANSFORM,ARG,ABL:ARG:변이
+	ENDIF
+ENDIF
+
+
+;===============================
+;스킬습득
+;===============================
+@LEARN_SKILL,ARG,ARG:1,ARG:2
+#LOCALSIZE 5
+#LOCALSSIZE 2
+#DIM LINE
+#DIMS LOCKS
+;ARG = 레벨アップしたキャラ
+;ARG:1 = 습득する스킬
+;ARG:2 = 초기변신악마습득스킬の場合は真(1)
+;まず空の스킬枠を探す
+LOCAL:1 = 0
+LOCALS:1 = 
+IF ARG:2
+	LOCKS = 悪魔変身スキルロック設定
+ELSE
+	LOCKS = スキルロック設定
+ENDIF
+;一文字関数Uにレベルアップしたキャラを入れておく
+U = ARG
+IF (TALENT:ARG:이능자 || TALENT:ARG:달인 || TALENT:ARG:인수라) && ARG:2 == 0
+	FOR LOCAL,1,FLAG:이능자스킬数+1
+		IF ARG:2
+			LOCALS = 초기변신악마스킬{LOCAL}
+		ELSE
+			LOCALS = \@ TALENT:ARG:데빌시프터 || TALENT:ARG:식노 || TALENT:ARG:악마빙의자 ? 인간시 # \@스킬{LOCAL}
+		ENDIF
+		;既に重複습득上限まで습득していたら関数を抜ける
+		IF ABL:ARG:LOCALS == ARG:1
+			RESULT = 1
+			TRYCALLFORM 重複習得数_{ARG:1}
+			LOCAL:2 = HAVE_SKILL_OVERLAP(ARG,ARG:1)
+			;#;PRINTFORML {LOCAL:2}/{RESULT}
+			SIF LOCAL:2 >= RESULT
+				RETURN 0
+		ENDIF
+		;적専用스킬の場合も関数を抜ける
+		RESULT = 0
+		TRYCALLFORM 적専用_{ARG:1}
+		SIF RESULT
+			RETURN 0
+		IF ABL:ARG:LOCALS < 1
+			LOCAL:1 = 1
+			LOCALS:1 = %LOCALS%
+			BREAK
+		ENDIF
+	NEXT
+ELSE
+	FOR LOCAL,1,FLAG:스킬数+1
+		IF ARG:2
+			LOCALS = 초기변신악마스킬{LOCAL}
+		ELSE
+			LOCALS = \@ TALENT:ARG:데빌시프터 || TALENT:ARG:식노 || TALENT:ARG:악마빙의자 ? 인간시 # \@스킬{LOCAL}
+		ENDIF
+		;既に重複습득上限まで습득していたら関数を抜ける
+		IF ABL:ARG:LOCALS == ARG:1
+			RESULT = 1
+			TRYCALLFORM 重複習得数_{ARG:1}
+			LOCAL:2 = HAVE_SKILL_OVERLAP(ARG,ARG:1)
+			;#;PRINTFORML {LOCAL:2}/{RESULT}
+			SIF LOCAL:2 >= RESULT
+				RETURN 0
+		ENDIF
+		;적専用스킬の場合も関数を抜ける
+		RESULT = 0
+		TRYCALLFORM 적専用_{ARG:1}
+		SIF RESULT
+			RETURN 0
+		IF ABL:ARG:LOCALS < 1
+			LOCAL:1 = 1
+			LOCALS:1 = %LOCALS%
+			BREAK
+		ENDIF
+	NEXT
+ENDIF
+IF LOCAL:1 > 0
+	;空の스킬枠があれば습득
+	CALLFORM SKILL_NAME_{ARG:1},ARG
+	PRINTFORMW %조사처리(CALLNAME:ARG,"는")% %조사처리(RESULTS,"를")% 습득했다.
+	ABL:ARG:(LOCALS:1) = ARG:1
+	;特殊スキルロック
+	CALL SP_SKILL_CHECK,ARG:1
+	SIF RESULT
+		SETBIT CFLAG:ARG:LOCKS,LOCAL:1
+	RETURN
+ELSE
+	;無ければ스킬枠を選択して入れ替え
+	CALLFORM SKILL_NAME_{ARG:1},ARG
+	LOCALS:1 = %RESULTS%
+	IF TALENT:ARG:식노 && ARG:2
+		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 스킬 중 하나를 %조사처리(LOCALS:1,"으로")% 교체할 수 있습니다.
+		PRINTW 교체할 스킬을 선택해주세요
+	ELSE
+		PRINTFORML %조사처리(CALLNAME:ARG,"가")% %조사처리(LOCALS:1,"를")% 습득하기엔 스킬 칸이 모자라다.
+		PRINTW 파기할 스킬을 선택해주세요
+	ENDIF
+	$CHOICE
+	DRAWLINE
+	CALLFORM SKILL_SUCCESSION_TYPE_{ARG:1}
+	PRINTFORML 【%GET_SUCCESSION(RESULT)%】 %LOCALS:1%
+	SIF FLAG:스킬속성표시설정 == 1
+		CALL SKILL_EXPLAIN_PERFORMANCE, ARG:1, ARG
+	TRYCALLFORM SKILL_EXPLAIN_{ARG:1}
+	DRAWLINE
+ENDIF
+LINE = LINECOUNT
+$SKILL_LOOP
+CLEARLINE LINECOUNT - LINE
+IF (TALENT:ARG:이능자 || TALENT:ARG:달인 || TALENT:ARG:인수라) && ARG:2 == 0
+	FOR LOCAL,1,FLAG:이능자스킬数+1
+		IF ARG:2
+			LOCALS = 초기변신악마스킬{LOCAL}
+		ELSE
+			LOCALS = \@ TALENT:ARG:데빌시프터 || TALENT:ARG:식노 || TALENT:ARG:악마빙의자 ? 인간시 # \@스킬{LOCAL}
+		ENDIF
+		IF ABL:ARG:LOCALS > 0
+			CALLFORM SKILL_NAME_{ABL:ARG:LOCALS},ARG
+			IF GETBIT(CFLAG:ARG:LOCKS,LOCAL)
+				SETCOLOR COLOR("黄色")
+				PRINTFORML LOCK %RESULTS%
+			ELSE
+				PRINTFORML [{LOCAL}] %RESULTS%
+			ENDIF
+			RESETCOLOR
+		ENDIF
+	NEXT
+ELSE
+	FOR LOCAL,1,FLAG:스킬数+1
+		IF ARG:2
+			LOCALS = 초기변신악마스킬{LOCAL}
+		ELSE
+			LOCALS = \@ TALENT:ARG:데빌시프터 || TALENT:ARG:식노 || TALENT:ARG:악마빙의자 ? 인간시 # \@스킬{LOCAL}
+		ENDIF
+		IF ABL:ARG:LOCALS > 0
+			CALLFORM SKILL_NAME_{ABL:ARG:LOCALS},ARG
+			IF GETBIT(CFLAG:ARG:LOCKS,LOCAL)
+				SETCOLOR COLOR("黄色")
+				PRINTFORML LOCK %RESULTS%
+			ELSE
+				PRINTFORML [{LOCAL}] %RESULTS%
+			ENDIF
+			RESETCOLOR
+		ENDIF
+	NEXT
+ENDIF
+	DRAWLINE
+	PRINTFORML [0] %조사처리(LOCALS:1,"를")% 습득하지 않는다
+	$INPUT_LOOP
+	INPUT
+	IF RESULT == 0
+		PRINT 本当によろしいですか？
+		CALL SP_SKILL_CHECK, ARG:1
+		SIF RESULT 
+			PRINTFORM ※%LOCALS:1%は特別なスキルです。
+		PRINTFORML \n[0] いいえ　[1] はい
+		INPUT
+		SIF RESULT == 1
+			RETURN 0
+		GOTO SKILL_LOOP
+	ELSEIF RESULT == 99
+		;スキルロック設定
+		CALL SKILL_ROCK_SETTING, ARG, ARG:2
+		GOTO SKILL_LOOP
+	ELSEIF RESULT >= 1 && RESULT <= FLAG:스킬数 || (RESULT <= FLAG:이능자스킬数 && (TALENT:ARG:이능자 || TALENT:ARG:달인 || TALENT:ARG:인수라))
+;---- EDIT 023 ADD -----------------------
+		LOCAL:4 = RESULT
+		IF ARG:2
+			LOCALS = 초기변신악마스킬{RESULT}
+		ELSE
+			LOCALS = \@ TALENT:ARG:데빌시프터 || TALENT:ARG:식노 || TALENT:ARG:악마빙의자 ? 인간시 # \@스킬{RESULT}
+		ENDIF
+		DRAWLINE
+		CALLFORM SKILL_SUCCESSION_TYPE_{ABL:ARG:LOCALS}
+		PRINTFORM 【%GET_SUCCESSION(RESULT)%】 
+		CALLFORM SKILL_NAME_{ABL:ARG:LOCALS}, ARG
+		LOCAL:3 = ABL:ARG:LOCALS
+		PRINTFORML %RESULTS%
+		SIF FLAG:스킬속성표시설정 == 1
+			CALL SKILL_EXPLAIN_PERFORMANCE, ABL:ARG:LOCALS, ARG
+		TRYCALLFORM SKILL_EXPLAIN_{ABL:ARG:LOCALS}
+		DRAWLINE
+		;スキルロック
+		IF GETBIT(CFLAG:ARG:LOCKS,LOCAL:4)
+			PRINTFORML %RESULTS%はロックされていて忘れられません。
+			GOTO SKILL_LOOP
+		ENDIF
+		IF TALENT:ARG:식노 && ARG:2
+			PRINTFORML 정말로 %조사처리(RESULTS,"를")% 잊고, %조사처리(LOCALS:1,"를")% 습득해도 되겠습니까?
+		ELSE
+			PRINTFORML 정말로 %조사처리(RESULTS,"과")% %조사처리(LOCALS:1,"를")% 바꿔넣어도 되겠습니까?
+		ENDIF
+		CALL INPUT_YN
+		SIF RESULT == 1
+			GOTO CHOICE
+		CALLFORM SKILL_NAME_{ARG:1},ARG
+		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% %조사처리(RESULTS,"를")% 습득했다.
+		ABL:ARG:LOCALS = ARG:1
+		;特殊スキルロック
+		CALL SP_SKILL_CHECK,ARG:1
+		SIF RESULT
+			SETBIT CFLAG:ARG:LOCKS,LOCAL:4
+;---- EDIT 023 ADD -----------------------
+		CALL SKILLGAGE_DIRECT_CLEAR,ARG,LOCAL:4 + (ARG:2 != 0) * 12
+		IF TALENT:ARG:데빌시프터 || TALENT:ARG:식노 || TALENT:ARG:악마빙의자
+			IF CFLAG:ARG:악마변신 && CFLAG:ARG:링크악마 <= 0
+				FOR LOCAL, 1, FLAG:스킬数 + 1
+					ABL:ARG:@"스킬{LOCAL}" = ABL:ARG:@"초기변신악마스킬{LOCAL}"
+				NEXT
+			ELSEIF !CFLAG:ARG:악마변신
+				FOR LOCAL, 1, FLAG:스킬数 + 1
+					ABL:ARG:@"스킬{LOCAL}" = ABL:ARG:@"인간시스킬{LOCAL}"
+				NEXT
+			ENDIF
+		ENDIF
+		;대상キャラが악마で장비지식스킬が削除대상で장비지식스킬系をまったく소지していない場合は장비を해제する
+		CALL SKILL_EQUIPTHEORY_DEL_SKILL, ARG, LOCAL:3
+		
+	ELSE
+		CLEARLINE 1
+		GOTO INPUT_LOOP
+	ENDIF
+
+
+;===============================
+;변이
+;===============================
+@TRANSFORM,ARG,ARG:1
+;とりあえず適切な処理が思いつかないので未実装
+PRINTFORML %CALLNAME:ARG%에게 변이 징조가 보인다……
+PRINTFORML 지켜봅니까？
+CALL INPUT_YN,"Yes","No"
+IF RESULT == 1
+	PRINTFORMW %CALLNAME:ARG%의 변이 징조가 사라졌다
+	ABL:ARG:변이레벨 = 0
+	ABL:ARG:변이 = 0
+ELSE
+	CALL CHECK_IMG_TRANSFORM,ARG,ARG:1
+	PRINTFORML %조사처리(CALLNAME:ARG,"는")% %조사처리(CSVNAME(ARG:1,0),"으로")% 다시 태어났다!
+	;명칭변경(변경されていない場合のみ)
+	NAME:ARG '= \@ NAME:ARG == CSVNAME(NO:ARG) ? %CSVNAME(ARG:1)% # %NAME:ARG% \@
+	CALLNAME:ARG '= \@ CALLNAME:ARG == CSVCALLNAME(NO:ARG) ? %CSVCALLNAME(ARG:1)% # %CALLNAME:ARG% \@
+	
+	;能力値と레벨
+	FOR LOCAL,0,7
+		BASE:ARG:GET_BASESTATUS(LOCAL) = CSVBASE(ARG:1,GETNUM(BASE,GET_BASESTATUS(LOCAL)),0)
+	NEXT
+	BASE:ARG:CP = CSVBASE(ARG:1,GETNUM(BASE,"CP"),0)
+	;相性
+	FOR LOCAL,0,19
+		BASE:ARG:GET_TYPE(LOCAL) = CSVBASE(ARG:1,GETNUM(BASE,GET_TYPE(LOCAL)),0)
+	NEXT
+	;現在の経験値
+	SIF BASE:ARG:ＥＸＰ < GET_NEXT_EXP(BASE:ARG:LV-1, ABL:ARG:종족 != 0 && !함락(ARG))
+		BASE:ARG:ＥＸＰ = GET_NEXT_EXP(BASE:ARG:LV-1, ABL:ARG:종족 != 0 && !함락(ARG))
+	;회화타입
+	ABL:ARG:코딩 = CSVABL(ARG:1,GETNUM(ABL,"코딩"),0)
+	ABL:ARG:수태아이템 = CSVABL(ARG:1,GETNUM(ABL,"수태아이템"),0)
+	ABL:ARG:회화타입 = CSVABL(ARG:1,GETNUM(ABL,"회화타입"),0)
+	ABL:ARG:공격상성 = CSVABL(ARG:1,GETNUM(ABL,"공격상성"),0)
+	ABL:ARG:최대공격횟수 = CSVABL(ARG:1,GETNUM(ABL,"최대공격횟수"),0)
+	ABL:ARG:최저공격횟수 = CSVABL(ARG:1,GETNUM(ABL,"최저공격횟수"),0)
+	ABL:ARG:사거리 = CSVABL(ARG:1,GETNUM(ABL,"사거리"),0)
+	ABL:ARG:공격범위 = CSVABL(ARG:1,GETNUM(ABL,"공격범위"),0)
+	ABL:ARG:추가효과 = CSVABL(ARG:1,GETNUM(ABL,"추가효과"),0)
+	ABL:ARG:추가효과상성 = CSVABL(ARG:1,GETNUM(ABL,"추가효과상성"),0)
+	ABL:ARG:추가효과명중률 = CSVABL(ARG:1,GETNUM(ABL,"추가효과명중률"),0)
+	ABL:ARG:추가효과최대명중률 = CSVABL(ARG:1,GETNUM(ABL,"추가효과최대명중률"),0)
+	
+	;素質
+	;外見的な物だけ
+	TALENT:ARG:소인체형 = CSVTALENT(ARG:1,GETNUM(TALENT,"소인체형"),0)
+	TALENT:ARG:유아체형 = CSVTALENT(ARG:1,GETNUM(TALENT,"유아체형"),0)
+	TALENT:ARG:흡혈귀 = CSVTALENT(ARG:1,GETNUM(TALENT,"흡혈귀"),0)
+	TALENT:ARG:일광욕 = CSVTALENT(ARG:1,GETNUM(TALENT,"일광욕"),0)
+	TALENT:ARG:월광욕 = CSVTALENT(ARG:1,GETNUM(TALENT,"월광욕"),0)
+	TALENT:ARG:동물귀 = CSVTALENT(ARG:1,GETNUM(TALENT,"동물귀"),0)
+	TALENT:ARG:큰체형 = CSVTALENT(ARG:1,GETNUM(TALENT,"큰체형"),0)
+	TALENT:ARG:거체 = CSVTALENT(ARG:1,GETNUM(TALENT,"거체"),0)
+	TALENT:ARG:절벽 = CSVTALENT(ARG:1,GETNUM(TALENT,"절벽"),0)
+	TALENT:ARG:빈유 = CSVTALENT(ARG:1,GETNUM(TALENT,"빈유"),0)
+	TALENT:ARG:거유 = CSVTALENT(ARG:1,GETNUM(TALENT,"거유"),0)
+	TALENT:ARG:폭유 = CSVTALENT(ARG:1,GETNUM(TALENT,"폭유"),0)
+
+	FOR LOCAL,201,342
+		TALENT:ARG:LOCAL = CSVTALENT(ARG:1,LOCAL,0)
+	NEXT
+	;스킬습득
+	FOR LOCAL,1,FLAG:스킬数 + 1
+		LOCALS = 스킬{LOCAL}
+		SIF CSVABL(ARG:1,GETNUM(ABL,LOCALS),0) > 0
+			CALL LEARN_SKILL,ARG,CSVABL(ARG:1,GETNUM(ABL,LOCALS),0)
+	NEXT
+	;습득予定스킬更新
+	FOR LOCAL,1,21
+		ABL:ARG:("습득스킬" + TOSTR(LOCAL)) = CSVABL(ARG:1,GETNUM(ABL,("습득스킬" + TOSTR(LOCAL))),0)
+		ABL:ARG:("습득LV" + TOSTR(LOCAL)) = CSVABL(ARG:1,GETNUM(ABL,("습득LV" + TOSTR(LOCAL))),0)
+	NEXT
+	
+	;タイトル・종족명更新
+	CSTR:ARG:タイトル '= CSVCSTR(ARG:1, GETNUM(CSTR, "タイトル"))
+	CSTR:ARG:종족명   '= CSVCSTR(ARG:1, GETNUM(CSTR, "종족명"))
+	
+	;해설更新(변경されていない場合のみ)
+	IF CSTR:ARG:해설1 == CSVCSTR(NO:ARG, GETNUM(CSTR, "해설1"))
+		FOR LOCAL, 1, 21
+			CSTR:ARG:@"해설{LOCAL}" '= CSVCSTR(ARG:1, GETNUM(CSTR, @"해설{LOCAL}"))
+		NEXT
+	ENDIF
+	
+	;相性グループを변경
+	CSTR:ARG:相性グループ = %CSVCSTR(ARG:1 , GETNUM(CSTR , "相性グループ") , 0)%
+
+;---- EDIT 018 ADD START   -----------------------
+	;함락履歴を記録
+	SIF GETBIT(FLAG:(50000+NO:ARG), 0)
+		SETBIT FLAG:(50000+ARG:1), 0
+	SIF TALENT:ARG:연모 || TALENT:ARG:친애
+		SETBIT FLAG:(50000+ARG:1), 1
+	SIF TALENT:ARG:친애
+		SETBIT FLAG:(50000+ARG:1), 2
+	SIF TALENT:ARG:음란 || TALENT:ARG:창부
+		SETBIT FLAG:(50000+ARG:1), 3
+	SIF TALENT:ARG:창부
+		SETBIT FLAG:(50000+ARG:1), 4
+	SIF TALENT:ARG:복종 || TALENT:ARG:예속
+		SETBIT FLAG:(50000+ARG:1), 5
+	SIF TALENT:ARG:예속
+		SETBIT FLAG:(50000+ARG:1), 6
+	SIF TALENT:ARG:신뢰 || TALENT:ARG:동료
+		SETBIT FLAG:(50000+ARG:1), 8
+	SIF TALENT:ARG:동료
+		SETBIT FLAG:(50000+ARG:1), 9
+;---- EDIT 018 ADD END   -------------------------
+
+	;最後にナンバー변경
+	NO:ARG = ARG:1
+	ABL:ARG:종족 = CSVABL(ARG:1,GETNUM(ABL,"종족"),0)
+	ABL:ARG:변이레벨 = CSVABL(ARG:1,GETNUM(ABL,"변이레벨"),0)
+	ABL:ARG:변이 = CSVABL(ARG:1,GETNUM(ABL,"변이"),0)
+	
+	;함락で【타천사】になった종족：천사の타천사引継ぎ処理
+	IF ABL:ARG:종족 == 4
+		IF TALENT:ARG:4 || TALENT:ARG:5 || TALENT:ARG:7 || TALENT:ARG:8
+			TALENT:ARG:211 = 1
+		ELSE
+			TALENT:ARG:210 = 1
+		ENDIF
+	ENDIF
+
+	FOR LOCAL,0,12
+		CFLAG:ARG:("초기" + GET_CLOTHESNAME(LOCAL)) = CSVCFLAG(NO:ARG,GETNUM(CFLAG,GET_CLOTHESNAME(LOCAL)),0)
+	NEXT
+	;衣装초기化
+	CALL CLOTHES_INITIALIZE,ARG
+	
+	SIF FLAG:(20000+ARG:1) < 100
+		FLAG:(20000+ARG:1) = 100
+
+	;변이後にキャラが死ぬパターンが発見されたため변이後にHP회복する様に추가
+	BASE:ARG:ＨＰ = MAXBASE:ARG:ＨＰ
+ENDIF

@@ -1,0 +1,1605 @@
+﻿;착의処理の改定
+;着る옷をCFLAGに격납して、カスタムできるようにする
+;-------------------------------------------------
+@SHOPCOMABLE_170
+RESULT:1 = 1
+RESULTS = 의상방
+RETURN 1
+
+@SHOP_COM_170
+CALL CLOTHES_SETTING_USUALLY
+
+;=================================================
+;착의に関するFUNCTION
+;=================================================
+;착의部位の번호
+@GET_CLOTHES(ARGS)
+#FUNCTION
+RETURNF GETNUM(TEQUIP,ARGS) - GETNUM(TEQUIP,"모자")
+
+@NAME_EXPOSE(ARG)
+#FUNCTIONS
+RETURNF TEQUIPNAME:(GETNUM(TEQUIP,"팔노출")+ARG)
+
+@GET_CLOTHESNAME(ARG)
+#FUNCTIONS
+IF ARG < 12
+	RETURNF TEQUIPNAME:(GETNUM(TEQUIP,"모자")+ARG)
+ELSE
+	RETURNF TEQUIPNAME:(GETNUM(TEQUIP,"그외2")+(ARG-12))
+ENDIF
+
+@CLOTHESNAMEF(ARG = -99,ARG:1)
+#FUNCTIONS
+SIF ARG == -99
+	ARG = TARGET
+;그외 확장패치
+IF ARG:1 < 0 || ARG:1 > 16
+	PRINTFORM %CALLNAME:ARG%번의 의상명을 참조할 때에 부정한 번호 {ARG:1}이 의상의 부위로서 지정되었습니다
+	PRINTFORM 의도하지 않은 동작・오류일 가능성이 높으므로 보고를 부탁드립니다
+	RETURNF "잘못된 옷이름"
+ENDIF
+RETURNF ITEMNAME:(6000 + CFLAG:ARG:(GET_CLOTHESNAME(ARG:1)))
+
+;=================================================
+;노출状況の체크
+;=================================================
+@CHECK_EXPOSE(ARG)
+#DIM 의상부위 , 1
+#DIM 조사부위 , 1
+#LOCALSIZE 17
+FOR 조사부위,0,8
+	VARSET LOCAL
+	TEQUIP:ARG:(NAME_EXPOSE(조사부위)) = -1
+	
+	SIF (조사부위 == 3 || 조사부위 == 4) && TEQUIP:ARG:가슴앞열림 == 1
+		CONTINUE
+	
+	FOR 의상부위,0,17
+		TRYCALLFORM CLOTHES_EXPOSE_{TEQUIP:ARG:(GET_CLOTHESNAME(의상부위))},조사부위+1
+		SIF RESULT == 0
+			LOCAL:의상부위 = 1
+	NEXT
+
+	;그외→겉옷→전신복→옷→하의→모자→신발→전신속옷→손→양말→下着上下
+	IF LOCAL:16
+		TEQUIP:ARG:(NAME_EXPOSE(조사부위)) = 16
+	ELSEIF LOCAL:15
+		TEQUIP:ARG:(NAME_EXPOSE(조사부위)) = 15
+	ELSEIF LOCAL:14
+		TEQUIP:ARG:(NAME_EXPOSE(조사부위)) = 14
+	ELSEIF LOCAL:13
+		TEQUIP:ARG:(NAME_EXPOSE(조사부위)) = 13
+	ELSEIF LOCAL:12
+		TEQUIP:ARG:(NAME_EXPOSE(조사부위)) = 12
+	ELSEIF LOCAL:11
+		TEQUIP:ARG:(NAME_EXPOSE(조사부위)) = 11
+	ELSEIF LOCAL:10
+		TEQUIP:ARG:(NAME_EXPOSE(조사부위)) = 10
+	ELSEIF LOCAL:3
+		TEQUIP:ARG:(NAME_EXPOSE(조사부위)) = 3
+	ELSEIF LOCAL:1
+		TEQUIP:ARG:(NAME_EXPOSE(조사부위)) = 1
+	ELSEIF LOCAL:2
+		TEQUIP:ARG:(NAME_EXPOSE(조사부위)) = 2
+	ELSEIF LOCAL:0
+		TEQUIP:ARG:(NAME_EXPOSE(조사부위)) = 0
+	ELSEIF LOCAL:9
+		TEQUIP:ARG:(NAME_EXPOSE(조사부위)) = 9
+	ELSEIF LOCAL:7
+		TEQUIP:ARG:(NAME_EXPOSE(조사부위)) = 7
+	ELSEIF LOCAL:4
+		TEQUIP:ARG:(NAME_EXPOSE(조사부위)) = 4
+	ELSEIF LOCAL:8
+		TEQUIP:ARG:(NAME_EXPOSE(조사부위)) = 8
+	ELSEIF LOCAL:5
+		TEQUIP:ARG:(NAME_EXPOSE(조사부위)) = 5
+	ELSEIF LOCAL:6
+		TEQUIP:ARG:(NAME_EXPOSE(조사부위)) = 6
+	ENDIF
+NEXT
+
+@CHECK_EXP(ARG)
+FOR LOCAL,0,17
+		IF TEQUIP:ARG:GET_CLOTHESNAME(LOCAL)
+			TRYCALLFORM CLOTHES_EXP_{TEQUIP:ARG:GET_CLOTHESNAME(LOCAL)},ARG
+		ENDIF
+NEXT
+
+@CHECK_SOURCE(ARG)
+;포피 절개시 속옷에 쓸려 C 자동조교
+IF CFLAG:ARG:포피절개 && TEQUIP:ARG:음순노출 != -1
+	SOURCE:ARG:쾌Ｃ += 50
+	SOURCE:ARG:노출 += 5
+	SOURCE:ARG:일탈 += 20
+	;억압、저항持ちには、억울ソース추가
+	SIF TALENT:ARG:억압 || TALENT:ARG:저항
+		SOURCE:ARG:울굴 += 20
+	;Vへの고통は先に処理しておく
+	;EXP:ARG:Ｖ경험をみる（처녀はありえない）
+	A = 25
+	B = 20
+	
+	;PALAM:ARG:윤활をみる
+	IF PALAM:ARG:4 < PALAMLV:1
+		TIMES A , 1.20
+		TIMES B , 1.50
+	ELSEIF PALAM:ARG:4 < PALAMLV:2
+		TIMES A , 0.70
+		TIMES B , 1.20
+	ELSEIF PALAM:ARG:4 < PALAMLV:3
+		TIMES A , 0.40
+	ELSEIF PALAM:ARG:4 < PALAMLV:4
+		TIMES A , 0.10
+	ELSEIF PALAM:ARG:4 >= PALAMLV:4
+		TIMES A , 0.10
+	ENDIF
+	SOURCE:ARG:7 += A
+	SOURCE:ARG:18 += B
+	IF ARG == TARGET
+		DOWNBASE:1 += 50
+		DOWNBASE:0 += 10
+	ENDIF
+ENDIF
+;클리피어스시 속옷에 쓸려 C 자동조교 - 포피제거와 중복 가능
+IF TALENT:클리피어스 && TEQUIP:ARG:음순노출 != -1
+	SOURCE:ARG:쾌Ｃ += 50
+	SOURCE:ARG:노출 += 5
+	SOURCE:ARG:일탈 += 20
+	;억압、저항持ちには、억울ソース추가
+	SIF TALENT:ARG:억압 || TALENT:ARG:저항
+		SOURCE:ARG:울굴 += 20
+	;Vへの고통は先に処理しておく
+	;EXP:ARG:Ｖ경험をみる（처녀はありえない）
+	A = 25
+	B = 20
+	
+	;PALAM:ARG:윤활をみる
+	IF PALAM:ARG:4 < PALAMLV:1
+		TIMES A , 1.20
+		TIMES B , 1.50
+	ELSEIF PALAM:ARG:4 < PALAMLV:2
+		TIMES A , 0.70
+		TIMES B , 1.20
+	ELSEIF PALAM:ARG:4 < PALAMLV:3
+		TIMES A , 0.40
+	ELSEIF PALAM:ARG:4 < PALAMLV:4
+		TIMES A , 0.10
+	ELSEIF PALAM:ARG:4 >= PALAMLV:4
+		TIMES A , 0.10
+	ENDIF
+	SOURCE:ARG:7 += A
+	SOURCE:ARG:18 += B
+	IF ARG == TARGET
+		DOWNBASE:1 += 50
+		DOWNBASE:0 += 10
+	ENDIF
+ENDIF
+;유두피어스시 속옷에 쓸려 Ｂ 자동조교 - 중복 가능
+IF TALENT:유두피어스 && TEQUIP:ARG:유두노출 != -1
+	SOURCE:ARG:쾌Ｂ += 50
+	SOURCE:ARG:노출 += 5
+	SOURCE:ARG:일탈 += 20
+	;억압、저항持ちには、억울ソース추가
+	SIF TALENT:ARG:억압 || TALENT:ARG:저항
+		SOURCE:ARG:울굴 += 20
+	;Vへの고통は先に処理しておく
+	;EXP:ARG:Ｖ경험をみる（처녀はありえない）
+	A = 25
+	B = 20
+	
+	;PALAM:ARG:윤활をみる
+	IF PALAM:ARG:4 < PALAMLV:1
+		TIMES A , 1.20
+		TIMES B , 1.50
+	ELSEIF PALAM:ARG:4 < PALAMLV:2
+		TIMES A , 0.70
+		TIMES B , 1.20
+	ELSEIF PALAM:ARG:4 < PALAMLV:3
+		TIMES A , 0.40
+	ELSEIF PALAM:ARG:4 < PALAMLV:4
+		TIMES A , 0.10
+	ELSEIF PALAM:ARG:4 >= PALAMLV:4
+		TIMES A , 0.10
+	ENDIF
+	SOURCE:ARG:7 += A
+	SOURCE:ARG:18 += B
+	IF ARG == TARGET
+		DOWNBASE:1 += 50
+		DOWNBASE:0 += 10
+	ENDIF
+ENDIF
+FOR LOCAL,0,17
+		IF TEQUIP:ARG:GET_CLOTHESNAME(LOCAL)
+			TRYCALLFORM CLOTHES_SOURCE_{TEQUIP:ARG:GET_CLOTHESNAME(LOCAL)},ARG
+		ENDIF
+NEXT
+;FOR LOCAL,0,80
+;	LOCAL:2 = 0
+;	FOR LOCAL:1,0,14
+;		IF TEQUIP:ARG:GET_CLOTHESNAME(LOCAL:1)
+;			TRYCALLFORM CLOTHES_EXP_{TEQUIP:ARG:GET_CLOTHESNAME(LOCAL:1)},LOCAL
+;			LOCAL:2 += RESULT
+;		ENDIF
+;	NEXT
+;	EXP:ARG:LOCAL = EXP:ARG:LOCAL + LOCAL:2
+;	IF LOCAL:2 > 0
+;		SIF ARG == TARGET
+;			PRINTFORML %EXPNAME:LOCAL%+{LOCAL:2}
+;		SIF ARG == ASSI
+;			PRINTFORML %EXPNAME:LOCAL%+{LOCAL:2}(조수)
+;		SIF ARG == MASTER
+;			PRINTFORML %EXPNAME:LOCAL%+{LOCAL:2}(主人)
+;	ENDIF
+;NEXT
+
+;=================================================
+;촉각状況の체크
+;=================================================
+@촉각체크,ARG
+#DIM 의상부위 , 1
+#DIM 조사부위 , 1
+#DIM 촉각 , 17
+#LOCALSIZE 3
+#LOCALSSIZE 2
+
+FOR 조사부위 , 0 , 5
+	VARSET 촉각 , 1
+	SELECTCASE 조사부위
+		CASE 0
+			LOCALS = Ｃ
+			LOCALS:1 = 음순
+			LOCAL = 7
+			LOCAL:1 = 0
+		CASE 1
+			LOCALS = Ｖ
+			LOCALS:1 = 음순
+			LOCAL = 7
+			LOCAL:1 = 1
+		CASE 2
+			LOCALS = Ａ
+			LOCALS:1 = 둔부
+			LOCAL = 8
+			LOCAL:1 = 2
+		CASE 3
+			LOCALS = 유두
+			LOCALS:1 = 유두
+			LOCAL = 5
+			LOCAL:1 = 3
+		CASE 4
+			LOCALS:1 = 유방
+			LOCALS = 유방
+			LOCAL = 4
+			LOCAL:1 = 4
+	ENDSELECT
+	TEQUIP:ARG:(LOCALS + "촉각") = 1
+	TEQUIP:ARG:("피복애무" + LOCALS) = 0
+	TEQUIP:ARG:("옷내부애무" + LOCALS) = 0
+
+	;노출している部位
+	IF (TEQUIP:ARG:(LOCALS:1 + "노출")) == -1
+		CONTINUE
+	ENDIF
+
+	FOR 의상부위 , 0 , 17
+		RESULT = 0
+		TRYCALLFORM CLOTHES_EXPOSE_{TEQUIP:ARG:GET_CLOTHESNAME(의상부위)},LOCAL
+		RESULT:1 = RESULT
+		;가슴앞열림
+		IF RESULT != 1 && (LOCAL == 4 || LOCAL == 5) && TEQUIP:ARG:가슴앞열림
+			RESULT = 0
+			TRYCALLFORM CLOTHES_OPENFRONT_{TEQUIP:ARG:GET_CLOTHESNAME(의상부위)}
+			SIF RESULT
+				RESULT:1 = 1
+		ENDIF
+		
+		;노출
+		IF RESULT:1 == 1
+			촉각:의상부위 = 1
+		;피복
+		ELSE
+			TRYCCALLFORM CLOTHES_촉각_{TEQUIP:ARG:GET_CLOTHESNAME(의상부위)},LOCAL:1
+				IF RESULT == 0
+					TEQUIP:ARG:(LOCALS + "촉각") = 0
+					BREAK
+				ENDIF
+				촉각:의상부위 = RESULT
+			CATCH
+				TEQUIP:ARG:(LOCALS + "촉각") = 0
+				BREAK
+			ENDCATCH
+		ENDIF
+	NEXT
+	SIF TEQUIP:ARG:(LOCALS + "촉각") == 0
+		CONTINUE
+
+	;上から伝わる
+	LOCAL:2 = 0
+	FOR 의상부위 , 0 ,17
+		;上から伝わらない옷
+		IF 촉각:의상부위 != 1 && (촉각:의상부위 & 2 == 0)
+			LOCAL:2 += 2
+			BREAK
+		ENDIF
+		;上から伝わる옷
+		SIF 촉각:의상부위 & 2
+			LOCAL:2 += 1
+	NEXT
+	;着込みすぎ
+	IF LOCAL:2 > 1
+		TEQUIP:ARG:(LOCALS + "촉각") = 0
+		CONTINUE
+	;上から伝わる옷を一枚だけ着ている
+	ELSEIF LOCAL:2 == 1
+		TEQUIP:ARG:(LOCALS + "촉각") = 2
+		TEQUIP:ARG:("피복애무" + LOCALS) = 1
+	ENDIF
+
+	;潜り込ませられる
+	LOCAL:2 = 0
+	FOR 의상부위 , 0 ,17
+		;潜り込ませられない
+		IF 촉각:의상부위 != 1 && (촉각:의상부위 & 4 == 0)
+			TEQUIP:ARG:(LOCALS + "촉각") = 0
+			LOCAL:2 = 0
+			BREAK
+		ENDIF
+		;潜り込ませられる
+		SIF 촉각:의상부위 != 1 && (촉각:의상부위 & 4)
+			LOCAL:2 += 1
+	NEXT
+	IF LOCAL:2 > 0
+		SIF TEQUIP:ARG:(LOCALS + "촉각") == 1
+			TEQUIP:ARG:(LOCALS + "촉각") = 0
+		TEQUIP:ARG:(LOCALS + "촉각") += 4
+		TEQUIP:ARG:("옷내부애무" + LOCALS) = 1
+	ENDIF
+NEXT
+
+;=================================================
+;Ｖ/Ａ밀기가능の체크
+;=================================================
+@ずらし체크,ARG
+#DIM 의상부위 , 1
+#DIM 조사부위 , 1
+#LOCALSIZE 1
+#LOCALSSIZE 2
+FOR 조사부위 ,0 , 2
+	LOCALS = \@ 조사부위 == 0 ? Ｖ # Ａ \@
+	LOCALS:1 = \@ 조사부위 == 0 ? 음순 # 둔부 \@
+	TEQUIP:ARG:(LOCALS + "밀기가능") = 1
+	IF TEQUIP:ARG:(LOCALS:1 + "노출") == -1
+		TEQUIP:ARG:(LOCALS + "밀기가능") = 0
+		CONTINUE
+	ENDIF
+	FOR 의상부위 , 0 , 17
+		RESULT = 0
+		TRYCALLFORM CLOTHES_EXPOSE_{TEQUIP:ARG:GET_CLOTHESNAME(의상부위)},7+조사부위
+		SIF RESULT == 1
+			CONTINUE
+		TRYCALLFORM CLOTHES_CROTCH_{TEQUIP:ARG:GET_CLOTHESNAME(의상부위)}
+		IF RESULT != 2
+			TEQUIP:ARG:(LOCALS + "밀기가능") = 0
+			BREAK
+		ENDIF
+	NEXT
+NEXT
+;=================================================
+;おっぱいオープンの체크
+;=================================================
+@おっぱいオープン체크,ARG
+#DIM 의상부위 , 1
+#DIM オープン可否 , 17
+#LOCALSIZE 1
+
+VARSET オープン可否 , 0
+TEQUIP:ARG:가슴구조 = 0
+FOR 의상부위 , 0 , 17
+	RESULT = 0
+	TRYCALLFORM CLOTHES_EXPOSE_{TEQUIP:ARG:GET_CLOTHESNAME(의상부위)},4
+	RESULT:1 = RESULT
+	TRYCALLFORM CLOTHES_EXPOSE_{TEQUIP:ARG:GET_CLOTHESNAME(의상부위)},5
+	SIF RESULT == 1 && RESULT:1 == 1
+		CONTINUE
+	TRYCCALLFORM CLOTHES_BREAST_{TEQUIP:ARG:GET_CLOTHESNAME(의상부위)}
+		IF RESULT == 0
+			TEQUIP:ARG:가슴앞열림 = 0
+			RETURN 0
+		ENDIF
+		オープン可否:의상부위 = RESULT
+	CATCH
+		TEQUIP:ARG:가슴앞열림 = 0
+		RETURN 0
+	ENDCATCH
+NEXT
+;그외→겉옷→전신복→옷→하의→모자→신발→전신속옷→손→양말→下着上下
+IF オープン可否:10
+	TEQUIP:ARG:가슴구조 = オープン可否:10
+ELSEIF オープン可否:3
+	TEQUIP:ARG:가슴구조 = オープン可否:3
+ELSEIF オープン可否:1
+	TEQUIP:ARG:가슴구조 = オープン可否:1
+ELSEIF オープン可否:2
+	TEQUIP:ARG:가슴구조 = オープン可否:2
+ELSEIF オープン可否:0
+	TEQUIP:ARG:가슴구조 = オープン可否:0
+ELSEIF オープン可否:9
+	TEQUIP:ARG:가슴구조 = オープン可否:9
+ELSEIF オープン可否:7
+	TEQUIP:ARG:가슴구조 = オープン可否:7
+ELSEIF オープン可否:4
+	TEQUIP:ARG:가슴구조 = オープン可否:4
+ELSEIF オープン可否:8
+	TEQUIP:ARG:가슴구조 = オープン可否:8
+ELSEIF オープン可否:5
+	TEQUIP:ARG:가슴구조 = オープン可否:5
+ELSEIF オープン可否:6
+	TEQUIP:ARG:가슴구조 = オープン可否:6
+ENDIF
+SIF TEQUIP:ARG:가슴구조 == 6
+	TEQUIP:ARG:가슴앞열림 = 1
+;=================================================
+;가랑이구조の체크
+;TEQUIP:가랑이구조 BIT演算 6以降は스커트
+;0 = 바지、1 = ビキニ타입、2 = 穴開き、3 앞열림、4 開閉가능
+;10 = 具チラ 11 = ミニ 12 = 통상 13 = ロング 14 = タイト
+;=================================================
+@가랑이구조체크,ARG
+#DIM 의상부위 , 1
+#DIM 구조 , 14
+#LOCALSIZE 1
+
+VARSET 구조 , 0
+TEQUIP:ARG:가랑이구조 = 0
+TEQUIP:ARG:스커트걷어올림 = 0
+
+;보임状況초기化
+TEQUIP:ARG:음순보임 = TEQUIP:ARG:음순노출
+TEQUIP:ARG:둔부보임 = TEQUIP:ARG:둔부노출
+
+FOR 의상부위 , 0 , 14
+	RESULT = 0
+	TRYCCALLFORM CLOTHES_CROTCH_{TEQUIP:ARG:GET_CLOTHESNAME(의상부위)}
+		IF RESULT <= 0
+			CONTINUE
+		ELSEIF RESULT == 3
+			;스커트の場合、스커트の타입を가랑이구조に放り込む
+			TRYCCALLFORM CLOTHES_SKIRT_{TEQUIP:ARG:GET_CLOTHESNAME(의상부위)}
+				SIF RESULT == 0
+					RESULT = 3
+				SETBIT TEQUIP:ARG:가랑이구조 , 9 + RESULT
+			CATCH
+				SETBIT TEQUIP:ARG:가랑이구조 , 12
+			ENDCATCH
+		ELSEIF TEQUIP:ARG:음순노출 == 의상부위
+			SIF	RESULT > 3
+				RESULT -= 1
+			;스커트以外の場合、一番上の衣装であれば가랑이구조を放り込む
+				SETBIT TEQUIP:ARG:가랑이구조 , RESULT - 1
+		ENDIF
+		구조:의상부위 = RESULT
+	CATCH
+	ENDCATCH
+NEXT
+;음순노출しているのであれば、가랑이の구조に穴開きがあれば放り込む
+SIF TEQUIP:ARG:음순노출 == -1 && MATCH(구조,4)
+	SETBIT TEQUIP:ARG:가랑이구조 , 2
+
+;스커트の長さに基づく諸処理
+;ロング
+IF GETBIT(TEQUIP:ARG:가랑이구조,13)
+	TEQUIP:ARG:스커트걷어올림 = 4
+	TEQUIP:ARG:음순보임 = 0
+	TEQUIP:ARG:둔부보임 = 0
+;통상
+ELSEIF GETBIT(TEQUIP:ARG:가랑이구조,12)
+	TEQUIP:ARG:스커트걷어올림 = 3
+	TEQUIP:ARG:음순보임 = 0
+	TEQUIP:ARG:둔부보임 = 0
+;タイト
+ELSEIF GETBIT(TEQUIP:ARG:가랑이구조,14)
+	TEQUIP:ARG:스커트걷어올림 = 1
+	SIF !HAVE_PENIS(ARG)
+		TEQUIP:ARG:음순보임 = 0
+	TEQUIP:ARG:둔부보임 = 0
+;ミニ
+ELSEIF GETBIT(TEQUIP:ARG:가랑이구조,11)
+	TEQUIP:ARG:스커트걷어올림 = 2
+	SIF !HAVE_PENIS(ARG)
+		TEQUIP:ARG:음순보임 = 0
+	TEQUIP:ARG:둔부보임 = 0
+;具チラ
+ELSEIF GETBIT(TEQUIP:ARG:가랑이구조,10)
+	TEQUIP:ARG:스커트걷어올림 = 1
+ENDIF
+
+;==================================================
+;착의の초기化処理
+;==================================================
+@CLOTHES_INITIALIZE,ARG
+#DIM LCOUNT
+LOCAL = 1
+FOR LCOUNT, 0, 17
+	IF CFLAG:ARG:(60+LCOUNT) == -1
+		CFLAG:ARG:(GET_CLOTHESNAME(LCOUNT)) = 0
+	ELSE
+		CFLAG:ARG:(GET_CLOTHESNAME(LCOUNT)) = CFLAG:ARG:(60+LCOUNT) ? CFLAG:ARG:(60+LCOUNT) # CSVCFLAG(NO:ARG,40+LCOUNT,0)
+	ENDIF
+	SIF CFLAG:ARG:(GET_CLOTHESNAME(LCOUNT)) < 0
+		CFLAG:ARG:(GET_CLOTHESNAME(LCOUNT)) = 0
+	;당신が초기化대상の場合、그외2、그외3の衣装を強制的に外します
+	IF NO:ARG == NO:MASTER
+		SIF LCOUNT >= 12
+			CFLAG:ARG:(GET_CLOTHESNAME(LCOUNT)) = 0
+	ENDIF
+	SIF CFLAG:ARG:GET_CLOTHESNAME(LCOUNT)
+		CFLAG:ARG:23 |= LOCAL
+	LOCAL *= 2
+NEXT
+
+
+
+@EVENTTRAIN
+#PRI
+CALL CLOTHES_TRAIN,MASTER
+SIF TARGET >= 0
+	CALL CLOTHES_TRAIN,TARGET
+SIF ASSI >= 0
+	CALL CLOTHES_TRAIN,ASSI
+
+
+
+;복장の着用
+@CLOTHES_TRAIN,ARG,ARG:1 = 0
+#DIM LCOUNT
+;ARG:1 == 1の場合、던전탐색の記録を체크する
+FOR LCOUNT, 0, 17
+	TEQUIP:ARG:(GET_CLOTHESNAME(LCOUNT)) = CFLAG:ARG:(GET_CLOTHESNAME(LCOUNT))
+NEXT
+SIF ARG:1 == 1 && CFLAG:ARG:전투참가불가능
+	RETURN 0
+SIF ARG:1 == 1 && FLAG:탐색時초기착의설정 == 5 && CFLAG:ARG:PTフラグ > 0
+	ARG:1 = 0
+;초기착의설정に応じて、옷の설정をする
+;전회설정
+IF (FLAG:1 == 4 && ARG:1 == 0) || (ARG:1 == 1 && FLAG:탐색時초기착의설정 == 4)
+	LOCAL = 1
+	FOR LCOUNT, 0, 17
+		SIF (CFLAG:ARG:(23+ARG:1) & LOCAL)  == 0
+			TEQUIP:ARG:GET_CLOTHESNAME(LCOUNT) = 0
+		LOCAL *= 2
+	NEXT
+	CALL おっぱいオープン체크(ARG)
+	CALL CHECK_EXPOSE(ARG)
+	CALL 가랑이구조체크,ARG
+	CALL 촉각체크(ARG)
+	CALL ずらし체크(ARG)
+	LOCAL:1 = 0
+	SIF  (TEQUIP:ARG:가슴구조 & 1 || TEQUIP:ARG:가슴구조 & 2 || TEQUIP:ARG:가슴구조 & 4 || TEQUIP:ARG:가슴구조 & 8 || TEQUIP:ARG:가슴구조 & 16) 
+		LOCAL:1 = 1
+	SIF GETBIT(CFLAG:ARG:23,12) && LOCAL:1
+		TEQUIP:ARG:가슴앞열림 = 1
+;전라
+ELSEIF (FLAG:1 == 3 && ARG:1 == 0) || (ARG:1 == 1 && FLAG:탐색時초기착의설정 == 3)
+	FOR LCOUNT, 0, 17
+		TEQUIP:ARG:(GET_CLOTHESNAME(LCOUNT)) = 0
+	NEXT
+;속옷 차림
+ELSEIF (FLAG:1 == 2 && ARG:1 == 0) || (ARG:1 == 1 && FLAG:탐색時초기착의설정 == 2)
+	TEQUIP:ARG:하의 = 0
+	TEQUIP:ARG:옷 = 0
+	TEQUIP:ARG:전신복 = 0
+	TEQUIP:ARG:겉옷 = 0
+	TEQUIP:ARG:손 = 0
+	TEQUIP:ARG:신발 = 0
+;반라
+ELSEIF (FLAG:1 == 1 && ARG:1 == 0) || (ARG:1 == 1 && FLAG:탐색時초기착의설정 == 1)
+	TEQUIP:ARG:속옷（상） = 0
+	TEQUIP:ARG:속옷（하） = 0
+	TEQUIP:ARG:전신속옷 = 0
+	TEQUIP:ARG:겉옷 = 0
+	TEQUIP:ARG:손 = 0
+	TEQUIP:ARG:신발 = 0
+ENDIF
+CALL おっぱいオープン체크(ARG)
+CALL CHECK_EXPOSE(ARG)
+CALL 가랑이구조체크,ARG
+CALL 촉각체크(ARG)
+CALL ずらし체크(ARG)
+
+
+
+@EVENTTURNEND
+CALL SAVE_CLOTHES,MASTER
+
+SIF TARGET >= 0
+	CALL SAVE_CLOTHES,TARGET
+SIF ASSI >= 0
+	CALL SAVE_CLOTHES,ASSI
+
+@SAVE_CLOTHES,ARG,ARG:1 = 0
+#DIM LCOUNT
+	;착의상태の保存処理
+	LOCAL = 1
+	CFLAG:ARG:(23+ARG:1) = 0
+	FOR LCOUNT, 0, 17
+		SIF TEQUIP:ARG:GET_CLOTHESNAME(LCOUNT)
+			CFLAG:ARG:(23+ARG:1) |= LOCAL
+		LOCAL *= 2
+	NEXT
+	SIF TEQUIP:ARG:가슴앞열림
+		SETBIT CFLAG:ARG:(23+ARG:1),12
+
+
+;-------------------------------------------------
+;착의の표시
+;-------------------------------------------------
+@CLOTHES_CHANGE,ARG , ARG:1 = 0
+;C = NO:TARGET
+#DIM LINE,2
+#DIM 가슴개방가능, 3
+#DIM CHARA, 1
+#DIM 비표시, 3
+#DIM 음순노출상태, 3
+#DIM 유방노출상태, 3
+#DIM 구상체크可, 1
+#DIM LCOUNT
+#DIM DYNAMIC COMPARE1 ;비교 변수1
+#DIM DYNAMIC COMPARE2 ;비교 변수2
+#DIM DYNAMIC COMPARE3 ;비교 변수3
+#DIM DYNAMIC COMPARE4 ;비교 변수4
+#DIM DYNAMIC COMPARE5 ;비교 변수5
+#DIM DYNAMIC COMPARE6 ;비교 변수6
+#LOCALSIZE 3
+LINE = LINECOUNT
+$START
+;비교 변수 초기화
+COMPARE1 = 0
+COMPARE2 = 0
+COMPARE3 = 0
+COMPARE4 = 0
+COMPARE5 = 0
+COMPARE6 = 0
+CLEARLINE LINECOUNT - LINE
+PRINTL 의상에 대해서 설정합니다
+;特殊な착의상태を표시
+;全身着か上下着着用で下着無しは반라（脱がすまたは着せる過程で반라상태にしていると脳内変換）
+;IF (TEQUIP:6 > 0 || (TEQUIP:5 > 0 && TEQUIP:4 > 0)) && TEQUIP:3 == 0 && TEQUIP:2 == 0
+;	PRINTL 【반라】
+;	PRINTL 　
+;全身着及び上下着が無く、下着を上下共につけている場合に표시
+;ELSEIF TEQUIP:전신복 == 0 && TEQUIP:5 == 0 && TEQUIP:4 == 0 && TEQUIP:3 > 0 && TEQUIP:2 > 0
+;	PRINTL 【속옷 차림】
+;	PRINTL 　
+;何もつけていない時に표시
+;ELSEIF TEQUIP:6 == 0 && TEQUIP:5 == 0 && TEQUIP:4 == 0 && TEQUIP:3 == 0 && TEQUIP:2 == 0 && TEQUIP:1 == 0 && TEQUIP:0 == 0
+;	PRINTL 【전라】
+;	PRINTL 　
+;ENDIF
+;가슴ぼろん以外は가능
+구상체크可 = 1
+;착의名関数から착의を呼び出していく
+FOR LOCAL:1, 0 , (ARG:1 == 1 ? 1 # 3)
+	SIF LOCAL:1 == 0
+		CHARA = ARG
+	SIF LOCAL:1 == 1
+		CHARA = MASTER
+	SIF LOCAL:1 == 2
+		CHARA = ASSI
+	SIF CHARA < 0
+		CONTINUE
+	;구상の판정用に취득しておく
+	음순노출상태:(LOCAL:1) = TEQUIP:CHARA:음순노출
+	유방노출상태:(LOCAL:1) = TEQUIP:CHARA:유방노출
+	;現在来ている옷を표시、PRINTLは改行用
+	DRAWLINE
+	PRINTFORM %CALLNAME:CHARA,35,LEFT% 
+	SIF !비표시:(LOCAL:1)
+		SETCOLOR COLOR("aqua")
+			PRINTBUTTON @"[{LOCAL:1*100+98,3}] 표시　", LOCAL:1*100+98
+	RESETCOLOR
+	SIF 비표시:(LOCAL:1)
+		SETCOLOR COLOR("aqua")
+			PRINTFORML [{LOCAL:1*100+99,3}] 비표시
+	RESETCOLOR
+	SIF 비표시:(LOCAL:1)
+		CONTINUE
+	; \@ TEQUIP:ARG:가슴앞열림 ? [가슴개방中] #\@
+	FOR LOCAL, 0, 17
+		SIF !CFLAG:CHARA:(GET_CLOTHESNAME(LOCAL))
+			CONTINUE
+		TRYCCALLFORM CLOTHES_NAME_{CFLAG:CHARA:(GET_CLOTHESNAME(LOCAL))}
+			SELECTCASE GET_CLOTHESNAME(LOCAL)
+				CASE "옷"
+					IF TEQUIP:CHARA:겉옷 == 0
+					;겉옷을 벗은 상태면 → 옷을 탈의할 수 있다
+						PRINTFORM %"【"+GET_CLOTHESNAME(LOCAL)+"】",14,LEFT% %RESULTS,20,LEFT% 
+						SIF TEQUIP:CHARA:(GET_CLOTHESNAME(LOCAL))
+							SETCOLOR COLOR("aqua")
+						PRINTBUTTON @"[{LOCAL+LOCAL:1*100,3}] 착의　", LOCAL+LOCAL:1*100
+						RESETCOLOR
+						SIF !TEQUIP:CHARA:(GET_CLOTHESNAME(LOCAL))
+							SETCOLOR COLOR("aqua")
+						PRINTFORM [{LOCAL+20+LOCAL:1*100,3}] 탈의
+						RESETCOLOR
+					ELSE
+					;옷을 탈의할 수 없다
+						PRINTFORM %"【"+GET_CLOTHESNAME(LOCAL)+"】",14,LEFT% %RESULTS,20,LEFT% 
+						SETCOLOR 0x1c1c1c
+						PRINTFORM [  x] 착의  
+						PRINTFORM [  x] 탈의
+						RESETCOLOR
+					ENDIF
+					SIF STAIN:CHARA:(LOCAL+10) & 1
+						PRINT <애액>
+					SIF STAIN:CHARA:(LOCAL+10) & 2
+						PRINT <페니스>
+					SIF STAIN:CHARA:(LOCAL+10) & 4
+						PRINT <정액>
+					SIF STAIN:CHARA:(LOCAL+10) & 8
+						PRINT <애널>
+					SIF STAIN:CHARA:(LOCAL+10) & 16
+						PRINT <모유>
+					SIF STAIN:CHARA:(LOCAL+10) & 32
+						PRINT <점액>
+					SIF STAIN:CHARA:(LOCAL+10) & 64
+						PRINT <파과혈>
+					IF TEQUIP:CHARA:겉옷 > 0
+						SETCOLOR 0x01dfd7
+						PRINT  《겉옷 착의중이라 착/탈의불가》
+						RESETCOLOR
+					ENDIF
+					PRINTL 
+				CASE "속옷（상）"
+				;브래지어
+					IF (TEQUIP:CHARA:옷 == 0 && TEQUIP:CHARA:전신복 == 0 && TEQUIP:CHARA:겉옷 == 0) || TEQUIP:CHARA:가슴앞열림 == 1
+					;브래지어를 덮는 옷이 없거나 가슴팍이 드러났다 → 브래지어를 탈의할 수 있다
+						PRINTFORM   └%"【"+GET_CLOTHESNAME(LOCAL)+"】",14,LEFT% %RESULTS,20,LEFT% 
+						SIF TEQUIP:CHARA:(GET_CLOTHESNAME(LOCAL))
+							SETCOLOR COLOR("aqua")
+						PRINTBUTTON @"[{LOCAL+LOCAL:1*100,3}] 착의　", LOCAL+LOCAL:1*100
+						RESETCOLOR
+						SIF !TEQUIP:CHARA:(GET_CLOTHESNAME(LOCAL))
+							SETCOLOR COLOR("aqua")
+						PRINTFORM [{LOCAL+20+LOCAL:1*100,3}] 탈의
+						RESETCOLOR
+					ELSE
+					;브래지어를 탈의할 수 없다
+						PRINTFORM   └%"【"+GET_CLOTHESNAME(LOCAL)+"】",14,LEFT% %RESULTS,20,LEFT% 
+						SETCOLOR 0x1c1c1c
+						PRINTFORM [  x] 착의  
+						PRINTFORM [  x] 탈의
+						RESETCOLOR
+					ENDIF
+					SIF STAIN:CHARA:(LOCAL+10) & 1
+						PRINT <애액>
+					SIF STAIN:CHARA:(LOCAL+10) & 2
+						PRINT <페니스>
+					SIF STAIN:CHARA:(LOCAL+10) & 4
+						PRINT <정액>
+					SIF STAIN:CHARA:(LOCAL+10) & 8
+						PRINT <애널>
+					SIF STAIN:CHARA:(LOCAL+10) & 16
+						PRINT <모유>
+					SIF STAIN:CHARA:(LOCAL+10) & 32
+						PRINT <점액>
+					SIF STAIN:CHARA:(LOCAL+10) & 64
+						PRINT <파과혈>
+					IF !((TEQUIP:CHARA:옷 == 0 && TEQUIP:CHARA:전신복 == 0 && TEQUIP:CHARA:겉옷 == 0) || TEQUIP:CHARA:가슴앞열림 == 1)	
+						SETCOLOR 0xd7df01
+						PRINT  《가슴 비노출이라 착/탈의불가》
+						RESETCOLOR
+					ENDIF
+					PRINTL 
+				CASE "속옷（하）"
+				;팬티
+					;착용하고 있는 옷들의 가랑이 유형 조사
+					;참고 - 스커트 유형 리턴값(3), 해당 의복이 없거나 탈의됐을 경우 리턴값(0)
+					TRYCALLFORM CLOTHES_CROTCH_{TEQUIP:CHARA:하의}
+					COMPARE1 = RESULT
+					TRYCALLFORM CLOTHES_CROTCH_{TEQUIP:CHARA:전신복}
+					COMPARE2 = RESULT
+					;참고 - 바지 유형 리턴값(1), 해당 의복이 없거나 탈의됐을 경우 리턴값(0)
+					TRYCALLFORM CLOTHES_CROTCH_{TEQUIP:CHARA:양말}
+					COMPARE5 = RESULT
+					IF (TFLAG:60 > 0 && (TCVAR:CHARA:페니스사용대상 == TARGET || CHARA == TARGET)) || (TFLAG:62 > 0 && (TCVAR:CHARA:페니스사용대상 == ASSI || CHARA == ASSI)) || !((COMPARE1 == 0 || COMPARE1 == 3 || COMPARE1 == 5) && (COMPARE2 == 0 || COMPARE2 == 3 || COMPARE2 == 5)) || (COMPARE5 == 1 || COMPARE5 == 2 || COMPARE5 == 4)
+					;삽입 상태(TFLAG:60 > 0)에서, 캐릭의 페니스 사용대상이 조교대상이거나, 캐릭이 조교대상 자체인 경우
+					;혹은 전신복이나 하의가, 없거나 탈의됐거나(0), 스커트 형식이거나(3), 앞열림 형식일 경우(5)...의 NOT 결과값일 경우
+					;--> 팬티를 탈의할 수 없다
+						PRINTFORM   └%"【"+GET_CLOTHESNAME(LOCAL)+"】",14,LEFT% %RESULTS,20,LEFT% 
+						SETCOLOR 0x1c1c1c
+						PRINTFORM [  x] 착의  
+						PRINTFORM [  x] 탈의
+						RESETCOLOR
+					ELSE
+					;팬티를 탈의할 수 있다
+						PRINTFORM   └%"【"+GET_CLOTHESNAME(LOCAL)+"】",14,LEFT% %RESULTS,20,LEFT% 
+						SIF TEQUIP:CHARA:(GET_CLOTHESNAME(LOCAL))
+							SETCOLOR COLOR("aqua")
+						PRINTBUTTON @"[{LOCAL+LOCAL:1*100,3}] 착의　", LOCAL+LOCAL:1*100
+						RESETCOLOR
+						SIF !TEQUIP:CHARA:(GET_CLOTHESNAME(LOCAL))
+							SETCOLOR COLOR("aqua")
+						PRINTFORM [{LOCAL+20+LOCAL:1*100,3}] 탈의
+						RESETCOLOR
+					ENDIF
+					SIF STAIN:CHARA:(LOCAL+10) & 1
+						PRINT <애액>
+					SIF STAIN:CHARA:(LOCAL+10) & 2
+						PRINT <페니스>
+					SIF STAIN:CHARA:(LOCAL+10) & 4
+						PRINT <정액>
+					SIF STAIN:CHARA:(LOCAL+10) & 8
+						PRINT <애널>
+					SIF STAIN:CHARA:(LOCAL+10) & 16
+						PRINT <모유>
+					SIF STAIN:CHARA:(LOCAL+10) & 32
+						PRINT <점액>
+					SIF STAIN:CHARA:(LOCAL+10) & 64
+						PRINT <파과혈>
+					IF !((COMPARE1 == 0 || COMPARE1 == 3 || COMPARE1 == 5) && (COMPARE2 == 0 || COMPARE2 == 3 || COMPARE2 == 5))
+						SETCOLOR 0xd7df01
+						PRINT  《바지 탈의필요》
+						RESETCOLOR
+					ENDIF
+					IF COMPARE5 == 1 || COMPARE5 == 2 || COMPARE5 == 4
+						SETCOLOR 0x01dfd7
+						PRINT  《스타킹 착용중이라 착/탈의불가》
+						RESETCOLOR
+					ENDIF
+					IF (TFLAG:60 > 0 && (TCVAR:CHARA:페니스사용대상 == TARGET || CHARA == TARGET)) || (TFLAG:62 > 0 && (TCVAR:CHARA:페니스사용대상 == ASSI || CHARA == ASSI))
+					;삽입 상태(TFLAG:60 > 0)에서, 캐릭의 페니스 사용대상이 조교대상이거나, 캐릭이 조교대상 자체인 경우
+						SETCOLOR 0xff3399
+						PRINT  《삽입중이라 착/탈의불가》
+						RESETCOLOR
+					ENDIF
+					PRINTL 
+				CASE "전신속옷"
+				;수영복, 보디수트 등
+					IF TEQUIP:CHARA:옷 == 0 && TEQUIP:CHARA:하의 == 0 && TEQUIP:CHARA:전신복 == 0 && TEQUIP:CHARA:겉옷 == 0
+					;옷,하의,전신복,겉옷을 모두 벗은 상태면 → 전신속옷을 탈의할 수 있다
+						PRINTFORM   └%"【"+GET_CLOTHESNAME(LOCAL)+"】",14,LEFT% %RESULTS,20,LEFT% 
+						SIF TEQUIP:CHARA:(GET_CLOTHESNAME(LOCAL))
+							SETCOLOR COLOR("aqua")
+						PRINTBUTTON @"[{LOCAL+LOCAL:1*100,3}] 착의　", LOCAL+LOCAL:1*100
+						RESETCOLOR
+						SIF !TEQUIP:CHARA:(GET_CLOTHESNAME(LOCAL))
+							SETCOLOR COLOR("aqua")
+						PRINTFORM [{LOCAL+20+LOCAL:1*100,3}] 탈의
+						RESETCOLOR
+					ELSE
+					;전신속옷을 탈의할 수 없다
+						PRINTFORM   └%"【"+GET_CLOTHESNAME(LOCAL)+"】",14,LEFT% %RESULTS,20,LEFT% 
+						SETCOLOR 0x1c1c1c
+						PRINTFORM [  x] 착의  
+						PRINTFORM [  x] 탈의
+						RESETCOLOR
+					ENDIF
+					SIF STAIN:CHARA:(LOCAL+10) & 1
+						PRINT <애액>
+					SIF STAIN:CHARA:(LOCAL+10) & 2
+						PRINT <페니스>
+					SIF STAIN:CHARA:(LOCAL+10) & 4
+						PRINT <정액>
+					SIF STAIN:CHARA:(LOCAL+10) & 8
+						PRINT <애널>
+					SIF STAIN:CHARA:(LOCAL+10) & 16
+						PRINT <모유>
+					SIF STAIN:CHARA:(LOCAL+10) & 32
+						PRINT <점액>
+					SIF STAIN:CHARA:(LOCAL+10) & 64
+						PRINT <파과혈>
+					IF !(TEQUIP:CHARA:옷 == 0 && TEQUIP:CHARA:하의 == 0 && TEQUIP:CHARA:전신복 == 0 && TEQUIP:CHARA:겉옷 == 0)
+						SETCOLOR 0xd7df01
+						PRINT  《옷,하의,전신복,겉옷을 모두 탈의필요》
+						RESETCOLOR
+					ENDIF
+					PRINTL 
+				CASE "양말"
+				;양말, 니삭스 등
+					;착용하고 있는 옷들의 가랑이 유형 조사 (하의)
+					;참고 - 바지 유형, ビキニ 유형 리턴값(1,2), 해당 의복이 없거나 탈의됐을 경우 리턴값(0)
+					TRYCALLFORM CLOTHES_CROTCH_{TEQUIP:CHARA:하의}
+					COMPARE3 = RESULT
+					;착용하고 있는 옷들의 가랑이 유형 조사 (전신복)
+					;참고 - 바지 유형, ビキニ 유형 리턴값(1,2), 해당 의복이 없거나 탈의됐을 경우 리턴값(0)
+					TRYCALLFORM CLOTHES_CROTCH_{TEQUIP:CHARA:전신복}
+					COMPARE4 = RESULT
+					;착용하고 있는 옷들의 가랑이 유형 조사 (양말)
+					;참고 - 해당 의복이 없거나 탈의됐거나 가랑이를 덮지 않는 경우 리턴값(0)
+					;TRYCALLFORM CLOTHES_CROTCH_{TEQUIP:CHARA:양말}
+					;COMPARE6 = RESULT
+					;설정된 기본 옷의 가랑이 유형 조사 (양말)
+					;참고 - 옷의 착/탈의 상태에 관계없이 절대적인 결과값이 도출된다
+					TRYCALLFORM CLOTHES_CROTCH_{CFLAG:CHARA:양말}
+					COMPARE6 = RESULT
+					IF TEQUIP:CHARA:신발 == 0
+					;신발을 벗었다는 걸 전제로, 바지 유형을 입지 않았거나 / 바지 유형을 입은 상태여도 양말이 가랑이를 덮지 않는 구조인 경우 → 양말을 탈의할 수 있다
+						IF ((COMPARE3 == 0 || COMPARE3 == 3 || COMPARE3 == 5) && (COMPARE4 == 0 || COMPARE4 == 3 || COMPARE4 == 5)) || (!((COMPARE3 == 0 || COMPARE3 == 3 || COMPARE3 == 5) && (COMPARE4 == 0 || COMPARE4 == 3 || COMPARE4 == 5)) && (COMPARE6 < 1 && CFLAG:CHARA:양말 != 805))
+							PRINTFORM %"【"+GET_CLOTHESNAME(LOCAL)+"】",14,LEFT% %RESULTS,20,LEFT% 
+							SIF TEQUIP:CHARA:(GET_CLOTHESNAME(LOCAL))
+								SETCOLOR COLOR("aqua")
+							PRINTBUTTON @"[{LOCAL+LOCAL:1*100,3}] 착의　", LOCAL+LOCAL:1*100
+							RESETCOLOR
+							SIF !TEQUIP:CHARA:(GET_CLOTHESNAME(LOCAL))
+								SETCOLOR COLOR("aqua")
+							PRINTFORM [{LOCAL+20+LOCAL:1*100,3}] 탈의
+							RESETCOLOR
+						ELSE
+						;양말을 탈의할 수 없다
+							PRINTFORM %"【"+GET_CLOTHESNAME(LOCAL)+"】",14,LEFT% %RESULTS,20,LEFT% 
+							SETCOLOR 0x1c1c1c
+							PRINTFORM [  x] 착의  
+							PRINTFORM [  x] 탈의
+							RESETCOLOR
+						ENDIF
+					ELSE
+					;양말을 탈의할 수 없다
+						PRINTFORM %"【"+GET_CLOTHESNAME(LOCAL)+"】",14,LEFT% %RESULTS,20,LEFT% 
+						SETCOLOR 0x1c1c1c
+						PRINTFORM [  x] 착의  
+						PRINTFORM [  x] 탈의
+						RESETCOLOR
+					ENDIF
+					SIF STAIN:CHARA:(LOCAL+10) & 1
+						PRINT <애액>
+					SIF STAIN:CHARA:(LOCAL+10) & 2
+						PRINT <페니스>
+					SIF STAIN:CHARA:(LOCAL+10) & 4
+						PRINT <정액>
+					SIF STAIN:CHARA:(LOCAL+10) & 8
+						PRINT <애널>
+					SIF STAIN:CHARA:(LOCAL+10) & 16
+						PRINT <모유>
+					SIF STAIN:CHARA:(LOCAL+10) & 32
+						PRINT <점액>
+					SIF STAIN:CHARA:(LOCAL+10) & 64
+						PRINT <파과혈>
+					IF TEQUIP:CHARA:신발 > 0
+						SETCOLOR 0x01dfd7
+						PRINT  《신발 착의중이라 착/탈의불가》
+						RESETCOLOR
+					ENDIF
+					IF !((COMPARE3 == 0 || COMPARE3 == 3 || COMPARE3 == 5) && (COMPARE4 == 0 || COMPARE4 == 3 || COMPARE4 == 5)) && (COMPARE6 > 0 || CFLAG:CHARA:양말 == 805)
+						SETCOLOR 0xd7df01
+						PRINT  《바지 탈의필요》
+						RESETCOLOR
+					ENDIF
+					PRINTL 
+				CASEELSE
+				;그외의 옷
+					PRINTFORM %"【"+GET_CLOTHESNAME(LOCAL)+"】",14,LEFT% %RESULTS,20,LEFT% 
+					SIF TEQUIP:CHARA:(GET_CLOTHESNAME(LOCAL))
+						SETCOLOR COLOR("aqua")
+					PRINTBUTTON @"[{LOCAL+LOCAL:1*100,3}] 착의　", LOCAL+LOCAL:1*100
+					RESETCOLOR
+					SIF !TEQUIP:CHARA:(GET_CLOTHESNAME(LOCAL))
+						SETCOLOR COLOR("aqua")
+					PRINTFORM [{LOCAL+20+LOCAL:1*100,3}] 탈의
+					RESETCOLOR
+					SIF STAIN:CHARA:(LOCAL+10) & 1
+						PRINT <애액>
+					SIF STAIN:CHARA:(LOCAL+10) & 2
+						PRINT <페니스>
+					SIF STAIN:CHARA:(LOCAL+10) & 4
+						PRINT <정액>
+					SIF STAIN:CHARA:(LOCAL+10) & 8
+						PRINT <애널>
+					SIF STAIN:CHARA:(LOCAL+10) & 16
+						PRINT <모유>
+					SIF STAIN:CHARA:(LOCAL+10) & 32
+						PRINT <점액>
+					SIF STAIN:CHARA:(LOCAL+10) & 64
+						PRINT <파과혈>
+					PRINTL 
+			ENDSELECT
+		CATCH
+		ENDCATCH
+	NEXT
+	PRINTFORM %"【모든의복】",35,LEFT% 
+	SIF SUMARRAY(TEQUIP:CHARA:0, GETNUM(TEQUIP, GET_CLOTHESNAME(0)), GETNUM(TEQUIP, GET_CLOTHESNAME(11))+1) == SUMARRAY(CFLAG:CHARA:0, GETNUM(CFLAG, GET_CLOTHESNAME(0)), GETNUM(CFLAG, GET_CLOTHESNAME(11))+1)
+		SETCOLOR COLOR("aqua")
+			PRINTBUTTON @"[{LOCAL:1*100+50,3}] 착의　", LOCAL:1*100+50
+	RESETCOLOR
+	SIF SUMARRAY(TEQUIP:CHARA:0, GETNUM(TEQUIP, GET_CLOTHESNAME(0)), GETNUM(TEQUIP, GET_CLOTHESNAME(11))+1) == 0
+		SETCOLOR COLOR("aqua")
+			PRINTFORML [{LOCAL:1*100+51,3}] 탈의
+	RESETCOLOR
+	;가슴
+	SIF FLAG:SHOPコマンド == [[SHOP:의상방]] || FLAG:SHOPコマンド == [[SHOP:옵션]]
+		BREAK
+	PRINTFORM %"【가슴구조】",14,LEFT% 
+	가슴개방가능:(LOCAL:1) = 0
+	SIF (TEQUIP:CHARA:가슴구조 & (1 + 2 + 4 + 8 + 16))
+		가슴개방가능:(LOCAL:1) = 1
+	PRINTFORM \@가슴개방가능:(LOCAL:1) ? %"개방가능",20,LEFT% # %"개방불능",20,LEFT%\@ 
+	IF 가슴개방가능:(LOCAL:1) == 0
+		SETCOLOR COLOR("light-gray")
+		PRINTBUTTON @"[{LOCAL:1*100+60,3}] 개방　", LOCAL:1*100+60
+		PRINTFORM [{LOCAL:1*100+61,3}] 격납
+	ELSE
+		SIF TEQUIP:CHARA:가슴앞열림
+			SETCOLOR COLOR("aqua")
+		PRINTBUTTON @"[{LOCAL:1*100+60,3}] 개방　", LOCAL:1*100+60
+		RESETCOLOR
+		SIF !TEQUIP:CHARA:가슴앞열림
+			SETCOLOR COLOR("aqua")
+			PRINTFORM [{LOCAL:1*100+61,3}] 격납
+	ENDIF
+	RESETCOLOR
+	IF FLAG:DEBUG
+		;의상실 추가옵션
+		PRINTL 
+		PRINTFORM %"【의상실】",17,LEFT% 
+		PRINTBUTTON @"[{LOCAL:1*100+90,3}] 의상을 갈아입는다　", LOCAL:1*100+90					
+	ENDIF
+	PRINTL 
+NEXT
+;FOR LCOUNT, 0, 14
+;	IF TEQUIP:ARG:(GET_CLOTHESNAME(LCOUNT)) > 0
+;		LOCAL = LCOUNT
+;		PRINT 【
+;		CALL CLOTHES_NAME,LOCAL,ARG
+;		PRINTL 】
+;	ENDIF
+;NEXT
+DRAWLINE
+PRINTL [999] 돌아간다
+;CUSTOMDRAWLINE ・
+
+;-------------------------------------------------
+;착의の설정
+;-------------------------------------------------
+;FOR LCOUNT, 0, 14
+;	IF TEQUIP:ARG:(GET_CLOTHESNAME(LCOUNT))
+;		PRINTFORM [{LCOUNT}] 
+;		LOCAL = LCOUNT
+;		CALL CLOTHES_NAME,LOCAL,ARG
+;		IF ARG == PLAYER
+;			PRINTL を脱ぐ
+;		ELSE
+;			PRINTL を脱がす
+;		ENDIF
+;	ENDIF
+;NEXT
+;FOR LCOUNT, 0, 14
+;	IF TEQUIP:ARG:(GET_CLOTHESNAME(LCOUNT)) == 0 && CFLAG:ARG:(GET_CLOTHESNAME(LCOUNT))
+;		PRINTFORM [{LCOUNT+12}] 
+;		LOCAL = LCOUNT
+;		CALL CLOTHES_NAME,LOCAL,ARG
+;		PRINT を
+;		
+;		SELECTCASE LOCAL
+;			CASE 0,4,5,11
+;				PRINTL つける
+;			CASE 1,3,7,10
+;				IF ARG == PLAYER
+;					PRINTL 着る
+;				ELSE
+;					PRINTL 着せる
+;				ENDIF
+;			CASE 2,6,8,9
+;				IF ARG == PLAYER
+;					PRINTL 穿く
+;				ELSE
+;;					PRINTL 穿かせる
+;				ENDIF
+;		ENDSELECT
+;	ENDIF
+;NEXT
+;FOR LCOUNT, 0, 12
+;	IF TEQUIP:ARG:(GET_CLOTHESNAME(LCOUNT)) > 0
+;		IF ARG == PLAYER
+;			PRINTL [30] すべて脱ぐ
+;		ELSE
+;			PRINTL [30] すべて脱がす
+;		ENDIF
+;		BREAK
+;	ENDIF
+;NEXT
+;FOR LCOUNT, 0, 12
+;	IF TEQUIP:ARG:(GET_CLOTHESNAME(LCOUNT)) == 0 && CFLAG:ARG:(GET_CLOTHESNAME(LCOUNT))
+;		IF ARG == PLAYER
+;			PRINTL [40] すべて着る
+;		ELSE
+;			PRINTL [40] すべて着せる
+;		ENDIF
+;		BREAK
+;	ENDIF
+;NEXT
+;SIF  (TEQUIP:ARG:가슴구조 & 1 || TEQUIP:ARG:가슴구조 & 2 || TEQUIP:ARG:가슴구조 & 4 || TEQUIP:ARG:가슴구조 & 8 || TEQUIP:ARG:가슴구조 & 16) 
+;	LOCAL:1 = 1
+;SIF TEQUIP:ARG:가슴구조 > 0 && LOCAL:1 && FLAG:SHOPコマンド != [[SHOP:의상방]] && FLAG:SHOPコマンド != [[SHOP:옵션]]
+;	PRINTFORML [98]\@ TEQUIP:ARG:가슴앞열림 ? 가슴をしまう # 가슴を出す \@
+;PRINTL [100]돌아간다
+LINE:1 = LINECOUNT
+$INPUT_LOOP
+CLEARLINE LINECOUNT - LINE:1
+INPUT
+SIF RESULT == 999
+	RETURN 0
+LOCAL = RESULT % 100
+LOCAL:1 = (RESULT) / 100
+CHARA = -1
+SIF LOCAL:1 == 0
+	CHARA = ARG
+SIF LOCAL:1 == 1
+	CHARA = MASTER
+SIF LOCAL:1 == 2
+	CHARA = ASSI
+SIF CHARA == -1
+	GOTO START
+;가슴の開閉
+;ELSEIF RESULT == 98 && TEQUIP:ARG:가슴구조 > 0 && LOCAL:1 && FLAG:SHOPコマンド != [[SHOP:의상방]] && FLAG:SHOPコマンド != [[SHOP:옵션]]
+IF LOCAL == 98
+	비표시:(LOCAL:1) = 0
+ELSEIF LOCAL == 99 && RESULT > 0
+	비표시:(LOCAL:1) = 1
+	
+;유동닉의상실옵션
+;갈아입고 전부 입도록 처리
+ELSEIF LOCAL == 90
+	CALL CLOTHES_SETTING_USUALLY_A,TARGET
+	REPEAT 17
+		TEQUIP:CHARA:(GET_CLOTHESNAME(COUNT)) = CFLAG:CHARA:(GET_CLOTHESNAME(COUNT))
+	REND
+ELSEIF LOCAL == 190
+	CALL CLOTHES_SETTING_USUALLY_A,MASTER
+	REPEAT 17
+		TEQUIP:CHARA:(GET_CLOTHESNAME(COUNT)) = CFLAG:CHARA:(GET_CLOTHESNAME(COUNT))
+	REND
+ELSEIF LOCAL == 290 && ASSI > 0
+	CALL CLOTHES_SETTING_USUALLY_A,ASSI
+	REPEAT 17
+		TEQUIP:CHARA:(GET_CLOTHESNAME(COUNT)) = CFLAG:CHARA:(GET_CLOTHESNAME(COUNT))
+	REND
+ELSEIF (LOCAL == 60 || LOCAL == 61) && (TEQUIP:CHARA:가슴앞열림 == LOCAL % 10) && 가슴개방가능:(LOCAL:1)
+	INVERTBIT TEQUIP:CHARA:가슴앞열림 , 0
+	TFLAG:13 = 44
+	SWAP CHARA , TARGET
+	CALL KOJO_MESSAGE_EVENT
+	SWAP TARGET , CHARA
+	구상체크可 = 0
+;모두 벗긴다
+ELSEIF LOCAL == 51
+	FOR LCOUNT, 0, 17
+		TEQUIP:CHARA:(GET_CLOTHESNAME(LCOUNT)) = 0
+	NEXT
+;모두 입힌다
+ELSEIF LOCAL == 50
+	FOR LCOUNT, 0, 17
+		TEQUIP:CHARA:(GET_CLOTHESNAME(LCOUNT)) = CFLAG:CHARA:(GET_CLOTHESNAME(LCOUNT))
+	NEXT
+;옷을 입히는 경우
+ELSEIF LOCAL < 20
+	IF TEQUIP:CHARA:(GET_CLOTHESNAME(LOCAL)) == 0 && CFLAG:CHARA:(GET_CLOTHESNAME(LOCAL))
+		IF LOCAL == 3
+			TEQUIP:CHARA:옷 = 0
+			TEQUIP:CHARA:하의 = 0
+		ELSEIF LOCAL == 1 || LOCAL == 2
+			TEQUIP:CHARA:전신복 = 0
+		ELSEIF LOCAL == 5 || LOCAL == 6
+			TEQUIP:CHARA:전신속옷 = 0
+		ELSEIF LOCAL == 7
+			TEQUIP:CHARA:속옷（상） = 0
+			TEQUIP:CHARA:속옷（하） = 0
+		ENDIF
+		TEQUIP:CHARA:(GET_CLOTHESNAME(LOCAL)) = CFLAG:CHARA:(GET_CLOTHESNAME(LOCAL))
+	ELSE
+		GOTO INPUT_LOOP
+	ENDIF
+	;입히는 처리 후에 텍스트를 부른다
+	TRYCCALLFORM CLOTHES_MESSAGE_{NO:CHARA}, LOCAL, 1, CHARA
+	CATCH
+		CALL CLOTHES_MESSAGE,LOCAL,1,CHARA
+	ENDCATCH
+;옷을 벗기는 경우
+ELSEIF LOCAL < 40
+	LOCAL -= 20
+	;입지 않은 경우 재입력
+	SIF TEQUIP:CHARA:(GET_CLOTHESNAME(LOCAL)) == 0
+		GOTO INPUT_LOOP
+	;벗기는 처리 전에 텍스트를 부른다
+	TRYCCALLFORM CLOTHES_MESSAGE_K{NO:CHARA}, LOCAL, 0, CHARA
+	CATCH
+		CALL CLOTHES_MESSAGE,LOCAL, 0, CHARA
+	ENDCATCH
+	TEQUIP:CHARA:(GET_CLOTHESNAME(LOCAL)) = 0
+ELSE
+	GOTO INPUT_LOOP
+ENDIF
+
+CALL おっぱいオープン체크(CHARA)
+CALL CHECK_EXPOSE(CHARA)
+CALL 가랑이구조체크,CHARA
+CALL 촉각체크(CHARA)
+CALL ずらし체크(CHARA)
+IF 구상체크可
+	SIF CHARA == TARGET
+		LOCAL:1 = 0
+	SIF CHARA == MASTER
+		LOCAL:1 = 1
+	SIF CHARA == ASSI
+		LOCAL:1 = 2
+	TFLAG:13 = 0
+	IF 음순노출상태:(LOCAL:1) >= 0 && TEQUIP:CHARA:음순노출 == -1
+		IF 유방노출상태:(LOCAL:1) >= 0 && TEQUIP:CHARA:유방노출 == -1
+			TFLAG:13 = 70+LOCAL:1
+		ELSE
+			TFLAG:13 = 73+LOCAL:1
+		ENDIF
+	ELSE
+		SIF 유방노출상태:(LOCAL:1) >= 0 && TEQUIP:CHARA:유방노출 == -1
+			TFLAG:13 = 76+LOCAL:1
+	ENDIF
+	IF TFLAG:13
+		SWAP CHARA , TARGET
+		CALL KOJO_MESSAGE_EVENT
+		SWAP TARGET , CHARA
+	ENDIF
+;	IF 음순노출상태:(LOCAL:1) == -1 && TEQUIP:CHARA:음순노출음순 >= 0
+;		IF 유방노출상태:(LOCAL:1) == -1 && TEQUIP:CHARA:유방노출 >= 0
+;		ELSE
+;		ENDIF
+;	ELSE
+;		IF 유방노출상태:(LOCAL:1) == -1 && TEQUIP:CHARA:유방노출 >= 0
+;		ENDIF
+;	ENDIF
+ENDIF
+GOTO START
+;RESTART
+
+;-------------------------------------------------
+;착의の상태によって、조교中のソースが若干変動する
+;-------------------------------------------------
+@EQUIP_CLOTHES
+;착의상태によるソースを付加（손以外の１箇所ごとに노출+5、未함락時반감+5）
+;EQUIPによる制御に변경するまで封印
+;予定・가슴と바기나が노출するような組み合わせだとさらに＋5
+IF TEQUIP:다리노출 == -1		;다리노출
+	SOURCE:노출 += 3
+	SOURCE:반감 += 3 * !함락()	;함락時は반감を加算しない。以下同様
+ENDIF
+IF TEQUIP:배꼽노출 == -1		;배꼽노출
+	SOURCE:노출 += 3
+	SOURCE:반감 += 3 * !함락()
+ENDIF
+IF TEQUIP:유방노출 == -1	;유방노출
+	SOURCE:노출 += 3
+	SOURCE:반감 += 3 * !함락()
+ENDIF
+IF TEQUIP:유두노출 == -1	;유두노출。유방は隠れているのに유두が出てたら+6
+	SOURCE:노출 += (10 + (6 * (TEQUIP:유방노출 != -1)))
+	SOURCE:반감 += (10 + (6 * (TEQUIP:유방노출 != -1))) * !함락()
+ENDIF
+IF TEQUIP:음순노출 == -1	;음순노출。다리は隠れているのに음순が出てたら+3、배꼽は隠れているのに음순が出てたら+3
+	SOURCE:노출 += (10 + (3 * (TEQUIP:다리노출 != -1)) + (3 * (TEQUIP:배꼽노출 != -1)))
+	SOURCE:반감 += (10 + (3 * (TEQUIP:다리노출 != -1)) + (3 * (TEQUIP:배꼽노출 != -1))) * !함락()
+ENDIF
+IF TEQUIP:둔부노출 == -1	;둔부노출
+	SOURCE:노출 += 10
+	SOURCE:반감 += 10 * !함락()
+ENDIF
+RETURN RESULT
+
+;-------------------------------------------------
+;옷の이름を関数で呼び出せるようにする。A+40の数値でCFLAGの数値を分岐
+;-------------------------------------------------
+@CLOTHES_NAME, ARG, ARG:1
+PRINTFORM %ITEMNAME:(6000+CFLAG:(ARG:1):(GET_CLOTHESNAME(ARG)))%
+
+
+;-------------------------------------------------
+;착의の実行時の메시지処理
+;-------------------------------------------------
+@CLOTHES_MESSAGE, ARG, ARG:1, ARG:2
+CALL CLOTHES_NAME, ARG, ARG:2
+PRINT 를 
+IF ARG:1	;着る/着せる
+	SELECTCASE ARG
+		CASE 0, 4, 5, 11, 12, 13	;모자/손/속옷（상）/그외
+			PRINTW 붙였다
+		CASE 1, 3, 7, 10	;옷/전신복/전신속옷/겉옷
+			IF ARG:2 == PLAYER
+				PRINTW 입었다
+			ELSE
+				PRINTW 덮어 씌웠다
+			ENDIF
+		CASE 2, 6, 8, 9		;하의/속옷（하）/양말/신발
+			IF ARG:2 == PLAYER
+				PRINTW 입었다
+			ELSE
+				PRINTW 입게 했다
+			ENDIF
+	ENDSELECT
+;脱ぐ/脱がせる
+ELSE
+	;그외
+	IF ARG == 11 || ARG == 12 || ARG == 13
+		IF ARG:2 == PLAYER
+			PRINTW 벗겼다
+		ELSE
+			PRINTW 벗게 했다
+		ENDIF
+	;그외以外
+	ELSE
+		IF ARG:2 == PLAYER
+			PRINTW 벗었다
+		ELSE
+			PRINTW 벗겼다
+		ENDIF
+	ENDIF
+ENDIF
+
+;==============================================================
+;옵션内の衣装関連항목、及び衣装변경기능
+;==============================================================
+;초기착의설정
+@CLOTHES_SETTING
+Z = 0
+PRINTL 설정할 항목을 선택해 주세요
+PRINTFORM 현재의 설정은 조교시는
+SELECTCASE FLAG:초기착의설정
+	CASE 0
+		PRINTFORM 전부착용
+	CASE 1
+		PRINTFORM 반라
+	CASE 2
+		PRINTFORM 속옷 차림
+	CASE 3
+		PRINTFORM 전라
+	CASE 4
+		PRINTFORM 전회 조교 종료시
+ENDSELECT
+PRINTFORM 　、탐색시는
+SELECTCASE FLAG:탐색時초기착의설정
+	CASE 0
+		PRINTFORM 전부착용
+	CASE 1
+		PRINTFORM 반라
+	CASE 2
+		PRINTFORM 속옷 차림
+	CASE 3
+		PRINTFORM 전라
+	CASE 4
+		PRINTFORM 전회 종료시
+	CASE 5
+		PRINTFORM 전회 조교 종료시
+ENDSELECT
+PRINTFORML 　입니다
+PRINTL [1] - 조교 개시시의 착의 상태 설정
+PRINTL [2] - 의상의 설정
+PRINTL [3] - 탐색 개시시의 착의 상태 설정
+PRINTL [0] - 돌아온다
+
+
+
+$INPUT_LOOP
+INPUT
+IF RESULT == 0
+	RETURN 1
+ELSEIF RESULT == 1
+	CALL CLOTHES_SETTING_TRAIN
+ELSEIF RESULT == 2
+	CALL CLOTHES_SETTING_USUALLY
+ELSEIF RESULT == 3
+	CALL CLOTHES_SETTING_DUNGEON
+ELSE
+	GOTO INPUT_LOOP
+ENDIF
+RESTART
+
+
+
+@CLOTHES_SETTING_TRAIN
+Z = 0
+PRINTL 초기의 착의를 설정해 주세요
+PRINTL [0] - 전부착용
+PRINTL [1] - 반라
+PRINTL [2] - 속옷 차림
+PRINTL [3] - 전라
+PRINTL [4] - 전회 종료시
+$INPUT_LOOP
+INPUT
+IF RESULT == 0
+	PRINTW 초기의 착의를 전부 착용으로 설정했습니다
+	FLAG:초기착의설정 = 0
+ELSEIF RESULT == 1
+	PRINTW 초기의 착의를 반라로 설정했습니다
+	FLAG:초기착의설정 = 1
+ELSEIF RESULT == 2
+	PRINTW 초기의 착의를 속옷 차림으로 설정했습니다
+	FLAG:초기착의설정 = 2
+ELSEIF RESULT == 3
+	PRINTW 초기의 착의를 전라로 설정했습니다
+	FLAG:초기착의설정 = 3
+ELSEIF RESULT == 4
+	PRINTW 초기의 착의를 전회 종료시의 상태로 설정했습니다
+	FLAG:초기착의설정 = 4
+ELSE
+	GOTO INPUT_LOOP
+ENDIF
+
+@CLOTHES_SETTING_DUNGEON
+PRINTL 초기의 착의를 설정해 주세요
+PRINTL [0] - 전부 착용
+PRINTL [1] - 반라
+PRINTL [2] - 속옷 차림
+PRINTL [3] - 전라
+PRINTL [4] - 전회 종료시
+PRINTL [5] - 전회 조교 종료시
+$INPUT_LOOP
+INPUT
+IF RESULT == 0
+	PRINTW 초기의 착의를 전부 착용으로 설정했습니다
+	FLAG:탐색時초기착의설정 = 0
+ELSEIF RESULT == 1
+	PRINTW 초기의 착의를 반라로 설정했습니다
+	FLAG:탐색時초기착의설정 = 1
+ELSEIF RESULT == 2
+	PRINTW 초기의 착의를 속옷 차림으로 설정했습니다
+	FLAG:탐색時초기착의설정 = 2
+ELSEIF RESULT == 3
+	PRINTW 초기의 착의를 전라로 설정했습니다
+	FLAG:탐색時초기착의설정 = 3
+ELSEIF RESULT == 4
+	PRINTW 초기의 착의를 전회 종료시의 상태로 설정했습니다
+	FLAG:탐색時초기착의설정 = 4
+ELSEIF RESULT == 5
+	PRINTW 초기의 착의를 전회 조교 종료시의 상태로 설정했습니다
+	FLAG:탐색時초기착의설정 = 5
+ELSE
+	GOTO INPUT_LOOP
+ENDIF
+
+@CLOTHES_SETTING_USUALLY
+;キャラリストを표시・選択
+CALL INPUT_CHARA_LIST("착의 설정을 할 캐릭터를 선택해 주세요","CASTING_CLOTHES_SETTING_USUALLY")
+SIF RESULT == 1000
+	RETURN 0
+LOCAL = RESULT
+CALL CLOTHES_SETTING_USUALLY_A,LOCAL
+
+RESTART
+
+@CASTING_CLOTHES_SETTING_USUALLY(ARG)
+RETURN CFLAG:ARG:この場に居ないフラグ !| CFLAG:ARG:필터링フラグ
+
+
+@CLOTHES_SETTING_USUALLY_A,ARG
+LOCAL:3 = RESULT, LINECOUNT
+DO
+	CLEARLINE LINECOUNT - LOCAL:4
+	LOCAL:1 = -1, -1
+	FOR LOCAL, ARG - 1, -1, -1
+		IF CFLAG:LOCAL:この場に居ないフラグ !| CFLAG:LOCAL:필터링フラグ
+			LOCAL:1 = LOCAL	;이전 캐릭터
+			BREAK
+		ENDIF
+	NEXT
+	FOR LOCAL, ARG + 1, CHARANUM
+		IF CFLAG:LOCAL:この場に居ないフラグ !| CFLAG:LOCAL:필터링フラグ
+			LOCAL:2 = LOCAL	;다음 캐릭터
+			BREAK
+		ENDIF
+	NEXT
+	PRINTL 의상 변경을 하고 싶은 부위를 선택해 주세요
+	PRINTL
+	PRINTFORML □ %NAME:ARG%의 의상
+	DRAWLINE
+	FOR LOCAL, 0, 17
+		PRINTFORML [{LOCAL, 3}] %GET_CLOTHESNAME(LOCAL), 14, LEFT%: \@ CFLAG:ARG:GET_CLOTHESNAME(LOCAL) ? %CLOTHESNAMEF(ARG, LOCAL)% # \@
+	NEXT
+	DRAWLINE
+
+	PRINTL [ 99] 착의 설정 초기화
+	PRINTFORMLC \@ LOCAL:1 >= 0 ? [107] 이전 캐릭터 # %" " * 16% \@
+	PRINTFORMLC [100] 돌아간다
+	PRINTFORMLC \@ LOCAL:2 >= 0 ? [109] 다음 캐릭터 # %" " * 16% \@
+	DO
+		INPUT
+		LOCAL = INRANGE(RESULT, 0, 16) || INRANGE(RESULT, 99, 100) || (RESULT == 107 && LOCAL:1 >= 0) || (RESULT == 109 && LOCAL:2 >= 0)
+		SIF !LOCAL
+			CLEARLINE 1
+	LOOP !LOCAL
+	LOCAL = RESULT
+	SELECTCASE RESULT
+		CASE 0 TO 16
+			CALL CLOTHES_SETTING_PART, ARG, RESULT
+		CASE 99
+			CALL CLOTHES_INITIALIZE, ARG
+			PRINTFORMW ＜%NAME:ARG%의 의상을 초기화했습니다＞
+		CASE 107
+			ARG = LOCAL:1
+		CASE 109
+			ARG = LOCAL:2
+	ENDSELECT
+LOOP LOCAL != 100
+RETURN LOCAL:3
+
+
+
+@CLOTHES_SETTING_PART, ARG, ARG:1
+#LOCALSIZE 5
+PRINTFORML %GET_CLOTHESNAME(ARG:1)%에게 무엇을 입히겠습니까?  （현재의 복장：\@ CFLAG:ARG:GET_CLOTHESNAME(ARG:1) ? %CLOTHESNAMEF(ARG,ARG:1)% # 미장비 \@）
+DRAWLINE
+LOCAL:3 = 24
+LOCAL:1 = 0
+VARSET G,-1
+
+LOCAL:4 = ARG:1
+SIF LOCAL:4 > 11
+	LOCAL:4 = 11
+
+;選別
+FOR LOCAL,1,1500
+	;SIF ITEM:(6000+LOCAL) < 1 && CSVCFLAG(NO:ARG,40+GET_CLOTHES(GET_CLOTHESNAME(ARG:1)),0) != LOCAL && CFLAG:ARG:(60+GET_CLOTHES(GET_CLOTHESNAME(ARG:1))) != LOCAL
+	SIF ITEM:(6000+LOCAL) < 1 && CSVCFLAG(NO:ARG,40+GET_CLOTHES(GET_CLOTHESNAME(LOCAL:4)),0) != LOCAL && CFLAG:ARG:(60+GET_CLOTHES(GET_CLOTHESNAME(LOCAL:4))) != LOCAL
+		CONTINUE
+	RESULT = 12
+	TRYCALLFORM CLOTHES_PART_{LOCAL}
+	;SIF RESULT != ARG:1
+	SIF RESULT != (LOCAL:4)
+		CONTINUE
+	RESULT = 1
+	TRYCALLFORM CLOTHES_PREREQUISITE_{LOCAL},ARG
+	SIF RESULT == 0
+		CONTINUE
+	;아이템名の長さを保存
+	SIF STRLENS(ITEMNAME:(6000+LOCAL)) > LOCAL:3
+		LOCAL:3 = STRLENS(ITEMNAME:(6000+LOCAL))
+	G:(LOCAL:1) = LOCAL
+	LOCAL:1 += 1
+NEXT
+;표시
+IF LOCAL:1
+	FOR LOCAL , 0 , LOCAL:1
+		PRINTFORM [{G:LOCAL,4}] 
+		IF G:LOCAL == CFLAG:ARG:GET_CLOTHESNAME(ARG:1)
+			LOCAL:2 = GETCOLOR()
+			SETCOLOR COLOR("PASTEL-BLUE")
+			PRINTFORM %ITEMNAME:(6000+G:LOCAL),LOCAL:3,LEFT%
+			SETCOLOR LOCAL:2
+		ELSE
+			PRINTFORM %ITEMNAME:(6000+G:LOCAL),LOCAL:3,LEFT%
+		ENDIF
+		SIF LOCAL % 3 == 2
+			PRINTL
+	NEXT
+ENDIF
+SIF !LINEISEMPTY()
+	PRINTL
+PRINTL
+PRINTL [   0] 착용하지 않는다
+DRAWLINE
+PRINT [ 100] 돌아간다
+
+
+$INPUT_LOOP
+INPUT
+IF RESULT == 0
+	CFLAG:ARG:GET_CLOTHESNAME(ARG:1) = 0
+ELSEIF RESULT == 100
+	RETURN 0
+ELSEIF MATCH(G,RESULT,0) > 0
+	;SIF ARG:1 == 1 || ARG:1 == 2
+	;	CFLAG:ARG:전신복 = 0
+	;IF ARG:1 == 3
+	;	CFLAG:ARG:옷 = 0
+	;	CFLAG:ARG:하의 = 0
+	;ENDIF
+	SIF ARG:1 == 5 || ARG:1 == 6
+		CFLAG:ARG:전신속옷 = 0
+	IF ARG:1 == 7
+		CFLAG:ARG:속옷（상） = 0
+		CFLAG:ARG:속옷（하） = 0
+	ENDIF
+		
+	CFLAG:ARG:GET_CLOTHESNAME(ARG:1) = RESULT
+	SIF CFLAG:ARG:GET_CLOTHESNAME(ARG:1)
+		CFLAG:ARG:23 |= POWER(2,ARG:1)
+ELSE
+	GOTO INPUT_LOOP
+ENDIF
+RETURN 0
+

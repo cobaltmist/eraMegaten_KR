@@ -1,0 +1,111 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:MIGHT_BANG
+;	Facility	:BOMBによる引火処理
+;
+;	Licence		:ライセンスフリー。
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		20XX/XX/XX		----					新規作成
+;	002		2013/01/28		TR						爆発で적を倒した際に엘라ー落ちする不具合を수정
+;	003		2013/01/28		TR						爆発での周囲への데미지が1/2ではなく2倍になっていた不具合を수정
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+
+
+
+;마이ト化したキャラが引火した場合の爆発処理。
+;自身と隣接범위に相性無視の공격을行う。
+;데미지量は本人にMHPの50%、周囲に25%、ボスには데미지1/10
+@BOMB_BANG
+FOR LOCAL,1,17
+	LOCALS = 포지션{LOCAL}
+	SIF FLAG:LOCALS < 0
+		CONTINUE
+	IF CFLAG:(FLAG:LOCALS):BOMB引火フラグ
+		;EDIT 002 MOD START -----------------------------------------------------
+		CFLAG:(FLAG:LOCALS):BOMB引火フラグ = 0
+		CALL ACTION_BOMB_BANG(LOCAL)
+		;EDIT 002 MOD END ------------------------------------------------------
+		IF RESULT
+			PRINTFORMW 유도폭발 발생！
+			SIF RESULT < LOCAL
+				LOCAL = RESULT-1
+			RESULT = 0
+		ENDIF
+	ENDIF
+NEXT
+
+
+;ARG    = 爆発するキャラの포지션
+;RESULT = 誘爆が発生した場合、その中で最も若い번호の포지션
+@ACTION_BOMB_BANG(ARG)
+#DIM L_爆風대상
+VARSET LOCAL,0
+VARSET L_爆風대상
+
+IF ARG < 7
+	SETCOLOR 0x33ffcc
+ELSE
+	SETCOLOR 0xff0033
+ENDIF
+PRINTFORML ┏>CHARA━━━━━━━━━━┓　┏>ACT━━━━━━━━━━━━━━━━━━┓
+PRINTFORM ┃[{ARG,2}] %CALLNAME:(POS(ARG)),21,LEFT%┃　┃
+PRINTFORML %"몸이 폭발했다",40,LEFT%┃
+PRINTFORMW ┗━━━━━━━━━━━━━┛　┗━━━━━━━━━━━━━━━━━━━━┛
+
+RESETCOLOR
+
+LOCAL:1 = MAXBASE:POS(ARG):ＨＰ / 2
+SIF CFLAG:POS(ARG):ボスフラグ
+	LOCAL:1 /= 10
+
+SETBIT L_爆風대상,ARG
+;左端キャラ(1,4,7,12)以外は左側に爆風
+SIF GROUPMATCH(ARG,1,4,7,12) == 0
+	SETBIT L_爆風대상,ARG-1
+;右端キャラ(3,6,11,16)以外は右側に爆風
+SIF GROUPMATCH(ARG,3,6,11,16) == 0
+	SETBIT L_爆風대상,ARG+1
+;아군前衛は後衛に爆風
+SIF GROUPMATCH(ARG,1,2,3)
+	SETBIT L_爆風대상,ARG+3
+;아군後衛
+SIF GROUPMATCH(ARG,4,5,6)
+	SETBIT L_爆風대상,ARG-3
+;적前衛
+SIF GROUPMATCH(ARG,7,8,9,10,11)
+	SETBIT L_爆風대상,ARG+5
+;적後衛
+SIF GROUPMATCH(ARG,12,13,14,15,16)
+	SETBIT L_爆風대상,ARG-5
+
+FOR LOCAL,1,17
+	LOCALS = 포지션{LOCAL}
+	SIF FLAG:LOCALS < 0
+		CONTINUE
+	SIF GET_STATE(CFLAG:(FLAG:LOCALS):ステート) == "DYING" || !GETBIT(L_爆風대상,LOCAL)
+		CONTINUE
+	PRINTFORM 　　TARGET:[{CPOS(FLAG:LOCALS),2}] %CALLNAME:(FLAG:LOCALS),20,LEFT%　>>>>>>　
+	IF LOCAL != ARG
+		PRINTFORMW {LOCAL:1/2} 데미지
+		CALL VAR_HP,FLAG:LOCALS,-LOCAL:1/2,0
+	ELSE
+		PRINTFORMW {LOCAL:1} 데미지
+		CALL VAR_HP,FLAG:LOCALS,-LOCAL:1,0
+	ENDIF
+	SIF FLAG:LOCALS < 0
+		CONTINUE
+	;寝てたら起こす
+	SIF CFLAG:(FLAG:LOCALS):ステート == GET_STATE_NUM("SLEEP")
+		CFLAG:(FLAG:LOCALS):ステート = 0
+	;데미지を受けた相손もBOMB상태だった場合、引火処理
+	IF CFLAG:(FLAG:LOCALS):ステート == GET_STATE_NUM("BOMB") && CFLAG:(FLAG:LOCALS):BOMB引火フラグ == 0
+		CFLAG:(FLAG:LOCALS):ステート = 0
+		CFLAG:(FLAG:LOCALS):BOMB引火フラグ = 1
+		SIF !LOCAL:2
+			LOCAL:2 = LOCAL
+	ENDIF
+NEXT
+RETURN LOCAL:2

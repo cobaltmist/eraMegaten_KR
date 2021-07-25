@@ -1,0 +1,1673 @@
+﻿
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:INPUT.ERB
+;	Facility	:戦闘におけるコマンド入力などの処理群
+;
+;	Licence		:ライセンスフリー。
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		2021/04/11		Jガン					新スキル追加、火炎とバステ系にもスキル追加、他色々
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+
+
+@SET_MANTRA_SKILL, ARG
+#DIM PAGE, 1
+#DIM 선택계통, 1
+#DIM LINE, 2
+#LOCALSIZE 3
+VARSET D, -1
+VARSET X
+PAGE = 0
+선택계통 = 0
+;스킬登録(만트라)
+FOR LOCAL, 1, 116
+	SIF CDFLAG:ARG:만트라:LOCAL < 10000
+		CONTINUE
+	CALL GET_MANTRA_ABILITY, LOCAL
+	FOR LOCAL:1, 3, 11
+		SIF RESULT:(LOCAL:1) < 0 
+			CONTINUE
+		D:(RESULT:(LOCAL:1)) = 1
+		CALLFORM SKILL_SUCCESSION_TYPE_{RESULT:(LOCAL:1)}
+		X:RESULT = 1
+		CDFLAG:ARG:식노습득스킬:(RESULT:(LOCAL:1)) = 1
+	NEXT
+NEXT
+;스킬登録(습득스킬)
+FOR LOCAL, 1, 21
+	SIF ABL:ARG:@"초기변신악마습득스킬{LOCAL}" <= 0
+		CONTINUE
+	SIF ABL:ARG:@"초기변신악마습득LV{LOCAL}" > 0
+		CONTINUE
+	D:(ABL:ARG:@"초기변신악마습득스킬{LOCAL}") = 1
+	CALLFORM SKILL_SUCCESSION_TYPE_{ABL:ARG:@"초기변신악마습득스킬{LOCAL}"}
+	X:RESULT = 1
+	CDFLAG:ARG:식노습득스킬:(ABL:ARG:@"초기변신악마습득스킬{LOCAL}") = 1
+NEXT
+;他습득스킬
+FOR LOCAL, 1, 5000
+	SIF CDFLAG:ARG:식노습득스킬:LOCAL <= 0
+		CONTINUE
+	D:LOCAL = 1
+	CALLFORM SKILL_SUCCESSION_TYPE_{LOCAL}
+	X:RESULT = 1
+NEXT
+LINE = LINECOUNT
+$START
+CLEARLINE LINECOUNT -LINE
+;표시스킬用のページ作成
+VARSET S, -1
+LOCAL:1 = 0
+FOR LOCAL, 0, 4000
+	SIF D:LOCAL == -1
+		CONTINUE
+	TRYCCALLFORM SKILL_SUCCESSION_TYPE_{LOCAL}
+	CATCH
+		CONTINUE
+	ENDCATCH
+	SIF RESULT != 선택계통
+		CONTINUE
+	S:(LOCAL:1) = LOCAL
+	LOCAL:1++
+NEXT
+DRAWLINE
+PRINTFORML %CALLNAME:ARG%
+DRAWLINE
+PRINTL □소지스킬
+FOR LOCAL, 1, FLAG:스킬数+1
+	IF ABL:ARG:@"초기변신악마스킬{LOCAL}" == 0
+		RESULTS = EMPTY
+	ELSE
+		CALLFORM SKILL_NAME_{ABL:ARG:@"초기변신악마스킬{LOCAL}"}, ARG
+		;セット中の스킬は2にしておく
+		D:(ABL:ARG:@"초기변신악마스킬{LOCAL}") = 2
+	ENDIF
+	PRINTFORM 　[{LOCAL}]%RESULTS,20,LEFT%
+	SIF LOCAL % 4 == 0
+		PRINTL 
+NEXT
+DRAWLINE
+PRINTL □식노습득済스킬
+FOR LOCAL,PAGE*30,(PAGE+1)*30
+	IF S:LOCAL > 0
+		CALLFORM SKILL_NAME_{S:LOCAL}
+		SIF D:(S:LOCAL) == 2
+			SETCOLOR COLOR("gray")
+		PRINTFORM [{S:LOCAL+1000}] %RESULTS,20,LEFT%
+		RESETCOLOR
+	ENDIF
+	SIF LOCAL % 3 == 2
+		PRINTL
+NEXT
+SIF LINEISEMPTY()
+	PRINTL 
+DRAWLINE
+FOR LOCAL,0,21
+	;セットできる스킬が無い系統は暗く표시
+	SIF X:LOCAL == 0
+		SETCOLOR COLOR("gray")
+	PRINTFORM [{10+LOCAL}] %GET_SUCCESSION(LOCAL)%　　
+	RESETCOLOR
+	SIF LOCAL % 6 == 5
+		PRINTL
+NEXT
+SIF X:22 == 0
+	SETCOLOR COLOR("gray")
+PRINTFORM [32] 자동효과
+RESETCOLOR
+SIF X:23 == 0
+	SETCOLOR 0x606060
+PRINTFORM [4023] 레어
+RESETCOLOR
+PRINTL 
+DRAWLINE
+PRINTFORMLC \@(PAGE <= 0) ? %" " * 16% # [107]이전 페이지\@
+PRINTLC [0]돌아간다
+PRINTFORMLC \@(PAGE >= (LOCAL:1 - 1) / 20) ? %" " * 16% # [109]다음 페이지\@
+PRINTL 
+PRINTFORMLC [106]이전 계통
+PRINTFORMLC \@ 선택계통 == -1 ? 현재 계통【　　】#현재 계통【%GET_SUCCESSION(선택계통)%】\@
+PRINTFORMLC [110]다음 계통 
+INPUT
+LOCAL = RESULT
+SELECTCASE LOCAL
+	CASE 0
+		;악마변신している場合、스킬同期を行う
+		IF CFLAG:ARG:악마변신
+			FOR LOCAL, 1, 9
+				ABL:ARG:@"스킬{LOCAL}" = ABL:ARG:@"초기변신악마스킬{LOCAL}"
+			NEXT
+		ENDIF
+		RETURN 0
+	CASE 1 TO 8
+		IF ABL:ARG:@"초기변신악마스킬{LOCAL}"
+			DRAWLINE
+			CALLFORM SKILL_NAME_{ABL:ARG:@"초기변신악마스킬{LOCAL}"}
+			PRINTFORML %RESULTS%
+			SIF FLAG:스킬속성표시설정 == 1
+				CALL SKILL_EXPLAIN_PERFORMANCE, ABL:ARG:@"초기변신악마스킬{LOCAL}", ARG
+			TRYCALLFORM SKILL_EXPLAIN_{ABL:ARG:@"초기변신악마스킬{LOCAL}"}
+			DRAWLINE
+			PRINTFORML %조사처리(RESULTS,"를")% 해제하시겠습니까？
+			CALL INPUT_YN
+			IF RESULT == 0
+				D:(ABL:ARG:@"초기변신악마스킬{LOCAL}") = 1
+				ABL:ARG:@"초기변신악마스킬{LOCAL}" = 0
+			ENDIF
+		ENDIF
+	CASE 106
+		PAGE = 0
+		IF 선택계통 == 22
+			선택계통 = 20
+		ELSEIF 선택계통 == 0
+			선택계통 = 22
+		ELSE
+			선택계통--
+		ENDIF
+	CASE 107
+		PAGE--
+	CASE 109 
+		PAGE++
+	CASE 110
+		PAGE = 0
+		IF 선택계통 == 22
+			선택계통 = 0
+		ELSEIF 선택계통 == 20
+			선택계통 = 22
+		ELSE
+			선택계통++
+		ENDIF
+				
+	CASE 1000 TO 5000
+		LOCAL -= 1000
+		IF D:LOCAL == 1
+			DRAWLINE
+			CALLFORM SKILL_NAME_{LOCAL}
+			PRINTFORML %RESULTS%
+			SIF FLAG:스킬속성표시설정 == 1
+				CALL SKILL_EXPLAIN_PERFORMANCE, LOCAL, ARG
+			TRYCALLFORM SKILL_EXPLAIN_{LOCAL}
+			DRAWLINE
+			PRINTFORML %조사처리(RESULTS,"를")% 셋트합니까？
+			CALL INPUT_YN
+			IF RESULT == 0
+				LOCAL:2 = 0
+				FOR LOCAL:1, 1, FLAG:스킬数+1
+					SIF ABL:ARG:@"초기변신악마스킬{LOCAL:1}"
+						CONTINUE
+					LOCAL:2 = 1
+					ABL:ARG:@"초기변신악마스킬{LOCAL:1}" = LOCAL
+					D:LOCAL = 2
+					BREAK
+				NEXT
+				IF !LOCAL:2
+					PRINTL 교체할 스킬을 선택해주세요
+					FOR LOCAL:1, 1, FLAG:스킬数+1
+						CALLFORM SKILL_NAME_{ABL:ARG:@"초기변신악마스킬{LOCAL:1}"}, ARG
+						PRINTFORM 　[{LOCAL:1}]%RESULTS,20,LEFT%
+						SIF LOCAL:1 % 4 == 0
+							PRINTL 
+					NEXT
+					PRINTL 　[9] 취소
+					CALL INPUTINT(1, 2, 3, 4, 5, 6, 7, 8, 9)
+					IF RANGE(RESULT, 1, 8)
+						D:(ABL:ARG:@"초기변신악마스킬{RESULT}") = 1
+						D:LOCAL = 2
+						ABL:ARG:@"초기변신악마스킬{RESULT}" = LOCAL
+					ENDIF
+				ENDIF
+			ENDIF
+		ENDIF
+	CASE 10 TO 32
+		PAGE = 0
+		선택계통 = RESULT - 10
+ENDSELECT
+GOTO START
+
+@MANTRA_BASESTATUS, ARG
+#LOCALSIZE 3
+#DIM 최대보정値, 6
+VARSET 최대보정値
+FOR LOCAL, 1, 116
+	SIF CDFLAG:ARG:만트라:LOCAL < 10000
+		CONTINUE
+	CALL GET_MANTRA_ABILITY, LOCAL
+	FOR LOCAL:1, 1, 7
+		SIF RESULT:2 % POWER(10, LOCAL:1 + 1) / POWER(10, LOCAL:1)
+			최대보정値:(LOCAL:1 - 1) += RESULT:2 % POWER(10, LOCAL:1 + 1) / POWER(10, LOCAL:1)
+	NEXT
+	;디버그용数値確認
+	;TSTR = 인내력
+	;SIF RESULT:2 % POWER(10, GET_BASESTATUS_NUM(TSTR) + 1) / POWER(10, GET_BASESTATUS_NUM(TSTR))
+	;	PRINTFORML %TSTR%　%GET_MANTRA(LOCAL)%　{RESULT:2 % POWER(10, GET_BASESTATUS_NUM(TSTR) + 1) / POWER(10, GET_BASESTATUS_NUM(TSTR))}({최대보정値:(GET_BASESTATUS_NUM(TSTR)-1)})
+NEXT
+LOCAL:1 = LINECOUNT
+LOCAL:2 = CFLAG:ARG:악마변신
+CFLAG:ARG:악마변신 = 1
+$START
+CALL SYNC_STATUS,ARG
+CLEARLINE LINECOUNT - LOCAL:1
+DRAWLINE
+PRINTL □스테이터스셋트
+PRINTL 식노는 변신 악마의 기초능력에 보정을 가하는 것을 통해 
+PRINTL 변신악마의 능력을 변화시킬 수 있습니다
+DRAWLINE
+PRINTL □변신악마능력
+FOR LOCAL, 1, FLAG:기본능력수
+	PRINTFORML    %GET_BASESTATUS(LOCAL),4% {MAXBASE:ARG:GET_BASESTATUS(LOCAL), 2}
+NEXT
+DRAWLINE
+PRINTL □변신악마기초능력
+FOR LOCAL, 1, FLAG:기본능력수
+	PRINTFORM %GET_BASESTATUS(LOCAL),4% {CSVBASE(CFLAG:ARG:초기링크악마, GETNUM(BASE, GET_BASESTATUS(LOCAL)),0) + CFLAG:ARG:(GET_BASESTATUS(LOCAL)+"만트라보정"),2}
+	PRINTFORM 　　({MAX(CSVBASE(CFLAG:ARG:초기링크악마, GETNUM(BASE, GET_BASESTATUS(LOCAL)),0)-최대보정値:(LOCAL-1),1), 2} ～ {CSVBASE(CFLAG:ARG:초기링크악마, GETNUM(BASE, GET_BASESTATUS(LOCAL)),0)+최대보정値:(LOCAL-1),2})
+	PRINTPLAIN 　|
+	PRINTFORML [{LOCAL}] + | [{LOCAL + 6, 2}] - | [{LOCAL + 12}] 임의입력
+NEXT
+DRAWLINE
+PRINTL [19] 리셋한다
+DRAWLINE
+PRINTL [20] 돌아간다
+CALL INPUTINT(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20)
+SELECTCASE RESULT
+	CASE 1 TO 6
+		LOCAL = RESULT
+		CFLAG:ARG:(GET_BASESTATUS(LOCAL)+"만트라보정") ++
+		SIF CFLAG:ARG:(GET_BASESTATUS(LOCAL)+"만트라보정") > 최대보정値:(LOCAL-1)
+			CFLAG:ARG:(GET_BASESTATUS(LOCAL)+"만트라보정") = 최대보정値:(LOCAL-1)
+		;CALL INPUT_MANY(MAX(CSVBASE(CFLAG:ARG:초기링크악마, GETNUM(BASE, GET_BASESTATUS(LOCAL)),0)-최대보정値:(LOCAL-1),1), CSVBASE(CFLAG:ARG:초기링크악마, GETNUM(BASE, GET_BASESTATUS(LOCAL)),0)+최대보정値:(LOCAL-1))
+		; = RESULT - CSVBASE(CFLAG:ARG:초기링크악마, GETNUM(BASE, GET_BASESTATUS(LOCAL)),0)
+	CASE 7 TO 12
+		LOCAL = (RESULT - 6)
+		CFLAG:ARG:(GET_BASESTATUS(LOCAL)+"만트라보정") --
+		SIF CFLAG:ARG:(GET_BASESTATUS(LOCAL)+"만트라보정") < -최대보정値:(LOCAL-1)
+			CFLAG:ARG:(GET_BASESTATUS(LOCAL)+"만트라보정") = -최대보정値:(LOCAL-1)
+	CASE 13 TO 18
+		LOCAL = (RESULT - 12)
+		PRINTFORML %GET_BASESTATUS(LOCAL)%의 설정수치를 입력해주세요（0=취소）
+		$NINI
+		INPUT
+		IF RESULT == 0
+			GOTO START
+		ELSEIF MAX(CSVBASE(CFLAG:ARG:초기링크악마, GETNUM(BASE, GET_BASESTATUS(LOCAL)),0)-최대보정値:(LOCAL-1),1) <= RESULT && CSVBASE(CFLAG:ARG:초기링크악마, GETNUM(BASE, GET_BASESTATUS(LOCAL)),0) + 최대보정値:(LOCAL-1) >= RESULT
+			CFLAG:ARG:(GET_BASESTATUS(LOCAL)+"만트라보정") = RESULT - CSVBASE(CFLAG:ARG:초기링크악마, GETNUM(BASE, GET_BASESTATUS(LOCAL)),0)
+		ELSE
+			GOTO NINI
+		ENDIF
+	CASE 19
+		PRINTL 스테이터스배분을 리셋하시겠습니까？
+		CALL INPUT_YN
+		SIF RESULT
+			GOTO START
+		FOR LOCAL, 1, FLAG:기본능력수
+			CFLAG:ARG:(GET_BASESTATUS(LOCAL)+"만트라보정") = 0
+		NEXT
+	CASE 20
+		CFLAG:ARG:악마변신 = LOCAL:2
+		CALL SYNC_STATUS,ARG
+		RETURN 0
+ENDSELECT
+GOTO START
+@DOWNLOAD_MANTRA, ARG = 7, ARG:1 = 7, ARG:2
+#DIM START_X
+#DIM START_Y
+#DIM CHARA, 1
+;選択中の만트라名
+#DIMS MNAME, 1
+#DIM MNUM, 1
+;選択中の만트라の座標
+#DIM MANTRA_X
+#DIM MANTRA_Y
+#DIM MANTRA_ABLE, 120
+#DIM LINE, 1
+#DIM SKILL, 8
+#DIM MLV, 1
+#LOCALSIZE 2
+#DIM 만트라座標, 120
+#DIM PRICE
+#DIM マスター数, 1
+#DIM 周りマスター数, 1
+マスター数 = 0
+;初めて
+IF !GETBIT(FLAG:만트라개방度, 1)
+	SETBIT FLAG:만트라개방度, 1
+	PRINTW 처음 실행할 때마다 만트라 시스템의 해설을 합니다
+	PRINTW 또한、이 해설은 나중에도 볼 수 있습니다
+	CLEARLINE 2
+	CALL MANTRA_EXPLAIN
+ENDIF
+CHARA = ARG:2
+;만트라の状況登録
+VARSET MANTRA_ABLE
+IF !GETBIT(FLAG:만트라개방度, 2)
+	LOCAL:1 = 0
+	FOR LOCAL, 20, 38
+		IF CDFLAG:CHARA:만트라:LOCAL == 10000
+			PRINTFORMW {LOCAL}
+			LOCAL:1 = 1
+			BREAK
+		ENDIF
+	NEXT
+	IF LOCAL:1
+		CALL MESSAGE_B(2, "マップの外端の만트라をマスターしたことにより", "新たな만트라が開かれます！")
+		SETBIT FLAG:만트라개방度, 2
+		CLEARLINE 4
+	ENDIF
+ENDIF
+IF GETBIT(FLAG:만트라개방度, 2) && !GETBIT(FLAG:만트라개방度, 3)
+	LOCAL:1 = 0
+	FOR LOCAL, 38, 98
+		IF CDFLAG:CHARA:만트라:LOCAL == 10000
+			LOCAL:1 = 1
+			BREAK
+		ENDIF
+	NEXT
+	IF LOCAL:1
+		CALL MESSAGE_B(2, "マップの外端の만트라をマスターしたことにより", "新たな만트라が開かれます！")
+		SETBIT FLAG:만트라개방度, 3
+		CLEARLINE 4
+	ENDIF
+ENDIF
+FOR LOCAL, 1, 116
+	;2019/06/21修正これでいいのか？
+	;元;SIF CDFLAG:ARG:만트라:LOCAL < 10000
+	SIF CDFLAG:CHARA:만트라:LOCAL < 10000
+		CONTINUE
+	マスター数 ++
+NEXT
+;0:非표시 1:DL不可 2:DL可能 3:DL済 4:EQUIP 5:MASTER
+;식노は디폴트でDL可能にしておく
+MANTRA_ABLE:1 = 2
+;장비만트라の설정
+MANTRA_ABLE:(EQUIP:CHARA:장비만트라) = 4
+FOR MANTRA_Y, 0, 15
+	FOR MANTRA_X, 0, 15
+		SIF GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y) == "NONE"
+			CONTINUE
+		;만트라취득済み
+		SELECTCASE CDFLAG:CHARA:만트라:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y))
+			CASE 10000
+				MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y)) = 5
+				;隣接만트라を취득可能に변경
+				IF MANTRA_Y % 2
+					SIF GET_MANTRA_MAPNAME(MANTRA_X-1, MANTRA_Y-1) != "NONE"
+						MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X-1, MANTRA_Y-1)) = MAX(MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X-1, MANTRA_Y-1)), 2)
+					SIF GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y-1) != "NONE"
+						MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y-1)) = MAX(MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y-1)), 2)
+					SIF GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y+1) != "NONE"
+						MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y+1)) = MAX(MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y+1)), 2)
+					SIF GET_MANTRA_MAPNAME(MANTRA_X-1, MANTRA_Y+1) != "NONE"
+						MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X-1, MANTRA_Y+1)) = MAX(MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X-1, MANTRA_Y+1)), 2)
+				ELSE
+					SIF GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y-1) != "NONE"
+						MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y-1)) = MAX(MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y-1)), 2)
+					SIF GET_MANTRA_MAPNAME(MANTRA_X+1, MANTRA_Y-1) != "NONE"
+						MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X+1, MANTRA_Y-1)) = MAX(MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X+1, MANTRA_Y-1)), 2)
+					SIF GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y+1) != "NONE"
+						MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y+1)) = MAX(MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y+1)), 2)
+					SIF GET_MANTRA_MAPNAME(MANTRA_X+1, MANTRA_Y+1) != "NONE"
+						MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X+1, MANTRA_Y+1)) = MAX(MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X+1, MANTRA_Y+1)), 2)
+				ENDIF
+				SIF GET_MANTRA_MAPNAME(MANTRA_X+1, MANTRA_Y) != "NONE"
+					MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X+1, MANTRA_Y)) = MAX(MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X+1, MANTRA_Y)), 2)
+				SIF GET_MANTRA_MAPNAME(MANTRA_X-1, MANTRA_Y) != "NONE"
+					MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X-1, MANTRA_Y)) = MAX(MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X-1, MANTRA_Y)), 2)
+			CASE IS > 0
+				MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y)) = MAX(MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y)), 3)
+			CASEELSE
+				;外端到達による開放
+				IF !GETBIT(FLAG:만트라개방度, 2)
+					SIF GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y)) <= 37
+						MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y)) = MAX(MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y)), 1)
+				ELSEIF !GETBIT(FLAG:만트라개방度, 3)
+					SIF GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y)) <= 97
+						MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y)) = MAX(MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y)), 1)
+				ELSE
+					MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y)) = MAX(MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y)), 1)
+				ENDIF
+		ENDSELECT
+	NEXT
+NEXT
+MANTRA_X = ARG
+MANTRA_Y = ARG:1
+DRAWLINE
+LINE = LINECOUNT
+$START
+周りマスター数 = 0
+MNAME = %GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y)%
+MNUM = GET_MANTRA_NUM(MNAME)
+START_Y = MANTRA_Y - 2
+CLEARLINE LINECOUNT - LINE
+FOR LOCAL:1, START_Y, START_Y+5
+	START_X = MANTRA_X - 3
+	IF MANTRA_Y % 2
+		SIF LOCAL:1 % 2 == 0
+			PRINT 　　 
+	ELSE
+		IF LOCAL:1 % 2
+			PRINT 　　 
+			START_X = MANTRA_X - 2
+		ENDIF
+	ENDIF
+	FOR LOCAL, START_X, START_X+7
+		RESETCOLOR
+		IF GET_MANTRA_MAPNAME(LOCAL, LOCAL:1) == "NONE"
+			PRINTFORM 　　　　　
+		ELSE
+			SELECTCASE MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(LOCAL, LOCAL:1))
+				CASE 0
+					PRINTFORM 　　　　　
+					CONTINUE
+				CASE 1
+					SETCOLOR COLOR("gray")
+				CASE 3
+					SETCOLOR COLOR("p-green")
+				CASE 4
+					SETCOLOR COLOR("p-red")
+				CASE 5
+					SETCOLOR COLOR("p-blue")
+			ENDSELECT
+			SIF MANTRA_X == LOCAL && MANTRA_Y == LOCAL:1
+				SETCOLOR COLOR("aqua")
+			PRINTFORM ┌───┐
+		ENDIF
+	NEXT
+	PRINTL 
+	START_X = MANTRA_X - 3
+	IF MANTRA_Y % 2
+		SIF LOCAL:1 % 2 == 0
+			PRINT 　　 
+	ELSE
+		IF LOCAL:1 % 2
+			PRINT 　　 
+			START_X = MANTRA_X - 2
+		ENDIF
+	ENDIF
+	FOR LOCAL, START_X, START_X+7
+		RESETCOLOR
+		IF GET_MANTRA_MAPNAME(LOCAL, LOCAL:1) == "NONE"
+			PRINTFORM 　　　　　
+		ELSE
+			SELECTCASE MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(LOCAL, LOCAL:1))
+				CASE 0
+					PRINTFORM 　　　　　
+					CONTINUE
+				CASE 1
+					SETCOLOR COLOR("gray")
+				CASE 3
+					SETCOLOR COLOR("p-green")
+				CASE 4
+					SETCOLOR COLOR("p-red")
+				CASE 5
+					SETCOLOR COLOR("p-blue")
+			ENDSELECT
+			SIF MANTRA_X == LOCAL && MANTRA_Y == LOCAL:1
+				SETCOLOR COLOR("aqua")
+			PRINTFORM │
+			PRINTBUTTON @"[{GET_MANTRA_NUM(GET_MANTRA_MAPNAME(LOCAL, LOCAL:1)),3}]", GET_MANTRA_NUM(GET_MANTRA_MAPNAME(LOCAL, LOCAL:1))
+			만트라座標:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(LOCAL, LOCAL:1)) = LOCAL + LOCAL:1 * 1000
+			PRINT  │
+		ENDIF
+	NEXT
+	PRINTL 
+	START_X = MANTRA_X - 3
+	IF MANTRA_Y % 2
+		SIF LOCAL:1 % 2 == 0
+			PRINT 　　 
+	ELSE
+		IF LOCAL:1 % 2
+			PRINT 　　 
+			START_X = MANTRA_X - 2
+		ENDIF
+	ENDIF
+	FOR LOCAL, START_X, START_X+7
+		RESETCOLOR
+		IF GET_MANTRA_MAPNAME(LOCAL, LOCAL:1) == "NONE"
+			PRINTFORM 　　　　　
+		ELSE
+			SELECTCASE MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(LOCAL, LOCAL:1))
+				CASE 0
+					PRINTFORM 　　　　　
+					CONTINUE
+				CASE 1
+					SETCOLOR COLOR("gray")
+				CASE 3
+					SETCOLOR COLOR("p-green")
+				CASE 4
+					SETCOLOR COLOR("p-red")
+				CASE 5
+					SETCOLOR COLOR("p-blue")
+			ENDSELECT
+			SIF MANTRA_X == LOCAL && MANTRA_Y == LOCAL:1
+				SETCOLOR COLOR("aqua")
+			IF STRLENS(GET_MANTRA_MAPNAME(LOCAL, LOCAL:1)) == 4
+				PRINTFORM │ %GET_MANTRA_MAPNAME(LOCAL, LOCAL:1)% │
+			ELSE
+				PRINTFORM │%GET_MANTRA_MAPNAME(LOCAL, LOCAL:1),6,LEFT%│
+			ENDIF
+		ENDIF
+	NEXT
+	PRINTL 
+	START_X = MANTRA_X - 3
+	IF MANTRA_Y % 2
+		SIF LOCAL:1 % 2 == 0
+			PRINT 　　 
+	ELSE
+		IF LOCAL:1 % 2
+			PRINT 　　 
+			START_X = MANTRA_X - 2
+		ENDIF
+	ENDIF
+	FOR LOCAL, START_X, START_X+7
+		RESETCOLOR
+		IF GET_MANTRA_MAPNAME(LOCAL, LOCAL:1) == "NONE"
+			PRINTFORM 　　　　　
+		ELSE
+			SELECTCASE MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(LOCAL, LOCAL:1))
+				CASE 0
+					PRINTFORM 　　　　　
+					CONTINUE
+				CASE 1
+					SETCOLOR COLOR("gray")
+				CASE 3
+					SETCOLOR COLOR("p-green")
+				CASE 4
+					SETCOLOR COLOR("p-red")
+				CASE 5
+					SETCOLOR COLOR("p-blue")
+			ENDSELECT
+			SIF MANTRA_X == LOCAL && MANTRA_Y == LOCAL:1
+				SETCOLOR COLOR("aqua")
+			SELECTCASE MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(LOCAL, LOCAL:1))
+				CASE 1
+					PRINTFORM │DL 불가능│
+				CASE 2
+					PRINTFORM │ DL가능 │
+				CASE 3
+					PRINTFORM │ DL 완료 │
+				CASE 4
+					PRINTFORM │EQUIP │
+				CASE 5
+					PRINTFORM │MASTER│
+					IF (MANTRA_Y == LOCAL:1 && (MANTRA_X - LOCAL == -1 || MANTRA_X - LOCAL == 1)) || (MANTRA_Y % 2 == 1 && (MANTRA_Y - LOCAL:1 == 1 || MANTRA_Y - LOCAL:1 == -1) && (MANTRA_X == LOCAL || MANTRA_X - LOCAL == 1)) || (MANTRA_Y % 2 == 0 && (MANTRA_Y - LOCAL:1 == 1 || MANTRA_Y - LOCAL:1 == -1) && (MANTRA_X == LOCAL || MANTRA_X - LOCAL == -1))
+						周りマスター数 ++
+					ENDIF
+				CASEELSE
+					PRINTFORM │ {CDFLAG:CHARA:만트라:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(LOCAL, LOCAL:1))/100,2}％ │
+			ENDSELECT
+		ENDIF
+	NEXT
+	PRINTL 
+	START_X = MANTRA_X - 3
+	IF MANTRA_Y % 2
+		SIF LOCAL:1 % 2 == 0
+			PRINT 　　 
+	ELSE
+		IF LOCAL:1 % 2
+			PRINT 　　 
+			START_X = MANTRA_X - 2
+		ENDIF
+	ENDIF
+	FOR LOCAL, START_X, START_X+7
+		RESETCOLOR
+		IF GET_MANTRA_MAPNAME(LOCAL, LOCAL:1) == "NONE"
+			PRINTFORM 　　　　　
+		ELSE
+			SELECTCASE MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(LOCAL, LOCAL:1))
+				CASE 0
+					PRINTFORM 　　　　　
+					CONTINUE
+				CASE 1
+					SETCOLOR COLOR("gray")
+				CASE 3
+					SETCOLOR COLOR("p-green")
+				CASE 4
+					SETCOLOR COLOR("p-red")
+				CASE 5
+					SETCOLOR COLOR("p-blue")
+			ENDSELECT
+			SIF MANTRA_X == LOCAL && MANTRA_Y == LOCAL:1
+				SETCOLOR COLOR("aqua")
+			PRINTFORM └───┘
+		ENDIF
+	NEXT
+	PRINTL 
+NEXT
+RESETCOLOR
+DRAWLINE
+PRINTFORML [{MNUM}]  %MNAME% 만트라
+CALL GET_MANTRA_ABILITY, MNUM
+PRINTFORML 습득난이도  :%"★"* RESULT%
+SELECTCASE RESULT
+	CASE 1
+		MLV = 5
+	CASE 2
+		MLV = 10
+	CASE 3
+		MLV = 20
+	CASE 4
+		MLV = 45
+	CASE 5
+		MLV = 50
+	CASE 6
+		MLV = 60
+	CASE 7
+		MLV = 70
+	CASE 8
+		MLV = 75
+	CASE 9
+		MLV = 80
+ENDSELECT
+;가격決定
+PRICE = RESULT:1
+IF CHARA == MASTER
+	PRICE *= 5
+ELSE
+	PRICE = PRICE * (100 - 함락(CHARA) * 20) / 100
+	PRICE = PRICE * (100 - 周りマスター数 * 10) / 100
+ENDIF
+;素質割引
+FOR LOCAL, 3, 11
+	SIF RESULT:LOCAL <= 0
+		CONTINUE
+	CALLFORM SKILL_SUCCESSION_TYPE_{RESULT:LOCAL}
+	IF TALENT:CHARA:GET_SUCCESSION(RESULT) > 0
+		PRICE /= 2
+		BREAK
+	ENDIF
+NEXT
+;탐색中は추가コスト発生
+;SIF FLAG:SHOPコマンド == [[SHOP:탐색]] && MANTRA_ABLE:MNUM <= 2
+;	TIMES PRICE , 1.2;PRICE *= 2
+IF MANTRA_ABLE:MNUM <= 2 || (MANTRA_ABLE:MNUM == 3 && FLAG:SHOPコマンド == [[SHOP:탐색]])
+	PRINTFORML 필요ＭＡＧ:%TOSTR1000(PRICE)%
+ELSE
+	PRINTFORM 습득度　　:
+	IF MANTRA_ABLE:MNUM == 5
+		PRINTL ＭＡＳＴＥＲ
+	ELSE
+		PRINTFORML %@"{CDFLAG:CHARA:만트라:MNUM /100}.{CDFLAG:CHARA:만트라:MNUM %100/10}{CDFLAG:CHARA:만트라:MNUM %1000}",5%％
+	ENDIF
+ENDIF
+PRINT 내장스킬:
+IF RESULT:3 == -1
+	PRINTL 미실장
+ELSEIF RESULT:3 == -2
+	PRINTL 없음
+ELSE
+	FOR LOCAL, 0, 8
+		SKILL:LOCAL = RESULT:(LOCAL+3)
+	NEXT
+	FOR LOCAL, 0, 8
+		SIF SKILL:LOCAL == -1
+			CONTINUE
+		IF LOCAL == 4
+			PRINTL 
+			PRINT  　　　　　
+		ENDIF
+		CALLFORM SKILL_NAME_{SKILL:LOCAL}
+		PRINTFORM [{SKILL:LOCAL+1000, 4}] %RESULTS,16,LEFT%
+	NEXT
+	SIF LOCAL != 5
+		PRINTL 
+	SIF LOCAL < 5
+		PRINTL 
+ENDIF
+PRINT 능력보정　:
+IF RESULT:2 > 0
+	FOR LOCAL, 1, 7
+		SIF RESULT:2 % POWER(10, LOCAL+1) / POWER(10, LOCAL) > 0
+			PRINTFORM %GET_BASESTATUS(LOCAL)%+{RESULT:2 % POWER(10, LOCAL+1) / POWER(10, LOCAL)}　
+	NEXT
+ELSE
+	PRINT 없음
+ENDIF
+PRINTL 
+DRAWLINE
+PRINTFORML %CALLNAME:CHARA%
+PRINTFORML 소지ＭＡＧ:%TOSTR1000(BASE:CHARA:ＭＡＧ)%
+LOCAL:1 = 0
+DRAWLINE
+SELECTCASE MANTRA_ABLE:MNUM
+	CASE 1, 2
+		SIF MANTRA_ABLE:MNUM == 1 || PRICE > BASE:CHARA:ＭＡＧ
+			SETCOLOR COLOR("gray")
+		PRINTL [200] 다운로드한다
+	CASE 3, 4
+		SIF MANTRA_ABLE:MNUM == 4
+			SETCOLOR COLOR("gray")
+		PRINTL [200] 셋트한다
+ENDSELECT
+RESETCOLOR
+PRINTL [ 999] 돌아간다
+PRINTL [1000] 만트라해설
+SIF FLAG:DEBUG
+	PRINTL [900] 만트라스킬 체크
+INPUT
+IF RESULT == 999
+	RETURN 0
+ELSEIF RESULT == 1000
+	CALL MANTRA_EXPLAIN
+ELSEIF RESULT == 200
+	SELECTCASE MANTRA_ABLE:MNUM
+		CASE 1
+			PRINTFORMW %MNAME% 만트라는 다운로드할 수 없습니다
+		CASE 2
+			IF PRICE > BASE:CHARA:ＭＡＧ
+				PRINTW ＭＡＧ가 부족합니다
+			ELSE
+				PRINTFORML %MNAME% 만트라를 다운로드합니까？
+				CALL INPUT_YN
+				IF !RESULT
+					EQUIP:CHARA:장비만트라 = MNUM
+					CDFLAG:CHARA:만트라:MNUM = 1
+					BASE:CHARA:ＭＡＧ -= PRICE
+					PRINTFORMW %MNAME% 만트라를 다운로드했습니다
+					CFLAG:CHARA:만트라適性레벨 = MLV
+					CLEARLINE LINECOUNT - LINE
+					RESTART
+				ENDIF
+			ENDIF
+		CASE 3
+			IF FLAG:SHOPコマンド == [[SHOP:탐색]]
+				IF PRICE > BASE:CHARA:ＭＡＧ
+					PRINTW ＭＡＧ가 부족합니다
+				ELSE
+					EQUIP:CHARA:장비만트라 = MNUM
+					PRINTFORMW %MNAME% 만트라를 셋트했습니다
+					CLEARLINE LINECOUNT - LINE
+					CFLAG:CHARA:만트라適性레벨 = MLV
+					BASE:CHARA:ＭＡＧ -= PRICE
+					RESTART
+				ENDIF
+			ELSE
+				EQUIP:CHARA:장비만트라 = MNUM
+				PRINTFORMW %MNAME% 만트라를 셋트했습니다
+				CLEARLINE LINECOUNT - LINE
+				CFLAG:CHARA:만트라適性레벨 = MLV
+				RESTART
+			ENDIF
+		CASE 4
+			PRINTFORMW 이미 %MNAME% 만트라는 셋트되어있습니다
+	ENDSELECT
+ELSEIF RESULT == 900 && FLAG:DEBUG
+;	PRINTL 체크する相性を입력してください
+;	INPUTS
+;	MNAME = %RESULTS%
+	VARSET D
+	FOR LOCAL, 1, 116
+		CALL GET_MANTRA_ABILITY, LOCAL
+ 		FOR LOCAL:1, 3, 12
+			SIF RESULT:(LOCAL:1) < 0 
+				CONTINUE
+			D:(RESULT:(LOCAL:1)) = 1
+ 		NEXT
+	NEXT
+	FOR LOCAL, 0, 4000
+		SIF D:LOCAL
+			CONTINUE
+		TRYCCALLFORM 적専用_{LOCAL}
+			SIF RESULT
+				CONTINUE
+		CATCH
+			CONTINUE
+		ENDCATCH
+		TRYCCALLFORM 継承不能_{LOCAL}
+			SIF RESULT
+				CONTINUE
+		CATCH
+		ENDCATCH
+		TRYCCALLFORM SKILL_NAME_{LOCAL}
+			PRINTFORM [{LOCAL,4}] %RESULTS,20,LEFT%
+		CATCH
+			CONTINUE
+		ENDCATCH
+		CALLFORM SKILL_RANK_{LOCAL}
+		PRINTFORML R{RESULT}
+	NEXT
+	WAIT
+ELSE
+	IF RANGE(RESULT, 1, 115) && MANTRA_ABLE:RESULT > 0
+		MANTRA_X = 만트라座標:RESULT%1000
+		MANTRA_Y = 만트라座標:RESULT/1000
+	ENDIF
+ENDIF
+GOTO START
+
+@GET_MANTRA_MAPNAME, ARG, ARG:1
+#FUNCTIONS
+#LOCALSSIZE 15
+#DIMS 만트라_A, 15
+;範囲外のものはないものとして返す
+IF !RANGE(ARG, 0, 14) || !RANGE(ARG:1, 0, 14)
+	RESULT:1 = -1
+	RETURNF "NONE"
+ENDIF
+;処理の簡略化のために一度地図を生成したら再登録はしない
+IF LOCALS == ""
+	;           0,        1 ,       2,        3,        4,        5,        6,        7,        8,        9 ,       10,       11,       12,       13,       14
+	LOCALS:0  = %"NONE/"  +"NONE/"  +"NONE/"  +"여신/"  +"NONE/"  +"NONE/"  +"NONE/"  +"NONE/"  +"NONE/"  +"NONE/"  +"파괴신/"+"NONE/"  +"NONE/"  +"NONE/"  +"NONE"%
+	LOCALS:1  = %"NONE/"  +"NONE/"  +"사신邪神/"  +"NONE/"  +"비신/"  +"NONE/"  +"악신/"  +"NONE/"  +"부동/"  +"NONE/"  +"천진신/"+"NONE/"  +"귀신/"  +"NONE/"  +"NONE"%
+		LOCALS:2  = %"NONE/"  +"NONE/"  +"환마/"  +"NONE/"  +"전희/"  +"NONE/"  +"신수/"  +"패왕/"  +"NONE/"  +"수라왕/"+"NONE/"  +"귀왕/"  +"NONE/"  +"NONE/"  +"NONE"%
+	LOCALS:3  = %"NONE/"  +"NONE/"  +"NONE/"  +"비마/"  +"NONE/"  +"천녀/"  +"성수/"  +"어령5/"+"황신/"  +"맹장/"  +"NONE/"  +"전귀/"  +"NONE/"  +"NONE/"  +"NONE"%
+		LOCALS:4  = %"NONE/"  +"NONE/"  +"NONE/"  +"주마/"  +"야마/"  +"어령4/"+"무녀/"  +"마수/"  +"어령3/"+"수라한/"+"투귀/"  +"NONE/"  +"NONE/"  +"NONE/"  +"NONE"%
+	LOCALS:5  = %"NONE/"  +"지신왕/"+"지모신/"+"지지/"  +"비언5/"+"업마/"  +"비구니/"+"비언2/"+"사문/"  +"업귀/"  +"비언6/"+"비선/"  +"풍신/"  +"풍신왕/"+"NONE"%
+		LOCALS:6  = %"NONE/"  +"NONE/"  +"NONE/"  +"지왕/"  +"지지사/"+"어령2/"+"정령/"  +"수라/"+"어령1/"  +"비천/"  +"천룡/"  +"NONE/"  +"NONE/"  +"NONE/"  +"NONE"%
+	LOCALS:7  = %"치천사/"+"지천사/"+"좌천사/"+"대천사/"+"비언7/"+"지지궁/"+"지령/"  +"식노/"  +"비룡/"  +"용왕/"  +"비언8/"+"마장/"  +"마두/"  +"마제/"  +"마왕"%
+		LOCALS:8  = %"NONE/"  +"NONE/"  +"NONE/"  +"야차/"  +"천사/"  +"뇌선/"  +"호법/"  +"빙요/"  +"빙은/"  +"빙장/"  +"빙랑/"  +"NONE/"  +"NONE/"  +"NONE/"  +"NONE"%
+	LOCALS:9  = %"NONE/"  +"사신死神/"  +"사령/"  +"악령/"  +"어령8/"+"뇌왕/"  +"영령/"  +"비언1/"+"염마/"  +"금강/"  +"어령6/"+"빙수/"  +"빙신/"  +"빙신왕/"+"NONE"%
+		LOCALS:10 = %"NONE/"  +"NONE/"  +"NONE/"  +"뇌제/"  +"진뢰/"  +"비언3/"+"위령/"  +"대염마/"+"비언4/"+"길상/"  +"명왕/"  +"NONE/"  +"NONE/"  +"NONE/"  +"NONE"%
+	LOCALS:11 = %"NONE/"  +"NONE/"  +"NONE/"  +"만뢰선/"+"NONE/"  +"화령/"  +"황천/"  +"어령7/"+"염마장/"+"염제/"  +"NONE/"  +"신장/"  +"NONE/"  +"NONE/"  +"NONE"%
+		LOCALS:12 = %"NONE/"  +"NONE/"  +"뇌신/"  +"NONE/"  +"신령/"  +"NONE/"  +"육도/"  +"삼계/"  +"NONE/"  +"절염/"  +"NONE/"  +"성도/"  +"NONE/"  +"NONE/"  +"NONE"%
+	LOCALS:13 = %"NONE/"  +"NONE/"  +"뇌신왕/"+"NONE/"  +"명령/"  +"NONE/"  +"토룡/"  +"NONE/"  +"광신/"  +"NONE/"  +"화신/"  +"NONE/"  +"무색/"  +"NONE/"  +"NONE"%
+		LOCALS:14 = %"NONE/"  +"NONE/"  +"NONE/"  +"마신/"  +"NONE/"  +"NONE/"  +"NONE/"  +"NONE/"  +"NONE/"  +"NONE/"  +"화신왕/"+"NONE/"  +"NONE/"  +"NONE/"  +"NONE"%
+ENDIF
+SPLIT LOCALS:(ARG:1), "/", 만트라_A
+RETURNF 만트라_A:ARG
+
+@GET_MANTRA_ABILITY, ARG
+VARSET RESULT, -1
+SELECTCASE ARG
+	;식노
+	CASE 1
+	{
+		RETURN 1, 10000, POWER(10, GET_BASESTATUS_NUM("힘")) * 1, 
+		[[스킬:물고늘어지기]], [[스킬:할퀴기]], [[스킬:물어뜯기]],  [[스킬:백발침]],
+		 [[스킬:독침]]
+	}
+		;MPテイスタ
+	;수라
+	CASE 2
+	{
+		RETURN 1, 10000, POWER(10, GET_BASESTATUS_NUM("인내력")) * 1, 
+		[[스킬:산바람]], [[스킬:일문자베기]], [[스킬:몸통박치기]], [[스킬:돌격]],
+		[[스킬:뇌정축]], [[스킬:숏잽]], [[스킬:씹어흩뿌리기]], [[스킬:베어내기]]
+	}
+		;ボ디아タック/マッスルボンバー
+	;비룡
+	CASE 3
+	{
+		RETURN 1, 10000, POWER(10, GET_BASESTATUS_NUM("마력")) * 1, 
+		[[스킬:잔]], [[스킬:충격브레이크]], [[스킬:갈]], [[스킬:질풍브레이크]]
+	}
+	;빙요
+	CASE 4
+	{
+		RETURN 1, 10000, POWER(10, GET_BASESTATUS_NUM("마력")) * 1, 
+		[[스킬:부후]], [[스킬:빙결브레이크]], [[스킬:아쿠아]], [[스킬:수격브레이크]]
+	}
+	;호법
+	CASE 5
+		RETURN 1, 10000, POWER(10, GET_BASESTATUS_NUM("지혜")) * 1, [[스킬:디아]], [[스킬:파트라]]
+		;デビルアナライズ
+	;지령
+	CASE 6
+		RETURN 1, 10000, POWER(10, GET_BASESTATUS_NUM("마력")) * 1, [[스킬:마그나]], [[스킬:지변브레이크]], [[스킬:그라이]], [[스킬:중력브레이크]]
+		;テラ/지변브레이크
+	;정령
+	CASE 7
+	{
+		RETURN 1, 10000, POWER(10, GET_BASESTATUS_NUM("속도")) * 1, 
+		[[스킬:마카쟈마]], [[스킬:하피루마]], [[스킬:해피스텝]], [[스킬:마성의난무]]
+	}	
+		;[[スキル:魔封ブレイク]]
+	;秘言二
+	CASE 8
+		RETURN 2, 50000, POWER(10, GET_BASESTATUS_NUM("운")) * 1, [[스킬:유혹]], [[스킬:백발백중]];001
+		;守銭奴の魂
+	;사문
+	CASE 9
+	{
+		RETURN 2, 30000, POWER(10, GET_BASESTATUS_NUM("인내력")) * 1, 
+		[[스킬:안개베기]], [[스킬:강절단]], [[스킬:사랑의채찍]], [[스킬:극락왕생파]], 
+		[[스킬:난심의일도]], [[스킬:마구날뛰기]], [[스킬:돌려차기]], [[스킬:수비무너뜨리기]]	
+	}
+	;즌바라린/
+	;어령1(힘+3)
+	CASE 10
+		RETURN 3, 75000, POWER(10, GET_BASESTATUS_NUM("힘")) * 3, -2
+	;용왕
+	CASE 11
+	{
+		RETURN 2, 30000, POWER(10, GET_BASESTATUS_NUM("속도")) * 1, 
+		[[스킬:마하・잔]], [[스킬:악마의일갈]], [[스킬:마하・갈]], [[스킬:충격어택커]], 
+		[[스킬:질풍어택커]]
+	}
+		;충격부스터
+	;빙은
+	CASE 12
+	{
+		RETURN 2, 30000, POWER(10, GET_BASESTATUS_NUM("운")) * 1, 
+		[[스킬:마하・부후]], [[스킬:아이스브레스]], [[스킬:마하・아쿠아]], [[스킬:빙결어택커]], 
+		[[스킬:수격어택커]]
+	}
+		;/빙결부스터
+	;염마
+	CASE 13
+		RETURN 1, 10000, POWER(10, GET_BASESTATUS_NUM("마력")) * 1, [[스킬:아기]], [[스킬:화염브레이크]], [[스킬:핵열브레이크]], [[스킬:기가]];001
+	;비언1
+	CASE 14
+		RETURN 2, 50000, POWER(10, GET_BASESTATUS_NUM("운")) * 1, [[스킬:사바트마]]
+	;영령
+	CASE 15
+		RETURN 2, 50000, POWER(10, GET_BASESTATUS_NUM("인내력")) * 1, [[스킬:메・디아]], [[스킬:포즈무디]], [[스킬:도루미나]]
+		;/エイク디무/催眠ガス
+	;뇌선
+	CASE 16
+		RETURN 1, 10000, POWER(10, GET_BASESTATUS_NUM("마력")) * 1, [[스킬:지오]], [[스킬:전격브레이크]]
+	;지지궁
+	CASE 17
+		RETURN 2, 30000, POWER(10, GET_BASESTATUS_NUM("인내력")) * 1, [[스킬:마하・마그나]], [[스킬:지변어택커]], [[스킬:마하・그라이]], [[스킬:중력어택커]]
+		;/지변부스터
+	;어령2 魔+3
+	CASE 18
+		RETURN 3, 75000, POWER(10, GET_BASESTATUS_NUM("마력")) * 3, -2
+	;비구니
+	CASE 19
+	{
+		RETURN 2, 30000, POWER(10, GET_BASESTATUS_NUM("인내력")) * 1, 
+		[[스킬:마비침]], [[스킬:싱글샷]], [[스킬:독할퀴기]], [[스킬:마비할퀴기]], 
+		[[스킬:독물어뜯기]], [[스킬:마비물어뜯기]], [[스킬:코칭]]
+	}
+		;난심의일도/クリティカ/代謝アク세라/捨て身の깨달음悟
+	;무녀
+	CASE 20
+	{
+		RETURN 3, 100000, POWER(10, GET_BASESTATUS_NUM("인내력")) * 1, 
+		[[스킬:산탄사격]], [[스킬:엔젤애로]], [[스킬:비구어택커]], [[스킬:어드바이스]], 
+		[[스킬:극채의질풍]]
+	}
+		;데스샤워/カウンタ/도주アク세라
+	;마수
+	CASE 21
+	{
+		RETURN 3, 100000, POWER(10, GET_BASESTATUS_NUM("힘")) * 1, 
+		[[스킬:메가클로]], [[스킬:어설트다이브]], [[스킬:전광석화]], [[스킬:매혹물어뜯기]], 
+		[[스킬:물어떼기]], [[스킬:전술어택커]], [[스킬:만력의벽]], [[스킬:반격]]
+	}
+		;/AP부스터/ストマックガード 
+	;어령3 인내력+5
+	CASE 22
+		RETURN 4, 200000, POWER(10, GET_BASESTATUS_NUM("인내력")) * 5, -2
+		;데스샤워/カウンタ/도주アク세라
+	;업귀
+	CASE 23
+	{
+		RETURN 3, 100000, POWER(10, GET_BASESTATUS_NUM("인내력")) * 1, 
+		[[스킬:번개찌르기]], [[스킬:이검난무]], [[스킬:양팔찍기]], [[스킬:이단찌르기]], 
+		[[스킬:히트웨이브]], [[스킬:검격어택커]], [[스킬:일할의활천]], [[스킬:다다미반환]]
+	}
+		;紅蓮검/귀신먹기/도발/パニック어택커
+	;비천
+	CASE 24
+	{
+		RETURN 3, 150000, POWER(10, GET_BASESTATUS_NUM("마력")) * 1, 
+		[[스킬:잔마]], [[스킬:충격의벽]], [[스킬:충격리플렉트]], [[스킬:갈라]], 
+		[[스킬:대기의벽]], [[스킬:질풍리플렉트]]
+	}
+		;/カ마이タチ/
+	;비언8
+	CASE 25
+		RETURN 5, 600000, POWER(10, GET_BASESTATUS_NUM("운")) * 1, [[스킬:칠색연옥파]]
+		;アボイドスリーパ/ハッピーウォーカ
+	;빙장
+	CASE 26
+	{
+		RETURN 3, 150000, POWER(10, GET_BASESTATUS_NUM("마력")) * 1, 
+		[[스킬:부후라]], [[스킬:얼음의벽]], [[스킬:아이온의비]], [[스킬:빙결리플렉트]], 
+		[[스킬:아쿠에스]], [[스킬:물의벽]], [[스킬:수격리플렉트]] , [[스킬:수정의벽]]
+	}
+	;금강
+	CASE 27
+	{
+		RETURN 2, 30000,  POWER(10, GET_BASESTATUS_NUM("운")) * 1, 
+		[[스킬:프린파]], [[스킬:시바브]], [[스킬:마린카린]], [[스킬:포이즈마]], 
+		[[스킬:마이트]], [[스킬:무거운한숨]], [[스킬:정신브레이크]], [[스킬:신경브레이크]]
+	}
+		;[[스킬:混乱브레이크]]
+	;비언4
+	CASE 28
+		RETURN 3, 200000, POWER(10, GET_BASESTATUS_NUM("운")) * 1, [[스킬:라이트마]], [[스킬:리베라마]], [[스킬:에스트마]]
+		;레벨ギフト
+	;대염마
+	CASE 29
+	{
+		RETURN 2, 30000, POWER(10, GET_BASESTATUS_NUM("힘")) * 1, 
+		[[스킬:마하・라기]], [[스킬:파이어브레스]], [[스킬:마하기가]], [[스킬:화염어택커]],  
+		[[스킬:핵열어택커]]
+	}
+		;화염부스터
+	;위령
+	CASE 30
+		RETURN 3, 200000, POWER(10, GET_BASESTATUS_NUM("지혜")) * 1, [[스킬:디아라마]], [[스킬:패럴라디]], [[스킬:펨파트라]]
+	;비언3
+	CASE 31
+		RETURN 3, 150000, POWER(10, GET_BASESTATUS_NUM("운")) * 1, [[스킬:자폭]], [[스킬:옥쇄파]]
+		;아이템ゲッタ
+	;뇌왕
+	CASE 32
+		RETURN 2, 30000, POWER(10, GET_BASESTATUS_NUM("지혜")) * 1, [[스킬:마하・지오]], [[스킬:전격]], [[스킬:전격어택커]]
+		;[[스킬:전격부스터]]
+	;천사
+	CASE 33
+		RETURN 2, 30000, POWER(10, GET_BASESTATUS_NUM("지혜")) * 1, [[스킬:한마]], [[스킬:코우하]], [[스킬:엑소시즘]], [[스킬:파마브레이크]]
+	;비언7
+	CASE 34
+		RETURN 7, 200000, POWER(10, GET_BASESTATUS_NUM("운")) * 1, [[스킬:트라프리]], [[스킬:토라에스트]]
+		;대냉계/オートチャクラ
+	;지지사
+	CASE 35
+	{
+		RETURN 3, 150000, POWER(10, GET_BASESTATUS_NUM("마력")) * 1, 
+		[[스킬:마그나스]], [[스킬:대지의벽]], [[스킬:지변리플렉트]], [[스킬:그라이바]], 
+		[[스킬:중력의벽]], [[스킬:중력리플렉트]]
+	}
+		;岩責め/
+	;업마
+	CASE 36
+	{
+		RETURN 2, 100000, POWER(10, GET_BASESTATUS_NUM("속도")) * 1, 
+		[[스킬:타루・카쟈]], [[스킬:타룬・다]], [[스킬:스쿠・카쟈]], [[스킬:스쿤・다]], 
+		[[스킬:일할의마맥]]
+	}
+		;体力泥棒/MPブースタ
+	;어령4 速+5
+	CASE 37
+		RETURN 4, 200000, POWER(10, GET_BASESTATUS_NUM("속도")) * 5, -2
+	;성수
+	CASE 38
+	{
+		RETURN 4, 300000, POWER(10, GET_BASESTATUS_NUM("힘")) * 1, 
+		[[스킬:악셀클로]], [[스킬:석화물어뜯기]], [[스킬:혈제]], [[스킬:귀신먹기]], 
+		[[스킬:전술브레이크]]
+	}
+		;헬ファング/まるかじり/AP디무バイダ
+	;어령5 힘+5
+	CASE 39
+		RETURN 4, 200000, POWER(10, GET_BASESTATUS_NUM("힘")) * 5, -2
+	;황신
+	CASE 40
+	{
+		RETURN 5, 600000, POWER(10, GET_BASESTATUS_NUM("힘")) * 1, 
+		[[스킬:스파이크클로]], [[스킬:앵화섬란]], [[스킬:마음의외침]],[[스킬:폭음폭식]], 
+		[[스킬:회심파]], [[스킬:전술리플렉트]], [[스킬:맹반격]]
+	}
+		;머리깨기/철사권/喰らいカウンタ
+	;맹장
+	CASE 41
+	{
+		RETURN 4, 600000, POWER(10, GET_BASESTATUS_NUM("힘")) * 1 + POWER(10, GET_BASESTATUS_NUM("인내력")) * 1, 
+		[[스킬:베어넘기기]], [[스킬:절묘타]], [[스킬:기간피스트]], [[스킬:분노의철권]], 
+		[[스킬:타격브레이크]], [[스킬:강철의벽]], [[스킬:브레인쉐이크]]
+	}
+		;파워ウェイブ/HPハイ부스터
+	;수라한
+	CASE 42
+	{
+		RETURN 3,  150000, POWER(10, GET_BASESTATUS_NUM("인내력")) * 1, 
+		[[스킬:소닉펀치]], [[스킬:섬머솔트]], [[스킬:백열찌르기]], [[스킬:눌러으깨기]], 
+		[[스킬:브레인쉐이크]], [[스킬:약자필멸권]], [[스킬:타격어택커]], [[스킬:치유촉진(소)]]
+	}
+		;, 黙殺/혈제
+	;비언6
+	CASE 43
+		RETURN 5, 600000, POWER(10, GET_BASESTATUS_NUM("운")) * 1, [[스킬:추격의심득]] , [[스킬:천발천중]];001
+		;黒の食祭、チューイング、MINクリティカ
+	;천룡
+	CASE 44
+	{
+		RETURN 4, 300000, POWER(10, GET_BASESTATUS_NUM("속도")) * 1,
+		[[스킬:마하・잔마]], [[스킬:동충파]], [[스킬:충격드레인]], [[스킬:마하・갈라]], 
+		[[스킬:하늘의선풍]], [[스킬:질풍드레인]]
+	}
+	;마장
+	CASE 45
+		RETURN 5, 750000, POWER(10, GET_BASESTATUS_NUM("마력")) * 1, [[스킬:멀티디멘션]], [[스킬:컨센트레이트]], [[스킬:기공(소)]]
+	;빙랑
+	CASE 46
+	{
+		RETURN 4, 300000, POWER(10, GET_BASESTATUS_NUM("운")) * 1, 
+		[[스킬:마하・부후라]], [[스킬:빙결드레인]], [[스킬:마하・아쿠에스]], [[스킬:강한파도]], 
+		[[스킬:수격드레인]], [[스킬:애시드레인]]
+	}
+	;어령6 魔+5
+	CASE 47
+		RETURN 4, 200000, POWER(10, GET_BASESTATUS_NUM("마력")) * 5, -2
+	;길상
+	CASE 48
+	{
+		RETURN 3, 150000,  POWER(10, GET_BASESTATUS_NUM("지혜")) * 1, 
+		[[스킬:자장가]], [[스킬:고양의노래]], [[스킬:무거운공기]], [[스킬:파라라아이]], 
+		[[스킬:독가스브레스]], [[스킬:마이트브레스]], [[스킬:정신어택커]], [[스킬:신경어택커]]
+	}
+		;有害吐息/魅了브레이크/猛毒브레이크
+	;염제
+	CASE 49
+	{
+		RETURN 4, 300000, POWER(10, GET_BASESTATUS_NUM("힘")) * 1, 
+		[[스킬:마하・라기온]], [[스킬:지양의붉음]], [[스킬:화염드레인]], [[스킬:폭렬의손톱]], 
+		[[스킬:마하기가온]], [[스킬:플래시봄]], [[스킬:핵열드레인]]
+	}
+	;염마장
+	CASE 50
+	{
+		RETURN 3, 150000, POWER(10, GET_BASESTATUS_NUM("마력")) * 1, 
+		[[스킬:아기라오]], [[스킬:파이어스톰]], [[스킬:불의벽]], [[스킬:화염리플렉트]], 
+		[[스킬:핵열리플렉트]], [[스킬:기가온]], [[스킬:프레이]]
+	}
+	;어령7 知+5
+	CASE 51
+		RETURN 4, 200000, POWER(10, GET_BASESTATUS_NUM("지혜")) * 5, -2
+	;황천
+	CASE 52
+		RETURN 4, 350000, POWER(10, GET_BASESTATUS_NUM("인내력")) * 1, [[스킬:리캄]], [[스킬:바이스디]]
+	;화령
+	CASE 53
+		RETURN 4, 500000, POWER(10, GET_BASESTATUS_NUM("인내력")) * 1, [[스킬:자애의기도]], [[스킬:클로즈디]], [[스킬:도루미나]]
+		;/커스디/
+	;진뢰
+	CASE 54
+	{
+		RETURN 3, 150000, POWER(10, GET_BASESTATUS_NUM("마력")) * 1, 
+		[[스킬:지온가]], [[스킬:방전]], [[스킬:스파크볼트]], [[스킬:번개의벽]], 
+		[[스킬:전격리플렉트]]
+	}
+		;雷起/
+	;어령8, 운+5
+	CASE 55
+		RETURN 4, 200000, POWER(10, GET_BASESTATUS_NUM("운")) * 5, -2
+	;야차
+	CASE 56
+	{
+		RETURN 2, 30000, POWER(10, GET_BASESTATUS_NUM("지혜")) * 1, 
+		[[스킬:무도]], [[스킬:에이하]], [[스킬:주온]], [[스킬:주살브레이크]], 
+		[[스킬:이블아이]]
+	}
+		;/저주의언령/
+	;대천사
+	CASE 57
+	{
+		RETURN 4, 300000, POWER(10, GET_BASESTATUS_NUM("운")) * 1, 
+		[[스킬:마한마]], [[스킬:하마온]], [[스킬:바이코우하]], [[스킬:헤븐즈도어]], 
+		[[스킬:멸망의빛]], [[스킬:빛의벽]], [[스킬:파마어택커]]
+	}
+		;/파마ストロンガ
+	;지왕
+	CASE 58
+	{
+		RETURN 4, 300000, POWER(10, GET_BASESTATUS_NUM("인내력")) * 1, 
+		[[스킬:마하・마그나스]], [[스킬:지옥떨구기]], [[스킬:지변드레인]], [[스킬:마하・그라이바]], 
+		[[스킬:중력드레인]]
+	}
+		;マハテラジ/
+	;비언5
+	CASE 59
+		RETURN 5, 600000, POWER(10, GET_BASESTATUS_NUM("운")) * 1, [[스킬:황천의회심]], [[스킬:정천의회심]], [[스킬:간파]];001
+		;白の食祭/チャクラウォーカ/MAXクリティカ
+	;야마
+	CASE 60
+	{
+		RETURN 3, 200000, POWER(10, GET_BASESTATUS_NUM("속도")) * 1, 
+		[[스킬:마카・카쟈]], [[스킬:라쿠・카쟈]], [[스킬:라쿤・다]], 
+		[[스킬:사마・카쟈]], [[스킬:사만・다]], [[스킬:마칸・다]]
+	}
+		;/마카쟈마온/마력泥棒
+	;천녀
+	CASE 61
+	{
+		RETURN 4, 300000, POWER(10, GET_BASESTATUS_NUM("힘")) * 1 + POWER(10, GET_BASESTATUS_NUM("속도")) * 1, 
+		[[스킬:미들샷]], [[스킬:연속사격]], [[스킬:해피트리거]], [[스킬:비구브레이크]], 
+		[[스킬:위협]]
+	}
+		;痺れ바늘/昏睡ステップ/先制エ키스パンダ/会心キャン세라
+	;신수
+	CASE 62
+	{
+		RETURN 6, 800000, POWER(10, GET_BASESTATUS_NUM("힘")) * 1, 
+		[[스킬:전력공격]], [[스킬:묵시록]], [[스킬:물어-뜯기]], [[스킬:이노센트턱]], 
+		[[스킬:대상제]], [[스킬:전술드레인]]
+	}
+		;폭음폭식/APハイ부스터/MPハイテイスタ
+	;패왕
+	CASE 63
+	{
+		RETURN 7, 1500000, POWER(10, GET_BASESTATUS_NUM("힘")) * 1,
+		[[스킬:아이언클로]], [[스킬:베어먹기]], [[스킬:명계의문]], [[스킬:살신]], 
+		[[스킬:머리깨기]],[[스킬:최후의만찬]], [[스킬:데스카운터]]
+	}
+		;ギロチンクロウ/物理ストロンガ
+	;투귀
+	CASE 64
+	{
+		RETURN 4, 300000, POWER(10, GET_BASESTATUS_NUM("힘")) * 1 + POWER(10, GET_BASESTATUS_NUM("인내력")) * 1, 
+		[[스킬:트윈슬래시]], [[스킬:용아선회]], [[스킬:회전베기]], [[스킬:베놈재퍼]], 
+		[[스킬:검격브레이크]], [[스킬:즌바라린]]
+	}
+		;大毒牙/まる呑み/パララ어택커
+	;비선
+	CASE 65
+	{
+		RETURN 5, 600000, POWER(10, GET_BASESTATUS_NUM("속도")) * 2, 
+		[[스킬:잔다인]], [[스킬:회오리]], [[스킬:태풍의난무]], [[스킬:갈다인]], 
+		[[스킬:충격가드킬]],  [[스킬:질풍가드킬]]
+	}
+		;용권지옥/충격ハイ부스터
+	;빙수
+	CASE 66
+	{
+		RETURN 5, 600000, POWER(10, GET_BASESTATUS_NUM("운")) * 2, 
+		[[스킬:부후다인]], [[스킬:얼음의난무]],[[스킬:절대영도]], [[스킬:아쿠아다인]], 
+		[[스킬:물살가르기]], [[스킬:빙결가드킬]], [[스킬:수격가드킬]]
+	}
+		;/大寒波/빙결ハイ부스터
+	;명왕
+	CASE 67
+	{
+		RETURN 4, 300000,  POWER(10, GET_BASESTATUS_NUM("운")) * 1, 
+		[[스킬:섹시댄스]], [[스킬:패닉보이스]], [[스킬:바리언트댄스]], [[스킬:바인드보이스]], 
+		[[스킬:파라라・웨이브]], [[스킬:마이트마]], [[스킬:정신리플렉트]], [[스킬:신경리플렉트]]
+	}
+		;極上の肉体/뉴로크런치/ポイズンミスト/신경デストロイア
+	;삼계
+	CASE 68
+	{
+		RETURN 6, 800000, POWER(10, GET_BASESTATUS_NUM("인내력")) * 2, 
+		[[스킬:리캄도라]], [[스킬:사이코배리어]], [[스킬:펜타월]], [[스킬:후리후리월]]
+	}
+		;/대왕생
+	;육도
+	CASE 69
+		RETURN 6, 950000, POWER(10, GET_BASESTATUS_NUM("지혜")) * 1, [[스킬:사마리캄]], [[스킬:테트라쟈]], [[스킬:마하바이스디]]
+	;뇌제
+	CASE 70
+		RETURN 4, 300000, POWER(10, GET_BASESTATUS_NUM("지혜")) * 1, [[스킬:마하・지온가]], [[스킬:번개의난무]], [[스킬:파계의번개]], [[스킬:전격드레인]]
+	;악령
+	CASE 71
+	{
+		RETURN 4, 300000, POWER(10, GET_BASESTATUS_NUM("운")) * 1, 
+		[[스킬:마하무도]], [[스킬:바이에이하]], [[스킬:마하주온]], [[스킬:저주의언령]], 
+		[[스킬:어둠의벽]], [[스킬:페트라아이]], [[스킬:주살어택커]]
+	}
+		;/저주비문/石化光線/주살ストロンガ
+	;地祇
+	CASE 72
+	{
+		RETURN 5, 600000, POWER(10, GET_BASESTATUS_NUM("인내력")) * 2, 
+		[[스킬:마그다인]], [[스킬:그라다인]], [[스킬:그라비티마인]], [[스킬:지변가드킬]],  
+		[[스킬:중력가드킬]]
+	}
+		;/ヘヴィーロック/지변ハイ부스터
+	;주마
+	CASE 73
+	{
+		RETURN 4, 400000, POWER(10, GET_BASESTATUS_NUM("속도")) * 1, 
+		[[스킬:타루카쟈오토]], [[스킬:스쿠카쟈오토]], [[스킬:리벨리온]], [[스킬:용분의춤]], 
+		[[스킬:다크브레스]], [[스킬:악마의위협]]
+	}
+		;/サイレントハウル 사이코ブレス
+	;비마
+	CASE 74
+	{
+		RETURN 5, 750000, POWER(10, GET_BASESTATUS_NUM("속도")) * 1, 
+		[[스킬:마카카쟈오토]], [[스킬:라쿠카쟈오토]], [[스킬:레볼루션]], [[스킬:이할의마맥]], 
+		[[스킬:용해브레스]]
+	}
+		;ダーク신기루/魔封デストロイア/MPハイ부스터
+	;환마
+	CASE 75
+	{
+		RETURN 6, 800000, POWER(10, GET_BASESTATUS_NUM("속도")) * 2, 
+		[[스킬:파워브레스]], [[스킬:포그브레스]], [[스킬:포효]], [[스킬:악마의이갈이]], 
+		[[스킬:천상의춤]], [[스킬:사마카쟈오토]]
+	}
+		;스펠그룸/デクンダ
+	;전희
+	CASE 76
+	{
+		RETURN 5, 600000, POWER(10, GET_BASESTATUS_NUM("속도")) * 2, 
+		[[스킬:석화침]], [[스킬:몽견침]], [[스킬:천우의춤]], [[스킬:트리플다운]], 
+		[[스킬:비구리플렉트]], [[스킬:이악물기]], [[스킬:기합]]
+	}
+		;뇌쇄슬래시/파워カウンタ/リスクキャン세라
+	;비신
+	CASE 77
+	{
+		RETURN 6, 800000, POWER(10, GET_BASESTATUS_NUM("속도")) * 2, 
+		[[스킬:암흑쌍비조]], [[스킬:멸살수전]], [[스킬:찰나장대비쏘기]], [[스킬:비구드레인]], 
+		[[스킬:도발]], [[스킬:그랜드턱]], [[스킬:저격]]
+	}
+		;앵화섬란/オール어택커/デスキャン세라
+	;수라왕
+	CASE 78
+	{
+		RETURN 5, 600000, POWER(10, GET_BASESTATUS_NUM("힘")) * 1 + POWER(10, GET_BASESTATUS_NUM("인내력")) * 1, 
+		[[스킬:오의방어부수기]], [[스킬:아카샤아츠]], [[스킬:천열찌르기]], [[스킬:자연난타]], 
+		[[스킬:성불권]], [[스킬:타격리플렉트]], [[스킬:치유촉진(중)]]
+	}
+		;アカシックパリツ/데몬레이브
+	;천진신
+	CASE 79
+	{
+		RETURN 6, 800000, POWER(10, GET_BASESTATUS_NUM("힘")) * 1 + POWER(10, GET_BASESTATUS_NUM("인내력")) * 1, 
+		[[스킬:메가톤프레스]], [[스킬:팔상발파]], [[스킬:메테오피스트]], [[스킬:비공찌르기]], 
+		[[스킬:신등거출팔백만격]], [[스킬:타격드레인]]
+	}
+		;명계의문/HPメガ부스터
+	;전귀
+	CASE 80
+	{
+		RETURN 5, 600000, POWER(10, GET_BASESTATUS_NUM("힘")) * 1 + POWER(10, GET_BASESTATUS_NUM("속도")) * 1, 
+		[[스킬:대나무베기]], [[스킬:낭아천주참]], [[스킬:데스바운드]], [[스킬:암야의검]], 
+		[[스킬:검격리플렉트]], [[스킬:이할의활천]]
+	}
+		;마음의외침/파워チャージ/物理브레이크/삼켜내기カウンタ
+	;귀왕
+	CASE 81
+	{
+		RETURN 6, 800000, POWER(10, GET_BASESTATUS_NUM("힘")) * 1 + POWER(10, GET_BASESTATUS_NUM("인내력")) * 1, 
+		[[스킬:산산조각베기]], [[스킬:구십구나선격]], [[스킬:작열차가]], [[스킬:부월쇄파]], 
+		[[스킬:어둠속의기습]], [[스킬:검격드레인]]
+	}
+		;大屠殺/대상제/物理리플렉트/ペトラ어택커
+	;풍신
+	CASE 82
+	{
+		RETURN 6, 800000, POWER(10, GET_BASESTATUS_NUM("속도")) * 2, 
+		[[스킬:마하・잔다인]], [[스킬:서격파]], [[스킬:풍신격]], [[스킬:마하・갈다인]], 
+		[[스킬:땅의열풍]]
+	}
+		;/충격ストロンガ
+	;마두
+	CASE 83
+		RETURN 6, 1000000, POWER(10, GET_BASESTATUS_NUM("마력")) * 2, [[스킬:메기도]], [[스킬:기공(중)]], [[스킬:네크로・도그마]]
+		;/ロストワード
+	;마제
+	CASE 84
+		RETURN 7, 1200000, POWER(10, GET_BASESTATUS_NUM("마력")) * 2, [[스킬:메기도라]], [[스킬:만마의난무]], [[스킬:기공(대)]], [[스킬:마카라칸]]
+		;/魔法리플렉트
+	;빙신
+	CASE 85
+	{
+		RETURN 6, 800000, POWER(10, GET_BASESTATUS_NUM("운")) * 2, 
+		[[스킬:마하・부후다인]], [[스킬:아이스・크래시]], [[스킬:마하・아쿠다인]], [[스킬:부드러운파도]], 
+		[[스킬:피어트렌트]], [[스킬:블러디레인]]
+	}
+		;/빙결ストロンガ
+	;신장
+	CASE 86
+	{
+		RETURN 5, 600000, POWER(10, GET_BASESTATUS_NUM("지혜")) * 1 +  POWER(10, GET_BASESTATUS_NUM("운")) * 1, 
+		[[스킬:텐타라후]], [[스킬:캔디보이스]], [[스킬:아라크노와이어]], [[스킬:뉴로크런치]], 
+		[[스킬:영면의유혹]], [[스킬:바이쳐더스트]], [[스킬:정신가드킬]], [[스킬:신경가드킬]]
+	}
+		;/마비큰파동/混乱デストロイア/猛毒デストロイア
+	;성도
+	CASE 87
+	{
+		RETURN 6, 1000000, POWER(10, GET_BASESTATUS_NUM("운")) * 2, 
+		[[스킬:파이널누드]], [[스킬:유혹의안개]], [[스킬:최면파]], [[스킬:마계의조사]], 
+		[[스킬:혼탁의장기]], [[스킬:정신드레인]], [[스킬:신경드레인]], [[스킬:브레인버스트]]
+	}
+		; [[스킬:ＢＳ브레이크]] 절세의육체/ニガヨモギ/BS브레이크/魅了デストロイア
+	;절염
+	CASE 88
+	{
+		RETURN 5, 600000, POWER(10, GET_BASESTATUS_NUM("힘")) * 2, 
+		[[스킬:아기다인]], [[스킬:불꽃의난무]], [[스킬:화염가드킬]], [[스킬:핵열가드킬]], 
+		[[스킬:기가리온]], [[스킬:마하기가리온]], [[스킬:프레이라]]
+	}
+		;/익스플로드/화염ハイ부스터
+	;화신
+	CASE 89
+	{
+		RETURN 6, 800000, POWER(10, GET_BASESTATUS_NUM("힘")) * 2, 
+		[[스킬:마하・라기다인]], [[스킬:지옥의업화]], [[스킬:종언의푸름]], [[스킬:버닝링]], 
+		[[스킬:프레이다인]], [[스킬:뉴클리어미사일]], [[스킬:아토믹플레어]]
+	}
+		;/화염ストロンガ
+	;신령
+	CASE 90
+		RETURN 5, 600000, POWER(10, GET_BASESTATUS_NUM("지혜")) * 2, [[스킬:메・디아라마]], [[스킬:페트라디]], [[스킬:챰디]], [[스킬:커스디]]
+	;명령
+	CASE 91
+		RETURN 6, 1000000, POWER(10, GET_BASESTATUS_NUM("인내력")) * 1 + POWER(10, GET_BASESTATUS_NUM("지혜")) * 1, [[스킬:디아라한]], [[스킬:파트라디]]
+	;만뢰선
+	CASE 92
+		RETURN 5, 600000, POWER(10, GET_BASESTATUS_NUM("지혜")) * 2, [[스킬:지오다인]], [[스킬:산뢰격]], [[스킬:전격가드킬]], [[스킬:블리츠레인]]
+		;/ユピテルの怒り/전격ハイ부스터
+	;뇌신
+	CASE 93
+		RETURN 6, 800000, POWER(10, GET_BASESTATUS_NUM("지혜")) * 2, [[스킬:마하・지오다인]], [[스킬:집뢰격]], [[스킬:우뢰의세례]], [[스킬:토르해머]]
+		;/전격ストロンガ
+	;사령
+	CASE 94
+	{
+		RETURN 6, 500000, POWER(10, GET_BASESTATUS_NUM("운")) * 1 + POWER(10, GET_BASESTATUS_NUM("지혜")) * 1, 
+		[[스킬:무도온]], [[스킬:마하무도온]], [[스킬:축시의참배]], [[스킬:헬즈아이]], 
+		[[스킬:마하에이하]], [[스킬:에이가온]], [[스킬:주살가드킬]], [[스킬:주살리플렉트]]
+	}
+		;축시의참배
+	;좌천사
+	CASE 95
+	{
+		RETURN 6, 800000, POWER(10, GET_BASESTATUS_NUM("지혜")) * 1, 
+		[[스킬:마한마온]], [[스킬:마하코우하]], [[스킬:코우가온]], [[스킬:파마의뇌광]], 
+		[[스킬:중재의뇌화]], [[스킬:파마가드킬]], [[스킬:파마리플렉트]]
+	}
+		;/マカンダ/マカトラ/
+	;지천사
+	CASE 96
+	{
+		RETURN 7, 1200000, POWER(10, GET_BASESTATUS_NUM("운")) * 1+POWER(10, GET_BASESTATUS_NUM("지혜")) * 1, 
+		[[스킬:티없는위광]], [[스킬:빛의심판]], [[스킬:델타포스]], [[스킬:갓핸드]], 
+		[[스킬:파마드레인]], [[스킬:댐네이션]]
+	}
+		;/파마デストロイア
+	;지모신
+	CASE 97
+	{
+		RETURN 6, 800000, POWER(10, GET_BASESTATUS_NUM("인내력")) * 2, 
+		[[스킬:마하・마그다인]], [[스킬:극락떨구기]], [[스킬:어스브레이크]], [[스킬:마하・그라다인]], 
+		[[스킬:다무도라온]], [[스킬:스펠그룸]]
+	}
+		;/지변ストロンガ
+	;지신왕
+	CASE 98
+	{
+		RETURN 7, 1200000, POWER(10, GET_BASESTATUS_NUM("마력")) * 1 + POWER(10, GET_BASESTATUS_NUM("인내력")) * 1, 
+		[[스킬:대지의분노]], [[스킬:티타노마키아]], [[스킬:가이아브레이크]], [[스킬:마그네스톰]], 
+		[[스킬:칠성강천]]
+	}	
+		;티타노마키아
+	;사신邪神
+	CASE 99
+		RETURN 7, 1500000, POWER(10, GET_BASESTATUS_NUM("속도")) * 2, [[스킬:데・카쟈]], [[스킬:데・쿤다]], [[스킬:히트라이저]], [[스킬:삼할의마맥]]
+		;랜더마이저/MPメガ부스터
+	;여신
+	CASE 100
+	{
+		RETURN 7, 1200000, POWER(10, GET_BASESTATUS_NUM("속도")) * 2, 
+		[[스킬:오절절우]], [[스킬:고천열풍탄]], [[스킬:슈퍼노바]], [[스킬:테트라칸]], 
+		[[스킬:불굴의투지]], [[스킬:하이퍼카운터]]
+	}
+		;묵시록/하이퍼카운터/布陣の極意/ダブルリフレクタ
+	;악신
+	CASE 101
+		RETURN 9, 2000000, POWER(10, GET_BASESTATUS_NUM("속도")) * 2, [[스킬:질투의폭압]], [[스킬:죽은파리의장례]]
+	;부동
+	CASE 102
+		RETURN 9, 3000000, POWER(10, GET_BASESTATUS_NUM("힘")) * 2, [[스킬:프라라야]], [[스킬:서드아이]]
+		;서드아이/物理アブソーバ
+	;파괴신
+	CASE 103
+	{
+		RETURN 7, 1200000, POWER(10, GET_BASESTATUS_NUM("힘")) * 1 + POWER(10, GET_BASESTATUS_NUM("인내력")) * 1, 
+		[[스킬:뇌진왕모의발차기]], [[스킬:예광구리가라축]], [[스킬:최후의일격]], [[스킬:모탈지하드]], 
+		[[스킬:만마의일격]], [[스킬:끝나는세계]], [[스킬:치유촉진(대)]]
+	}
+		;살신/끝나는세계/物理デストロイア
+	;귀신
+	CASE 104
+	{
+		RETURN 7, 1200000, POWER(10, GET_BASESTATUS_NUM("힘")) * 1 + POWER(10, GET_BASESTATUS_NUM("속도")) * 1, 
+		[[스킬:허공참파]], [[스킬:낙양삼단격]], [[스킬:천경지폭단]], [[스킬:오의일섬]], 
+		[[스킬:갑옷관통]], [[스킬:삼할의활천]]
+	}
+		;최후의만찬/物理드레인
+	;풍신왕
+	CASE 105
+	{
+		RETURN 7, 1200000, POWER(10, GET_BASESTATUS_NUM("속도")) * 1 + POWER(10, GET_BASESTATUS_NUM("마력")) * 1, 
+		[[스킬:림도라]], [[스킬:림도라온]], [[스킬:소닉무버]], [[스킬:선풍진]], 
+		[[스킬:만물유전]]
+	}
+		;ヴァーヤヴィヤ
+	;마왕
+	CASE 106
+	{
+		RETURN 8, 1500000, POWER(10, GET_BASESTATUS_NUM("마력")) *2, 
+		[[스킬:메기도라온]], [[스킬:왕중의왕]], [[스킬:어나더디멘션]]
+	}
+		;フルデストロイア
+	;빙신왕
+	CASE 107
+	{
+		RETURN 7, 1200000, POWER(10, GET_BASESTATUS_NUM("마력")) * 1 + POWER(10, GET_BASESTATUS_NUM("운")) * 1, 
+		[[스킬:대냉계]], [[스킬:코큐토스]], [[스킬:극한동결]], [[스킬:아쿠아리타이드]], 
+		[[스킬:스플래시레이]]
+	}
+		;ニブル헬ム
+	;무색
+	CASE 108;001
+	{
+		RETURN 7, 1250000, POWER(10, GET_BASESTATUS_NUM("지혜")) * 1 + POWER(10, GET_BASESTATUS_NUM("운")) * 1, 
+		[[스킬:색즉시공]], [[스킬:메가스트라이크]], [[스킬:샤후라]], [[스킬:절세의육체]], 
+		[[스킬:너버스엣지]]
+	}
+		;색즉시공/BSデストロイア
+	;화신왕
+	CASE 109;001
+	{
+		RETURN 7, 1200000, POWER(10, GET_BASESTATUS_NUM("힘")) * 1+POWER(10, GET_BASESTATUS_NUM("마력")) * 1, 
+		[[스킬:데들리번]], [[스킬:인페르노]], [[스킬:루이나플레임]], [[스킬:코즈믹플레어]], 
+		[[스킬:히트카이저]], [[스킬:라그나로크]]
+	}
+		;트리스아기온
+	;광신
+	CASE 110
+		RETURN 9, 3000000, POWER(10, GET_BASESTATUS_NUM("인내력")) * 2, [[스킬:지고의마탄]], [[스킬:스티티]]
+		;チャトゥルプジャ/太極光輪
+	;토룡
+	CASE 111
+		RETURN 9, 2000000, POWER(10, GET_BASESTATUS_NUM("마력")) * 2, [[스킬:파사의광인]], [[스킬:시나이의신화]]
+		;파사의광인
+	;마신
+	CASE 112
+		RETURN 8, 1500000, POWER(10, GET_BASESTATUS_NUM("지혜")) * 2, [[스킬:메・디아라한]], [[스킬:암리타]], [[스킬:스리스티]], [[스킬:리프트마]]
+		;메시아라이저/オート소마
+	;뇌신왕
+	CASE 113
+	{
+		RETURN 7, 1200000, POWER(10, GET_BASESTATUS_NUM("지혜")) * 1 + POWER(10, GET_BASESTATUS_NUM("마력")) * 1, 
+		[[스킬:루나카미]], [[스킬:나이스・샷]], [[스킬:진리의번개]], [[스킬:매혹의뇌격]]
+	}	
+		;루나카미
+	;사신死神
+	CASE 114
+	{
+		RETURN 7, 1200000, POWER(10, GET_BASESTATUS_NUM("지혜")) * 2, 
+		[[스킬:천년의저주]], [[스킬:어둠의심판]], [[스킬:테트라프리즌]], [[스킬:도무디]], 
+		[[스킬:주살드레인]], [[스킬:저주비문]]
+	}
+		;/石化電波/주살デストロイア
+	;치천사
+	CASE 115;001
+	{
+		RETURN 7, 1250000, POWER(10, GET_BASESTATUS_NUM("지혜")) * 2, 
+		[[스킬:데・카쟈]], [[스킬:알파블라스터]], [[스킬:오메가클러스터]], [[스킬:위대한로고스]],
+		[[스킬:제너두]]
+	}
+		;ザナドゥ
+ENDSELECT
+
+@MANTRA_EXPLAIN
+#LOCALSIZE 1
+DRAWLINE
+PRINTL 만트라 시스템 해설
+DRAWLINE
+PRINTL 식노는 만트라 시스템에 의해서 강화될 수 있습니다
+PRINTL 알고 싶은 정보를 선택해주세요
+DRAWLINE
+LOCAL = LINECOUNT
+$START
+CLEARLINE LINECOUNT - LOCAL
+CALL INPUT_SELECT(1, "다운로드", 2, "만트라 성장방법", 3, "스킬셋트", 4, "헌트・웨이트 스킬", 5, "스테이터스 셋트", 9, "해설 종료")
+SELECTCASE RESULT
+	CASE 1
+		PRINTFORMW 만트라의 다운로드는 ＭＡＧ를 소비하여 실행할 수 있습니다
+		PRINTFORMW 만트라 ＭＡＰ 상에서 ＤＬ가능으로 표시되어있는 만트라를 선택해주세요
+		PRINTFORML 또한、식노는 각각 자신있는 상성을 가지고 있어、
+		PRINTFORMW 그 상성에 속하는 만트라는 ＭＡＧ소비가 감소합니다
+		PRINTL 
+		PRINTFORMW 또한、식노는 무조건적으로 ＤＬ이 가능하지만 
+		PRINTFORMW 그 외의 만트라는 인접한 만트라를 성장시켜 
+		PRINTFORMW MASTER를 해야 최초 ＤＬ이 가능해집니다
+	CASE 2
+		PRINTFORMW 다운로드한 만트라는 셋트 하는 것이 가능하게 됩니다
+		PRINTFORMW 만트라는 다운로드시에 자동적으로 세트되지만
+		PRINTFORMW 도중에 변경되는 경우도 있습니다
+		PRINTFORML 그 때、과거에 다운로드한적있는 만트라는 
+		PRINTFORMW ＭＡＧ를 소모하지 않고 셋트할 수 있습니다
+		PRINTL 
+		PRINTFORMW 만트라를 장비한 상태로 적을 쓰러뜨리면 전투 종료시에 
+		PRINTFORMW 쓰러뜨린 적의 강한 정도에 따라서 AP(아트마 포인트)가 획득됩니다
+		PRINTFORMW 그리고 만트라가 일정 값의 AP를 획득하면 MASTER 상태가 됩니다
+		PRINTL 
+		PRINTFORMW 만트라가 MASTER 상태가 되면 
+		PRINTFORMW 식노는 스킬과 스테이터스 포인트를 획득하고 
+		PRINTFORMW 스킬 셋트와 스테이터스 셋트를 할 수 있게 됩니다
+		PRINTL 
+		PRINTFORMW 또한、만트라 다운로드 시에 표시되는 ★은 만트라의 랭크를 표시해 주며 
+		PRINTFORMW 이것이 많은 만트라일 수록 성장시키기 위해 더욱 강한 적과 싸울 필요가 있습니다
+	CASE 3
+		PRINTFORMW 식노는 MASTER한 만트라가 내장되어 있는 스킬을 자유롭게 선택하여 셋트 할 수 있습니다
+		PRINTFORMW 스킬 셋트를 선택해、스킬을 교체해주세요
+	CASE 4
+		PRINTW 식노는 전용 스킬군으로 헌트 스킬과 웨이트 스킬이 있습니다
+		PRINTL 
+		PRINTW 헌트 스킬은 적을 먹기위한 스킬로 
+		PRINTW 위력이 낮은 대신에 ＣＯＯＰ에 의한 추가 데미지가 큰 특성을 가지고 있습니다
+		PRINTW 또한、헌트 스킬로 적을 쓰러뜨렸을 경우、만트라를 성장시키기 위한 AP가 추가됩니다
+		PRINTW 이 헌트 스킬을 사용하면 만트라를 효율적으로 성장 시킬 수 있습니다
+		PRINTL 
+		PRINTW 웨이트 스킬은 일시적으로 식노의 능력을 변화시키는 스킬 군입니다
+		PRINTW 어택커 계통은 그 턴에 사용하는 헌트 스킬의 상성을 변화시킵니다
+		PRINTW 이것으로 인해 헌트스킬로 적의 약점을 찌를 수 있게됩니다
+		PRINTL 
+		PRINTW 브레이크 계열은 그 턴 동안、지정된 상성의 공격을 무효화시킵니다
+		PRINTW 마찬가지로 리플렉트 계열은 반사、드레인 계열은 흡수를 합니다
+		PRINTW 이 종류의 스킬은 １턴 동안 여러번 사용하면 소비 ＭＰ가 기하급수적으로 증가하므로 주의하십시오
+		PRINTL 
+		PRINTW 또한、이 종류의 스킬은 ＷＡＩＴ에서 사용해서、턴을 소비하지 않습니다
+	CASE 5
+		PRINTW 만트라를 성장시키는 것으로 식노는 스테이터스 포인트를 획득할 수 있습니다
+		PRINTW 식노는 이 포인트를 분배하여 변신시의 스테이터스를 변화시킬 수 있습니다
+		PRINTL 
+		PRINTW 스테이터스의 증가가 아닌、변화한다는 점을 주의하십시오
+		PRINTW 식노는 인간일 때의 스테이터스와 악마 변신시의 스테이터스 를 따로 가지고 있습니다
+		PRINTW 이 중 보통의 레벨업이나 ＭＡＧ강화로 자유롭게 바꿀 수 있는 것은 인간일 때의 스테이터스입니다
+		PRINTL 
+		PRINTW 악마일 때의 스테이터스는 악마 기본 스테이터스 비율 대로、
+		PRINTW 인간일 때의 스테이터스의 합계치를 할당한 것입니다
+		PRINTW 스테이터스 포인트의 배분이 악마의 기본 스테이터스를 변화시켜
+		PRINTW 결과적으로는 인간일 때의 스테이터스의 합계 할당 비율을 변화시키는 것입니다
+		PRINTL 
+		PRINTW 예를 들면 마력에 스테이터스 포인트를 할당할 경우、마력은 오릅니다만
+		PRINTW 그 외의 스테이터스는 조금 내려갑니다
+	CASE 9
+		RETURN 0
+ENDSELECT
+GOTO START

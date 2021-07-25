@@ -1,0 +1,159 @@
+﻿@CLOTHES_NAME_529
+RESULTS = 촉수브라
+
+;노출部位
+@CLOTHES_EXPOSE_529,ARG
+;ARG = 노출する部位
+;1 = 팔노출 2 = 발노출 3 = 다리노출 4 = 유방노출 5 = 유두노출 6 = ヘソ노출 7 = 음순노출 8 = 둔부노출
+SELECTCASE ARG
+	CASE 4,5
+		RETURN 0
+	CASEELSE
+		RETURN 1
+ENDSELECT
+
+;장비部位
+@CLOTHES_PART_529
+RETURN 5
+
+;옷の前が開くか
+;1 開けられる、2 開きっぱなし
+@CLOTHES_OPENFRONT_529
+RETURN 1
+
+;가슴の구조
+; 0:開けられない 1:ボタン式 2:チャック式 4:上からこんにちは 8:たくしあげてこんにちは 16:기모노など、合わせる衣装 32:前から差し込めそうな穴 64:입元-가슴元間に페니스入るスペース（ビット演算）
+@CLOTHES_BREAST_529
+RETURN 12
+
+;가랑이の구조
+;1 = 바지、2 = ビキニ타입、3 = 스커트、4 = 穴開き、5 前開き、6 開閉可能
+@CLOTHES_CROTCH_529
+RETURN 0
+
+;장비時の조교効果
+@CLOTHES_SOURCE_529,ARG = -1
+IF FLAG:SHOPコマンド == 0
+	IF ARG == TARGET
+		TFLAG:19 = 1
+	ENDIF
+	SOURCE:ARG:쾌Ｂ += 130 + (ABL:ARG:촉수중독 * 2)
+	
+	SOURCE:ARG:무서움 += 25
+	SOURCE:ARG:정애 += (ABL:ARG:촉수중독 * 5)
+	SOURCE:ARG:중독충족 += 10 + (ABL:ARG:촉수중독 * 5)
+	SOURCE:ARG:액체 += 10
+	SOURCE:ARG:불결 += 10 - ABL:ARG:촉수중독
+	SOURCE:ARG:일탈 += 25
+
+	;억압、저항持ちには、억울소스추가
+	SIF TALENT:ARG:억압 || TALENT:ARG:저항
+		SOURCE:ARG:울굴 += 10
+		
+	;Bへの고통は先に処理しておく
+	A = 20
+	B = 15
+	IF EXP:ARG:분유경험 < EXPLV:2
+		TIMES A , 0.80
+		TIMES B , 1.20
+	ELSEIF EXP:ARG:분유경험 < EXPLV:3
+		TIMES A , 0.40
+	ELSEIF EXP:ARG:분유경험 < EXPLV:4
+		TIMES A , 0.10
+	ELSEIF EXP:ARG:분유경험 < EXPLV:5
+		TIMES A , 0.00
+	ELSEIF EXP:ARG:분유경험 >= EXPLV:5
+		TIMES A , 0.00
+	ENDIF
+	;PALAM:ARG:윤활をみる
+	IF PALAM:ARG:윤활 < PALAMLV:1
+		TIMES A , 1.20
+		TIMES B , 1.50
+	ELSEIF PALAM:ARG:윤활 < PALAMLV:2
+		TIMES A , 0.70
+		TIMES B , 1.20
+	ELSEIF PALAM:ARG:윤활 < PALAMLV:3
+		TIMES A , 0.40
+	ELSEIF PALAM:ARG:윤활 < PALAMLV:4
+		TIMES A , 0.10
+	ELSEIF PALAM:ARG:윤활 >= PALAMLV:4
+		TIMES A , 0.10
+	ENDIF
+	SOURCE:ARG:아픔 += A
+	SOURCE:ARG:반감 += B
+	
+	SOURCE:ARG:아픔 += 25
+	SOURCE:ARG:노출 += 14
+	SOURCE:ARG:일탈 += 25
+	SOURCE:ARG:반감 += 20
+
+	;억압、저항持ちには、억울소스추가
+	SIF TALENT:ARG:억압 || TALENT:ARG:저항
+		SOURCE:ARG:울굴 += 20
+
+	IF ARG == TARGET
+		DOWNBASE:ARG:체력 += 15
+		DOWNBASE:ARG:기력 += 40
+		DOWNBASE:ARG:기력 += 25
+		DOWNBASE:ARG:체력 += 5
+	ENDIF
+
+ELSE
+ENDIF
+
+;장비時の경험추가
+@CLOTHES_EXP_529,ARG = -1
+IF FLAG:SHOPコマンド == 0
+	SIF ARG == -1
+		RETURN 0
+	TCVAR:ARG:획득촉수경험 += 2
+	PRINTFORML <촉수브라着用中>\@ ARG == MASTER ? (主人) #\@\@ ARG == ASSI ? (조수) #\@
+	IF TCVAR:ARG:획득가학쾌락경험
+		TCVAR:ARG:획득가학쾌락경험 += MAX(TCVAR:ARG:획득가학쾌락경험*140/100 , 1)
+		SIF ARG == TARGET
+			TIMES DOWNBASE:ARG:1 , 1.10
+	ENDIF
+	IF TCVAR:ARG:획득촉수경험 && TEQUIP:ARG:속옷（하） != [[衣装:촉수팬츠]]
+		TCVAR:ARG:획득촉수경험 += MAX(TCVAR:ARG:획득촉수경험*140/100 , 1)
+		SIF EXP:촉수경험 == 0
+			CALL ADDS_ABNORMAL_EXP("촉수初体験", TARGET)
+		SIF ARG == TARGET
+			TIMES DOWNBASE:ARG:기력 , 1.20
+		
+	ENDIF
+ELSE
+ENDIF
+
+;장비するための조건
+@CLOTHES_PREREQUISITE_529,ARG
+SIF IS_MALE(ARG)
+	RETURN 0
+SIF TALENT:ARG:1 || TALENT:ARG:2
+	RETURN 0
+SIF ARG == MASTER
+	RETURN 1
+SIF EXP:ARG:Ｖ경험 < 5
+	RETURN 0
+SIF EXP:ARG:Ａ경험 < 15 && ABL:ARG:Ａ감각 < 2
+	RETURN 0
+SIF TALENT:ARG:소인체형 && EXP:ARG:Ｖ확장경험 < 2 && EXP:ARG:Ａ확장경험 < 2 && TALENT:MASTER:금단의지식 == 0
+	RETURN 0
+SIF ABL:ARG:순종 >= 6
+	RETURN 1
+SIF ABL:ARG:마조끼 >= 3
+	RETURN 1
+SIF ABL:ARG:Ｖ감각 >= 2 && ABL:ARG:Ａ감각 >= 3
+	RETURN 1
+RETURN 0
+
+@CLOTHES_PRICE_529
+RETURN 2000
+
+;촉각
+;1 = スルー 2 = 上から伝わる 4 = 潜り込ませられる
+;ARG 0 = Ｃ 1 = Ｖ 2 = Ａ 3 = 유두 4 = 유방
+@CLOTHES_촉각_529,ARG
+SELECTCASE ARG
+	CASE 3 TO 4
+		RETURN 2
+ENDSELECT

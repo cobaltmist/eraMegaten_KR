@@ -1,0 +1,50 @@
+スルト（AN）追加パッチ_0.3
+
+
+＜対象環境＞
+
+eraMegaten0.309＋0.309用修正6+私家版パッチ纏め_Rev132+Rev136+Rev136_ちょっと修正を導入済み(必須環境)
+eraMegaten_Rev136用不具合等修正パッチ（必須）
+
+
+＜内容＞
+
+・スルト（AN）加入イベント、及び個人イベントを追加。
+
+・スルト（AN）のCSTR専用スキルの追加。
+
+※スルト（AN）は元の魔王スルトの素質と名称を変更し、専用スキルを追加した物です。専用のCSVはありません。
+
+※スルト加入イベントの発生条件は"ナイト・テイル 666"エンド達成、あなたのレベルが50以上到達の両方を満たしている必要があります。
+
+
+＜導入方法＞
+導入前に対象環境のパッチを事前に適用しているか確認してください。
+
+適用したのを確認した後に、同梱したERBファイルの戦闘フォルダ以外のフォルダをコピペしてください。
+戦闘フォルダの中に入っているファイルは、既存のファイルとマージして調整してください。
+
+※導入後、個人イベントを選択して初期化処理を必ず受けてください
+
+
+＜注意＞
+・初心者が作成したファイルの為、念を入れて同梱されたファイルを確認し、
+　該当する本体のファイルのバックアップを取った後に導入してください。
+
+・このパッチは本体に深く関わるファイル（BATTLE.ERB、SYSTEM_BATTLE.ERB、SYSTEM_BATTLE_DAMAGE.ERB）に手を加えたファイルになっています。
+　今後似たようなパッチと競合する恐れがあるので、導入する場合は該当ファイルをマージして調整しないと正常に動作しない点に注意してください。
+
+
+＜ライセンス＞
+以下の条件を満たした場合にのみ、フリー
+
+This product's licence is free,if you only followed the rules written below.
+
+※原則としてこのパッチをパッチまとめ等に纏める場合、必ずこのreadmeを同梱してください。
+readmeを同梱させることで、どのファイルが導入されたか識別しやすくなるためです。
+作者のお願いに従い、余計な混乱を起こさない事は作者のモチベにも繋がります。 ご協力をお願いします。
+
+*Please include the readme file if you are trying to pack up the patch files together to a zip file.
+ It will make it easy to search what patches that was installed in eramegaten.
+ Following the promises and suppresing unnecessary confusion helps the authors 
+ to keep their motivations up for their next project. Thanks for your cooperation.* 

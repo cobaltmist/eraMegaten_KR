@@ -1,0 +1,4269 @@
+﻿;롯폰기대환락가
+;プチデモ関連
+
+;色々と확장の余地がありそうなので、창관と同じく分割
+;こちらも共通化できそうな部分を一本化
+
+;デモナイズドについて色々捏造
+;내부종족を악마인に統一し、デモナイズドした인간≒악마인という扱いに
+;複数のデビル소스突っ込んで내성を강화する기능を추가
+
+;フラグ管理メモ
+;8　プチデモSHOP이용경험フラグ　0:未이용　1:이용したことある
+;9　プチじゃないデモ이용경험フラグ　0:未이용　1:이용したことある　2:강화이용경험あり　
+
+
+;=======================================================================
+;プチデモ
+;=======================================================================
+@PETIT_DEMON_31
+#DIM CHARA, 1
+#DIMS VALUES
+#DIM BF_FLAG, 1
+#DIM サーチ変数, 1
+
+CALL MESSAGE_WINDOW_D, "남자 점주", @"쁘띠 데몬숍에 어서오세요♪"
+IF 던전フラグ:31:8 == 0
+	던전フラグ:31:8 = 1
+	CALL MESSAGE_WINDOW_D, "", @"＞염소 같은 뿔을 기른 울끈불끈한 남자가 인사해 왔…/＞악마가 아닌건가…？"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"어라、손님、처음이에요？/괜찮아、당신은 지금부터 유행의 최첨단을 달리게 될거에요/내가 제대로 설명해 줄・게・용%ハート()%"
+	CALL MESSAGE_WINDOW_D, "", @"＞근육질의 몸과 말투의 편차가 심한 점주는、그렇게 말하곤 설명하기 시작했다…"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"여기는요、악마의 모습을 자신의 몸에 넣을 수 있는 가게야/우리가 듬뿍 가진 악마 소스를 쓰세용"
+	;ＳＪのパロ디무です、ＩＭＡＧＩＮＥにはそんな情報有りません
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"구체적으론、동물의 귀를 달거나、엉덩이에 꼬리를 달거나/날개를 달거나、인어가 되는것 등을 할 수 있어"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"그리고、당신들이 바란다면/쁘띠가 아닌 데모나이즈도 할 수 있어요/이건 별로 권하지 않지만…"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"자、그러면…"
+ENDIF
+$P_31
+
+VALUES = 오늘은 무슨 일일까？//
+VALUES += "[1]쁘띠데모한다/"
+IF 던전フラグ:31:9 == 0
+	VALUES += "[2]쁘띠가 아닌 데모한다/"
+ELSE
+	VALUES += "[2]데모나이즈 한다/"
+ENDIF
+IF 던전フラグ:31:9 == 1 && BASE:MASTER:LV >= 60
+	VALUES += "[3]강화 데모나이즈/"
+ELSEIF 던전フラグ:31:9 == 2
+	VALUES += "[3]ADD/"
+ELSE
+	VALUES += "/"
+ENDIF
+VALUES += "[4]스테이터스를 본다//"
+VALUES += "[0]밖에 나간다"
+
+CALL INPUT_SELECT_D, VALUES, , , 2
+IF RESULT == 4
+	CALL SHOP_COM_110
+ELSEIF RESULT == 1
+	$P_31_1
+	CALL MESSAGE_WINDOW_D , "남자 점주" , "자 그럼、오늘은 누구를 쁘띠데모하는거지？"
+	CALLFORM PETIT_DEMON_TARGET_COUNT, 1
+	IF RESULT == 0
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "아라、쁘띠데모받을 아이가 없네/말할것도 없지만、그럼 쁘띠데모는 안되용"
+		GOTO P_31
+	ENDIF
+	CALLFORM PETIT_DEMON_TARGET, 1
+	IF RESULT == 0
+		GOTO P_31
+	ELSE
+		CHARA = POS(RESULT)
+	ENDIF
+	CALL MESSAGE_WINDOW_D, "남자 점주", CALLNAME:CHARA + "쨩한테 쁘띠데모 할꺼야？"
+	CALL INPUT_YN_D , "쁘띠데모 시킨다" , "그만둔다"
+	SIF RESULT == 1
+		GOTO P_31_1
+	$P_31_2
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"자 그럼、어떤 쁘띠데모 할꺼야？"
+	CALLFORM PETIT_DEMON_SELECT, 1
+	IF RESULT == 0
+		GOTO P_31
+	ELSE
+		LOCAL = 0
+		LOCAL = RESULT
+	ENDIF
+	CALLFORM PETIT_DEMON_TYPE_{LOCAL}, "체크", CHARA
+	IF RESULT == 0
+		GOTO P_31_2
+	ENDIF
+	CALLFORM PETIT_DEMON_TYPE_{LOCAL}, "확인", CHARA
+	CALLFORM PETIT_DEMON_TYPE_{LOCAL}, "가격", CHARA
+	IF MONEY:1 < RESULT
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "…어머、당신/마카가 부족하네/다른걸로 하세요"
+		GOTO P_31_2
+	ENDIF
+	CALL INPUT_YN_D , "하도록 한다" , "그만둔다"
+	IF RESULT == 1
+		GOTO P_31_2
+	ENDIF
+	CALLFORM PETIT_DEMON_TYPE_{LOCAL}, "가격", CHARA
+	MONEY:1 -= RESULT
+	;プチデモ実行
+	CALLFORM PETIT_DEMON_SET_{LOCAL}, CHARA
+	GOTO P_31_2
+ELSEIF RESULT == 2
+	CALL MESSAGE_WINDOW_D , "남자 점주" , "쁘띠가 아닌 데모나이즈、구나？"
+	IF 던전フラグ:31:9 == 0
+		CALL MESSAGE_WINDOW_D , "" , "＞그렇게 말하면、점주의 눈이 날카로워졌다"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "…그렇네、일단 본래의 데모나이즈에 대해서 설명할까요"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "우리집에서 평소 하는 쁘띠데모는/악마의「모습」만을 인간의 신체에 도입해요/그래서 쁘띠데모한 뒤에도 그 사람은 어엿한 인간이야"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "하지만、진짜 데모나이즈는 틀려요/원래 데모나이즈는、인간을 통째로 악마로 만들기 위한 기술이라/데빌 소스를 듬뿍 섞어、뇨"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "통상의 악마 합체로도 충분하지 않나、라고 생각할 수도 있겠지만/악마한테 의식을 빼앗기지 않는다는 건 큰 이익이에요/악마 자체는 사용하지 않으니까、당연하지만"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "물론 문제도 있어요/인간이 사용하기 위한 장비는 못쓰고、내성도 악마의 것처럼 되요/넣는 데빌 소스로 어느 정도 조절은 되지만요"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "그리고 인간을 위한 특수기능은 거의 못쓰게 돼요. 예를 들면 악마변신능력자의 경우 변신능력은 상실되는 경우라던가."
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "그리고 물론、데모나이즈된 누군가는 인간이 아니게되요/그 아이의 인간의 영혼은 끝나고、몇번을 환생해도 악마 그대로"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "그래도、누군가를 데모나이즈할래요？"
+		던전フラグ:31:9 = 1
+	ELSE
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "알고 있겠지만/정말 데모나이즈한다면、그 아이는 인간 아니게되요"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "그래도 괜찮은거죠？"
+	ENDIF
+	CALL INPUT_YN_D , "상관없다" , "역시 그만둔다"
+	IF RESULT == 1
+		GOTO P_31
+	ENDIF
+	$P_31_3
+	CALL MESSAGE_WINDOW_D , "남자 점주" , "그렇네/그러면 누구를 데모나이즈할래요？"
+	CALLFORM PETIT_DEMON_TARGET_COUNT, 2
+	LOCAL = RESULT
+	IF LOCAL == 0
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "어머、데모나이즈해줄 수 있는 아이가 없네/ 말할 것도 없지만、그러면 데모나이즈는 못해용"
+		GOTO P_31
+	ENDIF
+	CALLFORM PETIT_DEMON_TARGET, 2
+	IF RESULT == 0
+		GOTO P_31
+	ELSE
+		CHARA = POS(RESULT)
+	ENDIF
+	CALL MESSAGE_WINDOW_D, "남자 점주", CALLNAME:CHARA + "쨩을 데모나이즈할꺼에요？"
+	CALL INPUT_YN_D , "데모나이즈시킨다" , "그만둔다"
+	SIF RESULT == 1
+		GOTO P_31_3
+	$P_31_4
+	
+	CALL MESSAGE_WINDOW_D , "남자 점주" , "그래、정말 하는거네/넣을 데빌 소스를 골라요/여러가지 있으니까、느긋하게 골라요？"
+	BF_FLAG = 0
+	;なお、この항목の台詞たちは原作と구상と妄想を元に構築されています
+	;なので、原作と異なる입調の可能性があります
+	CALLFORM PETIT_DEMON_SELECT, 2
+	IF RESULT == 0
+		GOTO P_31_3
+	ELSE
+		LOCAL = 0
+		LOCAL = RESULT
+		SIF LOCAL == 3114 && TALENT:CHARA:유아체형 == 1
+			BF_FLAG = 99
+	ENDIF
+	
+	CALLFORM DEMONIEZD_TYPE_{LOCAL}, "해설", CHARA
+	CALLFORM DEMONIEZD_TYPE_{LOCAL}, "확인", CHARA
+	CALLFORM DEMONIEZD_TYPE_{LOCAL}, "가격", CHARA
+	IF MONEY:1 < RESULT
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "…랄까、마카가 부족하네/이러면 데모나이즈드해 줄수 없어용"
+		GOTO P_31
+	ENDIF
+	CALL INPUT_YN_D , "예" , "아니오"
+	SIF RESULT == 1
+		GOTO P_31_4
+	CALLFORM DEMONIEZD_TYPE_{LOCAL}, "가격", CHARA
+	MONEY:1 -= RESULT
+	CALLFORM DEMONIEZD_TYPE_{LOCAL}, "デモナイズ実行", CHARA
+	;共通処理
+	;이능자이외の전투資質は삭제
+	;(도구지식については一応残す)
+	TALENT:CHARA:석세서 = 0
+	TALENT:CHARA:건슬링거 = 0
+	;デモナイズ대상が페르소나구사자なら
+	IF TALENT:CHARA:페르소나구사자
+		;페르소나共通枠からデモナイズ대상の持ってる페르소나を探してくる
+		FOR サーチ変数, 1, 11
+			SIF DITEMTYPE:(サーチ変数):0 == 0
+				CONTINUE
+			LOCAL:1 = FINDCHARA_ID(DITEMTYPE:サーチ変数:페르소나("페르소나소지자"))
+			SIF CHARA == LOCAL:1
+				CALL PERSONA_UNEQUIPMENT(LOCAL:1, サーチ変数)
+		NEXT
+		;페르소나剥ぎ終わったら스킬초기化
+		ABL:CHARA:스킬1 = 0
+		ABL:CHARA:스킬2 = 0
+		ABL:CHARA:스킬3 = 0
+		ABL:CHARA:스킬4 = 0
+		ABL:CHARA:스킬5 = 0
+		ABL:CHARA:스킬6 = 0
+		ABL:CHARA:스킬7 = 0
+		ABL:CHARA:스킬8 = 0
+		ABL:CHARA:스킬9 = 0
+	ENDIF
+	TALENT:CHARA:페르소나구사자 = 0
+	TALENT:CHARA:데빌시프터 = 0
+	TALENT:CHARA:식노 = 0
+	TALENT:CHARA:악마빙의자 = 0
+	;당신이외は서머너も삭제
+	SIF NO:MASTER != NO:CHARA
+		TALENT:CHARA:서머너 = 0
+	;技能も삭제
+	TALENT:CHARA:도술刀術 = 0
+	TALENT:CHARA:팬서 = 0
+	TALENT:CHARA:궁술 = 0
+	TALENT:CHARA:검술 = 0
+	TALENT:CHARA:창술 = 0
+	TALENT:CHARA:도끼술 = 0
+	TALENT:CHARA:채찍술 = 0
+	TALENT:CHARA:투척술 = 0
+	TALENT:CHARA:제사 = 0
+	TALENT:CHARA:봉술 = 0
+	TALENT:CHARA:마샬아츠 = 0
+	;ついでに이능자なかったら이능자持たせる(元인간なところを손数の多さ(스킬枠)で表現)
+	SIF TALENT:CHARA:이능자 == 0 && TALENT:CHARA:달인 == 0
+		TALENT:CHARA:이능자 = 1
+	;장비を全해제
+	CALL 全장비해제(CHARA)
+	;생득무기のみ残る可能性があるのでここで念入りに殺す
+	EQUIP:CHARA:검 = 0
+	
+	;実行時구상
+	IF LOCAL == 3114
+		CALLFORM DEMONIEZD_SET_{LOCAL}, CHARA, BF_FLAG
+	ELSE
+		CALLFORM DEMONIEZD_SET_{LOCAL}, CHARA
+	ENDIF
+	
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"새로운 몸, 마음에 들었을까？"
+	GOTO P_31
+ELSEIF RESULT == 3
+	;ここから捏造。デモナイズドしたキャラを마카払って내성を강화する
+	CALL MESSAGE_WINDOW_D , "남자 점주" , "강화데모나이즈、구나？"
+	IF 던전フラグ:31:9 == 1
+		CALL MESSAGE_WINDOW_D , "" , "＞그렇게 말하면、점주의 눈이 날카로워졌다"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "…………말해 두지만, 이건 본래는 금지에요"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "한때 여러 다른 악마에서 데모나이즈드를 겹쳐서/보다 힘센 악마를 인공적으로 만들자는 프로젝트가 있었어요…"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "악어 자체를 사용하지 않아서 폭주할 위험은 비교적 적지만/확실성도 없고 비용도 만만치 않아요/내친김에 말하자면 견딜 실험체 확보도 안됐고…"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "결국 그 프로젝트는 실패해서 무기한 동결되었어요…/하지만, 그 연구 성과의 일부는…뭐 얘긴 여기까지만 할까요"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "뭐 간단하게 말하자면 데빌소스를 어찌저찌해서 /데모나이즈드한 악마를 강화시켜버리자는 이야기에요！"
+		
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "어드밴스・데모나이즈/줄여서「ADD」/그래서、그래서 누구를 ADD하는거죠？"
+		던전フラグ:31:9 = 2
+	ELSE
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "알고 있다고 생각하지만/이건 뒤쪽 업계에서도 극비니까?"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "그래서、ADD할 거에요？"
+	ENDIF
+	CALL INPUT_YN_D , "예" , "아니오"
+	IF RESULT == 1
+		GOTO P_31
+	ENDIF
+	$P_31_5
+	CALL MESSAGE_WINDOW_D , "남자 점주" , "그렇네 / 그럼 누구를 ADD 시켜줄꺼에요？"
+	CALLFORM PETIT_DEMON_TARGET_COUNT, 3
+	LOCAL = RESULT
+	IF LOCAL == 0
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "어머、ADD해줄 수 있는 아이가 없네/ 말할 것도 없지만、그러면 ADD는 못해용"
+		GOTO P_31
+	ENDIF
+	CALLFORM PETIT_DEMON_TARGET, 3
+	IF RESULT == 0
+		GOTO P_31
+	ELSE
+		CHARA = POS(RESULT)
+	ENDIF
+	CALL MESSAGE_WINDOW_D, "남자 점주", CALLNAME:CHARA + "쨩을 ADD할꺼에요？"
+	CALL INPUT_YN_D , "ADD 한다" , "그만둔다"
+	SIF RESULT == 1
+		GOTO P_31_5
+	CALL MESSAGE_WINDOW_D , "남자 점주" , "그래、정말 하는거네"
+	$P_31_6
+	CALL MESSAGE_WINDOW_D , "남자 점주" , "그럼 들어갈 데빌소스를 골라주세요/덧붙여서 이 데빌소스는 안전을 보장할 수 없어요"
+	CALLFORM PETIT_DEMON_SELECT, 3
+	IF RESULT == 0
+		GOTO P_31_5
+	ELSE
+		LOCAL = 0
+		LOCAL = RESULT
+	ENDIF
+	CALLFORM ADVANCE_DEMONIEZD_TYPE_{LOCAL}, "해설", CHARA
+	CALLFORM ADVANCE_DEMONIEZD_TYPE_{LOCAL}, "체크", CHARA
+	IF RESULT == 0
+		GOTO P_31_6
+	ENDIF
+	;스트레스が溜まってたら除外する
+	IF CFLAG:CHARA:스트레스치 > 60
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "…에、" + CALLNAME:CHARA + "짱이 한계인가 보네/오늘은 그만둬요."
+		GOTO P_31_5
+	ENDIF
+	CALLFORM ADVANCE_DEMONIEZD_TYPE_{LOCAL}, "확인", CHARA
+	CALLFORM ADVANCE_DEMONIEZD_TYPE_{LOCAL}, "가격", CHARA
+	IF MONEY:1 < RESULT
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "…랄까、마카가 부족하네/이러면 ADD해 줄수 없어용"
+		GOTO P_31
+	ENDIF
+	CALL INPUT_YN_D , "예" , "아니오"
+	SIF RESULT == 1
+		GOTO P_31_5
+	CALLFORM ADVANCE_DEMONIEZD_TYPE_{LOCAL}, "가격", CHARA
+	MONEY:1 -= RESULT
+	CALLFORM ADVANCE_DEMONIEZD_TYPE_{LOCAL}, "アドバンスド実行", CHARA
+
+	;共通処理
+	;一日でそう何度も강화できないようにするため、스트레스치を加算
+	CFLAG:CHARA:스트레스치 += 30
+
+	;구상…は面倒なので全部一括
+	IF NO:MASTER == NO:CHARA
+		CALL MESSAGE_WINDOW_D, "남자 점주", @"그럼 이쪽으로 와줄 수 있으려나？"
+		CALL MESSAGE_WINDOW_D, "", @"＞가게 주인의 안내로 옷을 벗은 " + CALLNAME:MASTER + "는 작은 캡슐에 담겨졌다…"
+		CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+		CALL SHOW_PICTURE, "EMPTY"
+		IF TALENT:CHARA:광기 == 0
+			CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:MASTER + "가 눈을 뜨자 점주가 말을 걸어 왔다…"
+			CALL MESSAGE_WINDOW_D, "남자 점주", @"응, 잘 됐어/나중에 애널라이즈하고 강화된 걸 확인해용？"
+		ELSEIF TALENT:CHARA:붕괴 == 1
+			CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:MASTER + "가 눈을 뜨자、눈 앞 전부가 살덩어리로 보인다…"
+			CALL MESSAGE_WINDOW_D, "男店主？", @"유감이지만, 실패야... / 날 원망하지 말아줘요？"
+			CALL MESSAGE_WINDOW_D, "", @"＞왠지 주인의 모습이 있는 고깃덩어리에 말을 걸고 있는 느낌인데/＞당신은 아무래도 좋다고 밖에 생각되지 않았다…"
+		ELSEIF TALENT:CHARA:이형 == 1
+			CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:MASTER + "가 눈을 뜨자 점주가 말을 걸어 왔다…"
+			CALL MESSAGE_WINDOW_D, "남자 점주", @"아슬아슬하게 성공했어요…/하지만 이 이상은 그만둬요"
+			CALL MESSAGE_WINDOW_D, "", @"＞왜인지 똑바로 서서 걷기가 힘들다…/＞온 몸의 파츠가 서로 연결되어 있어서 밸런스가 잘 잡히지 않는다"
+		ELSE
+			CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:MASTER + "가 눈을 뜨자 점주가 말을 걸어 왔다…"
+			CALL MESSAGE_WINDOW_D, "남자 점주", @"아슬아슬하게 성공했어요…/하지만 이 이상은 그만둬요"
+			CALL MESSAGE_WINDOW_D, "", @"＞신체의 상태는 양호하다/왠지 항상 누군가에게 주시당하는 기분이다…"
+		ENDIF
+	ELSE
+		CALL MESSAGE_WINDOW_D, "남자 점주", @"알았어요/그럼 당신은 여기서 기다려줘요"
+		CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+		CALL SHOW_PICTURE, "EMPTY"
+		IF TALENT:CHARA:광기 == 0
+			CALL MESSAGE_WINDOW_D, "남자 점주", @"네、오케이/" + CALLNAME:CHARA + "짱을 애널라이즈해서 강화된 내역을 확인해줘용？"
+			CALL MESSAGE_WINDOW_D, "", @"＞점주에게 이끌려서、" + CALLNAME:CHARA + "가 돌아왔다"
+		ELSEIF TALENT:CHARA:붕괴 == 1
+			CALL MESSAGE_WINDOW_D, "남자 점주", @"아쉽지만、" + CALLNAME:CHARA + "짱은 더 이상 견딜 수 없어용…/아직 살아있다는게 기적인 레벨이에요"
+			CALL MESSAGE_WINDOW_D, "", @"＞점주에게 이끌려서、" + CALLNAME:CHARA + "가 돌아왔다/＞이젠 죽게 해 주는 편이 나을지도 모른다…"
+		ELSEIF TALENT:CHARA:이형 == 1
+			CALL MESSAGE_WINDOW_D, "남자 점주", @"아슬아슬하게 성공했어요…/하지만 " + CALLNAME:CHARA + "짱을 생각한다면、이 이상은 그만둬요"
+			CALL MESSAGE_WINDOW_D, "", @"＞점주에게 이끌려서、" + CALLNAME:CHARA + "가 돌아왔다/＞더 이상 인간이었던 모습은 어디에도 없다…"
+		ELSE
+			CALL MESSAGE_WINDOW_D, "남자 점주", @"아슬아슬하게 성공했어요…하지만 " + CALLNAME:CHARA + "짱을 생각한다면、이 이상은 그만둬요"
+			CALL MESSAGE_WINDOW_D, "", @"＞점주에게 이끌려서、" + CALLNAME:CHARA + "가 돌아왔다/＞아무도 없는 공간을 향해 무언가를 말하고 있다…/＞정신 쪽은 이제 한계인 것 같다"
+		ENDIF
+	ENDIF
+ELSE
+	CALL MESSAGE_WINDOW_D , "남자 점주" , "또 오세요、기다릴게용！"
+	CALL DUNGEON_WORP,1,42,10
+	RETURN 1
+ENDIF
+GOTO P_31
+
+;=======================================================================
+;プチデモ내부処理
+;=======================================================================
+;プチデモ대상が存在するか
+@PETIT_DEMON_TARGET_COUNT, ARG
+#DIM TARGET_COUNT, 1
+TARGET_COUNT = 0
+FOR LOCAL,1,7
+	IF ARG == 2
+		;デモナイズド
+		IF POS(LOCAL) > -1 && ABL:POS(LOCAL):종족 == 0  && (TALENT:POS(LOCAL):3 || TALENT:POS(LOCAL):4 || TALENT:POS(LOCAL):5 || TALENT:POS(LOCAL):6 || TALENT:POS(LOCAL):7 || TALENT:POS(LOCAL):8 || NO:POS(LOCAL) == NO:MASTER)
+			TARGET_COUNT += 1
+		ENDIF
+	ELSEIF ARG == 3
+		;강화デモナイズド(악마인限定)
+		IF POS(LOCAL) > -1 && ABL:POS(LOCAL):종족 == 73  && (TALENT:POS(LOCAL):3 || TALENT:POS(LOCAL):4 || TALENT:POS(LOCAL):5 || TALENT:POS(LOCAL):6 || TALENT:POS(LOCAL):7 || TALENT:POS(LOCAL):8 || NO:POS(LOCAL) == NO:MASTER)
+			TARGET_COUNT += 1
+		ENDIF
+	ELSE
+		;プチデモ
+		IF POS(LOCAL) > -1 && ABL:POS(LOCAL):종족 == 0 && LOCAL:2 != 2
+			TARGET_COUNT += 1
+		ENDIF
+	ENDIF
+NEXT
+RETURN TARGET_COUNT
+
+;プチデモ대상選択
+@PETIT_DEMON_TARGET, ARG
+#DIMS VALUES
+
+$TAGET_LOOP
+
+VALUES = ＞누구로 할까？//
+FOR LOCAL,1,7
+	IF ARG == 2
+		;デモナイズド
+		IF POS(LOCAL) > -1 && ABL:POS(LOCAL):종족 == 0 && (TALENT:POS(LOCAL):3 || TALENT:POS(LOCAL):4 || TALENT:POS(LOCAL):5 || TALENT:POS(LOCAL):6 || TALENT:POS(LOCAL):7 || TALENT:POS(LOCAL):8 || NO:POS(LOCAL) == NO:MASTER)
+			VALUES += "[" + TOSTR(LOCAL) + "]" + CALLNAME:(POS(LOCAL)) + "/"
+		ENDIF
+	ELSEIF ARG == 3
+		;강화デモナイズド(악마인限定)
+		IF POS(LOCAL) > -1 && ABL:POS(LOCAL):종족 == 73 && (TALENT:POS(LOCAL):3 || TALENT:POS(LOCAL):4 || TALENT:POS(LOCAL):5 || TALENT:POS(LOCAL):6 || TALENT:POS(LOCAL):7 || TALENT:POS(LOCAL):8 || NO:POS(LOCAL) == NO:MASTER)
+			VALUES += "[" + TOSTR(LOCAL) + "]" + CALLNAME:(POS(LOCAL)) + "/"
+		ENDIF
+	ELSE
+		;プチデモ
+		IF POS(LOCAL) > -1 && ABL:POS(LOCAL):종족 == 0 && LOCAL:2 != 2
+			VALUES += "[" + TOSTR(LOCAL) + "]" + CALLNAME:(POS(LOCAL)) + "/"
+		ENDIF
+	ENDIF
+NEXT
+
+VALUES += "/[9]그만둔다"
+CALL INPUT_SELECT_D , VALUES , , , 2
+SELECTCASE RESULT
+	CASE 9
+		RETURN 0
+	CASEELSE
+		RETURN RESULT
+ENDSELECT
+
+;プチデモ内容選択
+@PETIT_DEMON_SELECT, ARG
+#DIMS VALUES
+$INPUT_LOOP
+IF ARG == 2
+	;デモナイズド
+	VALUES = [1]엔젤/
+	VALUES += "[2]네코마타/"
+	VALUES += "[3]이나바흰토끼/"
+	VALUES += "[4]픽시/"
+	VALUES += "[5]머메이드/"
+	VALUES += "[6]하피/"
+	VALUES += "[7]좀비/"
+	VALUES += "[8]뱀파이어/"
+	VALUES += "/"
+	VALUES += "/[0]그만둔다"
+	CALL INPUT_SELECT_D , VALUES, , , 3
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE 1
+			RETURN 3111
+		CASE 2
+			RETURN 3112
+		CASE 3
+			RETURN 3113
+		CASE 4
+			RETURN 3114
+		CASE 5
+			RETURN 3115
+		CASE 6
+			RETURN 3116
+		CASE 7
+			RETURN 3117
+		CASE 8
+			RETURN 3118
+	ENDSELECT
+ELSEIF ARG == 3
+	;강화デモナイズド
+	;比較的마일드な奴
+	VALUES = [1]유귀소스　　주살신경+25 +[감정결핍]/
+	VALUES += "[2]비구니소스　빙결수격+25 +[무관심]/"
+	VALUES += "[3]염마소스　　화염핵열+25 +[젖기어려움]/"
+	VALUES += "[4]천사소스　　파마정신+25 +[악취민감]/"
+	VALUES += "[5]사귀소스　　타격전술+25 +[반항적,프라이드높음]/"
+	VALUES += "[6]흉조소스　　충격질풍+25 +[부끄럼없음,습득느림]/"
+	VALUES += "[7]영걸소스　　검격비구+25 +[일선을넘지않음]/"
+	VALUES += "[8]전령소스　　전격　　+25 +[회복느림]/"
+	VALUES += "[9]지령소스　　지변중력+25 +[자제심,남성혐오or여성혐오]/"
+	VALUES += "[10]더 멋진 것은 없나？/"
+	VALUES += "[0]그만둔다"
+	CALL INPUT_SELECT_D , VALUES, , , 1
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE 1
+			RETURN 3131
+		CASE 2
+			RETURN 3132
+		CASE 3
+			RETURN 3133
+		CASE 4
+			RETURN 3134
+		CASE 5
+			RETURN 3135
+		CASE 6
+			RETURN 3136
+		CASE 7
+			RETURN 3137
+		CASE 8
+			RETURN 3138
+		CASE 9
+			RETURN 3139
+		CASE 10
+			CALL MESSAGE_WINDOW_D, "남자 점주", @"……정말 좋은거죠？/무슨 일이 일어나도 나는 책임지지 않아요"
+			ARG = 4
+			GOTO INPUT_LOOP
+		CASEELSE
+			GOTO INPUT_LOOP
+	ENDSELECT
+ELSEIF ARG == 4
+	;강화デモナイズド
+	;ハードな奴
+	VALUES = [1]광신소스　　정신신경전격+50/
+	VALUES += "[2]수라소스　　주살빙결지변+50/"
+	VALUES += "[3]명왕소스　　파마화염충격+50/"
+	VALUES += "[4]파괴신소스　검격타격전술+50/"
+	VALUES += "[5]용신소스　　핵열질풍중력+50/"
+	VALUES += "[6]명영소스　　수격비구+50/"
+	VALUES += "[0]그만둔다"
+	CALL INPUT_SELECT_D , VALUES, , , 1
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE 1
+			RETURN 3141
+		CASE 2
+			RETURN 3142
+		CASE 3
+			RETURN 3143
+		CASE 4
+			RETURN 3144
+		CASE 5
+			RETURN 3145
+		CASE 6
+			RETURN 3146
+		CASEELSE
+			GOTO INPUT_LOOP
+	ENDSELECT
+ELSE
+	;プチデモ
+	VALUES = [1]동물귀를 단다/
+	VALUES += "[2]꼬리를 기른다/"
+	VALUES += "[3]날개를 기른다/"
+	VALUES += "[4]인어로 한다/"
+	VALUES += "[5]소인으로 한다/"
+	VALUES += "/"
+	VALUES += "/[0]그만둔다"
+	CALL INPUT_SELECT_D , VALUES, , , 2
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE 1
+			RETURN 3101
+		CASE 2
+			RETURN 3102
+		CASE 3
+			RETURN 3103
+		CASE 4
+			RETURN 3104
+		CASE 5
+			RETURN 3105
+	ENDSELECT
+ENDIF
+
+;------------------------------
+;プチデモ타입
+;------------------------------
+;동물귀
+@PETIT_DEMON_TYPE_3101, ARGS, ARG
+#LOCALSSIZE 1
+SELECTCASE ARGS
+	CASE "プチデモ타입"
+		RESULTS = 동물귀
+	CASE "체크"
+		IF TALENT:ARG:동물귀 == 1
+			CALL MESSAGE_WINDOW_D , "남자 점주" , "어머、이 아이 벌써 동물귀가 있는걸/더 이상 쁘띠데모하면 위험하니까 그만두세요"
+			RETURN 0
+		ENDIF
+		RETURN 1
+	CASE "확인"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "동물귀를 다는군요、알았어요/그럼 １０００마카지만、괜찮지요？"
+	CASE "가격"
+		RETURN 1000
+ENDSELECT
+
+;꼬리
+@PETIT_DEMON_TYPE_3102, ARGS, ARG
+#LOCALSSIZE 1
+SELECTCASE ARGS
+	CASE "プチデモ타입"
+		RESULTS = 動物꼬리
+	CASE "체크"
+		IF TALENT:ARG:꼬리 == 1
+			CALL MESSAGE_WINDOW_D , "남자 점주" , "어머、이 아이 벌써 동물 꼬리가 있는걸/더 이상 쁘띠데모하면 위험하니까 그만두세요"
+			RETURN 0
+		ENDIF
+		RETURN 1
+	CASE "확인"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "동물 꼬리를 다는군요、알았어요/그럼 ５００마카지만、괜찮지요？"
+	CASE "가격"
+		RETURN 500
+ENDSELECT
+
+;날개
+@PETIT_DEMON_TYPE_3103, ARGS, ARG
+#LOCALSSIZE 1
+SELECTCASE ARGS
+	CASE "プチデモ타입"
+		RESULTS = 날개
+	CASE "체크"
+		IF TALENT:ARG:날개 == 1
+			CALL MESSAGE_WINDOW_D , "남자 점주" , "어머、이 아이 벌써 날개가 있는걸/더 이상 쁘띠데모하면 위험하니까 그만두세요"
+			RETURN 0
+		ENDIF
+		RETURN 1
+	CASE "확인"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "날개를 다는군요、알았어요/그럼 ８００마카지만、괜찮지요？"
+	CASE "가격"
+		RETURN 800
+ENDSELECT
+
+;인어
+@PETIT_DEMON_TYPE_3104, ARGS, ARG
+#LOCALSSIZE 1
+SELECTCASE ARGS
+	CASE "プチデモ타입"
+		RESULTS = 인어
+	CASE "체크"
+		IF TALENT:ARG:물고기 == 1
+			CALL MESSAGE_WINDOW_D , "남자 점주" , "어머、이 아이 벌써 인어의 모습이네/더 이상 쁘띠데모하면 위험하니까 그만두세요"
+			RETURN 0
+		ENDIF
+		RETURN 1
+	CASE "확인"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "인어 모습이 되는거네、알았어요/역시、당신의 분위기 보통이 아니라 생각했어요！/１５００마카로 해줄께！"
+	CASE "가격"
+		RETURN 1500
+ENDSELECT
+
+;小人
+@PETIT_DEMON_TYPE_3105, ARGS, ARG
+#LOCALSSIZE 1
+SELECTCASE ARGS
+	CASE "プチデモ타입"
+		RESULTS = 小人
+	CASE "체크"
+		IF TALENT:ARG:소인체형 == 1
+			CALL MESSAGE_WINDOW_D , "남자 점주" , "어머、이 아이 벌써 소인이네/더 이상 쁘띠데모하면 위험하니까 그만두세요"
+			RETURN 0
+		ENDIF
+		RETURN 1
+	CASE "확인"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "소인이 되는거네、알았어요/그럼 １０００마카지만、괜찮지요？"
+	CASE "가격"
+		RETURN 1000
+ENDSELECT
+
+;------------------------------
+;プチデモ実行
+;------------------------------
+
+;동물귀
+@PETIT_DEMON_SET_3101, ARG
+
+CALL MESSAGE_WINDOW_D, "남자 점주", @"그러면、어떤 동물의 귀를 달까요？"
+CALL INPUT_SELECT_D , "何の耳にする？//[1]犬/[2]猫/[3]여우/[4]牛(角付き)/[5]ウサギ" , , , 2
+B = RESULT
+SELECTCASE B
+	CASE 1
+		CSTR:ARG:49 = 지금은 쁘띠데모 덕에 머리에 개의 귀가 달려있다。
+	CASE 2
+		CSTR:ARG:49 = 지금은 쁘띠데모 덕에 머리에 고양이의 귀가 달려있다。
+	CASE 3
+		CSTR:ARG:49 = 지금은 쁘띠데모 덕에 머리에 여우의 귀가 달려있다。
+	CASE 4
+		CSTR:ARG:49 = 지금은 쁘띠데모 덕에 머리에 소의 귀와 뿔이 달려있다。
+	CASE 5
+		CSTR:ARG:49 = 지금은 쁘띠데모 덕에 머리에 토끼의 귀가 달려있다。
+ENDSELECT
+TALENT:ARG:동물귀 = 1
+IF NO:MASTER == NO:ARG
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"자 그럼、이리 와줄래요？"
+	CALL MESSAGE_WINDOW_D, "", @"＞점주에게 안내받은、" + CALLNAME:MASTER + "는 작은 캡슐에 들어갔다…"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"자 그럼、시작할게/조금만 기다려요、바로 끝나니깐"
+	CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:MASTER + "는 의식이 멀어졌다…"
+	CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+	CALL SHOW_PICTURE, "EMPTY"
+	CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:MASTER + "가 눈을 뜨자、점주가 말을 걸어왔다…"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"응、잘 됐네/지금 당신、아주 쿨해요！/거울로 솜씨、체크해 봐요！"
+	IF TALENT:MASTER:남자 && !TALENT:MASTER:오토코노코
+		SELECTCASE B
+			CASE 1
+				CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、/＞건장한 체격에개와 같은 모양의 귀를 한 남자가 보였다/＞축 늘어진 귀가 머리카락에 닿아 간지럽다…"
+				IF CSTR:ARG:相性グループ == "犬"
+					CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 개지만 꼬리도 개/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 개 인간이다…"
+					CSTR:ARG:タイトル = 개 인간
+				ENDIF
+				CSTR:ARG:相性グループ = 犬
+			CASE 2
+				CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、/＞건장한 체격에 고양이와 같은 모양의 귀를 한 남자가 보였다/＞기분 탓인지、청력이 좋아진 것 같다"
+				IF CSTR:ARG:相性グループ == "猫"
+					CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 고양이지만 꼬리도 고양이/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 고양이 인간이다…"
+					CSTR:ARG:タイトル = 고양이 인간
+				ENDIF
+				CSTR:ARG:相性グループ = 猫
+			CASE 3
+				CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、/＞건장한 체격에 여우와 같은 모양의 귀를 한 남자가 보였다/＞뒤에있는 점주의 위치를 소리로 알 것 같다…"
+				IF TALENT:ARG:여우 == 1
+					CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 여우/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 여우 인간이다…"
+					CSTR:ARG:タイトル = 여우 인간
+				ENDIF
+				TALENT:ARG:여우 = 1
+			CASE 4
+				CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、/＞건장한 체격에 소와 같은 모양의 귀와 뿔을 한 남자가 보였다/＞미노타우로스가 아니다…"
+				IF CSTR:ARG:相性グループ == "牛"
+					CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 소지만 꼬리도 소/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 소 인간이다…"
+					CSTR:ARG:タイトル = 소 인간
+				ENDIF
+				CSTR:ARG:相性グループ = 牛
+			CASE 5
+				CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、/＞건장한 체격에 토끼와 같은 모양의 귀를 한 남자가 보였다/＞왠지 모르게、정력이 붙은 느낌이다…"
+				IF CSTR:ARG:相性グループ == "兎"
+					CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 토끼지만 꼬리도 토끼/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 토끼 인간이다…"
+					CSTR:ARG:タイトル = 兎인간
+				ENDIF
+				CSTR:ARG:相性グループ = 兎
+		ENDSELECT
+	ELSEIF TALENT:MASTER:오토코노코
+		IF TALENT:MASTER:거유 || TALENT:MASTER:폭유 || TALENT:MASTER:魔乳
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、여자처럼 풍만한 몸에 개와 같은 모양의 귀가 달린 소년이 비췄다/＞머리를 움직이니、그에따라 귀가 움직이는게 재미있다…"
+					IF CSTR:ARG:相性グループ == "犬"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 개지만 꼬리도 개/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 개 사나이가…/＞아니、이누무스메인가？"
+						CSTR:ARG:20 = 이누무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 犬
+				CASE 2
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、여자처럼 풍만한 몸에 고양이와 같은 모양의 귀가 달린 소년이 비췄다/＞능숙하게 움직이면 사람들이 귀여워해 준다고 한다…"
+					IF CSTR:ARG:相性グループ == "猫"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 고양이지만 꼬리도 고양이/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 고양이 사나이가…/＞아니、네코무스메인가？"
+						CSTR:ARG:20 = 네코무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 猫
+				CASE 3
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、여자처럼 풍만한 몸에 여우와 같은 모양의 귀가 달린 소년이 비췄다/＞주변에서 나는 소리의 출처를 달 알것 같다…"
+					IF TALENT:ARG:여우 == 1
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 여우/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 여우 사나이가…/＞아니、키츠네무스메인가？"
+						CSTR:ARG:20 = 키츠네무스메？
+					ENDIF
+					TALENT:ARG:여우 = 1
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、여자처럼 풍만한 몸에 소와 같은 모양의 귀와 뿔이 달린 소년이 비췄다/＞여기까지 오면、확실히 여자다"
+					SIF TALENT:모유체질
+						CALL MESSAGE_WINDOW_D, "", @"＞가슴은 크고、모유도 나오고、소의 귀와 뿔도 있다/＞모르는 사람이라면 하트홀 취급할 지도 모른다…"
+					IF CSTR:ARG:相性グループ == "牛"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 소지만 꼬리도 소/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 소 사나이가…/＞아니、우시무스메인가？"
+						CSTR:ARG:タイトル = 우시무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 牛
+				CASE 5
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、여자처럼 풍만한 몸에 토끼와 같은 모양의 귀가 달린 소년이 비췄다/＞거울 앞에서 토끼 흉내를 내며 뛰어 봤다…/＞가슴이 잘 흔들려、자신의 가슴이란걸 알면서도 발기했다…"
+					IF CSTR:ARG:相性グループ == "兎"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 토끼지만 꼬리도 토끼/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 토끼 사나이가…/＞아니、우사기무스메인가？"
+						CSTR:ARG:タイトル = 우사기무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 兎
+			ENDSELECT
+		ELSEIF TALENT:MASTER:빈유 || TALENT:MASTER:절벽
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、사랑스러운 몸에/＞개와 같은 모양의 귀가 달린 소년이 비췄다/＞머리를 움직이니、그에따라 귀가 움직이는게 재미있다…"
+					IF CSTR:ARG:相性グループ == "犬"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 개지만 꼬리도 개/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 개 사나이가…/＞아니、이누무스메인가？"
+						CSTR:ARG:20 = 이누무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 犬
+				CASE 2						
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、사랑스러운 몸에/＞고양이와 같은 모양의 귀가 달린 소년이 비췄다/＞능숙하게 움직이면 사람들이 귀여워해 준다고 한다…"
+					IF CSTR:ARG:相性グループ == "猫"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 고양이지만 꼬리도 고양이/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 고양이 사나이가…/＞아니、네코무스메인가？"
+						CSTR:ARG:20 = 네코무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 猫
+				CASE 3
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、사랑스러운 몸에/＞여우와 같은 모양의 귀가 달린 소년이 비췄다/＞주변에서 나는 소리의 출처를 달 알것 같다…"
+					IF TALENT:ARG:여우
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 여우/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 여우 사나이가…/＞아니、키츠네무스메인가？"
+						CSTR:ARG:20 = 키츠네무스메？
+					ENDIF
+					TALENT:ARG:여우 = 1
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、사랑스러운 몸에/＞소와 같은 모양의 귀와 뿔이 달린 소년이 비췄다/＞…여기에 가슴만 크면、누구도 자신을 남자라 인식하지 않겠지"
+					IF CSTR:ARG:相性グループ == "牛"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 소지만 꼬리도 소/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 소 사나이가…/＞아니、우시무스메인가？"
+						CSTR:ARG:タイトル = 우시무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 牛
+				CASE 5
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、사랑스러운 몸에/＞토끼와 같은 모양의 귀가 달린 소년이 비췄다/＞여성향 창관 같은데서 인기가 있을 듯하다…"
+					IF CSTR:ARG:相性グループ == "兎"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 토끼지만 꼬리도 토끼/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 토끼 사나이가…/＞아니、우사기무스메인가？"
+						CSTR:ARG:タイトル = 우사기무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 兎
+			ENDSELECT
+		ELSE
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、뭐랄까 알맞게 부풀어 오른 몸에/＞개와 같은 모양의 귀가 달린 소년이 비췄다/＞머리를 움직이니、그에따라 귀가 움직이는게 재미있다…"
+					IF CSTR:ARG:相性グループ == "犬"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 개지만 꼬리도 개/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 개 사나이가…/＞아니、이누무스메인가？"
+						CSTR:ARG:20 = 이누무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 犬
+				CASE 2
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、뭐랄까 알맞게 부풀어 오른 몸에/＞고양이와 같은 모양의 귀가 달린 소년이 비췄다/＞능숙하게 움직이면 사람들이 귀여워해 준다고 한다…"
+					IF CSTR:ARG:相性グループ == "猫"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 고양이지만 꼬리도 고양이/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 고양이 사나이가…/＞아니、네코무스메인가？"
+						CSTR:ARG:20 = 네코무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 猫
+				CASE 3
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、뭐랄까 알맞게 부풀어 오른 몸에/＞여우와 같은 모양의 귀가 달린 소년이 비췄다/＞주변에서 나는 소리의 출처를 달 알것 같다…"
+					IF TALENT:ARG:여우
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 여우/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 여우 사나이가…/＞아니、키츠네무스메인가？"
+						CSTR:ARG:20 = 키츠네무스메？
+					ENDIF
+					TALENT:ARG:여우 = 1
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、뭐랄까 알맞게 부풀어 오른 몸에/＞소와 같은 모양의 귀와 뿔이 달린 소년이 비췄다/＞…솔직히、자신이 왜 남자인지 불안해 질 것 같다"
+					IF CSTR:ARG:相性グループ == "牛"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 소지만 꼬리도 소/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 소 사나이가…/＞아니、우시무스메인가？"
+						CSTR:ARG:タイトル = 우시무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 牛
+				CASE 5
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、뭐랄까 알맞게 부풀어 오른 몸에/＞토끼와 같은 모양의 귀가 달린 소년이 비췄다/＞남녀 모두 귀여워 해 줄 것 같다…"
+					IF CSTR:ARG:相性グループ == "兎"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 토끼지만 꼬리도 토끼/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 토끼 사나이가…/＞아니、우사기무스메인가？"
+						CSTR:ARG:タイトル = 우사기무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 兎
+			ENDSELECT
+		ENDIF
+	ELSE
+		IF TALENT:MASTER:거유 || TALENT:MASTER:폭유 || TALENT:MASTER:魔乳
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、풍만한 몸에 개와 같은 모양의 귀가 달린 여자가 보였다/＞조금 긴 귀여서、왜인지 커시를 생각해 냈다…"
+					IF CSTR:ARG:相性グループ == "犬"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 개지만 꼬리도 개/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 이누무스메가 됐다…"
+						CSTR:ARG:20 = 이누무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 犬
+				CASE 2
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、풍만한 몸에 고양이와 같은 모양의 귀가 달린 여자가 보였다/＞스스로도 터질 듯한 지체가 고양이 다움과 맞물려서 정말 매혹적이다"
+					IF CSTR:ARG:相性グループ == "猫"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 고양이지만 꼬리도 고양이/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 네코무스메가 됐다…"
+						CSTR:ARG:20 = 네코무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 猫
+				CASE 3
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、풍만한 몸에 여우와 같은 모양의 귀가 달린 여자가 보였다/＞귀와 셋트인지、머리카락도 금발로 물들고 있다"
+					IF TALENT:ARG:여우
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 여우/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 키츠네무스메가 됐다…"
+						CSTR:ARG:20 = 키츠네무스메
+					ENDIF
+					TALENT:ARG:여우 = 1
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、풍만한 몸에 소와 같은 모양의 귀와 뿔이 달린 여자가 보였다/＞여기까지 오면、완전히 젓소 그 자체다"
+					SIF TALENT:MASTER:모유체질
+						CALL MESSAGE_WINDOW_D, "", @"＞모처럼 소가 됐으니、내일부턴 확실히 모유를 짜야겠다…"
+					IF CSTR:ARG:相性グループ == "牛"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 소지만 꼬리도 소/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 우시무스메가 됐다…"
+						CSTR:ARG:タイトル = 우시무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 牛
+				CASE 5
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、풍만한 몸에 토끼와 같은 모양의 귀가 달린 여자가 보였다/＞토끼의 흉내를 내며 뛰어봤다…/＞스스로도 가슴이 잘 흔들리는게 눈에 독이다…"
+					IF CSTR:ARG:相性グループ == "兎"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 토끼지만 꼬리도 토끼/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 우사기무스메가 됐다…"
+						CSTR:ARG:タイトル = 우사기무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 兎
+			ENDSELECT
+		ELSEIF TALENT:MASTER:빈유 || TALENT:MASTER:절벽
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、조금 궁상맞은 몸매에 개와 같은 모양의 귀가 달린 여자가 보였다/＞몹시 높은 소리가 들려오는 기분이 든다…"
+					IF CSTR:ARG:相性グループ == "犬"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 개지만 꼬리도 개/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 이누무스메가 됐다…"
+						CSTR:ARG:20 = 이누무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 犬
+				CASE 2
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、조금 궁상맞은 몸매에 고양이와 같은 모양의 귀가 달린 여자가 보였다/＞주변 환경의 소리가 크게 들리는 기분이 든다"
+					IF CSTR:ARG:相性グループ == "猫"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 고양이지만 꼬리도 고양이/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 네코무스메가 됐다…"
+						CSTR:ARG:20 = 네코무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 猫
+				CASE 3
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、조금 궁상맞은 몸매에 여우와 같은 모양의 귀가 달린 여자가 보였다/＞귀와 셋트인지、머리색도 금발로 물들었다/＞히라사와 박사가 가진 여우의 이미지、라고 해야하나"
+					IF TALENT:ARG:여우
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 여우/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 키츠네무스메가 됐다…"
+						CSTR:ARG:20 = 키츠네무스메
+					ENDIF
+					TALENT:ARG:여우 = 1
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、조금 궁상맞은 몸매에 소와 같은 모양의 귀와 뿔이 달린 여자가 보였다/＞…솔직히、소같지 않은 기분이 안드는 것도 아니다"
+					IF CSTR:ARG:相性グループ == "牛"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 소지만 꼬리도 소/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 우시무스메가 됐다…"
+						CSTR:ARG:タイトル = 우시무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 牛
+				CASE 5
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、조금 궁상맞은 몸매에 토끼와 같은 모양의 귀가 달린 여자가 보였다/＞스스로도、일부 층에 수요가 있어보인다…"
+					IF CSTR:ARG:相性グループ == "兎"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 토끼지만 꼬리도 토끼/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 우사기무스메가 됐다…"
+						CSTR:ARG:タイトル = 우사기무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 兎
+			ENDSELECT
+		ELSE
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、스타일 좋은 몸에 개와 같은 모양의 귀가 달린 여자가 보였다/＞이미지보단 꽤 길고、늘어져 있다/＞듣기론、개의 귀는 본래 이런 것 같다"
+					IF CSTR:ARG:相性グループ == "犬"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 개지만 꼬리도 개/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 이누무스메가 됐다…"
+						CSTR:ARG:20 = 이누무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 犬
+				CASE 2
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、스타일 좋은 몸에 고양이와 같은 모양의 귀가 달린 여자가 보였다/＞자신의 잘 죄여진 지체와 더불어、운동능력이 높아보인다"
+					IF CSTR:ARG:相性グループ == "猫"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 고양이지만 꼬리도 고양이/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 네코무스메가 됐다…"
+						CSTR:ARG:20 = 네코무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 猫
+				CASE 3
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、스타일 좋은 몸에 여우와 같은 모양의 귀가 달린 여자가 보였다/＞쓰다듬는 감촉이 아주 좋아서、쓰다듬고 있자니 졸려져 왔다…"
+					IF TALENT:ARG:여우
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 여우/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 키츠네무스메가 됐다…"
+						CSTR:ARG:20 = 키츠네무스메
+					ENDIF
+					TALENT:ARG:여우 = 1
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、스타일 좋은 몸에 소와 같은 모양의 귀와 뿔이 달린 여자가 보였다/＞역시 소 흉내를 내기엔 가슴이 조금 작은가…"
+					IF CSTR:ARG:相性グループ == "牛"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 소지만 꼬리도 소/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 우시무스메가 됐다…"
+						CSTR:ARG:タイトル = 우시무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 牛
+				CASE 5
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、스타일 좋은 몸에 토끼와 같은 모양의 귀가 달린 여자가 보였다/＞자신의 매끄러운 지체도 있어서、잘 뛸 것 같아 보인다"
+					IF CSTR:ARG:相性グループ == "兎"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 토끼지만 꼬리도 토끼/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 우사기무스메가 됐다…"
+						CSTR:ARG:タイトル = 우사기무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 兎
+			ENDSELECT
+		ENDIF
+	ENDIF
+ELSE
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"알았어요/그럼 당신은 여기서 기다려용？"
+	CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+	CALL SHOW_PICTURE, "EMPTY"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"네、오케이！/아주 쿨하게 됐어요！"
+	CALL MESSAGE_WINDOW_D, "", @"＞점주에게 끌려와、" + CALLNAME:ARG + "가 수줍게 돌아왔다"
+	IF TALENT:ARG:남자 && !TALENT:ARG:오토코노코
+		SELECTCASE B
+			CASE 1
+				CALL MESSAGE_WINDOW_D, "", @"＞건장한 체격에 개의 귀/＞다시 태어난 " + CALLNAME:ARG + "에게는 파수견 같은 분위기가 있다…"
+				IF CSTR:ARG:相性グループ == "犬"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 개지만 꼬리도 개/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 개 인간이다…"
+						CSTR:ARG:20 = 개 인간
+					ENDIF
+				CSTR:ARG:相性グループ = 犬
+			CASE 2
+				CALL MESSAGE_WINDOW_D, "", @"＞건장한 체격에 고양이의 귀/＞다시 태어난 " + CALLNAME:ARG + "에게는 사냥꾼 같은 분위기가 있다…"
+				IF CSTR:ARG:相性グループ == "猫"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 고양이지만 꼬리도 고양이/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 고양이 인간이다…"
+						CSTR:ARG:20 = 고양이 인간
+					ENDIF
+				CSTR:ARG:相性グループ = 猫
+			CASE 3
+				CALL MESSAGE_WINDOW_D, "", @"＞건장한 체격에 여우의 귀/＞다시 태어난 " + CALLNAME:ARG + "는 마치 마수와 같은 모습이다…"
+					IF TALENT:ARG:여우
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 여우/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 여우 인간이다…"
+						CSTR:ARG:20 = 여우 인간
+					ENDIF
+				TALENT:ARG:여우 = 1
+			CASE 4
+				CALL MESSAGE_WINDOW_D, "", @"＞건장한 체격에 소의 귀와 뿔/＞다시 태어난" + CALLNAME:ARG + "를 보고、" + CALLNAME:MASTER + "는 미노타우로스 같다고 생각했다…"
+				IF CSTR:ARG:相性グループ == "牛"
+					CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 개지만 꼬리도 개/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 소 인간이다…"
+					CSTR:ARG:タイトル = 소 인간
+				ENDIF
+				CSTR:ARG:相性グループ = 牛
+			CASE 5
+				CALL MESSAGE_WINDOW_D, "", @"＞건장한 체격에 토끼의 귀/＞다시 태어난 " + CALLNAME:ARG + "는 조금 슈ー르 한 모습을 하고있다…"
+				IF CSTR:ARG:相性グループ == "兎"
+					CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 토끼지만 꼬리도 토끼/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 토끼 인간이다…"
+					CSTR:ARG:タイトル = 토끼 인간
+				ENDIF
+				CSTR:ARG:相性グループ = 兎
+		ENDSELECT
+	ELSEIF TALENT:ARG:오토코노코
+		IF TALENT:ARG:거유 || TALENT:ARG:폭유 || TALENT:ARG:魔乳
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞여자처럼 풍만한 몸에 개와 같은 귀/＞거꾸로 이건 " + CALLNAME:ARG + "를 인간 남자라고 알아보는 사람은 없을것 같다…"
+					IF CSTR:ARG:相性グループ == "犬"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 개지만 꼬리도 개/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 개 사나이가…/＞아니、이누무스메인가？"
+						CSTR:ARG:20 = 이누무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 犬
+				CASE 2
+					CALL MESSAGE_WINDOW_D, "", @"＞여자처럼 풍만한 몸에 고양이와 같은 귀/＞" + CALLNAME:ARG + "는 틀림없이 고양이다…"
+					;ギャグです
+					IF CSTR:ARG:相性グループ == "猫"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 고양이지만 꼬리도 고양이/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 고양이 사나이가…/＞아니、네코무스메인가？"
+						CSTR:ARG:20 = 네코무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 猫
+				CASE 3
+					CALL MESSAGE_WINDOW_D, "", @"＞여자처럼 풍만한 몸에 여우와 같은 귀/＞" + CALLNAME:ARG + "의 알몸을 본 사람은 전부 홀린 기분이 되겠지…"
+					IF TALENT:ARG:여우
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 여우/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 여우 사나이가…/＞아니、키츠네무스메인가？"
+						CSTR:ARG:20 = 키츠네무스메？
+					ENDIF
+					TALENT:ARG:여우 = 1
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞여자처럼 풍만한 몸에 소와 같은 귀와 뿔/＞여기까지 오면、확실히 여자다"
+					SIF TALENT:ARG:모유체질
+						CALL MESSAGE_WINDOW_D, "", @"＞가슴은 크고、모유도 나오고、소의 귀와 뿔도 있다/＞마치 젓소지만、그래도" + CALLNAME:ARG + "는 남자다…"
+					IF CSTR:ARG:相性グループ == "牛"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 소지만 꼬리도 소/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 소 사나이가…/＞아니、우시무스메인가？"
+						CSTR:ARG:タイトル = 우시무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 牛
+				CASE 5
+					CALL MESSAGE_WINDOW_D, "", @"＞여자처럼 풍만한 몸에 토끼와 같은 귀/＞" + CALLNAME:ARG + "에게 토끼의 흉내를 내며 뛰게 해봤다/＞가슴과 귀가 바람직하게 흔들려、그만 흥분해 버렸다…"
+					IF CSTR:ARG:相性グループ == "兎"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 토끼지만 꼬리도 토끼/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 토끼 사나이가…/＞아니、우사기무스메인가？"
+						CSTR:ARG:タイトル = 우사기무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 兎
+			ENDSELECT
+		ELSEIF TALENT:ARG:빈유 || TALENT:ARG:절벽
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞사랑스러운 몸에 개와 같은 귀/＞" + CALLNAME:ARG + "는 솔직히 강아지 같다고 할만한 몸이다/＞개목걸이를 달고 귀여워해 주고 싶다…"
+					IF CSTR:ARG:相性グループ == "犬"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 개지만 꼬리도 개/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 개 사나이가…/＞아니、이누무스메인가？"
+						CSTR:ARG:20 = 이누무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 犬
+				CASE 2						
+					CALL MESSAGE_WINDOW_D, "", @"＞사랑스러운 몸에 고양이와 같은 귀/＞" + CALLNAME:ARG + "는 솔직히 아기 고양이 같다고 할만한 몸이다/＞개목걸이를 달고 괴롭혀 주고싶다…"
+					IF CSTR:ARG:相性グループ == "猫"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 고양이지만 꼬리도 고양이/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 고양이 사나이가…/＞아니、네코무스메인가？"
+						CSTR:ARG:20 = 네코무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 猫
+				CASE 3
+					CALL MESSAGE_WINDOW_D, "", @"＞사랑스러운 몸에 여우와 같은 귀/＞" + CALLNAME:ARG + "는 솔직히 아기 여우 같다고 할만한 몸이다/＞귀을 쓰다듬으며 귀여워 해주고 싶다…"
+					IF TALENT:ARG:여우
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 여우/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 여우 사나이가…/＞아니、키츠네무스메인가？"
+						CSTR:ARG:20 = 키츠네무스메？
+					ENDIF
+					TALENT:ARG:여우 = 1
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞사랑스러운 몸에 소와 같은 귀와 뿔/＞…여기에 가슴만 컷다면、누구도 " + CALLNAME:ARG + "를 남자로 인식하지 않았을 것이다"
+					IF CSTR:ARG:相性グループ == "牛"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 소지만 꼬리도 소/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 소 사나이가…/＞아니、우시무스메인가？"
+						CSTR:ARG:タイトル = 우시무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 牛
+				CASE 5
+					CALL MESSAGE_WINDOW_D, "", @"＞사랑스러운 몸에 토끼와 같은 귀가 달린" + CALLNAME:ARG + "/＞여성향 창관 같은데서 인기가 있을 듯하다…"
+					IF CSTR:ARG:相性グループ == "兎"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 토끼지만 꼬리도 토끼/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 토끼 사나이가…/＞아니、우사기무스메인가？"
+						CSTR:ARG:タイトル = 우사기무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 兎
+			ENDSELECT
+		ELSE
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞뭐랄까 알맞게 부풀어 오른 몸에 개와 같은 귀/＞" + CALLNAME:ARG + "가 머리를 움직이니、그에따라 귀가 움직이는게 재미있다…"
+					IF CSTR:ARG:相性グループ == "犬"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 개지만 꼬리도 개/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 개 사나이가…/＞아니、이누무스메인가？"
+						CSTR:ARG:20 = 이누무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 犬
+				CASE 2
+					CALL MESSAGE_WINDOW_D, "", @"＞뭐랄까 알맞게 부풀어 오른 몸에 고양이와 같은 귀/＞고양이 그 자체를 상징하는 듯한 생기 있는 지체가/＞" + CALLNAME:ARG + "가 남자임을 잊게 한다…"
+					IF CSTR:ARG:相性グループ == "猫"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 고양이지만 꼬리도 고양이/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 고양이 사나이가…/＞아니、네코무스메인가？"
+						CSTR:ARG:20 = 네코무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 猫
+				CASE 3
+					CALL MESSAGE_WINDOW_D, "", @"＞뭐랄까 알맞게 부풀어 오른 몸에 여우와 같은 귀/＞사실 나는 " + CALLNAME:ARG + "에게 홀려있고、사실은 " + CALLNAME:ARG + "는 여자인게 아닐까？/＞그만、그렇게 의심했다…"
+					IF TALENT:ARG:여우
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 여우/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 여우 사나이가…/＞아니、키츠네무스메인가？"
+						CSTR:ARG:20 = 키츠네무스메？
+					ENDIF
+					TALENT:ARG:여우 = 1
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞뭐랄까 알맞게 부풀어 오른 몸에 소와 같은 귀와 뿔/＞" + CALLNAME:ARG + "는 확실히 송아지 처럼 보인다…"
+					IF CSTR:ARG:相性グループ == "牛"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 소지만 꼬리도 소/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 소 사나이가…/＞아니、우시무스메인가？"
+						CSTR:ARG:タイトル = 우시무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 牛
+				CASE 5
+					CALL MESSAGE_WINDOW_D, "", @"＞뭐랄까 알맞게 부풀어 오른 몸에 토끼와 같은 귀/＞" + CALLNAME:ARG + "라면 남녀 모두 귀여워 해 줄 것 같다…"
+					IF CSTR:ARG:相性グループ == "兎"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 토끼지만 꼬리도 토끼/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 토끼 사나이가…/＞아니、우사기무스메인가？"
+						CSTR:ARG:タイトル = 우사기무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 兎
+			ENDSELECT
+		ENDIF
+	ELSE
+		IF TALENT:ARG:거유 || TALENT:ARG:폭유 || TALENT:ARG:魔乳
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞풍만한 몸에 개와 같은 귀/＞" + CALLNAME:ARG + "는 조금 긴 귀여서、왜인지 커시를 생각해 냈다…"
+					IF CSTR:ARG:相性グループ == "犬"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 개지만 꼬리도 개/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 이누무스메가 됐다…"
+						CSTR:ARG:20 = 이누무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 犬
+				CASE 2
+					CALL MESSAGE_WINDOW_D, "", @"＞풍만한 몸에 고양이와 같은 귀/＞" + CALLNAME:ARG + "터질듯한 지체가 고양이 다움과 맞물려서 정말 매혹적이다"
+					IF CSTR:ARG:相性グループ == "猫"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 고양이지만 꼬리도 고양이/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 네코무스메가 됐다…"
+						CSTR:ARG:20 = 네코무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 猫
+				CASE 3
+					CALL MESSAGE_WINDOW_D, "", @"＞풍만한 몸에 여우와 같은 귀/＞귀와 셋트인지、" + CALLNAME:ARG + "의 머리색도 금발로 물들고 있다"
+					IF TALENT:ARG:여우
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 여우/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 키츠네무스메가 됐다…"
+						CSTR:ARG:20 = 키츠네무스메
+					ENDIF
+					TALENT:ARG:여우 = 1
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞풍만한 몸에 소와 같은 귀와 뿔/＞여기까지 오면、확실히 " + CALLNAME:ARG + "는 젓소 그 자체다"
+					SIF TALENT:ARG:모유체질
+						CALL MESSAGE_WINDOW_D, "", @"＞모처럼 " + CALLNAME:ARG + "가 소가 됐으니、내일부턴 확실히 모유를 짜도록 하자…"
+					IF CSTR:ARG:相性グループ == "牛"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 소지만 꼬리도 소/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 우시무스메가 됐다…"
+						CSTR:ARG:タイトル = 우시무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 牛
+				CASE 5
+					CALL MESSAGE_WINDOW_D, "", @"＞풍만한 몸에 토끼와 같은 귀/＞이쪽을 향해、점프해온/＞" + CALLNAME:ARG + "의 가슴이 바람직하게 흔들려 눈에 독이 된다…"
+					IF CSTR:ARG:相性グループ == "兎"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 토끼지만 꼬리도 토끼/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 우사기무스메가 됐다…"
+						CSTR:ARG:タイトル = 우사기무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 兎
+			ENDSELECT
+		ELSEIF TALENT:ARG:빈유 || TALENT:ARG:절벽
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞조금 궁상맞은 몸매에 개와 같은 귀/＞" + CALLNAME:ARG + "는 강아지 같은 이미지다"
+					IF CSTR:ARG:相性グループ == "犬"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 개지만 꼬리도 개/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 이누무스메가 됐다…"
+						CSTR:ARG:20 = 이누무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 犬
+				CASE 2
+					CALL MESSAGE_WINDOW_D, "", @"＞조금 궁상맞은 몸매에 고양이와 같은 귀/＞" + CALLNAME:ARG + "는 아기 고양이 같은 분위기다"
+					IF CSTR:ARG:相性グループ == "猫"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 고양이지만 꼬리도 고양이/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 네코무스메가 됐다…"
+						CSTR:ARG:20 = 네코무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 猫
+				CASE 3
+					CALL MESSAGE_WINDOW_D, "", @"＞조금 궁상맞은 몸매에 여우와 같은 귀/＞이런 악마、있었던 것 같은 기분이 든다…"
+					IF TALENT:ARG:여우
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 여우/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 키츠네무스메가 됐다…"
+						CSTR:ARG:20 = 키츠네무스메
+					ENDIF
+					TALENT:ARG:여우 = 1
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞조금 궁상맞은 몸매에 소와 같은 귀와 뿔/＞…솔직히、" + CALLNAME:ARG + "는 소답지 않다는 기분이 들지 않는것도 아니다"
+					IF CSTR:ARG:相性グループ == "牛"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 소지만 꼬리도 소/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 우시무스메가 됐다…"
+						CSTR:ARG:タイトル = 우시무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 牛
+				CASE 5
+					CALL MESSAGE_WINDOW_D, "", @"＞조금 궁상맞은 몸매에 토끼와 같은 귀/＞지금의 " + CALLNAME:ARG + "는 일부계층에게 높은 수요가 있다…"
+					IF CSTR:ARG:相性グループ == "兎"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 토끼지만 꼬리도 토끼/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 우사기무스메가 됐다…"
+						CSTR:ARG:タイトル = 우사기무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 兎
+			ENDSELECT
+		ELSE
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞스타일 좋은 몸에 개와 같은 귀/＞" + CALLNAME:ARG + "의 귀는 이미지보단 꽤 길고、늘어져 있다/＞듣기론、개의 귀는 본래 이런 것 같다"
+					IF CSTR:ARG:相性グループ == "犬"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 개지만 꼬리도 개/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 이누무스메가 됐다…"
+						CSTR:ARG:20 = 이누무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 犬
+				CASE 2
+					CALL MESSAGE_WINDOW_D, "", @"＞스타일 좋은 몸에 고양이와 같은 귀/＞" + CALLNAME:ARG + "의 잘 죄어든 지체와 더불어、운동능력이 높아보인다"
+					IF CSTR:ARG:相性グループ == "猫"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 고양이지만 꼬리도 고양이/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 네코무스메가 됐다…"
+						CSTR:ARG:20 = 네코무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 猫
+				CASE 3
+					CALL MESSAGE_WINDOW_D, "", @"＞스타일 좋은 몸에 여우와 같은 귀/＞" + CALLNAME:ARG + "의 귀를 쓰다듬는 감촉이 아주 좋아서、쓰다듬고 있자니 졸려져 왔다…"
+					IF TALENT:ARG:여우
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 여우/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 키츠네무스메가 됐다…"
+						CSTR:ARG:20 = 키츠네무스메
+					ENDIF
+					TALENT:ARG:여우 = 1
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞스타일 좋은 몸에 소와 같은 귀와 뿔/＞역시 소를 흉내내기에는 가슴이 조금 작은가…"
+					IF CSTR:ARG:相性グループ == "牛"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 소지만 꼬리도 소/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 우시무스메가 됐다…"
+						CSTR:ARG:タイトル = 우시무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 牛
+				CASE 5
+					CALL MESSAGE_WINDOW_D, "", @"＞스타일 좋은 몸에 토끼와 같은 귀/＞" + CALLNAME:ARG + "의 매끈한 지체도 있어서、잘 뛸것같아 보인다"
+					IF CSTR:ARG:相性グループ == "兎"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 토끼지만 꼬리도 토끼/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 우사기무스메가 됐다…"
+						CSTR:ARG:タイトル = 우사기무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 兎
+			ENDSELECT
+		ENDIF
+	ENDIF
+ENDIF
+
+;動物꼬리
+@PETIT_DEMON_SET_3102, ARG
+
+CALL MESSAGE_WINDOW_D, "남자 점주", @"자 그럼、어떤 동물의 꼬리로 할래？"
+CALL INPUT_SELECT_D , "무슨 꼬리로 할래？//[1]개/[2]고양이/[3]여우/[4]소/[5]토끼" , , , 2
+B = RESULT
+SELECTCASE B
+	CASE 1
+		CSTR:ARG:48 = 현재는 쁘띠데모에 의해 엉덩이에 개의 꼬리가 달려있다。
+	CASE 2
+		CSTR:ARG:48 = 현재는 쁘띠데모에 의해 엉덩이에 고양이의 꼬리가 달려있다。
+	CASE 3
+		CSTR:ARG:48 = 현재는 쁘띠데모에 의해 엉덩이에 여우의 꼬리가 달려있다。
+	CASE 4
+		CSTR:ARG:48 = 현재는 쁘띠데모에 의해 엉덩이에 소의 꼬리가 달려있다。
+	CASE 5
+		CSTR:ARG:48 = 현재는 쁘띠데모에 의해 엉덩이에 토끼의 꼬리가 달려있다。
+ENDSELECT
+TALENT:ARG:꼬리 = 1
+IF NO:MASTER == NO:ARG	
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"자 그럼、이쪽으로 와줄래요？"
+	CALL MESSAGE_WINDOW_D, "", @"＞점주에게 안내되어、" + CALLNAME:MASTER + "는 조그만 캡슐에 들어갔다…"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"자 그럼、시작할게/조금만 기다려요、금방 끝나니깐"
+	CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:MASTER + "는 의식이 멀어졌다…"
+	CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+	CALL SHOW_PICTURE, "EMPTY"
+	CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:MASTER + "가 눈을 뜨자、점주가 말을 걸어왔다…"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"응、잘 됐네/지금 당신、아주 쿨해요！/거울로 솜씨、체크해 봐요！"
+	IF TALENT:MASTER:남자 && !TALENT:MASTER:오토코노코
+		SELECTCASE B
+			CASE 1
+				CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、/＞건장한 체격에 개와 같은 꼬리를 단 남자가 보인다/＞스스로도 흥분하고 있는지、그 꼬리는 쫑긋 서있다…"
+				IF CSTR:ARG:相性グループ == "犬"
+					CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 개지만 꼬리도 개/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 개 인간이다…"
+					CSTR:ARG:タイトル = 개 인간
+				ENDIF
+				CSTR:ARG:相性グループ = 犬
+			CASE 2
+				CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、/＞건장한 체격에 고양이와 같은 꼬리를 단 남자가 보인다/＞능숙히 움직이면 팔 대신이 될지도 모른다…"
+				IF CSTR:ARG:相性グループ == "猫"
+					CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 고양이지만 꼬리도 고양이/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 고양이 인간이다…"
+					CSTR:ARG:タイトル = 고양이 인간
+				ENDIF
+				CSTR:ARG:相性グループ = 猫
+			CASE 3
+				IF RAND:9 == 0
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、/＞건장한 체격에 여우와 같은 꼬리를 단 남자가 보인다/＞…지만、개수가 많아 아홉개나 있다…/＞이렇게나 많으면 일상생활도 힘들 것 같다"
+					CSTR:ARG:48 = 현재는 쁘띠데모에 의해 엉덩이에 여우의 꼬리가 아홉개 달려있다。
+					IF TALENT:ARG:여우 == 1
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 구미/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 구미 인간이다…"
+						CSTR:ARG:タイトル = 구미 인간
+					ENDIF
+				ELSE
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、/＞건장한 체격에 여우와 같은 꼬리를 단 남자가 보인다/＞…조금 처진눈이 된걸까나？"
+					IF TALENT:ARG:여우 == 1
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 여우/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 여우 인간이다…"
+						CSTR:ARG:タイトル = 여우 인간
+					ENDIF
+				ENDIF
+				TALENT:ARG:여우 = 1
+			CASE 4
+				CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、/＞건장한 체격에 소와 같은 꼬리가 달린 남자가 보인다/＞미노타우로스는 아니다…"
+				IF CSTR:ARG:相性グループ == "牛"
+					CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 개지만 꼬리도 개/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 소 인간이다…"
+					CSTR:ARG:タイトル = 소 인간
+				ENDIF
+				CSTR:ARG:相性グループ = 牛
+			CASE 5
+				CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、/＞건장한 체격에 토끼와 같은 모양의 꼬리가 달린 남자가 보인다/＞어쩐지랄까、정력이 붙은 느낌이다…"
+				IF CSTR:ARG:相性グループ == "兎"
+					CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 토끼지만 꼬리도 토끼/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 토끼 인간이다…"
+					CSTR:ARG:タイトル = 토끼 인간
+				ENDIF
+				CSTR:ARG:相性グループ = 兎
+		ENDSELECT
+	ELSEIF TALENT:MASTER:오토코노코
+		IF TALENT:MASTER:거유 || TALENT:MASTER:폭유 || TALENT:MASTER:魔乳
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、여자처럼 풍만한 몸에 개와 같은 꼬리가 달린 소년이 보인다/＞몸을 좌우로 흔들면、거기에 맞추어 꼬리와 가슴이 흔들리는게 너무 선정적이다…"
+					IF CSTR:ARG:相性グループ == "犬"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 개지만 꼬리도 개/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 개 사나이가…/＞아니、이누무스메인가？"
+						CSTR:ARG:20 = 이누무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 犬
+				CASE 2
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、여자처럼 풍만한 몸에 고양이와 같은 꼬리가 달린 소년이 보인다/＞몸을 좌우로 흔들면、거기에 맞추어 꼬리와 가슴이 흔들리는게 너무 선정적이다…"
+					IF CSTR:ARG:相性グループ == "猫"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 고양이지만 꼬리도 고양이/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 고양이 사나이가…/＞아니、네코무스메인가？"
+						CSTR:ARG:20 = 네코무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 猫
+				CASE 3
+					IF RAND:9 == 0
+						CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、여자처럼 풍만한 몸에 여우와 같은 꼬리가 달린 소년이 보인다/＞…만、무려 아홉개나 달려있다…/＞이렇게나 많으면 일상생활도 힘들 것 같다…"
+						CSTR:ARG:48 = 현재는 쁘띠데모에 의해 엉덩이에 여우의 꼬리가 아홉개 달려있다。
+						IF TALENT:ARG:여우 == 1
+							CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 구미/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 구미남…/＞아니、큐비무스메인가？"
+							CSTR:ARG:タイトル = 큐비무스메？
+						ENDIF
+					ELSE
+						CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、여자처럼 풍만한 몸에 여우와 같은 꼬리가 달린 소년이 보인다/＞몸을 좌우로 흔들면、거기에 맞추어 꼬리와 가슴이 흔들리는게 너무 선정적이다…"
+						IF TALENT:ARG:여우 == 1
+							CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 여우/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 여우 사나이가…/＞아니、키츠네무스메인가？"
+							CSTR:ARG:20 = 키츠네무스메？
+						ENDIF
+					ENDIF
+					TALENT:ARG:여우 = 1
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、여자처럼 풍만한 몸에 소와 같은 꼬리가 달린 소년이 보인다/＞몸을 좌우로 흔들면、거기에 맞추어 꼬리와 가슴이 흔들리는게 너무 선정적이다…"
+					IF CSTR:ARG:相性グループ == "牛"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 소지만 꼬리도 소/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 소 사나이가…/＞아니、우시무스메인가？"
+						CSTR:ARG:タイトル = 우시무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 牛
+				CASE 5
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、여자처럼 풍만한 몸에 토끼와 같은 꼬리가 달린 소년이 보인다/＞거울 앞에서 토끼 흉내를 내며 뛰어 봤다…/＞가슴이 바람직하게 튀어올라、무심코 자신의 가슴이란걸 알면서도 발기해 버렸다…"
+					IF CSTR:ARG:相性グループ == "兎"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 토끼지만 꼬리도 토끼/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 토끼 사나이가…/＞아니、우사기무스메인가？"
+						CSTR:ARG:タイトル = 우사기무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 兎
+			ENDSELECT
+		ELSEIF TALENT:MASTER:빈유 || TALENT:MASTER:절벽
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、사랑스러운 몸에/＞개와 같은 꼬리가 달린 소년이 보인다/＞몸을 좌우로 흔들면、거기에 맞춰 흔들리는 꼬리의 움직임이 마치 유혹하는 것 같다…"
+					IF CSTR:ARG:相性グループ == "犬"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 개지만 꼬리도 개/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 개 사나이가…/＞아니、이누무스메인가？"
+						CSTR:ARG:20 = 이누무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 犬
+				CASE 2						
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、사랑스러운 몸에/＞고양이와 같은 꼬리가 달린 소년이 보인다/＞몸을 좌우로 흔들면、거기에 맞춰 흔들리는 꼬리의 움직임이 마치 유혹하는 것 같다…"
+					IF CSTR:ARG:相性グループ == "猫"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 고양이지만 꼬리도 고양이/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 고양이 사나이가…/＞아니、네코무스메인가？"
+						CSTR:ARG:20 = 네코무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 猫
+				CASE 3
+					IF RAND:9 == 0
+						CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、사랑스러운 몸에 여우와 같은 꼬리가 달린 소년이 보인다/＞…만、무려 아홉개나 달려있다…/＞일상생활이 곤란할 것 같다…"
+						CSTR:ARG:48 = 현재는 쁘띠데모에 의해 엉덩이에 여우의 꼬리가 아홉개 달려있다。
+						IF TALENT:ARG:여우 == 1
+							CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 구미/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 구미남…/＞아니、큐비무스메인가？"
+							CSTR:ARG:タイトル = 큐비무스메？
+						ENDIF
+					ELSE
+						CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、사랑스러운 몸에/＞여우와 같은 꼬리가 달린 소년이 보인다/＞몸을 좌우로 흔들면、거기에 맞춰 흔들리는 꼬리의 움직임이 마치 유혹하는 것 같다…"
+						IF TALENT:ARG:여우 == 1
+							CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 여우/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 여우 사나이가…/＞아니、키츠네무스메인가？"
+							CSTR:ARG:20 = 키츠네무스메？
+						ENDIF
+					ENDIF
+					TALENT:ARG:여우 = 1
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、사랑스러운 몸에/＞소와 같은 꼬리가 달린 소년이 보인다/＞몸을 좌우로 흔들면、거기에 맞춰 흔들리는 꼬리의 움직임이 마치 유혹하는 것 같다…"
+					IF CSTR:ARG:相性グループ == "牛"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 소지만 꼬리도 소/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 소 사나이가…/＞아니、우시무스메인가？"
+						CSTR:ARG:タイトル = 우시무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 牛
+				CASE 5
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、사랑스러운 몸에/＞토끼와 같은 꼬리가 달린 소년이 보인다/＞신경이 모여있는지、만지면 움찔 몸이 뒤로 젖혀져 버렸다…"
+					IF CSTR:ARG:相性グループ == "兎"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 토끼지만 꼬리도 토끼/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 토끼 사나이가…/＞아니、우사기무스메인가？"
+						CSTR:ARG:タイトル = 우사기무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 兎
+			ENDSELECT
+		ELSE
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、뭐랄까 알맞게 부풀어 오른 몸에/＞개와 같은 꼬리가 달린 소년이 보인다/＞몸을 좌우로 흔들면、거기에 맞춰 흔들리는 꼬리의 움직임이 마치 유혹하는 것 같다…"
+					IF CSTR:ARG:相性グループ == "犬"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 개지만 꼬리도 개/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 개 사나이가…/＞아니、이누무스메인가？"
+						CSTR:ARG:20 = 이누무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 犬
+				CASE 2
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、뭐랄까 알맞게 부풀어 오른 몸에/＞고양이와 같은 꼬리가 달린 소년이 보인다/＞몸을 좌우로 흔들면、거기에 맞춰 흔들리는 꼬리의 움직임이 마치 유혹하는 것 같다…"
+					IF CSTR:ARG:相性グループ == "猫"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 고양이지만 꼬리도 고양이/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 고양이 사나이가…/＞아니、네코무스메인가？"
+						CSTR:ARG:20 = 네코무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 猫
+				CASE 3
+					IF RAND:9 == 0
+						CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、뭐랄까 알맞게 부풀어 오른 몸에 여우와 같은 꼬리가 달린 소년이 보인다/＞…만、무려 아홉개나 달려있다…/＞일상생활이 곤란할 것 같다…"
+						CSTR:ARG:48 = 현재는 쁘띠데모에 의해 엉덩이에 여우의 꼬리가 아홉개 달려있다。
+						IF TALENT:ARG:여우 == 1
+							CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 구미/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 구미남…/＞아니、큐비무스메인가？"
+							CSTR:ARG:タイトル = 큐비무스메？
+						ENDIF
+					ELSE
+						CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、뭐랄까 알맞게 부풀어 오른 몸에/＞여우와 같은 꼬리가 달린 소년이 보인다/＞몸을 좌우로 흔들면、거기에 맞춰 흔들리는 꼬리의 움직임이 마치 유혹하는 것 같다…"
+						IF TALENT:ARG:여우 == 1
+							CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 여우/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 여우 사나이가…/＞아니、키츠네무스메인가？"
+							CSTR:ARG:20 = 키츠네무스메？
+						ENDIF
+					ENDIF
+					TALENT:ARG:여우 = 1
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、뭐랄까 알맞게 부풀어 오른 몸에/＞소와 같은 꼬리가 달린 소년이 보인다/＞몸을 좌우로 흔들면、거기에 맞춰 흔들리는 꼬리의 움직임이 마치 유혹하는 것 같다…"
+					IF CSTR:ARG:相性グループ == "牛"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 소지만 꼬리도 소/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 소 사나이가…/＞아니、우시무스메인가？"
+						CSTR:ARG:タイトル = 우시무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 牛
+				CASE 5
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、뭐랄까 알맞게 부풀어 오른 몸에/＞토끼와 같은 꼬리가 달린 소년이 보인다/＞남녀 모두 귀여워 해 줄 것 같다…"
+					IF CSTR:ARG:相性グループ == "兎"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 토끼지만 꼬리도 토끼/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 토끼 사나이가…/＞아니、우사기무스메인가？"
+						CSTR:ARG:タイトル = 우사기무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 兎
+			ENDSELECT
+		ENDIF
+	ELSE
+		IF TALENT:MASTER:거유 || TALENT:MASTER:폭유 || TALENT:MASTER:魔乳
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、풍만한 몸에 개와 같은 꼬리가 달린 여자가 보인다/＞터질듯한 지체에 좋은 엑센트가 된 것 같다…"
+					IF CSTR:ARG:相性グループ == "犬"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 개지만 꼬리도 개/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 이누무스메가 됐다…"
+						CSTR:ARG:20 = 이누무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 犬
+				CASE 2
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、풍만한 몸에 고양이와 같은 꼬리가 달린 여자가 보인다/＞스스로도 터질 듯한 지체가 고양이 다움과 맞물려서 정말 매혹적이다"
+					IF CSTR:ARG:相性グループ == "猫"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 고양이지만 꼬리도 고양이/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 네코무스메가 됐다…"
+						CSTR:ARG:20 = 네코무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 猫
+				CASE 3
+					IF RAND:9 == 0
+						CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、풍만한 몸에 여우와 같은 꼬리가 달린 여자가 보인다/＞…만、무려 아홉개나 달려있다…/＞일상생활이 곤란할 것 같다…"
+						CSTR:ARG:48 = 현재는 쁘띠데모에 의해 엉덩이에 여우의 꼬리가 아홉개 달려있다。
+						IF TALENT:ARG:여우 == 1
+							CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 구미/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 큐비무스메가 됐다…"
+							CSTR:ARG:タイトル = 큐비무스메
+						ENDIF
+					ELSE
+						CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、풍만한 몸에 여우와 같은 꼬리가 달린 여자가 보인다/＞꼬리와 셋트인지、머리색도 금발로 물들었다"
+						IF TALENT:ARG:여우
+							CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 여우/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 키츠네무스메가 됐다…"
+							CSTR:ARG:20 = 키츠네무스메
+						ENDIF
+					ENDIF
+					TALENT:ARG:여우 = 1
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、풍만한 몸에 소와 같은 꼬리가 달린 여자가 보인다/＞여기까지 오면、완전히 젓소 그 자체다"
+					SIF TALENT:MASTER:모유체질
+						CALL MESSAGE_WINDOW_D, "", @"＞모처럼 소가 됐으니、내일부턴 확실히 모유를 짜야겠다…"
+					IF CSTR:ARG:相性グループ == "牛"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 소지만 꼬리도 소/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 우시무스메가 됐다…"
+						CSTR:ARG:タイトル = 우시무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 牛
+				CASE 5
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、풍만한 몸에 토끼와 같은 꼬리가 달린 여자가 보인다/＞토끼의 흉내를 내며 뛰어봤다…/＞스스로도 가슴이 잘 흔들리는게 눈에 독이다…"
+					IF CSTR:ARG:相性グループ == "兎"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 토끼지만 꼬리도 토끼/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 우사기무스메가 됐다…"
+						CSTR:ARG:タイトル = 우사기무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 兎
+			ENDSELECT
+		ELSEIF TALENT:MASTER:빈유 || TALENT:MASTER:절벽
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、조금 궁상맞은 몸매에 개와 같은 꼬리가 달린 여자가 보인다/＞마음대로 파닥파닥 흔들리고 있다…"
+					IF CSTR:ARG:相性グループ == "犬"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 개지만 꼬리도 개/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 이누무스메가 됐다…"
+						CSTR:ARG:20 = 이누무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 犬
+				CASE 2
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、조금 궁상맞은 몸매에 고양이와 같은 꼬리가 달린 여자가 보인다/＞마음대로 꾸불꾸불 흔들리고 있다…"
+					IF CSTR:ARG:相性グループ == "猫"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 고양이지만 꼬리도 고양이/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 네코무스메가 됐다…"
+						CSTR:ARG:20 = 네코무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 猫
+				CASE 3
+					IF RAND:9 == 0
+						CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、조금 궁상맞은 몸매에 여우와 같은 꼬리가 달린 여자가 보인다/＞…만、무려 아홉개나 달려있다…/＞일상생활이 곤란할 것 같다…"
+						CSTR:ARG:48 = 현재는 쁘띠데모에 의해 엉덩이에 여우의 꼬리가 아홉개 달려있다。
+						IF TALENT:ARG:여우 == 1
+							CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 구미/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 큐비무스메가 됐다…"
+							CSTR:ARG:タイトル = 큐비무스메
+						ENDIF
+					ELSE
+						CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、조금 궁상맞은 몸매에 여우와 같은 꼬리가 달린 여자가 보인다/＞꼬리와 셋트인지、머리색도 금발로 물들었다"
+						IF TALENT:ARG:여우
+							CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 여우/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 키츠네무스메가 됐다…"
+							CSTR:ARG:20 = 키츠네무스메
+						ENDIF
+					ENDIF
+					TALENT:ARG:여우 = 1
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、조금 궁상맞은 몸매에 소와 같은 꼬리가 달린 여자가 보인다/＞…솔직히、소같지 않은 기분이 안드는 것도 아니다"
+					IF CSTR:ARG:相性グループ == "牛"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 소지만 꼬리도 소/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 우시무스메가 됐다…"
+						CSTR:ARG:タイトル = 우시무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 牛
+				CASE 5
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、조금 궁상맞은 몸매에 토끼와 같은 꼬리가 달린 여자가 보인다/＞…미니스커트를 입으면、굉장한 일이 되겠지…"
+					IF CSTR:ARG:相性グループ == "兎"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 토끼지만 꼬리도 토끼/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 우사기무스메가 됐다…"
+						CSTR:ARG:タイトル = 우사기무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 兎
+			ENDSELECT
+		ELSE
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、스타일 좋은 몸에 개와 같은 꼬리가 달린 여자가 보인다/＞눈치채면 텐션이 올라갔는지、파닥파닥 흔들리고 있다"
+					IF CSTR:ARG:相性グループ == "犬"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 개지만 꼬리도 개/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 이누무스메가 됐다…"
+						CSTR:ARG:20 = 이누무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 犬
+				CASE 2
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、스타일 좋은 몸에 고양이와 같은 꼬리가 달린 여자가 보인다/＞자신의 잘 죄여진 지체와 더불어、운동능력이 높아보인다"
+					IF CSTR:ARG:相性グループ == "猫"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 고양이지만 꼬리도 고양이/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 네코무스메가 됐다…"
+						CSTR:ARG:20 = 네코무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 猫
+				CASE 3
+					IF RAND:9 == 0
+						CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、스타일 좋은 몸에 여우와 같은 꼬리가 달린 여자가 보인다/＞…만、무려 아홉개나 달려있다…/＞일상생활이 곤란할 것 같다…"
+						CSTR:ARG:48 = 현재는 쁘띠데모에 의해 엉덩이에 여우의 꼬리가 아홉개 달려있다。
+						IF TALENT:ARG:여우 == 1
+							CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 구미/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 큐비무스메가 됐다…"
+							CSTR:ARG:タイトル = 큐비무스메
+						ENDIF
+					ELSE
+						CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、스타일 좋은 몸에 여우와 같은 꼬리가 달린 여자가 보인다/＞쓰다듬는 감촉이 아주 좋아서、쓰다듬고 있자니 졸려져 왔다…"
+						IF TALENT:ARG:여우
+							CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 여우/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 키츠네무스메가 됐다…"
+							CSTR:ARG:20 = 키츠네무스메
+						ENDIF
+					ENDIF
+					TALENT:ARG:여우 = 1
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、스타일 좋은 몸에 소와 같은 꼬리가 달린 여자가 보인다/＞역시 소 흉내를 내기엔 가슴이 조금 작은가…"
+					IF CSTR:ARG:相性グループ == "牛"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 소지만 꼬리도 소/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 우시무스메가 됐다…"
+						CSTR:ARG:タイトル = 우시무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 牛
+				CASE 5
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、스타일 좋은 몸에 토끼와 같은 꼬리가 달린 여자가 보인다/＞자신의 매끄러운 지체도 있어서、잘 뛸 것 같아 보인다"
+					IF CSTR:ARG:相性グループ == "兎"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 토끼지만 꼬리도 토끼/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 우사기무스메가 됐다…"
+						CSTR:ARG:タイトル = 우사기무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 兎
+			ENDSELECT
+		ENDIF
+	ENDIF
+ELSE
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"알았어용/그러면 당신은 여기서 기달려용？"
+	CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+	CALL SHOW_PICTURE, "EMPTY"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"네、오케이！/아주 쿨하게 됐어용！"
+	CALL MESSAGE_WINDOW_D, "", @"＞점주에게 이끌려 、" + CALLNAME:ARG + "는 수줍어하며 돌아왔다"
+	IF TALENT:ARG:남자 && !TALENT:ARG:오토코노코
+		SELECTCASE B
+			CASE 1
+				CALL MESSAGE_WINDOW_D, "", @"＞건장한 체격에 개의 꼬리/＞다시 태어난 " + CALLNAME:ARG + "에게는 파수견 같은 분위기가 있다…"
+				IF CSTR:ARG:相性グループ == "犬"
+					CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 개지만 꼬리도 개/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 개 인간이다…"
+					CSTR:ARG:タイトル = 개 인간
+				ENDIF
+				CSTR:ARG:相性グループ = 犬
+			CASE 2
+				CALL MESSAGE_WINDOW_D, "", @"＞건장한 체격에 고양이의 꼬리/＞다시 태어난 " + CALLNAME:ARG + "에게는 사냥꾼 같은 분위기가 있다…"
+				IF CSTR:ARG:相性グループ == "猫"
+					CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 고양이지만 꼬리도 고양이/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 고양이 인간이다…"
+					CSTR:ARG:タイトル = 고양이 인간
+				ENDIF
+				CSTR:ARG:相性グループ = 猫
+			CASE 3
+				IF RAND:9 == 0
+					CALL MESSAGE_WINDOW_D, "", @"＞건장한 체격에 여우의 꼬리가 아홉개/＞다시 태어난 " + CALLNAME:ARG + "는 마치 마수와 같은 모습이다…"
+					CSTR:ARG:48 = 현재는 쁘띠데모에 의해 엉덩이에 여우의 꼬리가 아홉개 달려있다。
+					IF TALENT:ARG:여우 == 1
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 구미/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 구미 인간이다…"
+						CSTR:ARG:タイトル = 구미 인간
+					ENDIF
+				ELSE
+					CALL MESSAGE_WINDOW_D, "", @"＞건장한 체격에 여우의 꼬리/＞다시 태어난 " + CALLNAME:ARG + "는 마치 마수와 같은 모습이다…"
+					IF TALENT:ARG:여우 == 1
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 여우/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 여우 인간이다…"
+						CSTR:ARG:タイトル = 여우 인간
+					ENDIF
+				ENDIF
+				TALENT:ARG:여우 = 1
+			CASE 4
+				CALL MESSAGE_WINDOW_D, "", @"＞건장한 체격에 소의 꼬리/＞다시 태어난 " + CALLNAME:ARG + "를 보고、" + CALLNAME:MASTER + "는 미노타우로스 같다고 생각했다…"
+				IF CSTR:ARG:相性グループ == "牛"
+					CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 개지만 꼬리도 개/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 소 인간이다…"
+					CSTR:ARG:タイトル = 소 인간
+				ENDIF
+				CSTR:ARG:相性グループ = 牛
+			CASE 5
+				CALL MESSAGE_WINDOW_D, "", @"＞건장한 체격에 토끼의 꼬리/＞다시 태어난 " + CALLNAME:ARG + "는 조금 슈ー르 한 모습을 하고있다…"
+				IF CSTR:ARG:相性グループ == "兎"
+					CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 토끼지만 꼬리도 토끼/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 토끼 인간이다…"
+					CSTR:ARG:タイトル = 토끼 인간
+				ENDIF
+				CSTR:ARG:相性グループ = 兎
+		ENDSELECT
+	ELSEIF TALENT:ARG:오토코노코
+		IF TALENT:ARG:거유 || TALENT:ARG:폭유 || TALENT:ARG:魔乳
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞여자처럼 풍만한 몸에 사랑스러운 개와 같은 꼬리/＞거꾸로 이건 " + CALLNAME:ARG + "를 인간 남자라고 알아보는 사람은 없을것 같다…"
+					IF CSTR:ARG:相性グループ == "犬"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 개지만 꼬리도 개/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 개 사나이가…/＞아니、이누무스메인가？"
+						CSTR:ARG:20 = 이누무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 犬
+				CASE 2
+					CALL MESSAGE_WINDOW_D, "", @"＞여자처럼 풍만한 몸에 고양이와 같은 꼬리/＞" + CALLNAME:ARG + "는 틀림없이 고양이다…"
+					;ギャグです
+					IF CSTR:ARG:相性グループ == "猫"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 고양이지만 꼬리도 고양이/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 고양이 사나이가…/＞아니、네코무스메인가？"
+						CSTR:ARG:20 = 네코무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 猫
+				CASE 3
+					IF RAND:9 == 0
+						CALL MESSAGE_WINDOW_D, "", @"＞여자처럼 풍만한 몸에 여우와 같은 꼬리가 아홉개/＞" + CALLNAME:ARG + "의 알몸을 본 사람은 전부 홀린 기분이 되겠지…"
+						CSTR:ARG:48 = 현재는 쁘띠데모에 의해 엉덩이에 여우의 꼬리가 아홉개 달려있다。
+						IF TALENT:ARG:여우 == 1
+							CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 구미/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 구미남…/＞아니、큐비무스메인가？"
+							CSTR:ARG:タイトル = 큐비무스메？
+						ENDIF
+					ELSE
+						CALL MESSAGE_WINDOW_D, "", @"＞여자처럼 풍만한 몸에 여우와 같은 꼬리/＞" + CALLNAME:ARG + "의 알몸을 본 사람은 전부 홀린 기분이 되겠지…"
+						IF TALENT:ARG:여우 == 1
+							CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 여우/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 여우 사나이가…/＞아니、키츠네무스메인가？"
+							CSTR:ARG:20 = 키츠네무스메？
+						ENDIF
+					ENDIF
+					TALENT:ARG:여우 = 1
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞여자처럼 풍만한 몸에 소와 같은 꼬리/＞여기까지 오면、확실히 여자다"
+					SIF TALENT:ARG:모유체질
+						CALL MESSAGE_WINDOW_D, "", @"＞가슴은 크고、모유도 나오고、소의 꼬리도 있다/＞마치 젓소지만、그래도" + CALLNAME:ARG + "는 남자다…"
+					IF CSTR:ARG:相性グループ == "牛"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 소지만 꼬리도 소/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 소 사나이가…/＞아니、우시무스메인가？"
+						CSTR:ARG:タイトル = 우시무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 牛
+				CASE 5
+					CALL MESSAGE_WINDOW_D, "", @"＞여자처럼 풍만한 몸에 토끼와 같은 꼬리/＞" + CALLNAME:ARG + "에게 토끼의 흉내를 내며 뛰게 해봤다/＞가슴이 바람직하게 튀어올라、그만 흥분해 버렸다…"
+					IF CSTR:ARG:相性グループ == "兎"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 토끼지만 꼬리도 토끼/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 토끼 사나이가…/＞아니、우사기무스메인가？"
+						CSTR:ARG:タイトル = 우사기무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 兎
+			ENDSELECT
+		ELSEIF TALENT:ARG:빈유 || TALENT:ARG:절벽
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞사랑스러운 몸에 개와 같은 꼬리/＞" + CALLNAME:ARG + "는 솔직히 강아지 같다고 할만한 몸이다/＞개목걸이를 달고 귀여워해 주고 싶다…"
+					IF CSTR:ARG:相性グループ == "犬"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 개지만 꼬리도 개/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 개 사나이가…/＞아니、이누무스메인가？"
+						CSTR:ARG:20 = 이누무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 犬
+				CASE 2						
+					CALL MESSAGE_WINDOW_D, "", @"＞사랑스러운 몸에 고양이와 같은 꼬리/＞" + CALLNAME:ARG + "는 솔직히 아기 고양이 같다고 할만한 몸이다/＞개목걸이를 달고 괴롭혀 주고싶다…"
+					IF CSTR:ARG:相性グループ == "猫"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 고양이지만 꼬리도 고양이/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 고양이 사나이가…/＞아니、네코무스메인가？"
+						CSTR:ARG:20 = 네코무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 猫
+				CASE 3
+					IF RAND:9 == 0
+						CALL MESSAGE_WINDOW_D, "", @"＞사랑스러운 몸에 여우와 같은 꼬리가 아홉개/＞" + CALLNAME:ARG + "는 틀림없이 아기 구미호라 할만한 몸이다/＞꼬리를 쓰다듬으며 귀여워해 주고 싶다…"
+						CSTR:ARG:48 = 현재는 쁘띠데모에 의해 엉덩이에 여우의 꼬리가 아홉개 달려있다。
+						IF TALENT:ARG:여우 == 1
+							CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 구미/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 구미남…/＞아니、큐비무스메인가？"
+							CSTR:ARG:タイトル = 큐비무스메？
+						ENDIF
+					ELSE
+						CALL MESSAGE_WINDOW_D, "", @"＞사랑스러운 몸에 여우와 같은 꼬리/＞" + CALLNAME:ARG + "는 솔직히 아기 여우 같다고 할만한 몸이다/＞꼬리를 쓰다듬으며 귀여워해 주고 싶다…"
+						IF TALENT:ARG:여우 == 1
+							CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 여우/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 여우 사나이가…/＞아니、키츠네무스메인가？"
+							CSTR:ARG:20 = 키츠네무스메？
+						ENDIF
+					ENDIF
+					TALENT:ARG:여우 = 1
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞사랑스러운 몸에 소와 같은 꼬리/＞…여기에 가슴만 컷다면、누구도 " + CALLNAME:ARG + "를 남자로 인식하지 않았을 것이다"
+					IF CSTR:ARG:相性グループ == "牛"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 소지만 꼬리도 소/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 소 사나이가…/＞아니、우시무스메인가？"
+						CSTR:ARG:タイトル = 우시무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 牛
+				CASE 5
+					CALL MESSAGE_WINDOW_D, "", @"＞사랑스러운 몸에 토끼와 같은 꼬리가 달린" + CALLNAME:ARG + "/＞여성향 창관 같은데서 인기가 있을 듯하다…"
+					IF CSTR:ARG:相性グループ == "兎"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 토끼지만 꼬리도 토끼/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 토끼 사나이가…/＞아니、우사기무스메인가？"
+						CSTR:ARG:タイトル = 우사기무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 兎
+			ENDSELECT
+		ELSE
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞뭐랄까 알맞게 부풀어 오른 몸에 개와 같은 꼬리/＞" + CALLNAME:ARG + "가 움직이면、그에 따라 움직이는게 재미 있다…"
+					IF CSTR:ARG:相性グループ == "犬"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 개지만 꼬리도 개/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 개 사나이가…/＞아니、이누무스메인가？"
+						CSTR:ARG:20 = 이누무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 犬
+				CASE 2
+					CALL MESSAGE_WINDOW_D, "", @"＞뭐랄까 알맞게 부풀어 오른 몸에 고양이와 같은 꼬리/＞고양이 그 자체를 상징하는 듯한 생기 있는 지체가/＞" + CALLNAME:ARG + "가 남자임을 잊게 한다…"
+					IF CSTR:ARG:相性グループ == "猫"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 고양이지만 꼬리도 고양이/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 고양이 사나이가…/＞아니、네코무스메인가？"
+						CSTR:ARG:20 = 네코무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 猫
+				CASE 3
+					IF RAND:9 == 0
+						CALL MESSAGE_WINDOW_D, "", @"＞뭐랄까 알맞게 부풀어 오른 몸에 여우와 같은 꼬리가 아홉개/＞사실 나는 " + CALLNAME:ARG + "에게 홀려있고、사실은 " + CALLNAME:ARG + "는 여자인게 아닐까？/＞그만、그렇게 의심했다…"
+						CSTR:ARG:48 = 현재는 쁘띠데모에 의해 엉덩이에 여우의 꼬리가 아홉개 달려있다。
+						IF TALENT:ARG:여우 == 1
+							CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 구미/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 구미남…/＞아니、큐비무스메인가？"
+							CSTR:ARG:タイトル = 큐비무스메？
+						ENDIF
+					ELSE
+						CALL MESSAGE_WINDOW_D, "", @"＞뭐랄까 알맞게 부풀어 오른 몸에 여우와 같은 꼬리/＞사실 나는 " + CALLNAME:ARG + "에게 홀려있고、사실은 " + CALLNAME:ARG + "는 여자인게 아닐까？/＞그만、그렇게 의심했다…"
+						IF TALENT:ARG:여우 == 1
+							CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 여우/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 여우 사나이가…/＞아니、키츠네무스메인가？"
+							CSTR:ARG:20 = 키츠네무스메？
+						ENDIF
+					ENDIF
+					TALENT:ARG:여우 = 1
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞뭐랄까 알맞게 부풀어 오른 몸에 소와 같은 꼬리/＞" + CALLNAME:ARG + "는 확실히 송아지 처럼 보인다…"
+					IF CSTR:ARG:相性グループ == "牛"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 소지만 꼬리도 소/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 소 사나이가…/＞아니、우시무스메인가？"
+						CSTR:ARG:タイトル = 우시무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 牛
+				CASE 5
+					CALL MESSAGE_WINDOW_D, "", @"＞뭐랄까 알맞게 부풀어 오른 몸에 토끼와 같은 꼬리/＞" + CALLNAME:ARG + "라면 남녀 모두 귀여워 해 줄 것 같다…"
+					IF CSTR:ARG:相性グループ == "兎"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 토끼지만 꼬리도 토끼/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 토끼 사나이가…/＞아니、우사기무스메인가？"
+						CSTR:ARG:タイトル = 우사기무스메？
+					ENDIF
+					CSTR:ARG:相性グループ = 兎
+			ENDSELECT
+		ENDIF
+	ELSE
+		IF TALENT:ARG:거유 || TALENT:ARG:폭유 || TALENT:ARG:魔乳
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞풍만한 몸에 개와 같은 꼬리/＞" + CALLNAME:ARG + "의 터질듯한 지체에 좋은 엑센트가 된 것 같다…"
+					IF CSTR:ARG:相性グループ == "犬"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 개지만 꼬리도 개/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 이누무스메가 됐다…"
+						CSTR:ARG:20 = 이누무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 犬
+				CASE 2
+					CALL MESSAGE_WINDOW_D, "", @"＞풍만한 몸에 고양이와 같은 꼬리/＞" + CALLNAME:ARG + "터질듯한 지체가 고양이 다움과 맞물려서 정말 매혹적이다"
+					IF CSTR:ARG:相性グループ == "猫"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 고양이지만 꼬리도 고양이/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 네코무스메가 됐다…"
+						CSTR:ARG:20 = 네코무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 猫
+				CASE 3
+					IF RAND:9 == 0
+						CALL MESSAGE_WINDOW_D, "", @"＞풍만한 몸에 여우와 같은 꼬리가 아홉개/＞꼬리와 셋트인지、" + CALLNAME:ARG + "의 머리색도 금발로 물들고 있다"
+						CSTR:ARG:48 = 현재는 쁘띠데모에 의해 엉덩이에 여우의 꼬리가 아홉개 달려있다。
+						IF TALENT:ARG:여우 == 1
+							CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 구미/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 큐비무스메가 됐다…"
+							CSTR:ARG:タイトル = 큐비무스메
+						ENDIF
+					ELSE
+						CALL MESSAGE_WINDOW_D, "", @"＞풍만한 몸에 여우와 같은 꼬리/＞꼬리와 셋트인지、" + CALLNAME:ARG + "의 머리색도 금발로 물들고 있다"
+						IF TALENT:ARG:여우
+							CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 여우/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 키츠네무스메가 됐다…"
+							CSTR:ARG:20 = 키츠네무스메
+						ENDIF
+					ENDIF
+					TALENT:ARG:여우 = 1
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞풍만한 몸에 소와 같은 꼬리/＞여기까지 오면、확실히 " + CALLNAME:ARG + "는 젓소 그 자체다"
+					SIF TALENT:ARG:모유체질
+						CALL MESSAGE_WINDOW_D, "", @"＞모처럼 " + CALLNAME:ARG + "가 소가 됐으니、내일부턴 확실히 모유를 짜도록 하자…"
+					IF CSTR:ARG:相性グループ == "牛"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 소지만 꼬리도 소/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 우시무스메가 됐다…"
+						CSTR:ARG:タイトル = 우시무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 牛
+				CASE 5
+					CALL MESSAGE_WINDOW_D, "", @"＞풍만한 몸에 토끼와 같은 꼬리/＞이쪽을 향해、점프해온/＞" + CALLNAME:ARG + "의 가슴이 바람직하게 흔들려 눈에 독이 된다…"
+					IF CSTR:ARG:相性グループ == "兎"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 토끼지만 꼬리도 토끼/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 우사기무스메가 됐다…"
+						CSTR:ARG:タイトル = 우사기무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 兎
+			ENDSELECT
+		ELSEIF TALENT:ARG:빈유 || TALENT:ARG:절벽
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞조금 궁상맞은 몸매에 개와 같은 꼬리/＞" + CALLNAME:ARG + "는 강아지 같은 이미지다"
+					IF CSTR:ARG:相性グループ == "犬"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 개지만 꼬리도 개/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 이누무스메가 됐다…"
+						CSTR:ARG:20 = 이누무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 犬
+				CASE 2
+					CALL MESSAGE_WINDOW_D, "", @"＞조금 궁상맞은 몸매에 고양이와 같은 꼬리/＞" + CALLNAME:ARG + "는 아기 고양이 같은 분위기다"
+					IF CSTR:ARG:相性グループ == "猫"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 고양이지만 꼬리도 고양이/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 네코무스메가 됐다…"
+						CSTR:ARG:20 = 네코무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 猫
+				CASE 3
+					IF RAND:9 == 0
+						CALL MESSAGE_WINDOW_D, "", @"＞조금 궁상맞은 몸매에 여우와 같은 꼬리가 아홉개/＞꼬리와 셋트인지、" + CALLNAME:ARG + "의 머리색도 금발로 물들고 있다"
+						CSTR:ARG:48 = 현재는 쁘띠데모에 의해 엉덩이에 여우의 꼬리가 아홉개 달려있다。
+						IF TALENT:ARG:여우 == 1
+							CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 구미/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 큐비무스메가 됐다…"
+							CSTR:ARG:タイトル = 큐비무스메
+						ENDIF
+					ELSE
+						CALL MESSAGE_WINDOW_D, "", @"＞조금 궁상맞은 몸매에 여우와 같은 꼬리/＞이런 악마、있었던 것 같은 기분이 든다…"
+						IF TALENT:ARG:여우
+							CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 여우/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 키츠네무스메가 됐다…"
+							CSTR:ARG:20 = 키츠네무스메
+						ENDIF
+					ENDIF
+					TALENT:ARG:여우 = 1
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞조금 궁상맞은 몸매에 소와 같은 꼬리/＞…솔직히、" + CALLNAME:ARG + "는 소답지 않다는 기분이 들지 않는것도 아니다"
+					IF CSTR:ARG:相性グループ == "牛"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 소지만 꼬리도 소/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 우시무스메가 됐다…"
+						CSTR:ARG:タイトル = 우시무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 牛
+				CASE 5
+					CALL MESSAGE_WINDOW_D, "", @"＞조금 궁상맞은 몸매에 토끼와 같은 꼬리/＞今の" + CALLNAME:ARG + "는 일부계층에게 높은 수요가 있다…"
+					IF CSTR:ARG:相性グループ == "兎"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 토끼지만 꼬리도 토끼/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 우사기무스메가 됐다…"
+						CSTR:ARG:タイトル = 우사기무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 兎
+			ENDSELECT
+		ELSE
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞스타일 좋은 몸에 개와 같은 꼬리/＞" + CALLNAME:ARG + "는 모르는새 흥분했는지、파닥파닥 흔들리고 있다"
+					IF CSTR:ARG:相性グループ == "犬"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 개지만 꼬리도 개/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 이누무스메가 됐다…"
+						CSTR:ARG:20 = 이누무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 犬
+				CASE 2
+					CALL MESSAGE_WINDOW_D, "", @"＞스타일 좋은 몸에 고양이와 같은 꼬리/＞" + CALLNAME:ARG + "의 잘 죄어든 지체와 더불어、운동능력이 높아보인다"
+					IF CSTR:ARG:相性グループ == "猫"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 고양이지만 꼬리도 고양이/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 네코무스메가 됐다…"
+						CSTR:ARG:20 = 네코무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 猫
+				CASE 3
+					IF RAND:9 == 0
+						CALL MESSAGE_WINDOW_D, "", @"＞스타일 좋은 몸에 여우와 같은 꼬리가 아홉개/＞" + CALLNAME:ARG + "의 꼬리를 쓰다듬는 감촉이 아주 좋아서、쓰다듬고 있자니 졸려져 왔다…"
+						CSTR:ARG:48 = 현재는 쁘띠데모에 의해 엉덩이에 여우의 꼬리가 아홉개 달려있다。
+						IF TALENT:ARG:여우 == 1
+							CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 구미/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 큐비무스메가 됐다…"
+							CSTR:ARG:タイトル = 큐비무스메
+						ENDIF
+					ELSE
+						CALL MESSAGE_WINDOW_D, "", @"＞스타일 좋은 몸에 여우와 같은 꼬리/＞" + CALLNAME:ARG + "의 꼬리를 쓰다듬는 감촉이 아주 좋아서、쓰다듬고 있자니 졸려져 왔다…"
+						IF TALENT:ARG:여우
+							CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 여우지만 꼬리도 여우/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 키츠네무스메가 됐다…"
+							CSTR:ARG:20 = 키츠네무스메
+						ENDIF
+					ENDIF
+					TALENT:ARG:여우 = 1
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞스타일 좋은 몸에 소와 같은 꼬리/＞역시 소를 흉내내기에는 가슴이 조금 작은가…"
+					IF CSTR:ARG:相性グループ == "牛"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 소지만 꼬리도 소/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 우시무스메가 됐다…"
+						CSTR:ARG:タイトル = 우시무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 牛
+				CASE 5
+					CALL MESSAGE_WINDOW_D, "", @"＞스타일 좋은 몸에 토끼와 같은 꼬리/＞" + CALLNAME:ARG + "의 매끈한 지체도 있어서、잘 뛸것같아 보인다"
+					IF CSTR:ARG:相性グループ == "兎"
+						CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、귀도 토끼지만 꼬리도 토끼/＞이제 " + CALLNAME:ARG + "는 두말할 필요없는 우사기무스메가 됐다…"
+						CSTR:ARG:タイトル = 우사기무스메
+					ENDIF
+					CSTR:ARG:相性グループ = 兎
+			ENDSELECT
+		ENDIF
+	ENDIF
+ENDIF
+
+;
+@PETIT_DEMON_SET_3103, ARG
+
+CALL MESSAGE_WINDOW_D, "남자 점주", @"자 그럼、어떤 날개로 할래？"
+CALL INPUT_SELECT_D , "어떤 날개로 할까？//[1]천사/[2]타천사/[3]박쥐/[4]맹금" , , , 2
+B = RESULT
+SELECTCASE B
+	CASE 1
+		CSTR:ARG:47 = 현재는 쁘띠데모에 의해 등에 하얀 천사의 날개가 자라나 있다。
+	CASE 2
+		CSTR:ARG:47 = 현재는 쁘띠데모에 의해 등에 검은 타천사의 날개가 자라나 있다。
+	CASE 3
+		CSTR:ARG:47 = 현재는 쁘띠데모에 의해 등에 박쥐의 날개가 자라나 있다。
+	CASE 4
+		CSTR:ARG:47 = 현재는 쁘띠데모에 의해 등에 맹금의 날개가 자라나 있다。
+ENDSELECT
+TALENT:ARG:날개 = 1
+IF NO:MASTER == NO:ARG
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"자 그럼、이쪽으로 와줄래요？"
+	CALL MESSAGE_WINDOW_D, "", @"＞점주에게 안내되어、" + CALLNAME:MASTER + "는 조그만 캡슐에 들어갔다…"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"자 그럼、시작할게/조금만 기다려요、금방 끝나니깐"
+	CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:MASTER + "는 의식이 멀어졌다…"
+	CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+	CALL SHOW_PICTURE, "EMPTY"
+	CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:MASTER + "가 눈을 뜨자、점주가 말을 걸어왔다…"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"응、잘 됐네/지금 당신、아주 쿨해요！/거울로 솜씨、체크해 봐요！"
+	IF TALENT:MASTER:남자 && !TALENT:MASTER:오토코노코
+		SELECTCASE B
+			CASE 1
+				CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、/＞건장한 체격에 천사와 같은 하얀 날개를 단 남자가 보인다/＞아크엔젤이라고 말하면、믿을지도 모르겠다"
+			CASE 2
+				CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、/＞건장한 체격에 타천사와 같은 검은 날개를 단 남자가 보인다/＞확실히、스스로로서도 꽤나 보기 좋다…"
+			CASE 3
+				CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、/＞건장한 체격에 박쥐와 같은 날개를 단 남자가 보인다/＞동화의 일반적인 악마라는건 분명히 이러한 모습이다…"
+			CASE 4
+				CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、/＞건장한 체격에 맹금과 같은 날개를 단 남자가 보인다/＞펼치면 꽤나 상대를 위압할 수 있을 것 같다"
+		ENDSELECT
+	ELSEIF TALENT:MASTER:오토코노코
+		IF TALENT:MASTER:거유 || TALENT:MASTER:폭유 || TALENT:MASTER:魔乳
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、여자처럼 풍만한 몸에 천사와 같은 하얀 날개를 단 소년이 보인다/＞근육의 위치 때문인지、날개를 움직일 때마다 가슴이 흔들리는게 매우 에로틱 하다/＞청초해 보이는 하얀  날개가 한층 더 성욕을 불러 일으킨다…"
+				CASE 2
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、여자처럼 풍만한 몸에 타천사와 같은 검은 날개를 단 소년이 보인다/＞근육의 위치 때문인지、날개를 움직일 때마다 가슴이 흔들리는게 매우 에로틱 하다/＞어덜트한 검은 날개가 한층 더 성욕을 불러 일으킨다…"
+				CASE 3
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、여자처럼 풍만한 몸에 박쥐와 같은 날개를 단 소년이 보인다/＞여기다가 여자였으면、완전히 서큐버스 였겠지…"
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、여자처럼 풍만한 몸에 맹금과 같은 날개를 단 소년이 보인다/＞신체 자체의 흘러넘치는 육감과 맹금의 강함이 합쳐져 실로 모에를 느낀다…"
+				
+			ENDSELECT
+		ELSEIF TALENT:MASTER:빈유 || TALENT:MASTER:절벽
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、사랑스러운 몸에/＞천사와 같은 하얀 날개를 단 소년이 보인다/＞마치 큐피드 같은 모습이다…"
+				CASE 2						
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、사랑스러운 몸에/＞타천사와 같은 검은 날개를 단 소년이 보인다/＞남자면서 이 모습이라니、바른 사람을 유혹하는 타천사라고 자칭할 수 있을 것 같다"
+				CASE 3
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、사랑스러운 몸에/＞박쥐와 같은 날개를 단 소년이 보인다/＞소악마라 자칭할 수 있는 듯한 분위기를 양껏 내고 있다…"
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、사랑스러운 몸에/＞맹금과 같은 날개를 단 소년이 보인다/＞날개가 몸을 감싸、조금 망토의 모양이 난다…"
+				CASE 5
+			ENDSELECT
+		ELSE
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、뭐랄까 알맞게 부풀어 오른 몸에/＞천사와 같은 하얀 날개를 단 소년이 보인다/＞천사는 양성구유란 말도 있었던가、하면 지금의 나는…"
+				CASE 2
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、뭐랄까 알맞게 부풀어 오른 몸에/＞타천사와 같은 검은 날개를 단 소년이 보인다/＞남자면서 이 모습이라니、바른 사람을 유혹하는 타천사라고 자칭할 수 있을 것 같다"
+				CASE 3
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、뭐랄까 알맞게 부풀어 오른 몸에/＞박쥐와 같은 날개를 단 소년이 보인다/＞리림중에 남자가 있었다면、분명 이런 모습 이었을 거다…"
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、뭐랄까 알맞게 부풀어 오른 몸에/＞맹금과 같은 날개를 단 소년이 보인다/＞한번 마음껏 하늘을 날아보고 싶다…"
+			ENDSELECT
+		ENDIF
+	ELSE
+		IF TALENT:MASTER:거유 || TALENT:MASTER:폭유 || TALENT:MASTER:魔乳
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、풍만한 몸에 천사와 같은 하얀 날개를 단 여자가 보인다/＞엔젤처럼 본디지라도 입으면 굉장할 것 같다…"
+				CASE 2
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、풍만한 몸에 타천사와 같은 검은 날개를 단 여자가 보인다/＞그러고 보니、풍만한 지체의 타천사 같은건 들은 적 없다/＞자신이 분명 제1호다…"
+				CASE 3
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、풍만한 몸에 박쥐와 같은 날개를 단 여자가 보인다/＞완전히 서큐버스 그 자체의 모습이다…"
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、풍만한 몸에 맹금과 같은 날개를 단 여자가 보인다/＞날개를 움직일 때마다 가슴이 흔들려 조금 곤란하다…"
+			ENDSELECT
+		ELSEIF TALENT:MASTER:빈유 || TALENT:MASTER:절벽
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、조금 궁상맞은 몸매에 천사와 같은 하얀 날개를 단 여자가 보인다/＞동화의 천사는 대체로 이런 모습이었다…"
+				CASE 2
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、조금 궁상맞은 몸매에 타천사와 같은 검은 날개를 단 여자가 보인다/＞전체적으로 완만한 체형 탓인지、검은 새 같은 모양이 되버렸다"
+				CASE 3
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、조금 궁상맞은 몸매에 박쥐와 같은 날개를 단 여자가 보인다/＞스스로 봐도 리림과 아주 비슷하다…"
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、조금 궁상맞은 몸매에 맹금과 같은 날개를 단 여자가 보인다/＞왠지 빠를 것 같지만、유감스럽게도 이 날개는 빨라보이는데에 기여하지 않는다…"
+			ENDSELECT
+		ELSE
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、스타일 좋은 몸에 천사와 같은 하얀 날개를 단 여자가 보인다/＞일견 청초해 보이지만、그 내견은 누구보다 " + CALLNAME:MASTER + " 자신이 잘 알고있다…"
+				CASE 2
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、스타일 좋은 몸에 타천사와 같은 검은 날개를 단 여자가 보인다/＞최근 인기있는 아이돌이 이런 모습을 했던것 같다…"
+				CASE 3
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、스타일 좋은 몸에 박쥐와 같은 날개를 단 여자가 보인다/＞옛날 들었던 동화의 악마、분명히 이런 모습이었지…"
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞그 말에 바라본 거울에는、스타일 좋은 몸에 맹금과 같은 날개를 단 여자가 보인다/＞몸 앞쪽까지 가릴 수 있지만、그때마다 유두가 날개에 스쳐서 기분이 좋다…"
+			ENDSELECT
+		ENDIF
+	ENDIF
+ELSE
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"알았어용/그러면 당신은 여기서 기달려용？"
+	CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+	CALL SHOW_PICTURE, "EMPTY"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"네、오케이！/아주 쿨하게 됐어용！"
+	CALL MESSAGE_WINDOW_D, "", @"＞점주에게 이끌려 、" + CALLNAME:ARG + "는 수줍어하며 돌아왔다"
+	IF TALENT:ARG:남자 && !TALENT:ARG:오토코노코
+		SELECTCASE B
+			CASE 1
+				CALL MESSAGE_WINDOW_D, "", @"＞건장한 체격에 천사와 같은 하얀 날개/＞다시 태어난 " + CALLNAME:ARG + "는 아크엔젤이라고 하면 믿을지도 모르겠다…"
+			CASE 2
+				CALL MESSAGE_WINDOW_D, "", @"＞건장한 체격에 타천사와 같은 검은 날개/＞다시 태어난 " + CALLNAME:ARG + "는 꽤나 쿨한 모습이었다"
+			CASE 3
+				CALL MESSAGE_WINDOW_D, "", @"＞건장한 체격에 박쥐와 같은 날개/＞다시 태어난 " + CALLNAME:ARG + "는 마치 동화의 악마 같은 모습이다…"
+			CASE 4
+				CALL MESSAGE_WINDOW_D, "", @"＞건장한 체격에 맹금과 같은 날개/＞다시 태어난 " + CALLNAME:ARG + "를 보고、" + CALLNAME:MASTER + "는 엄청 셀거같다 생각했다…"
+		ENDSELECT
+	ELSEIF TALENT:ARG:오토코노코
+		IF TALENT:ARG:거유 || TALENT:ARG:폭유 || TALENT:ARG:魔乳
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞여자처럼 풍만한 몸에 천사와 같은 하얀 날개/＞" + CALLNAME:ARG + "가 날개를 움직일 때마다 가슴이 흔들려서、위험하게도 " + CALLNAME:ARG + "가 남자란걸 잊을 것 같다…"
+				CASE 2
+					CALL MESSAGE_WINDOW_D, "", @"＞여자처럼 풍만한 몸에 타천사와 같은 검은 날개/＞" + CALLNAME:ARG + "가 날개를 움직일 때마다 가슴이 흔들려서、위험하게도 " + CALLNAME:ARG + "가 남자란걸 잊을 것 같다…"
+				CASE 3
+					CALL MESSAGE_WINDOW_D, "", @"＞여자처럼 풍만한 몸에 박쥐와 같은 날개/＞" + CALLNAME:ARG + "는 마치 서큐버스라서、알몸을 본 남자의 반응이 궁금하다…"
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞여자처럼 풍만한 몸에 맹금과 같은 날개/＞맹금의 매시브함과 몸에 흘러넘치는 육감의 언밸런스함이 멋지다"
+			ENDSELECT
+		ELSEIF TALENT:ARG:빈유 || TALENT:ARG:절벽
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞사랑스러운 몸에 천사와 같은 하얀 날개/＞" + CALLNAME:ARG + "는 확실히 큐피드 같다"
+				CASE 2						
+					CALL MESSAGE_WINDOW_D, "", @"＞사랑스러운 몸에 타천사와 같은 검은 날개/＞" + CALLNAME:ARG + "는 사람을 유혹하는 타락 천사 그 자체다…"
+				CASE 3
+					CALL MESSAGE_WINDOW_D, "", @"＞사랑스러운 몸에 박쥐와 같은 날개/＞" + CALLNAME:ARG + "는 소악마라 자칭할 수 있는 듯한 분위기를 양껏 내고 있다…"
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞사랑스러운 몸에 맹금과 같은 날개/＞날개끝이 " + CALLNAME:ARG + "를 감싸、약간 망토 모양이 난다"
+			ENDSELECT
+		ELSE
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞뭐랄까 알맞게 부풀어 오른 몸에 천사와 같은 하얀 날개/＞천사는 양성구유란 말도 있었던가、그럼 지금의 " + CALLNAME:ARG + "는…"
+				CASE 2
+					CALL MESSAGE_WINDOW_D, "", @"＞뭐랄까 알맞게 부풀어 오른 몸에 타천사와 같은 검은 날개/＞검정을 더욱 돋보이게 하는 생기 넘치는 지체가/＞" + CALLNAME:ARG + "가 남자임을 잊게 한다…"
+				CASE 3
+					CALL MESSAGE_WINDOW_D, "", @"＞뭐랄까 알맞게 부풀어 오른 몸에 박쥐와 같은 날개/＞" + CALLNAME:ARG + "는 마치 남자 리림 같다"
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞뭐랄까 알맞게 부풀어 오른 몸에 맹금과 같은 날개/＞" + CALLNAME:ARG + "가 하늘을 마음껏 날고 있는 것을 보고 싶다…"
+			ENDSELECT
+		ENDIF
+	ELSE
+		IF TALENT:ARG:거유 || TALENT:ARG:폭유 || TALENT:ARG:魔乳
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞풍만한 몸에 천사와 같은 하얀 날개/＞" + CALLNAME:ARG + "의 터질 것 같은 지체에는、엔젤같은 본디지는 위험하겠지…"
+				CASE 2
+					CALL MESSAGE_WINDOW_D, "", @"＞풍만한 몸에 타천사와 같은 검은 날개/＞풍만한 타천사 같은건 들은 적 없다/＞" + CALLNAME:ARG + "는 분명 최초의 풍만한 타천사겠지…"
+				CASE 3
+					CALL MESSAGE_WINDOW_D, "", @"＞풍만한 몸에 박쥐와 같은 날개/＞확실히 " + CALLNAME:ARG + "는 서큐버스 같다…"
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞풍만한 몸에 맹금과 같은 날개/＞" + CALLNAME:ARG + "가 날개를 움직일 때마다 풍만한 가슴이 흔들려서 에로틱하다…"
+			ENDSELECT
+		ELSEIF TALENT:ARG:빈유 || TALENT:ARG:절벽
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞조금 궁상맞은 몸매에 천사와 같은 하얀 날개/＞" + CALLNAME:ARG + "는 옛 동화에서 본 천사 같다…"
+				CASE 2
+					CALL MESSAGE_WINDOW_D, "", @"＞조금 궁상맞은 몸매에 타천사와 같은 검은 날개/＞" + CALLNAME:ARG + "는 검은 새를 연상시킨다…"
+				CASE 3
+					CALL MESSAGE_WINDOW_D, "", @"＞조금 궁상맞은 몸매에 박쥐와 같은 날개/＞이런 모습의 악마、있었던 것 같다…"
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞조금 궁상맞은 몸매에 맹금과 같은 날개/＞" + CALLNAME:ARG + "는 재빠를것 같아 보인다/＞…만、유감스럽게도 별로 그런 것도 아니다"
+			ENDSELECT
+		ELSE
+			SELECTCASE B
+				CASE 1
+					CALL MESSAGE_WINDOW_D, "", @"＞스타일 좋은 몸에 천사와 같은 하얀 날개/＞" + CALLNAME:ARG + "는 매우 청초한 모습으로 돌아왔다…/＞만、내용물이 어떨지는 장담할 수 없다…"
+				CASE 2
+					CALL MESSAGE_WINDOW_D, "", @"＞스타일 좋은 몸에 타천사와 같은 검은 날개/＞" + CALLNAME:ARG + "의 잘 죄어든 지체와 더불어、운동능력이 높아보인다"
+				CASE 3
+					CALL MESSAGE_WINDOW_D, "", @"＞스타일 좋은 몸에 박쥐와 같은 날개/＞" + CALLNAME:ARG + "는 옛 이야기에서 봤던 악마의 모습을 닮았다"
+				CASE 4
+					CALL MESSAGE_WINDOW_D, "", @"＞스타일 좋은 몸에 맹금과 같은 날개/＞마치 망토처럼 " + CALLNAME:ARG + "의 몸을 감싸고 있다"
+			ENDSELECT
+		ENDIF
+	ENDIF
+ENDIF
+
+
+@PETIT_DEMON_SET_3104, ARG
+
+CSTR:ARG:46 = 현재는 쁘띠데모에 의해 인어화 하고있다。
+TALENT:ARG:꼬리 = 1
+TALENT:ARG:물고기 = 1
+TALENT:ARG:발 = 0
+IF NO:MASTER == NO:ARG
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"자 그럼、이쪽으로 와줄래요？"
+	CALL MESSAGE_WINDOW_D, "", @"＞점주에게 안내되어、" + CALLNAME:MASTER + "는 조그만 캡슐에 들어갔다…"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"자 그럼、시작할게/조금만 기다려요、금방 끝나니깐"
+	CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:MASTER + "는 의식이 멀어졌다…"
+	CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+	CALL SHOW_PICTURE, "EMPTY"
+	CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:MASTER + "가 눈을 뜨자、점주가 말을 걸어왔다…"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"응、잘 됐네/지금 당신、아주 쿨해요！/거울로 솜씨、체크해 봐요！"
+	IF TALENT:MASTER:남자 && !TALENT:MASTER:오토코노코
+		CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:MASTER + "모습은 확실히 늠름한 남자 인어였다/＞페니스부터 아래는 두말할 필요없는 물고기의 그것이었다/＞바라에라도 한번 잠수해 보고싶다…"
+	ELSEIF TALENT:MASTER:오토코노코 || TALENT:MASTER:후타나리
+		IF TALENT:MASTER:거유 || TALENT:MASTER:폭유 || TALENT:MASTER:魔乳
+			CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:MASTER + "는 확실히 그림에 보이던 풍만한 인어의 모습 그 자체였다만/＞전에 가랑이라 불리던 장소에 난 페니스가 유일한 차이였다/＞한번 마음껏 헤엄쳐 보고 싶다…"
+		ELSEIF TALENT:MASTER:빈유 || TALENT:MASTER:절벽
+			CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:MASTER + "는 확실히 그림에 보이던 인어의 모습 그 자체였다만/＞가슴은 평탄하고、또한 가랑이라 불리던 장소에 난 페니스가 존재를 주장하고있다…/＞한번 마음껏 헤엄쳐 보고 싶다…"
+		ELSE
+			CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:MASTER + "는 확실히 그림에 보이던 인어의 모습 그 자체였다만/＞전에 가랑이라 불리던 장소에 난 페니스가 유일한 차이였다/＞한번 마음껏 헤엄쳐 보고 싶다…"
+		ENDIF
+	ELSE
+		IF TALENT:MASTER:거유 || TALENT:MASTER:폭유 || TALENT:MASTER:魔乳
+			CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:MASTER + "는 확실히 그림에 보이던 인어의 모습 그 자체였다/＞자랑의 풍만한 가슴도 그대로다/＞한번 커다란 조개라도 찾아서、가슴에 대어 둘까"
+		ELSEIF TALENT:MASTER:빈유 || TALENT:MASTER:절벽
+			CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:MASTER + "는 확실히 그림에 보이던 인어의 모습 그 자체였다/＞…만、가슴은 역시 작았다/＞조개를 붙일 일은 없을것 같다…"
+		ELSE
+			CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:MASTER + "는 확실히 그림에 보이던 인어의 모습 그 자체였다/＞여기엔 한번 조개라도 찾아서、가슴에 대어 둘까"
+		ENDIF
+	ENDIF
+	CALL MESSAGE_WINDOW_D, "", @"＞하지만、인어가 되어본 것은 좋지만/＞이후의 일상행활은 어떻게 하지…/＞지금까지와 같은 감각으로 움직이곤 있지만…"
+ELSE
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"알았어용/그러면 당신은 여기서 기달려용？"
+	CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+	CALL SHOW_PICTURE, "EMPTY"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"네、오케이！/아주 쿨하게 됐어용！"
+	CALL MESSAGE_WINDOW_D, "", @"＞점주에게 이끌려 、" + CALLNAME:ARG + "는 수줍어하며 돌아왔다"
+	IF TALENT:ARG:남자 && !TALENT:ARG:오토코노코
+		CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:ARG + "의 모습은 확실히 늠름한 남자 인어였다/＞페니스부터 아래는 두말할 필요없는 물고기의 그것이 되어있었다/＞수조에서 한번 헤엄치게 해보고 싶다…"
+	ELSEIF TALENT:ARG:오토코노코 || TALENT:ARG:후타나리
+		IF TALENT:ARG:거유 || TALENT:ARG:폭유 || TALENT:ARG:魔乳
+			CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:ARG + "는 확실히 그림으로 봤던 풍만한 인어의 모습 그 자체였다만/＞전에 가랑이라 불리던 장소에 난 페니스가 유일한 차이였다/＞한번 마음껏 같이 헤엄쳐 보고 싶다…"
+		ELSEIF TALENT:ARG:빈유 || TALENT:ARG:절벽
+			CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:ARG + "는 확실히 그림으로 봤던 인어의 모습 그 자체였다만/＞가슴은 평탄하고、또한 가랑이라 불리던 장소에 난 페니스가 존재를 주장하고있다…/＞한번 마음껏 같이 헤엄쳐 보고 싶다…"
+		ELSE
+			CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:ARG + "는 확실히 그림으로 봤던 인어의 모습 그 자체였다만/＞전에 가랑이라 불리던 장소에 난 페니스가 유일한 차이였다/＞한번 마음껏 같이 헤엄쳐 보고 싶다…"
+		ENDIF
+	ELSE
+		IF TALENT:ARG:거유 || TALENT:ARG:폭유 || TALENT:ARG:魔乳
+			CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:ARG + "는 확실히 그림으로 봤던 인어의 모습 그 자체였다/＞자랑의 풍만한 가슴도 그대로다/＞한번 커다란 조개라도 찾아서、가슴에 대어 둘까"
+		ELSEIF TALENT:ARG:빈유 || TALENT:ARG:절벽
+			CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:ARG + "는 확실히 그림으로 봤던 인어의 모습 그 자체였다/＞…만、가슴은 역시 작았다/＞조개를 붙일 일은 없을것 같다…"
+		ELSE
+			CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:ARG + "는 확실히 그림으로 봤던 인어의 모습 그 자체였다/＞여기엔 한번 조개라도 찾아서、가슴에 대어 둘까"
+		ENDIF
+	ENDIF
+ENDIF
+
+
+@PETIT_DEMON_SET_3105, ARG
+
+CSTR:ARG:46 = 현재는 쁘띠데모로 인해 소인이 되었다。
+TALENT:ARG:소인체형 = 1
+TALENT:ARG:유아체형 = 0
+TALENT:ARG:큰체형 = 0
+TALENT:ARG:거체 = 0
+
+IF NO:MASTER == NO:ARG
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"자 그럼、이리 와줄래요？"
+	CALL MESSAGE_WINDOW_D, "", @"＞점주에게 안내받은、" + CALLNAME:MASTER + "는 작은 캡슐에 들어갔다…"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"자 그럼、시작할게/조금만 기다려요、바로 끝나니깐"
+	CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:MASTER + "는 의식이 멀어졌다…"
+	CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+	CALL SHOW_PICTURE, "EMPTY"
+	CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:MASTER + "가 눈을 뜨자、점주가 말을 걸어왔다…"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"응、잘 됐네/지금 당신、아주 쿨해요！/거울로 솜씨、체크해 봐요！"
+	CALL MESSAGE_WINDOW_D, "", @"＞그 말을 듣고 들여다 본 큰 거울에는, />지금까지 대로의 당신이 비치고 있었다/>그렇지만 주변의 사물과의 대비를 보면 자신이 작아진 것은 틀림없는 것 같다."
+ELSE
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"알았어용/그러면 당신은 여기서 기달려용？"
+	CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+	CALL SHOW_PICTURE, "EMPTY"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"네、오케이！/아주 쿨하게 됐어용！"
+	CALL MESSAGE_WINDOW_D, "", @"＞점주에게 이끌려 、" + CALLNAME:ARG + "는 수줍어하며 돌아왔다"
+	CALL MESSAGE_WINDOW_D, "", @"＞손바닥만한 크기로 다시 태어난 " + CALLNAME:ARG + "은 미니어처 인형으로 잘못 볼 것 같은 느낌이다…"
+ENDIF
+
+;------------------------------
+;デモナイズド타입
+;------------------------------
+
+;엔젤
+@DEMONIEZD_TYPE_3111, ARGS, ARG
+#LOCALSSIZE 1
+SELECTCASE ARGS
+	CASE "デモナイズド타입"
+		RESULTS = 엔젤
+	CASE "해설"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "엔젤을 넣는거죠？/그러면、" + CALLNAME:ARG + "쨩의 등에 하얀 날개가 생길거에요"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "검격과 타격에 강해지지만/비구와 충격、그리고 주살에 약해질 거에용"
+	CASE "확인"
+			CALL MESSAGE_WINDOW_D , "남자 점주" , "４０００마카 들지만/정말로、"+ CALLNAME:ARG + "쨩한테 엔젤을 넣어도 좋아요？"
+	CASE "가격"
+		RETURN 4000
+	CASE "デモナイズ実行"
+		CSTR:ARG:49 = 데모나이즈드에 의해 엔젤(봉인지정)을 짜 넣어、등에 순백의날개를 단 금발의 천사가 되었다。
+		ABL:ARG:종족 = 73
+		CSTR:ARG:종족명 = 천사
+		MAXBASE:ARG:검격 = 25
+		MAXBASE:ARG:비구 = 125
+		MAXBASE:ARG:타격 = 25
+		MAXBASE:ARG:전술 = 100
+		MAXBASE:ARG:화염 = 75
+		MAXBASE:ARG:빙결 = 100
+		MAXBASE:ARG:전격 = 75
+		MAXBASE:ARG:충격 = 150
+		MAXBASE:ARG:신경 = 50
+		MAXBASE:ARG:정신 = 50
+		MAXBASE:ARG:파마 = 0
+		MAXBASE:ARG:주살 = 150
+		MAXBASE:ARG:지변 = 75
+		MAXBASE:ARG:수격 = 100
+		MAXBASE:ARG:질풍 = 100
+		MAXBASE:ARG:중력 = 125
+		MAXBASE:ARG:핵열 = 75
+		MAXBASE:ARG:만능 = 100
+		MAXBASE:ARG:사이코 = 100
+		BASE:ARG:검격 = 25
+		BASE:ARG:비구 = 125
+		BASE:ARG:타격 = 25
+		BASE:ARG:전술 = 100
+		BASE:ARG:화염 = 75
+		BASE:ARG:빙결 = 100
+		BASE:ARG:전격 = 75
+		BASE:ARG:충격 = 150
+		BASE:ARG:신경 = 50
+		BASE:ARG:정신 = 50
+		BASE:ARG:파마 = 0
+		BASE:ARG:주살 = 150
+		BASE:ARG:지변 = 75
+		BASE:ARG:수격 = 100
+		BASE:ARG:질풍 = 100
+		BASE:ARG:중력 = 125
+		BASE:ARG:핵열 = 75
+		BASE:ARG:만능 = 100
+		BASE:ARG:사이코 = 100
+		CSTR:ARG:相性グループ = ヘブライ천사
+		;랜덤キャラの場合は合体可とする
+		IF NO:ARG <= 4900 || NO:ARG >= 4913
+			CFLAG:ARG:合体불가 = 1
+		ENDIF
+		TALENT:ARG:천사 = 1
+		TALENT:ARG:날개 = 1
+ENDSELECT
+
+;네코마타
+@DEMONIEZD_TYPE_3112, ARGS, ARG
+#LOCALSSIZE 1
+SELECTCASE ARGS
+	CASE "デモナイズド타입"
+		RESULTS = 네코마타
+	CASE "해설"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "네코마타를 넣는거죠？/그러면、" + CALLNAME:ARG + "쨩의 귀가 고양이의 귀가 될꺼에요/그리고、고양이의 꼬리가 두개 달리고 갈퀴와 갈퀴발이 날꺼에요"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "충격과 신경에 강해지지만/전격과 정신에 약해질 거에용"
+	CASE "확인"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "３０００마카 들지만/정말로、"+ CALLNAME:ARG + "쨩한테 네코마타를 넣어도 좋아요？"
+	CASE "가격"
+		RETURN 3000
+	CASE "デモナイズ実行"
+		CSTR:ARG:49 = 데모나이즈드에 의해 네코마타(희소종)을 짜 넣어、고양이의 귀와 꼬리를 달고、손발에 날카로운 발톱이 난 마수가 되었다。
+		ABL:ARG:종족 = 73
+		CSTR:ARG:종족명 = 마수
+		MAXBASE:ARG:검격 = 100
+		MAXBASE:ARG:비구 = 75
+		MAXBASE:ARG:타격 = 100
+		MAXBASE:ARG:전술 = 75
+		MAXBASE:ARG:화염 = 100
+		MAXBASE:ARG:빙결 = 100
+		MAXBASE:ARG:전격 = 150
+		MAXBASE:ARG:충격 = 25
+		MAXBASE:ARG:신경 = 0
+		MAXBASE:ARG:정신 = 125
+		MAXBASE:ARG:파마 = 75
+		MAXBASE:ARG:주살 = 50
+		MAXBASE:ARG:지변 = 100
+		MAXBASE:ARG:수격 = 75
+		MAXBASE:ARG:질풍 = 50
+		MAXBASE:ARG:중력 = 50
+		MAXBASE:ARG:핵열 = 100
+		MAXBASE:ARG:만능 = 100
+		MAXBASE:ARG:사이코 = 100
+		BASE:ARG:검격 = 100
+		BASE:ARG:비구 = 75
+		BASE:ARG:타격 = 100
+		BASE:ARG:전술 = 75
+		BASE:ARG:화염 = 100
+		BASE:ARG:빙결 = 100
+		BASE:ARG:전격 = 150
+		BASE:ARG:충격 = 25
+		BASE:ARG:신경 = 0
+		BASE:ARG:정신 = 125
+		BASE:ARG:파마 = 75
+		BASE:ARG:주살 = 50
+		BASE:ARG:지변 = 100
+		BASE:ARG:수격 = 75
+		BASE:ARG:질풍 = 50
+		BASE:ARG:중력 = 50
+		BASE:ARG:핵열 = 100
+		BASE:ARG:만능 = 100
+		BASE:ARG:사이코 = 100
+		CSTR:ARG:相性グループ = 猫
+		;랜덤キャラの場合は合体可とする
+		IF NO:ARG <= 4900 || NO:ARG >= 4913
+			CFLAG:ARG:合体불가 = 1
+		ENDIF
+		TALENT:ARG:동물귀 = 1
+		TALENT:ARG:꼬리 = 1
+		TALENT:ARG:갈퀴 = 1
+		TALENT:ARG:갈퀴발 = 1
+		TALENT:ARG:팔 = 0
+		TALENT:ARG:발 = 0
+		ABL:ARG:공격상성 = 3
+ENDSELECT
+
+;이나바흰토끼
+@DEMONIEZD_TYPE_3113, ARGS, ARG
+#LOCALSSIZE 1
+SELECTCASE ARGS
+	CASE "デモナイズド타입"
+		RESULTS = 이나바흰토끼
+	CASE "해설"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "이나바흰토끼를 넣는거죠？/그러면、" + CALLNAME:ARG + "쨩의 귀가 토끼의 귀가 되고 거기에 토끼의 꼬리가 달릴꺼에요"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "빙결과 신경이 듣지 않게 되고 파마와 주살에 강해지지만/검격과 화염에 약해질 거에용"
+	CASE "확인"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "６０００마카 들지만/정말로、"+ CALLNAME:ARG + "쨩한테 이나바흰토끼를 넣어도 좋아요？"
+	CASE "가격"
+		RETURN 6000
+	CASE "デモナイズ実行"
+		CSTR:ARG:49 = 데모나이즈드에 의해 이나바흰토끼(고대종)을 짜 넣어、토끼의 귀와 꼬리를 단 마수가 되었다。
+		ABL:ARG:종족 = 73
+		IF TALENT:ARG:남자 == 1
+			CSTR:ARG:종족명 = 마수
+		ELSE
+			CSTR:ARG:종족명 = バニーガール
+		ENDIF
+		MAXBASE:ARG:검격 = 125
+		MAXBASE:ARG:비구 = 100
+		MAXBASE:ARG:타격 = 75
+		MAXBASE:ARG:전술 = 100
+		MAXBASE:ARG:화염 = 150
+		MAXBASE:ARG:빙결 = 0
+		MAXBASE:ARG:전격 = 150
+		MAXBASE:ARG:충격 = 100
+		MAXBASE:ARG:신경 = 0
+		MAXBASE:ARG:정신 = 125
+		MAXBASE:ARG:파마 = -25
+		MAXBASE:ARG:주살 = -25
+		MAXBASE:ARG:지변 = 75
+		MAXBASE:ARG:수격 = 50
+		MAXBASE:ARG:질풍 = 100
+		MAXBASE:ARG:중력 = 100
+		MAXBASE:ARG:핵열 = 125
+		MAXBASE:ARG:만능 = 100
+		MAXBASE:ARG:사이코 = 100
+		BASE:ARG:검격 = 125
+		BASE:ARG:비구 = 100
+		BASE:ARG:타격 = 75
+		BASE:ARG:전술 = 100
+		BASE:ARG:화염 = 150
+		BASE:ARG:빙결 = 0
+		BASE:ARG:전격 = 150
+		BASE:ARG:충격 = 100
+		BASE:ARG:신경 = 0
+		BASE:ARG:정신 = 125
+		BASE:ARG:파마 = -25
+		BASE:ARG:주살 = -25
+		BASE:ARG:지변 = 75
+		BASE:ARG:수격 = 50
+		BASE:ARG:질풍 = 100
+		BASE:ARG:중력 = 100
+		BASE:ARG:핵열 = 125
+		BASE:ARG:만능 = 100
+		BASE:ARG:사이코 = 100
+		CSTR:ARG:相性グループ = 兎
+		;랜덤キャラの場合は合体可とする
+		IF NO:ARG <= 4900 || NO:ARG >= 4913
+			CFLAG:ARG:合体불가 = 1
+		ENDIF
+		TALENT:ARG:동물귀 = 1
+		TALENT:ARG:꼬리 = 1
+		TALENT:ARG:월광욕 = 1
+		ABL:ARG:공격상성 = 3
+ENDSELECT
+
+;픽시
+@DEMONIEZD_TYPE_3114, ARGS, ARG
+#LOCALSSIZE 1
+SELECTCASE ARGS
+	CASE "デモナイズド타입"
+		RESULTS = 픽시
+	CASE "해설"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "픽시을 넣는거죠？/그러면、" + CALLNAME:ARG + "쨩의 등에 벌레를 닮은 날개가 자랄 거에용/그리고、키가 아주 작아질 거고요"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "대강의 마법에는 강해지지만 총격(비구)과 전술、그리고 중력과 핵열에 약해질 거에용"
+	CASE "확인"
+				CALL MESSAGE_WINDOW_D , "남자 점주" , "３０００마카 들지만/정말로、"+ CALLNAME:ARG + "쨩한테 픽시을 넣어도 좋아요？"
+	CASE "가격"
+		RETURN 3000
+	CASE "デモナイズ実行"
+		CSTR:ARG:49 = 데모나이즈에 의해 픽시(천리종)을 짜 넣어、15센티미터 정도의 키가 되고、확실한 날개를 기르고 있다。
+		ABL:ARG:종족 = 73
+		CSTR:ARG:종족명 = 요정
+		MAXBASE:ARG:검격 = 100
+		MAXBASE:ARG:비구 = 150
+		MAXBASE:ARG:타격 = 100
+		MAXBASE:ARG:전술 = 125
+		MAXBASE:ARG:화염 = 25
+		MAXBASE:ARG:빙결 = 25
+		MAXBASE:ARG:전격 = 25
+		MAXBASE:ARG:충격 = 25
+		MAXBASE:ARG:신경 = 50
+		MAXBASE:ARG:정신 = 75
+		MAXBASE:ARG:파마 = 50
+		MAXBASE:ARG:주살 = 75
+		MAXBASE:ARG:지변 = 50
+		MAXBASE:ARG:수격 = 50
+		MAXBASE:ARG:질풍 = 50
+		MAXBASE:ARG:중력 = 125
+		MAXBASE:ARG:핵열 = 150
+		MAXBASE:ARG:만능 = 100
+		MAXBASE:ARG:사이코 = 50
+		BASE:ARG:검격 = 100
+		BASE:ARG:비구 = 150
+		BASE:ARG:타격 = 100
+		BASE:ARG:전술 = 125
+		BASE:ARG:화염 = 25
+		BASE:ARG:빙결 = 25
+		BASE:ARG:전격 = 25
+		BASE:ARG:충격 = 25
+		BASE:ARG:신경 = 50
+		BASE:ARG:정신 = 75
+		BASE:ARG:파마 = 50
+		BASE:ARG:주살 = 75
+		BASE:ARG:지변 = 50
+		BASE:ARG:수격 = 50
+		BASE:ARG:질풍 = 50
+		BASE:ARG:중력 = 150
+		BASE:ARG:핵열 = 150
+		BASE:ARG:만능 = 100
+		BASE:ARG:사이코 = 50
+		;랜덤キャラの場合は合体可とする
+		IF NO:ARG <= 4900 || NO:ARG >= 4913
+			CFLAG:ARG:合体불가 = 1
+		ENDIF
+		TALENT:ARG:날개 = 1
+		TALENT:ARG:소인체형 = 1
+		TALENT:ARG:유아체형 = 0
+		TALENT:ARG:큰체형 = 0
+		TALENT:ARG:거체 = 0
+		ABL:ARG:공격상성 = 3
+ENDSELECT
+
+;머메이드
+@DEMONIEZD_TYPE_3115, ARGS, ARG
+#LOCALSSIZE 1
+SELECTCASE ARGS
+	CASE "デモナイズド타입"
+		RESULTS = 머메이드
+	CASE "해설"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "머메이드를 짜넣는거죠？/그러면、" + CALLNAME:ARG + "의 하반신이 물고기처럼 될 거에요"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "빙결에 아주 강하고, 수격에도 강해지지만 / 화염과 핵열에 약해질 거에용"
+	CASE "확인"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "５０００마카 들지만/정말로、"+ CALLNAME:ARG + "짱에게 머메이드를 넣어도 좋아요？"
+	CASE "가격"
+		RETURN 5000
+	CASE "デモナイズ実行"
+		CSTR:ARG:49 = 데모나이즈드에 의해 머메이드(귀급)를 삽입하여 허리 아래가 물고기의 것이 되었다
+		ABL:ARG:종족 = 73
+		CSTR:ARG:종족명 = 인어
+		MAXBASE:ARG:검격 = 100
+		MAXBASE:ARG:비구 = 100
+		MAXBASE:ARG:타격 = 75
+		MAXBASE:ARG:전술 = 75
+		MAXBASE:ARG:화염 = 150
+		MAXBASE:ARG:빙결 = -50
+		MAXBASE:ARG:전격 = 125
+		MAXBASE:ARG:충격 = 50
+		MAXBASE:ARG:신경 = 100
+		MAXBASE:ARG:정신 = 25
+		MAXBASE:ARG:파마 = 0
+		MAXBASE:ARG:주살 = 0
+		MAXBASE:ARG:지변 = 125
+		MAXBASE:ARG:수격 = -100
+		MAXBASE:ARG:질풍 = 50
+		MAXBASE:ARG:중력 = 100
+		MAXBASE:ARG:핵열 = 200
+		MAXBASE:ARG:만능 = 100
+		MAXBASE:ARG:사이코 = 100
+		BASE:ARG:검격 = 100
+		BASE:ARG:비구 = 100
+		BASE:ARG:타격 = 75
+		BASE:ARG:전술 = 75
+		BASE:ARG:화염 = 150
+		BASE:ARG:빙결 = -50
+		BASE:ARG:전격 = 125
+		BASE:ARG:충격 = 50
+		BASE:ARG:신경 = 100
+		BASE:ARG:정신 = 25
+		BASE:ARG:파마 = 0
+		BASE:ARG:주살 = 0
+		BASE:ARG:지변 = 125
+		BASE:ARG:수격 = -100
+		BASE:ARG:질풍 = 50
+		BASE:ARG:중력 = 100
+		BASE:ARG:핵열 = 200
+		BASE:ARG:만능 = 100
+		BASE:ARG:사이코 = 100
+		;랜덤キャラの場合は合体可とする
+		IF NO:ARG <= 4900 || NO:ARG >= 4913
+			CFLAG:ARG:合体불가 = 1
+		ENDIF
+		TALENT:ARG:발 = 0
+		TALENT:ARG:꼬리 = 1
+		ABL:ARG:공격상성 = 3
+ENDSELECT
+
+;하피
+@DEMONIEZD_TYPE_3116, ARGS, ARG
+#LOCALSSIZE 1
+SELECTCASE ARGS
+	CASE "デモナイズド타입"
+		RESULTS = 하피
+	CASE "해설"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "하피을 넣는거죠？/그러면、" + CALLNAME:ARG + "짱의 양 팔이 날개가 되고、두 다리도 새다리가 될 거에요"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "질풍에 아주 강하고 검격과 타격에도 강해지지만 / 총격과 전격, 충격에도 약해질 거에용"
+	CASE "확인"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "４０００마카 들지만/정말로、"+ CALLNAME:ARG + "짱에게 하피를 넣어도 좋아요？"
+	CASE "가격"
+		RETURN 4000
+	CASE "デモナイズ実行"
+		CSTR:ARG:49 = 데모나이즈에 의해 하피(흉화개체)를 짜넣어, 팔은 날개가 되고, 다리도 새의 발이 되었다
+		ABL:ARG:종족 = 73
+		CSTR:ARG:종족명 = 요조
+		MAXBASE:ARG:검격 = 0
+		MAXBASE:ARG:비구 = 200
+		MAXBASE:ARG:타격 = 0
+		MAXBASE:ARG:전술 = 100
+		MAXBASE:ARG:화염 = 50
+		MAXBASE:ARG:빙결 = 75
+		MAXBASE:ARG:전격 = 125
+		MAXBASE:ARG:충격 = 125
+		MAXBASE:ARG:신경 = 100
+		MAXBASE:ARG:정신 = 75
+		MAXBASE:ARG:파마 = 100
+		MAXBASE:ARG:주살 = 50
+		MAXBASE:ARG:지변 = 0
+		MAXBASE:ARG:수격 = 100
+		MAXBASE:ARG:질풍 = -100
+		MAXBASE:ARG:중력 = 0
+		MAXBASE:ARG:핵열 = 75
+		MAXBASE:ARG:만능 = 100
+		MAXBASE:ARG:사이코 = 100
+		MAXBASE:ARG:DYING = -100
+		BASE:ARG:검격 = 0
+		BASE:ARG:비구 = 200
+		BASE:ARG:타격 = 0
+		BASE:ARG:전술 = 100
+		BASE:ARG:화염 = 50
+		BASE:ARG:빙결 = 75
+		BASE:ARG:전격 = 125
+		BASE:ARG:충격 = 125
+		BASE:ARG:신경 = 100
+		BASE:ARG:정신 = 75
+		BASE:ARG:파마 = 100
+		BASE:ARG:주살 = 50
+		BASE:ARG:지변 = 0
+		BASE:ARG:수격 = 100
+		BASE:ARG:질풍 = -100
+		BASE:ARG:중력 = 0
+		BASE:ARG:핵열 = 75
+		BASE:ARG:만능 = 100
+		BASE:ARG:사이코 = 100
+		BASE:ARG:DYING = -100
+		;랜덤キャラの場合は合体可とする
+		IF NO:ARG <= 4900 || NO:ARG >= 4913
+			CFLAG:ARG:合体불가 = 1
+		ENDIF
+		TALENT:ARG:발 = 0
+		TALENT:ARG:날개 = 1
+		TALENT:ARG:갈퀴발 = 1
+		TALENT:ARG:갈퀴 = 0
+		TALENT:ARG:팔 = 0
+ENDSELECT
+
+;좀비
+@DEMONIEZD_TYPE_3117, ARGS, ARG
+#LOCALSSIZE 1
+SELECTCASE ARGS
+	CASE "デモナイズド타입"
+		RESULTS = 좀비
+	CASE "해설"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "좀비를 넣는거죠？/그러면、" + CALLNAME:ARG + "짱의 낯빛은 별로 안좋아지겠지만/겉모습은 거의 그대로 일거에요"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "파마와 화염에는 약하지만、주살과 신경이 안들고/그것 말고도 세세한 약점과 내성이 붙지만/특징으로는 그런 점이 있어용"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "아、그리고 일반 데빌소스보다 저렴하게 제공할 수 있어요/ 비교적 흔하고 인기도 적으니까 재고가 남아 있거든용"
+	CASE "확인"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "１２００마카 들지만/정말로、"+ CALLNAME:ARG + "짱에게 좀비를 넣어도 좋아요？"
+	CASE "가격"
+		RETURN 1200
+	CASE "デモナイズ実行"
+		CSTR:ARG:49 = 데모나이즈로 좀비가 되었다
+		ABL:ARG:종족 = 73
+		CSTR:ARG:종족명 = 屍鬼
+		MAXBASE:ARG:검격 = 125
+		MAXBASE:ARG:비구 = 0
+		MAXBASE:ARG:타격 = 100
+		MAXBASE:ARG:전술 = 75
+		MAXBASE:ARG:화염 = 250
+		MAXBASE:ARG:빙결 = 100
+		MAXBASE:ARG:전격 = 75
+		MAXBASE:ARG:충격 = 75
+		MAXBASE:ARG:신경 = 0
+		MAXBASE:ARG:정신 = 50
+		MAXBASE:ARG:파마 = 400
+		MAXBASE:ARG:주살 = 0
+		MAXBASE:ARG:지변 = 100
+		MAXBASE:ARG:수격 = 100
+		MAXBASE:ARG:질풍 = 100
+		MAXBASE:ARG:중력 = 50
+		MAXBASE:ARG:핵열 = 75
+		MAXBASE:ARG:만능 = 100
+		MAXBASE:ARG:사이코 = 100
+		BASE:ARG:검격 = 125
+		BASE:ARG:비구 = 0
+		BASE:ARG:타격 = 100
+		BASE:ARG:전술 = 75
+		BASE:ARG:화염 = 250
+		BASE:ARG:빙결 = 100
+		BASE:ARG:전격 = 75
+		BASE:ARG:충격 = 75
+		BASE:ARG:신경 = 0
+		BASE:ARG:정신 = 50
+		BASE:ARG:파마 = 400
+		BASE:ARG:주살 = 0
+		BASE:ARG:지변 = 100
+		BASE:ARG:수격 = 100
+		BASE:ARG:질풍 = 100
+		BASE:ARG:중력 = 50
+		BASE:ARG:핵열 = 75
+		BASE:ARG:만능 = 100
+		BASE:ARG:사이코 = 100
+		;랜덤キャラの場合は合体可とする
+		IF NO:ARG <= 4900 || NO:ARG >= 4913
+			CFLAG:ARG:合体불가 = 1
+		ENDIF
+		TALENT:ARG:좀비 = 1
+		TALENT:ARG:아픔에약함 = 0
+		TALENT:ARG:아픔에강함 = 1
+ENDSELECT
+
+
+;뱀파이어
+@DEMONIEZD_TYPE_3118, ARGS, ARG
+#LOCALSSIZE 1
+SELECTCASE ARGS
+	CASE "デモナイズド타입"
+		RESULTS = 뱀파이어
+	CASE "해설"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "뱀파이어를 넣는거죠？/그러면、" + CALLNAME:ARG + "짱의 등에 박쥐의 날개가 자라고 / 햇빛에 약해져요"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "물리공격이 잘 안들어 신경과 정신에도 강해지지만/파마, 화염과 핵열, 그리고 수격에도 약해져용."
+	CASE "확인"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "６０００마카 들지만/정말로、"+ CALLNAME:ARG + "짱에게 뱀파이어를 넣어도 좋아요？"
+	CASE "가격"
+		RETURN 6000
+	CASE "デモナイズ実行"
+		CSTR:ARG:49 = 데모나이즈로 뱀파이어(순혈종)이 되었다
+		ABL:ARG:종족 = 73
+		CSTR:ARG:종족명 = 夜魔
+		MAXBASE:ARG:검격 = 0
+		MAXBASE:ARG:비구 = 25
+		MAXBASE:ARG:타격 = 0
+		MAXBASE:ARG:전술 = 25
+		MAXBASE:ARG:화염 = 150
+		MAXBASE:ARG:빙결 = 100
+		MAXBASE:ARG:전격 = 100
+		MAXBASE:ARG:충격 = 75
+		MAXBASE:ARG:신경 = 0
+		MAXBASE:ARG:정신 = -50
+		MAXBASE:ARG:파마 = 200
+		MAXBASE:ARG:주살 = -100
+		MAXBASE:ARG:지변 = 75
+		MAXBASE:ARG:수격 = 150
+		MAXBASE:ARG:질풍 = 75
+		MAXBASE:ARG:중력 = 50
+		MAXBASE:ARG:핵열 = 150
+		MAXBASE:ARG:만능 = 100
+		MAXBASE:ARG:사이코 = 100
+		BASE:ARG:검격 = 0
+		BASE:ARG:비구 = 25
+		BASE:ARG:타격 = 0
+		BASE:ARG:전술 = 25
+		BASE:ARG:화염 = 150
+		BASE:ARG:빙결 = 100
+		BASE:ARG:전격 = 100
+		BASE:ARG:충격 = 75
+		BASE:ARG:신경 = 0
+		BASE:ARG:정신 = -50
+		BASE:ARG:파마 = 200
+		BASE:ARG:주살 = -100
+		BASE:ARG:지변 = 75
+		BASE:ARG:수격 = 150
+		BASE:ARG:질풍 = 75
+		BASE:ARG:중력 = 50
+		BASE:ARG:핵열 = 150
+		BASE:ARG:만능 = 100
+		BASE:ARG:사이코 = 100
+		;랜덤キャラの場合は合体可とする
+		IF NO:ARG <= 4900 || NO:ARG >= 4913
+			CFLAG:ARG:合体불가 = 1
+		ENDIF
+		TALENT:ARG:날개 = 1
+		TALENT:ARG:흡혈귀 = 1
+ENDSELECT
+
+;------------------------------
+;デモナイズド実行
+;------------------------------
+
+;엔젤
+@DEMONIEZD_SET_3111, ARG
+#LOCALSSIZE 1
+IF NO:MASTER == NO:ARG
+	CFLAG:MASTER:所属ＣＯＭＰ = -1
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"그러면、이쪽으로 와줄래요？"
+	CALL MESSAGE_WINDOW_D, "", @"＞점주에게 안내되어가 옷을 벗은 " + CALLNAME:MASTER + "는 작은 캡슐에 들어갔다…"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"그러면、시작할게요/인간으로서의 생애에 이별을 고해두세…"
+	CALL MESSAGE_WINDOW_D, "", @"＞등에 간질간질한 감촉을 느끼면서/＞" + CALLNAME:MASTER + "는 의식이 멀어졌다…"
+	CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+	CALL SHOW_PICTURE, "EMPTY"
+	CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:MASTER + "가 눈을 뜨자、점주가 말을 걸어왔다…"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"응、잘 됐네/이게 인간을 그만둔 지금의 당신의 모습에요/거울로 솜씨、체크해봐요"
+	IF TALENT:MASTER:남자 && !TALENT:MASTER:오토코노코
+			CALL MESSAGE_WINDOW_D, "", @"＞거울에는、" + CALLNAME:MASTER + "의 모습을 남긴 금발의 건장한 천사가 보였다/＞자신의 모습이지만、아크엔젤이라 해도 믿을 수 있을것 같은 외모다"
+	ELSEIF TALENT:MASTER:오토코노코 || TALENT:MASTER:후타나리
+		IF TALENT:MASTER:거유 || TALENT:MASTER:폭유 || TALENT:MASTER:魔乳
+			CALL MESSAGE_WINDOW_D, "", @"＞거울에는、" + CALLNAME:MASTER + "의 모습을 남긴 금발의 아름다운 천사가 보였다/＞노출된 풍만한 육체와 언밸런스한 육봉을 보자/＞" + CALLNAME:MASTER + "는 그것이 자기 자신임을 알면서도 모르는새 발기했다…"
+		ELSEIF TALENT:MASTER:빈유 || TALENT:MASTER:절벽
+			CALL MESSAGE_WINDOW_D, "", @"＞거울에는、" + CALLNAME:MASTER + "의 모습을 남긴 금발의 아름다운 천사가 보였다/＞평탄한 몸매와 합쳐져、어느쪽인가 하면 큐피도를 연상시키는 모습이다"
+		ELSE
+			CALL MESSAGE_WINDOW_D, "", @"＞거울에는、" + CALLNAME:MASTER + "의 모습을 남긴 금발의 아름다운 천사가 보였다/＞여성적인 몸매와 가랑이의 육봉이 가일층 천사스러움을 자아낸다/＞일단、그 내면은 천사와 거리가 멀다…"
+		ENDIF
+	ELSE
+		IF TALENT:MASTER:거유 || TALENT:MASTER:폭유 || TALENT:MASTER:魔乳
+			CALL MESSAGE_WINDOW_D, "", @"＞거울에는、" + CALLNAME:MASTER + "의 모습을 남긴 금발의 아름다운 천사가 보였다/＞노출된 풍만한 육체에、무심코 " + CALLNAME:MASTER + "는 얼굴을 붉혔다…"
+		ELSEIF TALENT:MASTER:빈유 || TALENT:MASTER:절벽
+			CALL MESSAGE_WINDOW_D, "", @"＞거울에는、" + CALLNAME:MASTER + "의 모습을 남긴 금발의 아름다운 천사가 보였다/＞평탄한 몸매와 합쳐져、어느쪽인가 하면 큐피도를 연상시키는 모습이다"
+		ELSE
+			CALL MESSAGE_WINDOW_D, "", @"＞거울에는、" + CALLNAME:MASTER + "의 모습을 남긴 금발의 아름다운 천사가 보였다/＞스스로봐도 균형 잡힌 몸매가 천사스러움을 자아낸다/＞일단、그 내면은 천사와 거리가 멀다…"
+		ENDIF
+	ENDIF
+	CALL MESSAGE_WINDOW_D, "", @"＞등의 하얀 날개 또한、" + CALLNAME:MASTER + "의 뜻대로 움직였다/＞허공에 뜨기도 하는게、천사가 된 것을 실감하게 만든다…"
+ELSE
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"알았어용/그러면 당신은 여기서 기달려용？"
+	CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+	CALL SHOW_PICTURE, "EMPTY"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"네、오케이/인간을 그만둔 " + CALLNAME:ARG + "쨩의 모습、확실히 봐줘용？"
+	CALL MESSAGE_WINDOW_D, "", @"＞점주에게 이끌려 、" + CALLNAME:ARG + "가 돌아왔다"
+	SELECTCASE NO:ARG
+		CASE 4501
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				CALL MESSAGE_WINDOW_D, "베스", @"교단에 있었을 때 천사님을 동경하고 있긴 했지만…/설마 정말 천사님이 되라고는 생각도 못했어"
+				CALL MESSAGE_WINDOW_D, "", @"＞베스는 하얀 날개를 기쁜 듯이 날개짓하며 허공에 떠올랐다/＞엔젤의 영향인지、피부는 약간 하얘지고 머리카락은 금색으로 물들었다/＞얼굴도 예전보다 다소 고귀해 진 것 같다"
+				CALL MESSAGE_WINDOW_D, "베스", @"보이는건 달라졌을지 모르지만、나는 앞으로도 당신과 함께 있으니까…"
+			ENDIF
+		CASE 4504
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				CALL MESSAGE_WINDOW_D, "미라이", @"나、일단 데빌 칠드런 이지만…/천사가 되도 괜찮을까나…？"
+				CALL MESSAGE_WINDOW_D, "", @"＞미라이는 자신에게 난 순백의 날개를 보고약간 당황하고 있다/＞확실히、듣고 보면 데빌 칠드런을 천사로 만들어도 괜찮았을까/＞뭐、거부 반응 같은게 나오는 징후도 없고 괜찮을까…？"
+				CALL MESSAGE_WINDOW_D, "미라이", @"하지만、솔직히 별로 실감이 나지 않았었으니까…/지금처럼 하늘을 날기도 못했고/거기다 당신이 준 몸이니까、소중히 할테니깐%UNICODE(0x2661)%"
+			ENDIF
+		CASE 4505
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				CALL MESSAGE_WINDOW_D, "도리", @"사랑의 전사가 아닌、사랑의 천사 매지컬・도리！/나쁜놈들에게 정말로 천벌☆직며～언！/…어때어때？ 멋있죠？"
+				CALL MESSAGE_WINDOW_D, "", @"＞도리는 평소와 달리 등이 열린 코스프레 의상을 입고、등의 날개로 허공에 떠있느라고 바빴다/＞정의의 아군을 자칭하기엔、천사 만한 몸도 없겠지/＞" + CALLNAME:MASTER + "는 멍하니 도리를 바라보며 그런 것을 생각했다…"
+				CALL MESSAGE_WINDOW_D, "도리", @"………정말、반응이 나쁘네～/아무튼、앞으로도 사랑의 천사 매지컬・도리는 잘 부탁해！"
+			ENDIF
+		CASE 4506
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				CALL MESSAGE_WINDOW_D, "마리", @"마리 선생님、뭐랄까 천사가 되어 버렸네요%UNICODE(0x2661)%/옛날 다른 악마에 빙의당한 적은 있었지만、자신이 천사가 될 줄은 몰랐어/…하지만 이 날개、백의를 입는데 방해되네…"
+				CALL MESSAGE_WINDOW_D, "", @"＞마리는 날개 위로 백의를 걸치려고 발버둥 쳤다//＞엔젤의 영향인지、금색으로 물든 머리카락이 흔들릴 때마다 빛을 반사하여 아름답다//＞그렇지만、날개에 맞춰 모양 좋게 흔들리는 풍만한 젖이 눈의 독이다…"
+				CALL MESSAGE_WINDOW_D, "마리", @"정말、어디를 보고있어요！/그런곳만 보면、선생님 벌 줄꺼에요！"
+			ENDIF
+		CASE 4516
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				IF TALENT:ARG:유아체형
+					CALL MESSAGE_WINDOW_D, "마요네", @"저、별로 천사가 될 타입은 아니라고 생각합니다만…"
+					CALL MESSAGE_WINDOW_D, "", @"＞마요네는 잠시 본의가 아닐 듯한 표정을 짓고 있었다/＞하지만、아주 귀엽게 된 마요네에게 순백의 날개는 꽤나 어울리고 있다"
+					CALL MESSAGE_WINDOW_D, "마요네", @"정말이요？/그러면 다행이에요/앞으로는 천사의 힘으로、확실히 당신의 힘이 되어보일께요～！"
+				ELSE
+					CALL MESSAGE_WINDOW_D, "마요네", @"저、천사따윈 맞지 않습니다만…"
+					CALL MESSAGE_WINDOW_D, "", @"＞마요네는 잠시 본의가 아닐 듯한 표정을 짓고 있었다/＞하지만、흑백을 기조로 한 복식을 하고 있는 마요네에게 돋아난 순백의날개는 꽤나 어울리고 있다/＞마치 죽음을 알리는 천사와 같다…"
+					CALL MESSAGE_WINDOW_D, "마요네", @"…별로 칭찬 받는 것 같지는 않네요/뭐、천사라고 말하는 악마의 일종 이 몸、유효하게 활용하고 싶네요"
+				ENDIF
+			ENDIF
+		CASE 4541
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				CALL MESSAGE_WINDOW_D, "나오토", @"이 신체、지금까지의 옷은 이제 입을 수 없겠군요…/등이 열린 남자 옷이 있을까요？/앞으로 탐정으로 움직일 때 필요한데요…"
+				CALL MESSAGE_WINDOW_D, "", @"＞나오토는 입을 수 있는 남자옷이 있는지 걱정하고 있다/＞하지만、등에 그런 눈에 띄는 날개를 달고 탐정같은걸 할수 있나？/분명 눈에 띄면 할 수 없는 일일테지만…"
+				CALL MESSAGE_WINDOW_D, "나오토", @"하、하늘은 날 수 있으니까 괜찮아요！/하늘에서 미행할지도、라고 생각하는 상대도 없을테고！"
+			ENDIF
+		CASE 4559
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				CALL MESSAGE_WINDOW_D, "코시로", @"우～응…/나、천사는 수상쩍은 이미지밖에 없어요/어때요、탐정씨？ 지금의 나、수상쩍지 않아요？"
+				CALL MESSAGE_WINDOW_D, "", @"＞코시로는 금색으로 물든 머리카락을 만지작거리며 거울을 보고 있다/＞등 의 날개를 파닥거리며、감촉을 확인하고 있는것 같다/＞" + CALLNAME:MASTER + "는、거룩함이 더해졌지 수상한 느낌은 없다고 전했다…"
+				CALL MESSAGE_WINDOW_D, "코시로", @"그렇지만、여신 아리안로드에서 엔젤이라니/나 왠지 격이 떨어진 것 같은데/전보다 거룩하다고 하면 좀 복잡할지도…"
+			ENDIF
+		CASEELSE
+			CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:ARG + "는 빛나는 금색 머리카락을 흩날리며/＞고급 비단과 같이 하얀 날개를 등에 달고 있다"
+			CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:MASTER + "는、" + CALLNAME:ARG + "에게 잘 어울린다고 말했다…"
+	ENDSELECT
+ENDIF
+
+
+;네코마타
+@DEMONIEZD_SET_3112, ARG
+#LOCALSSIZE 1
+
+IF NO:MASTER == NO:ARG
+	CFLAG:MASTER:所属ＣＯＭＰ = -1
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"그러면、이쪽으로 와줄래요？"
+	CALL MESSAGE_WINDOW_D, "", @"＞점주에게 안내되어서 옷을 벗은 " + CALLNAME:MASTER + "는 작은 캡슐에 들어갔다…"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"그러면、시작할게요/인간으로서의 생애에 이별을 고해두세…"
+	CALL MESSAGE_WINDOW_D, "", @"＞머리와 둔부에 간지러운 감촉을 맛 보면서/＞" + CALLNAME:MASTER + "는 의식이 멀어졌다…"
+	CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+	CALL SHOW_PICTURE, "EMPTY"
+	CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:MASTER + "가 눈을 뜨자、점주가 말을 걸어왔다…"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"응、잘 됐네/이게 인간을 그만둔 지금의 당신의 모습에요/거울로 솜씨、체크해봐요"
+	IF TALENT:MASTER:남자 && !TALENT:MASTER:오토코노코
+			CALL MESSAGE_WINDOW_D, "", @"＞거울에는、" + CALLNAME:MASTER + "의 모습을 남긴 고양이의 마수가 보였다/＞팬텀의 구성원으로 다져진 육체와 합쳐、마치 영맹한 짐승과 같다"
+	ELSEIF TALENT:MASTER:오토코노코 || TALENT:MASTER:후타나리
+		IF TALENT:MASTER:거유 || TALENT:MASTER:폭유 || TALENT:MASTER:魔乳
+			CALL MESSAGE_WINDOW_D, "", @"＞거울에는、" + CALLNAME:MASTER + "의 모습을 남긴 고양이의 마수가 보였다/＞노출된 풍만한 육체와 언밸런스한 육봉을 보자/＞" + CALLNAME:MASTER + "는 그것이 자기 자신임을 알면서도 모르는새 발기했다…"
+		ELSEIF TALENT:MASTER:빈유 || TALENT:MASTER:절벽
+			CALL MESSAGE_WINDOW_D, "", @"＞거울에는、" + CALLNAME:MASTER + "의 모습을 남긴 고양이의 마수가 보였다/＞평탄한 몸매와 합쳐져、어딘지 모르게 새끼 고양이를 연상시키는 모습이다"
+		ELSE
+			CALL MESSAGE_WINDOW_D, "", @"＞거울에는、" + CALLNAME:MASTER + "의 모습을 남긴 고양이의 마수가 보였다/＞나 스스로도 균형 잡힌 몸매가 에로틱하다/＞거기에 분명히 주장하는 페니스가 배덕감을 더하고 있다…"
+		ENDIF
+	ELSE
+		IF TALENT:MASTER:거유 || TALENT:MASTER:폭유 || TALENT:MASTER:魔乳
+			CALL MESSAGE_WINDOW_D, "", @"＞거울에는、" + CALLNAME:MASTER + "의 모습을 남긴 고양이의 마수가 보였다/＞노출된 풍만한 육체に、무심코 " + CALLNAME:MASTER + "는 얼굴을 붉혔다…"
+		ELSEIF TALENT:MASTER:빈유 || TALENT:MASTER:절벽
+			CALL MESSAGE_WINDOW_D, "", @"＞거울에는、" + CALLNAME:MASTER + "의 모습을 남긴 고양이의 마수가 보였다/＞평탄한 몸매와 합쳐져、どことなく子猫를 연상시키는 모습이다"
+		ELSE
+			CALL MESSAGE_WINDOW_D, "", @"＞거울에는、" + CALLNAME:MASTER + "의 모습을 남긴 고양이의 마수가 보였다/＞나 스스로도 균형 잡힌 몸매가 에로틱하다"
+		ENDIF
+	ENDIF
+	CALL MESSAGE_WINDOW_D, "", @"＞손도 발도 고양이에 가까운 형태를 띠고 있기에、물건을 쥐는 것은 좀 약해져 버렸다/＞그 대신、발톱이 날카로워 싸울 수는 있을 것 같다"
+	CALL MESSAGE_WINDOW_D, "", @"＞그리고、머리의 귀도 둔부에서 자라난 두 개의 꼬리도" + CALLNAME:MASTER + "의 뜻대로 움직였다/＞건드리면 민감하게 반응해버리니까、손발도 아울러 일상생활에는 잠시 숙달이 필요할 것이다…"
+ELSE
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"알았어용/그러면 당신은 여기서 기달려용？"
+	CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+	CALL SHOW_PICTURE, "EMPTY"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"네、오케이/인간을 그만둔 " + CALLNAME:ARG + "쨩의 모습、확실히 봐줘용？"
+	CALL MESSAGE_WINDOW_D, "", @"＞점주에게 이끌려 、" + CALLNAME:ARG + "가 돌아왔다"
+	SELECTCASE NO:ARG
+		CASE 4501
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				CALL MESSAGE_WINDOW_D, "베스", @"우～응… 귀와 엉덩이의 꼬리는 부끄럽지만/그것보다 손과 발이 고양이로 변하다니/손톱으로 다른 사람을 할퀴지 않도록 조심해야지"
+				CALL MESSAGE_WINDOW_D, "", @"＞베스는 손톱을 내밀었다 움츠렸다 하여 감촉을 확인하고 있는 것 같다/＞" + CALLNAME:MASTER + "는、장갑이라도 준비할까 하고 말을 걸었다"
+				CALL MESSAGE_WINDOW_D, "베스", @"우응、괜찮아요/그리고、만일의 경우에 바로 걸지 않으면 곤란할 것입니다?/그러니까、제대로 익숙해지고 싶어"
+			ENDIF
+		CASE 4504
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				CALL MESSAGE_WINDOW_D, "미라이", @"니야～앙、하면서!/私、고양이가 돼버렸어!"
+				CALL MESSAGE_WINDOW_D, "", @"＞미라이는 새로운 모습이 되었음을 아이답게 즐기고 있다/＞꼬리가 즐겁게 흔들리는 것만 봐도 알 수 있다"
+				CALL MESSAGE_WINDOW_D, "미라이", @"평소에도 데빌 칠드런이라고 이름을 대고 있으니깐、이렇게 악마 같이 꾸며보는 것도 나쁘지는 않아/앞으로도 잘 부탁해、당신%UNICODE(0x2661)%"
+			ENDIF
+		CASE 4505
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				CALL MESSAGE_WINDOW_D, "도리", @"니야～앙！/사랑의 전사매지컬・도리、지금 등장이다！/나쁜 놈들은 해치운다냐！"
+				CALL MESSAGE_WINDOW_D, "", @"＞도리는 늘 하던 코스프레 의상을 입고、꼬리를 흔들며 새로운 몸을 즐기고 있다/＞짧은 스커트가 꼬리로 젖혀져、속옷이 보이는데 모르는 것 같다/＞…아、겨우 꼬리를 알아차렸다"
+				CALL MESSAGE_WINDOW_D, "도리", @"앗！/…이러면 스커트 속이 보여지겠어…/새로운 코스프레 의상、준비하지 않으면 안될까?"
+			ENDIF
+		CASE 4506
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				CALL MESSAGE_WINDOW_D, "마리", @"마리 선생님、귀여운 고양이가 되어버렸습니다%UNICODE(0x2661)%/…이 몸이라면、백의의 단추는 잠글 수 없을 것 같군요/우선 소매만 꿰메어놓을까"
+				CALL MESSAGE_WINDOW_D, "", @"＞마리는 자기 손에 나타난 육구를 탱탱하게 하여 감촉을 확인하고 있다/＞흰옷을 입을까 봐 걱정하는 근근이 있는 보험의이다/＞무엇보다도、혼자서 갈아입는 건 할 수 없는 몸이니 백의만 입어도…"
+				CALL MESSAGE_WINDOW_D, "마리", @"그것도 그렇네…/그러면、" + CALLNAME:MASTER + "군에게 갈아입혀달라고 할까나%UNICODE(0x2661)%"
+			ENDIF
+		CASE 4516
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				IF TALENT:ARG:유아체형
+					CALL MESSAGE_WINDOW_D, "마요네", @"니야～앙!/어때요、귀엽죠?/나 고양이니까 이런 일도 해버려요!"
+					CALL MESSAGE_WINDOW_D, "", @"＞마요네는 응석부리는 듯한 표정을 한채 이쪽으로 다가온다/＞아무래도 마킹하고 있는 것 같다…"
+					CALL MESSAGE_WINDOW_D, "마요네", @"우후후、저 " + CALLNAME:MASTER + "에게 길러져요～！"
+				ELSE
+					CALL MESSAGE_WINDOW_D, "마요네", @"저、이 양산은 마음에 들었지만…/이 손발로는 들기 어렵네요/ＣＯＭＰ를 다른 모양으로 바꾸는 것이 좋을까?"
+					CALL MESSAGE_WINDOW_D, "", @"＞마요네는 애용하는 양산을 들고 몸을 움직이고 있다/＞하지만 역시、고양이의 손발으로는 양산 같은 막대 모양의 물체는 들기 어려운 것 같다"
+					CALL MESSAGE_WINDOW_D, "마요네", @"이 손발로도 쓸수있는 모양의 ＣＯＭＰ라면…/피네건 흉내는 내키지 않고요/손톱으로도 키를 누를 수 있는 암터미널로 바꿔볼까요?"
+				ENDIF
+			ENDIF
+		CASE 4541
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				CALL MESSAGE_WINDOW_D, "나오토", @"왠지 모르지만、전보다 홀가분해진 것 같습니다/악마의 힘이라는 녀석일까요?/이것으로 탐정으로서도 점점 더 살아갈 수 있을 것 같습니다"
+				CALL MESSAGE_WINDOW_D, "", @"＞나오토는 점프하거나 하여 몸 상태를 확인하고 있다/＞그러나、과연 고양이 손발로도 탐정업은 할 수 있을까?/＞뚜렷이 눈에 띄는 것 같은데…"
+				CALL MESSAGE_WINDOW_D, "나오토", @"그만큼、이 몸이라면 담장 위(塀の上)쯤이야 괜찮을 것 같습니다/상대가 생각지도 못한 곳에 있을 수 있기 때문에、미행하는 데에는 오히려 편할지도 모르겠네요"
+			ENDIF
+		CASE 4559
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				CALL MESSAGE_WINDOW_D, "코시로", @"왠지 나의 몸、움직이기 쉬워진 것 같아/…그치만 이 손、원고같은 걸 쓸 수 있을까?"
+				CALL MESSAGE_WINDOW_D, "", @"＞코시로는 손톱과 털이 난 자신의 손을 바라보며、원고를 쓸 수 있을까를 걱정하고 있다/＞그것보다 더 걱정되는 점이 있다고 생각하는데 어떤가"
+				CALL MESSAGE_WINDOW_D, "코시로", @"에? 귀라던가 꼬리라던가 발이라던가 걱정하지 않아도 되냐고요?/싫구나 탐정님、거기는 탐정님이 커버를 해주시는 거잖아요?/이 몸으로 만들어준 책임、톡톡히 치르게 해줄 테니깐요%UNICODE(0x2661)%"
+				CALL MESSAGE_WINDOW_D, "", @"＞…예。"
+			ENDIF
+		CASEELSE
+			CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:ARG + "는 머리에서 자라난 고양이의 귀를 손톱과 털이 자라난 손으로 확인하고 있다/＞일단 뒤로 살며시 다가오는、두개의 꼬리를 잡았다"
+			CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:ARG + "는 느닷없는 일에 비명을 지르며 뛰어올랐다…"
+	ENDSELECT
+ENDIF
+
+;이나바흰토끼
+@DEMONIEZD_SET_3113, ARG
+#LOCALSSIZE 1
+
+IF NO:MASTER == NO:ARG
+	CFLAG:MASTER:所属ＣＯＭＰ = -1
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"그러면、이쪽으로 와줄래요？"
+	CALL MESSAGE_WINDOW_D, "", @"＞점주에게 안내되어서 옷을 벗은 " + CALLNAME:MASTER + "는 작은 캡슐에 들어갔다…"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"그러면、시작할게요/인간으로서의 생애에 이별을 고해두세…"
+	CALL MESSAGE_WINDOW_D, "", @"＞머리와 둔부에 간지러운 감촉을 맛 보면서/＞" + CALLNAME:MASTER + "는 의식이 멀어졌다…"
+	CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+	CALL SHOW_PICTURE, "EMPTY"
+	CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:MASTER + "가 눈을 뜨자、점주가 말을 걸어왔다…"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"응、잘 됐네/이게 인간을 그만둔 지금의 당신의 모습에요/거울로 솜씨、체크해봐요"
+	IF TALENT:MASTER:남자 && !TALENT:MASTER:오토코노코
+			CALL MESSAGE_WINDOW_D, "", @"＞거울에는、" + CALLNAME:MASTER + "의 모습을 남긴 토끼의 마수가 보였다/＞그러나、팬텀의 구성원으로 다져진 육체와 합쳐、어느쪽인가 하면 영맹한 육식의 짐승 같다"
+	ELSEIF TALENT:MASTER:오토코노코 || TALENT:MASTER:후타나리
+		IF TALENT:MASTER:거유 || TALENT:MASTER:폭유 || TALENT:MASTER:魔乳
+			CALL MESSAGE_WINDOW_D, "", @"＞거울에는、" + CALLNAME:MASTER + "의 모습을 남긴 토끼의 마수가 보였다/＞노출된 풍만한 육체와 불균형한 육봉/＞" + CALLNAME:MASTER + "는 토끼의 성욕을 상징하고 있는 것 같다"
+		ELSEIF TALENT:MASTER:빈유 || TALENT:MASTER:절벽
+			CALL MESSAGE_WINDOW_D, "", @"＞거울에는、" + CALLNAME:MASTER + "의 모습을 남긴 토끼의 마수가 보였다/＞평탄한 몸매와 합쳐져、초식 동물다운 연약함을 연출하고 있다"
+		ELSE
+			CALL MESSAGE_WINDOW_D, "", @"＞거울에는、" + CALLNAME:MASTER + "의 모습을 남긴 토끼의 마수가 보였다/＞나 스스로도 균형 잡힌 몸매가 에로틱하다/＞거기에 분명히 주장하는 페니스가 배덕감을 더하고 있다…"
+		ENDIF
+	ELSE
+		IF TALENT:MASTER:거유 || TALENT:MASTER:폭유 || TALENT:MASTER:魔乳
+			CALL MESSAGE_WINDOW_D, "", @"＞거울에는、" + CALLNAME:MASTER + "의 모습을 남긴 토끼의 마수가 보였다/＞노출된 풍만한 육체에、무심코 " + CALLNAME:MASTER + "는 얼굴을 붉혔다…"
+		ELSEIF TALENT:MASTER:빈유 || TALENT:MASTER:절벽
+			CALL MESSAGE_WINDOW_D, "", @"＞거울에는、" + CALLNAME:MASTER + "의 모습을 남긴 토끼의 마수가 보였다/＞평탄한 몸매와 합쳐져、초식 동물다운 연약함을 연출하고 있다"
+		ELSE
+			CALL MESSAGE_WINDOW_D, "", @"＞거울에는、" + CALLNAME:MASTER + "의 모습을 남긴 토끼의 마수가 보였다/＞나 스스로도 균형 잡힌 몸매가 에로틱하다"
+		ENDIF
+	ENDIF
+	CALL MESSAGE_WINDOW_D, "", @"＞머리의 귀는 아무래도 상당히 민감한 것 같아서" + CALLNAME:MASTER + "가 만질 때마다 몸이 시큰둥하게 반응하고 말았다/＞이래서는 모자 등으로 가리기도 어렵다、일상 생활에는 잠시 익숙해지는 것이 필요할 것이다…"
+ELSE
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"알았어용/그러면 당신은 여기서 기달려용？"
+	CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+	CALL SHOW_PICTURE, "EMPTY"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"네、오케이/인간을 그만둔 " + CALLNAME:ARG + "쨩의 모습、확실히 봐줘용？"
+	CALL MESSAGE_WINDOW_D, "", @"＞점주에게 이끌려 、" + CALLNAME:ARG + "가 돌아왔다"
+	SELECTCASE NO:ARG
+		CASE 4501
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				CALL MESSAGE_WINDOW_D, "베스", @"우～응… 귀와 꼬리는 부끄럽지만/조금 먼 곳에서 나는 소리가 들리는 것 같아요/앞으로의 일에 도움이 될 지도 모르겠군요"
+				CALL MESSAGE_WINDOW_D, "", @"＞베스는 빨개진 눈을 감고 귀를 쫑긋 세우고 있는 것 같다/＞" + CALLNAME:MASTER + "는 베스를 놀래켜 보려고 소리를 질러 보았다…"
+				CALL MESSAGE_WINDOW_D, "베스", @"꺄앗! …무으、놀래키지 말아요/하지만、가까이서 큰 소리를 들으면 이렇게 울리는구나/조심하지 않으면"
+			ENDIF
+		CASE 4504
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				CALL MESSAGE_WINDOW_D, "미라이", @"우와아！ 私、토끼씨가 되어버렸다!"
+				CALL MESSAGE_WINDOW_D, "", @"＞미라이는 새로운 모습이 되었음을 아이답게 즐기고 있다/＞토끼처럼、몇 번이나 점프하고 있다/＞긴 귀가 즐거운 듯이 흔들리고 있다…"
+				CALL MESSAGE_WINDOW_D, "미라이", @"평소에도 데빌 칠드런이라고 이름을 대고 있으니깐、이렇게 악마 같이 꾸며보는 것도 나쁘지는 않아/앞으로도 잘 부탁해、당신%UNICODE(0x2661)%"
+			ENDIF
+		CASE 4505
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				CALL MESSAGE_WINDOW_D, "도리", @"뿅!/사랑의 전사 매지컬・도리、지금 여기에 등장!/나쁜 놈들은 해치우겠다뿅!"
+				CALL MESSAGE_WINDOW_D, "", @"＞도리는 늘 하던 코스프레 의상을 입고、긴 귀를 흔들며 새로운 신체를 즐기고 있다/＞짧은 스커트가 꼬리로 인해 말려올려져、속옷이 보이는데 모르는 것 같다/＞…아、겨우 꼬리를 알아차렸다"
+				CALL MESSAGE_WINDOW_D, "도리", @"앗！/…이러면 스커트 안이 보여져버려…/새로운 코스프레 의상、준비하지 않으면 안될까나?"
+			ENDIF
+		CASE 4506
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				CALL MESSAGE_WINDOW_D, "마리", @"마리 선생님、귀여운 토끼씨가 되어버렸습니다%UNICODE(0x2661)%/…내 머리도 하얘진게 좀 놀랬어/하지만、예쁜 흰색이라서 마음에 들어 백의(白衣)에 어울릴 것 같네"
+				CALL MESSAGE_WINDOW_D, "", @"＞마리는 하얗게 물든 자신의 머리카락을 빗고 있다/＞풍부한 젖과 합쳐서、흰 바니걸 같다"
+				CALL MESSAGE_WINDOW_D, "마리", @"잠깐 " + CALLNAME:MASTER + "군、눈빛이 왠지 야해요/그런 것은 돌아간 다음에 합시다?"
+			ENDIF
+		CASE 4516
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				IF TALENT:ARG:유아체형
+					CALL MESSAGE_WINDOW_D, "마요네", @"우후후、나 귀여운 토끼씨에요/토끼는 외로움을 많이 타니까、꼭 안아주셨으면 좋겠어요!"
+					CALL MESSAGE_WINDOW_D, "", @"＞마요네는 이쪽에 매달려 있다/＞아무래도 안아줬으면 하는 것 같다"
+					CALL MESSAGE_WINDOW_D, "마요네", @"우후후、내가 쓸쓸해서 죽지 않도록/" + CALLNAME:MASTER + "는 확실히 돌봐 주었으면 해요%UNICODE(0x2661)%"
+				ELSE
+					CALL MESSAGE_WINDOW_D, "마요네", @"저、이 모자는 마음에 들었지만…/이 귀가 무척 간지럽군요/귀를 뚫을 구멍이라도 준비할까"
+					CALL MESSAGE_WINDOW_D, "", @"＞마요네는 애용하는 모자를 하얀 귀와 머리카락에 어떻게 얹을지 고민하고 있다/＞보다 모노톤에 가까워진 마요네는 귀부인다움을 더한 것 같기도 하다"
+					CALL MESSAGE_WINDOW_D, "마요네", @"뭐、감각이 날카로워진 것 같긴 해요/향후에는 이 힘、마음껏 쓸 수 있을까"
+				ENDIF
+			ENDIF
+		CASE 4541
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				CALL MESSAGE_WINDOW_D, "나오토", @"왠지 모르지만、전보다 홀가분해진 것 같습니다/악마의 힘이라는 녀석일까요?/이것으로 탐정으로서도 점점 더 살아갈 수 있을 것 같습니다"
+				CALL MESSAGE_WINDOW_D, "", @"＞나오토는 점프하거나 하여 몸 상태를 확인하고 있다/＞훌륭한 엉덩이와 함께 귀가 흔들려、마치 이쪽을 유혹하고 있는 것 같다"
+				CALL MESSAGE_WINDOW_D, "나오토", @"…어디 보시는 거에요? 뭐 대충 압니다만…/아무튼、이것으로 더한층 도움이 되리라고 생각합니다"
+			ENDIF
+		CASE 4559
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				CALL MESSAGE_WINDOW_D, "코시로", @"왠지 나의 몸、움직이기 쉬워진 것 같아/탐정씨 탐정씨、잠깐 이리 좀 와봐요/……쮸우"
+				CALL MESSAGE_WINDOW_D, "", @"＞코시로는 강화된 다리의 힘으로 뛰어올라 이쪽으로 키스를 해왔다/＞하얗게 물든 머리카락과 함께 새로 난 귀가 흔들려 매우 사랑스럽다/＞" + CALLNAME:MASTER + "는 코시로의 머리를 어루만져 주었다…"
+				CALL MESSAGE_WINDOW_D, "코시로", @"후와앗！/왜、왠지 전보다 간지러워서… 히야앙!"
+			ENDIF
+		CASEELSE
+			CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:ARG + "는 머리에서 난 토끼의 귀를 확인하고 있다/＞민감하지만、만질 때마다 몸이 뜨끔뜨끔 반응하고 있다/＞우선 뒤로 숨어들어、꼬리를 꼬리를 통째로 쓰다듬어 주었다"
+			CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:ARG + "는 갑작스럽게 고함을 지르며 날아올랐다…"
+	ENDSELECT
+ENDIF
+
+;픽시
+@DEMONIEZD_SET_3114, ARG, ARG:1
+#LOCALSSIZE 1
+
+IF NO:MASTER == NO:ARG
+	CFLAG:MASTER:所属ＣＯＭＰ = -1
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"그러면、이쪽으로 와줄래요？"
+	CALL MESSAGE_WINDOW_D, "", @"＞점주에게 안내되어서 옷을 벗은 " + CALLNAME:MASTER + "는 작은 캡슐에 들어갔다…"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"그러면、시작할게요/인간으로서의 생애에 이별을 고해두세…"
+	CALL MESSAGE_WINDOW_D, "", @"＞몸이 작아지는 듯한 기묘한 감촉을 맛보며/＞" + CALLNAME:MASTER + "는 의식이 멀어졌다…"
+	CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+	CALL SHOW_PICTURE, "EMPTY"
+	CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:MASTER + "가 눈을 뜨자、상당히 거대해진 점주가 말을 걸어왔다…"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"응、잘 됐네/이게 인간을 그만둔 지금의 당신의 모습에요/거울로 솜씨、체크해봐요"
+	IF TALENT:MASTER:남자 && !TALENT:MASTER:오토코노코
+			CALL MESSAGE_WINDOW_D, "", @"＞거울에는、" + CALLNAME:MASTER + "의 모습을 남긴 작은 요정이 보였다/＞하지만、몸은 작아졌지만 페니스는 그다지 작아지지 않았다/＞조교에 지장이 없을 것 같아 다행이지만、비교적 방해된다…"
+	ELSEIF TALENT:MASTER:오토코노코 || TALENT:MASTER:후타나리
+		IF TALENT:MASTER:거유 || TALENT:MASTER:폭유 || TALENT:MASTER:魔乳
+			CALL MESSAGE_WINDOW_D, "", @"＞거울에는、" + CALLNAME:MASTER + "의 모습을 남긴 작은 요정이 보였다/＞그리고 작은 몸집에 어울리지 않는 큰 유방과 가랑이의 육봉/＞나 스스로도 참으로 배덕감 넘치는 육체다…"
+		ELSEIF TALENT:MASTER:빈유 || TALENT:MASTER:절벽
+			CALL MESSAGE_WINDOW_D, "", @"＞거울에는、" + CALLNAME:MASTER + "의 모습을 남긴 작은 요정이 보였다/＞평탄한 몸매와 합쳐져、귀여운 요정의 남자아이、라고 말한 풍채이다"
+		ELSE
+			CALL MESSAGE_WINDOW_D, "", @"＞거울에는、" + CALLNAME:MASTER + "의 모습을 남긴 작은 요정이 보였다/＞나 스스로도 균형 잡힌 몸매가 에로틱하다/＞거기에 분명한 주장을 하는 페니스가 배덕감을 더하고 있다…"
+		ENDIF
+		;そうでないと조교とか難しそうだし…
+		CALL MESSAGE_WINDOW_D, "", @"＞하지만、몸은 작아졌지만 페니스는 별로 작아지지 않았다/＞조교에 지장이 없을 것 같아 다행이지만、비교적 방해된다…"
+	ELSE
+		IF TALENT:MASTER:거유 || TALENT:MASTER:폭유 || TALENT:MASTER:魔乳
+			CALL MESSAGE_WINDOW_D, "", @"＞거울에는、" + CALLNAME:MASTER + "의 모습을 남긴 작은 요정이 보였다/＞노출된 풍만한 육체에、무심코 " + CALLNAME:MASTER + "는 얼굴을 붉혔다…"
+		ELSEIF TALENT:MASTER:빈유 || TALENT:MASTER:절벽
+			CALL MESSAGE_WINDOW_D, "", @"＞거울에는、" + CALLNAME:MASTER + "의 모습을 남긴 작은 요정이 보였다/＞평탄한 몸매와 합쳐져、옛날 이야기의 요정 그 자체와 같은 모습을 하고 있다"
+		ELSE
+			CALL MESSAGE_WINDOW_D, "", @"＞거울에는、" + CALLNAME:MASTER + "의 모습을 남긴 작은 요정이 보였다/＞나 스스로도 균형 잡힌 몸매가 에로틱하다"
+		ENDIF
+	ENDIF
+	CALL MESSAGE_WINDOW_D, "", @"＞그렇지만、하늘을 날 수 있다는 것은 매우 재미있다/＞작아진 몸도 포함해서、앞으로는 여러가지로 즐거울것 같다/＞…지금까지의 일상생활은 이제 무리지만"
+ELSE
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"알았어용/그러면 당신은 여기서 기달려용？"
+	CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+	CALL SHOW_PICTURE, "EMPTY"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"네、오케이/인간을 그만둔 " + CALLNAME:ARG + "쨩의 모습、확실히 봐줘용？"
+	CALL MESSAGE_WINDOW_D, "", @"＞점주에게 이끌려 、" + CALLNAME:ARG + "가 돌아왔다"
+	SELECTCASE NO:ARG
+		CASE 4501
+			IF !TALENT:MASTER:소인체형
+				IF TALENT:ARG:3 || TALENT:ARG:6
+					CALL MESSAGE_WINDOW_D, "베스", @"왠지 주위가 너무 커 보여요/그러나、제가 작아지고 있는 것 뿐이에요/…저기、잠깐 어깨를 빌려줄래요?"
+					CALL MESSAGE_WINDOW_D, "", @"＞그렇게 말한 베스는 " + CALLNAME:MASTER + "의 어깨에 다소곳이 앉았다/＞반듯한 얼굴 생김새와 맞추어、옛날 이야기의 요정 그 자체와 같은 모습을 하고 있다"
+					CALL MESSAGE_WINDOW_D, "베스", @"앞으로는 지금까지보다 더 곁에서、더 함께 있게 해줘요…"
+				ENDIF
+			ELSE
+				IF TALENT:ARG:3 || TALENT:ARG:6
+					CALL MESSAGE_WINDOW_D, "베스", @"당신이 보고 있던 세계라는게 이렇게나 컸구나/머리로는 알고 있어도、막상 보니 달라요/조금 무서울지도 몰라…"
+					CALL MESSAGE_WINDOW_D, "", @"＞렇게 말한 베스는 " + CALLNAME:MASTER + "에 매달리기 시작했다/＞" + CALLNAME:MASTER + "는 베스를 안심시키기 위해 안아 주었다"
+					CALL MESSAGE_WINDOW_D, "베스", @"…괜찮아요、고마워/이제부터는 당신과 같은 것을 보고、같은 세계에서 지낼 수 있다/그게 가장 행복인걸"
+				ENDIF
+			ENDIF
+		CASE 4504
+			IF !TALENT:MASTER:소인체형
+				IF TALENT:ARG:3 || TALENT:ARG:6
+					CALL MESSAGE_WINDOW_D, "미라이", @"우와아！ 私、요정씨처럼 되었다!/저기저기、잠깐 타 봐도 좋아?"
+					CALL MESSAGE_WINDOW_D, "", @"＞그렇게 말하면서 미라이는 " + CALLNAME:MASTER + "의 머리 위에 앉았다/＞파닥파닥 움직이는 날개가 머리카락를 쓰다듬는다…"
+					CALL MESSAGE_WINDOW_D, "미라이", @"이제부터 私、당신의 머리 위에 항상 있으니까!/왜냐면 언제라도 당신을 보고 있을 수 있는걸%UNICODE(0x2661)%/그러니까 들떠서 그런 거 하면 안되니까！"
+				ENDIF
+			ELSE
+				IF TALENT:ARG:3 || TALENT:ARG:6
+					CALL MESSAGE_WINDOW_D, "미라이", @"우와아！ 私、요정씨처럼 되었다!！/저기저기 당신、뀻～하고 안아도 돼?"
+					CALL MESSAGE_WINDOW_D, "", @"＞그렇게 말하면서 미라이는 " + CALLNAME:MASTER + "에 매달려 하늘을 날았다/＞미라이は空を飛ぶという未知の감각を" + CALLNAME:MASTER + "と共に楽しみたいようだ…"
+					CALL MESSAGE_WINDOW_D, "미라이", @"これからはもっと私と一緒にいてよね！/だって、私も당신と同じ大きさだもん！"
+				ENDIF
+			ENDIF
+		CASE 4505
+			CALL MESSAGE_WINDOW_D, "도리", @"사랑의 전사가 아닌、愛の요정매지컬・도리、只今参上！/悪い奴らは、私が마법の힘でやっつけちゃうんだから！/…やっぱり、裸だと締まらないわね"
+			CALL MESSAGE_WINDOW_D, "", @"＞도리はコスプレ衣装が着られなくなったことを残念がっている/＞裸になって空を飛んでいる姿はかなりエロティックだ"
+			CALL MESSAGE_WINDOW_D, "도리", @"このまま裸なんて恥ずかしいし…/出来たら早めにお洋옷を用意してくれると嬉しいな%UNICODE(0x2661)%"
+		CASE 4506
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				CALL MESSAGE_WINDOW_D, "마리", @"마리 선생님、かわいい요정さんになっちゃいました%UNICODE(0x2661)%/周りの物がこんなに大きく見えるなんて斬新ね/小さいころ、세계はこんなふうに見えていたかしら…"
+				CALL MESSAGE_WINDOW_D, "", @"＞마리は宙に浮き、辺りを見渡して感慨にふけっている/＞豊かな가슴をむき出しにしていることに気が付いているのだろうか？"
+				CALL MESSAGE_WINDOW_D, "마리", @"ちょっと" + CALLNAME:MASTER + "クン、どこ見てるの！？/…出来たら、お人形さん用の옷でいいから用意してほしいわ/それも、背中が大きく空いている옷でないとダメね… 先生、少し恥ずかしいわ"
+			ENDIF
+		CASE 4516
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				IF ARG:1 == 99
+					CALL MESSAGE_WINDOW_D, "마요네", @"うふふ、わたくし可愛い요정さんですの/空を飛べるってとっても楽しいですわ！"
+					CALL MESSAGE_WINDOW_D, "", @"＞마요네は날개を날개ばたかせて飛び回っている/＞…あ、鏡にぶつかって落っこちた"
+					CALL MESSAGE_WINDOW_D, "마요네", @"うう… 痛いですわ…/少し練習しないといけませんわね"
+				ELSE
+					CALL MESSAGE_WINDOW_D, "마요네", @"こんなに小さくなるとは思ってませんでしたわ…/今まで身に着けていたものはほとんど役に立ちませんわね"
+					CALL MESSAGE_WINDOW_D, "", @"＞마요네は눈の前に置かれた自分の옷を見て悩んでいる/＞요정用ＣＯＭＰなどというものはどこかにあるだろうか？"
+					CALL MESSAGE_WINDOW_D, "마요네", @"わたくしも서머너 出来たら今の身体でも使えるＣＯＭＰが欲しいところですわね/まあ、악마の힘が손に入っている이상これでも戦えますが…/やはり、培った경험というのは惜しいものです"
+				ENDIF
+			ENDIF
+		CASE 4541
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				CALL MESSAGE_WINDOW_D, "나오토", @"こんなに小さくなるとは… 역시少し心細いですね/ですがその代わり、探偵としては無二の힘ですね/今の僕の꼬리行に気が付ける人はいないでしょう"
+				CALL MESSAGE_WINDOW_D, "", @"＞나오토は날개を날개ばたかせ宙に浮いている/＞確かに、こんなに사랑스러운 探偵の存在を考える人は皆無だろう"
+				CALL MESSAGE_WINDOW_D, "나오토", @"…なんだか、ちょっと照れますね/なんにせよ、앞으로도 よろしくお願いします"
+			ENDIF
+		CASE 4559
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				CALL MESSAGE_WINDOW_D, "코시로", @"이 신체、学校の皆に見られたらなんて言われるかなー/普通の인간って、こんなに小さくならないよね/…まあ、なんとでも言いくるめられると思うけど"
+				CALL MESSAGE_WINDOW_D, "", @"＞코시로は날개で宙を飛びながら友人たちにどう설명するか考えている/＞…と、코시로が急にこちらに振り返ってきた"
+				CALL MESSAGE_WINDOW_D, "코시로", @"とりあえず探偵さん、ボク이 신체じゃもう日常生活も送れませんよね？/ちゃんと責任取ってくださいよ？"
+				CALL MESSAGE_WINDOW_D, "", @"＞…ハイ。"
+			ENDIF
+		CASEELSE
+			CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:ARG + "は地面に降り、날개の動きを確かめているようだ/＞まだ慣れていないのか、날개を動かすたびに身体がちょっと浮いている"
+			CALL MESSAGE_WINDOW_D, "", @"＞…あ、バランスを崩して転んだ…"
+	ENDSELECT
+ENDIF
+
+;머메이드
+@DEMONIEZD_SET_3115, ARG
+#LOCALSSIZE 1
+
+IF NO:MASTER == NO:ARG
+	CFLAG:MASTER:所属ＣＯＭＰ = -1
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"자 그럼、이리 와줄래요？"
+	CALL MESSAGE_WINDOW_D, "", @"＞점주에게 안내되어서 옷을 벗은 " + CALLNAME:MASTER + "는 작은 캡슐에 들어갔다…"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"그러면、시작할게요/인간으로서의 생애에 이별을 고해두세…"
+	CALL MESSAGE_WINDOW_D, "", @"＞腰から下が徐々にとろけていく感触を味わいながら/＞" + CALLNAME:MASTER + "는 의식이 멀어졌다…"
+	CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+	CALL SHOW_PICTURE, "EMPTY"
+	CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:MASTER + "가 눈을 뜨자、점주가 말을 걸어왔다…"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"응、잘 됐네/이게 인간을 그만둔 지금의 당신의 모습이네/鏡で出来栄え、체크してみて"
+	IF TALENT:MASTER:남자 && !TALENT:MASTER:오토코노코
+			CALL MESSAGE_WINDOW_D, "", @"＞鏡には、" + CALLNAME:MASTER + "의 모습을 남긴 인어가 보였다/＞페니스から下は紛うことなき물고기のそれになっていた/＞海にでも一度潜ってみたいな…"
+	ELSEIF TALENT:MASTER:오토코노코 || TALENT:MASTER:후타나리
+		IF TALENT:MASTER:거유 || TALENT:MASTER:폭유 || TALENT:MASTER:魔乳
+			CALL MESSAGE_WINDOW_D, "", @"＞鏡には、" + CALLNAME:MASTER + "의 모습을 남긴 인어가 보였다/＞そして大きな유방と린からはみ出す가랑이の肉棒/＞まさしく이형の肉体だが、それが良い"
+		ELSEIF TALENT:MASTER:빈유 || TALENT:MASTER:절벽
+			CALL MESSAGE_WINDOW_D, "", @"＞鏡には、" + CALLNAME:MASTER + "의 모습을 남긴 인어가 보였다/＞가랑이の린からはみ出す肉棒がより이형らしさを表現し、악마になったと実感させてくれる"
+		ELSE
+			CALL MESSAGE_WINDOW_D, "", @"＞鏡には、" + CALLNAME:MASTER + "의 모습을 남긴 인어가 보였다/＞我ながら均整の取れた体つきがエロティックだ/＞そこにはっきりと主張する페니스が背徳感を増している…"
+		ENDIF
+	ELSE
+		IF TALENT:MASTER:거유 || TALENT:MASTER:폭유 || TALENT:MASTER:魔乳
+			CALL MESSAGE_WINDOW_D, "", @"＞鏡には、" + CALLNAME:MASTER + "의 모습을 남긴 인어가 보였다/＞むき出しにされた豊満な가슴に、自分だと分かっていても" + CALLNAME:MASTER + "は赤面した…"
+		ELSEIF TALENT:MASTER:빈유 || TALENT:MASTER:절벽
+			CALL MESSAGE_WINDOW_D, "", @"＞鏡には、" + CALLNAME:MASTER + "의 모습을 남긴 인어가 보였다/＞流線型に近い肉体と合わせ、泳ぐのは早そうだ/＞どこかのプールでも借りて泳いでみようか…"
+		ELSE
+			CALL MESSAGE_WINDOW_D, "", @"＞鏡には、" + CALLNAME:MASTER + "의 모습을 남긴 인어가 보였다/＞我ながら均整の取れた体つきがエロティックだ/＞下半身が描く인어独特のラインも素晴らしい…"
+		ENDIF
+	ENDIF
+	CALL MESSAGE_WINDOW_D, "", @"＞しかし、발が물고기の꼬리に変わったため、歩けない…/＞幸い跳ねることで移動できるし、移動する速度自体は今までとそう変わらない/＞だが、動きにくいことに違いはない 暫く練習しなくては"
+ELSE
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"알았어용/그러면 당신은 여기서 기달려용？"
+	CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+	CALL SHOW_PICTURE, "EMPTY"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"네、오케이/인간을 그만둔 " + CALLNAME:ARG + "쨩의 모습、확실히 봐줘용？"
+	CALL MESSAGE_WINDOW_D, "", @"＞점주에게 이끌려 、" + CALLNAME:ARG + "가 돌아왔다"
+	SELECTCASE NO:ARG
+		CASE 4501
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				CALL MESSAGE_WINDOW_D, "베스", @"まさか인어になれるだなんて思ってもみなかったわ/…でも、案の定歩けないわね/ひょっとしてこれからは水の中にいないといけないのかしら"
+				CALL MESSAGE_WINDOW_D, "", @"＞베스は今後陸の上で過ごせるのか心配しているようだ/＞とりあえず跳ねて移動できないものか聞いてみた/＞…無事に動いている"
+				CALL MESSAGE_WINDOW_D, "베스", @"一応大丈남편みたいだけれど、少し動きにくいわね/…もし外に行くときは、出来たらおぶってくれると嬉しいわ"
+			ENDIF
+		CASE 4504
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				CALL MESSAGE_WINDOW_D, "미라이", @"うわぁ！ 私、인어になっちゃった！/…でも、これだと歩けないし走れないわね"
+				CALL MESSAGE_WINDOW_D, "", @"＞미라이は新しい姿になったことを아이らしく楽しんでいる/＞が、歩けないということを残念がってもいるようだ/＞" + CALLNAME:MASTER + "は미라이に、何れどこかの島にでも引っ越そうか、と聞いてみた"
+				CALL MESSAGE_WINDOW_D, "미라이", @"あ、それ、面白そう♪/당신の家で一緒に過ごして、私が물고기とか獲ってくるの/それで、夜になったら思いっきりかわいがってもらうんだから%UNICODE(0x2661)%"
+			ENDIF
+		CASE 4505
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				CALL MESSAGE_WINDOW_D, "도리", @"う～ん… 인어の발に合うコスプレってどんなのかな？/貝殻じゃちょっとありきたりだし、かといって他にいいアイデアも…"
+				CALL MESSAGE_WINDOW_D, "", @"＞도리はイスに座って新しい발、いや꼬리をパタパタと上下させてコスプレを考えている/＞…いっそフリッフリの衣装を着て、泳いではためかせるというのはどうか"
+				CALL MESSAGE_WINDOW_D, "도리", @"あっ！ いいアイデアじゃない♪/それで、서머너が潜れない海の악마とかを退治しちゃう…/燃えてきたよっ～！"
+			ENDIF
+		CASE 4506
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				CALL MESSAGE_WINDOW_D, "마리", @"마리先生、인어になっちゃいました%UNICODE(0x2661)%/…もう백의は着られないわね そもそも歩けないもの/海の中で着られる옷となると… やっぱり水着かしら？"
+				CALL MESSAGE_WINDOW_D, "", @"＞마리は自分の발、いや꼬리を見て今後の옷装を考えているようだ/＞その大きな가슴なら、貝殻なども向いているのではないだろうか"
+				CALL MESSAGE_WINDOW_D, "마리", @"ちょっと당신クン、눈つきがイヤらしいわよ/…そういうのは帰ってからにしましょ？"
+			ENDIF
+		CASE 4516
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				IF TALENT:ARG:유아체형
+					CALL MESSAGE_WINDOW_D, "마요네", @"うふふ、わたくし인어さんになりましたの！/…歩けませんわね 당신、おんぶしてくださいですの"
+					CALL MESSAGE_WINDOW_D, "", @"＞마요네はこちらにおんぶを要求してきている/＞実際、陸の上ではこうしないともう動けないのかもしれない…/＞악마の머메이드はどう動いているのだろうか？"
+					CALL MESSAGE_WINDOW_D, "마요네", @"うふふ、わたくしはもう당신なしでは生きていけませんもの/よろしくお願いしますわ%UNICODE(0x2661)%"
+				ELSE
+					CALL MESSAGE_WINDOW_D, "마요네", @"わたくし、この옷は気に入っておりましたが…/流石に인어の身体には向きませんわね/裸は嫌ですし、何か옷を考えませんと"
+					CALL MESSAGE_WINDOW_D, "", @"＞마요네は自分の肉体が変わったことよりも옷装を気にしている/＞流石は마요네、肉体の心配はしていないようだ"
+					CALL MESSAGE_WINDOW_D, "마요네", @"당신が望んだ肉体ですもの、そこに異存はありませんわ/どうこの肉体を生かしていくか、を考えるのみです/幸い바기나は린の下にあるようですし、抱いては貰えそうですもの"
+				ENDIF
+			ENDIF
+		CASE 4541
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				CALL MESSAGE_WINDOW_D, "나오토", @"この身体だと、流石に탐정は廃業ですね…/すいません、僕の部屋にに大きめの水槽かプールを用意してもらえますか？/水際にパソコンを置いてもらえればいろいろできると思うので"
+				CALL MESSAGE_WINDOW_D, "", @"＞나오토は自分の발、いや꼬리を撫でながら今後の事を考えている/＞そもそも악마になったのだから、仕事の心配などしなくてもいいだろう/＞どの道ＭＡＧはこちらから提供するのだし…"
+				CALL MESSAGE_WINDOW_D, "나오토", @"そうは言っても何もしていないと落ち着かないんですよ/それに、당신の손伝いもしたいですし…"
+			ENDIF
+		CASE 4559
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				CALL MESSAGE_WINDOW_D, "코시로", @"う～ん… この身体、学校の皆になんて言われるかな…/ボク、악마になってもまだ学校行かなきゃいけないのかな/…そもそも、学校行けそうにないや"
+				CALL MESSAGE_WINDOW_D, "", @"＞코시로は椅子に座り、꼬리を上下させながら考え事をしている/＞…と、코시로が急にこちらを振り向いてきた"
+				CALL MESSAGE_WINDOW_D, "코시로", @"もちろん탐정さんは、ボクの身体を作り変えた責任取ってくれますよね？/とりあえず、いわゆるお姫様抱っこってやつ、してください/ボク、多分もう歩けないし…"
+			ENDIF
+		CASEELSE
+			CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:ARG + "は椅子に座り、발ならぬ꼬리を撫でながら此方を見てほほ笑んでいる/＞昔話に出てくる美しい인어そのものの姿だ…"
+			CALL MESSAGE_WINDOW_D, "", @"＞とりあえず、" + CALLNAME:ARG + "の部屋にプールでも据え付けてやろうか…"
+	ENDSELECT
+ENDIF
+
+;하피
+@DEMONIEZD_SET_3116, ARG
+#LOCALSSIZE 1
+
+IF NO:MASTER == NO:ARG
+	CFLAG:MASTER:所属ＣＯＭＰ = -1
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"자 그럼、이리 와줄래요？"
+	CALL MESSAGE_WINDOW_D, "", @"＞점주에게 안내되어서 옷을 벗은 " + CALLNAME:MASTER + "는 작은 캡슐에 들어갔다…"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"그러면、시작할게요/인간으로서의 생애에 이별을 고해두세…"
+	CALL MESSAGE_WINDOW_D, "", @"＞손발が作り替わっていく感触を味わいながら/＞" + CALLNAME:MASTER + "는 의식이 멀어졌다…"
+	CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+	CALL SHOW_PICTURE, "EMPTY"
+	CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:MASTER + "가 눈을 뜨자、점주가 말을 걸어왔다…"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"응、잘 됐네/이게 인간을 그만둔 지금의 당신의 모습이네/鏡で出来栄え、체크してみて"
+	IF TALENT:MASTER:남자 && !TALENT:MASTER:오토코노코
+			CALL MESSAGE_WINDOW_D, "", @"＞鏡には、" + CALLNAME:MASTER + "の面影を残す하피が映っていた/＞새として강화された가슴筋と가랑이の肉棒が逞しさを醸し出す…"
+	ELSEIF TALENT:MASTER:오토코노코 || TALENT:MASTER:후타나리
+		IF TALENT:MASTER:거유 || TALENT:MASTER:폭유 || TALENT:MASTER:魔乳
+			CALL MESSAGE_WINDOW_D, "", @"＞鏡には、" + CALLNAME:MASTER + "の面影を残す하피が映っていた/＞そして大きな유방と날개毛からはみ出す가랑이の肉棒/＞まさしく이형の肉体だが、それが良い"
+		ELSEIF TALENT:MASTER:빈유 || TALENT:MASTER:절벽
+			CALL MESSAGE_WINDOW_D, "", @"＞鏡には、" + CALLNAME:MASTER + "の面影を残す하피が映っていた/＞가랑이の날개毛からはみ出す肉棒がより이형らしさを表現し、악마になったと実感させてくれる"
+		ELSE
+			CALL MESSAGE_WINDOW_D, "", @"＞鏡には、" + CALLNAME:MASTER + "の面影を残す하피が映っていた/＞我ながら均整の取れた体つきがエロティックだ/＞날개毛から覗いている페니스が背徳感を増している…"
+		ENDIF
+	ELSE
+		IF TALENT:MASTER:거유 || TALENT:MASTER:폭유 || TALENT:MASTER:魔乳
+			CALL MESSAGE_WINDOW_D, "", @"＞鏡には、" + CALLNAME:MASTER + "の面影を残す하피が映っていた/＞むき出しにされた豊満な가슴に、自分だと分かっていても" + CALLNAME:MASTER + "は赤面した…"
+		ELSEIF TALENT:MASTER:빈유 || TALENT:MASTER:절벽
+			CALL MESSAGE_WINDOW_D, "", @"＞鏡には、" + CALLNAME:MASTER + "の面影を残す하피が映っていた/＞我ながら凹凸のない体だが、その分より새っぽい…"
+		ELSE
+			CALL MESSAGE_WINDOW_D, "", @"＞鏡には、" + CALLNAME:MASTER + "の面影を残す하피が映っていた/＞我ながら均整の取れた体つきがエロティックだ"
+		ENDIF
+	ENDIF
+	CALL MESSAGE_WINDOW_D, "", @"＞二の팔から先は完全に날개と化しており、感触が明らかに違う/＞ちょっと힘を込めて上下させるだけで、簡가운に空も飛べた/＞ただ、もう二度と物はもう持てないだろうな…"
+	CALL MESSAGE_WINDOW_D, "", @"＞加えて새の物になった발の感触も独特だ/＞ある程度の大きさなら掴むことが出来そうだ/＞少しばかり空を飛ぶなりどこかに掴まってみるなりして慣れておきたい…"
+ELSE
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"알았어용/그러면 당신은 여기서 기달려용？"
+	CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+	CALL SHOW_PICTURE, "EMPTY"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"네、오케이/인간을 그만둔 " + CALLNAME:ARG + "쨩의 모습、확실히 봐줘용？"
+	CALL MESSAGE_WINDOW_D, "", @"＞점주에게 이끌려 、" + CALLNAME:ARG + "가 돌아왔다"
+	SELECTCASE NO:ARG
+		CASE 4501
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				CALL MESSAGE_WINDOW_D, "베스", @"まさか새になるとは思ってもみなかったわ/…この발だとちょっと歩きにくいし、普段は飛んでた方が良いのかしら/肩が疲れちゃいそうだわ"
+				CALL MESSAGE_WINDOW_D, "", @"＞베스は両손の翼を날개ばたかせ宙に浮いている/＞確かに새の발では歩きづらいのだろう/＞何なら、普段は팔に掴まっていてもいいが？"
+				CALL MESSAGE_WINDOW_D, "베스", @"！/…そうね、折角새になったんだし、당신と一緒に鷹匠の真似でもしてみようかしら"
+			ENDIF
+		CASE 4504
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				CALL MESSAGE_WINDOW_D, "미라이", @"うわぁ！ 私、새になっちゃった！/…새ってこうやって空を飛ぶのね/思ってたよりも疲れるわ"
+				CALL MESSAGE_WINDOW_D, "", @"＞미라이は新しい姿になったことを아이らしく楽しんでいる/＞だが、まだ未成熟な身体では空を飛ぶのに大分疲れるようだ/＞새なら巣立ちもしていない年齢だ、むべなるかな"
+				CALL MESSAGE_WINDOW_D, "미라이", @"そうね、私まだコドモだから…/それまでよろしくね、당신%UNICODE(0x2661)%/その代わり私がオトナになったら、당신の事育ててあげる%UNICODE(0x2661)%"
+				CALL MESSAGE_WINDOW_D, "", @"＞何やら미라이は変わった将来を思い描いているようだ/＞いろいろ仕込んだせいだろうか…"
+			ENDIF
+		CASE 4505
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				CALL MESSAGE_WINDOW_D, "도리", @"う～ん… 손が새の날개になってるから、今までのコスプレじゃダメだし…/かといってこの格好の正義の아군もあんまりいないし…/ねえねえ、どんなコスプレだったら似合うと思う？"
+				CALL MESSAGE_WINDOW_D, "", @"＞도리は날개を動かして空を飛びながら新しいコスプレを考えている/＞ここは一人でやるのではなく、他の仲魔とチームを組んでみるのはどうか/＞各人で決めポーズでも取って名乗ればいいだろう"
+				;戦隊ヒーローとかバビル○世とか
+				CALL MESSAGE_WINDOW_D, "도리", @"あっ！ いいアイデアじゃない♪/アタシがマジカル도리だからマジカル… 何になってもらおうかな！/燃えてきたよっ～！"
+			ENDIF
+		CASE 4506
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				CALL MESSAGE_WINDOW_D, "마리", @"마리先生、새さんになっちゃいました%UNICODE(0x2661)%/…もう백의は着られないわね 팔が通らないわ/それにこの발だと歩きづらいから、すぐ飛べるようにはしたいし…"
+				CALL MESSAGE_WINDOW_D, "", @"＞마리は自分の손발を見て、一先ず着られる옷を考えているようだ/＞そもそも、裸ではいけないのだろうか？/＞下半身は날개毛でおおわれているのだし、하피は元来전라だ"
+				CALL MESSAGE_WINDOW_D, "마리", @"ちょっと、당신クン… 先生も女よ？/好きな人이외に裸を見せたくないって、そんなにおかしなことかしら…"
+			ENDIF
+		CASE 4516
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				IF TALENT:ARG:유아체형
+					CALL MESSAGE_WINDOW_D, "마요네", @"うふふ、わたくし새さんになりましたの！/…空を飛ぶのって、思ってたより忙しないですのね/肩が凝ってしまいそうですわ"
+					CALL MESSAGE_WINDOW_D, "", @"＞마요네は팔、いや翼を날개ばたかせながら考え事をしているようだ/＞確かに、結構なペースで上下する翼を見ると疲れるだろうという気はする/＞とりあえず、疲れたら何時でもこちらに掴まっていいと마요네に言ってあげた…"
+					CALL MESSAGE_WINDOW_D, "마요네", @"ありがとうございますわ、당신%UNICODE(0x2661)%/それじゃあ早速肩にでも掴まってみますわ…/えっと… これで… あれ？"
+					CALL MESSAGE_WINDOW_D, "", @"＞どうやら머리を挟んで此方の両肩に掴まろうとしているようだが/＞ただでさえ短くなったうえ、새のように曲がった今の마요네の발ではなかなか머리を跨げないようだ…"
+				ELSE
+					CALL MESSAGE_WINDOW_D, "마요네", @"わたくし、この옷は気に入っておりましたが…/流石に새の身体には向きませんわね/裸は嫌ですし、何か옷を考えませんと"
+					CALL MESSAGE_WINDOW_D, "", @"＞마요네は自分の肉体が変わったことよりも옷装を気にしている/＞流石は마요네、肉体の心配はしていないようだ"
+					CALL MESSAGE_WINDOW_D, "마요네", @"당신が望んだ肉体ですもの、そこに異存はありませんわ/どうこの肉体を生かしていくか、を考えるのみです/幸い바기나は날개毛の下にあるようですし、抱いては貰えそうですもの"
+				ENDIF
+			ENDIF
+		CASE 4541
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				CALL MESSAGE_WINDOW_D, "나오토", @"この身体だと、流石に탐정は廃業ですね…/空が飛べる利点はありますが、손が使えないのは痛いです"
+				CALL MESSAGE_WINDOW_D, "", @"＞나오토は自分の발を翼で撫でながら今後の事を考えている/＞そもそも악마になったのだから、仕事の心配などしなくてもいいだろう/＞どの道ＭＡＧはこちらから提供するのだし…"
+				CALL MESSAGE_WINDOW_D, "나오토", @"そうは言っても何もしていないと落ち着かないんですよ/それに、その、당신の손伝いもしたいですし…"
+			ENDIF
+		CASE 4559
+			IF TALENT:ARG:3 || TALENT:ARG:6
+				CALL MESSAGE_WINDOW_D, "코시로", @"う～ん… この身体、学校の皆になんて言われるかな…/鉛筆なんてもう持てないしなぁ…/そもそもボク、악마になってもまだ学校行かなきゃいけないのかな"
+				CALL MESSAGE_WINDOW_D, "", @"＞코시로は椅子に座って팔、いや翼を上下させながら考え事をしている/＞…と、코시로が急にこちらを振り向いてきた"
+				CALL MESSAGE_WINDOW_D, "코시로", @"もちろん탐정さんは、ボクの身体を作り変えた責任取ってくれますよね？/とりあえず、いわゆるお姫様抱っこってやつ、してください/ちょっと팔が疲れちゃったから…"
+			ENDIF
+		CASEELSE
+			CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:ARG + "は팔、いや翼を上下させて飛びながら此方を見てほほ笑んでいる/＞何となく獲物を狙う하피を思い出す笑顔だ"
+			CALL MESSAGE_WINDOW_D, "", @"＞案の定、" + CALLNAME:ARG + "はこちらに飛びついてきた/＞날개がくすぐったい…"
+	ENDSELECT
+ENDIF
+
+;좀비
+@DEMONIEZD_SET_3117, ARG
+#LOCALSSIZE 1
+
+IF NO:MASTER == NO:ARG
+	CFLAG:MASTER:所属ＣＯＭＰ = -1
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"자 그럼、이리 와줄래요？"
+	CALL MESSAGE_WINDOW_D, "", @"＞점주에게 안내되어서 옷을 벗은 " + CALLNAME:MASTER + "는 작은 캡슐에 들어갔다…"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"그러면、시작할게요/인간으로서의 생애에 이별을 고해두세…"
+	CALL MESSAGE_WINDOW_D, "", @"＞全身が冷たくなっていく感触を味わいながら/＞" + CALLNAME:MASTER + "는 의식이 멀어졌다…"
+	CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+	CALL SHOW_PICTURE, "EMPTY"
+	CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:MASTER + "가 눈을 뜨자、점주가 말을 걸어왔다…"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"응、잘 됐네/이게 인간을 그만둔 지금의 당신의 모습이네/鏡で出来栄え、체크してみて"
+	
+	CALL MESSAGE_WINDOW_D, "", @"＞鏡には、" + CALLNAME:MASTER + "の姿が映っていた/＞以前と何も変わってないように見える…"
+	CALL MESSAGE_WINDOW_D, "", @"＞そういえば過去に5日間徹夜した時と同じ顔だな/と、朧気ながら思い出した…"
+ELSE
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"알았어용/그러면 당신은 여기서 기달려용？"
+	CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+	CALL SHOW_PICTURE, "EMPTY"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"네、오케이/인간을 그만둔 " + CALLNAME:ARG + "쨩의 모습、확실히 봐줘용？"
+	CALL MESSAGE_WINDOW_D, "", @"＞점주에게 이끌려 、" + CALLNAME:ARG + "가 돌아왔다"
+	
+	CALL MESSAGE_WINDOW_D, "", @"＞以前と見た눈はほぼ変わっていない/気になって身体を少し触ってみると、ひんやりとした体温が返ってきた"
+	CALL MESSAGE_WINDOW_D, "", @"＞とりあえず明日の食事は生肉を出してみるか、と考え/反応を楽しみにすることにした…"
+ENDIF
+
+;뱀파이어
+@DEMONIEZD_SET_3118, ARG
+#LOCALSSIZE 1
+
+IF NO:MASTER == NO:ARG
+	CFLAG:MASTER:所属ＣＯＭＰ = -1
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"자 그럼、이리 와줄래요？"
+	CALL MESSAGE_WINDOW_D, "", @"＞점주에게 안내되어서 옷을 벗은 " + CALLNAME:MASTER + "는 작은 캡슐에 들어갔다…"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"그러면、시작할게요/인간으로서의 생애에 이별을 고해두세…"
+	CALL MESSAGE_WINDOW_D, "", @"＞背中にむずむずする感触を味わいながら/＞" + CALLNAME:MASTER + "는 의식이 멀어졌다…"
+	CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+	CALL SHOW_PICTURE, "EMPTY"
+	CALL MESSAGE_WINDOW_D, "", @"＞" + CALLNAME:MASTER + "가 눈을 뜨자、점주가 말을 걸어왔다…"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"응、잘 됐네/이게 인간을 그만둔 지금의 당신의 모습이네/鏡で出来栄え、체크してみて"
+	
+	CALL MESSAGE_WINDOW_D, "", @"＞鏡には、" + CALLNAME:MASTER + "の面影を残す銀머리카락の흡혈귀が映っていた/＞顔色は悪そうだが不思議なカリスマを感じなくもない…"
+	CALL MESSAGE_WINDOW_D, "", @"＞최고にハイ！な気分でないことを少し残念に感じる/＞COMPによって保護されているとは言え、明日からの日中の活動がなんだか憂鬱だ…"
+ELSE
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"알았어용/그러면 당신은 여기서 기달려용？"
+	CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+	CALL SHOW_PICTURE, "EMPTY"
+	CALL MESSAGE_WINDOW_D, "남자 점주", @"네、오케이/인간을 그만둔 " + CALLNAME:ARG + "쨩의 모습、확실히 봐줘용？"
+	CALL MESSAGE_WINDOW_D, "", @"＞점주에게 이끌려 、" + CALLNAME:ARG + "가 돌아왔다"
+	
+	CALL MESSAGE_WINDOW_D, "", @"＞室内だというのに鈍く光る銀머리카락や妖しげな매력が/" + CALLNAME:ARG + "が人外の存在になったことを実感させてくれる"
+	CALL MESSAGE_WINDOW_D, "", @"＞ふと思い指を傷つけ/＞" + CALLNAME:ARG + "へ舐めるように差し出すと、恐る恐る입を付けて舐めだした"
+	CALL MESSAGE_WINDOW_D, "", @"＞歯は立てないように言い含めたが、血が止まるまで恍惚と舐め続けている…"
+ENDIF
+
+
+;------------------------------
+;ADD타입
+;------------------------------
+
+;幽鬼소스
+@ADVANCE_DEMONIEZD_TYPE_3131, ARGS, ARG
+#LOCALSSIZE 1
+#DIM 가격計算, 1
+
+CALLFORM ADVANCE_DEMONIEZD_MILD_MONEY, ARG, "주살", "신경"
+가격計算 = RESULT
+
+SELECTCASE ARGS
+	CASE "アドバンスド타입"
+		RESULTS = 幽鬼
+	CASE "해설"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "幽鬼소스を추가するのね？/それなら、주살と신경に強くなるわ"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "副作用として感情が希薄になるわ"
+	CASE "체크"
+		IF TALENT:ARG:감정결핍 == 1
+			CALL MESSAGE_WINDOW_D , "남자 점주" , "어머、이 아이 벌써感情が希薄よ/これ이상は정신が壊れちゃう可能性あるからやめておきなさい"
+			RETURN 0
+		ENDIF
+		RETURN 1
+	CASE "확인"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "相性的に" + TOSTR(가격計算) + "マッカかかるけど/本当に、"+ CALLNAME:ARG + "ちゃんに幽鬼소스を組み込んでいいかしら？"
+	CASE "가격"
+		RETURN 가격計算
+	CASE "アドバンスド実行"
+		CSTR:ARG:종족명 = 幽鬼
+		IF MAXBASE:ARG:주살 > 0
+			MAXBASE:ARG:주살 -= 25
+			BASE:ARG:주살 -= 25
+			IF MAXBASE:ARG:주살 < 0
+				MAXBASE:ARG:주살 = 0
+				BASE:ARG:주살 = 0
+			ENDIF
+		ENDIF
+		IF MAXBASE:ARG:신경 > 0
+			MAXBASE:ARG:신경 -= 25
+			BASE:ARG:신경 -= 25
+			IF MAXBASE:ARG:신경 < 0
+				MAXBASE:ARG:신경 = 0
+				BASE:ARG:신경 = 0
+			ENDIF
+		ENDIF
+		TALENT:ARG:감정결핍 = 1
+ENDSELECT
+
+
+;比丘尼소스
+@ADVANCE_DEMONIEZD_TYPE_3132, ARGS, ARG
+#LOCALSSIZE 1
+#DIM 가격計算, 1
+
+CALLFORM ADVANCE_DEMONIEZD_MILD_MONEY, ARG, "빙결", "수격"
+가격計算 = RESULT
+
+SELECTCASE ARGS
+	CASE "アドバンスド타입"
+		RESULTS = 比丘尼
+	CASE "해설"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "比丘尼소스を추가するのね？/それなら、빙결と수격に強くなるわ"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "副作用として무관심になるわ"
+	CASE "체크"
+		IF TALENT:ARG:무관심 == 1
+			CALL MESSAGE_WINDOW_D , "남자 점주" , "어머、이 아이 벌써무관심よ/これ이상は정신が壊れちゃう可能性あるからやめておきなさい"
+			RETURN 0
+		ENDIF
+		RETURN 1
+	CASE "확인"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "相性的に" + TOSTR(가격計算) + "マッカかかるけど/本当に、"+ CALLNAME:ARG + "ちゃんに比丘尼소스を組み込んでいいかしら？"
+	CASE "가격"
+		RETURN 가격計算
+	CASE "アドバンスド実行"
+		CSTR:ARG:종족명 = 比丘尼
+		IF MAXBASE:ARG:빙결 > 0
+			MAXBASE:ARG:빙결 -= 25
+			BASE:ARG:빙결 -= 25
+			IF MAXBASE:ARG:빙결 < 0
+				MAXBASE:ARG:빙결 = 0
+				BASE:ARG:빙결 = 0
+			ENDIF
+		ENDIF
+		IF MAXBASE:ARG:수격 > 0
+			MAXBASE:ARG:수격 -= 25
+			BASE:ARG:수격 -= 25
+			IF MAXBASE:ARG:수격 < 0
+				MAXBASE:ARG:수격 = 0
+				BASE:ARG:수격 = 0
+			ENDIF
+		ENDIF
+		TALENT:ARG:무관심 = 1
+ENDSELECT
+
+
+;炎魔소스
+@ADVANCE_DEMONIEZD_TYPE_3133, ARGS, ARG
+#LOCALSSIZE 1
+#DIM 가격計算, 1
+
+CALLFORM ADVANCE_DEMONIEZD_MILD_MONEY, ARG, "화염", "핵열"
+가격計算 = RESULT
+
+SELECTCASE ARGS
+	CASE "アドバンスド타입"
+		RESULTS = 炎魔
+	CASE "해설"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "炎魔소스を추가するのね？/それなら、화염と핵열に強くなるわ"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "副作用はまぁあんまり報告されてないわ/でも実験体の看守からの평판は良くなかったという記録があるわ"
+	CASE "체크"
+		IF TALENT:ARG:젖기어려움 == 1
+			CALL MESSAGE_WINDOW_D , "남자 점주" , "あら、この子とは相性が悪いみたいよ/これ이상は危ないからやめておきなさい"
+			RETURN 0
+		ENDIF
+		RETURN 1
+	CASE "확인"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "相性的に" + TOSTR(가격計算) + "マッカかかるけど/本当に、"+ CALLNAME:ARG + "ちゃんに炎魔소스を組み込んでいいかしら？"
+	CASE "가격"
+		RETURN 가격計算
+	CASE "アドバンスド実行"
+		CSTR:ARG:종족명 = 炎魔
+		IF MAXBASE:ARG:화염 > 0
+			MAXBASE:ARG:화염 -= 25
+			BASE:ARG:화염 -= 25
+			IF MAXBASE:ARG:화염 < 0
+				MAXBASE:ARG:화염 = 0
+				BASE:ARG:화염 = 0
+			ENDIF
+		ENDIF
+		IF MAXBASE:ARG:핵열 > 0
+			MAXBASE:ARG:핵열 -= 10
+			BASE:ARG:핵열 -= 10
+			IF MAXBASE:ARG:핵열 < 0
+				MAXBASE:ARG:핵열 = 0
+				BASE:ARG:핵열 = 0
+			ENDIF
+		ENDIF
+		TALENT:ARG:젖기어려움 = 1
+		TALENT:ARG:젖기쉬움 = 0
+ENDSELECT
+
+;천사소스
+@ADVANCE_DEMONIEZD_TYPE_3134, ARGS, ARG
+#LOCALSSIZE 1
+#DIM 가격計算, 1
+
+CALLFORM ADVANCE_DEMONIEZD_MILD_MONEY, ARG, "파마", "정신"
+가격計算 = RESULT
+
+SELECTCASE ARGS
+	CASE "アドバンスド타입"
+		RESULTS = 천사
+	CASE "해설"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "천사소스を추가するのね？/それなら、파마と정신に強くなるわ"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "副作用として潔癖症の気が出るわ"
+	CASE "체크"
+		IF TALENT:ARG:악취민감 == 1
+			CALL MESSAGE_WINDOW_D , "남자 점주" , "어머、이 아이 벌써潔癖症みたいよ/これ이상は危ないからやめておきなさい"
+			RETURN 0
+		ENDIF
+		RETURN 1
+	CASE "확인"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "相性的に" + TOSTR(가격計算) + "マッカかかるけど/本当に、"+ CALLNAME:ARG + "ちゃんに천사소스を組み込んでいいかしら？"
+	CASE "가격"
+		RETURN 가격計算
+	CASE "アドバンスド実行"
+		CSTR:ARG:종족명 = 천사
+		IF MAXBASE:ARG:파마 > 0
+			MAXBASE:ARG:파마 -= 25
+			BASE:ARG:파마 -= 25
+			IF MAXBASE:ARG:파마 < 0
+				MAXBASE:ARG:파마 = 0
+				BASE:ARG:파마 = 0
+			ENDIF
+		ENDIF
+		IF MAXBASE:ARG:정신 > 0
+			MAXBASE:ARG:정신 -= 25
+			BASE:ARG:정신 -= 25
+			IF MAXBASE:ARG:정신 < 0
+				MAXBASE:ARG:정신 = 0
+				BASE:ARG:정신 = 0
+			ENDIF
+		ENDIF
+		TALENT:ARG:악취민감 = 1
+		TALENT:ARG:악취둔감 = 0
+		TALENT:ARG:불결무시 = 0
+ENDSELECT
+
+
+;邪鬼소스
+@ADVANCE_DEMONIEZD_TYPE_3135, ARGS, ARG
+#LOCALSSIZE 1
+#DIM 가격計算, 1
+
+CALLFORM ADVANCE_DEMONIEZD_MILD_MONEY, ARG, "타격", "전술"
+가격計算 = RESULT
+
+SELECTCASE ARGS
+	CASE "アドバンスド타입"
+		RESULTS = 邪鬼
+	CASE "해설"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "邪鬼소스を추가するのね？/それなら、타격と전술に強くなるわ"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "副作用として반항적になるわ/それから変にプライド持っちゃうみたいね"
+	CASE "체크"
+		IF TALENT:ARG:반항적 == 1
+			CALL MESSAGE_WINDOW_D , "남자 점주" , "어머、이 아이 벌써반항적よ/これ이상は손が付けられなくなるからやめておきなさい"
+			RETURN 0
+		ENDIF
+		RETURN 1
+	CASE "확인"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "相性的に" + TOSTR(가격計算) + "マッカかかるけど/本当に、"+ CALLNAME:ARG + "ちゃんに邪鬼소스を組み込んでいいかしら？"
+	CASE "가격"
+		RETURN 가격計算
+	CASE "アドバンスド実行"
+		CSTR:ARG:종족명 = 邪鬼
+		IF MAXBASE:ARG:타격 > 0
+			MAXBASE:ARG:타격 -= 25
+			BASE:ARG:타격 -= 25
+			IF MAXBASE:ARG:타격 < 0
+				MAXBASE:ARG:타격 = 0
+				BASE:ARG:타격 = 0
+			ENDIF
+		ENDIF
+		IF MAXBASE:ARG:전술 > 0
+			MAXBASE:ARG:전술 -= 25
+			BASE:ARG:전술 -= 25
+			IF MAXBASE:ARG:전술 < 0
+				MAXBASE:ARG:전술 = 0
+				BASE:ARG:전술 = 0
+			ENDIF
+		ENDIF
+		TALENT:ARG:반항적 = 1
+		TALENT:ARG:솔직함 = 0
+		TALENT:ARG:프라이드높음 = 1
+		TALENT:ARG:프라이드낮음 = 0
+ENDSELECT
+
+
+;凶새소스
+@ADVANCE_DEMONIEZD_TYPE_3136, ARGS, ARG
+#LOCALSSIZE 1
+#DIM 가격計算, 1
+
+CALLFORM ADVANCE_DEMONIEZD_MILD_MONEY, ARG, "충격", "질풍"
+가격計算 = RESULT
+
+SELECTCASE ARGS
+	CASE "アドバンスド타입"
+		RESULTS = 凶새
+	CASE "해설"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "凶새소스を추가するのね？/それなら、충격と질풍に強くなるわ"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "副作用として새머리になるわ/羞恥心とか薄くなって、物깨달음えが悪くなるわよ"
+	CASE "체크"
+		IF TALENT:ARG:습득느림 == 1 || TALENT:ARG:부끄럼없음 == 1
+			CALL MESSAGE_WINDOW_D , "남자 점주" , "어머、이 아이 벌써새머리よ/これ이상は손に負えなくなるからやめておきなさい"
+			RETURN 0
+		ENDIF
+		RETURN 1
+	CASE "확인"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "相性的に" + TOSTR(가격計算) + "マッカかかるけど/本当に、"+ CALLNAME:ARG + "ちゃんに凶새소스を組み込んでいいかしら？"
+	CASE "가격"
+		RETURN 가격計算
+	CASE "アドバンスド実行"
+		CSTR:ARG:종족명 = 凶새
+		IF MAXBASE:ARG:충격 > 0
+			MAXBASE:ARG:충격 -= 25
+			BASE:ARG:충격 -= 25
+			IF MAXBASE:ARG:충격 < 0
+				MAXBASE:ARG:충격 = 0
+				BASE:ARG:충격 = 0
+			ENDIF
+		ENDIF
+		IF MAXBASE:ARG:질풍 > 0
+			MAXBASE:ARG:질풍 -= 10
+			BASE:ARG:질풍 -= 10
+			IF MAXBASE:ARG:질풍 < 0
+				MAXBASE:ARG:질풍 = 0
+				BASE:ARG:질풍 = 0
+			ENDIF
+		ENDIF
+		TALENT:ARG:부끄럼없음 = 1
+		TALENT:ARG:부끄럼쟁이 = 0
+		TALENT:ARG:습득느림 = 1
+		TALENT:ARG:습득빠름 = 0
+ENDSELECT
+
+
+;英傑소스
+@ADVANCE_DEMONIEZD_TYPE_3137, ARGS, ARG
+#LOCALSSIZE 1
+#DIM 가격計算, 1
+
+CALLFORM ADVANCE_DEMONIEZD_MILD_MONEY, ARG, "검격", "비구"
+가격計算 = RESULT
+
+SELECTCASE ARGS
+	CASE "アドバンスド타입"
+		RESULTS = 英傑
+	CASE "해설"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "英傑소스を추가するのね？/それなら、검격と비구に強くなるわ"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "副作用としては정신的に気難しくなるとの報告があるわ"
+	CASE "체크"
+		IF TALENT:ARG:일선을넘지않음 == 1
+			CALL MESSAGE_WINDOW_D , "남자 점주" , "어머、이 아이 벌써気難しい性格みたいね/これ이상は손に負えなくなるからやめておきなさい"
+			RETURN 0
+		ENDIF
+		RETURN 1
+	CASE "확인"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "相性的に" + TOSTR(가격計算) + "マッカかかるけど/本当に、"+ CALLNAME:ARG + "ちゃんに英傑소스を組み込んでいいかしら？"
+	CASE "가격"
+		RETURN 가격計算
+	CASE "アドバンスド実行"
+		CSTR:ARG:종족명 = 英傑
+		IF MAXBASE:ARG:검격 > 0
+			MAXBASE:ARG:검격 -= 25
+			BASE:ARG:검격 -= 25
+			IF MAXBASE:ARG:검격 < 0
+				MAXBASE:ARG:검격 = 0
+				BASE:ARG:검격 = 0
+			ENDIF
+		ENDIF
+		IF MAXBASE:ARG:비구 > 0
+			MAXBASE:ARG:비구 -= 25
+			BASE:ARG:비구 -= 25
+			IF MAXBASE:ARG:비구 < 0
+				MAXBASE:ARG:비구 = 0
+				BASE:ARG:비구 = 0
+			ENDIF
+		ENDIF
+		TALENT:ARG:일선을넘지않음 = 1
+ENDSELECT
+
+
+;電霊소스
+@ADVANCE_DEMONIEZD_TYPE_3138, ARGS, ARG
+#LOCALSSIZE 1
+#DIM 가격計算, 1
+
+CALLFORM ADVANCE_DEMONIEZD_MILD_MONEY, ARG, "전격", "전격"
+가격計算 = RESULT
+
+SELECTCASE ARGS
+	CASE "アドバンスド타입"
+		RESULTS = 電霊
+	CASE "해설"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "電霊소스を추가するのね？/それなら、전격に強くなるわ"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "副作用としては虚弱체질になるらしいわ"
+	CASE "체크"
+		IF TALENT:ARG:회복느림 == 1
+			CALL MESSAGE_WINDOW_D , "남자 점주" , "어머、이 아이 벌써虚弱체질みたいね/これ이상は危ないからやめておきなさい"
+			RETURN 0
+		ENDIF
+		RETURN 1
+	CASE "확인"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "相性的に" + TOSTR(가격計算) + "マッカかかるけど/本当に、"+ CALLNAME:ARG + "ちゃんに電霊소스を組み込んでいいかしら？"
+	CASE "가격"
+		RETURN 가격計算
+	CASE "アドバンスド実行"
+		CSTR:ARG:종족명 = 電霊
+		IF MAXBASE:ARG:전격 > 0
+			MAXBASE:ARG:전격 -= 25
+			BASE:ARG:전격 -= 25
+			IF MAXBASE:ARG:전격 < 0
+				MAXBASE:ARG:전격 = 0
+				BASE:ARG:전격 = 0
+			ENDIF
+		ENDIF
+		TALENT:ARG:회복느림 = 1
+		TALENT:ARG:회복빠름 = 0
+ENDSELECT
+
+
+;地霊소스
+@ADVANCE_DEMONIEZD_TYPE_3139, ARGS, ARG
+#LOCALSSIZE 1
+#DIM 가격計算, 1
+
+CALLFORM ADVANCE_DEMONIEZD_MILD_MONEY, ARG, "지변", "중력"
+가격計算 = RESULT
+
+SELECTCASE ARGS
+	CASE "アドバンスド타입"
+		RESULTS = 地霊
+	CASE "해설"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "地霊소스を추가するのね？/それなら、지변と중력に強くなるわ"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "副作用としては異性に嫌悪感を感じるようになるわ/それに付随して厳格な生活になるらしいわね"
+	CASE "체크"
+		IF (TALENT:ARG:남자 == 0 && TALENT:ARG:남성혐오 == 1) || (TALENT:ARG:남자 == 1 && TALENT:ARG:여성혐오 == 1) 
+			CALL MESSAGE_WINDOW_D , "남자 점주" , "어머、이 아이 벌써異性が嫌いみたいね/これ이상は危ないからやめておきなさい"
+			RETURN 0
+		ENDIF
+		RETURN 1
+	CASE "확인"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "相性的に" + TOSTR(가격計算) + "マッカかかるけど/本当に、"+ CALLNAME:ARG + "ちゃんに地霊소스を組み込んでいいかしら？"
+	CASE "가격"
+		RETURN 가격計算
+	CASE "アドバンスド実行"
+		CSTR:ARG:종족명 = 地霊
+		IF MAXBASE:ARG:지변 > 0
+			MAXBASE:ARG:지변 -= 25
+			BASE:ARG:지변 -= 25
+			IF MAXBASE:ARG:지변 < 0
+				MAXBASE:ARG:지변 = 0
+				BASE:ARG:지변 = 0
+			ENDIF
+		ENDIF
+		IF MAXBASE:ARG:중력 > 0
+			MAXBASE:ARG:중력 -= 25
+			BASE:ARG:중력 -= 25
+			IF MAXBASE:ARG:중력 < 0
+				MAXBASE:ARG:중력 = 0
+				BASE:ARG:중력 = 0
+			ENDIF
+		ENDIF
+		TALENT:ARG:자제심 = 1
+		IF TALENT:ARG:남자 == 0
+			TALENT:ARG:남성혐오 = 1
+			TALENT:ARG:바이 = 0
+		ELSE
+			TALENT:ARG:여성혐오 = 1
+			TALENT:ARG:바이 = 0
+		ENDIF
+ENDSELECT
+
+;마일드강화가격計算
+@ADVANCE_DEMONIEZD_MILD_MONEY, ARG, ARGS:1, ARGS:2
+#DIM 가격計算, 1
+
+;기본가격は3万
+가격計算 = 30000
+
+;강화する내성で変動
+IF MAXBASE:ARG:(ARGS:1) >= 100
+	;약점または無내성なら加算なし
+	가격計算 += 0
+ELSEIF MAXBASE:ARG:(ARGS:1) > 50
+	;내성ありなら1万加算
+	가격計算 += 10000
+ELSE
+	;반감이상なら3万加算(무효以下の場合は강화されないが、しっかり金はかかる)
+	가격計算 += 30000
+ENDIF
+
+IF MAXBASE:ARG:(ARGS:2) >= 100
+	가격計算 += 0
+ELSEIF MAXBASE:ARG:(ARGS:2) > 50
+	가격計算 += 10000
+ELSE
+	가격計算 += 30000
+ENDIF
+
+RETURN 가격計算
+
+
+;狂神소스
+@ADVANCE_DEMONIEZD_TYPE_3141, ARGS, ARG
+#LOCALSSIZE 1
+#DIM 가격計算, 1
+
+CALLFORM ADVANCE_DEMONIEZD_HARD_MONEY, ARG
+가격計算 = RESULT
+
+SELECTCASE ARGS
+	CASE "アドバンスド타입"
+		RESULTS = 狂神
+	CASE "해설"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "狂神소스を추가するのね？/それなら、정신と신경と전격に凄く強くなるわ"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "繰り返すけど、何が起きても自己責任よ？/ワタシはただ당신の言う通りに機械を操作しただけ…/やったのは당신自身だからね？"
+	CASE "체크"
+		IF TALENT:ARG:붕괴 == 1
+			CALL MESSAGE_WINDOW_D , "남자 점주" , "…この子はもう使い物にならないわ/これ이상の강화は無意味ね…"
+			RETURN 0
+		ENDIF
+		RETURN 1
+	CASE "확인"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "できる限り성공率上げられるよう努힘はするけど/それでも" + TOSTR(가격計算) + "マッカは필요よ/本当に、"+ CALLNAME:ARG + "ちゃんに狂神소스を組み込んでいいかしら？"
+	CASE "가격"
+		RETURN 가격計算
+	CASE "アドバンスド実行"
+		;ハード강화共通処理
+		CALLFORM ADVANCE_DEMONIEZD_HARD, ARG
+		SIF RESULT == 0
+			RETURN
+		
+		CSTR:ARG:종족명 = 狂神
+		IF MAXBASE:ARG:정신 > 0
+			MAXBASE:ARG:정신 -= 50
+			BASE:ARG:정신 -= 50
+			IF MAXBASE:ARG:정신 < 0
+				MAXBASE:ARG:정신 = 0
+				BASE:ARG:정신 = 0
+			ENDIF
+		ENDIF
+		IF MAXBASE:ARG:신경 > 0
+			MAXBASE:ARG:신경 -= 50
+			BASE:ARG:신경 -= 50
+			IF MAXBASE:ARG:신경 < 0
+				MAXBASE:ARG:신경 = 0
+				BASE:ARG:신경 = 0
+			ENDIF
+		ENDIF
+		IF MAXBASE:ARG:전격 > 0
+			MAXBASE:ARG:전격 -= 50
+			BASE:ARG:전격 -= 50
+			IF MAXBASE:ARG:전격 < 0
+				MAXBASE:ARG:전격 = 0
+				BASE:ARG:전격 = 0
+			ENDIF
+		ENDIF
+ENDSELECT
+
+
+;修羅소스
+@ADVANCE_DEMONIEZD_TYPE_3142, ARGS, ARG
+#LOCALSSIZE 1
+#DIM 가격計算, 1
+
+CALLFORM ADVANCE_DEMONIEZD_HARD_MONEY, ARG
+가격計算 = RESULT
+
+SELECTCASE ARGS
+	CASE "アドバンスド타입"
+		RESULTS = 修羅
+	CASE "해설"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "修羅소스を추가するのね？/それなら、주살と빙결と지변に凄く強くなるわ"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "繰り返すけど、何が起きても自己責任よ？/ワタシはただ당신の言う通りに機械を操作しただけ…/やったのは당신自身だからね？"
+	CASE "체크"
+		IF TALENT:ARG:붕괴 == 1
+			CALL MESSAGE_WINDOW_D , "남자 점주" , "…この子はもう使い物にならないわ/これ이상の강화は無意味ね…"
+			RETURN 0
+		ENDIF
+		RETURN 1
+	CASE "확인"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "できる限り성공率上げられるよう努힘はするけど/それでも" + TOSTR(가격計算) + "マッカは필요よ/本当に、"+ CALLNAME:ARG + "ちゃんに修羅소스を組み込んでいいかしら？"
+	CASE "가격"
+		RETURN 가격計算
+	CASE "アドバンスド実行"
+		;ハード강화共通処理
+		CALLFORM ADVANCE_DEMONIEZD_HARD, ARG
+		SIF RESULT == 0
+			RETURN
+		
+		CSTR:ARG:종족명 = 修羅
+		IF MAXBASE:ARG:주살 > 0
+			MAXBASE:ARG:주살 -= 50
+			BASE:ARG:주살 -= 50
+			IF MAXBASE:ARG:주살 < 0
+				MAXBASE:ARG:주살 = 0
+				BASE:ARG:주살 = 0
+			ENDIF
+		ENDIF
+		IF MAXBASE:ARG:빙결 > 0
+			MAXBASE:ARG:빙결 -= 50
+			BASE:ARG:빙결 -= 50
+			IF MAXBASE:ARG:빙결 < 0
+				MAXBASE:ARG:빙결 = 0
+				BASE:ARG:빙결 = 0
+			ENDIF
+		ENDIF
+		IF MAXBASE:ARG:지변 > 0
+			MAXBASE:ARG:지변 -= 50
+			BASE:ARG:지변 -= 50
+			IF MAXBASE:ARG:지변 < 0
+				MAXBASE:ARG:지변 = 0
+				BASE:ARG:지변 = 0
+			ENDIF
+		ENDIF
+ENDSELECT
+
+
+
+;明王소스
+@ADVANCE_DEMONIEZD_TYPE_3143, ARGS, ARG
+#LOCALSSIZE 1
+#DIM 가격計算, 1
+
+CALLFORM ADVANCE_DEMONIEZD_HARD_MONEY, ARG
+가격計算 = RESULT
+
+SELECTCASE ARGS
+	CASE "アドバンスド타입"
+		RESULTS = 明王
+	CASE "해설"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "明王소스を추가するのね？/それなら、파마と화염と충격に凄く強くなるわ"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "繰り返すけど、何が起きても自己責任よ？/ワタシはただ당신の言う通りに機械を操作しただけ…/やったのは당신自身だからね？"
+	CASE "체크"
+		IF TALENT:ARG:붕괴 == 1
+			CALL MESSAGE_WINDOW_D , "남자 점주" , "…この子はもう使い物にならないわ/これ이상の강화は無意味ね…"
+			RETURN 0
+		ENDIF
+		RETURN 1
+	CASE "확인"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "できる限り성공率上げられるよう努힘はするけど/それでも" + TOSTR(가격計算) + "マッカは필요よ/本当に、"+ CALLNAME:ARG + "ちゃんに明王소스を組み込んでいいかしら？"
+	CASE "가격"
+		RETURN 가격計算
+	CASE "アドバンスド実行"
+		;ハード강화共通処理
+		CALLFORM ADVANCE_DEMONIEZD_HARD, ARG
+		SIF RESULT == 0
+			RETURN
+		
+		CSTR:ARG:종족명 = 明王
+		IF MAXBASE:ARG:파마 > 0
+			MAXBASE:ARG:파마 -= 50
+			BASE:ARG:파마 -= 50
+			IF MAXBASE:ARG:파마 < 0
+				MAXBASE:ARG:파마 = 0
+				BASE:ARG:파마 = 0
+			ENDIF
+		ENDIF
+		IF MAXBASE:ARG:화염 > 0
+			MAXBASE:ARG:화염 -= 50
+			BASE:ARG:화염 -= 50
+			IF MAXBASE:ARG:화염 < 0
+				MAXBASE:ARG:화염 = 0
+				BASE:ARG:화염 = 0
+			ENDIF
+		ENDIF
+		IF MAXBASE:ARG:충격 > 0
+			MAXBASE:ARG:충격 -= 50
+			BASE:ARG:충격 -= 50
+			IF MAXBASE:ARG:충격 < 0
+				MAXBASE:ARG:충격 = 0
+				BASE:ARG:충격 = 0
+			ENDIF
+		ENDIF
+ENDSELECT
+
+;破壊神소스
+@ADVANCE_DEMONIEZD_TYPE_3144, ARGS, ARG
+#LOCALSSIZE 1
+#DIM 가격計算, 1
+
+CALLFORM ADVANCE_DEMONIEZD_HARD_MONEY, ARG
+가격計算 = RESULT
+
+SELECTCASE ARGS
+	CASE "アドバンスド타입"
+		RESULTS = 破壊神
+	CASE "해설"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "破壊神소스を추가するのね？/それなら、검격と타격と전술に凄く強くなるわ"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "繰り返すけど、何が起きても自己責任よ？/ワタシはただ당신の言う通りに機械を操作しただけ…/やったのは당신自身だからね？"
+	CASE "체크"
+		IF TALENT:ARG:붕괴 == 1
+			CALL MESSAGE_WINDOW_D , "남자 점주" , "…この子はもう使い物にならないわ/これ이상の강화は無意味ね…"
+			RETURN 0
+		ENDIF
+		RETURN 1
+	CASE "확인"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "できる限り성공率上げられるよう努힘はするけど/それでも" + TOSTR(가격計算) + "マッカは필요よ/本当に、"+ CALLNAME:ARG + "ちゃんに破壊神소스を組み込んでいいかしら？"
+	CASE "가격"
+		RETURN 가격計算
+	CASE "アドバンスド実行"
+		;ハード강화共通処理
+		CALLFORM ADVANCE_DEMONIEZD_HARD, ARG
+		SIF RESULT == 0
+			RETURN
+		
+		CSTR:ARG:종족명 = 破壊神
+		IF MAXBASE:ARG:검격 > 0
+			MAXBASE:ARG:검격 -= 50
+			BASE:ARG:검격 -= 50
+			IF MAXBASE:ARG:검격 < 0
+				MAXBASE:ARG:검격 = 0
+				BASE:ARG:검격 = 0
+			ENDIF
+		ENDIF
+		IF MAXBASE:ARG:타격 > 0
+			MAXBASE:ARG:타격 -= 50
+			BASE:ARG:타격 -= 50
+			IF MAXBASE:ARG:타격 < 0
+				MAXBASE:ARG:타격 = 0
+				BASE:ARG:타격 = 0
+			ENDIF
+		ENDIF
+		IF MAXBASE:ARG:전술 > 0
+			MAXBASE:ARG:전술 -= 50
+			BASE:ARG:전술 -= 50
+			IF MAXBASE:ARG:전술 < 0
+				MAXBASE:ARG:전술 = 0
+				BASE:ARG:전술 = 0
+			ENDIF
+		ENDIF
+ENDSELECT
+
+
+;龍神소스
+@ADVANCE_DEMONIEZD_TYPE_3145, ARGS, ARG
+#LOCALSSIZE 1
+#DIM 가격計算, 1
+
+CALLFORM ADVANCE_DEMONIEZD_HARD_MONEY, ARG
+가격計算 = RESULT
+
+SELECTCASE ARGS
+	CASE "アドバンスド타입"
+		RESULTS = 龍神
+	CASE "해설"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "龍神소스を추가するのね？/それなら、핵열と질풍と중력に凄く強くなるわ"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "繰り返すけど、何が起きても自己責任よ？/ワタシはただ당신の言う通りに機械を操作しただけ…/やったのは당신自身だからね？"
+	CASE "체크"
+		IF TALENT:ARG:붕괴 == 1
+			CALL MESSAGE_WINDOW_D , "남자 점주" , "…この子はもう使い物にならないわ/これ이상の강화は無意味ね…"
+			RETURN 0
+		ENDIF
+		RETURN 1
+	CASE "확인"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "できる限り성공率上げられるよう努힘はするけど/それでも" + TOSTR(가격計算) + "マッカは필요よ/本当に、"+ CALLNAME:ARG + "ちゃんに龍神소스を組み込んでいいかしら？"
+	CASE "가격"
+		RETURN 가격計算
+	CASE "アドバンスド実行"
+		;ハード강화共通処理
+		CALLFORM ADVANCE_DEMONIEZD_HARD, ARG
+		SIF RESULT == 0
+			RETURN
+		
+		CSTR:ARG:종족명 = 龍神
+		IF MAXBASE:ARG:핵열 > 0
+			MAXBASE:ARG:핵열 -= 50
+			BASE:ARG:핵열 -= 50
+			IF MAXBASE:ARG:핵열 < 0
+				MAXBASE:ARG:핵열 = 0
+				BASE:ARG:핵열 = 0
+			ENDIF
+		ENDIF
+		IF MAXBASE:ARG:질풍 > 0
+			MAXBASE:ARG:질풍 -= 50
+			BASE:ARG:질풍 -= 50
+			IF MAXBASE:ARG:질풍 < 0
+				MAXBASE:ARG:질풍 = 0
+				BASE:ARG:질풍 = 0
+			ENDIF
+		ENDIF
+		IF MAXBASE:ARG:중력 > 0
+			MAXBASE:ARG:중력 -= 50
+			BASE:ARG:중력 -= 50
+			IF MAXBASE:ARG:중력 < 0
+				MAXBASE:ARG:중력 = 0
+				BASE:ARG:중력 = 0
+			ENDIF
+		ENDIF
+ENDSELECT
+
+;冥霊소스
+@ADVANCE_DEMONIEZD_TYPE_3146, ARGS, ARG
+#LOCALSSIZE 1
+#DIM 가격計算, 1
+
+CALLFORM ADVANCE_DEMONIEZD_HARD_MONEY, ARG
+가격計算 = RESULT
+
+SELECTCASE ARGS
+	CASE "アドバンスド타입"
+		RESULTS = 冥霊
+	CASE "해설"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "冥霊소스を추가するのね？/それなら、수격と비구に凄く強くなるわ"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "繰り返すけど、何が起きても自己責任よ？/ワタシはただ당신の言う通りに機械を操作しただけ…/やったのは당신自身だからね？"
+	CASE "체크"
+		IF TALENT:ARG:붕괴 == 1
+			CALL MESSAGE_WINDOW_D , "남자 점주" , "…この子はもう使い物にならないわ/これ이상の강화は無意味ね…"
+			RETURN 0
+		ENDIF
+		RETURN 1
+	CASE "확인"
+		CALL MESSAGE_WINDOW_D , "남자 점주" , "できる限り성공率上げられるよう努힘はするけど/それでも" + TOSTR(가격計算) + "マッカは필요よ/本当に、"+ CALLNAME:ARG + "ちゃんに冥霊소스を組み込んでいいかしら？"
+	CASE "가격"
+		RETURN 가격計算
+	CASE "アドバンスド実行"
+		;ハード강화共通処理
+		CALLFORM ADVANCE_DEMONIEZD_HARD, ARG
+		SIF RESULT == 0
+			RETURN
+		
+		CSTR:ARG:종족명 = 冥霊
+		IF MAXBASE:ARG:수격 > 0
+			MAXBASE:ARG:수격 -= 50
+			BASE:ARG:수격 -= 50
+			IF MAXBASE:ARG:수격 < 0
+				MAXBASE:ARG:수격 = 0
+				BASE:ARG:수격 = 0
+			ENDIF
+		ENDIF
+		IF MAXBASE:ARG:비구 > 0
+			MAXBASE:ARG:비구 -= 50
+			BASE:ARG:비구 -= 50
+			IF MAXBASE:ARG:비구 < 0
+				MAXBASE:ARG:비구 = 0
+				BASE:ARG:비구 = 0
+			ENDIF
+		ENDIF
+ENDSELECT
+
+;ハード강화共通処理
+@ADVANCE_DEMONIEZD_HARD, ARG
+
+IF CSTR:ARG:タイトル == "악마인(極限狂化)"
+	;3回눈
+	TALENT:ARG:붕괴 = 1
+	TALENT:ARG:연모 = 0
+	TALENT:ARG:음란 = 0
+	TALENT:ARG:복종 = 0
+	TALENT:ARG:친애 = 0
+	TALENT:ARG:창부 = 0
+	TALENT:ARG:예속 = 0
+	CSTR:ARG:タイトル = 악마인(붕괴)
+	RETURN 0
+ELSEIF CSTR:ARG:タイトル == "악마인(狂化)" 
+	;2回눈
+	TALENT:ARG:이형 = 1
+	TALENT:ARG:짐승 = 0
+	TALENT:ARG:새 = 0
+	TALENT:ARG:파충류 = 0
+	TALENT:ARG:물고기 = 0
+	TALENT:ARG:인간화 = 0
+	CSTR:ARG:タイトル = 악마인(極限狂化)
+	RETURN 1
+ELSE
+	;1回눈
+	TALENT:ARG:광기 = 1
+	CSTR:ARG:タイトル = 악마인(狂化)
+	RETURN 1
+ENDIF
+
+;ハード강화가격計算
+@ADVANCE_DEMONIEZD_HARD_MONEY, ARG
+#DIM 가격計算, 1
+
+;기본가격は10万
+가격計算 = 100000
+IF CSTR:ARG:タイトル == "악마인(狂化)" 
+	;2回눈は20万
+	가격計算 += 100000
+ELSEIF CSTR:ARG:タイトル == "악마인(極限狂化)" 
+	;3回눈は30万
+	가격計算 += 200000
+ENDIF
+RETURN 가격計算
+

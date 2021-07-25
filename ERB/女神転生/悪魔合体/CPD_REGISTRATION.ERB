@@ -1,0 +1,313 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:CPD_REGISTRATION.ERB
+;	Facility	:악마全書一般の処理
+;
+;	Licence		:ライセンスフリー。
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		20XX/XX/XX		N새						新規作成
+;	002		2015/09/23		Rsp暇人					등록内容と違う능력を持つ仲魔を色つきで표시するように
+;	003		2017/06/23		kuni					キャラ표시でINPUT_CHARA_LISTを사용するように변경
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;================================================================
+;@REGISTRATION_COMPENDIUM
+;@STRFLAG_NUM_CPD,ARG = -1,ARGS
+;@STRFLAG_NUM_CPD_FIND(ARGS,ARG)
+;@GET_CPD_STRFLAG,ARG = -1
+;@GET_CPD_STRFLAG_NUM(ARGS)
+;@GET_CPD_SAVESTR_NUM(ARG,ARGS)
+
+
+@CASTING_REGISTRATION_COMPENDIUM(ARG)
+SIF ABL:ARG:종족 == 0 || NO:ARG == 4509
+	RETURN 0
+;元CSVが인간の場合も弾く（未対応であるため）
+SIF CSVABL((NO:ARG),80,0) == 0
+	RETURN 0
+SIF CFLAG:ARG:この場に居ないフラグ == 1
+	RETURN 0
+RETURN 1
+
+@UP_PRINT_REGISTRATION_COMPENDIUM
+PRINTFORML 악마 전서에 등록하고 싶은 악마를 선택하세요　\@ A > リスト표시数() ? ＜page.{P + 1}/{A / リスト표시数() + 1}＞ # \@　%NAME:MASTER% LV:{BASE:MASTER:LV,3}
+
+@REGISTRATION_COMPENDIUM
+;등록処理関数
+;LOCAL:1 종족
+;LOCAL:2 キャラ번호
+;LOCAL:3 キャラ등록번호
+;LOCAL:4 既存の全書데이터呼び出し用キャラ등록번호
+;LOCAL:5 キャラリストのページ送り用
+;LOCAL:6 キャラ比較のページ送り用
+;LOCAL:7 능력표시のページ送り用
+;LOCAL:10 등록可否
+
+;キャラリストを표시
+LOCAL:8 = FLAG:SHOPコマンド
+FLAG:SHOPコマンド = 1201
+CALL INPUT_CHARA_LIST("악마 전서에 등록하고 싶은 악마를 선택하세요", "CASTING_REGISTRATION_COMPENDIUM", "UP_PRINT_REGISTRATION_COMPENDIUM")
+FLAG:SHOPコマンド = LOCAL:8
+IF RESULT == 1000
+	RETURN 0
+ENDIF
+
+;選択したキャラの능력を표시。
+
+LOCAL:1 = ABL:RESULT:종족
+LOCAL:2 = NO:RESULT
+LOCAL:3 = RESULT
+U = RESULT
+LOCAL:7 = 2
+
+;比較用のキャラ추가
+LOCAL:4 = CHARANUM
+CALL ADD_NEW_COMPANION,LOCAL:2,0,-1
+CALL STRFLAG_NUM_CPD(LOCAL:4,"REFER")
+CALL SYNC_STATUS,LOCAL:4
+CALL HEALTH_CHARA,LOCAL:4
+
+$PRINT_STATUS
+CUSTOMDRAWLINE =
+PRINTFORML  \@ U != LOCAL:4 ? 전서의 등록내용 # %" " * 18% \@
+LOCALS = \@ CSTR:U:종족명 != "" ? %CSTR:U:종족명% # %STR:(ABL:U:종족)% \@
+PRINTFORML %LOCALS%　　%NAME:U%　　
+TRYCCALLFORM SHOW_INFO_PAGE_{LOCAL:7}
+CATCH
+ENDCATCH
+
+
+;스테이터스の표시변경用
+PRINTFORMLC \@ LOCAL:7 == 2 ? [1007]이전 페이지 # %" " * 16% \@
+PRINTFORMLC                 
+PRINTFORMLC \@ LOCAL:7 == 1 ? [1009]다음 페이지 # %" " * 16% \@
+PRINTL 
+PRINTFORMLC \@ U != LOCAL:4 && LOCAL:4 > -1 ? [1010]전서의 등록내용 # %" " * 18% \@
+PRINTFORMLC \@ U != LOCAL:3 && LOCAL:4 > -1 ? [1011]현재의 스테이터스 # %" " * 18% \@
+PRINTL
+
+;등록するかどうか
+IF CSVCFLAG(LOCAL:2,(GETNUM(CFLAG,"전서소환불가")),0) == 1 || (CSVCFLAG(LOCAL:2,(GETNUM(CFLAG,"合体조건有り")),0) == 1 && FLAG:(10000+LOCAL:2) == 0) || LOCAL:1 > 18
+	PRINTFORML 이 악마는 악마전서에서 소환할 수없으므로、등록할 수 없습니다
+	PRINTFORML 　　　[9] 돌아간다
+	LOCAL:10 = 0
+ELSE
+	PRINTL 향에 의한 강화도 등록되지만、대량으로 향을 사용한 경우、전서 소환에 추가 코스트가 발생합니다
+	PRINTFORM \@ U == LOCAL:3 ? 이 악마를 등록합니까？ # 이 내용에 덮어쓰기 합니까？ \@
+	PRINTL [0]Yes [9]No
+	LOCAL:10 = 1
+ENDIF
+$INPUT_LOOP
+INPUT
+IF RESULT == 1007 && LOCAL:7 == 2
+	LOCAL:7 = 1
+	GOTO PRINT_STATUS
+ELSEIF RESULT == 1009 && LOCAL:7 == 1
+	LOCAL:7 = 2
+	GOTO PRINT_STATUS
+ELSEIF RESULT == 1010 && U != LOCAL:4
+	U = LOCAL:4
+	GOTO PRINT_STATUS
+ELSEIF RESULT == 1011 && U != LOCAL:3
+	U = LOCAL:3
+	GOTO PRINT_STATUS
+ELSEIF RESULT <= FLAG:스킬数 && RESULT > 0
+	LOCALS = 스킬{RESULT}
+	IF ABL:U:LOCALS > 0
+		SIF FLAG:스킬속성표시설정 == 1
+			CALL SKILL_EXPLAIN_PERFORMANCE, ABL:U:LOCALS, U
+		TRYCALLFORM SKILL_EXPLAIN_{ABL:U:LOCALS}
+		WAIT
+		GOTO PRINT_STATUS
+	ELSE
+		GOTO INPUT_LOOP
+	ENDIF
+ELSEIF RESULT == 9
+	DELCHARA LOCAL:4
+	RESTART
+ELSEIF RESULT == 0 && LOCAL:10 == 1
+	DELCHARA LOCAL:4
+ELSE
+	GOTO INPUT_LOOP
+ENDIF
+
+CALL STRFLAG_NUM_CPD(LOCAL:3,"ADD")
+RESTART
+
+@STRFLAG_NUM_CPD,ARG = -1,ARGS
+#LOCALSSIZE 200
+VARSET LOCALS
+;사용SAVESTR:2000～6999。埋まりきることはまず無いと思います
+;ARGSがADDの場合、キャラ등록번호ARGのキャラの各種능력をSAVESTRに記載する。同じキャラ번호のが既にあるなら上書きする
+;ARGSがREFERの場合、キャラ등록번호ARGのキャラ번호のSAVESTRがある場合それを参照してABL等に上書きする
+;ARGSがCLEARの場合、最後のSAVESTRをキャラ등록번호ARGのSAVESTRに上書きして最後のを삭제する。세이브데이터圧縮及び処理時間短縮のための処理
+;ARGSがDIFFの場合、キャラ등록번호ARGのキャラ번호のSAVESTRがある場合、それと등록内容が同じになるか比較し、同じであれば0を、異なれば文字色변경に변경後の色を代入して返す
+
+IF ARG < 0 || ARG >= CHARANUM
+	THROW "등록번호が이상です"
+	RETURN
+ENDIF
+
+LOCAL:5 = GET_CPD_STRFLAG_NUM("")
+
+IF ARGS == "CLEAR"
+	LOCAL = STRFLAG_NUM_CPD_FIND("NO",NO:ARG)
+	SIF LOCAL == -1
+		RETURN
+	LOCAL:1 = STRFLAG_NUM_CPD_FIND("",-1) - 1
+	SAVESTR:LOCAL = %SAVESTR:(LOCAL:1)%
+	SAVESTR:(LOCAL:1) = 
+ELSEIF ARGS == "ADD" || ARGS == "DIFF"
+	LOCALS = {NO:ARG}
+	FOR LOCAL:1,2,LOCAL:5
+		IF GETNUM(ABL,GET_CPD_STRFLAG(LOCAL:1)) > 0
+			LOCALS += "," + TOSTR(ABL:ARG:GET_CPD_STRFLAG(LOCAL:1))
+		ELSEIF GETNUM(BASE,GET_CPD_STRFLAG(LOCAL:1)) > 0
+			LOCALS += "," + TOSTR(BASE:ARG:GET_CPD_STRFLAG(LOCAL:1))
+		ELSEIF GETNUM(CFLAG,GET_CPD_STRFLAG(LOCAL:1)) > 0
+			LOCALS += "," + TOSTR(CFLAG:ARG:GET_CPD_STRFLAG(LOCAL:1))
+		ELSE
+			LOCALS = %LOCALS%,想定外の動作です
+		ENDIF
+	NEXT
+	;소질の書き込み
+	FOR LOCAL:1 , 0 , 159
+		SELECTCASE LOCAL:1
+			CASE 0
+				;처녀
+				;CSVかARGのどっちかが처녀なら처녀で등록する
+				IF TALENT:ARG:처녀 || CSVTALENT(NO:ARG , 0 , 0)
+					LOCALS += "," + TALENTNAME:(LOCAL:1)
+				;ARGが재생처녀持ちであれば재생처녀を추가する
+				ELSEIF TALENT:ARG:재생처녀
+					LOCALS += ",재생처녀"
+				ENDIF
+			CASE 1 , 3 TO 9 , 73 TO 77, 153 , 154
+				;書き込まない소질
+			CASE 145 , 155 , 83 , 84
+				;CSVを参照する소질
+				SIF CSVTALENT(NO:ARG , LOCAL:1 , 0)
+					LOCALS += "," + TALENTNAME:(LOCAL:1)
+			CASEELSE
+				;CSVを参照する소질
+				SIF TALENT:ARG:(LOCAL:1)
+					LOCALS += "," + TALENTNAME:(LOCAL:1)
+		ENDSELECT
+	NEXT
+	LOCAL = STRFLAG_NUM_CPD_FIND("NO",NO:ARG)
+	IF ARGS == "ADD"
+		SIF LOCAL == -1
+			LOCAL = STRFLAG_NUM_CPD_FIND("",-1)
+		SAVESTR:LOCAL = %NAME:ARG%,%LOCALS%
+	ELSE
+		IF CSVCFLAG(NO:ARG,(GETNUM(CFLAG,"전서소환불가")),0) == 1 || (CSVCFLAG(NO:ARG,(GETNUM(CFLAG,"合体조건有り")),0) == 1 && FLAG:(10000+NO:ARG) == 0) || ABL:ARG:종족 > 18
+			文字色변경 = 0
+		ELSEIF LOCAL == -1
+			文字色변경 = 0x00FFFF
+		ELSEIF BASE:ARG:ＥＸＰ < TOINT(GET_CPD_SAVESTR_NUM(LOCAL,"ＥＸＰ"))
+			文字色변경 = 0xDC143C
+		ELSEIF LOCALS != SUBSTRING(SAVESTR:LOCAL,(STRFIND(SAVESTR:LOCAL,",")+1),-1)
+			文字色변경 = 0x00FFFF
+		ENDIF
+	ENDIF
+ELSEIF ARGS == "REFER"
+	LOCAL = STRFLAG_NUM_CPD_FIND("NO",NO:ARG)
+	SIF LOCAL == -1
+		RETURN
+	SPLIT SAVESTR:LOCAL, ",", LOCALS
+	FOR LOCAL:1,2,LOCAL:5
+		IF GETNUM(ABL,GET_CPD_STRFLAG(LOCAL:1)) > 0
+			ABL:ARG:GET_CPD_STRFLAG(LOCAL:1) = TOINT(LOCALS:(LOCAL:1))
+		ELSEIF GETNUM(BASE,GET_CPD_STRFLAG(LOCAL:1)) > 0
+			BASE:ARG:GET_CPD_STRFLAG(LOCAL:1) = TOINT(LOCALS:(LOCAL:1))
+		ELSEIF GETNUM(CFLAG,GET_CPD_STRFLAG(LOCAL:1)) > 0
+			CFLAG:ARG:GET_CPD_STRFLAG(LOCAL:1) = TOINT(LOCALS:(LOCAL:1))
+		ELSE
+			THROW "想定外の動作が発生しました。{LOCAL:5}"
+		ENDIF
+	NEXT
+	;소질
+	FOR LOCAL:1 , 0 , 159
+		IF TALENTNAME:(LOCAL:1) != "" && +MATCH(LOCALS , TALENTNAME:(LOCAL:1))
+			;SETCOLOR 0xffff00
+			;PRINTFORML [DEBUG] 소질 [%TALENTNAME:(LOCAL:1)%]:({LOCAL:1})가 일치했습니다.
+			;RESETCOLOR
+			TALENT:ARG:(LOCAL:1) = 1
+		ELSE
+			TALENT:ARG:(LOCAL:1) = 0
+		ENDIF
+	NEXT
+ENDIF
+
+RETURN
+
+
+@STRFLAG_NUM_CPD_FIND(ARGS,ARG)
+#FUNCTION
+#LOCALSSIZE 500
+;ARGSがARGなSAVESTRを探し、そのSAVESTR번호を返す
+;ARGが-1なら、空のSAVESTR번호で一番小さい번호を返す
+FOR LOCAL,2000,7000
+	IF SAVESTR:LOCAL == ""
+		SIF ARG == -1
+			RETURNF LOCAL
+		RETURNF -1
+	ENDIF
+	SPLIT SAVESTR:LOCAL, ",", LOCALS
+	SIF ARGS != "" && TOINT(LOCALS:(GET_CPD_STRFLAG_NUM(ARGS))) == ARG
+		RETURNF LOCAL
+NEXT
+
+RETURNF -2
+
+@GET_CPD_STRFLAG,ARG = -1
+#FUNCTIONS
+#DIMS REGISTRATIONS,100
+#LOCALSSIZE 100
+;STRFLAG_NUM_CPDでSAVESTRにARG番눈に記載される능력を返す
+;힘～운はBASEとCFLAG:강화횟수を加えたものが기본치となることに注意
+;GETNUM(ABL or BASE or CFLAG,RESULTS)にかけて사용する
+
+;ARGS = NAME,NO,LV,힘,힘강화횟수,지혜,지혜강화횟수,마력,마력강화횟수,인내력,인내력강화횟수,속도,속도강화횟수,운,운강화횟수,ＥＸＰ,능력강화횟수,변이,변이레벨,스킬1,스킬2,스킬3,스킬4,스킬5,스킬6,스킬7,스킬8,습득스킬1,습득스킬2,습득스킬3,습득스킬4,습득스킬5,습득스킬6,습득스킬7,습득스킬8,습득스킬9,습득스킬10,습득스킬11,습득스킬12,습득스킬13,습득스킬14,습득스킬15,습득스킬16,습득스킬17,습득스킬18,습득스킬19,습득스킬20,습득LV1,습득LV2,습득LV3,습득LV4,습득LV5,습득LV6,습득LV7,습득LV8,습득LV9,습득LV10,습득LV11,습득LV12,습득LV13,습득LV14,습득LV15,습득LV16,습득LV17,습득LV18,습득LV19,습득LV20,변경相性1,변경相性치1,공격상성,사거리,공격범위
+REGISTRATIONS = NAME,NO,LV,힘,힘강화횟수,지혜,지혜강화횟수,마력,마력강화횟수,인내력,인내력강화횟수,속도,속도강화횟수,운,운강화횟수,ＥＸＰ,능력강화횟수,변이,변이레벨,스킬1,스킬2,스킬3,스킬4,스킬5,스킬6,스킬7,스킬8,습득스킬1,습득스킬2,습득스킬3,습득스킬4,습득스킬5,습득스킬6,습득스킬7,습득스킬8,습득스킬9,습득스킬10,습득스킬11,습득스킬12,습득스킬13,습득스킬14,습득스킬15,습득스킬16,습득스킬17,습득스킬18,습득스킬19,습득스킬20,습득LV1,습득LV2,습득LV3,습득LV4,습득LV5,습득LV6,습득LV7,습득LV8,습득LV9,습득LV10,습득LV11,습득LV12,습득LV13,습득LV14,습득LV15,습득LV16,습득LV17,습득LV18,습득LV19,습득LV20,변경相性1,변경相性치1,공격상성,사거리,공격범위
+;SPLIT ARGS, ",", LOCALS
+SPLIT REGISTRATIONS, ",", LOCALS
+LOCALS:99 = %REGISTRATIONS%
+
+IF ARG < 0 || ARG > 99 || LOCALS:ARG == ""
+	RETURNF "등록されていません"
+ELSE
+	RETURNF LOCALS:ARG
+ENDIF
+
+
+@GET_CPD_STRFLAG_NUM(ARGS)
+#FUNCTION
+;STRFLAG_NUM_CPDでSAVESTRにARGSが何番눈に記載されるかを返す
+SPLIT GET_CPD_STRFLAG(99), ",", LOCALS
+
+FOR LOCAL, 0, 100
+	IF LOCALS:LOCAL == ARGS
+		RETURNF LOCAL
+	ENDIF
+NEXT
+
+RETURNF -1
+
+
+@GET_CPD_SAVESTR_NUM(ARG,ARGS)
+#FUNCTIONS
+#LOCALSSIZE 100
+;SAVESTR:ARGに記載されているARGSの値を返す
+
+LOCAL = GET_CPD_STRFLAG_NUM(ARGS)
+SIF ARG < 2000 || ARG >= 7000
+	THROW "引数が이상です。{ARG}"
+SIF SAVESTR:ARG == "" || LOCAL < 0 || LOCAL > 99
+	RETURNF "등록されていません"
+
+SPLIT SAVESTR:ARG, ",", LOCALS
+RETURNF LOCALS:LOCAL
+

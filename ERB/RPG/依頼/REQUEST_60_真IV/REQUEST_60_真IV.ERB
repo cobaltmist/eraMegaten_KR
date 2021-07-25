@@ -1,0 +1,562 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:REQUEST_xxx.ERB
+;	Facility	:의뢰:060(真IV)。
+;
+;	Licence		:ライセンスフリー。
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		
+;
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+
+;-------------------------------------------------------------------------------
+; 【当ファイルについて】
+; 当ファイルは真IVの이벤트をCALLするだけの、メインファイルである。
+; 詳細な処理は各サ부후ァイルに記載する。
+; （サ부후ァイルは이벤트ごとに１ファイル用意する）
+;
+;
+; 【フラグについて】
+; 데빌서바이버２の이벤트では、"FLAG:真IV進行度"を사용している。
+; ３桁の数値が以下の仕様で설정される。
+;
+; ・３桁눈…이벤트進行度
+; ・２桁눈…
+; ・１桁눈…
+;
+;-------------------------------------------------------------------------------
+
+;===============================================================================
+;  ◇記載関数一覧(記載順)
+;
+;		Module Name						Explanation
+;
+;	・ PLAYABLE_REQUEST_xxx				의뢰:조건
+;	・ EXPLAIN_REQUEST_xxx				의뢰:설명
+;	・ REQUEST_xxx						의뢰:メイン処理
+;	・ EVENT_BATTLE_TURNTOP_REQUESTxxx	의뢰:전투中処理(ターン開始時)
+;	・ EVENT_BATTLE_TURNEND_REQUESTxxx	의뢰:전투中処理(ターン종료시)
+;
+; *- 独自関数
+;
+;	・ REQUEST_30_FLAG_RESET			의뢰:フラグ리셋
+;	・ REQUEST_30_DAY_TITLE				의뢰:一日のタイトル
+;	・ REQUEST_30_DAY_END				의뢰:一日の종료
+;	・ REQUEST_30_TURN_END				의뢰:ターンの종료
+;	・ REQUEST_30_BASE_LV				의뢰:기초레벨
+;
+;===============================================================================
+
+
+;====================
+;조건
+;====================
+@PLAYABLE_REQUEST_60
+#DIM DYNAMIC L_FLAG_REQ
+#DIM DYNAMIC L_FLAG_EVENT_DIGIT
+#DIM DYNAMIC L_FLAG
+#DIM DYNAMIC L_FLAG2
+#DIM DYNAMIC L_FLAG3
+
+;-----------------------------
+;- 共通체크
+;-----------------------------
+
+;- デバッグ
+IF FLAG:DEBUG
+	;OK
+
+;- 主人레벨20이상
+ELSEIF BASE:MASTER:LV >= 20
+	;OK
+
+ELSE
+	;NG
+	RETURN 0
+ENDIF
+
+;-----------------------------
+;- 処理開始
+;-----------------------------
+
+;- フラグをセット(이벤트フラグ:3桁눈)
+L_FLAG_REQ = FLAG:真IV進行度 /100
+
+SELECTCASE L_FLAG_REQ
+	;-----------------------------
+	;- [第1이벤트　東京スカイタワー]
+	;-----------------------------
+	CASE 0
+		;- CHK:이벤트フラグ
+		RESULTS = 스카이트리 이계화
+		RETURN 1
+	;-----------------------------
+	;- [第2이벤트　신주쿠]
+	;-----------------------------
+	CASE 1
+		;- CHK:이벤트フラグ 신주쿠でオザワが倒されている
+		IF 던전フラグ:42:신주쿠フラグ("オザワ") > 0
+			RESULTS = 아수라회의 의뢰
+			RETURN 1
+		ENDIF
+	;-----------------------------
+	;- [第3이벤트　]
+	;-----------------------------
+	CASE 2
+	;- フラグをセット(이벤트フラグ:2桁눈)
+		L_FLAG_REQ = FLAG:真IV進行度 % 100
+		L_FLAG_REQ = L_FLAG_REQ / 10
+
+		IF L_FLAG_REQ == 1
+			RESULTS = 아수라회에서 온 의뢰
+			RETURN 1
+		ELSEIF L_FLAG_REQ == 9
+	;- フラグをセット(이벤트フラグ:1桁눈)
+		L_FLAG_REQ = FLAG:真IV進行度 % 10
+			IF L_FLAG_REQ == 2
+				RESULTS = 동쪽 미카도국의 의뢰
+				RETURN 1
+			ELSE
+				RESULTS = 이케부쿠로에서의 악마 퇴치
+				RETURN 1
+			ENDIF
+		ENDIF
+	;-----------------------------
+	;- [第4이벤트　]
+	;-----------------------------
+	CASE 3
+;- フラグをセット(이벤트フラグ:2桁눈)
+		L_FLAG_REQ = FLAG:真IV進行度 % 100
+		L_FLAG_REQ = L_FLAG_REQ / 10
+		IF L_FLAG_REQ == 1
+			L_FLAG = 이벤트フラグ:60:0 % 10
+			IF L_FLAG == 2
+				RESULTS = 아수라회에서 온 의뢰 2
+				RETURN 1
+			ENDIF
+		ELSEIF L_FLAG_REQ == 9
+;- フラグをセット(이벤트フラグ:1桁눈)
+			L_FLAG = 이벤트フラグ:60:0 % 10
+			L_FLAG2 = 이벤트フラグ:60:0 / 10
+			L_FLAG2 = L_FLAG2 % 10
+			L_FLAG3 = 이벤트フラグ:60:0 / 100
+
+			IF L_FLAG + L_FLAG2 + L_FLAG3 >= 3
+				RESULTS = 동쪽 미카도국의 의뢰 2
+				RETURN 1
+			ENDIF
+		ENDIF
+	;-----------------------------
+	;- [第5이벤트　]
+	;-----------------------------
+	CASE 4
+;- フラグをセット(이벤트フラグ:2桁눈)
+		RESULTS = 거꾸로 힐즈
+		RETURN 1
+	;-----------------------------
+	;- [第6이벤트　]
+	;-----------------------------
+	CASE 5
+;- フラグをセット(이벤트フラグ:2桁눈)
+		IF 이벤트フラグ:60:1 >= 100
+			L_FLAG_REQ = FLAG:真IV進行度 % 100
+			L_FLAG_REQ = L_FLAG_REQ / 10
+			IF L_FLAG_REQ == 1
+				RESULTS = 유리코 암살 계획
+				RETURN 1
+			ELSEIF L_FLAG_REQ == 9
+	;- フラグをセット(이벤트フラグ:1桁눈)
+				L_FLAG = 0
+				IF 이벤트フラグ:60:1 == 101
+					L_FLAG2 = [[キャラ:요나탄]]
+				ELSEIF 이벤트フラグ:60:1 == 102
+					L_FLAG2 = [[キャラ:이자보]]
+				ELSEIF 이벤트フラグ:60:1 == 103
+					L_FLAG2 = [[キャラ:월터]]
+				ELSE
+					L_FLAG2 = 0
+				ENDIF
+				FOR LOCAL, 1, 7
+					;空き포지션は勘定外
+					SIF POS(LOCAL) < 0
+						CONTINUE
+					;主人は勘定外
+					SIF POS(LOCAL) == MASTER
+						CONTINUE
+					;인간以外は勘定外
+					SIF ABL:POS(LOCAL):종족
+						CONTINUE
+					SIF NO:POS(LOCAL) == L_FLAG2
+						L_FLAG = 1
+				NEXT
+				IF L_FLAG == 1
+					RESULTS = 유리코 또 다시
+					RETURN 1
+				ELSE
+					RETURN 0
+				ENDIF
+			ENDIF
+		ELSE
+			RETURN 0
+		ENDIF
+	;-----------------------------
+	;- [第7이벤트　]
+	;-----------------------------
+	CASE 6
+;- フラグをセット(이벤트フラグ:2桁눈)
+		IF 이벤트フラグ:60:1 >= 100
+			L_FLAG_REQ = FLAG:真IV進行度 % 100
+			L_FLAG_REQ = L_FLAG_REQ / 10
+			IF L_FLAG_REQ == 1
+				RESULTS = 타야마의 비밀
+				RETURN 1
+			ELSEIF L_FLAG_REQ == 9
+	;- フラグをセット(이벤트フラグ:1桁눈)
+				L_FLAG = 0
+				IF 이벤트フラグ:60:1 == 101
+					L_FLAG2 = [[キャラ:요나탄]]
+				ELSEIF 이벤트フラグ:60:1 == 102
+					L_FLAG2 = [[キャラ:이자보]]
+				ELSEIF 이벤트フラグ:60:1 == 103
+					L_FLAG2 = [[キャラ:월터]]
+				ELSE
+					L_FLAG2 = 0
+				ENDIF
+				FOR LOCAL, 1, 7
+					;空き포지션は勘定外
+					SIF POS(LOCAL) < 0
+						CONTINUE
+					;主人は勘定外
+					SIF POS(LOCAL) == MASTER
+						CONTINUE
+					;인간以外は勘定外
+					SIF ABL:POS(LOCAL):종족
+						CONTINUE
+					SIF NO:POS(LOCAL) == L_FLAG2
+						L_FLAG = 1
+				NEXT
+				IF L_FLAG == 1
+					RESULTS = 이치가야로
+					RETURN 1
+				ELSE
+					RETURN 0
+				ENDIF
+			ENDIF
+		ELSE
+			RETURN 0
+		ENDIF
+
+	;-----------------------------
+	;- 종료
+	;-----------------------------
+	;- 作成中
+	CASEELSE
+		RESULTS = 개발 대기
+		RETURN 1
+
+ENDSELECT
+
+;念の為
+RETURN 0
+
+;====================
+;설명
+;====================
+@EXPLAIN_REQUEST_60
+#DIM DYNAMIC L_FLAG_REQ
+#DIM DYNAMIC L_FLAG_EVENT_FIRST_DIGIT
+
+;- フラグをセット
+L_FLAG_REQ = FLAG:真IV進行度 /100
+
+
+SELECTCASE L_FLAG_REQ
+	;-----------------------------
+	;- 1ST 
+	;-----------------------------
+	CASE 0
+		PRINTFORML -메일이 와 있습니다-
+		PRINTFORML 
+		PRINTFORML ‥‥팬텀에서 임무 의뢰다.
+		PRINTFORML 도쿄 스카이트리에서 이계화 현상이 발생.
+		PRINTFORML 
+		PRINTFORML 조속한 조사와 사태의 해결을 원한다고 한다.
+		PRINTFORML 
+		PRINTFORML 보수：￥50000
+
+	;-----------------------------
+	;- 2nd
+	;-----------------------------
+	CASE 1
+		PRINTFORML -메일이 와 있습니다-
+		PRINTFORML 
+		PRINTFORML ‥‥팬텀에서 임무 의뢰다.
+		PRINTFORML 신주쿠에서 「아수라회」라는 야쿠자가 뭔가 활동이 활발해졌다고 한다.
+		PRINTFORML 조사를 실시하라고 하는데……
+		PRINTFORML 
+		PRINTFORML 보수：￥10000
+	;-----------------------------
+	;-3rd
+	;-----------------------------
+	CASE 2
+	;- フラグをセット(이벤트フラグ:2桁눈)
+		L_FLAG_REQ = FLAG:真IV進行度 % 100
+		L_FLAG_REQ = L_FLAG_REQ / 10
+
+		IF L_FLAG_REQ == 1
+			PRINTFORML -메일이 와 있습니다-
+			PRINTFORML 
+			PRINTFORML ‥‥팬텀에서 임무 의뢰다.
+			PRINTFORML 아수라회라는 야쿠자에게서 온 의뢰로, 대립하고 있는 가이아 교단의 부대를 없애달라고 한다.
+			PRINTFORML 
+			PRINTFORML 
+			PRINTFORML 보수：￥30000
+		ELSEIF L_FLAG_REQ == 9
+	;- フラグをセット(이벤트フラグ:2桁눈)
+			L_FLAG_REQ = FLAG:真IV進行度 % 10
+			IF L_FLAG_REQ == 2
+				PRINTFORML -메일이 와 있습니다-
+				PRINTFORML 
+				PRINTFORML ‥‥팬텀에서 임무 의뢰다.
+				PRINTFORML 전에 보고한 『동쪽 미카도국』의 인간과 연락이 닿았다고 한다.
+				PRINTFORML 그쪽에서 의뢰 요청이 있다는 모양이다.
+				PRINTFORML 
+				PRINTFORML 보수：￥20000
+			ELSE
+				PRINTFORML -메일이 와 있습니다-
+				PRINTFORML 
+				PRINTFORML ‥‥팬텀에서 임무 의뢰다.
+				PRINTFORML 이케부쿠로에 고위 악마가 출현했으므로 퇴치해주길 바란다고 한다.
+				PRINTFORML 당연히 의뢰는 팬텀에서만 재시한 것이 아닐 테니 현장에서 다른 세력과 마주칠 가능성도 있을 것이다.
+				PRINTFORML 
+				PRINTFORML 보수：￥30000
+			ENDIF
+		ENDIF
+	;-----------------------------
+	;-4th
+	;-----------------------------
+	CASE 3
+	;- フラグをセット(이벤트フラグ:2桁눈)
+		L_FLAG_REQ = FLAG:真IV進行度 % 100
+		L_FLAG_REQ = L_FLAG_REQ / 10
+		IF L_FLAG_REQ == 1
+			PRINTFORML -메일이 와 있습니다-
+			PRINTFORML 
+			PRINTFORML ‥‥팬텀에서 임무 의뢰다.
+			PRINTFORML 아수라회의 타야마에게서 온 의뢰로, 긴자에 있는 가이아 교단의 거점을 조사해달라고 한다.
+			PRINTFORML 
+			PRINTFORML 
+			PRINTFORML 보수：￥10000
+		ELSEIF L_FLAG_REQ == 9
+	;- フラグをセット(이벤트フラグ:2桁눈)
+			PRINTFORML -메일이 와 있습니다-
+			PRINTFORML 
+			PRINTFORML ‥‥팬텀에서 임무 의뢰다.
+			PRINTFORML 『동쪽 미카도국』의 우고에거서 온 의뢰다.
+			PRINTFORML 이전에 처형하고 「부활해서 자취를 감추었다」라는 검은 사무라이의 수색은 난항을 겪고 있다고 한다.
+			PRINTFORML 
+			PRINTFORML 보수：￥10000
+		ENDIF
+	;-----------------------------
+	;-5th
+	;-----------------------------
+	CASE 4
+	;- フラグをセット(이벤트フラグ:2桁눈)
+		L_FLAG_REQ = FLAG:真IV進行度 % 100
+		L_FLAG_REQ = L_FLAG_REQ / 10
+		IF L_FLAG_REQ == 1
+			PRINTFORML -메일이 와 있습니다-
+			PRINTFORML 
+			PRINTFORML ‥‥팬텀에서 임무 의뢰다.
+			PRINTFORML 아수라회의 타야마에게서 온 의뢰로, 롯폰기 힐즈 지하에 있는 거점을 방위하는데 협력해주길 바란다고 한다.
+			PRINTFORML 아무 일도 없으면 보수는 싸지만, 아무 일도 없으리라고 생각하기는 어렵다‥‥
+			PRINTFORML 
+			PRINTFORML 보수：￥10000 + α
+		ELSEIF L_FLAG_REQ == 9
+	;- フラグをセット(이벤트フラグ:2桁눈)
+			PRINTFORML -메일이 와 있습니다-
+			PRINTFORML 
+			PRINTFORML ‥‥여느 때의 사무라이들에게서 연락이 왔다.
+			PRINTFORML 무사히 월터와 합류해 롯폰기 힐즈 지하로 향한다는 모양이다.
+			PRINTFORML %조사처리(CALLNAME:MASTER,"가")% 동행하고 싶다면 갈 필요가 있을 것이다.
+			PRINTFORML 
+		ENDIF
+	;-----------------------------
+	;- [第6이벤트　]
+	;-----------------------------
+	CASE 5
+;- フラグをセット(이벤트フラグ:2桁눈)
+		IF 이벤트フラグ:60:1 >= 100
+
+			L_FLAG_REQ = FLAG:真IV進行度 % 100
+			L_FLAG_REQ = L_FLAG_REQ / 10
+			IF L_FLAG_REQ == 1
+				PRINTFORML -메일이 와 있습니다-
+				PRINTFORML 
+				PRINTFORML ‥‥팬텀에서 임무 의뢰다.
+				PRINTFORML 아수라회의 타야마에게서 온 의뢰라면, 가이아 교단의 유리코에 도전하는 것은 아닐까……?
+				PRINTFORML 
+				PRINTFORML 보상：￥50000 + α
+			ELSEIF L_FLAG_REQ == 9
+	;- フラグをセット(이벤트フラグ:1桁눈)
+				PRINTFORML ‥‥동쪽 미카도국의 사무라이들을 데리고 유리코를 만나러 가야 한다……
+				PRINTFORML 
+			ENDIF
+		ENDIF
+	;-----------------------------
+	;- [第7이벤트　]
+	;-----------------------------
+	CASE 6
+;- フラグをセット(이벤트フラグ:2桁눈)
+		IF 이벤트フラグ:60:1 >= 100
+
+			L_FLAG_REQ = FLAG:真IV進行度 % 100
+			L_FLAG_REQ = L_FLAG_REQ / 10
+			IF L_FLAG_REQ == 1
+				PRINTFORML -메일이 와 있습니다-
+				PRINTFORML 
+				PRINTFORML ‥‥팬텀에서 임무 의뢰다.
+				PRINTFORML 그러고 보니 타야마는 곧장 다음 일이 있는 듯한 말을 했었는데.
+				PRINTFORML 
+				PRINTFORML 報酬：￥50000 + α
+			ELSEIF L_FLAG_REQ == 9
+	;- フラグをセット(이벤트フラグ:1桁눈)
+				PRINTFORML ‥‥동쪽 미카도국의 사무라이와 함께 이치가야로 가볼까.
+				PRINTFORML 
+			ENDIF
+		ENDIF
+
+	;-----------------------------
+	;- 作成中
+	;-----------------------------
+	CASEELSE
+		PRINTFORML -메일이 와 있습니다-
+		PRINTFORML 
+		PRINTFORML ‥‥이다음부터는 미작성입니다.
+ENDSELECT
+
+;====================
+;内容
+;====================
+@REQUEST_60
+#DIM DYNAMIC L_FLAG_REQ
+
+;-----------------------------
+;- 処理開始
+;-----------------------------
+
+PRINTL
+L_FLAG_REQ = FLAG:真IV進行度 /100
+SELECTCASE L_FLAG_REQ
+	;-----------------------------
+	;- スカイツリー
+	;-----------------------------
+	CASE 0
+		;- 의뢰:メイン処理(1ST DAY)
+		CALL REQUEST_60_1
+		
+	;-----------------------------
+	;- 신주쿠
+	;-----------------------------
+	CASE 1
+		;- 의뢰:メイン処理(1ST DAY)
+		CALL REQUEST_60_2
+
+	;-----------------------------
+	;- 이케부쿠로
+	;-----------------------------
+	CASE 2
+		;- 의뢰:メイン処理(1ST DAY)
+		CALL REQUEST_60_3
+	;-----------------------------
+	;- 銀座
+	;-----------------------------
+	CASE 3
+		;- 의뢰:メイン処理(1ST DAY)
+		CALL REQUEST_60_4
+	;-----------------------------
+	;- 逆さヒルズ
+	;-----------------------------
+	CASE 4
+		;- 의뢰:メイン処理(1ST DAY)
+		CALL REQUEST_60_5
+	;-----------------------------
+	;- 逆さヒルズ
+	;-----------------------------
+	CASE 5
+		;- 의뢰:メイン処理(1ST DAY)
+		CALL REQUEST_60_6
+		
+	;-----------------------------
+	;- 市ヶ谷
+	;-----------------------------
+	CASE 6
+		;- 의뢰:メイン処理(1ST DAY)
+		CALL REQUEST_60_7
+	;-----------------------------
+	;- 作成中
+	;-----------------------------
+	CASEELSE
+
+		PRINTFORMW ＞자택의 한 방.
+		PRINTFORMW ＞의뢰를 확인했지만, 아무래도 아직 뒷부분이 작성되지 않은 것 같다.
+		PRINTFORMW ＞뒷부분이 작성되면 의뢰의 타이틀도 바뀔 것이다.
+		PRINTFORMW ＞…느긋하게 기다리자.
+		PRINTFORMW ＞………
+		PRINTFORMW ＞……
+		PRINTFORMW ＞…
+ENDSELECT
+
+
+
+;-------------------------------------------------------------------------------
+;   独自関数
+;-------------------------------------------------------------------------------
+
+;=================================================
+;   sub REQUEST_60_FLAG_RESET
+;=================================================
+;   의뢰:フラグ리셋
+;-------------------------------------------------
+;   MENU화면で「의뢰出現」が出る様、
+;   의뢰등록フラグを리셋する
+;-------------------------------------------------
+@REQUEST_60_FLAG_RESET
+#DIM DYNAMIC L_REQUEST_NO
+
+L_REQUEST_NO = 60
+
+;- フラグがONの場合、クリアしてOFFに변경
+SIF GETBIT(FLAG:의뢰出現1,L_REQUEST_NO)
+	CLEARBIT  FLAG:의뢰出現1,L_REQUEST_NO
+
+
+;=================================================
+;   sub REQUEST_60_DAY_END
+;=================================================
+;   의뢰:一日の종료
+;-------------------------------------------------
+@REQUEST_60_DAY_END
+
+PRINTFORMW 하루가 종료합니다.
+
+;- 朝になる処理
+FLAG:휴식フラグ = 3
+BEGIN TURNEND
+RETURN
+
+;=================================================
+;   sub REQUEST_60_TURN_END
+;=================================================
+;   의뢰:ターンの종료
+;-------------------------------------------------
+@REQUEST_60_TURN_END
+
+;- 1ターン経過
+FLAG:휴식フラグ = 1
+BEGIN TURNEND
+RETURN
+

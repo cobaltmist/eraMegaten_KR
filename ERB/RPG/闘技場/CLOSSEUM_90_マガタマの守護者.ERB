@@ -1,0 +1,1918 @@
+﻿
+;====================
+;조건
+;====================
+@PLAYABLE_COLOSSEUM_90
+SIF 투기장フラグ:90:0 == 0
+	RETURN 0
+IF FIND_MAGATAMA_MOTTENAI(0) && (FLAG:闘技場랭크 >= 2 || FLAG:DEBUG)
+	RESULTS = 시합 랭크 Ｃ　ＶＳ 업귀
+	RETURN 1
+ELSEIF FIND_MAGATAMA_MOTTENAI(1) && (FLAG:闘技場랭크 >= 3 || FLAG:DEBUG)
+	RESULTS = 시합 랭크 Ｂ　ＶＳ 마군장
+	RETURN 1
+ELSEIF FIND_MAGATAMA_MOTTENAI(2) && (FLAG:闘技場랭크 >= 4 || FLAG:DEBUG)
+	RESULTS = 시합 랭크 Ａ　ＶＳ 마제
+	RETURN 1
+ELSEIF ITEM:8224 < 1 && ((FLAG:闘技場랭크 >= 5 && GETBIT(FLAG:発見ED,55)) || FLAG:DEBUG)
+	;혼돈왕　DDS인수라를 느슨하게 재현
+	RESULTS = 시합 랭크 S　ＶＳ 혼돈왕
+	RETURN 1
+ELSEIF 투기장フラグ:90:1 == 0 && ((FLAG:闘技場랭크 >= 5 && ITEM:8224 && GETBIT(FLAG:発見ED,55)) || FLAG:DEBUG)
+	;혼돈왕×２
+	RESULTS = 시합 랭크 S　ＶＳ 혼돈왕들
+	RETURN 1
+ENDIF
+RETURN 0
+
+;====================
+;内容
+;====================
+@COLOSSEUM_90
+FLAG:도주불가フラグ = 1
+FLAG:회화불능フラグ = 1
+FLAG:선제기습취소 = 1
+CUSTOMDRAWLINE =
+
+PRINTFORML 　사회자
+PRINTFORML 「레이디이이이스! 앤! 젠틀멘!
+PRINTFORMW 　기다리셨습니다! 금일 주목할 카드는 여기!」
+PRINTFORML 
+PRINTFORMW ＞스크린에 %CALLNAME:MASTER% 팀과 상태 팀이 떴다…
+PRINTFORML 
+
+PRINTFORML 　사회자
+PRINTFORML 「과연 어떠한 시합으로 우리를 매료시켜줄까요?
+PRINTFORMW 　그러면 곧바로 시작해보겠습니다!
+PRINTFORMW 　레디～………」
+PRINTFORML 
+PRINTFORMW 「　　　　　　　파이트!!　　　　　　　」
+
+IF FIND_MAGATAMA_MOTTENAI(0)
+	CALL COLOSSEUM_MAGATAMA_BATTLE,0
+ELSEIF FIND_MAGATAMA_MOTTENAI(1)
+	CALL COLOSSEUM_MAGATAMA_BATTLE,1
+ELSEIF FIND_MAGATAMA_MOTTENAI(2)
+	CALL COLOSSEUM_MAGATAMA_BATTLE,2
+ELSE
+	CALL COLOSSEUM_MAGATAMA_BATTLE,3
+ENDIF
+
+;報酬はここに代入
+LOCAL = RESULT
+LOCAL:1 = RESULT:1
+;CUSTOMDRAWLINE =
+;WAIT
+
+CALL BATTLE_START
+;CUSTOMDRAWLINE =
+;WAIT
+
+FLAG:도주불가フラグ = 0
+FLAG:회화불능フラグ = 0
+FLAG:선제기습취소 = 0
+
+IF LOCAL:1 > 0 && LOCAL:1 != 9999
+	PRINTFORML 
+	PRINTFORMW %조사처리(ITEMNAME:(LOCAL:1),"를")% 입수했다
+	ITEM:(LOCAL:1) = 1
+ELSEIF LOCAL:1 == 9999
+	투기장フラグ:90:1 = 1
+ENDIF
+PRINTFORMW ￥{(LOCAL*1000)}을 상금으로 받았다
+PRINTFORMW %조사처리(CALLNAME:MASTER,"는")% {LOCAL}의 명성을 얻었다
+MONEY += LOCAL*1000
+FLAG:名声 += LOCAL
+FLAG:闘技場名声 += LOCAL
+;투기장フラグ:90:0 = 1
+
+FOR LOCAL,0,CHARANUM
+	CALL HEALTH_CHARA,LOCAL
+NEXT
+
+CUSTOMDRAWLINE =
+
+;=======================================================================
+;持ってないマガタマサーチ( ARG = (0,初級)　(1,中級)　(2,上級) )
+;持ってないのがあるなら１を返す、全部取ってるなら０
+;=======================================================================
+@FIND_MAGATAMA_MOTTENAI,ARG
+#FUNCTION
+#LOCALSIZE 2
+IF ARG == 0
+	FOR LOCAL,8200,8208
+		SIF ITEM:LOCAL < 1
+			RETURNF 1
+	NEXT
+ELSEIF ARG == 1
+	FOR LOCAL,8208,8215
+		SIF ITEM:LOCAL < 1
+			RETURNF 1
+	NEXT
+ELSEIF ARG == 2
+	;上級、マサカド様は除く
+	FOR LOCAL,8215,8224
+		SIF ITEM:LOCAL < 1
+			RETURNF 1
+	NEXT
+ENDIF
+RETURNF 0
+;=======================================================================
+;マガタマチーム決定( ARG = (0,初級)　(1,中級)　(2,上級) )
+;=======================================================================
+@COLOSSEUM_MAGATAMA_BATTLE,ARG
+IF ARG == 0
+	LOCAL=RAND:8+8200
+	$SYOKYU_CLSM90
+	FOR LOCAL,LOCAL,8208
+		IF ITEM:(LOCAL) < 1
+			CALL COLOSSEUM_MAGATAMA_TEAMDA(LOCAL)
+			;PRINTFORML ￥{RESULT}、{RESULT:1}＠
+			RETURN RESULT,RESULT:1
+		ENDIF
+	NEXT
+	LOCAL-=8
+	GOTO SYOKYU_CLSM90
+ELSEIF ARG == 1
+	LOCAL=RAND:7+8208
+	$CHUKYU_CLSM90
+	FOR LOCAL,LOCAL,8215
+		IF ITEM:(LOCAL) < 1
+			CALL COLOSSEUM_MAGATAMA_TEAMDA(LOCAL)
+			RETURN RESULT,RESULT:1
+		ENDIF
+	NEXT
+	LOCAL-=7
+	GOTO CHUKYU_CLSM90
+ELSEIF ARG == 2
+	LOCAL=RAND:9+8215
+	$JOKYU_CLSM90
+	FOR LOCAL,LOCAL,8224
+		IF ITEM:(LOCAL) < 1
+			CALL COLOSSEUM_MAGATAMA_TEAMDA(LOCAL)
+			RETURN RESULT,RESULT:1
+		ENDIF
+	NEXT
+	LOCAL-=9
+	GOTO JOKYU_CLSM90
+ELSEIF ARG == 3
+	IF ITEM:8224 < 1
+		CALL COLOSSEUM_MAGATAMA_TEAMDA(8224)
+		RETURN 100,8224
+	ELSE
+		CALL COLOSSEUM_MAGATAMA_TEAMDA(8225)
+		RETURN 100,9999
+	ENDIF
+ENDIF
+RETURN 0,0
+;=======================================================================
+;チーム面子소환( ARG = 번호 )
+;=======================================================================
+@COLOSSEUM_MAGATAMA_TEAMDA,ARG
+;PRINTFORML ￥{ARG}￥
+;原作でボス戦の無い、一部のマガタマなどはTRPG版を参考にしますた
+IF ARG == 8200
+	;マロガレ、初級
+	CALL SET_ENEMY,9,[[キャラ:도플갱어]],35,0,1
+	CFLAG:(CHARANUM-1):ＨＰ보정 += 1000
+	CFLAG:(CHARANUM-1):ＭＰ보정 += 1000
+	CFLAG:(CHARANUM-1):行動횟수 = 2
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	CALL SET_ENEMY,14,[[キャラ:섀도우]],35,0,1
+	CFLAG:(CHARANUM-1):ＨＰ보정 += 1000
+	CFLAG:(CHARANUM-1):ＭＰ보정 += 1000
+	CFLAG:(CHARANUM-1):行動횟수 = 2
+	ABL:(CHARANUM-1):스킬1 = 1213
+	ABL:(CHARANUM-1):스킬2 = 1002
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	RETURN 60,8200
+ELSEIF ARG == 8201
+	;ワダツミ
+	CALL SET_ENEMY,8,[[キャラ:포르네우스]],35,0,1
+	CFLAG:(CHARANUM-1):ＨＰ보정 += 1000
+	CFLAG:(CHARANUM-1):ＭＰ보정 += 1000
+	CFLAG:(CHARANUM-1):行動횟수 = 2
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	CALL SET_ENEMY,10,[[キャラ:유키죠로]],34,0,1
+	CFLAG:(CHARANUM-1):ＨＰ보정 += 1000
+	CFLAG:(CHARANUM-1):ＭＰ보정 += 1000
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	RETURN 60,8201
+ELSEIF ARG == 8202
+	;アンク
+	FOR LOCAL,7,12
+		CALL SET_ENEMY,LOCAL,[[キャラ:픽시]],25,0,1
+		CFLAG:(CHARANUM-1):ＨＰ보정 += 200
+		CFLAG:(CHARANUM-1):ＭＰ보정 += 200
+		ABL:(CHARANUM-1):아이템1 = 1002
+		ABL:(CHARANUM-1):입수확률1 = 0
+		CALL SYNC_STATUS,(CHARANUM-1)
+		CALL HEALTH_CHARA,(CHARANUM-1)
+	NEXT
+	CALL SET_ENEMY,LOCAL,[[キャラ:픽시]],30,0,1
+	CFLAG:(CHARANUM-1):ＨＰ보정 += 500
+	CFLAG:(CHARANUM-1):ＭＰ보정 += 500
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	CALL SET_ENEMY,LOCAL,[[キャラ:픽시]],30,0,1
+	CFLAG:(CHARANUM-1):ＨＰ보정 += 500
+	CFLAG:(CHARANUM-1):ＭＰ보정 += 500
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	CALL SET_ENEMY,9,[[キャラ:하이픽시]],35,0,1
+	CFLAG:(CHARANUM-1):ＨＰ보정 += 1000
+	CFLAG:(CHARANUM-1):ＭＰ보정 += 1000
+	CFLAG:(CHARANUM-1):行動횟수 = 2
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	RETURN 60,8202
+ELSEIF ARG == 8203
+	;イヨマンテ
+	CALL SET_ENEMY,9,[[キャラ:알케니]],38,0,1
+	CFLAG:(CHARANUM-1):ＨＰ보정 += 1500
+	CFLAG:(CHARANUM-1):ＭＰ보정 += 1000
+	CFLAG:(CHARANUM-1):行動횟수 = 2
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	RETURN 60,8203
+ELSEIF ARG == 8204
+	;シラヌイ
+	CALL SET_ENEMY,8,[[キャラ:메즈키]],33,0,1
+	CFLAG:(CHARANUM-1):ＨＰ보정 += 1000
+	CFLAG:(CHARANUM-1):ＭＰ보정 += 1000
+	CFLAG:(CHARANUM-1):行動횟수 = 2
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	CALL SET_ENEMY,10,[[キャラ:고즈키]],33,0,1
+	CFLAG:(CHARANUM-1):ＨＰ보정 += 1000
+	CFLAG:(CHARANUM-1):ＭＰ보정 += 1000
+	CFLAG:(CHARANUM-1):行動횟수 = 2
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	RETURN 60,8204
+ELSEIF ARG == 8205
+	;ヒ후미
+	CALL SET_ENEMY,9,[[キャラ:오퀴페테]],34,0,1
+	CFLAG:(CHARANUM-1):ＨＰ보정 += 900
+	CFLAG:(CHARANUM-1):ＭＰ보정 += 900
+	CFLAG:(CHARANUM-1):行動횟수 = 2
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	CALL SET_ENEMY,8,[[キャラ:켈라이노]],32,0,1
+	CFLAG:(CHARANUM-1):ＨＰ보정 += 900
+	CFLAG:(CHARANUM-1):ＭＰ보정 += 900
+	CFLAG:(CHARANUM-1):行動횟수 = 1
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	CALL SET_ENEMY,10,[[キャラ:아에로]],32,0,1
+	CFLAG:(CHARANUM-1):ＨＰ보정 += 900
+	CFLAG:(CHARANUM-1):ＭＰ보정 += 900
+	CFLAG:(CHARANUM-1):行動횟수 = 1
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	FOR LOCAL,13,16
+		CALL SET_ENEMY,LOCAL,[[キャラ:하피]],28,0,1
+		CFLAG:(CHARANUM-1):ＨＰ보정 += 200
+		CFLAG:(CHARANUM-1):ＭＰ보정 += 200
+		ABL:(CHARANUM-1):아이템1 = 1002
+		ABL:(CHARANUM-1):입수확률1 = 0
+		CALL SYNC_STATUS,(CHARANUM-1)
+		CALL HEALTH_CHARA,(CHARANUM-1)
+	NEXT
+	RETURN 60,8205
+ELSEIF ARG == 8206
+	;カ무도
+	CALL SET_ENEMY,9,[[キャラ:아레스]],40,0,1
+	CFLAG:(CHARANUM-1):ＨＰ보정 += 1200
+	CFLAG:(CHARANUM-1):ＭＰ보정 += 1200
+	CFLAG:(CHARANUM-1):行動횟수 = 2
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	RETURN 60,8206
+ELSEIF ARG == 8207
+	;루나카미
+	CALL SET_ENEMY,9,[[キャラ:토르]],36,0,1
+	CFLAG:(CHARANUM-1):ＨＰ보정 += 1000
+	CFLAG:(CHARANUM-1):ＭＰ보정 += 1000
+	CFLAG:(CHARANUM-1):行動횟수 = 2
+	ABL:(CHARANUM-1):스킬2 = 905
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	RETURN 60,8207
+ELSEIF ARG == 8208
+	;アナテマ、中級
+	CALL SET_ENEMY,9,[[キャラ:오세]],45,0,1
+	CFLAG:(CHARANUM-1):ＨＰ보정 += 1500
+	CFLAG:(CHARANUM-1):ＭＰ보정 += 1500
+	CFLAG:(CHARANUM-1):行動횟수 = 2
+	MAXBASE:(CHARANUM-1):속도 += 5
+	BASE:(CHARANUM-1):속도 += 5
+	ABL:(CHARANUM-1):스킬7 = 602
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	RETURN 80,8208
+ELSEIF ARG == 8209
+	;ミアズマ
+	FOR LOCAL,8,11
+		CALL SET_ENEMY,LOCAL,[[キャラ:나가]],41,0,1
+		CFLAG:(CHARANUM-1):ＨＰ보정 += 400
+		CFLAG:(CHARANUM-1):ＭＰ보정 += 400
+		ABL:(CHARANUM-1):아이템1 = 1002
+		ABL:(CHARANUM-1):입수확률1 = 0
+		CALL SYNC_STATUS,(CHARANUM-1)
+		CALL HEALTH_CHARA,(CHARANUM-1)
+	NEXT
+	CALL SET_ENEMY,14,[[キャラ:미즈치]],45,0,1
+	CFLAG:(CHARANUM-1):ＨＰ보정 += 1500
+	CFLAG:(CHARANUM-1):ＭＰ보정 += 1500
+	CFLAG:(CHARANUM-1):行動횟수 = 2
+	ABL:(CHARANUM-1):스킬3 = 1226
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	RETURN 80,8209
+ELSEIF ARG == 8210
+	;열반
+	;TRPGより아누비스神。「깨달음えたぞッ」・・・え、違う？
+	;약점消えてます。
+	CALL SET_ENEMY,9,[[キャラ:아누비스]],44,0,1
+	MAXBASE:(CHARANUM-1):검격 = 999
+	BASE:(CHARANUM-1):검격 = 999
+	MAXBASE:(CHARANUM-1):타격 = 999
+	BASE:(CHARANUM-1):타격 = 999
+	MAXBASE:(CHARANUM-1):전술 = 999
+	BASE:(CHARANUM-1):전술 = 999
+	CFLAG:(CHARANUM-1):ＨＰ보정 += 1500
+	CFLAG:(CHARANUM-1):ＭＰ보정 += 1500
+	CFLAG:(CHARANUM-1):行動횟수 = 2
+	ABL:(CHARANUM-1):스킬3 = 2416
+	ABL:(CHARANUM-1):스킬4 = 11
+	ABL:(CHARANUM-1):스킬5 = 108
+	ABL:(CHARANUM-1):스킬6 = 1316
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	RETURN 80,8210
+ELSEIF ARG == 8211
+	;ムラクモ
+	CALL SET_ENEMY,9,[[キャラ:온교우키]],45,0,1
+	CFLAG:(CHARANUM-1):ＨＰ보정 += 1400
+	CFLAG:(CHARANUM-1):ＭＰ보정 += 1400
+	CFLAG:(CHARANUM-1):行動횟수 = 2
+	ABL:(CHARANUM-1):스킬5 = 2001
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	RETURN 80,8211
+ELSEIF ARG == 8212
+	;ゲッシュ
+	;パズルゲームってことで・・・嫌がらせを
+	CALL SET_ENEMY,9,[[キャラ:라비]],45,0,1
+	CFLAG:(CHARANUM-1):ＨＰ보정 += 1500
+	CFLAG:(CHARANUM-1):ＭＰ보정 += 1500
+	CFLAG:(CHARANUM-1):行動횟수 = 2
+	ABL:(CHARANUM-1):스킬4 = 403
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	RETURN 80,8212
+ELSEIF ARG == 8213
+	;ジェド
+	CALL SET_ENEMY,10,[[キャラ:클로토]],42,0,1
+	CFLAG:(CHARANUM-1):ＨＰ보정 += 1200
+	CFLAG:(CHARANUM-1):ＭＰ보정 += 1000
+	ABL:(CHARANUM-1):스킬1 = 402
+	ABL:(CHARANUM-1):스킬2 = 405
+	ABL:(CHARANUM-1):스킬3 = 1211
+	ABL:(CHARANUM-1):스킬4 = 503
+	ABL:(CHARANUM-1):스킬5 = 0
+	ABL:(CHARANUM-1):스킬6 = 0
+	ABL:(CHARANUM-1):스킬7 = 0
+	CFLAG:(CHARANUM-1):行動횟수 = 2
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	CALL SET_ENEMY,9,[[キャラ:라케시스]],42,0,1
+	CFLAG:(CHARANUM-1):ＨＰ보정 += 800
+	CFLAG:(CHARANUM-1):ＭＰ보정 += 1000
+	MAXBASE:(CHARANUM-1):속도 += 10
+	BASE:(CHARANUM-1):속도 += 10
+	ABL:(CHARANUM-1):스킬1 = 507
+	ABL:(CHARANUM-1):스킬2 = 504
+	ABL:(CHARANUM-1):스킬3 = 501
+	ABL:(CHARANUM-1):스킬4 = 602
+	ABL:(CHARANUM-1):스킬5 = 603
+	ABL:(CHARANUM-1):스킬6 = 0
+	ABL:(CHARANUM-1):스킬7 = 0
+	CFLAG:(CHARANUM-1):行動횟수 = 2
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	CALL SET_ENEMY,8,[[キャラ:아트로포스]],42,0,1
+	CFLAG:(CHARANUM-1):ＨＰ보정 += 1200
+	CFLAG:(CHARANUM-1):ＭＰ보정 += 1000
+	ABL:(CHARANUM-1):스킬1 = 705
+	ABL:(CHARANUM-1):스킬2 = 805
+	ABL:(CHARANUM-1):스킬3 = 905
+	ABL:(CHARANUM-1):스킬4 = 1005
+	ABL:(CHARANUM-1):스킬5 = 2002
+	ABL:(CHARANUM-1):스킬6 = 0
+	ABL:(CHARANUM-1):스킬7 = 0
+	CFLAG:(CHARANUM-1):行動횟수 = 2
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	RETURN 80,8213
+ELSEIF ARG == 8214
+	;ムスペル
+	CALL SET_ENEMY,9,[[キャラ:슬라임마라님]],48,0,1
+	CFLAG:(CHARANUM-1):ＨＰ보정 += 1500
+	CFLAG:(CHARANUM-1):ＭＰ보정 += 100
+	;冥界波無いので、돌격系・・は弱いからシモネタ方面に特化、디아라한は原作仕様
+	ABL:(CHARANUM-1):스킬1 = 229
+	ABL:(CHARANUM-1):스킬2 = 230
+	ABL:(CHARANUM-1):스킬3 = 403
+	ABL:(CHARANUM-1):스킬4 = 1132
+	ABL:(CHARANUM-1):스킬5 = 0
+	ABL:(CHARANUM-1):스킬6 = 0
+	ABL:(CHARANUM-1):스킬7 = 0
+	CFLAG:(CHARANUM-1):行動횟수 = 2
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	RETURN 100,8214
+ELSEIF ARG == 8215
+	;ゲヘナ、上級
+	CALL SET_ENEMY,9,[[キャラ:수르트]],60,0,1
+	ABL:(CHARANUM-1):스킬1 = 51
+	ABL:(CHARANUM-1):스킬2 = 748
+	ABL:(CHARANUM-1):스킬3 = 733
+	ABL:(CHARANUM-1):스킬4 = 2034
+	ABL:(CHARANUM-1):스킬5 = 2413
+	ABL:(CHARANUM-1):스킬6 = 2410
+	ABL:(CHARANUM-1):스킬7 = 713
+	ABL:(CHARANUM-1):스킬8 = 711
+	CFLAG:(CHARANUM-1):行動횟수 = 2
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	CALL LIFTING_A_BAN([[キャラ:수르트]])
+	;FLAG:(10000+[[キャラ:수르트]]) = 1
+	RETURN 100,8215
+ELSEIF ARG == 8216
+	;カムロギ
+	CALL SET_ENEMY,9,[[キャラ:잭랜턴]],60,0,1
+	ABL:(CHARANUM-1):스킬1 = 706
+	ABL:(CHARANUM-1):스킬2 = 741
+	ABL:(CHARANUM-1):스킬3 = 2003
+	ABL:(CHARANUM-1):스킬4 = 2034
+	ABL:(CHARANUM-1):스킬5 = 2405
+	ABL:(CHARANUM-1):스킬6 = 2410
+	ABL:(CHARANUM-1):스킬7 = 713
+	ABL:(CHARANUM-1):스킬8 = 1903
+	CFLAG:(CHARANUM-1):行動횟수 = 2
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	RETURN 100,8216
+ELSEIF ARG == 8217
+	;사탄
+	CALL SET_ENEMY,9,[[キャラ:사악프로스트]],65,0,1
+	ABL:(CHARANUM-1):스킬1 = 706
+	ABL:(CHARANUM-1):스킬2 = 810
+	ABL:(CHARANUM-1):스킬3 = 1413
+	ABL:(CHARANUM-1):스킬4 = 1418
+	ABL:(CHARANUM-1):스킬5 = 218
+	ABL:(CHARANUM-1):스킬6 = 2003
+	ABL:(CHARANUM-1):스킬7 = 2040
+	ABL:(CHARANUM-1):스킬8 = 239
+	CFLAG:(CHARANUM-1):行動횟수 = 2
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	RETURN 120,8217
+ELSEIF ARG == 8218
+	;アダマ
+	;グラ繋がりでゴグマゴグ
+	CALL SET_ENEMY,9,[[キャラ:고그마고그]],60,1,1
+	;原作소지스킬……부동검、ギロチンカット、히트웨이브、冥界破、霊魂流出
+	;＋era版アダマの스킬……우뢰의세례、삼할의마맥、다크브레스
+	CFLAG:(CHARANUM-1):ＨＰ보정 = 0
+	CSTR:(CHARANUM-1):増援패턴 = アルビオンもどきの
+	CALLNAME:(CHARANUM-1) = 알비온
+	MAXBASE:(CHARANUM-1):전격 = 999
+	BASE:(CHARANUM-1):전격 = 999
+	ABL:(CHARANUM-1):스킬1 = [[스킬:트윈슬래시]]
+	ABL:(CHARANUM-1):스킬2 = [[스킬:히트웨이브]]
+	ABL:(CHARANUM-1):스킬3 = [[스킬:아카샤아츠]]
+	ABL:(CHARANUM-1):스킬4 = [[스킬:소환]]
+	ABL:(CHARANUM-1):스킬5 = [[스킬:검격가드브레이크]]
+	ABL:(CHARANUM-1):스킬6 = [[스킬:우뢰의세례]]
+	ABL:(CHARANUM-1):스킬7 = [[스킬:삼할의마맥]]
+	ABL:(CHARANUM-1):스킬8 = [[스킬:다크브레스]]
+	CFLAG:(CHARANUM-1):行動횟수 = 2
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	RETURN 120,8218
+ELSEIF ARG == 8219
+	;ヴィマーナ
+	;TRPG版では비슈누。시바繋がりで소재の란다・바롱のセット
+	;＋era版ヴィマーナの스킬……이악물기、수비무너뜨리기、삼할의활천、아카샤아츠
+	CALL SET_ENEMY,8,[[キャラ:란다]],60,1,1
+	CFLAG:(CHARANUM-1):ＨＰ보정 = 2000
+	MAXBASE:(CHARANUM-1):신경 = 0
+	BASE:(CHARANUM-1):신경 = 0
+	ABL:(CHARANUM-1):스킬1 = [[스킬:마하・라기다인]]
+	ABL:(CHARANUM-1):스킬2 = [[스킬:섹시댄스]]
+	ABL:(CHARANUM-1):스킬3 = [[스킬:찰나장대비쏘기]]
+	ABL:(CHARANUM-1):스킬4 = [[스킬:수비무너뜨리기]]
+	ABL:(CHARANUM-1):스킬5 = [[스킬:메기도라온]]
+	ABL:(CHARANUM-1):스킬6 = [[스킬:랜더마이저]]
+	ABL:(CHARANUM-1):스킬7 = [[스킬:이악물기]]
+	ABL:(CHARANUM-1):스킬8 = [[스킬:삼할의활천]]
+	CFLAG:(CHARANUM-1):行動횟수 = 2
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	CALL SET_ENEMY,10,[[キャラ:바롱]],60,1,1
+	CFLAG:(CHARANUM-1):ＨＰ보정 = 2000
+	MAXBASE:(CHARANUM-1):신경 = 0
+	BASE:(CHARANUM-1):신경 = 0
+	ABL:(CHARANUM-1):스킬1 = [[스킬:아이언클로]]
+	ABL:(CHARANUM-1):스킬2 = [[스킬:바인드보이스]]
+	ABL:(CHARANUM-1):스킬3 = [[스킬:이악물기]]
+	ABL:(CHARANUM-1):스킬4 = [[스킬:아카샤아츠]]
+	ABL:(CHARANUM-1):스킬5 = [[스킬:방전]]
+	ABL:(CHARANUM-1):스킬6 = [[스킬:삼할의활천]]
+	ABL:(CHARANUM-1):스킬7 = [[스킬:치유촉진(대)]]
+	ABL:(CHARANUM-1):스킬8 = [[스킬:관통의일격]]
+	CFLAG:(CHARANUM-1):行動횟수 = 2
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	RETURN 100,8219
+ELSEIF ARG == 8220
+	;グンダリ
+	;みんなだいすき비사문천。一人でも검격と화염が通らないと全힘でころがします。
+	CALL SET_ENEMY,9,[[キャラ:비사문천]],60,0,1
+	CFLAG:(CHARANUM-1):ＭＰ보정 = 10000
+	CSTR:(CHARANUM-1):사고패턴 = 11922960
+	ABL:(CHARANUM-1):스킬1 = [[스킬:마하・라기다인]]
+	ABL:(CHARANUM-1):스킬2 = [[스킬:허공참파]]
+	ABL:(CHARANUM-1):스킬3 = [[스킬:타루・카쟈]]
+	ABL:(CHARANUM-1):스킬4 = [[스킬:라쿠・카쟈]]
+	ABL:(CHARANUM-1):스킬5 = [[스킬:데・카쟈]]
+	ABL:(CHARANUM-1):스킬6 = [[스킬:랜더마이저]]
+	ABL:(CHARANUM-1):스킬7 = [[스킬:메기도라온]]
+	ABL:(CHARANUM-1):스킬8 = [[스킬:기공(대)]]
+	CFLAG:(CHARANUM-1):行動횟수 = 2
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	RETURN 150,8220
+ELSEIF ARG == 8221
+	;소피아
+	;原作は구입。TRPG版より가브리엘……は合体조건악마なので気軽に出せず、엔젤で。
+	CALL SET_ENEMY,9,[[キャラ:엔젤]],65,0,1
+	CFLAG:(CHARANUM-1):ＨＰ보정 = 2000
+	MAXBASE:(CHARANUM-1):신경 = 0
+	BASE:(CHARANUM-1):신경 = 0
+	ABL:(CHARANUM-1):스킬1 = [[스킬:파마의뇌광]]
+	ABL:(CHARANUM-1):스킬2 = [[스킬:마하・부후다인]]
+	ABL:(CHARANUM-1):스킬3 = [[스킬:트윈슬래시]]
+	ABL:(CHARANUM-1):스킬4 = [[스킬:메기도라]]
+	ABL:(CHARANUM-1):스킬5 = [[스킬:릴리즈제일]]
+	ABL:(CHARANUM-1):스킬6 = [[스킬:빙결가드브레이크]]
+	ABL:(CHARANUM-1):스킬7 = [[스킬:치유촉진(대)]]
+	ABL:(CHARANUM-1):스킬8 = [[스킬:기공(대)]]
+	CFLAG:(CHARANUM-1):行動횟수 = 2
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	RETURN 100,8221
+ELSEIF ARG == 8222
+	;가이아
+	;原作は宝箱産。元레벨がかなり高いけど、丁度良いのでガイアママン＋토르＋오르트로스＋야크시니
+		CALL SET_ENEMY,9,[[キャラ:토르]],60,0,1
+		CFLAG:(CHARANUM-1):ＨＰ보정 += 1000
+		CFLAG:(CHARANUM-1):ＭＰ보정 += 1000
+		ABL:(CHARANUM-1):아이템1 = 1002
+		ABL:(CHARANUM-1):입수확률1 = 0
+		ABL:(CHARANUM-1):스킬1 = [[스킬:하이퍼카운터]]
+		CALL SYNC_STATUS,(CHARANUM-1)
+		CALL HEALTH_CHARA,(CHARANUM-1)
+			CALL SET_ENEMY,10,[[キャラ:오르트로스]],60,0,1
+			CFLAG:(CHARANUM-1):ＨＰ보정 += 1000
+			CFLAG:(CHARANUM-1):ＭＰ보정 += 1000
+			ABL:(CHARANUM-1):스킬1 = [[스킬:석화물어뜯기]]
+			ABL:(CHARANUM-1):스킬2 = [[스킬:파이어브레스]]
+			ABL:(CHARANUM-1):스킬3 = [[스킬:아기다인]]
+			ABL:(CHARANUM-1):스킬4 = [[스킬:포효]]
+			ABL:(CHARANUM-1):스킬5 = [[스킬:하이퍼카운터]]
+			ABL:(CHARANUM-1):스킬6 = [[스킬:삼할의활천]]
+			ABL:(CHARANUM-1):아이템1 = 1002
+			ABL:(CHARANUM-1):입수확률1 = 0
+			CALL SYNC_STATUS,(CHARANUM-1)
+			CALL HEALTH_CHARA,(CHARANUM-1)
+		CALL SET_ENEMY,8,[[キャラ:야크시니]],60,0,1
+		CFLAG:(CHARANUM-1):ＨＰ보정 += 1000
+		CFLAG:(CHARANUM-1):ＭＰ보정 += 1000
+		ABL:(CHARANUM-1):아이템1 = 1002
+		ABL:(CHARANUM-1):입수확률1 = 0
+		ABL:(CHARANUM-1):스킬1 = [[스킬:부후다인]]
+		ABL:(CHARANUM-1):스킬2 = [[스킬:데스바운드]]
+		ABL:(CHARANUM-1):스킬3 = [[스킬:하이퍼카운터]]
+		ABL:(CHARANUM-1):스킬4 = [[스킬:삼할의활천]]
+		CALL SYNC_STATUS,(CHARANUM-1)
+		CALL HEALTH_CHARA,(CHARANUM-1)
+	CALL SET_ENEMY,14,[[キャラ:가이아]],65,0,1
+	CFLAG:(CHARANUM-1):ＨＰ보정 = 0
+	MAXBASE:(CHARANUM-1):타격 = 50
+	BASE:(CHARANUM-1):타격 = 50
+	MAXBASE:(CHARANUM-1):전술 = 50
+	BASE:(CHARANUM-1):전술 = 50
+	MAXBASE:(CHARANUM-1):충격 = 200
+	BASE:(CHARANUM-1):충격 = 200
+	BASE:(CHARANUM-1):힘 += 30
+	ABL:(CHARANUM-1):스킬1 = [[스킬:데스바운드]]
+	ABL:(CHARANUM-1):스킬2 = [[스킬:가이아브레이크]]
+	ABL:(CHARANUM-1):스킬3 = [[스킬:하이퍼카운터]]
+	ABL:(CHARANUM-1):스킬4 = [[스킬:다크브레스]]
+	ABL:(CHARANUM-1):스킬5 = [[스킬:프레이다인]]
+	ABL:(CHARANUM-1):스킬6 = [[스킬:다무도라온]]
+	ABL:(CHARANUM-1):스킬7 = [[스킬:대지의분노]]
+	ABL:(CHARANUM-1):스킬8 = [[스킬:지모의만찬]]
+	CFLAG:(CHARANUM-1):行動횟수 = 2
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	RETURN 100,8222
+ELSEIF ARG == 8223
+	;カイラース
+	;原作だと구입、TRPGだとティアマット。
+	;代わりに懐かしの아귀３体。カイラース스킬＋마카빔搭載。
+	FOR LOCAL, 8, 11
+		CALL SET_ENEMY,LOCAL,[[キャラ:아귀]],70,0,1
+		CFLAG:(CHARANUM-1):ＨＰ보정 += 10000
+		BASE:(CHARANUM-1):힘 += 10
+		BASE:(CHARANUM-1):지혜 += 10
+		BASE:(CHARANUM-1):마력 += 10
+		BASE:(CHARANUM-1):인내력 += 10
+		BASE:(CHARANUM-1):속도 += 10
+		BASE:(CHARANUM-1):운 += 10
+		ABL:(CHARANUM-1):스킬1 = [[스킬:마카빔]]
+		ABL:(CHARANUM-1):스킬2 = [[스킬:메기도라]]
+		ABL:(CHARANUM-1):스킬3 = [[스킬:지고의마탄・인수라]]
+		ABL:(CHARANUM-1):스킬4 = [[스킬:테트라칸]]
+		ABL:(CHARANUM-1):스킬5 = [[스킬:마카라칸]]
+		ABL:(CHARANUM-1):스킬6 = [[스킬:어드바이스]]
+		ABL:(CHARANUM-1):스킬7 = [[스킬:스쿠카쟈오토]]
+		ABL:(CHARANUM-1):스킬8 = [[스킬:라쿠카쟈오토]]
+		CFLAG:(CHARANUM-1):行動횟수 = 2
+		ABL:(CHARANUM-1):아이템1 = 1002
+		ABL:(CHARANUM-1):입수확률1 = 0
+		CALL SYNC_STATUS,(CHARANUM-1)
+		CALL HEALTH_CHARA,(CHARANUM-1)
+	NEXT
+	RETURN 1,8223
+ELSEIF ARG == 8224
+	;マサカドゥス、最上級
+	;DDS인수라じゃないかな
+		CALL SET_ENEMY,9,[[キャラ:인수라-]],80,0,1
+		CSTR:(CHARANUM-1):사고패턴 = 41992017
+		CSTR:(CHARANUM-1):増援패턴 = ヒトシュラの
+		CFLAG:(CHARANUM-1):601 = 0
+		CFLAG:(CHARANUM-1):ＨＰ보정 += 10000
+	;	EQUIP:(CHARANUM-1):악세사리 = 8224
+		BASE:(CHARANUM-1):힘 += 4
+		BASE:(CHARANUM-1):지혜 += 4
+		BASE:(CHARANUM-1):마력 += 4
+		BASE:(CHARANUM-1):인내력 += 4
+		BASE:(CHARANUM-1):속도 += 4
+		BASE:(CHARANUM-1):검격 = 0
+		BASE:(CHARANUM-1):화염 = 0
+		BASE:(CHARANUM-1):빙결 = 0
+		BASE:(CHARANUM-1):전격 = 0
+		BASE:(CHARANUM-1):충격 = 0
+		BASE:(CHARANUM-1):신경 = 0
+		BASE:(CHARANUM-1):정신 = 0
+		BASE:(CHARANUM-1):파마 = 0
+		BASE:(CHARANUM-1):주살 = 0
+		BASE:(CHARANUM-1):타격 = 200
+		BASE:(CHARANUM-1):전술 = 200
+		BASE:(CHARANUM-1):비구 = 200
+		BASE:(CHARANUM-1):지변 = 200
+		BASE:(CHARANUM-1):수격 = 200
+		BASE:(CHARANUM-1):질풍 = 200
+		BASE:(CHARANUM-1):핵열 = 200
+		BASE:(CHARANUM-1):중력 = 200
+		BASE:(CHARANUM-1):만능 = 100
+		BASE:(CHARANUM-1):힘 += 10
+		BASE:(CHARANUM-1):지혜 += 10
+		BASE:(CHARANUM-1):마력 += 10
+		BASE:(CHARANUM-1):인내력 += 10
+		BASE:(CHARANUM-1):속도 += 10
+		BASE:(CHARANUM-1):운 += 10
+		ABL:(CHARANUM-1):스킬1 = [[스킬:지모의만찬]]
+		ABL:(CHARANUM-1):스킬2 = [[스킬:오의방어부수기]]
+		ABL:(CHARANUM-1):스킬3 = [[스킬:아카샤아츠]]
+		ABL:(CHARANUM-1):스킬4 = [[스킬:히트웨이브]]
+		ABL:(CHARANUM-1):스킬5 = [[스킬:기공(대)]]
+		ABL:(CHARANUM-1):스킬6 = [[스킬:어드바이스]]
+		ABL:(CHARANUM-1):스킬7 = [[스킬:코칭]]
+		ABL:(CHARANUM-1):스킬8 = 0
+		CFLAG:(CHARANUM-1):行動횟수 = 2
+		ABL:(CHARANUM-1):아이템1 = 1002
+		ABL:(CHARANUM-1):입수확률1 = 0
+		CALL SYNC_STATUS,(CHARANUM-1)
+		CALL HEALTH_CHARA,(CHARANUM-1)
+			;초기取り巻き쿠･훌린
+			CALL SET_ENEMY,8,[[キャラ:쿠･훌린]],40,0,1
+			;お遊び
+			SIF RAND:100 == 0
+				CALLNAME:(CHARANUM-1) = クーフー･リン
+			CSTR:(CHARANUM-1):사고패턴 = 41996666
+			BASE:(CHARANUM-1):힘 += 20
+			BASE:(CHARANUM-1):지혜 += 20
+			BASE:(CHARANUM-1):마력 += 20
+			BASE:(CHARANUM-1):인내력 += 20
+			BASE:(CHARANUM-1):속도 += 20
+			BASE:(CHARANUM-1):운 += 20
+			ABL:(CHARANUM-1):스킬1 = [[스킬:아카샤아츠]]
+			ABL:(CHARANUM-1):스킬2 = [[스킬:앵화섬란]]
+			ABL:(CHARANUM-1):스킬3 = [[스킬:악셀클로]]
+			ABL:(CHARANUM-1):스킬4 = [[스킬:머리깨기]]
+			ABL:(CHARANUM-1):스킬5 = [[스킬:묵시록]]
+			ABL:(CHARANUM-1):스킬6 = [[스킬:도발]]
+			ABL:(CHARANUM-1):스킬7 = [[스킬:어드바이스]]
+			ABL:(CHARANUM-1):스킬8 = 0
+			CFLAG:(CHARANUM-1):行動횟수 = 1
+			ABL:(CHARANUM-1):아이템1 = 1002
+			ABL:(CHARANUM-1):입수확률1 = 0
+			CALL SYNC_STATUS,(CHARANUM-1)
+			CALL HEALTH_CHARA,(CHARANUM-1)
+				;초기取り巻き기리메카라
+				CALL SET_ENEMY,10,[[キャラ:기리메카라]],40,0,1
+				;お遊び
+				SIF RAND:100 == 0
+					CALLNAME:(CHARANUM-1) = ギリメカテ
+				CSTR:(CHARANUM-1):사고패턴 = 41996666
+				BASE:(CHARANUM-1):힘 += 20
+				BASE:(CHARANUM-1):지혜 += 20
+				BASE:(CHARANUM-1):마력 += 20
+				BASE:(CHARANUM-1):인내력 += 20
+				BASE:(CHARANUM-1):속도 += 20
+				BASE:(CHARANUM-1):운 += 20
+				ABL:(CHARANUM-1):스킬1 = [[스킬:아카샤아츠]]
+				ABL:(CHARANUM-1):스킬2 = [[스킬:아기다인]]
+				ABL:(CHARANUM-1):스킬3 = [[스킬:마하무도온]]
+				ABL:(CHARANUM-1):스킬4 = [[스킬:랜더마이저]]
+				ABL:(CHARANUM-1):스킬5 = [[스킬:어드바이스]]
+				ABL:(CHARANUM-1):스킬6 = 0
+				ABL:(CHARANUM-1):스킬7 = 0
+				ABL:(CHARANUM-1):스킬8 = 0
+				CFLAG:(CHARANUM-1):行動횟수 = 1
+				ABL:(CHARANUM-1):아이템1 = 1002
+				ABL:(CHARANUM-1):입수확률1 = 0
+				CALL SYNC_STATUS,(CHARANUM-1)
+				CALL HEALTH_CHARA,(CHARANUM-1)
+	RETURN 200,8224
+ELSE
+	;混沌王たち
+	;おまけの二枚내성。
+		CALL SET_ENEMY,8,[[キャラ:인수라-]],99,0,1
+		CSTR:(CHARANUM-1):사고패턴 = 41992017
+		CSTR:(CHARANUM-1):増援패턴 = ひとしゅらの
+		CFLAG:(CHARANUM-1):601 = 0
+		CFLAG:(CHARANUM-1):ＨＰ보정 += 10000
+	;	EQUIP:(CHARANUM-1):악세사리 = 8224
+		BASE:(CHARANUM-1):힘 += 4
+		BASE:(CHARANUM-1):지혜 += 4
+		BASE:(CHARANUM-1):마력 += 4
+		BASE:(CHARANUM-1):인내력 += 4
+		BASE:(CHARANUM-1):속도 += 4
+		BASE:(CHARANUM-1):검격 = 0
+		BASE:(CHARANUM-1):화염 = 0
+		BASE:(CHARANUM-1):빙결 = 0
+		BASE:(CHARANUM-1):전격 = 0
+		BASE:(CHARANUM-1):충격 = 0
+		BASE:(CHARANUM-1):신경 = 0
+		BASE:(CHARANUM-1):정신 = 0
+		BASE:(CHARANUM-1):파마 = 0
+		BASE:(CHARANUM-1):주살 = 0
+		BASE:(CHARANUM-1):타격 = 200
+		BASE:(CHARANUM-1):전술 = 200
+		BASE:(CHARANUM-1):비구 = 200
+		BASE:(CHARANUM-1):지변 = 200
+		BASE:(CHARANUM-1):수격 = 200
+		BASE:(CHARANUM-1):질풍 = 200
+		BASE:(CHARANUM-1):핵열 = 200
+		BASE:(CHARANUM-1):중력 = 200
+		BASE:(CHARANUM-1):만능 = 75
+		BASE:(CHARANUM-1):힘 += 10
+		BASE:(CHARANUM-1):지혜 += 10
+		BASE:(CHARANUM-1):마력 += 10
+		BASE:(CHARANUM-1):인내력 += 10
+		BASE:(CHARANUM-1):속도 += 10
+		BASE:(CHARANUM-1):운 += 10
+		ABL:(CHARANUM-1):스킬1 = [[스킬:지모의만찬]]
+		ABL:(CHARANUM-1):스킬2 = [[스킬:오의방어부수기]]
+		ABL:(CHARANUM-1):스킬3 = [[스킬:아카샤아츠]]
+		ABL:(CHARANUM-1):스킬4 = [[스킬:히트웨이브]]
+		ABL:(CHARANUM-1):스킬5 = [[스킬:기공(대)]]
+		ABL:(CHARANUM-1):스킬6 = [[스킬:관통]]
+		ABL:(CHARANUM-1):스킬7 = [[스킬:어드바이스]]
+		ABL:(CHARANUM-1):스킬8 = [[스킬:코칭]]
+		CFLAG:(CHARANUM-1):行動횟수 = 2
+		ABL:(CHARANUM-1):아이템1 = 1002
+		ABL:(CHARANUM-1):입수확률1 = 0
+		CALL SYNC_STATUS,(CHARANUM-1)
+		CALL HEALTH_CHARA,(CHARANUM-1)
+			CALL SET_ENEMY,10,[[キャラ:인수라]],99,0,1
+			CSTR:(CHARANUM-1):사고패턴 = 41982017
+			CSTR:(CHARANUM-1):増援패턴 = ヒトシュラの
+			CFLAG:(CHARANUM-1):601 = 0
+			CFLAG:(CHARANUM-1):ＨＰ보정 += 10000
+		;	EQUIP:(CHARANUM-1):악세사리 = 8224
+			BASE:(CHARANUM-1):힘 += 4
+			BASE:(CHARANUM-1):지혜 += 4
+			BASE:(CHARANUM-1):마력 += 4
+			BASE:(CHARANUM-1):인내력 += 4
+			BASE:(CHARANUM-1):속도 += 4
+			BASE:(CHARANUM-1):검격 = 200
+			BASE:(CHARANUM-1):화염 = 200
+			BASE:(CHARANUM-1):빙결 = 200
+			BASE:(CHARANUM-1):전격 = 200
+			BASE:(CHARANUM-1):충격 = 200
+			BASE:(CHARANUM-1):신경 = 200
+			BASE:(CHARANUM-1):정신 = 200
+			BASE:(CHARANUM-1):파마 = 200
+			BASE:(CHARANUM-1):주살 = 200
+			BASE:(CHARANUM-1):타격 = 0
+			BASE:(CHARANUM-1):전술 = 0
+			BASE:(CHARANUM-1):비구 = 0
+			BASE:(CHARANUM-1):지변 = 0
+			BASE:(CHARANUM-1):수격 = 0
+			BASE:(CHARANUM-1):질풍 = 0
+			BASE:(CHARANUM-1):핵열 = 0
+			BASE:(CHARANUM-1):중력 = 0
+			BASE:(CHARANUM-1):만능 = 75
+			BASE:(CHARANUM-1):힘 += 10
+			BASE:(CHARANUM-1):지혜 += 10
+			BASE:(CHARANUM-1):마력 += 10
+			BASE:(CHARANUM-1):인내력 += 10
+			BASE:(CHARANUM-1):속도 += 10
+			BASE:(CHARANUM-1):운 += 10
+			ABL:(CHARANUM-1):스킬1 = [[스킬:지모의만찬]]
+			ABL:(CHARANUM-1):스킬2 = [[스킬:오의방어부수기]]
+			ABL:(CHARANUM-1):스킬3 = [[스킬:아카샤아츠]]
+			ABL:(CHARANUM-1):스킬4 = [[스킬:히트웨이브]]
+			ABL:(CHARANUM-1):스킬5 = [[스킬:기공(대)]]
+			ABL:(CHARANUM-1):스킬6 = [[스킬:소환]]
+			ABL:(CHARANUM-1):스킬7 = [[스킬:어드바이스]]
+			ABL:(CHARANUM-1):스킬8 = [[스킬:코칭]]
+			CFLAG:(CHARANUM-1):行動횟수 = 2
+			ABL:(CHARANUM-1):아이템1 = 1002
+			ABL:(CHARANUM-1):입수확률1 = 0
+			CALL SYNC_STATUS,(CHARANUM-1)
+			CALL HEALTH_CHARA,(CHARANUM-1)
+			;초기取り巻き쿠･훌린
+			CALL SET_ENEMY,7,[[キャラ:쿠･훌린]],50,0,1
+			;お遊び
+			SIF RAND:100 == 0
+				CALLNAME:(CHARANUM-1) = クーフー･リン
+			CSTR:(CHARANUM-1):사고패턴 = 41996666
+			BASE:(CHARANUM-1):힘 += 25
+			BASE:(CHARANUM-1):지혜 += 25
+			BASE:(CHARANUM-1):마력 += 25
+			BASE:(CHARANUM-1):인내력 += 25
+			BASE:(CHARANUM-1):속도 += 25
+			BASE:(CHARANUM-1):운 += 25
+			ABL:(CHARANUM-1):스킬1 = [[스킬:아카샤아츠]]
+			ABL:(CHARANUM-1):스킬2 = [[스킬:앵화섬란]]
+			ABL:(CHARANUM-1):스킬3 = [[스킬:악셀클로]]
+			ABL:(CHARANUM-1):스킬4 = [[스킬:머리깨기]]
+			ABL:(CHARANUM-1):스킬5 = [[스킬:묵시록]]
+			ABL:(CHARANUM-1):스킬6 = [[스킬:도발]]
+			ABL:(CHARANUM-1):스킬7 = [[스킬:어드바이스]]
+			ABL:(CHARANUM-1):스킬8 = 0
+			CFLAG:(CHARANUM-1):行動횟수 = 1
+			ABL:(CHARANUM-1):아이템1 = 1002
+			ABL:(CHARANUM-1):입수확률1 = 0
+			CALL SYNC_STATUS,(CHARANUM-1)
+			CALL HEALTH_CHARA,(CHARANUM-1)
+				;초기取り巻き기리메카라
+				CALL SET_ENEMY,11,[[キャラ:기리메카라]],50,0,1
+				;お遊び
+				SIF RAND:100 == 0
+					CALLNAME:(CHARANUM-1) = ギリメカテ
+				CSTR:(CHARANUM-1):사고패턴 = 41996666
+				BASE:(CHARANUM-1):힘 += 25
+				BASE:(CHARANUM-1):지혜 += 25
+				BASE:(CHARANUM-1):마력 += 25
+				BASE:(CHARANUM-1):인내력 += 25
+				BASE:(CHARANUM-1):속도 += 25
+				BASE:(CHARANUM-1):운 += 25
+				ABL:(CHARANUM-1):스킬1 = [[스킬:아카샤아츠]]
+				ABL:(CHARANUM-1):스킬2 = [[스킬:아기다인]]
+				ABL:(CHARANUM-1):스킬3 = [[스킬:마하무도온]]
+				ABL:(CHARANUM-1):스킬4 = [[스킬:랜더마이저]]
+				ABL:(CHARANUM-1):스킬5 = [[스킬:어드바이스]]
+				ABL:(CHARANUM-1):스킬6 = 0
+				ABL:(CHARANUM-1):스킬7 = 0
+				ABL:(CHARANUM-1):스킬8 = 0
+				CFLAG:(CHARANUM-1):行動횟수 = 1
+				ABL:(CHARANUM-1):아이템1 = 1002
+				ABL:(CHARANUM-1):입수확률1 = 0
+				CALL SYNC_STATUS,(CHARANUM-1)
+				CALL HEALTH_CHARA,(CHARANUM-1)
+
+	RETURN 200,9999
+ENDIF
+RETURN 60
+
+;=======
+@増援패턴_アルビオンもどきの, ARG, ARG:1, ARG:2
+IF ARG:2 == 1
+	;黒ビオンこと운디네
+	CALL SET_ENEMY, ARG:1, [[キャラ:운디네]],55,0,0
+	CFLAG:(CHARANUM-1):ＨＰ보정 = 200
+	ABL:(CHARANUM-1):스킬1 = [[스킬:부후다인]]
+	ABL:(CHARANUM-1):스킬2 = [[스킬:마하・부후다인]]
+	ABL:(CHARANUM-1):스킬3 = [[스킬:사마리캄]]
+	ABL:(CHARANUM-1):스킬4 = [[스킬:리캄도라]]
+	ABL:(CHARANUM-1):스킬5 = [[스킬:마카・카쟈]]
+	ABL:(CHARANUM-1):스킬6 = 0
+	ABL:(CHARANUM-1):스킬7 = 0
+	ABL:(CHARANUM-1):스킬8 = 0
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+ELSEIF ARG:2 == 2
+	;緑ビオンこと실프
+	CALL SET_ENEMY, ARG:1, [[キャラ:실프]],55,0,0
+	CFLAG:(CHARANUM-1):ＨＰ보정 = 200
+	ABL:(CHARANUM-1):스킬1 = [[스킬:잔다인]]
+	ABL:(CHARANUM-1):스킬2 = [[스킬:마하・잔다인]]
+	ABL:(CHARANUM-1):스킬3 = [[스킬:사마리캄]]
+	ABL:(CHARANUM-1):스킬4 = [[스킬:리캄도라]]
+	ABL:(CHARANUM-1):스킬5 = [[스킬:스쿠・카쟈]]
+	ABL:(CHARANUM-1):스킬6 = 0
+	ABL:(CHARANUM-1):스킬7 = 0
+	ABL:(CHARANUM-1):스킬8 = 0
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+ELSEIF ARG:2 == 3
+	;赤ビオンこと살라만더
+	CALL SET_ENEMY, ARG:1, [[キャラ:살라만더]],55,0,0
+	CFLAG:(CHARANUM-1):ＨＰ보정 = 200
+	ABL:(CHARANUM-1):스킬1 = [[스킬:아기다인]]
+	ABL:(CHARANUM-1):스킬2 = [[스킬:마하・라기다인]]
+	ABL:(CHARANUM-1):스킬3 = [[스킬:사마리캄]]
+	ABL:(CHARANUM-1):스킬4 = [[스킬:리캄도라]]
+	ABL:(CHARANUM-1):스킬5 = [[스킬:타루・카쟈]]
+	ABL:(CHARANUM-1):스킬6 = 0
+	ABL:(CHARANUM-1):스킬7 = 0
+	ABL:(CHARANUM-1):스킬8 = 0
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+ELSE
+	;黄ビオンこと놈
+	CALL SET_ENEMY, ARG:1, [[キャラ:놈]],55,0,0
+	CFLAG:(CHARANUM-1):ＨＰ보정 = 200
+	ABL:(CHARANUM-1):스킬1 = [[스킬:지오다인]]
+	ABL:(CHARANUM-1):스킬2 = [[스킬:마하・지오다인]]
+	ABL:(CHARANUM-1):스킬3 = [[스킬:사마리캄]]
+	ABL:(CHARANUM-1):스킬4 = [[스킬:리캄도라]]
+	ABL:(CHARANUM-1):스킬5 = [[스킬:라쿠・카쟈]]
+	ABL:(CHARANUM-1):스킬6 = 0
+	ABL:(CHARANUM-1):스킬7 = 0
+	ABL:(CHARANUM-1):스킬8 = 0
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+ENDIF
+CALL HEALTH_CHARA,(CHARANUM-1)
+CALL SYNC_STATUS,(CHARANUM-1)
+SIF ARG:2 == 3
+	RETURN 1
+RETURN 0
+
+;=======================================================================
+;비사문천패턴
+;=======================================================================
+@SET_ACTION_11922960,ARG
+#LOCALSIZE 3
+#LOCALSSIZE 1
+LOCAL=0
+LOCAL:2=0
+FOR LOCAL:1,1,7
+	LOCALS = 포지션{LOCAL:1}
+	SIF FLAG:LOCALS == -1
+		CONTINUE
+	SIF CFLAG:(FLAG:LOCALS):ステート == GET_STATE_NUM("DYING")
+		CONTINUE
+	FOR LOCAL:2,0,6
+		IF CFLAG:(LOCAL:2):물리반사フラグ || MAXBASE:(LOCAL:2):검격 == 999 || MAXBASE:(LOCAL:2):검격 <= 0
+			LOCAL += 1
+		ELSEIF CFLAG:(LOCAL:2):마법반사フラグ || MAXBASE:(LOCAL:2):화염 == 999 || MAXBASE:(LOCAL:2):화염 <= 0
+			LOCAL:2 += 1
+		ENDIF
+	NEXT
+NEXT
+IF LOCAL == 0 && LOCAL:2 == 0
+	$DECIDE_ACTION_BISHAMONSM3_0
+	LOCAL = RAND:10
+	;HP반감近かったら眼光＆메기도라온率上がります
+	SIF ((BASE:ARG:ＨＰ)*100)/(MAXBASE:ARG:ＨＰ) < 66
+		LOCAL += 1
+	;마하・라기다인
+	IF LOCAL <= 1
+		CFLAG:ARG:입력行動 = [[스킬:마하・라기다인]]
+	;허공참파
+	ELSEIF LOCAL <= 3
+		CFLAG:ARG:입력行動 = [[스킬:허공참파]]
+	;타루・카쟈
+	ELSEIF LOCAL <= 4
+		CFLAG:ARG:입력行動 = [[스킬:타루・카쟈]]
+	;마카・카쟈
+	ELSEIF LOCAL <= 5
+		CFLAG:ARG:입력行動 = [[스킬:마카・카쟈]]
+	;강화済みならデカジャ、でなければ랜더마이저
+	ELSEIF LOCAL <= 7
+		FOR LOCAL:1,1,7
+			LOCALS = 포지션{LOCAL:1}
+			SIF FLAG:LOCALS == -1
+				CONTINUE
+			SIF CFLAG:(FLAG:LOCALS):ステート == GET_STATE_NUM("DYING")
+				CONTINUE
+			FOR LOCAL:2,0,6
+				IF CFLAG:(FLAG:LOCALS):(GET_BATTLESTATUS(LOCAL:2) + "강화") > 8
+					;デカジャ
+					CFLAG:ARG:입력行動 = [[스킬:데・카쟈]]
+					CALL RANDOM_TARGET,ARG,CFLAG:ARG:입력行動
+					RETURN 0
+				ENDIF
+			NEXT
+		NEXT
+		CFLAG:ARG:입력行動 = [[스킬:랜더마이저]]
+	;통상공격
+	ELSEIF LOCAL <= 8
+		CFLAG:ARG:입력行動 = 0
+	;行動済みなら짐승の眼光、でなければ메기도라온
+	ELSE
+		IF CFLAG:ARG:行動した횟수 > 0
+			PRINTFORML ┏>CHARA━━━━━━━━━━┓　┏>ACT━━━━━━━━━━━━━━━━━━┓
+			PRINTFORM ┃[{CFLAG:ARG:포지션,2}] %CALLNAME:ARG,21,LEFT%┃　┃
+			RESULTS = 짐승의안광
+			PRINTFORML %RESULTS,40,LEFT%┃
+			PRINTFORMW ┗━━━━━━━━━━━━━┛　┗━━━━━━━━━━━━━━━━━━━━┛
+			CFLAG:ARG:行動した횟수 = 0
+			GOTO DECIDE_ACTION_BISHAMONSM3_0
+		ELSE
+			CFLAG:ARG:입력行動 = [[스킬:메기도라온]]
+		ENDIF
+	ENDIF
+;검戟무효がいる패턴
+ELSEIF LOCAL > 0 && LOCAL:2 == 0
+	$DECIDE_ACTION_BISHAMONSM3_1
+	LOCAL = RAND:10
+	;HP반감近かったら眼光＆메기도라온率上がります
+	SIF ((BASE:ARG:ＨＰ)*100)/(MAXBASE:ARG:ＨＰ) < 66
+		LOCAL += 1
+	;마하・라기다인
+	IF LOCAL <= 1
+		CFLAG:ARG:입력行動 = [[스킬:마하・라기다인]]
+	;메기도라온
+	ELSEIF LOCAL <= 3
+		CFLAG:ARG:입력行動 = [[스킬:메기도라온]]
+	;타루・카쟈
+	ELSEIF LOCAL <= 4
+		CFLAG:ARG:입력行動 = [[스킬:타루・카쟈]]
+	;마카・카쟈
+	ELSEIF LOCAL <= 5
+		CFLAG:ARG:입력行動 = [[스킬:마카・카쟈]]
+	;강화済みならデカジャ、でなければ랜더마이저
+	ELSEIF LOCAL <= 7
+		FOR LOCAL:1,1,7
+			LOCALS = 포지션{LOCAL:1}
+			SIF FLAG:LOCALS == -1
+				CONTINUE
+			SIF CFLAG:(FLAG:LOCALS):ステート == GET_STATE_NUM("DYING")
+				CONTINUE
+			FOR LOCAL:2,0,6
+				IF CFLAG:(FLAG:LOCALS):(GET_BATTLESTATUS(LOCAL:2) + "강화") > 8
+					;デカジャ
+					CFLAG:ARG:입력行動 = [[스킬:데・카쟈]]
+					CALL RANDOM_TARGET,ARG,CFLAG:ARG:입력行動
+					RETURN 0
+				ENDIF
+			NEXT
+		NEXT
+		CFLAG:ARG:입력行動 = [[스킬:랜더마이저]]
+	;메기도라온
+	ELSEIF LOCAL <= 8
+		CFLAG:ARG:입력行動 = [[스킬:메기도라온]]
+	;行動済みなら짐승の眼光、でなければ메기도라온
+	ELSE
+		IF CFLAG:ARG:行動した횟수 > 0
+			PRINTFORML ┏>CHARA━━━━━━━━━━┓　┏>ACT━━━━━━━━━━━━━━━━━━┓
+			PRINTFORM ┃[{CFLAG:ARG:포지션,2}] %CALLNAME:ARG,21,LEFT%┃　┃
+			RESULTS = 짐승의안광
+			PRINTFORML %RESULTS,40,LEFT%┃
+			PRINTFORMW ┗━━━━━━━━━━━━━┛　┗━━━━━━━━━━━━━━━━━━━━┛
+			CFLAG:ARG:行動した횟수 = 0
+			GOTO DECIDE_ACTION_BISHAMONSM3_1
+		ELSE
+			CFLAG:ARG:입력行動 = [[스킬:메기도라온]]
+		ENDIF
+	ENDIF
+;화염だけダメな패턴
+ELSEIF LOCAL == 0 && LOCAL:2 > 0
+	$DECIDE_ACTION_BISHAMONSM3_2
+	LOCAL = RAND:10
+	;HP반감近かったら眼光＆메기도라온率上がります
+	SIF ((BASE:ARG:ＨＰ)*100)/(MAXBASE:ARG:ＨＰ) < 66
+		LOCAL += 1
+	;메기도라온
+	IF LOCAL <= 1
+		CFLAG:ARG:입력行動 = [[스킬:메기도라온]]
+	;허공참파
+	ELSEIF LOCAL <= 3
+		CFLAG:ARG:입력行動 = [[스킬:허공참파]]
+	;타루・카쟈
+	ELSEIF LOCAL <= 4
+		CFLAG:ARG:입력行動 = [[스킬:타루・카쟈]]
+	;마카・카쟈
+	ELSEIF LOCAL <= 5
+		CFLAG:ARG:입력行動 = [[스킬:마카・카쟈]]
+	;강화済みならデカジャ、でなければ랜더마이저
+	ELSEIF LOCAL <= 7
+		FOR LOCAL:1,1,7
+			LOCALS = 포지션{LOCAL:1}
+			SIF FLAG:LOCALS == -1
+				CONTINUE
+			SIF CFLAG:(FLAG:LOCALS):ステート == GET_STATE_NUM("DYING")
+				CONTINUE
+			FOR LOCAL:2,0,6
+				IF CFLAG:(FLAG:LOCALS):(GET_BATTLESTATUS(LOCAL:2) + "강화") > 8
+					;デカジャ
+					CFLAG:ARG:입력行動 = [[스킬:데・카쟈]]
+					CALL RANDOM_TARGET,ARG,CFLAG:ARG:입력行動
+					RETURN 0
+				ENDIF
+			NEXT
+		NEXT
+		CFLAG:ARG:입력行動 = [[스킬:랜더마이저]]
+	;통상공격
+	ELSEIF LOCAL <= 8
+		CFLAG:ARG:입력行動 = 0
+	;行動済みなら짐승の眼光、でなければ메기도라온
+	ELSE
+		IF CFLAG:ARG:行動した횟수 > 0
+			PRINTFORML ┏>CHARA━━━━━━━━━━┓　┏>ACT━━━━━━━━━━━━━━━━━━┓
+			PRINTFORM ┃[{CFLAG:ARG:포지션,2}] %CALLNAME:ARG,21,LEFT%┃　┃
+			RESULTS = 짐승의안광
+			PRINTFORML %RESULTS,40,LEFT%┃
+			PRINTFORMW ┗━━━━━━━━━━━━━┛　┗━━━━━━━━━━━━━━━━━━━━┛
+			CFLAG:ARG:行動した횟수 = 0
+			GOTO DECIDE_ACTION_BISHAMONSM3_2
+		ELSE
+			CFLAG:ARG:입력行動 = [[스킬:메기도라온]]
+		ENDIF
+	ENDIF
+;화염・검격両方반사패턴（메기도라온魔）
+ELSE
+	$DECIDE_ACTION_BISHAMONSM3_3
+	LOCAL = RAND:10
+	;HP반감近かったら眼光＆메기도라온率上がります
+	SIF ((BASE:ARG:ＨＰ)*100)/(MAXBASE:ARG:ＨＰ) < 66
+		LOCAL += 1
+	;메기도라온
+	IF LOCAL <= 1
+		CFLAG:ARG:입력行動 = [[스킬:메기도라온]]
+	;메기도라온
+	ELSEIF LOCAL <= 3
+		CFLAG:ARG:입력行動 = [[스킬:메기도라온]]
+	;히트라이저
+	ELSEIF LOCAL <= 5
+		CFLAG:ARG:입력行動 = [[스킬:히트라이저]]
+	;강화済みならデカジャ、でなければ랜더마이저
+	ELSEIF LOCAL <= 7
+		FOR LOCAL:1,1,7
+			LOCALS = 포지션{LOCAL:1}
+			SIF FLAG:LOCALS == -1
+				CONTINUE
+			SIF CFLAG:(FLAG:LOCALS):ステート == GET_STATE_NUM("DYING")
+				CONTINUE
+			FOR LOCAL:2,0,6
+				IF CFLAG:(FLAG:LOCALS):(GET_BATTLESTATUS(LOCAL:2) + "강화") > 8
+					;デカジャ
+					CFLAG:ARG:입력行動 = [[스킬:데・카쟈]]
+					CALL RANDOM_TARGET,ARG,CFLAG:ARG:입력行動
+					RETURN 0
+				ENDIF
+			NEXT
+		NEXT
+		CFLAG:ARG:입력行動 = [[스킬:랜더마이저]]
+	;메기도라온
+	ELSEIF LOCAL <= 8
+		CFLAG:ARG:입력行動 = [[스킬:메기도라온]]
+	;行動済みなら짐승の眼光、でなければ메기도라온
+	ELSE
+		IF CFLAG:ARG:行動した횟수 > 0
+			PRINTFORML ┏>CHARA━━━━━━━━━━┓　┏>ACT━━━━━━━━━━━━━━━━━━┓
+			PRINTFORM ┃[{CFLAG:ARG:포지션,2}] %CALLNAME:ARG,21,LEFT%┃　┃
+			RESULTS = 짐승의안광
+			PRINTFORML %RESULTS,40,LEFT%┃
+			PRINTFORMW ┗━━━━━━━━━━━━━┛　┗━━━━━━━━━━━━━━━━━━━━┛
+			CFLAG:ARG:行動した횟수 = 0
+			GOTO DECIDE_ACTION_BISHAMONSM3_3
+		ELSE
+			CFLAG:ARG:입력行動 = [[스킬:메기도라온]]
+		ENDIF
+	ENDIF
+ENDIF
+
+CALL CHECK_ACTIONABLE,ARG,CFLAG:ARG:입력行動
+IF RESULT == 1
+	CALL RANDOM_TARGET,ARG,CFLAG:ARG:입력行動
+ELSE
+	;なんかエラーあれば통상공격に
+	CFLAG:ARG:입력行動 = 0
+	CALL RANDOM_TARGET,ARG,CFLAG:ARG:입력行動
+ENDIF
+RETURN 0
+
+;========================================================
+@増援패턴_ヒトシュラの, ARG, ARG:1, ARG:2
+IF CFLAG:ARG:601 == 0
+	;추가の１番눈取り巻き픽시
+	CALL SET_ENEMY,ARG:1,[[キャラ:픽시]],40,0,1
+	;特に이름ネタはない
+	CSTR:(CHARANUM-1):사고패턴 = 41996666
+	BASE:(CHARANUM-1):힘 += 20
+	BASE:(CHARANUM-1):지혜 += 20
+	BASE:(CHARANUM-1):마력 += 20
+	BASE:(CHARANUM-1):인내력 += 20
+	BASE:(CHARANUM-1):속도 += 20
+	BASE:(CHARANUM-1):운 += 20
+	ABL:(CHARANUM-1):스킬1 = [[스킬:최면파]]
+	ABL:(CHARANUM-1):스킬2 = [[스킬:메기도라온]]
+	ABL:(CHARANUM-1):스킬3 = [[스킬:마하・지오다인]]
+	ABL:(CHARANUM-1):스킬4 = [[스킬:색즉시공]]
+	ABL:(CHARANUM-1):스킬5 = [[스킬:디아라마]]
+	ABL:(CHARANUM-1):스킬6 = [[스킬:어드바이스]]
+	ABL:(CHARANUM-1):스킬7 = 0
+	ABL:(CHARANUM-1):스킬8 = 0
+	CFLAG:(CHARANUM-1):行動횟수 = 1
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+ELSEIF CFLAG:ARG:601 == 1
+	;추가の２番눈取り巻き아라하바키
+	CALL SET_ENEMY,ARG:1,[[キャラ:아라하바키]],40,0,1
+	;お遊び
+	SIF RAND:100 == 0
+		CALLNAME:(CHARANUM-1) = 아키ハバラ
+	CSTR:(CHARANUM-1):사고패턴 = 41996666
+	BASE:(CHARANUM-1):힘 += 20
+	BASE:(CHARANUM-1):지혜 += 20
+	BASE:(CHARANUM-1):마력 += 20
+	BASE:(CHARANUM-1):인내력 += 20
+	BASE:(CHARANUM-1):속도 += 20
+	BASE:(CHARANUM-1):운 += 20
+	ABL:(CHARANUM-1):스킬1 = [[스킬:끝나는세계]]
+	ABL:(CHARANUM-1):스킬2 = [[스킬:명계의문]]
+	ABL:(CHARANUM-1):스킬3 = [[스킬:페트라아이]]
+	ABL:(CHARANUM-1):스킬4 = [[스킬:랜더마이저]]
+	ABL:(CHARANUM-1):스킬5 = [[스킬:어드바이스]]
+	ABL:(CHARANUM-1):스킬6 = 0
+	ABL:(CHARANUM-1):스킬7 = 0
+	ABL:(CHARANUM-1):스킬8 = 0
+	CFLAG:(CHARANUM-1):行動횟수 = 1
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+ELSEIF CFLAG:ARG:601 == 2
+	;추가の３番눈取り巻き티타니아
+	CALL SET_ENEMY,ARG:1,[[キャラ:티타니아]],40,0,1
+	;特に이름변경ネタはない
+	CSTR:(CHARANUM-1):사고패턴 = 41996666
+	BASE:(CHARANUM-1):힘 += 20
+	BASE:(CHARANUM-1):지혜 += 20
+	BASE:(CHARANUM-1):마력 += 20
+	BASE:(CHARANUM-1):인내력 += 20
+	BASE:(CHARANUM-1):속도 += 20
+	BASE:(CHARANUM-1):운 += 20
+	ABL:(CHARANUM-1):스킬1 = [[스킬:마하・라기다인]]
+	ABL:(CHARANUM-1):스킬2 = [[스킬:마하・부후다인]]
+	ABL:(CHARANUM-1):스킬3 = [[스킬:마하・지오다인]]
+	ABL:(CHARANUM-1):스킬4 = [[스킬:랜더마이저]]
+	ABL:(CHARANUM-1):스킬5 = [[스킬:코칭]]
+	ABL:(CHARANUM-1):스킬6 = 0
+	ABL:(CHARANUM-1):스킬7 = 0
+	ABL:(CHARANUM-1):스킬8 = 0
+	CFLAG:(CHARANUM-1):行動횟수 = 1
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+ELSEIF CFLAG:ARG:601 == 3
+	;추가の４番눈取り巻き파르바티……はcsvないので사라스바티
+	CALL SET_ENEMY,ARG:1,[[キャラ:사라스바티]],40,0,1
+	;파르바티の振りをする。稀に이름がそのまま
+	SIF RAND:100
+		CALLNAME:(CHARANUM-1) = 파르바티
+	CSTR:(CHARANUM-1):사고패턴 = 41996666
+	BASE:(CHARANUM-1):힘 += 20
+	BASE:(CHARANUM-1):지혜 += 20
+	BASE:(CHARANUM-1):마력 += 20
+	BASE:(CHARANUM-1):인내력 += 20
+	BASE:(CHARANUM-1):속도 += 20
+	BASE:(CHARANUM-1):운 += 20
+	ABL:(CHARANUM-1):스킬1 = [[스킬:최면파]]
+	ABL:(CHARANUM-1):스킬2 = [[스킬:마한마온]]
+	ABL:(CHARANUM-1):스킬3 = [[스킬:메・디아라마]]
+	ABL:(CHARANUM-1):스킬4 = [[스킬:라스타캔디]]
+	ABL:(CHARANUM-1):스킬5 = [[스킬:코칭]]
+	ABL:(CHARANUM-1):스킬6 = 0
+	ABL:(CHARANUM-1):스킬7 = 0
+	ABL:(CHARANUM-1):스킬8 = 0
+	CFLAG:(CHARANUM-1):行動횟수 = 1
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+ELSEIF CFLAG:ARG:601 == 4
+	;５番눈取り巻き쿠･훌린（または초기）
+	CALL SET_ENEMY,ARG:1,[[キャラ:쿠･훌린]],40,0,1
+	;お遊び
+	SIF RAND:100 == 0
+		CALLNAME:(CHARANUM-1) = クーフー･リン
+	CSTR:(CHARANUM-1):사고패턴 = 41996666
+	BASE:(CHARANUM-1):힘 += 20
+	BASE:(CHARANUM-1):지혜 += 20
+	BASE:(CHARANUM-1):마력 += 20
+	BASE:(CHARANUM-1):인내력 += 20
+	BASE:(CHARANUM-1):속도 += 20
+	BASE:(CHARANUM-1):운 += 20
+	ABL:(CHARANUM-1):스킬1 = [[스킬:아카샤아츠]]
+	ABL:(CHARANUM-1):스킬2 = [[스킬:앵화섬란]]
+	ABL:(CHARANUM-1):스킬3 = [[스킬:악셀클로]]
+	ABL:(CHARANUM-1):스킬4 = [[스킬:머리깨기]]
+	ABL:(CHARANUM-1):스킬5 = [[스킬:묵시록]]
+	ABL:(CHARANUM-1):스킬6 = [[스킬:도발]]
+	ABL:(CHARANUM-1):스킬7 = [[스킬:어드바이스]]
+	ABL:(CHARANUM-1):스킬8 = 0
+	CFLAG:(CHARANUM-1):行動횟수 = 1
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+ELSEIF CFLAG:ARG:601 == 5
+	;６番눈取り巻き기리메카라（または초기）
+	CALL SET_ENEMY,ARG:1,[[キャラ:기리메카라]],40,0,1
+	;お遊び
+	SIF RAND:100 == 0
+		CALLNAME:(CHARANUM-1) = ギリメカテ
+	CSTR:(CHARANUM-1):사고패턴 = 41996666
+	BASE:(CHARANUM-1):힘 += 20
+	BASE:(CHARANUM-1):지혜 += 20
+	BASE:(CHARANUM-1):마력 += 20
+	BASE:(CHARANUM-1):인내력 += 20
+	BASE:(CHARANUM-1):속도 += 20
+	BASE:(CHARANUM-1):운 += 20
+	ABL:(CHARANUM-1):스킬1 = [[스킬:아카샤아츠]]
+	ABL:(CHARANUM-1):스킬2 = [[스킬:아기다인]]
+	ABL:(CHARANUM-1):스킬3 = [[스킬:마하무도온]]
+	ABL:(CHARANUM-1):스킬4 = [[스킬:랜더마이저]]
+	ABL:(CHARANUM-1):스킬5 = [[스킬:어드바이스]]
+	ABL:(CHARANUM-1):스킬6 = 0
+	ABL:(CHARANUM-1):스킬7 = 0
+	ABL:(CHARANUM-1):스킬8 = 0
+	CFLAG:(CHARANUM-1):行動횟수 = 1
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+ENDIF
+
+CFLAG:ARG:601 += 1
+SIF CFLAG:ARG:601 >= 6
+	CFLAG:ARG:601 = 0
+RETURN 1
+
+;=======================================================================
+;ヒトシュラ패턴
+;=======================================================================
+@SET_ACTION_41992017,ARG
+#LOCALSIZE 3
+#LOCALSSIZE 1
+LOCAL=0
+LOCAL:2=0
+FOR LOCAL:1,1,7
+	LOCALS = 포지션{LOCAL:1}
+	SIF FLAG:LOCALS == -1
+		CONTINUE
+	SIF CFLAG:(FLAG:LOCALS):ステート == GET_STATE_NUM("DYING")
+		CONTINUE
+	FOR LOCAL:2,1,7
+		IF CFLAG:(FLAG:LOCALS):물리반사フラグ || MAXBASE:(FLAG:LOCALS):검격 == 999 || MAXBASE:(FLAG:LOCALS):검격 <= 0 || MAXBASE:(FLAG:LOCALS):타격 == 999 || MAXBASE:(FLAG:LOCALS):타격 <= 0
+			IF CFLAG:(FLAG:LOCALS):타격가드킬 > 0
+				LOCAL = 1
+			ELSE
+				LOCAL = 101
+			ENDIF
+			BREAK
+		ELSEIF CFLAG:(FLAG:LOCALS):ステート == GET_STATE_NUM("SLEEP")
+			LOCAL = 99
+			SIF BASE:(FLAG:LOCALS):DYING > 10
+				LOCAL = 1
+			BREAK
+		ENDIF
+	NEXT
+NEXT
+IF (CFLAG:ARG:602 == 0) && (((BASE:ARG:ＨＰ)*100)/(MAXBASE:ARG:ＨＰ) < 51)
+	;HP가 반감하면 한번만 메・디아라한
+	IF CFLAG:ARG:603 > 0 && CFLAG:ARG:604 > 0
+		BASE:ARG:힘 -= 500
+		MAXBASE:ARG:힘 -= 500
+		CFLAG:ARG:ＨＰ보정 *= 100
+		BASE:ARG:ＨＰ *= 100
+		BASE:ARG:속도 = CFLAG:ARG:603
+		MAXBASE:ARG:속도 = CFLAG:ARG:603
+		CFLAG:ARG:603 = 0
+		BASE:ARG:운 = CFLAG:ARG:604
+		MAXBASE:ARG:운 = CFLAG:ARG:604
+		CFLAG:ARG:604 = 0
+		CALL SYNC_STATUS,ARG
+	ENDIF
+	CFLAG:ARG:입력行動 = [[스킬:메・디아라한]]
+	CFLAG:ARG:602 = 1
+ELSEIF LOCAL == 101
+	;검격・타격に내성あって가드킬まだなら가드브레이크る
+	IF CFLAG:ARG:603 == 0 || CFLAG:ARG:604 == 0
+		BASE:ARG:힘 += 500
+		MAXBASE:ARG:힘 += 500
+		CFLAG:ARG:ＨＰ보정 *= 100
+		BASE:ARG:ＨＰ *= 100
+		CFLAG:ARG:603 = BASE:ARG:속도
+		BASE:ARG:속도 = 500
+		MAXBASE:ARG:속도 = 500
+		CFLAG:ARG:604 = BASE:ARG:운
+		BASE:ARG:운 = 500
+		MAXBASE:ARG:운 = 500
+		CALL SYNC_STATUS,ARG
+	ENDIF
+	CFLAG:ARG:입력行動 = [[스킬:타격가드브레이크]]
+ELSEIF LOCAL == 1
+	;검격・타격に내성あるなら지모의만찬で突然の死
+	IF CFLAG:ARG:603 == 0 || CFLAG:ARG:604 == 0
+		BASE:ARG:힘 += 500
+		MAXBASE:ARG:힘 += 500
+		CFLAG:ARG:ＨＰ보정 *= 100
+		BASE:ARG:ＨＰ *= 100
+		CFLAG:ARG:603 = BASE:ARG:속도
+		BASE:ARG:속도 = 500
+		MAXBASE:ARG:속도 = 500
+		CFLAG:ARG:604 = BASE:ARG:운
+		BASE:ARG:운 = 500
+		MAXBASE:ARG:운 = 500
+		CALL SYNC_STATUS,ARG
+	ENDIF
+	CFLAG:ARG:クリティカル강화 = 8
+	CFLAG:ARG:기합フラグ = 1
+	CFLAG:ARG:입력行動 = [[스킬:지모의만찬]]
+ELSEIF LOCAL == 99
+	;寝てる奴いれば영면의유혹
+	IF CFLAG:ARG:603 > 0 && CFLAG:ARG:604 > 0
+		BASE:ARG:힘 -= 500
+		MAXBASE:ARG:힘 -= 500
+		CFLAG:ARG:ＨＰ보정 /= 100
+		BASE:ARG:ＨＰ /= 100
+		BASE:ARG:속도 = CFLAG:ARG:603
+		MAXBASE:ARG:속도 = CFLAG:ARG:603
+		CFLAG:ARG:603 = 0
+		BASE:ARG:운 = CFLAG:ARG:604
+		MAXBASE:ARG:운 = CFLAG:ARG:604
+		CFLAG:ARG:604 = 0
+		CALL SYNC_STATUS,ARG
+	ENDIF
+	CFLAG:ARG:입력行動 = [[스킬:영면의유혹]]
+ELSE
+	IF CFLAG:ARG:603 > 0 && CFLAG:ARG:604 > 0
+		BASE:ARG:힘 -= 500
+		MAXBASE:ARG:힘 -= 500
+		CFLAG:ARG:ＨＰ보정 /= 100
+		BASE:ARG:ＨＰ /= 100
+		BASE:ARG:속도 = CFLAG:ARG:603
+		MAXBASE:ARG:속도 = CFLAG:ARG:603
+		CFLAG:ARG:603 = 0
+		BASE:ARG:운 = CFLAG:ARG:604
+		MAXBASE:ARG:운 = CFLAG:ARG:604
+		CFLAG:ARG:604 = 0
+		CALL SYNC_STATUS,ARG
+	ENDIF
+	LOCAL:2 = 0
+	FOR LOCAL:1,7,17
+		LOCALS = 포지션{LOCAL:1}
+		SIF FLAG:LOCALS == -1
+			CONTINUE
+		SIF CFLAG:(FLAG:LOCALS):ステート == GET_STATE_NUM("DYING")
+			CONTINUE
+		SIF NO:(FLAG:LOCALS) == 4199 || NO:(FLAG:LOCALS) == 4198
+			CONTINUE
+		LOCAL:2 += 1
+	NEXT
+	IF LOCAL:2 < 2
+		CFLAG:ARG:입력行動 = [[스킬:소환]]
+		CALL RANDOM_TARGET,ARG,CFLAG:ARG:입력行動
+		RETURN 0
+	ENDIF
+	;特に何もなければ랜덤행동に。
+	CALL 랜덤행동,ARG
+ENDIF
+
+SIF !(CFLAG:ARG:입력行動)
+	RETURN 0
+CALL CHECK_ACTIONABLE,ARG,CFLAG:ARG:입력行動
+IF RESULT == 1
+	CALL RANDOM_TARGET,ARG,CFLAG:ARG:입력行動
+ELSE
+	;なんかエラーあれば통상공격に
+	CFLAG:ARG:입력行動 = 0
+	CALL RANDOM_TARGET,ARG,CFLAG:ARG:입력行動
+ENDIF
+RETURN 0
+
+;=======================================================================
+;あの동료마의行動패턴
+;=======================================================================
+@SET_ACTION_41996666,ARG
+#LOCALSIZE 1
+#LOCALSSIZE 1
+LOCAL=ARG
+IF (CFLAG:LOCAL:601 % 31 ) == 30
+	;およそ３０回行動で리캄도라
+	CFLAG:LOCAL:입력行動 = [[스킬:리캄도라]]
+ELSE
+	CFLAG:LOCAL:601 += 1
+	;特に何もなければ랜덤행동。
+	CFLAG:LOCAL:입력行動 = 0
+	CALL 랜덤행동,LOCAL
+ENDIF
+SIF !(CFLAG:LOCAL:입력行動)
+	RETURN 0
+CALL CHECK_ACTIONABLE,LOCAL,CFLAG:LOCAL:입력行動
+IF RESULT == 1
+	CALL RANDOM_TARGET,LOCAL,CFLAG:LOCAL:입력行動
+ELSE
+	;なんかエラーあれば통상공격に
+	CFLAG:ARG:입력行動 = 0
+	CALL RANDOM_TARGET,ARG,CFLAG:LOCAL:입력行動
+ENDIF
+RETURN 0
+
+;========================================================
+@増援패턴_ひとしゅらの, ARG, ARG:1, ARG:2
+IF CFLAG:ARG:601 == 0
+	;추가の１番눈取り巻き픽시
+	CALL SET_ENEMY,ARG:1,[[キャラ:픽시]],50,0,1
+	;特に이름ネタはない
+	CSTR:(CHARANUM-1):사고패턴 = 41996666
+	BASE:(CHARANUM-1):힘 += 25
+	BASE:(CHARANUM-1):지혜 += 25
+	BASE:(CHARANUM-1):마력 += 25
+	BASE:(CHARANUM-1):인내력 += 25
+	BASE:(CHARANUM-1):속도 += 25
+	BASE:(CHARANUM-1):운 += 25
+	ABL:(CHARANUM-1):스킬1 = [[스킬:최면파]]
+	ABL:(CHARANUM-1):스킬2 = [[스킬:메기도라온]]
+	ABL:(CHARANUM-1):스킬3 = [[스킬:마하・지오다인]]
+	ABL:(CHARANUM-1):스킬4 = [[스킬:색즉시공]]
+	ABL:(CHARANUM-1):스킬5 = [[스킬:디아라마]]
+	ABL:(CHARANUM-1):스킬6 = [[스킬:어드바이스]]
+	ABL:(CHARANUM-1):스킬7 = 0
+	ABL:(CHARANUM-1):스킬8 = 0
+	CFLAG:(CHARANUM-1):行動횟수 = 1
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+ELSEIF CFLAG:ARG:601 == 1
+	;추가の２番눈取り巻き아라하바키
+	CALL SET_ENEMY,ARG:1,[[キャラ:아라하바키]],50,0,1
+	;お遊び
+	SIF RAND:100 == 0
+		CALLNAME:(CHARANUM-1) = 아키ハバラ
+	CSTR:(CHARANUM-1):사고패턴 = 41996666
+	BASE:(CHARANUM-1):힘 += 25
+	BASE:(CHARANUM-1):지혜 += 25
+	BASE:(CHARANUM-1):마력 += 25
+	BASE:(CHARANUM-1):인내력 += 25
+	BASE:(CHARANUM-1):속도 += 25
+	BASE:(CHARANUM-1):운 += 25
+	ABL:(CHARANUM-1):스킬1 = [[스킬:끝나는세계]]
+	ABL:(CHARANUM-1):스킬2 = [[스킬:명계의문]]
+	ABL:(CHARANUM-1):스킬3 = [[스킬:페트라아이]]
+	ABL:(CHARANUM-1):스킬4 = [[스킬:랜더마이저]]
+	ABL:(CHARANUM-1):스킬5 = [[스킬:어드바이스]]
+	ABL:(CHARANUM-1):스킬6 = 0
+	ABL:(CHARANUM-1):스킬7 = 0
+	ABL:(CHARANUM-1):스킬8 = 0
+	CFLAG:(CHARANUM-1):行動횟수 = 1
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+ELSEIF CFLAG:ARG:601 == 2
+	;추가の３番눈取り巻き티타니아
+	CALL SET_ENEMY,ARG:1,[[キャラ:티타니아]],50,0,1
+	;特に이름변경ネタはない
+	CSTR:(CHARANUM-1):사고패턴 = 41996666
+	BASE:(CHARANUM-1):힘 += 25
+	BASE:(CHARANUM-1):지혜 += 25
+	BASE:(CHARANUM-1):마력 += 25
+	BASE:(CHARANUM-1):인내력 += 25
+	BASE:(CHARANUM-1):속도 += 25
+	BASE:(CHARANUM-1):운 += 25
+	ABL:(CHARANUM-1):스킬1 = [[스킬:마하・라기다인]]
+	ABL:(CHARANUM-1):스킬2 = [[스킬:마하・부후다인]]
+	ABL:(CHARANUM-1):스킬3 = [[스킬:마하・지오다인]]
+	ABL:(CHARANUM-1):스킬4 = [[스킬:랜더마이저]]
+	ABL:(CHARANUM-1):스킬5 = [[스킬:코칭]]
+	ABL:(CHARANUM-1):스킬6 = 0
+	ABL:(CHARANUM-1):스킬7 = 0
+	ABL:(CHARANUM-1):스킬8 = 0
+	CFLAG:(CHARANUM-1):行動횟수 = 1
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+ELSEIF CFLAG:ARG:601 == 3
+	;추가の４番눈取り巻き파르바티……はcsvないので사라스바티
+	CALL SET_ENEMY,ARG:1,[[キャラ:사라스바티]],50,0,1
+	;파르바티の振りをする。稀に이름がそのまま
+	SIF RAND:100
+		CALLNAME:(CHARANUM-1) = 파르바티
+	CSTR:(CHARANUM-1):사고패턴 = 41996666
+	BASE:(CHARANUM-1):힘 += 25
+	BASE:(CHARANUM-1):지혜 += 25
+	BASE:(CHARANUM-1):마력 += 25
+	BASE:(CHARANUM-1):인내력 += 25
+	BASE:(CHARANUM-1):속도 += 25
+	BASE:(CHARANUM-1):운 += 25
+	ABL:(CHARANUM-1):스킬1 = [[스킬:최면파]]
+	ABL:(CHARANUM-1):스킬2 = [[스킬:마한마온]]
+	ABL:(CHARANUM-1):스킬3 = [[스킬:메・디아라마]]
+	ABL:(CHARANUM-1):스킬4 = [[스킬:라스타캔디]]
+	ABL:(CHARANUM-1):스킬5 = [[스킬:코칭]]
+	ABL:(CHARANUM-1):스킬6 = 0
+	ABL:(CHARANUM-1):스킬7 = 0
+	ABL:(CHARANUM-1):스킬8 = 0
+	CFLAG:(CHARANUM-1):行動횟수 = 1
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+ELSEIF CFLAG:ARG:601 == 4
+	;５番눈取り巻き쿠･훌린（または초기）
+	CALL SET_ENEMY,ARG:1,[[キャラ:쿠･훌린]],50,0,1
+	;お遊び
+	SIF RAND:100 == 0
+		CALLNAME:(CHARANUM-1) = クーフー･リン
+	CSTR:(CHARANUM-1):사고패턴 = 41996666
+	BASE:(CHARANUM-1):힘 += 25
+	BASE:(CHARANUM-1):지혜 += 25
+	BASE:(CHARANUM-1):마력 += 25
+	BASE:(CHARANUM-1):인내력 += 25
+	BASE:(CHARANUM-1):속도 += 25
+	BASE:(CHARANUM-1):운 += 25
+	ABL:(CHARANUM-1):스킬1 = [[스킬:아카샤아츠]]
+	ABL:(CHARANUM-1):스킬2 = [[스킬:앵화섬란]]
+	ABL:(CHARANUM-1):스킬3 = [[스킬:악셀클로]]
+	ABL:(CHARANUM-1):스킬4 = [[스킬:머리깨기]]
+	ABL:(CHARANUM-1):스킬5 = [[스킬:묵시록]]
+	ABL:(CHARANUM-1):스킬6 = [[스킬:도발]]
+	ABL:(CHARANUM-1):스킬7 = [[스킬:어드바이스]]
+	ABL:(CHARANUM-1):스킬8 = 0
+	CFLAG:(CHARANUM-1):行動횟수 = 1
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+ELSEIF CFLAG:ARG:601 == 5
+	;６番눈取り巻き기리메카라（または초기）
+	CALL SET_ENEMY,ARG:1,[[キャラ:기리메카라]],50,0,1
+	;お遊び
+	SIF RAND:100 == 0
+		CALLNAME:(CHARANUM-1) = ギリメカテ
+	CSTR:(CHARANUM-1):사고패턴 = 41996666
+	BASE:(CHARANUM-1):힘 += 25
+	BASE:(CHARANUM-1):지혜 += 25
+	BASE:(CHARANUM-1):마력 += 25
+	BASE:(CHARANUM-1):인내력 += 25
+	BASE:(CHARANUM-1):속도 += 25
+	BASE:(CHARANUM-1):운 += 25
+	ABL:(CHARANUM-1):스킬1 = [[스킬:아카샤아츠]]
+	ABL:(CHARANUM-1):스킬2 = [[스킬:아기다인]]
+	ABL:(CHARANUM-1):스킬3 = [[스킬:마하무도온]]
+	ABL:(CHARANUM-1):스킬4 = [[스킬:랜더마이저]]
+	ABL:(CHARANUM-1):스킬5 = [[스킬:어드바이스]]
+	ABL:(CHARANUM-1):스킬6 = 0
+	ABL:(CHARANUM-1):스킬7 = 0
+	ABL:(CHARANUM-1):스킬8 = 0
+	CFLAG:(CHARANUM-1):行動횟수 = 1
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+ENDIF
+
+CFLAG:ARG:601 += 1
+SIF CFLAG:ARG:601 >= 6
+	CFLAG:ARG:601 = 0
+RETURN 1
+
+;=======================================================================
+;ひとしゅら패턴
+;=======================================================================
+@SET_ACTION_41982017,ARG
+#LOCALSIZE 3
+#LOCALSSIZE 1
+LOCAL=0
+LOCAL:2=0
+FOR LOCAL:1,1,7
+	LOCALS = 포지션{LOCAL:1}
+	SIF FLAG:LOCALS == -1
+		CONTINUE
+	SIF CFLAG:(FLAG:LOCALS):ステート == GET_STATE_NUM("DYING")
+		CONTINUE
+	FOR LOCAL:2,1,7
+		IF CFLAG:(FLAG:LOCALS):물리반사フラグ || MAXBASE:(FLAG:LOCALS):검격 == 999 || MAXBASE:(FLAG:LOCALS):검격 <= 0 || MAXBASE:(FLAG:LOCALS):타격 == 999 || MAXBASE:(FLAG:LOCALS):타격 <= 0
+			IF CFLAG:(FLAG:LOCALS):타격가드킬 > 0
+				LOCAL = 1
+			ELSE
+				LOCAL = 101
+			ENDIF
+			BREAK
+		ELSEIF CFLAG:(FLAG:LOCALS):ステート == GET_STATE_NUM("SLEEP")
+			LOCAL = 99
+			SIF BASE:(FLAG:LOCALS):DYING > 10
+				LOCAL = 1
+			BREAK
+		ENDIF
+	NEXT
+NEXT
+IF (CFLAG:ARG:602 == 0) && (((BASE:ARG:ＨＰ)*100)/(MAXBASE:ARG:ＨＰ) < 51)
+	;HP반감で一度메・디아라한
+	IF CFLAG:ARG:603 > 0 && CFLAG:ARG:604 > 0
+		BASE:ARG:힘 -= 500
+		MAXBASE:ARG:힘 -= 500
+		CFLAG:ARG:ＨＰ보정 /= 100
+		BASE:ARG:ＨＰ /= 100
+		BASE:ARG:속도 = CFLAG:ARG:603
+		MAXBASE:ARG:속도 = CFLAG:ARG:603
+		CFLAG:ARG:603 = 0
+		BASE:ARG:운 = CFLAG:ARG:604
+		MAXBASE:ARG:운 = CFLAG:ARG:604
+		CFLAG:ARG:604 = 0
+		CALL SYNC_STATUS,ARG
+	ENDIF
+	CFLAG:ARG:입력行動 = [[스킬:메・디아라한]]
+	CFLAG:ARG:602 = 1
+ELSEIF LOCAL == 101
+	;검격・타격に내성あって가드킬まだなら가드브레이크る
+	IF CFLAG:ARG:603 == 0 || CFLAG:ARG:604 == 0
+		BASE:ARG:힘 += 500
+		MAXBASE:ARG:힘 += 500
+		CFLAG:ARG:ＨＰ보정 *= 100
+		BASE:ARG:ＨＰ *= 100
+		CFLAG:ARG:603 = BASE:ARG:속도
+		BASE:ARG:속도 = 500
+		MAXBASE:ARG:속도 = 500
+		CFLAG:ARG:604 = BASE:ARG:운
+		BASE:ARG:운 = 500
+		MAXBASE:ARG:운 = 500
+		CALL SYNC_STATUS,ARG
+	ENDIF
+	CFLAG:ARG:입력行動 = [[스킬:타격가드브레이크]]
+ELSEIF LOCAL == 1
+	;검격・타격に내성あるなら지모의만찬で突然の死
+	IF CFLAG:ARG:603 == 0 || CFLAG:ARG:604 == 0
+		BASE:ARG:힘 += 500
+		MAXBASE:ARG:힘 += 500
+		CFLAG:ARG:ＨＰ보정 *= 100
+		BASE:ARG:ＨＰ *= 100
+		CFLAG:ARG:603 = BASE:ARG:속도
+		BASE:ARG:속도 = 500
+		MAXBASE:ARG:속도 = 500
+		CFLAG:ARG:604 = BASE:ARG:운
+		BASE:ARG:운 = 500
+		MAXBASE:ARG:운 = 500
+		CALL SYNC_STATUS,ARG
+	ENDIF
+	CFLAG:ARG:クリティカル강화 = 8
+	CFLAG:ARG:기합フラグ = 1
+	CFLAG:ARG:입력行動 = [[스킬:지모의만찬]]
+ELSEIF LOCAL == 99
+	;寝てる奴いれば영면의유혹
+	IF CFLAG:ARG:603 > 0 && CFLAG:ARG:604 > 0
+		BASE:ARG:힘 -= 500
+		MAXBASE:ARG:힘 -= 500
+		CFLAG:ARG:ＨＰ보정 /= 100
+		BASE:ARG:ＨＰ /= 100
+		BASE:ARG:속도 = CFLAG:ARG:603
+		MAXBASE:ARG:속도 = CFLAG:ARG:603
+		CFLAG:ARG:603 = 0
+		BASE:ARG:운 = CFLAG:ARG:604
+		MAXBASE:ARG:운 = CFLAG:ARG:604
+		CFLAG:ARG:604 = 0
+		CALL SYNC_STATUS,ARG
+	ENDIF
+	CFLAG:ARG:입력行動 = [[스킬:영면의유혹]]
+ELSE
+	IF CFLAG:ARG:603 > 0 && CFLAG:ARG:604 > 0
+		BASE:ARG:힘 -= 500
+		MAXBASE:ARG:힘 -= 500
+		CFLAG:ARG:ＨＰ보정 /= 100
+		BASE:ARG:ＨＰ /= 100
+		BASE:ARG:속도 = CFLAG:ARG:603
+		MAXBASE:ARG:속도 = CFLAG:ARG:603
+		CFLAG:ARG:603 = 0
+		BASE:ARG:운 = CFLAG:ARG:604
+		MAXBASE:ARG:운 = CFLAG:ARG:604
+		CFLAG:ARG:604 = 0
+		CALL SYNC_STATUS,ARG
+	ENDIF
+	;特に何もなければ랜덤행동に。
+	CALL 랜덤행동,ARG
+ENDIF
+
+SIF !(CFLAG:ARG:입력行動)
+	RETURN 0
+CALL CHECK_ACTIONABLE,ARG,CFLAG:ARG:입력行動
+IF RESULT == 1
+	CALL RANDOM_TARGET,ARG,CFLAG:ARG:입력行動
+ELSE
+	;なんかエラーあれば통상공격に
+	CFLAG:ARG:입력行動 = 0
+	CALL RANDOM_TARGET,ARG,CFLAG:ARG:입력行動
+ENDIF
+RETURN 0
+

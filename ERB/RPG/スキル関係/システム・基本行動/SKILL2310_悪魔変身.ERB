@@ -1,0 +1,153 @@
+﻿;ＣＨＡＮＧＥ
+;システム用스킬です
+
+;스킬名
+@SKILL_NAME_2310,ARG
+IF ARG == -1 || CFLAG:ARG:악마변신
+	RESULTS = 변신해제
+ELSE
+	RESULTS = 악마변신
+ENDIF
+
+;　명중
+@SKILL_HITRATE_2310, ARG
+RETURN 0
+
+;　위력
+@SKILL_POWER_2310, ARG
+RETURN 0
+
+;　최저공격횟수
+@SKILL_MINATTACKNUMBER_2310,ARG
+RETURN 0
+
+;　최대공격횟수
+@SKILL_MAXATTACKNUMBER_2310,ARG
+RETURN 0
+
+;　ＨＰ2を支払うかＭＰ3を支払うか
+@SKILL_COSTTYPE_2310, ARG
+RETURN 1
+;소비なし＝1
+
+;　コストの量
+@SKILL_COST_2310,ARG
+RETURN 0
+
+;　相性
+@SKILL_TYPE_2310,ARG
+RETURN 0
+
+;　1EXTRAか2MAGICか
+@SKILL_DECIDE_TYPE_2310, ARG
+RETURN 0
+;どちらでもない
+
+;　1물리데미지で計算するか2마법데미지で計算するか
+@SKILL_DAMAGETYPE_2310, ARG
+RETURN 1
+
+
+;　대상が1적か2아군か3場전체か4特殊か
+@SKILL_TARGET_2310
+RETURN 4
+
+;　사거리
+@SKILL_RANGE_2310,ARG
+RETURN 1
+
+;　범위　1１체　2１열　3전체　4　적아군전체
+@SKILL_SPHERE_2310,ARG
+RETURN 1
+
+;　 効果の타입　1공격、2회복、3상태변화、4特殊、5상태회복
+@SKILL_EFECT_2310
+RETURN 4
+
+;계승타입
+@SKILL_SUCCESSION_TYPE_2310
+RETURN 0
+;継承
+
+;속도보정
+@SKILL_SPEED_2310, ARG = -1
+RETURN 10
+
+;　구상の표시とその타입
+@SKILL_MESSAGE_2310,ARG
+
+;전투時以外に사용できるか
+@SKILL_ACTIONABLE_FIELD_2310
+RETURN 1
+
+;스킬변화？用랭크
+@SKILL_RANK_2310
+RETURN 0
+;변화
+
+;====================================================
+;스킬及び行動の実行
+;====================================================
+@ACTION_2310,ARG,ARG:1 = 0
+#DIM 仲魔
+#DIM 변신前ＨＰ
+#DIM 변신前ＭＰ
+仲魔 = FINDCHARA_ID(CFLAG:ARG:링크악마)
+
+SIF ARG:1 == 1
+	PRINTFORMW %AUTO_SPLIT("악마로 모습을 바꾸었다！_인간으로 모습을 바꾸었다！","_",CFLAG:ARG:악마변신)%
+
+CFLAG:ARG:악마변신 = !CFLAG:ARG:악마변신
+SIF 仲魔 > 0 && TALENT:ARG:데빌시프터
+	CFLAG:仲魔:被변신フラグ = CFLAG:ARG:악마변신
+
+;변신先악마がパーティに居るなら外す
+SIF CFLAG:ARG:악마변신 && CFLAG:ARG:링크악마 > 0 && 仲魔 > 0 && CPOS(仲魔) > 0
+	CALL REMOVE_POSITION, CPOS(仲魔)
+
+FOR LOCAL,1,FLAG:이능자스킬数 + 1
+	SELECTCASE 1
+		;변신해제
+		CASE CFLAG:ARG:악마변신 == 0
+			ABL:ARG:@"스킬{LOCAL}" = ABL:ARG:@"인간시스킬{LOCAL}"
+		;仲魔に변신
+		CASE MIN(CFLAG:ARG:링크악마,仲魔) > 0
+			ABL:ARG:@"인간시스킬{LOCAL}" = ABL:ARG:@"스킬{LOCAL}"
+			ABL:ARG:@"스킬{LOCAL}"       = ABL:仲魔:@"스킬{LOCAL}"
+		;초기변신악마に변신
+		CASEELSE
+			ABL:ARG:@"인간시스킬{LOCAL}" = ABL:ARG:@"스킬{LOCAL}"
+			ABL:ARG:@"스킬{LOCAL}"       = ABL:ARG:@"초기변신악마스킬{LOCAL}"
+	ENDSELECT
+NEXT
+
+변신前ＨＰ = MAXBASE:ARG:ＨＰ
+변신前ＭＰ = MAXBASE:ARG:ＭＰ
+CALL SYNC_STATUS,ARG
+BASE:ARG:ＨＰ = MAX(1 , BASE:ARG:ＨＰ * MAXBASE:ARG:ＨＰ / 변신前ＨＰ)
+BASE:ARG:ＭＰ = MAX(0 , BASE:ARG:ＭＰ * MAXBASE:ARG:ＭＰ / 변신前ＭＰ)
+
+
+
+;====================================================
+;実行内容ここまで
+;====================================================
+
+;　 설명文の표시
+@SKILL_EXPLAIN_2310
+;SIF TALENT:ARG:데빌시프터
+;	PRINT 링크하고 있는
+	PRINTL 악마로 변신한다。
+;사용조건
+@SKILL_SPECIAL_ACTIONABLE_2310,ARG
+IF FINDCHARA_ID(CFLAG:ARG:링크악마) > 0
+	ARG:1 = FINDCHARA_ID(CFLAG:ARG:링크악마)
+	;소환予定のキャラは無理
+	SIF CFLAG:(ARG:1):被소환フラグ
+		RETURN 0
+	SIF CFLAG:(ARG:1):この場に居ないフラグ
+		RETURN 0
+ENDIF
+RETURN 1
+;とくにない
+

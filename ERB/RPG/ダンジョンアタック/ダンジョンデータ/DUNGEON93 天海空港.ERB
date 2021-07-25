@@ -1,0 +1,812 @@
+﻿;ライセンスフリー
+;=======================================================================
+;아마미공항
+;던전ナンバー93　ＭＡＰ0~3
+;フラグ
+;던전フラグ:(FLAG:現던전):1 （1～3）이벤트・（4・5）クリアフラグ
+;던전フラグ:(FLAG:現던전):2~4 扉フラグ
+;던전フラグ:(FLAG:現던전):5 メッセンジャーフラグ
+;던전フラグ:(FLAG:現던전):6 레이전투・組織譲渡フラグ
+;던전フラグ:(FLAG:現던전):7 ウィルペ전투フラグ
+;던전フラグ:(FLAG:現던전):8 유다幽霊フラグ
+;=======================================================================
+
+;=======================================================================
+;攻略조건
+;=======================================================================
+@PREREQUISITE_DUNGEON_93
+IF 의뢰フラグ:34:0 == 1
+	RETURN 1
+ENDIF
+;=======================================================================
+;던전名
+;=======================================================================
+@GET_DUNGEON_NAME_93
+RESULTS = 아마미공항
+@FLOORNAME_93
+SELECTCASE FLAG:現M
+	CASE 0
+		PRINTL ・１Ｆ
+	CASE 1
+		PRINTL ・２Ｆ
+	CASE 2
+		PRINTL ・Ｂ１Ｆ
+	CASE 3
+		PRINTL ・３Ｆ
+ENDSELECT
+
+
+;=======================================================================
+;スタート地点입력
+;=======================================================================
+@START_DUNGEON_93, ARG
+FLAG:現M = 0
+FLAG:現X =18
+FLAG:現Y =19
+;CALL AUTOMAP
+RETURN 0
+;=======================================================================
+;スタート時이벤트
+;=======================================================================
+@EVENT_DUNGEON_START_93
+IF 던전フラグ:(FLAG:現던전):1 == 0
+	CALL SHOW_PICTURE, "D"
+	CALL MESSAGE_WINDOW_D, "", "＞목표인 악마는 ３층에 있는 것 같다。"
+	CALL MESSAGE_WINDOW_D, "", "＞일단、먼저 파견된 팬텀 서머너、유다와 합류하기로 했다。"
+FLAG:탈출스킬禁止 = 1
+ENDIF
+;=======================================================================
+;指定したマスに進入可能か
+;=======================================================================
+@CAN_ENTER_93, ARG, ARG:1
+RESULT = 1
+SELECTCASE DA:ARG:(ARG:1)
+	CASE 12
+		;上にしか進めない＝上からは無理
+		;上である時＝現在のYがARG:1より小さいとき
+		IF ARG:1 > FLAG:現Y
+			CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, ARG, ARG:1)
+			RETURN 0
+		ENDIF
+	CASE 22
+		IF ARG:1 < FLAG:現Y
+			CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, ARG, ARG:1)
+			RETURN 0
+		ENDIF
+	CASE 32
+		IF 던전フラグ:(FLAG:現던전):2 == 0
+		CALL MESSAGE_WINDOW_D, "시스템", "이 문은 잠겨있습니다。"
+				던전フラグ:(FLAG:現던전):1 = 1
+		ENDIF
+	CASE 42
+		IF 던전フラグ:(FLAG:現던전):1 == 0
+		CALL MESSAGE_WINDOW_D, "시스템", "이 문은 잠겨있습니다。"
+				던전フラグ:(FLAG:現던전):1 = 1
+		ELSEIF 던전フラグ:(FLAG:現던전):3 == 0
+		CALL MESSAGE_WINDOW_D, "시스템", "이 문은 잠겨있습니다。"
+		ENDIF
+	CASE 52
+		IF 던전フラグ:(FLAG:現던전):4 == 0
+			CALL MESSAGE_WINDOW_D, "시스템", "이 문은 잠겨있습니다。"
+		ELSEIF 던전フラグ:(FLAG:現던전):4 == 1
+			IF 던전フラグ:(FLAG:現던전):7 == 0 && 던전フラグ:(FLAG:現던전):1 == 3
+				CALL MESSAGE_WINDOW_D, "", "＞문 앞에 서자、건너편에서 강한 열을 느꼈다"
+				CALL MESSAGE_WINDOW_D, "", "＞순간적으로 웅크린 다음 순간、/강한 충격이 당신을 덮쳐、당신은 정신을 잃었다……"
+				CALL MESSAGE_WINDOW_D, "", "………"
+				CALL MESSAGE_WINDOW_D, "", "……"
+				CALL MESSAGE_WINDOW_D, "", "…"
+				CALL MESSAGE_WINDOW_D, "", "＞아무래도 공항을 점거한 악마가 관리실을 폭발시킨 것 같다"
+				CALL MESSAGE_WINDOW_D, "", "＞관리실에 있던 유다는 구할 수 없었다"
+			IF 던전フラグ:(FLAG:現던전):6 == 2
+				CALL MESSAGE_WINDOW_D, "","＞쿠즈노하의 레이를 조직에 넘기고 공항을 점거하고 있던 악마를 배제하여、/계좌에 ￥65000이 지급되고、명송 160을 얻었다"
+				MONEY += 65000
+				FLAG:名声 += 160
+			ELSEIF 던전フラグ:(FLAG:現던전):6 == 1
+				CALL MESSAGE_WINDOW_D, "","＞쿠즈노하의 레이를 쓰러뜨리고 공항을 점거하고 있던 악마를 배제하여、/계좌에 ￥35000이 지급되고、명성 110을 얻었다"
+				MONEY += 35000
+				FLAG:名声 += 110
+			ELSE
+				CALL MESSAGE_WINDOW_D, "","＞공항을 점거하고 있던 악마를 배제하여、/계좌에 ￥15000이 지급되고、명성 60을 얻었다"
+				MONEY += 15000
+				FLAG:名声 += 60
+			ENDIF
+			;クリアフラグ
+				던전フラグ:(FLAG:現던전):1 = 4
+				CALL CLEAR_TILE
+				FLAG:탈출스킬禁止 = 0
+				FLAG:탈출 = 1
+			RETURN 1
+		ENDIF
+	ENDIF
+	CASEELSE
+		CALL CAN_ENTER,ARG,ARG:1
+ENDSELECT
+RETURN RESULT
+
+
+;=======================================================================
+;フ로어데이터
+;=======================================================================
+@MAKE_FLOOR_93
+SELECTCASE FLAG:現M
+	CASE 0
+		FLAG:최대X = 37
+		FLAG:최대Y = 21 
+							;	  0123456789012345678901234567890123456789
+   		CALL MAKE_FLOOR_LINE, 0, "                                     "
+   		CALL MAKE_FLOOR_LINE, 1, "    m1111111111 1 a 1 1111111111m    "
+   		CALL MAKE_FLOOR_LINE, 2, "    1      1 11 1 $ 1 11 1      1    "
+   		CALL MAKE_FLOOR_LINE, 3, "   11    111 A( 11111 (D 111    11   "
+   		CALL MAKE_FLOOR_LINE, 4, "   #   121 1 ][ 11111 [] 1 121   #   "
+   		CALL MAKE_FLOOR_LINE, 5, " 11111   1 1 ][   m   [] 1 1   11111 "
+   		CALL MAKE_FLOOR_LINE, 6, " 1   1 121 1 ][ 11111 [] 1 121 1   1 "
+   		CALL MAKE_FLOOR_LINE, 7, " 1 b21   1 1 ][ 1   1 [] 1 1   12c 1 "
+   		CALL MAKE_FLOOR_LINE, 8, " 1   1 321 1 )B 1 X 1 C) 1 123 1   1 "
+   		CALL MAKE_FLOOR_LINE, 9, " 11111   111 11 1 2 1 11 111   11111 "
+   		CALL MAKE_FLOOR_LINE,10, "             11111111111             "
+   		CALL MAKE_FLOOR_LINE,11, "            1111111111111            "
+   		CALL MAKE_FLOOR_LINE,12, "            1111111111111            "
+   		CALL MAKE_FLOOR_LINE,13, "            1111111111111            "
+   		CALL MAKE_FLOOR_LINE,14, "             11 11 11 11             "
+   		CALL MAKE_FLOOR_LINE,15, "            1111111111111            "
+   		CALL MAKE_FLOOR_LINE,16, "               1111111               "
+   		CALL MAKE_FLOOR_LINE,17, "               1111111               "
+   		CALL MAKE_FLOOR_LINE,18, "                11111                "
+   		CALL MAKE_FLOOR_LINE,19, "                11111                "
+   		CALL MAKE_FLOOR_LINE,20, "                  8                  "
+
+	CASE 1
+		;2F
+		FLAG:최대X = 29 
+		FLAG:최대Y = 14 
+		;						 0123456789012345678901234567890123456789
+		CALL MAKE_FLOOR_LINE, 0,"                             "
+		CALL MAKE_FLOOR_LINE, 1," 11111      1 a 1      11111 "
+		CALL MAKE_FLOOR_LINE, 2," 1 2 1      1 $ 1      1 2 1 "
+		CALL MAKE_FLOOR_LINE, 3," 1 y 1  111 11111 111  1 y 1 "
+		CALL MAKE_FLOOR_LINE, 4," 1   1  111 11111 111  1   1 "
+		CALL MAKE_FLOOR_LINE, 5," 111111 111   2   111 111111 "
+		CALL MAKE_FLOOR_LINE, 6,"      1 1111111111111 1      "
+		CALL MAKE_FLOOR_LINE, 7," 111  2 1 1 2 1 2 1 1 2  111 "
+		CALL MAKE_FLOOR_LINE, 8,"   1 1111 1 T 1 1 1 1111 1   "
+		CALL MAKE_FLOOR_LINE, 9," b21 1113 1       1 3111 12c "
+		CALL MAKE_FLOOR_LINE,10,"   1 2    111111111    2 1   "
+		CALL MAKE_FLOOR_LINE,11,"   111        2        111   "
+		CALL MAKE_FLOOR_LINE,12,"              Y              "
+		CALL MAKE_FLOOR_LINE,13,"                             "
+
+
+	CASE 2
+		;B1F
+		FLAG:최대X = 33
+		FLAG:최대Y = 13
+							;	  0123456789012345678901234567890123456789
+   		CALL MAKE_FLOOR_LINE, 0, "                                 "
+   		CALL MAKE_FLOOR_LINE, 1, "     111 11111   a   11111 111   "
+   		CALL MAKE_FLOOR_LINE, 2, "     2 1 1   1   $   1   1 1 2   "
+   		CALL MAKE_FLOOR_LINE, 3, "   3 1 1 1 1 111111111 1 1 1 1 3 "
+   		CALL MAKE_FLOOR_LINE, 4, "   1   1 1 2 111111111 2 1 1   1 "
+   		CALL MAKE_FLOOR_LINE, 5, "   11111111111111 11111111111111 "
+   		CALL MAKE_FLOOR_LINE, 6, "              11 Z 11            "
+   		CALL MAKE_FLOOR_LINE, 7, "   11111      11 2 11      11111 "
+   		CALL MAKE_FLOOR_LINE, 8, "   1   1  111111111111111  1   1 "
+   		CALL MAKE_FLOOR_LINE, 9, "   1 b211111  1111111  111112c 1 "
+   		CALL MAKE_FLOOR_LINE,10, "   1   1  2             2  1   1 "
+   		CALL MAKE_FLOOR_LINE,11, "   11111  s             i  11111 "
+   		CALL MAKE_FLOOR_LINE,12, "                                 "
+
+
+	CASE 3
+		;3F
+		FLAG:최대X = 9
+		FLAG:최대Y = 12
+							;	  0123456789
+   		CALL MAKE_FLOOR_LINE, 0, "         "
+   		CALL MAKE_FLOOR_LINE, 1, "    a    "
+   		CALL MAKE_FLOOR_LINE, 2, "  1 2 1  "
+   		CALL MAKE_FLOOR_LINE, 3, " 1111111 "
+   		CALL MAKE_FLOOR_LINE, 4, "    %    "
+   		CALL MAKE_FLOOR_LINE, 5, "   111   "
+   		CALL MAKE_FLOOR_LINE, 6, " 1111111 "
+   		CALL MAKE_FLOOR_LINE, 7, "  11111  "
+   		CALL MAKE_FLOOR_LINE, 8, "    2    "
+   		CALL MAKE_FLOOR_LINE, 9, "   1U1   "
+   		CALL MAKE_FLOOR_LINE,10, "   111   "
+   		CALL MAKE_FLOOR_LINE,11, "         "
+   		
+   		
+	CASE 10
+	CASEELSE
+ENDSELECT
+
+;=======================================================================
+;特殊タイル표시
+;=======================================================================
+@TILE_MARK_COMMON_93_1, ARG , ARG:1 , ARG:2
+SELECTCASE ARG / 10
+	CASE 1
+		RESULTS = ↑
+	CASE 2
+		RESULTS = ↓
+	CASEELSE
+		RETURN 1
+ENDSELECT
+
+@TILE_MARK_COMMON_93_2, ARG , ARG:1 , ARG:2
+SELECTCASE ARG / 10
+	CASE 1
+		RESULTS = ↑
+	CASE 2
+		RESULTS = ↓
+	CASEELSE
+		RETURN 1
+ENDSELECT
+
+@TILE_MARK_COMMON_93_4, ARG , ARG:1 , ARG:2
+SELECTCASE ARG / 10
+	CASE  2 , 3 
+		RESULTS = ↑
+	CASE  1 , 4
+		RESULTS = ↓
+	CASE  5
+	IF 던전フラグ:(FLAG:現던전):1 == 1 || 던전フラグ:(FLAG:現던전):1 == 2
+		SETCOLOR 0x00ff00
+		RESULTS = ｍ
+		ELSE
+		RESULTS = □
+		ENDIF
+	CASE  6
+	IF 던전フラグ:(FLAG:現던전):1 == 4
+		IF 던전フラグ:(FLAG:現던전):8 == 0
+		RESULTS = ！
+		ENDIF
+	ELSE
+	RESULTS = □
+	ENDIF
+	CASEELSE
+		RETURN 1
+ENDSELECT
+
+@TILE_MARK_COMMON_93_9, ARG , ARG:1 , ARG:2
+SELECTCASE ARG / 10
+	CASE 2 , 3 , 4
+		RESULTS = Ｅ
+	CASEELSE
+		RETURN 1
+ENDSELECT
+
+;=======================================================================
+;タイル定義
+;=======================================================================
+@DEFINE_TILES_93, ARGS, ARG, ARG:1
+SELECTCASE ARGS
+	CASE "["
+		RETURN 11
+	CASE "]"
+		RETURN 21
+	CASE "("
+		RETURN 12
+	CASE ")"
+		RETURN 22
+	CASE "#"
+		RETURN 32
+	CASE "$"
+		RETURN 42
+	CASE "%"
+		RETURN 52
+	CASE "A"
+		RETURN 14
+	CASE "B"
+		RETURN 24
+	CASE "C"
+		RETURN 34
+	CASE "D"
+		RETURN 44
+	CASE "m"
+		RETURN 54
+	CASE "y"
+		RETURN 64
+	CASE "i"
+		RETURN 74
+	CASE "s"
+		RETURN 84
+	CASE "X"
+		RETURN 6004
+	CASE "Y"
+		RETURN 6104
+	CASE "Z"
+		RETURN 6204
+	CASE "U"
+		RETURN 6304
+	CASE "a"
+		RETURN 29
+	CASE "b"
+		RETURN 39
+	CASE "c"
+		RETURN 49
+ENDSELECT
+
+
+;=======================================================================
+;タイル調整
+;=======================================================================
+@MAKE_FLOOR_LINE_COMMON_93, ARG, ARG:1, ARG:2
+#LOCALSIZE 30
+;LOCAL:3 宝箱 던전フラグ:70~99
+;LOCAL:4 이벤트
+;(0/0)でLOCALを소거
+SIF ARG:1 == 0 && ARG:2 == 0
+	VARSET LOCAL
+SELECTCASE ARG
+	CASE 3
+		IF GETBIT(던전フラグ:(FLAG:現던전):(FLAG:現M+70), LOCAL:3)
+			DA:(ARG:1):(ARG:2) = 1
+		ELSE
+			DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:3 * 10 + 3
+		ENDIF
+		LOCAL:3++
+	CASE 4
+		DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:4 * 10 + 4
+		LOCAL:4++
+	CASE 5
+		;DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:5 * 10 + 5
+		;LOCAL:5++
+	CASE 6
+		DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:6 * 10 + 6
+		LOCAL:6++
+	CASE 7
+		DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:7 * 10 + 7
+		LOCAL:7++
+	CASE 8
+		DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:8 * 10 + 8
+		LOCAL:8++
+	CASE 9
+		DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:9 * 10 + 9
+		LOCAL:9++
+
+ENDSELECT
+;=======================================================================
+;[5]調べる　実行時の이벤트
+;=======================================================================
+@EVENT_CHECK_DUNGEON_93
+CALL EVENT_DUNGEON_93
+RETURN RESULT
+
+;=======================================================================
+;タイル進入時の이벤트
+;=======================================================================
+@EVENT_ENTER_DUNGEON_93, ARG
+;ARG = 進入時の向き　0の場合ワープなど
+CALL EVENT_DUNGEON_93, ARG , 0
+RETURN RESULT
+
+@EVENT_DUNGEON_93, ARG, ARG:1
+#DIM 交渉가능キャラ , 7
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y) % 10
+;==========
+;出입の処理
+;==========
+	CASE 8
+		IF 던전フラグ:(FLAG:現던전):1 == 4 || 던전フラグ:(FLAG:現던전):1 == 5
+		CALL DUNGEON_EXIT
+		ELSE
+		CALL MESSAGE_WINDOW_D, "", "＞임무중에 귀환할 수 없습니다"
+		FLAG:現Y = 19
+		ENDIF
+	RETURN 1
+;==========
+;扉の処理
+;==========
+	CASE 2
+		CALL DUNGEON_DOOR,ARG
+		RETURN 1
+		
+;========
+;宝の処理
+;========
+	CASE 3
+		CALL TREASURE_93
+		RETURN 1
+;==========
+;이벤트
+;==========
+	CASE 4
+		SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+	CASE  2 , 3 
+				CALL SHOW_FORCEMOVE, "UUUUUU", "D", , ,  ""
+	CASE  1 , 4
+				CALL SHOW_FORCEMOVE, "DDDDDD", "D", , ,  ""
+	CASE 5
+	IF 던전フラグ:(FLAG:現던전):1 == 1 || 던전フラグ:(FLAG:現던전):1 == 2
+		IF 던전フラグ:(FLAG:現던전):5 == 0
+				CALL MESSAGE_WINDOW_D, "서머너", "죄송합니다！/관리실의 악마에게 시스템을 빼앗기고 말았습니다！"
+				CALL MESSAGE_WINDOW_D, "서머너", "중앙의 수속 카운터에서 잠금을 풀어주십시오"
+				CALL MESSAGE_WINDOW_D, "서머너", "정면의 엘리베이터는 ２층에서、３층의 잠금은 지하에서 풀고、그 순서로 풀어 나가주십시오"
+		던전フラグ:(FLAG:現던전):5 = 1
+		ELSEIF 던전フラグ:(FLAG:現던전):5 == 1
+				CALL MESSAGE_WINDOW_D, "서머너", "중앙의 수속 카운터에서 잠금을 풀고 좌우의 엘리베이터로 ２층으로 향해주십시오"
+		ENDIF
+	ENDIF
+	CASE 6
+	IF 던전フラグ:(FLAG:現던전):1 == 4
+		IF 던전フラグ:(FLAG:現던전):8 == 0
+				CALL MESSAGE_WINDOW_D, "남자의 목소리", "…너는… 그 때의…"
+				CALL MESSAGE_WINDOW_D, "남자의 목소리", "……내가 사용하고 있던 물건이/지하의、폐기물 처리장에…/버려져 있을 것이다…"
+				CALL MESSAGE_WINDOW_D, "남자의 목소리", "부디、유용하게 써주게…/그리고、무엇이 올바른 것인지、/가르쳐줘……"
+		던전フラグ:(FLAG:現던전):8 = 1
+		ENDIF
+	ENDIF
+	CASE 7
+	IF 던전フラグ:(FLAG:現던전):1 == 4 && 던전フラグ:(FLAG:現던전):8 == 1
+				CALL MESSAGE_WINDOW_D, "", "＞폐기물 처리장"
+				CALL MESSAGE_WINDOW_D, "남자의 목소리", "잘 왔다…"
+				CALL MESSAGE_WINDOW_D, "남자의 목소리", "이곳에 조용히…잠들어 있는…………한 때 내가……쓰던……/…ＣＯＭＰ……"
+				CALL MESSAGE_WINDOW_D, "남자의 목소리", "……이제야…죽은 자로서…연주하는…것…/소원이…안에…중마가 있으면/…깨워주게…"
+				CALL MESSAGE_WINDOW_D, "남자의 목소리", "여기……의 안쪽이다……"
+				CALL MESSAGE_WINDOW_D, "", "＞쓰레기 속에서 색소폰 형태를 한 ＣＯＭＰ의 잔해를 발견했다"
+				CALL MESSAGE_WINDOW_D, "", "＞ＣＯＭＰ에 들어있던「파워・메모리」에서 악마를 손에 넣었다"
+				CALL ADD_NEW_COMPANION,[[キャラ:인큐버스]],500
+				CALL ADD_NEW_COMPANION,[[キャラ:밴시]],500
+				CALL ADD_NEW_COMPANION,[[キャラ:모무노후]],500
+				CALL ADD_NEW_COMPANION,[[キャラ:켈라이노]],500
+				CALL MESSAGE_WINDOW_D, "남자의 목소리", "……이것으로……이 세상에……/남기는…것은…아무것도…없다…/……이젠……사라질…뿐………"
+				CALL MESSAGE_WINDOW_D, "남자의 목소리", "……하지만……/어떻게…살아…왔는가……/그것……만…이…………"
+				CALL MESSAGE_WINDOW_D, "", "…………"
+				CALL MESSAGE_WINDOW_D, "", "＞목소리의 기척이 사라졌다……"
+		던전フラグ:(FLAG:現던전):8 = 2
+		ELSE
+				CALL MESSAGE_WINDOW_D, "", "＞폐기물 처리장"
+	ENDIF
+	CASE 8
+				CALL MESSAGE_WINDOW_D, "", "＞シャトル乗り場"
+				CALL MESSAGE_WINDOW_D, "", "셔틀은 움직이지 않는다"
+	CASE 600
+		IF 던전フラグ:(FLAG:現던전):1 == 0
+				CALL MESSAGE_WINDOW_D, "", "＞수속 카운터"
+		ELSEIF 던전フラグ:(FLAG:現던전):1 == 1
+				CALL MESSAGE_WINDOW_D, "", "＞수속 카운터"
+				CALL MESSAGE_WINDOW_D, "시스템", "………/１F 게이트의 잠금을 해제합니다"
+			던전フラグ:(FLAG:現던전):1 = 2
+			던전フラグ:(FLAG:現던전):2 = 1
+		ELSE
+				CALL MESSAGE_WINDOW_D, "", "＞수속 카운터"
+				CALL MESSAGE_WINDOW_D, "시스템", "현재 도어록이 해제되어 있습니다"
+		ENDIF
+	CASE 610
+		IF 던전フラグ:(FLAG:現던전):1 == 2
+				CALL MESSAGE_WINDOW_D, "", "＞수속 카운터"
+				CALL MESSAGE_WINDOW_D, "", "＞남자와 여자가 싸우고 있다"
+				CALL MESSAGE_WINDOW_D, "", "＞남자쪽은 먼저 와 있던 유다이다"
+				CALL MESSAGE_WINDOW_D, "", "＞하얀 양복의 여자쪽은 누군지 모른다"
+				CALL MESSAGE_WINDOW_D, "", "＞유다를 도우러 들어갑니까？"
+			CALL INPUT_YN_D
+			IF RESULT == 0
+			던전フラグ:(FLAG:現던전):6 = 1
+				CALL MESSAGE_WINDOW_D, "여자", "앗、차。/증원！？"
+				CALL MESSAGE_WINDOW_D, "", "/＞인간 레이･레이호우가 １체 나왔다！/"
+			FLAG:도주불가フラグ = 1
+			FLAG:회화불능フラグ = 1
+			FLAG:선제기습취소 = 1
+				CALL SET_ENEMY,9, [[キャラ:레이호우]], 35, 0, 1
+				CFLAG:(CHARANUM-1):ＨＰ보정 = +1000
+				CFLAG:(CHARANUM-1):ＭＰ보정 = +1000
+				CFLAG:(CHARANUM-1):行動횟수 = 2
+				BASE:(CHARANUM-1):힘 += 5
+				BASE:(CHARANUM-1):지혜 += 5
+				BASE:(CHARANUM-1):마력 += 5
+				BASE:(CHARANUM-1):인내력 += 5
+				BASE:(CHARANUM-1):속도 += 5
+				BASE:(CHARANUM-1):운 += 5
+				ABL:(CHARANUM-1):스킬1 = [[스킬:마한마온]]
+				ABL:(CHARANUM-1):스킬2 = [[스킬:불굴의투지]]
+				ABL:(CHARANUM-1):스킬3 = [[스킬:메기도]]
+				ABL:(CHARANUM-1):스킬4 = [[스킬:마하・라기온]]
+				ABL:(CHARANUM-1):스킬5 = 0
+				CALL SYNC_STATUS,(CHARANUM-1)
+				CALL HEALTH_CHARA,(CHARANUM-1)
+				CALL BATTLE_START
+			FLAG:도주불가フラグ = 0
+			FLAG:회화불능フラグ = 0
+			FLAG:선제기습취소 = 0
+			CALL MESSAGE_WINDOW_D, "레이", "내가…져버리다니…"
+			CALL MESSAGE_WINDOW_D, "", "＞인간 레이･레이호우가 쓰러졌다…"
+				CALL MESSAGE_WINDOW_D, "유다", "그대 덕분에 살았군"
+				CALL MESSAGE_WINDOW_D, "유다", "이 여자는 팬텀 소사이어티에 적대하는 조직/쿠즈노하의 여자、레이･레이호우다"
+				CALL MESSAGE_WINDOW_D, "유다", "이 여자를 쓰러뜨리게 되면、조직은 그대를 높게 평가하겠지"
+				CALL MESSAGE_WINDOW_D, "유다", "이 여자를 어떻게 할텐가？/노예로 삼는 것도、조직에 넘겨서 보수를 받는 것도 쓰러뜨린 그대에게 달려있다"
+			CALL MESSAGE_WINDOW_D, "", "＞쓰러져 있는 레이･레이호우를 데리고 돌아갑니까？"
+			CALL INPUT_YN_D
+			IF RESULT == 0
+				CALL MESSAGE_WINDOW_D, "", "＞레이･레이호우가 노예가 되었다"
+				CALL ADD_NEW_COMPANION,[[キャラ:레이호우]],200
+			ELSEIF RESULT == 1
+				CALL MESSAGE_WINDOW_D, "유다", "알았다、그녀는 조직에서 맡지"
+			던전フラグ:(FLAG:現던전):6 = 2
+			ENDIF
+			ELSEIF RESULT == 1
+				CALL MESSAGE_WINDOW_D, "", "＞갑자기 하얀 양복의 여자는 전투를 그만두고 떠났다……"
+				CALL MESSAGE_WINDOW_D, "유다", "내가 망설이고 있다는 것인가……"
+				CALL MESSAGE_WINDOW_D, "", "＞유다는 당신을 눈치챘다……"
+				CALL MESSAGE_WINDOW_D, "유다", "그대가 후속인가"
+				CALL MESSAGE_WINDOW_D, "유다", "좀 전의 여자는 팬텀 소사이어티에 적대하는 조직/쿠즈노하의 여자、레이･레이호우다/그녀는 만만치 않아。손을 쓰지 않은 것이 정답이다"
+			ENDIF
+				CALL MESSAGE_WINDOW_D, "유다", "……그 여자와의 전투에서 생각보다 데미지를 더 받고 말았다"
+				CALL MESSAGE_WINDOW_D, "유다", "먼저 가주겠나？/회복하는대로、나도 뒤를 따르지"
+			CALL INPUT_YN_D
+			IF RESULT == 0
+				CALL MESSAGE_WINDOW_D, "유다", "Ｂ１Ｆ의 수속 카운터를 조작하면 ３층 관리실의 문이 열릴 것이다/조심하게"
+			던전フラグ:(FLAG:現던전):7 = 1
+			ELSEIF RESULT == 1
+				CALL MESSAGE_WINDOW_D, "유다", "그런가……/３층 관리실의 문을 열기위해 Ｂ１Ｆ의 수속 카운터를 조작하게/관리실의 악마는 내가 상대해두지"
+				CALL MESSAGE_WINDOW_D, "유다", "Ｂ１Ｆ의 수속카운터의 수속이 끝나면 조력을 부탁하네"
+			ENDIF
+			CALL MESSAGE_WINDOW_D, "시스템", "………/정면 게이트의 잠금을 해제합니다"
+			던전フラグ:(FLAG:現던전):1 = 3
+			던전フラグ:(FLAG:現던전):3 = 1
+		ELSE
+				CALL MESSAGE_WINDOW_D, "", "＞수속 카운터"
+				CALL MESSAGE_WINDOW_D, "시스템", "현재 도어록이 해제되어 있습니다"
+		ENDIF
+	CASE 620
+		IF 던전フラグ:(FLAG:現던전):1 == 3
+				CALL MESSAGE_WINDOW_D, "", "＞수속 카운터"
+				CALL MESSAGE_WINDOW_D, "시스템", "………/３F 게이트의 잠금을 해제합니다"
+				던전フラグ:(FLAG:現던전):4 = 1
+		ELSEIF 던전フラグ:(FLAG:現던전):1 == 2
+				CALL MESSAGE_WINDOW_D, "", "＞수속 카운터"
+				CALL MESSAGE_WINDOW_D, "시스템", "우선 ２F의 잠금을 해제해 주십시오"
+		ELSE
+				CALL MESSAGE_WINDOW_D, "", "＞수속 카운터"
+				CALL MESSAGE_WINDOW_D, "시스템", "현재 도어록이 해제되어 있습니다"
+		ENDIF
+	CASE 630
+		IF 던전フラグ:(FLAG:現던전):1 == 4 || 던전フラグ:(FLAG:現던전):1 == 5
+				CALL MESSAGE_WINDOW_D, "", "＞공항관리실"
+		ELSE
+				CALL MESSAGE_WINDOW_D, "", "＞공항관리실"
+				CALL MESSAGE_WINDOW_D, "악마", "나는……/윈페……/전이…의 바다에서 태어난 자……"
+				CALL MESSAGE_WINDOW_D, "윈페", "나를 또 다시 부른 자는 누구인가……/마니……토……의 주박을 풀어……불러……낸/자는/누、누구인가……"
+				CALL MESSAGE_WINDOW_D, "", "＞전령 윈페가 나왔다！"
+			FLAG:도주불가フラグ = 1
+			FLAG:회화불능フラグ = 1
+			FLAG:선제기습취소 = 1
+				CALL SET_ENEMY,9, [[キャラ:윈페]], 30, 0, 1
+				CFLAG:(CHARANUM-1):ＨＰ보정 = +1000
+				CFLAG:(CHARANUM-1):行動횟수 = 2
+				CALL SYNC_STATUS,(CHARANUM-1)
+				CALL HEALTH_CHARA,(CHARANUM-1)
+				CALL BATTLE_START
+			FLAG:도주불가フラグ = 0
+			FLAG:회화불능フラグ = 0
+			FLAG:선제기습취소 = 0
+				CALL MESSAGE_WINDOW_D, "윈페", "으그아아아ーー………！！"
+				CALL MESSAGE_WINDOW_D, "", "/＞윈페의 모습이 사라지자、관리실의 모니터가 빛나기 시작했다……/"
+				CALL MESSAGE_WINDOW_D, "컴퓨터", "마니토…마니토…/마니토…마니토………"
+				CALL MESSAGE_WINDOW_D, "컴퓨터", "마니토마니토마니토마니토마니토마니토마니토마니토/마니토마니토마니토마니토마니토마니토마니토마니토/마니토마니토마니토마니토마니토마니토마니토마니토마니………"
+				CALL MESSAGE_WINDOW_D, "", "＞빛이 강해지고 있다……/지금이라도 폭발할 것 같다……"
+				CALL MESSAGE_WINDOW_D, "유다", "이쪽이다！/빨리 와라！"
+				CALL MESSAGE_WINDOW_D, "", "＞다음 순간、/강한 충격이 당신을 덮쳐、당신은 정신을 잃었다……"
+				CALL MESSAGE_WINDOW_D, "", "………"
+				CALL MESSAGE_WINDOW_D, "", "……"
+				CALL MESSAGE_WINDOW_D, "", "…"
+				CALL MESSAGE_WINDOW_D, "", "＞당신과 유다는 폭발에서 살아남았다"
+				CALL MESSAGE_WINDOW_D, "유다", "정말로 종이 한장차이였군/무사히 살아돌아갈 수 있어서 다행이네"
+				CALL MESSAGE_WINDOW_D, "유다", "……살아있지 못하면 아무것도 손에 넣을 수 없으니 말이지"
+				CALL MESSAGE_WINDOW_D, "유다", "수고했네/다시、어딘가에서 만나세"
+				CALL MESSAGE_WINDOW_D, "", "＞유다와 헤어지고、보수를 받았다"
+	IF 던전フラグ:(FLAG:現던전):6 == 2
+			CALL MESSAGE_WINDOW_D, "","＞쿠즈노하의 레이를 조직에 넘기고 공항을 점거한 악마를 쓰러뜨려、/계좌에 ￥80000이 지급、명성 250을 얻었다"
+			MONEY += 80000
+			FLAG:名声 += 250
+	ELSEIF 던전フラグ:(FLAG:現던전):6 == 1
+			CALL MESSAGE_WINDOW_D, "","＞쿠즈노하의 레이를 쓰러뜨리고 공항을 점거한 악마를 쓰러뜨려、/계좌에 ￥50000이 지급、명성 200을 얻었다"
+			MONEY += 50000
+			FLAG:名声 += 200
+	ELSE
+			CALL MESSAGE_WINDOW_D, "","＞공항을 점거한 악마를 쓰러뜨려、/계좌에 ￥30000이 지급、명성 150을 얻었다"
+			MONEY += 30000
+			FLAG:名声 += 150
+	ENDIF
+;クリアフラグ
+던전フラグ:(FLAG:現던전):1 = 5
+			CALL CLEAR_TILE
+			FLAG:탈출스킬禁止 = 0
+			FLAG:탈출 = 1
+			RETURN 1
+		ENDIF
+		ENDSELECT
+		RETURN 1
+	RETURN 1
+
+;========================
+;그외
+;========================
+	CASE 9
+		SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+			;エレベーター
+			CASE 2
+				CALL DUNGEON_ELEVATOR, 29
+			CASE 3
+				CALL DUNGEON_ELEVATOR, 39
+			CASE 4
+				CALL DUNGEON_ELEVATOR, 49
+		ENDSELECT
+		RETURN 1
+ENDSELECT
+RETURN 0
+;=======================================================================
+;エレベーター定義
+;=======================================================================
+@DUNGEON_ELEVATOR_93, ARG
+VARSET RESULT, -1
+VARSET RESULTS
+SELECTCASE ARG
+	CASE 29
+		RESULT:1 = 0
+		RESULT:2 = 1
+		RESULT:3 = 3
+		RESULT:4 = 2
+		RETURN -1
+	CASE 39
+		RESULT:1 = 0
+		RESULT:2 = 1
+		RESULT:3 = 2
+		RETURN -1
+	CASE 49
+		RESULT:1 = 0
+		RESULT:2 = 1
+		RESULT:3 = 2
+		RETURN -1
+ENDSELECT
+
+;=======================================================================
+;エンカウント率
+;=======================================================================
+@ENCOUNT_RATE_93
+FLAG:エンカウント率 = FLAG:未遭遇歩数*4
+SIF FLAG:未遭遇歩数 < 6
+	FLAG:エンカウント率 = 0
+;=======================================================================
+;필요레벨눈安
+;권장LV 雑물고기최저LV 雑물고기最高LV ボスLV 
+;=======================================================================
+@GET_DUNGEON_LV_93
+RETURN 25, 20, 26, 30
+;=======================================================================
+;エンカウント処理
+;=======================================================================
+@CHECK_ENCOUNT_93
+IF RAND:100 < FLAG:エンカウント率
+	CALL ENEMY_TABLE
+	RETURN 1
+ELSE
+	FLAG:未遭遇歩数 += 1
+	RETURN 0
+ENDIF
+;=======================================================================
+;적の종족の종류数
+;=======================================================================
+@CLASS_NUM_93
+RETURN CLASS_NUM_COMMON("中級")
+;=======================================================================
+;적の総数
+;ARGは出現する적の종류です
+;RAND(X, Y)はX～Y-1のうちのどれかになるRANDです
+;なお、ここで帰った数字は下限を종족数、上限を10として自動的に調整されます
+;=======================================================================
+@ENEMY_NUM_93, ARG
+RETURN ENEMY_NUM_COMMON("中級", ARG)
+;=======================================================================
+;적の종류
+;=======================================================================
+@ENEMY_93, ARG
+SELECTCASE FLAG:現M
+	;１Ｆ、２Ｆでの遭遇
+	CASE 0 , 1
+		SELECTCASE RAND:100
+			CASE IS < 10
+				RETURN [[キャラ:모・쇼보]],20
+			CASE IS < 20
+				RETURN [[キャラ:잇폰다타라]],20
+			CASE IS < 30
+				RETURN [[キャラ:아크엔젤]],22
+			CASE IS < 40
+				RETURN [[キャラ:야토노카미]],22
+			CASE IS < 50
+				RETURN [[キャラ:빌뷔스]],21
+			CASE IS < 60
+				RETURN [[キャラ:오바리욘]],21
+			CASE IS < 70
+				RETURN [[キャラ:잭프로스트]],20
+			CASE IS < 80
+				RETURN [[キャラ:토뵤]],20
+			CASE IS < 90
+				RETURN [[キャラ:목없는라이더]],21
+			CASEELSE
+				RETURN [[キャラ:그르르]], 21
+		ENDSELECT
+		;Ｂ１Ｆでの遭遇
+		CASE 2
+		SELECTCASE RAND:100
+			CASE IS < 10
+				RETURN [[キャラ:모・쇼보]],23
+			CASE IS < 20
+				RETURN [[キャラ:잇폰다타라]],23
+			CASE IS < 30
+				RETURN [[キャラ:아크엔젤]],24
+			CASE IS < 40
+				RETURN [[キャラ:야토노카미]],24
+			CASE IS < 50
+				RETURN [[キャラ:빌뷔스]],24
+			CASE IS < 60
+				RETURN [[キャラ:오바리욘]],24
+			CASE IS < 70
+				RETURN [[キャラ:잭프로스트]],24
+			CASE IS < 80
+				RETURN [[キャラ:토뵤]],24
+			CASE IS < 90
+				RETURN [[キャラ:목없는라이더]],24
+			CASEELSE
+				RETURN [[キャラ:그르르]], 24
+		ENDSELECT
+		;３Ｆでの遭遇
+		CASE 3
+		SELECTCASE RAND:8
+			CASE IS == 0
+				RETURN [[キャラ:잭랜턴]], 26
+			CASE IS == 1
+				RETURN [[キャラ:미샤구지님]],26
+			CASE IS == 2
+				RETURN [[キャラ:야토노카미]],26
+			CASE IS == 3
+				RETURN [[キャラ:메즈키]],26
+			CASE IS == 4
+				RETURN [[キャラ:고즈키]],26
+			CASE IS == 5
+				RETURN [[キャラ:야토노카미]], 26
+			CASE IS == 6
+				RETURN [[キャラ:탁비]], 26
+			CASEELSE
+				RETURN [[キャラ:그르르]],26
+		ENDSELECT
+	ENDSELECT
+
+;=======================================================================
+;윤간참가악마
+;=======================================================================
+@DUNGEON_RAPE_DEVIL_93
+;랜덤にどの악마が出るか決定
+;RETURN CSV番号 , 人数 , 레벨
+SELECTCASE RAND:3
+	CASE 0
+		RETURN [[キャラ:토뵤]] , 3 + RAND:10 , CSVBASE([[キャラ:토뵤]] , GETNUM(BASE , "LV") , 0) + RAND:3
+	CASE 1
+		RETURN [[キャラ:메즈키]] , 3 + RAND:10 , CSVBASE([[キャラ:메즈키]] , GETNUM(BASE , "LV") , 0) + RAND:3
+	CASE 2
+		RETURN [[キャラ:고즈키]] , 3 + RAND:10 , CSVBASE([[キャラ:고즈키]] , GETNUM(BASE , "LV") , 0) + RAND:3
+ENDSELECT
+
+;=======================================================================
+;宝箱の中身
+;=======================================================================
+@TREASURE_93
+#LOCALSIZE 3
+LOCAL = FLAG:現M + 70
+LOCAL:1 = (DA:(FLAG:現X):(FLAG:現Y) / 10) % 100
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+	;マップ番号*100+そのマップで何番눈の宝箱かを示す数値でどの宝箱かを判別します。
+	;例えば0の場合、0版のマップの0番눈の宝箱であることを表しています。
+	CASE 0
+		CALL GET_TREASURE_MONEY, 0 , 2000 , FLAG:現던전, LOCAL , LOCAL:1
+	CASE 1
+		CALL GET_TREASURE, [[아이템:보옥]] , 1 , FLAG:現던전, LOCAL , LOCAL:1
+	CASE 100
+		CALL GET_TREASURE, [[아이템:우황단]] , 2 , FLAG:現던전, LOCAL , LOCAL:1
+	CASE 101
+		CALL GET_TREASURE, [[아이템:ＳＰＡＳ15]] , 1 , FLAG:現던전, LOCAL , LOCAL:1
+	CASE 200
+		CALL GET_TREASURE_MONEY, 0 , 2000 , FLAG:現던전, LOCAL , LOCAL:1		
+	CASE 201
+		CALL GET_TREASURE, [[아이템:반혼향]] , 1 , FLAG:現던전, LOCAL , LOCAL:1
+ENDSELECT
+RETURN 1

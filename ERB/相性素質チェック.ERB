@@ -1,0 +1,51 @@
+﻿;-------------------------------------------------
+;   소질の체크
+;-------------------------------------------------
+; Input:
+;  ARG:0				체크대상者
+;  ARG:1				소질、または相性번호
+;  ARG:2				ARG:1の번호を소질か相性で체크する
+;						0－소질번호체크(검격 0	비구 1	타격 2	전술 3	회복 4	지원 5	방어 6	화염 7	빙결 8	전격 9	충격 10	신경 11	정신 12	파마 13	주살 14	지변 15	수격 16	질풍 17	중력 18	핵열 19	만능 20	사이코 21	자동효과 22)
+;						1－相性번호체크(검격 0	비구 1	타격 2	전술 3	화염 4	빙결 5	전격 6	충격 7	신경 8	정신 9	파마 10	주살 11	지변 12	수격 13	질풍 14	중력 15	핵열 16	만능 17)
+;  ARG:3				설정を無視できるか	1でできる
+;						（기본的に無視できるのは스킬のみにしておく）
+;-------------------------------------------------
+@相性소질체크,ARG,ARG:1,ARG:2,ARG:3 = -1
+#DIMS L_소질名
+;설정が무효なら아무것도안한다
+SIF BATTLE_SETTING_IS_TALENT() == 0 && ARG:3 < 0
+	RETURN 0
+SIF ARG < 0
+	RETURN 0
+IF ARG:2 == 0
+	SIF ARG:1 > 22
+		RETURN 0
+	L_소질名	= %GET_SUCCESSION(ARG:1)%
+ELSEIF ARG:2 == 1
+	SIF ARG:1 > 19
+		RETURN 0
+	L_소질名	= %GET_TYPE(ARG:1)%
+ELSE
+	RETURN 0
+ENDIF
+IF ABL:ARG:종족 == 0
+	;초기페르소나または초기링크악마の소질체크
+	IF TALENT:ARG:페르소나구사자 && ABL:ARG:초기페르소나 > 0
+		;SIF TALENT:(ABL:ARG:초기페르소나 CFLAG:ARG:초기페르소나ナンバー):L_소질名;PRINTFORM {LOCAL};LOCAL = ABL:ARG:초기페르소나
+		IF  EXISTCSV((ABL:ARG:초기페르소나), 0)
+			SIF CSVTALENT((ABL:ARG:초기페르소나),GETNUM(TALENT,L_소질名),0)
+				RETURN 1
+		ENDIF
+	ENDIF
+	IF (TALENT:ARG:데빌시프터 || TALENT:ARG:식노 || TALENT:ARG:악마빙의자) && CFLAG:ARG:초기링크악마 > 0
+		SIF CSVTALENT((CFLAG:ARG:초기링크악마),GETNUM(TALENT,L_소질名),0)
+			RETURN 1
+	ENDIF
+ELSE
+	;本人の소질체크
+	SIF TALENT:ARG:L_소질名
+		RETURN 1
+ENDIF
+
+RETURN 0
+

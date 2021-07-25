@@ -1,0 +1,307 @@
+﻿;순종の可否
+@ISABLUP0
+;연모、친애、복종、예속はMAXLV10
+IF ABL:0 >= 10
+	RETURN 0
+ELSEIF ABL:0 >= 5 && !함락(TARGET) && TARGET != MASTER
+	RETURN 0
+ENDIF
+
+CALL DECIDE_ABLUP0
+
+IF Z == 0
+	RETURN 0
+ELSE
+	RETURN 1
+ENDIF
+
+
+
+;순종
+@ABLUP0
+$ABLUP_LOOP
+DRAWLINE
+;연모、친애、복종、예속はMAXLV10
+IF ABL:0 >= 10
+	PRINTW 이미 MAX입니다
+	RETURN 0
+ELSEIF ABL:0 >= 5 && !함락(TARGET) && TARGET != MASTER
+	PRINTW 이미 MAX입니다
+	RETURN 0
+ENDIF
+
+CALL DECIDE_ABLUP0
+
+
+;ＬＶ４から５に上げるときは이상경험필요（소질：[겁쟁이][솔직함][연모][친애]なら無視できる）
+IF ABL:0 == 4 && TALENT:10 == 0 && TALENT:13 == 0 && TALENT:3 == 0 && TALENT:6 == 0
+	PRINTS EXPNAME:50
+	PRINTL 있음、그리고
+;ＬＶ７から８に上げるときは이상경험3이상필요（소질：[겁쟁이][솔직함][연모][친애]なら無視できる）
+ELSEIF ABL:0 == 7 && TALENT:10 == 0 && TALENT:13 == 0 && TALENT:3 == 0 && TALENT:6 == 0
+	PRINTS EXPNAME:50
+	PRINTL 3이상、그리고
+ENDIF
+
+PRINTFORM [0] - %PALAMNAME:11%의 구슬×{A}……
+IF I == 0
+	PRINT ＯＫ
+ELSE
+	SIF I & 1
+		PRINT 구슬부족 
+	SIF I & 2
+		PRINT 경험부족 
+ENDIF
+PRINTL 
+
+PRINTFORM [1] - %PALAMNAME:5%의 구슬×{B}……
+
+IF J == 0
+	PRINT ＯＫ
+ELSE
+	SIF J & 1
+		PRINT 구슬부족 
+	SIF J & 2
+		PRINT 경험부족 
+ENDIF
+PRINTL 
+
+IF C > 0
+	;욕정의 구슬で上げる
+	SIF JUEL:6 < C
+		K |= 1
+
+	PRINTFORM [2] - %PALAMNAME:6%의 구슬×{C}……
+
+	IF K == 0
+		PRINT ＯＫ
+	ELSE
+		SIF K & 1
+			PRINT 구슬부족 
+		SIF K & 2
+			PRINT 경험부족 
+	ENDIF
+	PRINTL 
+ELSE
+	K = 256
+ENDIF
+
+IF D > 0
+	;굴복의 구슬で上げる
+	SIF JUEL:7 < D
+		L |= 1
+
+	PRINTFORM [3] - %PALAMNAME:7%의 구슬×{D}……
+
+	IF L == 0
+		PRINT ＯＫ
+	ELSE
+		SIF L & 1
+			PRINT 구슬부족 
+		SIF L & 2
+			PRINT 경험부족 
+	ENDIF
+	PRINTL 
+ELSE
+	L = 256
+ENDIF
+
+IF Z == 0
+	WAIT
+	RETURN
+ENDIF
+
+PRINTL [100] - 그만둔다
+
+PRINTFORMLC   %" " * 42%
+PRINTLC [200] - 자동 능력 상승
+
+INPUT
+IF (RESULT < 0 || RESULT > 3) && RESULT != 100 && RESULT != 200
+	RETURN 0
+ELSEIF I != 0 && RESULT == 0
+	PRINTL 조건을 만족하지 못했습니다
+	RETURN 0
+ELSEIF J != 0 && RESULT == 1
+	PRINTL 조건을 만족하지 못했습니다
+	RETURN 0
+ELSEIF K == 256 && RESULT == 2
+	RESTART
+ELSEIF K != 0 && RESULT == 2
+	PRINTL 조건을 만족하지 못했습니다
+	RETURN 0
+ELSEIF L == 256 && RESULT == 3
+	RESTART
+ELSEIF L != 0 && RESULT == 3
+	PRINTL 조건을 만족하지 못했습니다
+	RETURN 0
+ELSEIF RESULT == 100
+	RETURN 0
+ELSEIF RESULT == 200
+	CALL AUTOMAX, 0
+	RETURN 0
+ENDIF
+
+ABL:0 += 1
+
+IF RESULT == 0
+	JUEL:11 -= A
+ELSEIF RESULT == 1
+	JUEL:5 -= B
+ELSEIF RESULT == 2
+	JUEL:6 -= C
+ELSEIF RESULT == 3
+	JUEL:7 -= D
+ENDIF
+
+PRINTS ABLNAME:0
+PRINT 의 레벨이 
+PRINTV ABL:0
+PRINTFORMW %조사만처리(ABL:0,"가")% 되었습니다
+GOTO ABLUP_LOOP
+
+;순종LvUP판정
+@DECIDE_ABLUP0
+;조건別にＯＫかダメかを記録する
+I = 0
+J = 0
+K = 0
+L = 0
+;능력アップ가능なら1にする
+Z = 0
+
+IF ABL:0 == 0
+	A = 10
+	B = 10
+	C = 150
+	D = 100
+ELSEIF ABL:0 == 1
+	A = 150
+	B = 100
+	C = 450
+	D = 600
+ELSEIF ABL:0 == 2
+	A = 500
+	B = 300
+	C = 1000
+	D = 1200
+ELSEIF ABL:0 == 3
+	A = 3000
+	B = 3000
+	C = 0
+	D = 0
+ELSEIF ABL:0 == 4
+	A = 6000
+	B = 6000
+	C = 0
+	D = 0
+ELSEIF ABL:0 == 5
+	A = 8000
+	B = 10000
+	C = 0
+	D = 0
+ELSEIF ABL:0 == 6
+	A = 10000
+	B = 15000
+	C = 0
+	D = 0
+ELSEIF ABL:0 == 7
+	A = 14000
+	B = 20000
+	C = 0
+	D = 0
+ELSEIF ABL:0 == 8
+	A = 18000
+	B = 25000
+	C = 0
+	D = 0
+ELSEIF ABL:0 == 9
+	A = 25000
+	B = 35000
+	C = 0
+	D = 0
+ENDIF
+
+
+;연모
+SIF TALENT:3
+	TIMES B , 0.80
+;친애
+SIF TALENT:6
+	TIMES B , 0.60
+;복종
+SIF TALENT:5
+	TIMES A , 0.70
+;예속
+SIF TALENT:8
+	TIMES A , 0.40
+
+;일선을넘지않음
+IF TALENT:27 && (TALENT:3 == 0 && TALENT:4 == 0 && TALENT:5 == 0 && 함락() < 2)
+	TIMES A , 2.00
+	TIMES B , 2.00
+	TIMES C , 2.00
+	TIMES D , 2.00
+ENDIF
+
+;ＬＶ４から５に上げるときは이상경험필요（소질：[겁쟁이][솔직함][연모][친애]なら無視できる）
+IF ABL:0 == 4 && TALENT:10 == 0 && TALENT:13 == 0 && TALENT:3 == 0 && TALENT:6 == 0
+	IF EXP:50 == 0
+		;이상경험がない
+		I |= 2
+		J |= 2
+		K |= 2
+		L |= 2
+	ENDIF
+;ＬＶ７から８に上げるときは이상경험3이상필요（소질：[겁쟁이][솔직함][연모][친애]なら無視できる）
+ELSEIF ABL:0 == 7 && TALENT:10 == 0 && TALENT:13 == 0 && TALENT:3 == 0 && TALENT:6 == 0
+	IF EXP:50 < 3
+		;이상경험が3미만
+		I |= 2
+		J |= 2
+		K |= 2
+		L |= 2
+	ENDIF
+ENDIF
+
+;공포의 구슬で上げる
+SIF JUEL:11 < A
+	I |= 1
+
+IF I == 0
+	Z = 1
+ENDIF
+
+;복종의 구슬で上げる
+SIF JUEL:5 < B
+	J |= 1
+
+IF J == 0
+	Z = 1
+ENDIF
+
+IF C
+	;욕정의 구슬で上げる
+	SIF JUEL:6 < C
+		K |= 1
+
+	IF K == 0
+		Z = 1
+	ENDIF
+ELSE
+	K = 256
+ENDIF
+
+IF D
+	;굴복의 구슬で上げる
+	SIF JUEL:7 < D
+		L |= 1
+
+	IF L == 0
+		Z = 1
+	ENDIF
+ELSE
+	L = 256
+ENDIF
+RETURN 1
+

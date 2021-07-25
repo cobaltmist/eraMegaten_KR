@@ -1,0 +1,119 @@
+﻿;-----------------------------------------------------------
+;약점学習関数　@MEMORIZE_WEAKNESS(ARG, ARG:1, ARGS, ARG:2)
+;적の약점を깨달음える関数
+;ARGは깨달음えるキャラのキャラ번호、ARG:1は깨달음える대상の포지션、ARGSは相性、ARG:2が真のときフラグ更新をしない
+;99個まで깨달음えます。RESULTSあたりの要素数増やせば、まぁ300くらいまでは余裕ではいりそうだけど、まぁ99で大体발りると信じたい
+;/등록번호_相性번호_数値/でCSTR:50に등록していく
+;戻り値は指定された범위の中での相性의 うち최대だったもの、ただし、相性が記録されていなかった場合は1000
+;またRESULT:1に최대値、RESULT:2に최대値の持ち主の포지션
+;RESULT:3に最小値、RESULT:4に最小値の持ち主の포지션を入れて返す
+;-----------------------------------------------------------
+@MEMORIZE_WEAKNESS, ARG, ARG:1, ARGS, ARG:2
+#FUNCTION
+RESULT:1 = 1000
+RESULT:2 = -1
+RESULT:3 = 1000
+RESULT:4 = -1
+IF ARG:1 < 7
+	LOCAL:3 = ARG:1
+	LOCAL:4 = ARG:1 + 1
+;전열
+ELSEIF ARG:1 == 20
+	LOCAL:3 = 1
+	LOCAL:4 = 4
+;후열
+ELSEIF ARG:1 == 21
+	LOCAL:3 = 4
+	LOCAL:4 = 7
+;전체
+ELSE
+	LOCAL:3 = 1
+	LOCAL:4 = 7
+ENDIF
+FOR LOCAL:2, LOCAL:3, LOCAL:4
+	LOCAL:5 = 0
+	LOCAL:6 = 0
+	SIF LOCAL:2 <= 0
+		CONTINUE
+	ARGS:4 = 포지션{LOCAL:2}
+	SIF FLAG:(ARGS:4) < 0
+		CONTINUE
+	LOCAL:1 = 0
+	ARGS:1 = {FLAG:(ARGS:4)}_%ARGS%
+	ARGS:2 = %ARGS:1%_{MAXBASE:(FLAG:(ARGS:4)):GETNUM(BASE, ARGS)}
+	;LOCALSが埋まってるので変わりに使う
+	ARGS:3 = 
+	SPLIT CSTR:ARG:50, "/", LOCALS
+	SIF !STRLENS(LOCALS)
+		LOCALS = %CSTR:ARG:50%
+	FOR LOCAL, 0 , RESULT + 1
+		;とりあえず、最初の二つが一致してるかを見る
+		IF STRLENS(LOCALS) && STRCOUNT(LOCALS:LOCAL, ARGS:1)
+			;ちゃんと一致してる場合,その数値を返す。ただし、複数をまとめてやっている場合は返さずに進む
+			IF STRCOUNT(LOCALS:LOCAL, ARGS:2)
+				;RESULT退避
+				LOCAL:5 = RESULT
+				SPLIT LOCALS:LOCAL, "_", RESULTS
+				LOCAL:6 = TOINT(RESULTS:2)
+				RESULT = LOCAL:5
+				;초기値だったら、ここで代入
+				IF RESULT:1 == 1000
+					;相性의 최대値
+					RESULT:1 = LOCAL:6
+					RESULT:2 = LOCAL:2
+					;相性의 最小値
+					RESULT:3 = LOCAL:6
+					RESULT:4 = LOCAL:2
+				ELSE
+					IF RESULT:1 < LOCAL:6
+						RESULT:1 = LOCAL:6
+						RESULT:2 = LOCAL:2
+					ENDIF
+					IF RESULT:3 > LOCAL:6
+						RESULT:3 = LOCAL:6
+						RESULT:4 = LOCAL:2
+					ENDIF
+				ENDIF
+				CONTINUE
+			;相性が違ってる（페르소나사용자とか데빌시프터）場合はその相性を忘れる
+			ELSE
+				SIF ARG:2 == 0
+					LOCALS:LOCAL = 
+			ENDIF
+		ENDIF
+		IF ARG:2 == 0
+			SIF RESULT == 99
+				LOCALS = 
+			SIF LOCAL == RESULT
+				LOCALS:LOCAL = %ARGS:2%
+			IF STRLENS(LOCALS:LOCAL)
+				SIF LOCAL:1 ++
+					LOCALS:LOCAL = /%LOCALS:LOCAL%
+				ARGS:3 += LOCALS:LOCAL
+			ENDIF
+		ENDIF
+	NEXT
+	SIF ARG:2 == 0
+		CSTR:ARG:50 = %ARGS:3%
+NEXT
+;相性의 うち최대値を返す。誰も相性が記録されてなかったら1000が帰る
+RETURNF RESULT:1
+
+@CHECK_WEAKNESS(ARG)
+#FUNCTION
+IF ARG == 999
+	RETURNF -4
+ELSEIF ARG < 0
+	RETURNF -3
+ELSEIF ARG == 0
+	RETURNF -2
+ELSEIF ARG < 100
+	RETURNF -1
+ELSEIF ARG == 100
+	RETURNF 0
+ELSEIF ARG > 100 && ARG < 999
+	RETURNF 1
+;メモライズでの初記憶の場合
+ELSEIF ARG == 1000
+	RETURNF 100
+ENDIF

@@ -1,0 +1,194 @@
+﻿;통상공격
+;스킬のテン플레이트になっています
+
+;스킬名
+@SKILL_NAME_2991,ARG
+RESULTS = 구제의손
+
+
+;　명중
+@SKILL_HITRATE_2991, ARG
+RETURN 200
+
+;　위력
+@SKILL_POWER_2991, ARG
+RETURN 400
+
+;　최저공격횟수
+@SKILL_MINATTACKNUMBER_2991,ARG
+RETURN 1
+
+;　최대공격횟수
+@SKILL_MAXATTACKNUMBER_2991,ARG
+RETURN 1
+
+;　ＨＰ2を支払うかＭＰ3を支払うか
+@SKILL_COSTTYPE_2991, ARG
+RETURN 3
+;소비なし＝1
+
+;　コストの量
+@SKILL_COST_2991,ARG
+RETURN 30
+
+;　相性
+@SKILL_TYPE_2991,ARG
+RETURN GET_TYPE_NUM("만능")
+
+;　1EXTRAか2MAGICか
+@SKILL_DECIDE_TYPE_2991, ARG
+RETURN 1
+;EXTRA
+
+;　1물리데미지で計算するか2마법데미지で計算するか
+@SKILL_DAMAGETYPE_2991, ARG
+RETURN 2
+
+
+;　대상が1적か2아군か3場전체か4特殊か
+@SKILL_TARGET_2991
+RETURN 1
+
+;　사거리
+@SKILL_RANGE_2991,ARG
+RETURN 3
+
+;　범위　11명　2１열　3전체　4　적아군전체
+@SKILL_SPHERE_2991,ARG
+RETURN 1
+
+;　 効果の타입　1공격、2회복、3상태변화、4特殊、5상태회복
+@SKILL_EFECT_2991
+RETURN 1
+
+;　 特殊処理の有無、及び処理内容
+@SKILL_SPECIALEFECT_2991,ARG
+;ARG = 1だった場合は処理の有無を返します
+SIF ARG == 1
+	RETURN 0
+;以下に特殊な処理を記述します
+
+;계승타입
+@SKILL_SUCCESSION_TYPE_2991
+RETURN 23
+;継承
+
+;속도보정
+@SKILL_SPEED_2991, ARG = -1
+RETURN 0
+
+;　구상の표시とその타입
+@SKILL_MESSAGE_2991,ARG
+
+;전투時以外に사용できるか
+@SKILL_ACTIONABLE_FIELD_2991
+RETURN 0
+
+;스킬변화？用랭크
+@SKILL_RANK_2991
+RETURN 15
+
+;テン플레이트用、추가효과シリーズ
+;추가효과스테이터스
+@SKILL_ADDTIONAL_STATE_2991,ARG
+RETURN 0
+
+;추가효과상성
+@SKILL_ADDTIONAL_TYPE_2991,ARG
+RETURN 0
+
+;추가효과기본부여확률
+@SKILL_ADDTIONAL_BASE_RATE_2991,ARG
+RETURN 0
+
+;추가효과부여확률上限
+@SKILL_ADDTIONAL_MAX_RATE_2991,ARG
+RETURN 0
+
+;====================================================
+;스킬及び行動の実行
+;====================================================
+@ACTION_2991,ARG,ARG:1
+#LOCALSIZE 2
+;コストを支払う
+;CALL VAR_MP,ARG,-20
+LOCAL = POS(ARG:1)
+
+;相손が마법소녀か魔女の場合、強制DYING
+IF GET_STATE(ARG:1) == "DYING"
+;すでに倒しているなら飛ばす
+ELSEIF GROUPMATCH(NO:(POS(ARG:1)), 4391, 4392, 4393, 4394, 4395, 4396, 4397, 4398, 4399)
+	PRINTFORML 마법소녀에게 공격！
+	CALL MESSAGE_B(1, "구제의손")
+	PRINTFORM 　　TARGET:[{ARG:1,2}] %CALLNAME:(POS(ARG:1)),20,LEFT%　>>>>>>　
+	IF CFLAG:(POS(ARG:1)):방어フラグ
+		PRINTW GUARD
+	;마법소녀なんてＭＯＤでしか戦わないし、ボスも即死でいいよね！
+	;ELSEIF CFLAG:(POS(ARG:1)):ボスフラグ
+	;	PRINTW BLOCK
+	ELSE
+		PRINTL DYING
+		PRINTL 마법소녀는 구제되었다！
+		CALL DEAD_CHARA, POS(ARG:1)
+	ENDIF
+ELSEIF GROUPMATCH(NO:(POS(ARG:1)), 3392, 3393, 3394, 3395, 3396, 3397, 3398, 3399)
+	PRINTFORML 마녀에게 공격！
+	CALL MESSAGE_B(1, "구제의손")
+	PRINTFORM 　　TARGET:[{ARG:1,2}] %CALLNAME:(POS(ARG:1)),20,LEFT%　>>>>>>　
+	IF CFLAG:(POS(ARG:1)):방어フラグ
+		PRINTW GUARD
+	;마법소녀なんてＭＯＤでしか戦わないし、ボスも即死でいいよね！
+	;ELSEIF CFLAG:(POS(ARG:1)):ボスフラグ
+	;	PRINTW BLOCK
+	ELSE
+		PRINTL DYING
+		PRINTL 마녀는 구제되었다！
+		CALL DEAD_CHARA, POS(ARG:1)
+	ENDIF
+ELSE
+;魔女でも마법소녀でもなければ、공격後に강화を一단계剥がす
+	CALL ATTACK_SINGLE,ARG,LOCAL,2991
+	;その位置にまだ적が居るかどうか확인
+	IF POS(ARG:1) >= 0
+		FOR LOCAL:1,0,6
+			;강화だけを剥がす。０以下のときに０이상にはしないためのＳＩＦ
+			SIF CFLAG:POS(ARG:1):(GET_BATTLESTATUS(LOCAL:1) + "강화") > 0
+				CFLAG:POS(ARG:1):(GET_BATTLESTATUS(LOCAL:1) + "강화") = MAX(0, CFLAG:POS(ARG:1):(GET_BATTLESTATUS(LOCAL:1) + "강화") - 4)
+		NEXT
+	PRINTFORMW \@ CFLAG:ARG:PTフラグ == 2 ? 적 # 아군 \@의 강화된 능력이 원래대로 돌아왔다！
+	ENDIF
+ENDIF
+
+;====================================================
+;実行内容ここまで
+;====================================================
+
+;====================================================
+;전투中以外での実行
+;====================================================
+
+
+;====================================================
+;実行内容ここまで
+;====================================================
+
+
+;　 설명文の표시
+@SKILL_EXPLAIN_2991
+PRINTL 구제를 주관하는 마력의 손으로 만능속성의 특대 데미지 。
+PRINTL 능력 강화를 원래대로 되돌리고、마법소녀・마녀를 구제한다。명중률이 이상하게 높다
+PRINTL 마법소녀 원환의이치 및 마녀 Kriemhild의 필살기。
+
+;継承に필요한部位
+@継承部位_2991,ARG
+SIF !TALENT:ARG:팔
+	RETURN 0
+SIF !TALENT:ARG:촉수
+	RETURN 0
+RETURN 1
+
+;사용조건
+@SKILL_SPECIAL_ACTIONABLE_2991,ARG
+RETURN 1
+;とくにない
+

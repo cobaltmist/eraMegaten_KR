@@ -1,0 +1,899 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:SHOP_RPG_2.ERB
+;	Facility	:SHOP_RPG.ERBの纏め買い対応版。
+;
+;	Licence		:ライセンスフリー。
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		20xx/xx/xx		----					新規作成
+;	002		2010/12/28		旅人					纏め買い対応
+;	   		2011/01/02		旅人					複数화면に纏め買い対応
+;	003		2011/01/12		----					魔価となっている箇所を마카に修正
+;	004		2011/02/04		P						店を出るでそのまま店を出るように변경
+;	005		2011/03/08		P						상품が9の倍数のとき、何も無い다음 페이지が出現していたのを修正
+;	006		2011/08/31		P						まとめ買いモードの時、장비品の並びが가격順になるように변경
+;	007		2013/11/30		ひみつ					스킬속성표시の適用範囲拡大
+;	008		2019/05/29		名無し					ジャンクポイント関連추가(MONEY:4)
+;	009		2019/07/11		名無し					現金사용でしあわせチケットが貰えるように
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+
+;-------------------------------------------------
+; 注意:
+;  先머리が_(アンダーバー)で始まる関数はプライベート関数
+;  当ファイル以外の場所で사용してはいけない(保守性の確保)
+;-------------------------------------------------
+
+;=================================================
+;  ◇記載関数一覧(記載順)
+;
+;		Module Name
+;
+; *- SHOP関連(RPG)
+;
+;	# 화면モード関連
+;	・ RPG_SHOP_SCREENMODE_DEFAULT
+;	・ RPG_SHOP_SCREENMODE_PRINT
+;	・ RPG_SHOP_SCREENMODE_CHANGE
+;
+;	# 購買화면
+;	・ RPG_SHOP_NOMAL
+;	・ RPG_SHOP_DUNGEON
+;
+;	# 購買화면:前処理
+;	・ _RPG_SHOP_SET_CONSTANT
+;	・ _RPG_ITEMLIST_MAKE_NOMAL
+;	・ _RPG_ITEMLIST_MAKE_EXCHANGE
+;
+;	# 購買화면:主処理
+;	・ RPG_SHOP_COUNTER
+;	・ _RPG_ITEMLIST_PRINT
+;	・ _GET_RPG_ITEM_NUM_MAX
+;	・ _GET_RPG_ITEM_EXP
+;	・ _EXE_RPG_ITEM_BUY
+;
+;=================================================
+
+;--------------------------------------------------------------------------------------------------
+;   화면モード関連
+;--------------------------------------------------------------------------------------------------
+; 화면モードは下記の変数を共通的に사용する
+;  M:0		화면モード(0:通常 1:纏め買い(大size) 2:纏め買い(小size))(화면遷移: 0→2→1→0...)
+;  M:1		初回訪問フラグ(0:初回(纏め買い(小size)モードに변경) 1:訪問済み)
+;-------------------------------------------------
+
+;=================================================
+;   sub RPG_SHOP_SCREENMODE_DEFAULT
+;=================================================
+;   화면モード:初回訪問時
+;-------------------------------------------------
+;  初回訪問時の화면モードを설정する
+;-------------------------------------------------
+; Input:
+;  M:0
+;  M:1
+;-------------------------------------------------
+;@RPG_SHOP_SCREENMODE_DEFAULT
+;初回
+;SIF M:1 == 0
+;	M:0 = 2
+
+;=================================================
+;   sub RPG_SHOP_SCREENMODE_PRINT
+;=================================================
+;   화면モード:표시
+;-------------------------------------------------
+; Input:
+;  M:0
+;-------------------------------------------------
+@RPG_SHOP_SCREENMODE_PRINT
+;화면モード설정
+PRINT 【화면모드】
+
+IF FLAG:SHOP화면モード설정 == 0
+	PRINT 통상 
+	PRINTL [800] 정리구매모드 (小size)로 변경
+ELSEIF FLAG:SHOP화면モード설정 == 1
+	PRINT 정리구매 (大size)
+	PRINTL [800] 통상모드로 변경
+ELSE
+	FLAG:SHOP화면モード설정 = 2
+	PRINT 정리구매 (小size) 
+	PRINTL [800] 정리구매모드 (大size)로 변경
+ENDIF
+
+;=================================================
+;   sub RPG_SHOP_SCREENMODE_CHANGE
+;=================================================
+;   화면モード:변경
+;-------------------------------------------------
+; Input:
+;  M:0
+;-------------------------------------------------
+@RPG_SHOP_SCREENMODE_CHANGE
+;화면モード변경
+;IF M:0 == 0
+;	M:0 = 2
+;ELSEIF M:0 == 2
+;	M:0 = 1
+;ELSE
+;	M:0 = 0
+;ENDIF
+IF FLAG:SHOP화면モード설정 == 0
+	FLAG:SHOP화면モード설정 = 2
+ELSEIF FLAG:SHOP화면モード설정 == 2
+	FLAG:SHOP화면モード설정 = 1
+ELSE
+	FLAG:SHOP화면モード설정 = 0
+ENDIF
+;--------------------------------------------------------------------------------------------------
+;   購買화면
+;--------------------------------------------------------------------------------------------------
+
+;=================================================
+;   sub RPG_SHOP_NOMAL
+;=================================================
+;   아이템구입:通常
+;-------------------------------------------------
+;   汎用SHOP화면
+;   SHOPモードにより、品揃えと通貨(￥と마카)が自動決定される
+;-------------------------------------------------
+; Input:
+;  ARG:0				화면モード(1:纏め買い(大size) 2:纏め買い(小size))
+;  ARG:1				SHOPモード(0:ジャンクSHOP 1:마카교환)
+;-------------------------------------------------
+@RPG_SHOP_NOMAL,ARG:0,ARG:1
+
+;通貨설정(SHOPモードで分岐)
+IF  ARG:1 == 1
+	LOCAL = 1
+ELSE
+	LOCAL = 0
+ENDIF
+
+;RPG SHOP:定数설정
+CALL _RPG_SHOP_SET_CONSTANT,ARG:0,LOCAL
+
+IF C:111 == 1
+	PRINTFORML 현재 {MONEY:1}마카를 가지고 있습니다。
+	PRINTL 무엇과 교환합니까？
+ELSE
+	PRINTFORML 무엇을 구입합니까？		소지금 ￥{MONEY} \@!FLAG:ジャンクポイント不사용 ? 정크포인트 JP {MONEY:4} # \@
+ENDIF
+DRAWLINE
+FOR LOCAL,0,8
+	PRINTFORML [{LOCAL}] %GET_EQUIP(LOCAL)%
+NEXT
+PRINTL [8] 아이템
+PRINTL [99] 돌아간다
+PRINTL [100] 가게를 나간다 [101] 정렬조건변경
+
+$INPUT_LOOP
+INPUT
+
+IF RESULT == 100
+	RETURN 0
+ELSEIF RESULT == 99
+	RETURN -1
+ELSEIF RESULT == 101
+	CALL CHANGE_CONDITION_EQUIP_SORT
+	RESTART
+ELSEIF RESULT >= 0 && RESULT < 9
+	LOCAL = RESULT
+
+	IF C:111 == 1
+		CALL _RPG_ITEMLIST_MAKE_EXCHANGE,RESULT
+	ELSE
+		CALL _RPG_ITEMLIST_MAKE_NOMAL,RESULT
+	ENDIF
+
+	;아이템数保持
+	LOCAL:1 = RESULT
+ELSE
+	GOTO INPUT_LOOP
+ENDIF
+
+;아이템구입:受付
+CALL RPG_SHOP_COUNTER,LOCAL:1
+
+RESTART
+
+;=================================================
+;   sub RPG_SHOP_DUNGEON
+;=================================================
+;   아이템구입:던전
+;-------------------------------------------------
+;   던전SHOP화면
+;   상품名と상품가격をsetする事で、販売화면を出힘する
+;-------------------------------------------------
+; Input:
+;  ARG:0				SHOPモード(0:￥取引 1:마카교환)
+;  ARGS:1〜19			상품名
+;  ARG:1〜19			상품가격
+; Output:
+;  RESULT				結果(0:正常終了 1:화면モード변경(通常) )
+;-------------------------------------------------
+@RPG_SHOP_DUNGEON(ARG:0, ARGS:1, ARG:1, ARGS:2, ARG:2 , ARGS:3, ARG:3, ARGS:4, ARG:4, ARGS:5, ARG:5, ARGS:6, ARG:6, ARGS:7, ARG:7, ARGS:8, ARG:8, ARGS:9, ARG:9, ARGS:10, ARG:10, ARGS:11, ARG:11, ARGS:12, ARG:12, ARGS:13, ARG:13, ARGS:14, ARG:14, ARGS:15, ARG:15, ARGS:16, ARG:16, ARGS:17, ARG:17, ARGS:18, ARG:18, ARGS:19, ARG:19)
+#LOCALSIZE 5
+;LOCAL:3;화면モード(1:纏め買い(大size) 2:纏め買い(小size))
+LOCAL:3 = 2
+;LOCAL:4 아이템の数え上げ
+
+;通貨설정(SHOPモードで分岐)
+IF ARG:0 == 1
+	LOCAL = 1
+ELSE
+	LOCAL = 0
+ENDIF
+
+;화면モード:初回訪問時
+;CALL RPG_SHOP_SCREENMODE_DEFAULT
+
+$RESTART
+
+;RPG SHOP:定数설정
+CALL _RPG_SHOP_SET_CONSTANT,LOCAL:3,LOCAL
+
+;아이템リスト:作成
+VARSET 아이템リスト,-1
+VARSET ITEMSALES,0
+LOCAL:1 = 0
+LOCAL:4   = 1
+E = 0
+WHILE 1
+	;CHK:아이템
+	IF STRLENS(ARGS:(LOCAL:4)) != 0
+		LOCAL:2 = GETNUM(ITEM, ARGS:(LOCAL:4))
+		;엘라ーの場合
+		IF LOCAL:2 == -1
+			PRINTFORML 【ERR!】아이템'%ARGS:(LOCAL:4)%'은(는) ITEM.csv에 존재하지 않으므로、구매에서 제외됩니다。
+			E += 1
+		ELSE
+			아이템リスト:(LOCAL:1) = LOCAL:2
+			ITEMSALES:(LOCAL:2) = ARG:(LOCAL:4) ? ARG:(LOCAL:4) # ITEMPRICE:(LOCAL:2)
+			LOCAL:1 += 1
+		ENDIF
+	ELSE
+		BREAK
+	ENDIF
+	LOCAL:4 += 1
+WEND
+
+IF E
+	PRINTL 함수『@RPG_SHOP_DUNGEON』에서 에러를 감지했습니다。
+	PRINTL 인수 또는 csv、또는 처리에 문제가 없는지 관리자에게 문의해주세요。
+	PRINTL （에러가 일어난 아이템은 판매대상에서 제외됩니다。）
+ENDIF
+
+;화면판정
+IF FLAG:SHOP화면モード설정 == 0
+	RETURN 1
+ELSE
+	;아이템구입:受付
+	CALL RPG_SHOP_COUNTER,LOCAL:1,1
+	IF RESULT == 1
+		;화면モード切り替え
+		LOCAL:3 = FLAG:SHOP화면モード설정
+		GOTO RESTART
+	ENDIF
+ENDIF
+
+RETURN 0
+
+;--------------------------------------------------------------------------------------------------
+;   購買화면:前処理
+;--------------------------------------------------------------------------------------------------
+
+;=================================================
+;   sub _RPG_SHOP_SET_CONSTANT
+;=================================================
+;   RPG SHOP:定数설정
+;-------------------------------------------------
+;   RPG SHOP内で共通사용する定数を설정する
+;-------------------------------------------------
+; Input:
+;  ARG:0				화면モード(1:纏め買い(大size) 2:纏め買い(小size))
+;  ARG:1				通貨(0:￥ 1:마카 그외:0で処理)
+; Output:
+;  C					配列:定数(C100番台)
+;-------------------------------------------------
+@_RPG_SHOP_SET_CONSTANT,ARG:0,ARG:1
+
+;set:C100番台(定数Constant)
+;C:100;ページ가운位の표시数
+;C:101;MAX:장비・탄환구입可能数
+;C:102;MIN:아이템番号
+;C:103;MAX:아이템番号
+;C:104;コマンド:구입
+C:100 = 9
+C:101 = 999
+C:102 = 1001
+C:103 = 2000
+C:104 = 100
+
+;C:110;화면モード(1:大size 2:小size)
+IF ARG:0 == 1
+	C:110 = 1
+ELSE
+	C:110 = 2
+ENDIF
+
+;C:111;通貨(0:￥ 1:마카)
+IF ARG:1 == 1
+	C:111 = 1
+ELSE
+	C:111 = 0
+ENDIF
+
+
+;=================================================
+;   sub _RPG_ITEMLIST_MAKE_NOMAL
+;=================================================
+;   구입可能아이템설정:通常
+;-------------------------------------------------
+;   아이템の内、구입조건を満たす
+;   値段1以上の아이템を諸変数に설정する
+;-------------------------------------------------
+; Input:
+;  ARG					아이템カテゴリ
+; Output:
+;  RESULT				아이템数
+;  아이템リスト		配列:아이템番号
+;  ITEMSALES			配列:아이템値段
+;-------------------------------------------------
+@_RPG_ITEMLIST_MAKE_NOMAL,ARG
+#LOCALSIZE 3
+VARSET 아이템リスト,-1
+VARSET ITEMSALES,0
+LOCAL:1 = 0
+
+;8未満は장비品・弾薬
+IF ARG < 8
+	FOR LOCAL,C:103,VARSIZE("ITEM")
+		SIF ITEMPRICE:LOCAL == 0
+			CONTINUE
+		RESULT = 12
+		TRYCCALLFORM 장비箇所_{LOCAL}
+			IF RESULT == ARG
+				TRYCCALLFORM 구입조건_{LOCAL}
+					IF RESULT == 1
+						아이템リスト:(LOCAL:1) = LOCAL
+						LOCAL:1 += 1
+					ENDIF
+				CATCH
+					CONTINUE
+				ENDCATCH
+			ENDIF
+		CATCH
+		ENDCATCH
+	NEXT
+;上記以外は아이템
+ELSE
+	FOR LOCAL,C:102,C:103
+		SIF ITEMPRICE:LOCAL == 0
+			CONTINUE
+		TRYCCALLFORM 道具구입조건_{LOCAL+C:103}
+			IF RESULT == 1
+				아이템リスト:(LOCAL:1) = LOCAL
+				LOCAL:1 += 1
+			ENDIF
+		CATCH
+			CONTINUE
+		ENDCATCH
+	NEXT
+ENDIF
+;가격の登録
+FOR LOCAL , 0 , FINDELEMENT(아이템リスト , -1)
+	ITEMSALES:(아이템リスト:LOCAL) = ITEMPRICE:(아이템リスト:LOCAL)
+NEXT
+CALL EQUIP_SORT
+RETURN LOCAL:1
+
+;=================================================
+;   sub _RPG_ITEMLIST_MAKE_EXCHANGE
+;=================================================
+;   구입可能아이템설정:交換
+;-------------------------------------------------
+;   아이템の内、구입조건を満たす
+;   値段1以上の아이템を諸変数に설정する
+;-------------------------------------------------
+; Input:
+;  ARG					아이템カテゴリ
+; Output:
+;  RESULT				아이템数
+;  아이템リスト		配列:아이템番号
+;  ITEMSALES			配列:아이템値段
+;-------------------------------------------------
+@_RPG_ITEMLIST_MAKE_EXCHANGE,ARG
+#LOCALSIZE 3
+VARSET 아이템リスト,-1
+VARSET ITEMSALES,0
+LOCAL:1 = 0
+
+;8未満は장비品・弾薬
+IF ARG < 8
+	FOR LOCAL,C:103,VARSIZE("ITEM")
+		SIF ITEMPRICE:LOCAL == 0
+			CONTINUE
+		RESULT = 12
+		TRYCCALLFORM 장비箇所_{LOCAL}
+			IF RESULT == ARG
+				RESULT = 0
+				TRYCALLFORM EQUIP_EXCHANGE_{LOCAL}
+				SIF RESULT == 0
+					CONTINUE
+				아이템リスト:(LOCAL:1) = LOCAL
+				LOCAL:1 += 1
+			ENDIF
+		CATCH
+		ENDCATCH
+	NEXT
+;上記以外は아이템
+ELSE
+	FOR LOCAL,C:102,C:103
+		SIF ITEMPRICE:LOCAL == 0
+			CONTINUE
+		RESULT = 0
+		TRYCALLFORM ITEM_EXCHANGE_{LOCAL+C:103}
+		SIF RESULT == 0
+			CONTINUE
+		아이템リスト:(LOCAL:1) = LOCAL
+		LOCAL:1 += 1
+	NEXT
+ENDIF
+;가격の登録
+FOR LOCAL , 0 , FINDELEMENT(아이템リスト , -1)
+	ITEMSALES:(아이템リスト:LOCAL) = ITEMPRICE:(아이템リスト:LOCAL)
+NEXT
+CALL EQUIP_SORT
+RETURN LOCAL:1
+
+
+;--------------------------------------------------------------------------------------------------
+;   購買화면:主処理
+;--------------------------------------------------------------------------------------------------
+
+;=================================================
+;   sub RPG_SHOP_COUNTER
+;=================================================
+;   아이템구입:受付
+;-------------------------------------------------
+;   C:111に설정された通貨に沿って구입処理を行う
+;   구입대상아이템はInputに事前설정された物とする
+;-------------------------------------------------
+; Input:
+;  ARG:0				아이템数
+;  ARG:1				화면モード변경可否(0:不可 1:可能)
+;  아이템リスト		配列:아이템番号
+;  ITEMSALES			配列:아이템値段
+;  C					配列:定数(C100番台)
+;  Z					配列:구입数
+; Output:
+;  RESULT				結果(0:正常終了 1:화면モード변경)
+;-------------------------------------------------
+@RPG_SHOP_COUNTER,ARG,ARG:1
+#DIM LCOUNT
+
+;Z:(구입数。아이템IDはITEM.CSVと同期)
+VARSET Z,0
+
+LOCAL:1 = ARG
+
+;CHK:INPUT
+P = 0
+$PRINT_LIST
+DRAWLINE
+IF ARG:1==1
+	;화면モード:표시
+	CALL RPG_SHOP_SCREENMODE_PRINT
+	PRINTL 
+ENDIF
+CALL _RPG_ITEMLIST_PRINT,LOCAL:1
+$INPUT_LOOP2
+INPUT
+
+;CHK:INPUT
+LOCAL:2 = RESULT
+
+IF RESULT == 0
+	RETURN 0
+ELSEIF RESULT == 800 && ARG:1
+	;화면モード:변경
+	CALL RPG_SHOP_SCREENMODE_CHANGE
+	RETURN 1
+ELSEIF RESULT == 7 && P > 0
+	P -= 1
+	GOTO PRINT_LIST
+ELSEIF RESULT == 9 && P < (LOCAL:1-1)/C:100
+	P += 1
+	GOTO PRINT_LIST
+ELSEIF RESULT == 1
+	CALL CHANGE_CONDITION_EQUIP_SORT
+	CALL EQUIP_SORT
+	GOTO PRINT_LIST
+;구입数増減
+ELSEIF 11 <= RESULT && RESULT <= 99
+
+	LOCAL:10 = RESULT / 10 + (P*C:100)
+	LOCAL:11 = RESULT % 10
+
+	;표시されていない物は엘라ー(0始まりの為-1)
+	SIF 아이템リスト:(LOCAL:10-1) == -1
+		GOTO INPUT_LOOP2
+
+	;CHK:増減
+	LOCAL:4 = 0
+	IF LOCAL:11 == 1
+		LOCAL:4 += 10
+	ELSEIF LOCAL:11 == 2
+		LOCAL:4 += 5
+	ELSEIF LOCAL:11 == 3
+		LOCAL:4 += 1
+	ELSEIF LOCAL:11 == 4
+		LOCAL:4 -= 1
+	ELSEIF LOCAL:11 == 5
+		LOCAL:4 -= 5
+	ELSEIF LOCAL:11 == 6
+		LOCAL:4 -= 10
+	ELSE
+		GOTO INPUT_LOOP2
+	ENDIF
+
+	;0始まりの為、-1
+	LOCAL:10 -= 1
+	Z:(아이템リスト:(LOCAL:10)) += LOCAL:4
+
+	SIF Z:(아이템リスト:(LOCAL:10)) < 0
+		Z:(아이템リスト:(LOCAL:10)) = 0
+
+	;取得:아이템소지최대数
+	CALL _GET_RPG_ITEM_NUM_MAX,아이템リスト:(LOCAL:10)
+	LOCAL:3 = RESULT - ITEM:(아이템リスト:(LOCAL:10))
+
+	SIF Z:(아이템リスト:(LOCAL:10)) > LOCAL:3
+		Z:(아이템リスト:(LOCAL:10)) = LOCAL:3
+
+;説明
+ELSEIF RANGE(RESULT, 1000, 2000)
+	;표시されていない物は엘라ー(대상全아이템に存在するかCHK)
+	;LOCAL=0
+	;FOR LCOUNT, 0, ARG
+	;	SIF RESULT == 아이템リスト:(LCOUNT)
+	;		LOCAL=1
+	;NEXT
+	;SIF !LOCAL
+	;	GOTO INPUT_LOOP2
+	SIF 아이템リスト:(RESULT-1000) == -1
+		GOTO INPUT_LOOP2
+	;취득:아이템説明
+	CALL _GET_RPG_ITEM_EXP,아이템リスト:(RESULT-1000)
+
+;구입
+ELSEIF RESULT == C:104
+
+	;実行:아이템구입
+	CALL _EXE_RPG_ITEM_BUY,LOCAL:1
+
+ELSE
+	GOTO INPUT_LOOP2
+ENDIF
+GOTO PRINT_LIST
+
+
+;=================================================
+;   sub _RPG_ITEMLIST_PRINT
+;=================================================
+;   RPG아이템リスト:표시
+;-------------------------------------------------
+;   注:화면モードによって표시항목を調節する
+;-------------------------------------------------
+; Input:
+;  ARG					아이템数
+;  아이템リスト		配列:아이템番号
+;  P					ページ番号
+;  C					配列:定数(100番台)
+;  Z					配列:구입数
+;-------------------------------------------------
+@_RPG_ITEMLIST_PRINT,ARG,
+#DIM LCOUNT
+;通貨설정
+;LOCALS:0;通貨가운位
+;LOCALS:1;通貨文字(先머리付加)
+;LOCALS:2;通貨文字(末꼬리付加)
+;LOCALS:50;取引명칭
+IF C:111 == 1
+	LOCALS:0 = 마카
+	LOCALS:1 = 
+	LOCALS:2 = 마카
+	LOCALS:50 = 交換
+ELSE
+	LOCALS:0 = 금액
+	LOCALS:1 = ￥
+	LOCALS:2 = 
+	LOCALS:50 = 구매
+ENDIF
+
+IF C:111 == 1
+	PRINTFORML 교환할 아이템을 선택하십시오　＜page.{P + 1}＞
+	PRINTFORML {MONEY:1}마카소지 중
+ELSE
+	PRINTFORML 구입할 아이템을 선택하십시오　＜page.{P + 1}＞
+	PRINTFORML 소지금 ￥{MONEY} \@!FLAG:ジャンクポイント不사용 ? 정크포인트 JP{MONEY:4} # \@
+ENDIF
+DRAWLINE
+LOCAL:1 = 0
+LOCAL:2 = 0
+LOCAL:10 = C:100
+
+
+IF C:110 == 1
+	PRINT ITEM_NO|       아이템명       |
+    PRINTFORM    %LOCALS:0%    |
+	PRINTL 소지/최대||====================== 입력폼 =====================||  개수 |  구입비용
+ELSE
+	PRINT         아이템명       | 
+	PRINTFORM    %LOCALS:0%   | 
+	PRINTL 소지||============== 입력폼 =============||  개수 |  구입비용
+ENDIF
+
+FOR LOCAL,P*LOCAL:10,MIN(P*LOCAL:10+LOCAL:10,ARG)
+
+	;취득:아이템소지최대数
+	CALL _GET_RPG_ITEM_NUM_MAX,아이템リスト:(LOCAL)
+	LOCAL:3 = RESULT
+
+	;Head
+	IF C:110 == 1
+		PRINTFORM [{LOCAL+1000}] | %ITEMNAME:(아이템リスト:LOCAL),20,LEFT% |
+	ELSE
+		LOCALS:20 = [{LOCAL+1000}]%ITEMNAME:(아이템リスト:LOCAL)%
+		STRLENS LOCALS:20
+		LOCAL:20 = RESULT
+		IF LOCAL:20 > 22
+			SUBSTRING LOCALS:20,0,20
+			LOCALS:20 = %RESULTS%..
+		ENDIF
+		PRINTFORM %LOCALS:20,22,LEFT% |
+	ENDIF
+
+	PRINTFORM %LOCALS:1 + TOSTR(ITEMSALES:(아이템リスト:LOCAL)) + LOCALS:2,10 % | 
+	PRINTFORM %TOSTR(ITEM:(아이템リスト:LOCAL)),3 %
+	SIF C:110 == 1
+		PRINTFORM /%TOSTR(LOCAL:3),3 %
+	PRINTFORM  || 
+
+	;FORM
+	PRINTFORM [{(LOCAL:2+1)*10 +1}] +10 
+	SIF C:110 == 1
+		PRINTFORM [{(LOCAL:2+1)*10 +2}] +5 
+	PRINTFORM [{(LOCAL:2+1)*10 +3}] +1 
+	PRINTFORM [{(LOCAL:2+1)*10 +4}] -1 
+	SIF C:110 == 1
+		PRINTFORM [{(LOCAL:2+1)*10 +5}] -5 
+	PRINTFORM [{(LOCAL:2+1)*10 +6}] -10 
+	PRINT || 
+
+	;구입数
+	LOCAL:4 = Z:(아이템リスト:LOCAL)
+	PRINTFORM %TOSTR(LOCAL:4),3 %개 |
+	PRINTFORM %LOCALS:1 + TOSTR(ITEMSALES:(아이템リスト:LOCAL) * LOCAL:4) + LOCALS:2,10 %
+
+	PRINTL 
+
+	LOCAL:1 += 1
+	LOCAL:2 += 1
+NEXT
+
+;합계行
+LOCAL:1 = 0
+LOCAL:2 = 0
+FOR LCOUNT, 0, ARG
+
+	LOCAL:4 = Z:(아이템リスト:LCOUNT)
+	;全件加算
+	LOCAL:1 += LOCAL:4
+	LOCAL:2 += ITEMSALES:(아이템リスト:LCOUNT) * LOCAL:4
+
+
+NEXT
+
+PRINTFORML 총 %LOCALS:50%아이템수 {LOCAL:1}개
+IF C:111 == 1
+	PRINTFORML 총 %LOCALS:50%비용 {LOCAL:2}마카
+ELSE
+	PRINTFORML 총 %LOCALS:50%비용 ￥{LOCAL:2}
+ENDIF
+PRINTL
+PRINTFORML [{C:104}]한꺼번에 %LOCALS:50%한다
+
+DRAWLINE
+PRINTFORMLC \@(P <= 0) ? %" " * 13% # [7]이전 페이지\@
+PRINTLC [0]돌아간다 [1]정렬조건변경
+PRINTFORMLC \@(P >= (ARG-1) / C:100) ? %" " * 13% # [9]다음 페이지\@
+
+;=================================================
+;   sub _GET_RPG_ITEM_NUM_MAX
+;=================================================
+;   取得:아이템소지최대数
+;-------------------------------------------------
+; Input:
+;  ARG					아이템ID
+;  C					配列:定数(100番台)
+; Output:
+;  RESULT				아이템소지최대数
+;-------------------------------------------------
+@_GET_RPG_ITEM_NUM_MAX,ARG
+
+LOCAL:3 = 0
+
+;CHK:장비品・탄환
+TRYCCALLFORM 장비箇所_{ARG}
+
+	;7:탄환
+	IF RESULT == 7
+		LOCAL:3 = C:101
+	;탄환以外は장비品
+	ELSE
+		LOCAL:3 = C:101
+	ENDIF
+	
+	TRYCALLFORM 최대소지수_{COUNT_ITEMMAX(ARG)}
+	SIF RESULT > 0
+		LOCAL:3 = RESULT
+
+;CHK:上記以外は아이템
+CATCH
+
+	CALLFORM 최대소지수_{COUNT_ITEMMAX(ARG)}
+	LOCAL:3 = RESULT
+
+ENDCATCH
+RETURN LOCAL:3
+
+;=================================================
+;   sub _GET_RPG_ITEM_EXP
+;=================================================
+;   취득:아이템説明
+;-------------------------------------------------
+; Input:
+;  ARG					아이템ID
+;-------------------------------------------------
+@_GET_RPG_ITEM_EXP,ARG
+
+;CHK:장비品・탄환
+TRYCCALLFORM 장비箇所_{ARG}
+
+	;7:탄환
+	IF RESULT == 7
+		CALLFORM 장비해설_{ARG}
+
+	;탄환以外は장비品
+	ELSE
+		CALL 장비설명,ARG
+	ENDIF
+
+;CHK:上記以外は아이템
+CATCH
+
+	PRINTFORML %ITEMNAME:(ARG),20,LEFT%
+	SIF FLAG:스킬속성표시설정 == 1
+		CALL SKILL_EXPLAIN_PERFORMANCE, ARG + C:103, -1
+	TRYCALLFORM SKILL_EXPLAIN_{ARG+C:103}
+	DRAWLINE
+
+ENDCATCH
+WAIT
+
+;=================================================
+;   sub _EXE_RPG_ITEM_BUY
+;=================================================
+;   実行:아이템구입
+;-------------------------------------------------
+; Input:
+;  ARG					아이템数
+;  아이템リスト		配列:아이템番号
+;  DE					配列:구입数
+;  C					配列:定数(100番台)
+;-------------------------------------------------
+@_EXE_RPG_ITEM_BUY,ARG
+#DIM LCOUNT
+;通貨설정
+;LOCALS:50;取引명칭
+IF C:111 == 1
+	LOCALS:50 = 교환
+ELSE
+	LOCALS:50 = 구입
+ENDIF
+;합계
+LOCAL:1 = 0
+LOCAL:2 = 0
+
+;CHK:ERR
+FOR LCOUNT, 0, ARG
+
+	LOCAL:4 = Z:(아이템リスト:LCOUNT)
+	;全件加算
+	LOCAL:1 += LOCAL:4
+	LOCAL:2 += ITEMSALES:(아이템リスト:LCOUNT) * LOCAL:4
+
+NEXT
+
+IF LOCAL:2 == 0
+	PRINTW 아이템이 선택되지 않았습니다。
+	RETURN
+ELSE
+
+	IF C:111 == 1 && MONEY:1 < LOCAL:2
+		PRINTFORMW 마카가 부족합니다 (%LOCALS:50%費用 {LOCAL:2}마카 / 소지마카 {MONEY:1})
+		RETURN
+	ELSEIF  C:111 == 0 && (MONEY + MONEY:4) < LOCAL:2 && !FLAG:ジャンクポイント不사용
+		PRINTFORMW 돈이 부족합니다 (%LOCALS:50%비용 ￥{LOCAL:2} / 소지금￥{MONEY} / JP{MONEY:4})
+		RETURN
+	ELSEIF  C:111 == 0 && (MONEY + MONEY:4) < LOCAL:2
+		PRINTFORMW 돈이 부족합니다 (%LOCALS:50%비용 ￥{LOCAL:2} / 소지금￥{MONEY})
+		RETURN
+	ENDIF
+ENDIF
+
+LOCAL:1 = 0
+LOCAL:2 = 0
+LOCAL:10 = MONEY
+FOR LCOUNT, 0, ARG
+
+	LOCAL:4 = Z:(아이템リスト:LCOUNT)
+	SIF LOCAL:4 == 0
+		CONTINUE
+
+	;全件加算
+	LOCAL:1 += LOCAL:4
+	LOCAL:3 = ITEMSALES:(아이템リスト:LCOUNT) * LOCAL:4
+	LOCAL:2 += LOCAL:3
+	PRINTFORM %LOCALS:50%아이템：%ITEMNAME:(아이템リスト:LCOUNT),20,LEFT% | 
+	PRINTFORM %LOCALS:50%갯수： %TOSTR(LOCAL:4),3 %개 | 
+	IF C:111 == 1
+		PRINTFORML 비용 {LOCAL:3}마카
+	ELSE
+		PRINTFORML 금액 ￥{LOCAL:3}
+	ENDIF
+
+	;取引処理
+	Z:(아이템リスト:LCOUNT) = 0
+	IF !FLAG:ジャンクポイント不사용
+		IF C:111 == 1
+			MONEY:1 -= LOCAL:3
+			MONEY:4 += LOCAL:3 * 2
+		ELSE
+			;MONEY:0 -= LOCAL:3
+			MONEY:4 -= LOCAL:3
+			IF MONEY:4 < 0
+				MONEY:0 += MONEY:4
+				MONEY:4 = 0
+			ENDIF
+		ENDIF
+	ELSE
+		Z:(아이템リスト:LCOUNT) = 0
+		IF C:111 == 1
+			MONEY:1 -= LOCAL:3
+			MONEY:4 += LOCAL:3 * 2
+		ELSE
+			MONEY:0 -= LOCAL:3
+		ENDIF
+	ENDIF
+	CALL GET_ITEM,아이템リスト:LCOUNT,LOCAL:4
+
+NEXT
+
+PRINTFORML 총 %LOCALS:50%아이템수 {LOCAL:1}개
+IF C:111 == 1
+	PRINTFORML 총 %LOCALS:50%비용 {LOCAL:2}마카
+ELSE
+	PRINTFORML 총 %LOCALS:50%비용 ￥{LOCAL:2}
+ENDIF
+PRINTFORML 위와 같이 %LOCALS:50%했습니다。
+IF LOCAL:10 - MONEY > 1000
+	ITEM:361 += (LOCAL:10 - MONEY)/1000
+	PRINTFORML {(LOCAL:10 - MONEY)/1000}매의 행복티켓을 손에 넣었다
+ENDIF
+WAIT

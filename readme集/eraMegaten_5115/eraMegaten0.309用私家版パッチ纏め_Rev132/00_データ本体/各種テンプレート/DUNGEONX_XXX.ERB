@@ -1,0 +1,431 @@
+
+;=======================================================================
+;
+;=======================================================================
+
+;=======================================================================
+;攻略条件
+;=======================================================================
+@PREREQUISITE_DUNGEON_X
+RETURN 0
+
+;=======================================================================
+;ダンジョン名
+;=======================================================================
+@GET_DUNGEON_NAME_X
+RESULTS = 
+@FLOORNAME_X
+SELECTCASE FLAG:現M
+	CASE 0
+	CASE 1
+ENDSELECT
+
+;=======================================================================
+;スタート地点入力
+;=======================================================================
+@START_DUNGEON_X, ARG
+FLAG:現M = 0
+FLAG:現X = 0
+FLAG:現Y = 0
+CALL AUTOMAP
+RETURN 0
+
+;=======================================================================
+;指定したマスに進入可能か
+;=======================================================================
+@CAN_ENTER_X, ARG, ARG:1
+SELECTCASE DA:ARG:(ARG:1)
+ENDSELECT
+CALL CAN_ENTER,ARG,ARG:1
+RETURN RESULT
+
+;=======================================================================
+;フロアデータ
+;=======================================================================
+@MAKE_FLOOR_X
+SELECTCASE FLAG:現M
+	CASE 0
+		FLAG:最大X = 20 
+		FLAG:最大Y = 20 
+							;	  01234567890123456789
+   		CALL MAKE_FLOOR_LINE, 0, "                    "
+   		CALL MAKE_FLOOR_LINE, 1, "                    "
+   		CALL MAKE_FLOOR_LINE, 2, "                    "
+   		CALL MAKE_FLOOR_LINE, 3, "                    "
+   		CALL MAKE_FLOOR_LINE, 4, "                    "
+   		CALL MAKE_FLOOR_LINE, 5, "                    "
+   		CALL MAKE_FLOOR_LINE, 6, "                    "
+   		CALL MAKE_FLOOR_LINE, 7, "                    "
+   		CALL MAKE_FLOOR_LINE, 8, "                    "
+   		CALL MAKE_FLOOR_LINE, 9, "                    "
+   		CALL MAKE_FLOOR_LINE,10, "                    "
+   		CALL MAKE_FLOOR_LINE,11, "                    "
+   		CALL MAKE_FLOOR_LINE,12, "                    "
+   		CALL MAKE_FLOOR_LINE,13, "                    "
+   		CALL MAKE_FLOOR_LINE,14, "                    "
+   		CALL MAKE_FLOOR_LINE,15, "                    "
+   		CALL MAKE_FLOOR_LINE,16, "                    "
+   		CALL MAKE_FLOOR_LINE,17, "                    "
+   		CALL MAKE_FLOOR_LINE,18, "                    "
+   		CALL MAKE_FLOOR_LINE,19, "                    "
+	
+	
+	CASE 10
+	CASEELSE
+ENDSELECT
+
+;=======================================================================
+;タイル調整
+;=======================================================================
+@MAKE_FLOOR_LINE_COMMON_X, ARG, ARG:1, ARG:2
+;ARG:3(LOCAL:3) 宝箱 DB:75~99(現M+75)の1ビット目から、自動的に使う
+;LOCAL:4 イベント
+;LOCAL:6 昇り階段 16 →　26　↓　端に6を置くと自動的に置き換わる
+;LOCAL:7 降り階段 17 ←　27　↑　端に7を置くと自動的に置き換わる
+
+;LOCAL:8 メッセンジャー
+;(0/0)でLOCALを消去
+SIF ARG:1 == 0 && ARG:2 == 0
+	VARSET LOCAL
+IF ARG == 3
+	IF GETBIT(DB:(FLAG:現ダンジョン):(FLAG:現M+75), LOCAL:3)
+		DA:(ARG:1):(ARG:2) = 1
+	ELSE
+		DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:3 * 10 + 3
+	ENDIF
+	LOCAL:3++
+ENDIF
+IF ARG == 4
+	DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:4 * 10 + 4
+	LOCAL:4++
+	SELECTCASE DA:(ARG:1):(ARG:2) / 10
+	ENDSELECT
+ENDIF
+IF ARG == 6
+	IF ARG:1 == (FLAG:最大X -1)
+		DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:16 * 100 + 16
+		LOCAL:16++
+	ELSEIF ARG:2 == (FLAG:最大Y - 1)
+		DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:26 * 100 + 26
+		LOCAL:26++
+	ELSE
+		DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:6 * 100 + 6
+		LOCAL:6++
+	ENDIF
+ENDIF
+IF ARG == 7
+	IF ARG:1 == 0
+		DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:17 * 100 + 17
+		LOCAL:17++
+	ELSEIF ARG:2 == 0
+		DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:27 * 100 + 27
+		LOCAL:27++
+	ELSE
+		DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:7 * 100 + 7
+		LOCAL:7++
+	ENDIF
+ENDIF
+IF ARG == 8
+	DA:(ARG:1):(ARG:2) = FLAG:現M *1000 + LOCAL:8 * 10 + 8
+	LOCAL:8++
+ENDIF
+;扉のタイル表示
+@TILE_MARK_COMMON_X_2, ARG, ARG:1, ARG:2
+SELECTCASE ARG / 10
+	CASEELSE
+		RESULTS = 扉
+ENDSELECT
+
+;=======================================================================
+;[5]調べる　実行時のイベント
+;=======================================================================
+@EVENT_CHECK_DUNGEON_X
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y)% 10
+	;========
+	;宝の処理
+	;========
+	CASE 3
+		CALL TREASURE_X
+		RETURN 1
+	;========================
+	;イベント
+	;========================
+	CASE 4
+		CALL EVENT_X
+		RETURN 0
+	;=======
+	;ワープゾーン
+	;=======
+	CASE 6,7
+		CALL WORP_X
+		RETURN 1
+	;=======
+	;メッセンジャー
+	;=======
+	CASE 8
+		CALL MESSAGE_X, 0
+		RETURN 1
+	;=======
+	;特殊タイル
+	;=======
+	CASE 9
+		CALL SPECIAL_X
+		RETURN 1
+	;=======
+	;ダークゾーン
+	;=======
+	CASE -1
+		IF DA:(FLAG:現X):(FLAG:現Y) < -10
+			CALL DARK_X
+			RETURN 1
+		ENDIF
+	CASEELSE
+	PRINTW 何も無いようだ
+	RETURN 0
+ENDSELECT
+
+;=======================================================================
+;タイル進入時のイベント
+;=======================================================================
+@EVENT_ENTER_DUNGEON_X,ARG
+;ARG = 進入時の向き　0の場合ワープなど
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y) % 10
+	;==========
+	;扉の処理
+	;==========
+	CASE 2
+		CALL DUNGEON_DOOR,ARG
+		RETURN 1
+;========
+;宝の処理
+;========
+	CASE 3
+		CALL TREASURE_X
+		RETURN 1
+;========================
+;イベント
+;========================
+	CASE 4
+		CALL EVENT_X, 1
+		RETURN 0
+;=======
+;ワープゾーン
+;=======
+	CASE 6,7
+		CALL WORP_X
+		RETURN 1
+;=======
+;メッセンジャー
+;=======
+	CASE 8
+		CALL MESSAGE_X, 1
+		RETURN 1
+;=======
+;特殊タイル
+;=======
+	CASE 9
+		CALL SPECIAL_X
+		RETURN 1
+;=======
+;ダークゾーン
+;=======
+	CASE -1
+		CALL DARK_X, 1
+		RETURN 1
+ENDSELECT
+@TILE_MARK_COMMON_X_9, ARG, ARG:1, ARG:2
+SELECTCASE ARG / 10
+	CASE 98
+		RESULTS = ＋
+	CASE 99
+		RESULTS = 出
+ENDSELECT
+;IDを取る必要がないものはここにまとめる
+@SPECIAL_X
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+	;回復の泉
+	CASE 98
+		CALL FOUNTAIN_OF_TRISH
+	;出口
+	CASE 99
+		CALL DUNGEON_EXIT
+ENDSELECT
+
+;===============================
+;イベントの中身
+;===============================
+;IDをはFLAG:現M*100＋N個目のイベントの法則
+;イベントを再び設置しないようにする場合はタイル設置で条件つけて除外するのがいいです
+;なお、個数はY座標が小さく、Y座標が同値の場合は、X座標が小さいものから、順番に振られていく
+@EVENT_X, ARG
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+	;この命令でイベントは破壊され、ただの床になる
+	;DA:(FLAG:現X):(FLAG:現Y) = 1
+ENDSELECT
+
+;===============================
+;宝箱の中身
+;===============================
+@TREASURE_X
+;LOCALに個数や数量を代入、LOCALSにアイテム名もしくは魔貨や￥やMAGを代入することで宝箱の処理をする
+;なお、FLAGは75~99を自動的に使用するので設定する必要はない
+LOCAL:2 = (DA:(FLAG:現X):(FLAG:現Y) / 10) % 100
+LOCAL = 1
+;IDは現M*100＋X+1個目の宝箱の法則でふられている
+;なお、IDは自動的に振られる
+;ID904ならM9の5個目の宝箱、1200ならM12の1個目
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+ENDSELECT
+IF LOCALS == "￥"
+	CALL GET_TREASURE_MONEY, 0, LOCAL, FLAG:現ダンジョン, FLAG:現M + 75, (DA:(FLAG:現X):(FLAG:現Y) / 10) % 10
+ELSEIF LOCALS == "魔貨"
+	CALL GET_TREASURE_MONEY, 1, LOCAL, FLAG:現ダンジョン, FLAG:現M + 75, (DA:(FLAG:現X):(FLAG:現Y) / 10) % 10
+ELSEIF LOCALS == "MAG"
+	CALL GET_TREASURE_MAG, 0, LOCAL, FLAG:現ダンジョン, FLAG:現M + 75, (DA:(FLAG:現X):(FLAG:現Y) / 10) % 10
+ELSE
+	CALL GET_TREASURE, GETNUM(ITEM, LOCALS), LOCAL , FLAG:現ダンジョン, FLAG:現M + 75, (DA:(FLAG:現X):(FLAG:現Y) / 10) % 10
+ENDIF
+;=======
+;メッセンジャー(8)
+;ARGは進入時の時に真
+;IDは50未満が部屋の中、50以上外
+;ARGがの場合RETURNして打ち切る
+;=======
+@TILE_MARK_COMMON_X_8, ARG, ARG:1, ARG:2
+SETCOLOR 0x00ff00
+RESULTS = ｍ
+@MESSAGE_X, ARG
+SELECTCASE DA:(FLAG:現X):(FLAG:現Y) / 10
+ENDSELECT
+
+
+@TILE_MARK_COMMON_X_6, ARG, ARG:1, ARG:2
+SELECTCASE ARG % 100
+	CASE 6
+		RESULTS = 昇
+	CASE 16
+		RESULTS = →
+	CASE 26
+		RESULTS = ↓
+ENDSELECT
+
+@TILE_MARK_COMMON_X_7, ARG, ARG:1, ARG:2
+SELECTCASE ARG % 100
+	CASE 7
+		RESULTS = 降
+	CASE 17
+		RESULTS = ←
+	CASE 27
+		RESULTS = ↑
+ENDSELECT
+
+;=======
+;ワープゾーン
+;=======
+@WORP_X
+LOCAL = DA:(FLAG:現X):(FLAG:現Y)
+;直接指定
+;IDはM*1000+ワープの総数+1*100+ワープ種類となっている
+;24,1,16 ならM24の2個目の→となる。直接指定する場合はLOCAL == 24116などを利用して判別する
+
+SELECTCASE LOCAL % 100
+	CASE 6
+		CALL DUNGEON_UPSTAIRS_ID, FLAG:現M + 1, LOCAL + 1001
+	CASE 7
+		CALL DUNGEON_DOWNSTAIRS_ID, FLAG:現M - 1, LOCAL - 1001
+	CASE 16
+		CALL DUNGEON_WORP_ID, FLAG:現M+1, LOCAL+1001, 1
+		FLAG:現X += 1
+		SIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 2
+			FLAG:現X += 1
+	CASE 17
+		CALL DUNGEON_WORP_ID, FLAG:現M-1, LOCAL-1001, 1
+		FLAG:現X -= 1
+		SIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 2
+			FLAG:現X -= 1
+	CASE 26
+		CALL DUNGEON_WORP_ID, FLAG:現M+2, LOCAL+2001, 1
+		FLAG:現Y += 1
+		SIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 2
+			FLAG:現Y += 1
+	CASE 27
+		CALL DUNGEON_WORP_ID, FLAG:現M-2, LOCAL-2001, 1
+		FLAG:現Y -= 1
+		SIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 2
+			FLAG:現Y -= 1
+ENDSELECT
+@GET_DUNGEON_LV_X
+RETURN 30, 30, 30, 30
+;=======
+;ダークゾーン
+;=======
+@TILE_MARK_COMMON_X_D, ARG, ARG:1, ARG:2
+IF FLAG:ライトマ || EQUIP:MASTER:ダークスキャナー
+	SELECTCASE -ARG/10
+	ENDSELECT
+ENDIF
+SETCOLOR 0x202020
+RESULTS = □
+
+@DARK_X, ARG
+SELECTCASE -DA:(FLAG:現X):(FLAG:現Y)/10
+ENDSELECT
+
+
+@TRAIN_DUNGEON_X
+
+;=======================================================================
+;エンカウント率
+;=======================================================================
+@ENCOUNT_RATE_X
+SELECTCASE FLAG:現M
+	CASEELSE
+		FLAG:エンカウント率 = FLAG:未遭遇歩数 * 5
+ENDSELECT
+SIF FLAG:未遭遇歩数 < 5
+	FLAG:エンカウント率 = 0
+	
+;=======================================================================
+;エンカウント処理
+;=======================================================================
+@CHECK_ENCOUNT_X
+IF RAND:100 < FLAG:エンカウント率
+	$LOOP_ENCOUNT
+	SELECTCASE FLAG:現M
+		CASE 0
+			LOCAL:2 = 0
+			FOR LOCAL,7,17,1
+				;１枠あたり30％の確率で出現
+				IF RAND:100 < 30
+					SELECTCASE RAND:100
+						;15%は女
+						CASE IS < 15
+							CALL SET_ENEMY,LOCAL, [[キャラ:]], , 0
+						CASE IS < 30
+							CALL SET_ENEMY,LOCAL, [[キャラ:]], , 0
+						CASE IS < 45
+							CALL SET_ENEMY,LOCAL, [[キャラ:]], , 0
+						CASE IS < 60
+							CALL SET_ENEMY,LOCAL, [[キャラ:]], , 0
+						;10%は男
+						CASE IS < 70
+							CALL SET_ENEMY,LOCAL, [[キャラ:]], , 0
+						CASE IS < 80
+							CALL SET_ENEMY,LOCAL, [[キャラ:]], , 0
+						CASE IS < 90
+							CALL SET_ENEMY,LOCAL, [[キャラ:]], , 0
+						CASE IS < 100
+							CALL SET_ENEMY,LOCAL, [[キャラ:]], , 0
+					ENDSELECT
+					LOCAL:2 += 1
+				ENDIF
+			NEXT
+			SIF LOCAL:2 == 0
+				GOTO LOOP_ENCOUNT
+	ENDSELECT
+	RETURN 1
+ELSE
+	FLAG:未遭遇歩数 += 1
+	RETURN 0
+ENDIF
+	

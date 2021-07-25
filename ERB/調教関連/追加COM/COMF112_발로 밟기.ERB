@@ -1,0 +1,382 @@
+﻿;-------------------------------------------------
+;발로 밟기
+;道具사용コマンド、레벨2
+;-------------------------------------------------
+@CHECK_COM_ABLE112
+
+;순종5미만의 ASSI일 경우, 実行できない(새드거나 새드끼Lv3이상か광기, 또는 망신이나 복종이 있다면 ＯＫ)
+IF ASSIPLAY
+    SIF ABL:ASSI:10 < 5 && TALENT:ASSI:새드 == 0 && ABL:ASSI:새드끼 < 3 && TALENT:ASSI:광기 == 0 && TALENT:ASSI:망신 == 0 && TALENT:ASSI:복종 == 0 && TALENT:ASSI:예속 == 0
+        RETURN 0
+ENDIF
+	
+RETURN 1
+
+@ACT_COM112
+PRINTL 발로 밟기
+TSTR:0 = 발로 밟기
+;CALL KOJO_MESSAGE_COM
+
+;조교者→조교대상
+TFLAG:28 = 2
+;-------------------------------------------------
+;ソース추가処理
+;-------------------------------------------------
+;소비체력、기력
+DOWNBASE:TARGET:체력 += (TALENT:임신) ?  110 # 80
+DOWNBASE:TARGET:기력 += (TALENT:임신) ?  80 # 60
+
+SOURCE:일탈 = 800
+
+;PALAM:고통을 본다
+IF PALAM:고통 < PALAMLV:1
+    SOURCE:아픔 = 600
+ELSEIF PALAM:고통 < PALAMLV:2
+    SOURCE:아픔 = 1000
+ELSEIF PALAM:고통 < PALAMLV:3
+    SOURCE:아픔 = 1600
+ELSEIF PALAM:고통 < PALAMLV:4
+    SOURCE:아픔 = 2400
+ELSE
+    SOURCE:아픔 = 3600
+ENDIF
+
+;임신, 포란중, 회란이라면 고통은 보다 커진다
+SIF TALENT:임신
+    TIMES SOURCE:아픔 , 1.80
+
+;PALAM:공포를 본다
+IF PALAM:공포 < PALAMLV:1
+    SOURCE:일탈 += 600
+ELSEIF PALAM:공포 < PALAMLV:2
+    SOURCE:일탈 += 900
+ELSEIF PALAM:공포 < PALAMLV:3
+    SOURCE:일탈 += 1300
+ELSEIF PALAM:공포 < PALAMLV:4
+    SOURCE:일탈 += 1800
+ELSEIF PALAM:공포 >= PALAMLV:4
+    SOURCE:일탈 += 2400
+ENDIF
+
+;마조나 왕M소유에는 오히려 포상
+SIF TALENT:마조
+    SOURCE:욕정 = 300
+
+;조교자가 새드이나 왕S소유라면 파괴력증
+IF TALENT:PLAYER:새드
+    SOURCE:아픔 += 150
+    SOURCE:일탈 += 50
+ENDIF
+
+
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;억압、저항持ちには、억울ソース추가
+SIF TALENT:32 || TALENT:34
+	SOURCE:TARGET:울굴 += 30
+
+;-------------------------------------------------
+;경험の処理
+;-------------------------------------------------
+A = 1
+IF IS_LESBIAN(TARGET,PLAYER)
+	CALL ADDS_EXP("레즈경험", A, TARGET)
+	CALL ADDS_EXP("레즈경험", A, PLAYER)
+ELSEIF IS_GAY(TARGET,PLAYER)
+	CALL ADDS_EXP("ＢＬ경험", A, TARGET)
+	CALL ADDS_EXP("ＢＬ경험", A, PLAYER)
+ENDIF
+
+;의존도ベクトル
+TFLAG:33 = 5
+
+;의존도보정値(복종で1、예속で2）
+IF TALENT:5 && ASSIPLAY == 0
+	TFLAG:30 += 1
+ELSEIF TALENT:8 && ASSIPLAY == 0
+	TFLAG:30 += 2
+ENDIF
+
+TFLAG:유산 = 0
+IF TALENT:임신
+	IF RAND:100 <5
+		TFLAG:유산 = 1
+	ENDIF
+ENDIF
+
+RETURN 1
+
+;===================================================
+;조교타입
+;===================================================
+@COMTYPE_112
+RETURN COMTYPE("하드계")
+
+
+@MESSAGE_COM112
+PRINTL
+PRINTFORML %CALLNAME:TARGET%의 배를, 강하게 짓밟아 주었다.
+;미약등의 약을 사용하고 있으면(자) 역류
+IF TEQUIP:미약 || TEQUIP:이뇨제 == 1
+    PRINTFORMW 약의 영향인지 %조사선택(CALLNAME:TARGET, "는")% 우웩 하고 대량의 토사물을 쏟아냈다.
+ELSEIF TEQUIP:이뇨제
+	PRINTFORMW 과하게 먹은 물 탁인지 %조사선택(CALLNAME:TARGET, "는")% 우웩 하고 대량의 토사물을 쏟아냈다.
+ENDIF
+;이뇨제를 사용하고 있으면(자) 흘려
+IF TEQUIP:이뇨제
+    PRINTFORML 복부에의 일격으로 %CALLNAME:TARGET%의 요도가 느슨해져 버린 것 같다.
+    PRINTFORMW %CALLNAME:TARGET%의 고간에서 주륵주륵 노란 물이 흘러내리고 있다.
+	TEQUIP:이뇨제 = 0
+ENDIF
+IF TFLAG:유산 == 1
+	PRINTFORML %조사선택(CALLNAME:TARGET, "는")% 단말마를 지르며 쓰러졌다.
+	CALL MISCARRIAGE, TARGET
+	SIF CFLAG:스트레스치 >= 100 && TALENT:붕괴 == 0
+		CALL COLLAPSE_MIND_MISCARRIAGE, TARGET
+	CALL ADDS_ABNORMAL_EXP("유산", TARGET)
+	RETURN 0
+ELSE
+	;배설물/이물 역류
+	IF TEQUIP:관장기＋플러그
+		PRINTFORML %조사선택(CALLNAME:TARGET, "는")% 복부에의 충격에 결국 참지 못하고 플러그채 뿜어져나오는 배설물을 흘려 버렸다.
+		PRINTL
+		IF BASE:0 >= 600
+			IF ABL:마조끼 == 0
+				PRINTFORMW %조사선택(CALLNAME:TARGET, "는")% 억울함과 치욕이 가득한 표정을 짓고 있다.
+			ELSEIF ABL:마조끼 == 1
+				PRINTFORMW %조사선택(CALLNAME:TARGET, "는")% 비지땀을 흘리며 아랫배에 남아있는 배설감을 견디고 있다.
+			ELSEIF ABL:마조끼 == 2
+				PRINTFORMW %조사선택(CALLNAME:TARGET, "는")% 부끄러워하면서도, 해방감에 편안한 표정을 짓고 있다.
+			ELSEIF ABL:마조끼 == 3
+				PRINTFORMW %조사선택(CALLNAME:TARGET, "는")% 항문을 통과하는 배설물의 감각에 때때로 허덕이며 음란한 소리를 내고 있다.
+			ELSEIF ABL:마조끼 == 4
+				PRINTFORMW %조사선택(CALLNAME:TARGET, "는")% 넋을 잃은 표정으로 배설감을 즐기고 있다.
+			ELSE
+				PRINTFORML %조사선택(CALLNAME:TARGET, "는")% 배설감과 치욕을 마음껏 맛보고 있다.
+				PRINTFORMW %조사선택(CALLNAME:TARGET, "는")% 격렬한 쾌감에 눈을 쳐 뜨고, 항문에서 오물을 싸는 동시에 질구에서도 애액을 뚝뚝 방울져 떨어뜨리고 있다.
+			ENDIF
+		ENDIF
+		CALL ADDS_ABNORMAL_EXP("관장배설", TARGET)
+		TEQUIP:관장기＋플러그 = 0
+	ENDIF
+	;나머지 체력이 적으면 기절
+	;(일단 체력을 500에 고정, 후에 DOWNBASE:0으로 한층 더 줄여지게 되므로 확실히 조교 종료가 된다)
+	IF BASE:0 < 600
+		PRINTFORML %조사선택(CALLNAME:TARGET, "는")% 마루에 쓰러져서 토사물의 바다에 푹 엎드린 채로 일어나질 않는다.
+		PRINTW 약간 힘 조절을 틀려버린 것 같다….
+		PRINTL 역시 이 상태로는 조교를 계속하기 힘들 것이다.
+		PRINTFORMW %조사선택(CALLNAME:MASTER, "는")% 기절한 %조사선택(CALLNAME:TARGET, "를")% 안아 안쪽의 방으로 옮겼다.
+	ELSEIF ABL:마조끼 >= 2
+		PRINTFORMW %조사선택(CALLNAME:TARGET, "는")% 차이는 것의 충격에 비틀거렸지만, 쾌감도 맛보았다.
+	ELSE
+		PRINTFORMW %조사선택(CALLNAME:TARGET, "는")% 괴로운 신음을 내며 풀썩 마루에 쓰러져버렸다.
+	ENDIF
+ENDIF
+
+;유산이벤트
+@MISCARRIAGE, ARG
+#DIM FATHER, 1
+;이벤트구상
+U = 0
+IF ASSI >= 0
+	SIF ASSI == ARG
+		U = 1
+ENDIF
+T = TARGET
+TARGET = ARG
+LOCAL = TARGET
+TARGET = T
+SIF U
+	ASSI = RESULT
+PRINTFORML 일그러진 배의 형태와 심상치 않은 하혈을 보고 회복 조치를 취하였지만 아무래도 아이는 유산이 되어 버리것 같다.
+PRINTFORMW 그 사실을 전달받은 %조사처리(CALLNAME:TARGET,"는")% 한동안 홀쭉해진 배를 보고 망연자실 하고 있었다.
+PRINTFORMW %NAME:LOCAL%의 배는 임신하기 전의 크기로 돌아왔다
+;수태아이템の입수
+PRINTFORMW %조사처리(NAME:LOCAL,"는")% [%TALENTNAME:153%]을 잃었다
+TALENT:LOCAL:153 = 0
+CFLAG:LOCAL:発情임신 = 0
+PRINTW 그리고 가슴의 크기도 작아진 것 같다
+C = LOCAL:0
+CALL REVERSE_B_SIZE
+
+RESULT = A
+LOCAL:1 = 0
+LOCAL:2 = 0
+
+;스트레스치の보정の決定
+;ABL:순종をみる
+IF ABL:LOCAL:0 == 0
+	A = 0
+ELSEIF ABL:LOCAL:0 == 1
+	A = 2
+ELSEIF ABL:LOCAL:0 == 2
+	A = 4
+ELSEIF ABL:LOCAL:0 == 3
+	A = 6
+ELSEIF ABL:LOCAL:0 == 4
+	A = 8
+ELSE
+	A = 10
+ENDIF
+IF TALENT:LOCAL:남자 == 0
+	;ABL:Ｖ감각をみる
+	IF ABL:LOCAL:4 == 0
+		B = 0
+	ELSEIF ABL:LOCAL:4 == 1
+		B = 2
+	ELSEIF ABL:LOCAL:4 == 2
+		B = 4
+	ELSEIF ABL:LOCAL:4 == 3
+		B = 6
+	ELSEIF ABL:LOCAL:4 == 4
+		B = 8
+	ELSE
+		B = 10
+	ENDIF
+
+	;EXP:Ｖ경험をみる
+	IF EXP:LOCAL:0 < EXPLV:1
+		C = 0
+	ELSEIF EXP:LOCAL:0 < EXPLV:2
+		C = 2
+	ELSEIF EXP:LOCAL:0 < EXPLV:3
+		C = 4
+	ELSEIF EXP:LOCAL:0 < EXPLV:4
+		C = 6
+	ELSEIF EXP:LOCAL:0 < EXPLV:5
+		C = 8
+	ELSE
+		C = 10
+	ENDIF
+ELSE
+	;ABL:Ａ감각をみる
+	IF ABL:LOCAL:5 == 0
+		B = 0
+	ELSEIF ABL:LOCAL:5 == 1
+		B = 2
+	ELSEIF ABL:LOCAL:5 == 2
+		B = 4
+	ELSEIF ABL:LOCAL:5 == 3
+		B = 6
+	ELSEIF ABL:LOCAL:5 == 4
+		B = 8
+	ELSE
+		B = 10
+	ENDIF
+
+	;EXP:Ａ경험をみる
+	IF EXP:LOCAL:1 < EXPLV:1
+		C = 0
+	ELSEIF EXP:LOCAL:1 < EXPLV:2
+		C = 2
+	ELSEIF EXP:LOCAL:1 < EXPLV:3
+		C = 4
+	ELSEIF EXP:LOCAL:1 < EXPLV:4
+		C = 6
+	ELSEIF EXP:LOCAL:1 < EXPLV:5
+		C = 8
+	ELSE
+		C = 10
+	ENDIF
+ENDIF
+
+;EXP:출산경험をみる
+IF EXP:LOCAL:60 < EXPLV:2
+	D = 100
+ELSEIF EXP:LOCAL:60 < EXPLV:4
+	D = 60
+ELSEIF EXP:LOCAL:60 < EXPLV:5
+	D = 40
+ELSE
+	D = 20
+ENDIF
+
+E = 100
+;함락소질を見る
+SIF TALENT:LOCAL:연모
+	E = 90
+SIF TALENT:LOCAL:연모 && CFLAG:LOCAL:임신確定後の父親の판정 == MASTER
+	E = 120
+SIF TALENT:LOCAL:음란
+	E = 80
+SIF TALENT:LOCAL:5
+	E = 60
+SIF TALENT:LOCAL:친애
+	E = 85
+SIF TALENT:LOCAL:6 && CFLAG:LOCAL:임신確定後の父親の판정 == MASTER
+	E = 135
+SIF TALENT:LOCAL:7
+	E = 60
+SIF TALENT:LOCAL:8
+	E = 40
+SIF TALENT:LOCAL:9
+	E = 0
+
+F = D*(100- A - B - C)*E/10000
+EXP:LOCAL:60 += 1
+IF TALENT:LOCAL:남자 == 0
+	PRINTL Ｖ경험＋５
+	PRINTL Ｖ확장경험＋１
+	
+	EXP:LOCAL:0 += 5
+	EXP:LOCAL:52 += 1
+ELSE
+	PRINTL Ａ경험＋５
+	PRINTL Ａ확장경험＋１
+	
+	EXP:LOCAL:Ａ경험 += 5
+	EXP:LOCAL:Ａ확장경험 += 1
+ENDIF
+PRINTL 출산경험＋１
+IF EXP:LOCAL:60 == 1 && EXP:LOCAL:52 == 1
+	EXP:LOCAL:50 += 3
+	PRINTFORML 이상경험＋3
+ELSEIF EXP:LOCAL:60 == 1
+	EXP:LOCAL:50 += 2
+	PRINTFORML 이상경험＋2
+ELSEIF EXP:LOCAL:52 == 1
+	EXP:LOCAL:50 += 1
+	PRINTFORML 이상경험＋1
+ENDIF
+CFLAG:LOCAL:스트레스치 += F
+BASE:LOCAL:0 = 10
+RESULT = LOCAL
+C = LOCAL
+CALL CLEAR_FLAG
+TWAIT 1, 1
+
+@COLLAPSE_MIND_MISCARRIAGE, ARG
+PRINTFORMW %CALLNAME:ARG%의 모습이 이상하다
+PRINTFORMW 유산의 충격 때문인지 %조사처리(CALLNAME:ARG,"는")% 정신에 이상을 일으켜버린 것 같다
+PRINTFORMW %조사처리(NAME:ARG,"는")% 【붕괴】하고 말았다
+TALENT:ARG:9 = 1
+IF TALENT:ARG:3 || TALENT:ARG:4 || TALENT:ARG:5 || TALENT:ARG:6 || TALENT:ARG:7 || TALENT:ARG:8
+	PRINTFORM %조사처리(CALLNAME:ARG,"는")% [
+	SIF TALENT:ARG:3
+		PRINTS TALENTNAME:3
+	SIF TALENT:ARG:4
+		PRINTS TALENTNAME:4
+	SIF TALENT:ARG:5
+		PRINTS TALENTNAME:5
+	SIF TALENT:ARG:6
+		PRINTS TALENTNAME:6
+	SIF TALENT:ARG:7
+		PRINTS TALENTNAME:7
+	SIF TALENT:ARG:8
+		PRINTS TALENTNAME:8
+	PRINTW ]을(를) 잃었다
+	SIF TALENT:ARG:3
+		TALENT:ARG:3 = 0
+	SIF TALENT:ARG:4
+		TALENT:ARG:4 = 0
+	SIF TALENT:ARG:5
+		TALENT:ARG:5 = 0
+	SIF TALENT:ARG:6
+		TALENT:ARG:6 = 0
+	SIF TALENT:ARG:7
+		TALENT:ARG:7 = 0
+	SIF TALENT:ARG:8
+		TALENT:ARG:8 = 0
+ENDIF

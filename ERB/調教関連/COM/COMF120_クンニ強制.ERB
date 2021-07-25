@@ -1,0 +1,262 @@
+﻿;-------------------------------------------------
+;커닐링구스강제
+;조수によるコマンド、及び레즈プ레이、레벨1
+;-------------------------------------------------
+@JUMP_COM120
+;-------------------------------------------------
+;特殊派生処理
+;-------------------------------------------------
+;전회の조교が커닐링구스か펠라한다か식스나인か６９파이즈리だと식스나인に
+IF GROUPMATCH(PREVCOM, 1, 2 , 501, 508)
+	CALL COM_ABLE_COMMON, 501
+	SIF RESULT == 1
+		RETURN 501
+ENDIF
+RETURN -1
+@ACT_COM120
+PRINTL 커닐링구스강제
+
+;-------------------------------------------------
+;実行決定
+;-------------------------------------------------
+TSTR:0 = 커닐링구스강제
+;CALL KOJO_MESSAGE_COM
+
+;조교대상→조교者
+TFLAG:28 = 1
+
+;-------------------------------------------------
+;사정ゲージ체크（후타나리の場合）
+;-------------------------------------------------
+B = 1000
+
+;ABL:조교者の기교をみる
+IF ABL:기교 == 0
+	TIMES B , 1.00
+ELSEIF ABL:기교 == 1
+	TIMES B , 1.20
+ELSEIF ABL:기교 == 2
+	TIMES B , 1.40
+ELSEIF ABL:기교 == 3
+	TIMES B , 1.60
+ELSEIF ABL:기교 == 4
+	TIMES B , 1.80
+ELSE
+	TIMES B , 2.00
+ENDIF
+
+;ABL:순종をみる
+IF ABL:순종 == 0
+	TIMES B , 0.80
+ELSEIF ABL:순종 == 1
+	TIMES B , 0.90
+ELSEIF ABL:순종 == 2
+	TIMES B , 1.00
+ELSEIF ABL:순종 == 3
+	TIMES B , 1.10
+ELSEIF ABL:순종 == 4
+	TIMES B , 1.20
+ELSE
+	TIMES B , 1.30
+ENDIF
+
+;ABL:봉사정신をみる
+IF ABL:봉사정신 == 0
+	TIMES B , 0.50
+ELSEIF ABL:봉사정신 == 1
+	TIMES B , 0.80
+ELSEIF ABL:봉사정신 == 2
+	TIMES B , 1.20
+ELSEIF ABL:봉사정신 == 3
+	TIMES B , 1.50
+ELSEIF ABL:봉사정신 == 4
+	TIMES B , 1.80
+ELSE
+	TIMES B , 2.40
+ENDIF
+
+;TALENT:혀놀림、고양이혀をみる
+SIF TALENT:혀놀림 || TALENT:고양이혀
+	TIMES B , 2.00
+
+LOCAL:99 = B
+
+;プ레이ヤーのABL:Ｃ감각をみる
+IF ABL:PLAYER:Ｃ감각 == 0
+	TIMES B , 1.00
+ELSEIF ABL:PLAYER:Ｃ감각 == 1
+	TIMES B , 1.50
+ELSEIF ABL:PLAYER:Ｃ감각 == 2
+	TIMES B , 2.00
+ELSEIF ABL:PLAYER:Ｃ감각 == 3
+	TIMES B , 2.50
+ELSEIF ABL:PLAYER:Ｃ감각 == 4
+	TIMES B , 3.50
+ELSE
+	TIMES B , 5.00
+ENDIF
+
+
+;再装填処理中は사정ゲージは20分の1に
+IF CFLAG:PLAYER:사정ゲージ再装填 > 0
+	B /= 20
+	LOCAL:99 /= 20
+ENDIF
+
+SIF HAVE_PENIS(PLAYER)
+	BASE:PLAYER:사정 += B
+SIF !IS_MALE(PLAYER)
+	BASE:PLAYER:절정 += LOCAL:99
+
+
+;사정先타입の설정
+TCVAR:PLAYER:페니스사용대상 = TARGET
+TCVAR:PLAYER:사정箇所 = 4
+;사정先選択の可・
+TFLAG:704 = 1
+
+
+
+;-------------------------------------------------
+;ソース추가処理
+;-------------------------------------------------
+;소비체력、기력
+DOWNBASE:TARGET:체력 += 10
+DOWNBASE:TARGET:기력 += 100
+
+;펠라치오で정애소스が入るのだからこっちで入っていいはず
+SOURCE:TARGET:정애 = 100
+SOURCE:TARGET:성행위 = 300
+SOURCE:TARGET:달성 = 150
+SOURCE:TARGET:굴종 = 700
+SOURCE:TARGET:일탈 = 200
+SOURCE:TARGET:반감 = 200
+
+;上のほうで計算した불결데이터
+SOURCE:TARGET:불결 = Y*80 + 50
+
+;조교者の쾌Ｃ증가
+SOURCE:PLAYER:쾌Ｃ = 100
+
+;舌を使う조교では혀놀림によって、쾌感のソース증가
+SIF TALENT:혀놀림
+	TIMES SOURCE:PLAYER:쾌Ｃ , 1.50
+
+;고양이혀で증가
+SIF TALENT:고양이혀
+	TIMES SOURCE:PLAYER:쾌Ｃ , 1.50
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;억압、저항持ちには、억울소스추가
+SIF TALENT:억압 || TALENT:저항
+	SOURCE:TARGET:울굴 += 400
+
+;-------------------------------------------------
+;불결の処理
+;-------------------------------------------------
+;奴隷の입⇔조교者のＶの불결が移動
+CALL MOVE_STAIN("입", TARGET, "바기나", PLAYER)
+
+;-------------------------------------------------
+;吸精処理
+;-------------------------------------------------
+IF CFLAG:PLAYER:ＭＡＧ非被흡수 == 0
+	LOCAL = (RAND:7+1) * BASE:LV
+	CALL DRAIN_MAG,PLAYER,LOCAL,TARGET
+ELSEIF CFLAG:TARGET:ＭＡＧ非被흡수 == 0
+	LOCAL = (RAND:7+1) * BASE:LV
+	CALL DRAIN_MAG,TARGET,LOCAL,PLAYER
+ENDIF
+
+;-------------------------------------------------
+;경험の処理
+;-------------------------------------------------
+A = 7
+IF IS_LESBIAN(TARGET,PLAYER)
+	CALL ADDS_EXP("레즈경험", A, TARGET)
+	CALL ADDS_EXP("레즈경험", A, PLAYER)
+ELSEIF IS_GAY(TARGET,PLAYER)
+	CALL ADDS_EXP("ＢＬ경험", A, TARGET)
+	CALL ADDS_EXP("ＢＬ경험", A, PLAYER)
+ENDIF
+
+;애정경험
+IF (TALENT:연모|| TALENT:친애) && ASSIPLAY == 0
+	CALL ADDS_EXP("애정경험", 1, TARGET)
+	CALL ADDS_EXP("애정경험", 1, MASTER)
+ENDIF
+
+;奴隷が고양이혀持ちの場合は、奴隷に가학쾌락경험を추가
+IF TALENT:TARGET:고양이혀
+	CALL ADDS_EXP("가학쾌락경험", 1, TARGET)
+ENDIF
+
+;의존도ベクトル
+IF GET_RELATION(TARGET, PLAYER) > 100 || IS_LOVER(TARGET)
+	TFLAG:33 = 2
+ELSEIF GET_RELATION(TARGET, PLAYER) < 100 || IS_SLAVERY(TARGET)
+	TFLAG:33 = 3
+ELSE
+	TFLAG:33 = 1
+ENDIF
+
+;;의존도보정値(相性100↑かつ음란で2、창부で4）
+;相性100↑で+1함락で+2上位함락でさらに+2
+IF 함락(TARGET) == 1
+	TFLAG:30 += 2
+ELSEIF 함락(TARGET) >= 2
+	TFLAG:30 += 4
+ENDIF
+SIF GET_RELATION(TARGET, PLAYER) > 100
+	TFLAG:30 += 1
+
+;봉사쾌락フラグ
+TFLAG:100 = 1
+
+
+RETURN 1
+;-------------------------------------------------
+;実行판정処理
+;-------------------------------------------------
+@COM_ORDER_120, ARG, ARG:1
+IF TEQUIP:ARG:음문발동
+	CALL ADD_COM_ORDER, "판정無視", "음문 발동중"
+	RETURN 0
+ENDIF
+IF TEQUIP:ARG:밧줄
+	CALL ADD_COM_ORDER, "판정無視", "결박"
+	RETURN 0
+ENDIF
+
+CALL ADD_COM_ORDER, "ABL", "욕망", 1, ARG, ARG:1
+CALL ADD_COM_ORDER, "ABL", "봉사정신", 4, ARG, ARG:1
+CALL ADD_COM_ORDER, "MARK", "쾌락각인", 2, ARG, ARG:1
+CALL ADD_COM_ORDER, "PALAM", "욕정", 1, ARG, ARG:1
+CALL ADD_COM_ORDER, "TALENT", "부끄럼쟁이", -1, ARG, ARG:1
+CALL ADD_COM_ORDER, "TALENT", "악취둔감", 3, ARG, ARG:1
+CALL ADD_COM_ORDER, "TALENT", "악취민감", -3, ARG, ARG:1
+CALL ADD_COM_ORDER, "TALENT", "헌신적", 6, ARG, ARG:1
+SIF !TALENT:ARG:음란 && !TALENT:ARG:창부
+	CALL ADD_COM_ORDER, "TALENT", "쾌감을부정", -1, ARG, ARG:1
+;남성혐오（연모、친애で무효）
+SIF HATE(ARG, ARG:1)
+	CALL ADD_COM_ORDER, "TALENT", \@IS_MALE(PLAYER) ? 남성혐오 # 여성혐오 \@, -12, ARG, ARG:1
+CALL ADD_COM_ORDER, "TALENT", "음란", 5, ARG, ARG:1
+CALL ADD_COM_ORDER, "TALENT", "창부", 10, ARG, ARG:1
+CALL ADD_COM_ORDER, "STAIN", "바기나", 100, ARG, ARG:1
+
+;-------------------------------------------------
+;実行値
+;-------------------------------------------------
+@COM_ORDER_NUM_120
+RETURN 23
+
+;===================================================
+;조교타입
+;===================================================
+@COMTYPE_120
+RETURN COMTYPE("조수・레즈계")
+
+

@@ -1,0 +1,234 @@
+﻿;-------------------------------------------------
+;오나홀쓴다
+;道具사용コマンド、레벨2
+;촉수페니스자극시킨다
+;-------------------------------------------------
+@CHECK_COM_ABLE51
+
+;오나홀実行판정
+;촉수조교中はダメ
+SIF TEQUIP:25
+	RETURN 0
+
+;해제はいつでも가능
+SIF TEQUIP:PLAYER:12
+	RETURN 1
+
+;아이템を持っているか、아이템なし설정でないとダメ
+SIF !EXIST_ITEM(3)
+	RETURN 0
+
+
+;소인체형持ちは、双方が조교者と조교대상ならOK
+;それ以外の場合は主人が금단의지식持ちじゃないとダメ
+SIF TALENT:PLAYER:142 && PLAYER != MASTER && TALENT:MASTER:144 == 0
+	RETURN 0
+
+SIF !USE_PENIS(PLAYER)
+	RETURN 0
+
+;새댁플레이中はダメ
+SIF TEQUIP:33
+	RETURN 0
+RETURN 1
+
+@CHECK_COM_ABLE175
+
+;촉수페니스자극
+SIF TEQUIP:25 == 0
+	RETURN 0
+
+;남자か후타나리じゃないとダメ
+SIF !HAVE_PENIS(PLAYER)
+	RETURN 0
+RETURN 1
+
+@ACT_COM51
+;-------------------------------------------------
+;特殊派生処理
+;-------------------------------------------------
+IF TEQUIP:25
+	PRINTL 촉수페니스자극시킨다
+	TSTR:0 = 촉수페니스자극시킨다
+	SELECTCOM = 175
+ELSE
+	PRINTL 오나홀쓴다
+	TSTR:0 = 오나홀쓴다
+ENDIF
+;CALL KOJO_MESSAGE_COM
+
+;着脱の処理
+IF TEQUIP:PLAYER:12 == 0
+	TEQUIP:PLAYER:12 = 1
+ELSE
+	TEQUIP:PLAYER:12 = 0
+ENDIF
+
+;-------------------------------------------------
+;ソース추가処理
+;-------------------------------------------------
+;소비체력、기력
+LOSEBASE:0 += 10
+LOSEBASE:1 += 10
+
+SOURCE:4 = 10
+SOURCE:13 = 10
+SOURCE:17 = 10
+
+SOURCE:PLAYER:도구쾌Ｃ = 200
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;억압、저항持ちには、억울ソース추가
+;SIF TALENT:32 || TALENT:34
+;	SOURCE:16 += 30
+
+;-------------------------------------------------
+;불결の処理
+;-------------------------------------------------
+;촉수페니스자극なら、촉수体液が페니스に付く
+SIF TEQUIP:25
+	CALL SET_STAIN("페니스", "점액", PLAYER)
+
+;-------------------------------------------------
+;경험の処理
+;-------------------------------------------------
+A = 1
+IF IS_LESBIAN(TARGET,PLAYER)
+;	PRINTFORML %EXPNAME:40%+{A}
+;	PRINTFORML %EXPNAME:40%(조교자)+{A}
+;	EXP:40 += A
+;	EXP:PLAYER:40 += A
+	CALL ADDS_EXP("레즈경험", A, TARGET)
+	CALL ADDS_EXP("레즈경험", A, PLAYER)
+ELSEIF IS_GAY(TARGET,PLAYER)
+;	PRINTFORML %EXPNAME:41%+{A}
+;	PRINTFORML %EXPNAME:41%(조교자)+{A}
+;	EXP:41 += A
+;	EXP:PLAYER:41 += A
+	CALL ADDS_EXP("ＢＬ경험", A, TARGET)
+	CALL ADDS_EXP("ＢＬ경험", A, PLAYER)
+	
+	
+ENDIF
+
+;촉수소환時、촉수경험の리셋をする
+;SIF TEQUIP:25 == 1
+;	T = 0
+
+;의존도ベクトル
+TFLAG:33 = 1
+
+
+RETURN 1
+
+;-------------------------------------------------
+;装着継続の処理
+;-------------------------------------------------
+@EQUIP_COM51
+;오나홀장비中
+IF TEQUIP:25
+	PRINTL ＜촉수페니스자극중(조교자)＞
+ELSE
+	PRINTL ＜오나홀장착중(조교자)＞
+ENDIF
+;-------------------------------------------------
+;사정ゲージ체크
+;-------------------------------------------------
+B = 1500
+
+;プ레이ヤーのABL:Ｃ감각をみる
+B *= 100 + ABL:PLAYER:Ｃ감각*((ABL:PLAYER:Ｃ감각+1)/2) * 25
+B /= 100
+
+;再装填処理中は사정ゲージは20分の1に
+SIF CFLAG:PLAYER:9 > 0
+	B /= 20
+SIF HAVE_PENIS(PLAYER)
+	BASE:PLAYER:2 += B
+;-------------------------------------------------
+;사정체크
+;-------------------------------------------------
+;사정先타입の설정
+TCVAR:PLAYER:페니스사용대상 = -1
+TCVAR:PLAYER:사정箇所 = -1
+;사정先選択の可・
+TFLAG:704 = 0
+
+
+;-------------------------------------------------
+;ソース추가処理
+;-------------------------------------------------
+
+SOURCE:PLAYER:도구쾌Ｃ += 100
+;-------------------------------------------------
+;경험の処理
+;-------------------------------------------------
+;촉수경험加算
+SIF TEQUIP:25 == 1
+	CALL ADDS_EXP("촉수경험", 1, PLAYER)
+;	T += 1
+
+
+RETURN 1
+
+;-------------------------------------------------
+;조교時テ키스ト
+;-------------------------------------------------
+;51,오나홀쓴다
+;-------------------------------------------------
+@MESSAGE_COM51
+IF TEQUIP:주도권
+;여자주도
+	;장착時
+	IF TEQUIP:PLAYER:12
+		PRINTFORMW %조사처리(CALLNAME:TARGET,"는")% %CALLNAME:PLAYER%의 페니스를 오나홀에 삽입했다
+	;해제時
+	ELSE
+		PRINTFORMW %조사처리(CALLNAME:TARGET,"는")% %CALLNAME:PLAYER%의 페니스를 오나홀에서 뽑았다
+	ENDIF
+ELSE
+;남자주도
+	;장착時
+	IF TEQUIP:PLAYER:12
+		PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% 페니스를 오나홀에 삽입했다
+	;해제時
+	ELSE
+		PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% 오나홀을 뽑았다
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+;175,촉수페니스자극시킨다
+;-------------------------------------------------
+@MESSAGE_COM175
+;装着時
+IF TEQUIP:PLAYER:12
+	PRINTFORM 추잡한 고깃잎을 꿈틀거리는 촉수가 %CALLNAME:PLAYER%의 
+	;불결分岐
+	IF  GROUPMATCH(1, GET_STAIN("페니스", "애액", TARGET), GET_STAIN("페니스", "모유", TARGET), GET_STAIN("페니스", "정액", TARGET), GET_STAIN("페니스", "파과혈", TARGET)) > 2
+		PRINT 갖가지 체액으로 뒤덮힌 
+	ELSEIF GET_STAIN("페니스", "애액", PLAYER)
+		PRINT 애액투성이의 
+	ELSEIF GET_STAIN("손", "정액", PLAYER)
+		PRINT 정액으로 질퍽질퍽해진 
+	;섹스系を直前にしていないなら乱数分岐
+	ELSEIF RAND:3 == 0
+		PRINT 격분한 
+	ELSEIF TEQUIP:PLAYER:속옷（하） == 620
+		PRINT 피어스가 추잡하게 빛나는 
+	ELSE
+		PRINT 
+	ENDIF
+	PRINTFORMW 페니스에 휘감겨、훑어내기 시작했다
+;해제時
+ELSE
+	PRINTFORMW 촉수는 %CALLNAME:PLAYER%의 페니스를 풀어주었다
+ENDIF
+
+;===================================================
+;조교타입
+;===================================================
+@COMTYPE_51
+RETURN COMTYPE("대조교자도구계")
+

@@ -1,0 +1,95 @@
+﻿
+;-------------------------------------------------
+;YY/MM/DD | 書いた人          | 作業内容
+;13/01/09 | TR                | 作成
+;-------------------------------------------------
+
+;---------------------------------------------------------------------
+;@TRAIN_SETBIT(XX,YY,ZZ)
+;キャラ(XX)のCFLAGの조교コマンド(YY)に応じた変数にZZを保存できる
+;---------------------------------------------------------------------
+;	XX = キャラ번호(생략するとTARGET)
+;	YY = 조교コマンド번호(생략するとSELECTCOM)
+;	ZZ = 입력・출력する値(디폴트では0～7,생략するかこの범위を超えると엘라ー)
+;---------------------------------------------------------------------
+;	引数を1つだけ入れた場合、ZZのみが指定されたと判断する
+;	例:TRAIN_SETBIT(1)でTARGETのSELECTCOMのコマンド내역に1が入る
+;---------------------------------------------------------------------
+;	引数を2つだけ入れた場合、YYとZZが指定されたと判断する
+;	例:TRAIN_SETBIT(0,1)でTARGETのコマンド0番(애무)のコマンド내역に1が入る
+;---------------------------------------------------------------------
+@TRAIN_SETBIT(ARG=-1,ARG:1=-1,ARG:2=-1)
+
+;초기値の설정
+SELECTCASE GROUPMATCH(-1,ARG,ARG:1,ARG:2)
+CASE 3
+	THROW 引数が指定されていません
+CASE 2
+	LOCAL = TARGET
+	LOCAL:1 = SELECTCOM
+	LOCAL:2 = ARG
+CASE 1
+	LOCAL = TARGET
+	LOCAL:1 = ARG:0
+	LOCAL:2 = ARG:1
+CASE 0
+	LOCAL = ARG:0
+	LOCAL:1 = ARG:1
+	LOCAL:2 = ARG:2
+ENDSELECT
+
+SIF !INRANGE(LOCAL:2,0,POWER(2,TRAIN_BIT_BITSIZE)-1)
+	THROW 代入された値({LOCAL:2})は범위外です
+
+;300 = eraMegaten구상テンプレのコマンド実行내역の始値
+LOCAL:3 = LOCAL:1 / 64 * TRAIN_BIT_BITSIZE + 300
+LOCAL:4 = LOCAL:1 % 64
+
+;PRINTFORML CFLAG:{LOCAL:3} BIT {LOCAL:4} SET {LOCAL:2}
+
+FOR LOCAL:8,0,TRAIN_BIT_BITSIZE
+	IF GETBIT(LOCAL:2,LOCAL:8)
+		SETBIT CFLAG:LOCAL:(LOCAL:3+LOCAL:8),LOCAL:4
+	ELSE
+		CLEARBIT CFLAG:LOCAL:(LOCAL:3+LOCAL:8),LOCAL:4
+	ENDIF
+NEXT
+
+;---------------------------------------------------------------------
+;@TRAIN_GETBIT(XX,YY)
+;TRAIN_SETBITで保存した値を취득する式中関数
+;---------------------------------------------------------------------
+;	XX = キャラ번호(생략するとTARGET)
+;	YY = 조교コマンド번호(생략するとSELECTCOM)
+;---------------------------------------------------------------------
+;	引数を1つだけ入れた場合、XXが생략されYYが指定されたと判断する。YYのみ생략は出来ないので注意
+;	例:TRAIN_GETBIT(0)でTARGETのコマンド0番(애무)のコマンド내역を呼び出す
+;---------------------------------------------------------------------
+@TRAIN_GETBIT(ARG=-1,ARG:1=-1)
+#FUNCTION
+;초기値の설정
+SELECTCASE GROUPMATCH(-1,ARG,ARG:1)
+CASE 2
+	LOCAL = TARGET
+	LOCAL:1 = SELECTCOM
+CASE 1
+	LOCAL = TARGET
+	LOCAL:1 = ARG:0
+CASE 0
+	LOCAL = ARG:0
+	LOCAL:1 = ARG:1
+ENDSELECT
+
+;300 = eraMegaten구상テンプレのコマンド実行내역の始値(CFLAG:300)
+LOCAL:3 = LOCAL:1 / 64 * TRAIN_BIT_BITSIZE + 300
+LOCAL:4 = LOCAL:1 % 64
+
+LOCAL:5 = 0
+FOR LOCAL:8,0,TRAIN_BIT_BITSIZE
+	SIF GETBIT(CFLAG:LOCAL:(LOCAL:3+LOCAL:8),LOCAL:4)
+		LOCAL:5 += POWER(2,LOCAL:8)
+NEXT
+
+;PRINTFORML CFLAG:{LOCAL:3} BIT {LOCAL:4} GET {LOCAL:5}
+
+RETURNF LOCAL:5

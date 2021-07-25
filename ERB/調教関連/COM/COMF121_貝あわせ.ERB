@@ -1,0 +1,186 @@
+﻿;-------------------------------------------------
+;조개맞대기
+;조수によるコマンド、及び레즈プ레이、레벨1
+;-------------------------------------------------
+@COMNAME121
+RESULTS = 조개맞대기
+SIF HAVE_PENIS(TARGET) && HAVE_PENIS(PLAYER)
+	RESULTS = 투구맞대기
+@ACT_COM121
+IF HAVE_PENIS(TARGET) && HAVE_PENIS(PLAYER)
+	PRINTL 투구맞대기
+	TSTR:0 = 투구맞대기
+ELSE
+	PRINTL 조개맞대기
+	TSTR:0 = 조개맞대기
+ENDIF
+;CALL KOJO_MESSAGE_COM
+
+;-------------------------------------------------
+;절정ゲージ체크（후타나리の場合）
+;-------------------------------------------------
+B = 1000
+
+;ABL:조교者の기교をみる
+IF ABL:2 == 0
+	TIMES B , 1.00
+ELSEIF ABL:2 == 1
+	TIMES B , 1.20
+ELSEIF ABL:2 == 2
+	TIMES B , 1.40
+ELSEIF ABL:2 == 3
+	TIMES B , 1.60
+ELSEIF ABL:2 == 4
+	TIMES B , 1.80
+ELSE
+	TIMES B , 2.00
+ENDIF
+
+;ABL:순종をみる
+IF ABL:0 == 0
+	TIMES B , 0.80
+ELSEIF ABL:0 == 1
+	TIMES B , 0.90
+ELSEIF ABL:0 == 2
+	TIMES B , 1.00
+ELSEIF ABL:0 == 3
+	TIMES B , 1.10
+ELSEIF ABL:0 == 4
+	TIMES B , 1.20
+ELSE
+	TIMES B , 1.30
+ENDIF
+
+;ABL:봉사정신をみる
+IF ABL:7 == 0
+	TIMES B , 0.50
+ELSEIF ABL:7 == 1
+	TIMES B , 0.80
+ELSEIF ABL:7 == 2
+	TIMES B , 1.20
+ELSEIF ABL:7 == 3
+	TIMES B , 1.50
+ELSEIF ABL:7 == 4
+	TIMES B , 1.80
+ELSE
+	TIMES B , 2.40
+ENDIF
+
+;プ레이ヤーのABL:Ｃ감각をみる
+IF ABL:PLAYER:3 == 0
+	TIMES B , 1.00
+ELSEIF ABL:PLAYER:3 == 1
+	TIMES B , 1.50
+ELSEIF ABL:PLAYER:3 == 2
+	TIMES B , 2.00
+ELSEIF ABL:PLAYER:3 == 3
+	TIMES B , 2.50
+ELSEIF ABL:PLAYER:3 == 4
+	TIMES B , 3.50
+ELSE
+	TIMES B , 5.00
+ENDIF
+
+
+;再装填処理中は사정ゲージは20分の1に
+IF CFLAG:PLAYER:9 > 0
+	B /= 20
+ENDIF
+
+SIF !IS_MALE(PLAYER)
+	BASE:PLAYER:99 += B
+
+;조교者←→조교대상
+TFLAG:28 = 3
+;-------------------------------------------------
+;ソース추가処理
+;-------------------------------------------------
+;소비체력、기력
+DOWNBASE:TARGET:체력 += 30
+DOWNBASE:TARGET:기력 += 90
+
+SOURCE:TARGET:쾌Ｃ = 200
+SOURCE:TARGET:성행위 = 200
+SOURCE:TARGET:달성 = 100
+SOURCE:TARGET:노출 = 50
+SOURCE:TARGET:굴종 = 400
+SOURCE:TARGET:일탈 = 400
+SOURCE:TARGET:반감 = 400
+
+;조교者にも同様の쾌Ｃ
+SOURCE:PLAYER:쾌Ｃ = 200
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;억압、저항持ちには、억울ソース추가
+SIF TALENT:32 || TALENT:34
+	SOURCE:TARGET:울굴 += 400
+
+;-------------------------------------------------
+;불결の処理
+;-------------------------------------------------
+;奴隷のＶ⇔조교者のＶの불결が移動
+IF HAVE_PENIS(TARGET) && HAVE_PENIS(PLAYER)
+	CALL MOVE_STAIN("페니스", TARGET, "페니스", PLAYER)
+ELSE
+	CALL MOVE_STAIN("바기나", TARGET, "바기나", PLAYER)
+ENDIF
+
+;-------------------------------------------------
+;吸精処理
+;-------------------------------------------------
+IF CFLAG:PLAYER:ＭＡＧ非被흡수 == 0
+	LOCAL = (RAND:13+1) * BASE:LV
+	CALL DRAIN_MAG,PLAYER,LOCAL,TARGET
+ELSEIF CFLAG:TARGET:ＭＡＧ非被흡수 == 0
+	LOCAL = (RAND:13+1) * BASE:LV
+	CALL DRAIN_MAG,TARGET,LOCAL,PLAYER
+ENDIF
+
+;-------------------------------------------------
+;경험の処理
+;-------------------------------------------------
+A = 8
+IF IS_LESBIAN(TARGET,PLAYER)
+	CALL ADDS_EXP("레즈경험", A, TARGET)
+	CALL ADDS_EXP("레즈경험", A, PLAYER)
+ELSEIF IS_GAY(TARGET,PLAYER)
+	CALL ADDS_EXP("ＢＬ경험", A, TARGET)
+	CALL ADDS_EXP("ＢＬ경험", A, PLAYER)
+ENDIF
+
+;의존도ベクトル
+;P = PLAYER
+IF GET_RELATION(TARGET, PLAYER) > 100
+	TFLAG:33 = 2
+ELSEIF GET_RELATION(TARGET, PLAYER) < 100
+	TFLAG:33 = 3
+ELSE
+	TFLAG:33 = 1
+ENDIF
+
+;의존도보정値(相性100↑かつ음란で2、창부で4）
+;P = PLAYER
+IF TALENT:4 && GET_RELATION(TARGET, PLAYER) > 100
+	TFLAG:30 += 2
+ELSEIF TALENT:7 && GET_RELATION(TARGET, PLAYER) > 100
+	TFLAG:30 += 4
+ENDIF
+
+
+;	PRINTFORML 봉사쾌락경험(조교자) + 1
+	CALL ADDS_EXP("봉사쾌락경험", 1, PLAYER)
+TFLAG:100 = 1
+
+
+RETURN 1
+
+;===================================================
+;조교타입
+;===================================================
+@COMTYPE_121
+RETURN COMTYPE("조수・레즈계")
+
+
+

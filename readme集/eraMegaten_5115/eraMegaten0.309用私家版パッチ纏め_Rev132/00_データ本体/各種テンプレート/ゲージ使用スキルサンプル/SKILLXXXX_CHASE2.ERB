@@ -1,0 +1,273 @@
+
+;スキル名
+@SKILL_NAME_XXXX,ARG
+;戦闘中じゃない時の名前
+IF CFLAG:(CHARANUM-1):PTフラグ || ARG < 0 || ARG >= CHARANUM
+	RESULTS = チェイススキルA
+	RETURN
+ENDIF
+RESULTS = チェイスファイア
+SIF SKILLGAGE_H_GET(ARG,XXXX) % 10 == 1
+	RESULTS = チェイスフリーズ
+SIF SKILLGAGE_H_GET(ARG,XXXX) % 10 == 2
+	RESULTS = チェイスサンダー
+SIF SKILLGAGE_H_GET(ARG,XXXX) % 10 == 3
+	RESULTS = チェイスフォース
+
+;　命中
+@SKILL_HITRATE_XXXX, ARG
+RETURN 100
+
+;　威力
+@SKILL_POWER_XXXX, ARG
+RETURN 100
+
+;　最低攻撃回数
+@SKILL_MINATTACKNUMBER_XXXX,ARG
+RETURN 1
+
+;　最大攻撃回数
+@SKILL_MAXATTACKNUMBER_XXXX,ARG
+RETURN 1
+
+;　ＨＰ2を支払うかＭＰ3を支払うか
+@SKILL_COSTTYPE_XXXX, ARG
+RETURN 3
+;消費なし＝1
+
+;　コストの量
+@SKILL_COST_XXXX,ARG
+RETURN 20
+
+;　相性
+@SKILL_TYPE_XXXX,ARG
+#LOCALSSIZE 3
+#LOCALSIZE 4
+SIF ARG < 0
+	RETURN 0
+SIF SKILLGAGE_D_GET(ARG,XXXX) < 1 || ARG == FLAG:行動順1
+	RETURN ABL:ARG:攻撃相性
+LOCAL = SKILLGAGE_H_GET(ARG,XXXX) / 10
+LOCAL:2 = -300
+LOCALS = %GET_TYPE(ABL:ARG:攻撃相性)%
+LOCALS:1 = %GET_TYPE(SKILLGAGE_H_GET(ARG,XXXX) % 10 + 4)%
+LOCALS:2 = %LOCALS%
+FOR LOCAL:1, 1, 3
+	;判定用に数値を仕舞う。反射は-200扱い
+	LOCAL:3 = MAXBASE:LOCAL:(LOCALS:(LOCAL:1)) == 999 ? -200 # MAXBASE:LOCAL:(LOCALS:(LOCAL:1))
+	LOCAL:3 = CFLAG:LOCAL:(LOCALS:(LOCAL:1)+"ガードキル") && LOCAL:3 < 100 ? 100 # LOCAL:3
+	LOCAL:3 = CFLAG:LOCAL:(LOCALS:(LOCAL:1)+"無効化回数") ? 0 # LOCAL:3
+	SIF GET_TYPE_NUM(LOCALS:(LOCAL:1)) < 17
+		LOCAL:3 = LOCAL:1 == 1 && CFLAG:LOCAL:無効フラグ ? 0 # LOCAL:3
+	IF GET_TYPE_NUM(LOCALS:(LOCAL:1)) < 4
+		LOCAL:3 = LOCAL:1 == 1 && CFLAG:LOCAL:物理反射フラグ ? -200 # LOCAL:3
+	ELSEIF GET_TYPE_NUM(LOCALS:(LOCAL:1)) < 17
+		LOCAL:3 = LOCAL:1 == 1 && CFLAG:LOCAL:魔法反射フラグ ? -200 # LOCAL:3
+	ENDIF
+	IF LOCAL:3 > LOCAL:2
+		LOCAL:2 = LOCAL:3
+		LOCALS = %LOCALS:(LOCAL:1)%
+	ENDIF
+NEXT
+RETURN GET_TYPE_NUM(LOCALS)
+
+;　1EXTRAか2MAGICか
+@SKILL_DECIDE_TYPE_XXXX
+RETURN 1
+;どちらでもない
+
+;　1物理ダメージで計算するか2魔法ダメージで計算するか
+@SKILL_DAMAGETYPE_XXXX
+RETURN 1
+
+
+;　対象が1敵か2味方か3場全体か4特殊か
+@SKILL_TARGET_XXXX
+RETURN 1
+
+;　射程
+@SKILL_RANGE_XXXX,ARG
+RETURN 1
+
+;　範囲　1単体　21列　3全体　4　敵味方全体
+@SKILL_SPHERE_XXXX,ARG
+RETURN 1
+
+;　 効果のタイプ　1攻撃、2回復、3状態変化、4特殊、5状態回復
+@SKILL_EFECT_XXXX
+RETURN 1
+
+;　 特殊処理の有無、及び処理内容
+@SKILL_SPECIALEFECT_XXXX,ARG
+;ARG = 1だった場合は処理の有無を返します
+SIF ARG == 1
+	RETURN 0
+;以下に特殊な処理を記述します
+
+;継承タイプ
+@SKILL_SUCCESSION_TYPE_XXXX
+RETURN 23
+;氷結
+
+;速度補正
+@SKILL_SPEED_XXXX, ARG = -1
+RETURN 3
+
+;　口上の表示とそのタイプ
+@SKILL_MESSAGE_XXXX,ARG
+
+;戦闘時以外に使用できるか
+@SKILL_ACTIONABLE_FIELD_XXXX
+RETURN 0
+
+;スキル変化？用ランク
+@SKILL_RANK_XXXX
+RETURN 23
+
+@SKILL_RANKUP_XXXX
+RETURN 0
+
+
+;テンプレート用、追加効果シリーズ
+;追加効果ステータス
+@SKILL_ADDTIONAL_STATE_XXXX,ARG
+RETURN 0
+
+;追加効果相性
+@SKILL_ADDTIONAL_TYPE_XXXX,ARG
+RETURN 0
+
+;追加効果基本付与確率
+@SKILL_ADDTIONAL_BASE_RATE_XXXX,ARG
+RETURN 0
+
+;追加効果付与確率上限
+@SKILL_ADDTIONAL_MAX_RATE_XXXX,ARG
+RETURN 0
+
+;====================================================
+;トリガー発動条件
+;====================================================
+@SKILL_TRIGGER_ACTIONABLE_XXXX,ARG,ARG:1
+#DIM CHASE_T
+#DIM CHASE_P
+;自分ならNG
+SIF ARG == ARG:1
+	RETURN 0
+;チェイス効果が無いとNG
+SIF SKILLGAGE_D_GET(ARG,XXXX) < 1
+	RETURN 0
+CHASE_T = SKILLGAGE_H_GET(ARG,XXXX) / 10
+CHASE_P = SKILLGAGE_H_GET(ARG,XXXX) % 10 + 4
+;相手が死んでる、いないと
+SIF CHASE_T < 0 || GET_STATE(CFLAG:CHASE_T:ステート) == "DYING"
+	RETURN 0
+;ダメージを受けてないとNG
+SIF CFLAG:CHASE_T:現ダメージ < 1
+	RETURN 0
+;指定した属性を受けてないとNG
+;受けフラグについては、CFLAG.CSV、RECEIVE_SETを参照
+SIF !GETBIT(CFLAG:CHASE_T:受けフラグ,CHASE_P)
+	RETURN 0
+;チェイス相手の位置をターゲットに
+RESULT:1 = CPOS(CHASE_T)
+RETURN 1
+
+;====================================================
+;スキル及び行動の実行
+;====================================================
+
+@ACTION_XXXX,ARG,ARG:1
+#LOCALSIZE 4
+IF SKILLGAGE_D_GET(ARG,XXXX) && ARG != FLAG:行動順1
+	;追撃時
+	;必中
+	LOCAL = POS(ARG:1)
+	CALL SKILL_POWER_XXXX, ARG
+	LOCAL:1 = RESULT
+	CALL SKILL_TYPE_XXXX, ARG
+	LOCAL:2 = RESULT
+	TRYCCALL SKILL_CRITICAL_RATE_XXXX
+		LOCAL:3 = RESULT
+	CATCH
+		LOCAL:3 = 5
+	ENDCATCH
+	PRINTFORM 　　TARGET:[{CPOS(LOCAL),2}] %CALLNAME:LOCAL,20,LEFT%　>>>>>>　
+	CALL DAMAGE_1,ARG,LOCAL,LOCAL:1,LOCAL:2,LOCAL:3
+	PRINTL
+ELSE
+	;通常時
+	LOCAL = BASE:POS(ARG:1):ＨＰ
+	CALL ATTACK_SINGLE, ARG, POS(ARG:1),XXXX
+	IF SKILLGAGE_D_GET(ARG,XXXX) < 1 && POS(ARG:1) > 0 && LOCAL > BASE:POS(ARG:1):ＨＰ && GET_STATE(CFLAG:POS(ARG:1):ステート) != "DYING"
+		;チェイス相手の番号をHに保存
+		;2ケタ以上に保存
+		CALL SKILLGAGE_H_SET,ARG,XXXX,SKILLGAGE_H_GET(ARG,XXXX) % 10
+		CALL SKILLGAGE_H_ADD,ARG,XXXX,POS(ARG:1) * 10
+		;Dに効果ターン数を保存
+		;効果はこのターン(1ターン)のみ
+		CALL SKILLGAGE_D_SET,ARG,XXXX,1
+	ENDIF
+ENDIF
+;====================================================
+;実行内容ここまで
+;====================================================
+
+;====================================================
+;追加コマンド(EXTRAの下)
+;====================================================
+@SKILL_SPECIAL_COMMAND_EXTRA_XXXX,ARG,LOCAL
+#LOCALSIZE 1
+CALL TRUE_SKILL_COST,ARG,XXXX
+IF RESULT <= BASE:ARG:ＭＰ
+	PRINTFORML [{LOCAL}] チェイススキルA　ＭＰ{RESULT}
+	C:LOCAL = 1XXXX
+	LOCAL += 1
+ENDIF
+RETURN LOCAL
+;====================================================
+;コマンド実行
+;====================================================
+@INPUT_COM_1XXXX,ARG
+
+PRINTL [1] チェイスファイア　[2] チェイスフリーズ
+PRINTL [3] チェイスサンダー　[4] チェイスフォース
+DRAWLINE
+PRINTL [0] ＣＡＮＣＥＬ
+CALL INPUTINT(0,1,2,3,4)
+IF RESULT > 0 &&  RESULT < 5
+	CALL SKILLGAGE_H_SET,ARG,XXXX,RESULT - 1
+	CALL SELECT_SKILL_INPUT,ARG,XXXX
+	SIF RESULT > -1
+		RETURN 1
+ENDIF
+SIF RESULT == 0
+	RETURN -1
+RESTART
+
+;　 説明文の表示
+@SKILL_EXPLAIN_XXXX
+#LOCALSIZE 1
+IF CFLAG:(CHARANUM-1):PTフラグ || U < 0 || U >= CHARANUM
+	;戦闘中じゃない時のスキル説明
+	PRINTL コマンドにチェイススキルAが追加され
+	PRINTL そこから、チェイスファイア、チェイスフリーズ、チェイスサンダー、チェイスフォース
+	PRINTL が使えるようになる
+ELSE
+	LOCAL = SKILLGAGE_H_GET(U,XXXX) % 10 + 4
+	;%GET_TYPE(LOCAL)%
+	PRINTL 敵一体に通常攻撃相性の小ダメージ
+	PRINTFORML その後、味方の%GET_TYPE(LOCAL)%攻撃が攻撃した敵に当たると追撃するようになる
+	PRINTFORML 追撃は%GET_TYPE(LOCAL)%相性と複合属性になる
+ENDIF
+
+;継承に必要な部位
+@継承部位_XXXX,ARG
+RETURN 1
+;とくにない
+
+;使用条件
+@SKILL_SPECIAL_ACTIONABLE_XXXX,ARG
+RETURN 1
+;とくにない
+

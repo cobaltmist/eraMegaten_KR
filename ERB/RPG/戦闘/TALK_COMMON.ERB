@@ -1,0 +1,3164 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:TALK_COMMON.ERB
+;	Facility	:TALK時の共通処理
+;
+;	Licence		:ライセンスフリー。
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		2011/01/10		Ｎ鳥					新規作成
+;	002		2011/01/11		Ｎ鳥					발りない→恵まれる系の記述がズレていたのを修正
+;	003		2011/02/16		Ｎ鳥					악마ストレージ기능に対応
+;	004		2011/05/07		Ｐ						회화の成否を종족가운位で見るように변경
+;	005		2011/05/09		Ｐ						회화に寄る데미지で회복していたのを修正
+;	006		2012/02/04		ネトリス				大業物用の素質と経験の処理
+;	007		2012/02/09		ネトリス				性的交渉の地の文『魅了』추가
+;	008		2012/02/09		ネトリス				発情しているときも選択肢が性的なものだけになるように변경
+;	009		2012/12/02		ネトリス				『PALAM:욕정』を『CFLAG:던전内発情用욕정치』に변경
+;	010		2012/12/03		ネトリス				『異性を欲しがる』の조건を『CASE IS >= 3』に변경
+;	011		2013/02/07		ネトリス				리라쿠제스프레이の処理を추가
+;	013		2013/03/15		ネトリス				야생악마소질랜덤설정の処理を추가
+;	014		2013/03/12		ネトリス				命乞い処理を추가
+;	015		2014/12/28		----					즉각함락取得の処理順を변경
+;	016		2015/07/28		ネトリス				仲魔のTALK설정（仲魔회화のお任せ）処理を추가
+;	017		2017/05/16		ネトリス				インス토르ソフト：セカンドハローの処理を추가
+;	018		2019/08/28		空気					デビルチェンバー사용時の挙動を修正。また、DDMがONなら容量いっぱいでも仲魔になって自動的にストレージに送られるように
+;	019		2020/02/21		なんとなくの人			インス토르ソフト：아미티프로텍터の処理を추가
+;	020		2020/03/27		ネトリス				インス토르ソフト：커코러버の処理を추가
+;	021		2020/04/22		JK好き					犯してもらう際に地の文が途切れるパターンがあったのを修正・改行が必要な部分を改行
+;	022		2021/05/17		JK好き					女を宛がった場合の文章パターンを調整
+;	023		2021/06/24		JK好き					女を宛がった場合の主人が男の娘の場合にV描写に行かないように修正
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;=====================================================================
+;회화の共通処理用ファイルです。
+;=====================================================================
+
+;=====================================================================
+;전투時회화および合体時회화の구상テンプレートです。
+
+;個別の악마に対応させたい場合はX1をキャラ番号に
+;회화타입別に対応させたい場合はKX1をPUB(회화타입の番号)に
+;置き換えてください。
+
+;例）픽시の구상を作りたいならX1⇒501に置き換え
+;　　회화타입：女、淑女ならKX1⇒PUB304に置き換え
+
+;知ってると便利そうな表記
+;　%CSTR:ARG:X%　X = 11:一人称 12:二人称 20:종족
+;　\@ CSTR:ARG:종족명 != "" ? %CSTR:ARG:종족명% # %STR:(ABL:ARG:종족)%
+;　┗CSTRに종족명が記載されていればそれを、されていなければABLから종족명を割り出して표시する
+
+;====================================================================
+;악마회화
+;====================================================================
+@TALK_COMMON,ARG
+#DIM ENEMYNUM, 1
+#DIM 회화指名リスト, 7
+#DIM LCOUNT,2
+#DIM L_I
+#DIM CL_NO
+
+;LOCAL 交渉목적　1仲魔　2お金　3ＭＡＧ　4아이템　5いなくなれ
+;LOCAL:1 RAND制御に。
+;LOCAL:2 交渉に필요な数値
+;LOCAL:3 直前に行った問答番号
+;LOCAL:4 問答횟수
+TFLAG:交渉대상 = ARG
+FLAG:交渉목적 = 0
+TFLAG:TALK用ムフフ制御 = 0
+TFLAG:TALK구상呼び出し用 = 0
+TFLAG:捧げたキャラ = -1
+ENEMYNUM = 0
+
+;命乞い処理
+;적が命乞い
+LOCAL:1 = 0
+RESULT:1 = 0
+IF GETBIT(FLAG:命乞いフラグ, 1)
+	;命乞い発生済みのフラグを立てる
+	CLEARBIT FLAG:命乞いフラグ, 1
+	SETBIT FLAG:命乞いフラグ, 6
+	CALL KOJO_TALK,ARG,91
+	PRINTFORML %조사처리(CALLNAME:ARG,"는")% %CALLNAME:PLAYER%에게 목숨을 구걸해왔다
+	PRINTFORML [0] 살려준다　　　　　　　[1] 거절한다
+	CALL INPUTINT(0, 1)
+	SELECTCASE RESULT
+		;助ける
+		CASE 0
+			CALL KOJO_TALK,ARG,92
+			;『@KOJO_TALK』をはさむ為、RESULT:0が上書きされてしまうのでRESULT:1を使う
+			;구상内容で전개を変えられるように
+			;無い場合は逃げる一択
+			SELECTCASE RESULT:1
+				;逃げる
+				CASE 0
+					GOTO ESCAPE
+				;仲魔
+				CASE 1
+					GOTO PARTYIN
+				;何かもらう
+				CASE 2
+					GOTO GIFT
+				;奇襲
+				CASE 3
+					GOTO ASSAULT
+			ENDSELECT
+		;断る
+		CASE 1
+			CALL KOJO_TALK,ARG,93
+			PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 각오를 다지고 자세를 취했다
+			GOTO ANGRY
+	ENDSELECT
+;적から取引を持ちかけられる
+ELSEIF GETBIT(FLAG:命乞いフラグ, 2)
+	;命乞い発生済みのフラグを立てる
+	CLEARBIT FLAG:命乞いフラグ, 2
+	SETBIT FLAG:命乞いフラグ, 6
+	;取引内容は구상内で決められるようにする（RESULT:1 = 1.￥　2.마카　3.異性）
+	;『@KOJO_TALK』をはさむ為、RESULT:0が上書きされてしまうのでRESULT:1を使う
+	CALL KOJO_TALK,ARG,94
+	;要求内容をLOCAL:1にしまう
+	LOCAL:1 = RESULT:1
+	;구상が無い場合は랜덤で決める
+	IF LOCAL:1 == 0
+		;満たしていない조건に入った場合はここに戻る
+		$랜덤取引内容_LOOP
+		SELECTCASE RAND:3 + 1
+			;￥
+			CASE 1
+				SIF !GETBIT(FLAG:命乞いフラグ, 3)
+					GOTO 랜덤取引内容_LOOP
+				LOCAL:1 = 1
+			;마카
+			CASE 2
+				SIF !GETBIT(FLAG:命乞いフラグ, 4)
+					GOTO 랜덤取引内容_LOOP
+				LOCAL:1 = 2
+			;異性
+			CASE 3
+				SIF !GETBIT(FLAG:命乞いフラグ, 5)
+					GOTO 랜덤取引内容_LOOP
+				LOCAL:1 = 3
+		ENDSELECT
+	ENDIF
+	PRINTFORM %조사처리(CALLNAME:ARG,"는")% 
+	SELECTCASE LOCAL:1
+		;￥
+		;要求額は소지￥の９０％、최저額は￥５００００
+		CASE 1
+			LOCAL = MONEY
+			TIMES LOCAL , 0.90
+			SIF LOCAL < 50000
+				LOCAL = 50000
+			PRINTFORM ￥{LOCAL}
+		;마카
+		;要求額は소지마카の９０％、최저額は１０００마카
+		CASE 2
+			LOCAL = MONEY:1
+			TIMES LOCAL , 0.90
+			SIF LOCAL < 1000
+				LOCAL = 1000
+			PRINTFORM {LOCAL}마카
+		;異性
+		CASE 3
+			PRINTFORM %CALLNAME:PLAYER%의 몸
+	ENDSELECT
+	PRINTFORML 을 요구했다
+	;￥、마카を要求された場合は소지金を표시
+	SIF LOCAL:1 == 1 || LOCAL:1 == 2
+		PRINTFORML 소지금:￥{MONEY}　　{MONEY:1}마카
+	PRINTFORML [0] 요구에 따른다　　　　　　　[1] 거절한다
+	CALL INPUTINT(0, 1)
+	SELECTCASE RESULT
+		;要求をのむ
+		CASE 0
+			SELECTCASE LOCAL:1
+				;￥
+				CASE 1
+					CALL KOJO_TALK,ARG,95
+					PRINTFORML ￥{LOCAL}을 주었다
+					MONEY -= LOCAL
+				;마카
+				CASE 2
+					CALL KOJO_TALK,ARG,96
+					PRINTFORML {LOCAL}을 주었다
+					MONEY:1 -= LOCAL
+				;異性
+				CASE 3
+					TFLAG:捧げたキャラ = PLAYER
+					CALL KOJO_TALK,ARG,97
+					CALL SEXIAL_NEGOCIATE, ARG, PLAYER
+			ENDSELECT
+			;約束を守るかどうか구상内で決める（RESULT:1 = 1.去っていく　2.전투続行）
+			CALL KOJO_TALK,ARG,98
+			;구상が無い場合は랜덤で決める
+			IF RESULT:1 == 0
+				SELECTCASE RAND:100
+					CASE 0 TO 70
+						RESULT:1 = 1
+					CASEELSE
+						RESULT:1 = 2
+				ENDSELECT
+			ENDIF
+			SELECTCASE RESULT:1
+				;去っていく
+				CASE 1
+					CALL KOJO_TALK,ARG,99
+					PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 떠났다
+					RETURN 6
+				;전투続行
+				CASE 2
+					CALL KOJO_TALK,ARG,100
+					PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 약속을 깨트렸다
+					GOTO ANGRY
+			ENDSELECT
+		;断る
+		CASE 1
+			CALL KOJO_TALK,ARG,101
+			GOTO ANGRY
+	ENDSELECT
+ENDIF
+
+;交渉대상の人数を획득
+;---- EDIT 004 ADD START -------------------------
+FOR LOCAL, 7, 17
+	SIF POS(LOCAL) >= 0 && NO:POS(LOCAL) == NO:ARG
+		ENEMYNUM++
+NEXT
+;---- EDIT 004 ADD END   -------------------------
+
+;すでに仲間にいるなら、友好的に회화終了
+
+FOR LOCAL,0,CHARANUM
+	;セカンドハローをインス토르している場合は체크を打ち切って회화継続
+	SIF SOFT_ON("세컨드헬로")
+		BREAK
+	IF NO:LOCAL == NO:ARG && (CFLAG:LOCAL:PTフラグ == 2 || (CFLAG:LOCAL:PTフラグ == 1 && CFLAG:LOCAL:所属ＣＯＭＰ != -1))
+		CFLAG:ARG:友好度 += 30
+		CALL INCREASE_LC,2
+		LOCAL = 2
+		GOTO SUCCESS_NEGOTIATE
+	ENDIF
+NEXT
+RESULT = 0
+;레이디・킬러즈
+SIF !(CFLAG:(FINDCHARA(NO,NO:ARG)):PTフラグ > 0) && (TALENT:ARG:남자 == 0 || TALENT:ARG:오토코노코)
+	CALL LADY_KILLERS,ARG
+;그린・글라스
+SIF !(CFLAG:(FINDCHARA(NO,NO:ARG)):PTフラグ > 0) && (TALENT:ARG:남자 && TALENT:ARG:오토코노코 == 0)
+	CALL GREEN_GRASS,ARG
+;커코러버
+IF SOFT_ON("커코러버") && (TALENT:ARG:남자 && TALENT:ARG:오토코노코 == 0)
+	CALL CUCKOLD_LOVER,ARG
+	;要求キャラ計算
+	LOCAL = 0
+	L_I = 0
+	CL_NO = 0
+	FOR LCOUNT, 1, 7
+		SIF POS(LCOUNT) < 0
+			CONTINUE
+		SIF TALENT:(POS(LCOUNT)):남자
+			CONTINUE
+		SIF !TALENT:(POS(LCOUNT)):아내
+			CONTINUE
+		LOCAL:(L_I+1) = POS(LCOUNT)
+		L_I ++
+	NEXT
+	;ここで要求キャラを決定
+	;該当キャラがいない場合
+	IF L_I == 0
+		L_I = 0
+	;女がいる場合
+	ELSE
+		CL_NO = LOCAL:(RAND:L_I+1)
+		CALL CUCKOLD_LOVER_SEX,ARG,CL_NO
+		IF RESULT == 1
+			GOTO PARTYIN
+		ELSE
+			GOTO 指名なし
+		ENDIF
+	ENDIF
+ENDIF
+	
+	
+IF RESULT == 1
+	FLAG:交渉목적 = 99
+	CALL KOJO_TALK,ARG,1
+	;GOTO PARTYIN
+	GOTO NEGOTIATE_START
+ENDIF
+
+;話しかける側が女で魅了상태の場合、犯して欲しいに移動
+IF (CFLAG:PLAYER:ステート == GET_STATE_NUM("CHARM")) && TALENT:PLAYER:남자 == 0 && FLAG:ムフフ전개
+	CALL KOJO_TALK,ARG,9
+	GOTO OKASHITE
+ENDIF
+
+;회화担当が당신ではなく、옵션설정『仲魔のTALK설정』が『仲魔に任せる』の時は専用処理へ飛ぶ
+IF FLAG:仲魔회화のお任せ설정 == 1
+	IF PLAYER != MASTER
+		$お任せ회화_指名
+		CALL 仲魔회화_お任せ, ARG
+		;仲魔
+		SIF RESULT == 1
+			GOTO PARTYIN
+		;何かもらう
+		SIF RESULT == 2
+			GOTO GIFT
+		;奇襲
+		SIF RESULT == 3
+			GOTO ASSAULT
+		;激怒
+		SIF RESULT == 4
+			GOTO ANGRY
+		;逃げる
+		SIF RESULT == 5
+			GOTO ESCAPE
+		;犯してもらう
+		SIF RESULT == 6
+			GOTO OKASHITE
+
+	;５％の확률で相손の方から회화相손を指名してくる
+	ELSEIF RAND:100 < 5
+		LOCAL:1 = 0
+		FOR LOCAL, 1, 7
+			
+			;당신は飛ばす
+			SIF POS(LOCAL) == MASTER
+				CONTINUE
+			
+			;居ない場合は飛ばす
+			SIF POS(LOCAL) == -1
+				CONTINUE
+			
+			;회화が可能な상태でなければ飛ばす
+			CALL INPUTABLE_CHARA,POS(LOCAL)
+			SIF RESULT == 0
+				CONTINUE
+			
+			회화指名リスト:(LOCAL:1) = POS(LOCAL)
+			LOCAL:1++
+			
+		NEXT
+		
+		;指名できるキャラが居ない場合は終了
+		SIF LOCAL:1 == 0
+			GOTO 指名なし
+		
+		;회화指名リストに入っている番号の中から랜덤で選ぶ
+		PLAYER = 회화指名リスト:(RAND:(LOCAL:1))
+		
+		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 회화 상대로 %조사처리(CALLNAME:PLAYER,"를")% 지명해왔다
+		PRINTFORML 
+		PRINTFORML [0] %CALLNAME:PLAYER%에게 맡긴다
+		PRINTFORML [1] 거절한다
+		
+		CALL INPUTINT(0, 1)
+		SELECTCASE RESULT
+			;任せる
+			CASE 0
+				PRINTFORMW %CALLNAME:PLAYER%에게 %조사처리(CALLNAME:ARG,"와")%의 교섭을 맡겼습니다
+				GOTO お任せ회화_指名
+			
+			;断る
+			CASE 1
+				TFLAG:TALK用성공판정値 = RAND:100 + CFLAG:ARG:友好度 + 20*유혹(MASTER,ARG)
+				
+				;奇襲される
+				IF TFLAG:TALK用성공판정値 < 30
+					;구상呼び出し
+					CALL KOJO_TALK,ARG,37
+					GOTO ASSAULT
+				ELSEIF TFLAG:TALK用성공판정値 < 60
+				;気分を害される
+					;구상呼び出し
+					CALL KOJO_TALK,ARG,38
+					GOTO ANGRY
+				;당신との交渉に移る
+				ELSE
+					PRINTFORMW 거절당한 %조사처리(CALLNAME:ARG,"는")% 딱히 기분이 상한 기색은 없는 것 같다
+				ENDIF
+				
+		
+		ENDSELECT
+		
+		
+	ENDIF
+ENDIF
+$指名なし
+
+
+LOCAL:3 = -1
+
+;最初は挨拶
+TRYCCALLFORM GREET_K{NO:ARG},ARG
+CATCH
+	TRYCCALLFORM GREET_PUB{ABL:ARG:회화타입},ARG
+	CATCH
+		GOTO NEGOTIATE_START
+	ENDCATCH
+ENDCATCH
+PRINTFORML
+;仲魔
+SIF RESULT == 1
+	GOTO PARTYIN
+;何かもらう
+SIF RESULT == 2
+	GOTO GIFT
+SIF RESULT == 3
+	GOTO ASSAULT
+SIF RESULT == 4
+	GOTO ANGRY
+SIF RESULT == 5
+	GOTO ESCAPE
+;雰囲気が悪い
+SIF RESULT == 6
+	GOTO CHECK_TALKBREAK
+;交渉へ
+SIF RESULT == 7
+	GOTO NEGOTIATE_START
+;仲魔になった
+SIF RESULT == 9
+	RETURN 1
+;ムフフ전개で搾りとられた
+SIF RESULT == 10
+	GOTO LOSTMAG
+;ムフフ전개で満발させた
+SIF RESULT == 11
+	GOTO PARTYIN
+
+$RETURNPOINT
+;問答を성공すると交渉へ
+	TRYCCALLFORM QUESTION_K{NO:ARG},ARG,LOCAL:3
+	CATCH
+		TRYCALLFORM QUESTION_PUB{ABL:ARG:회화타입},ARG,LOCAL:3
+	ENDCATCH
+	LOCAL:3 = RESULT:1
+	PRINTFORML
+	SIF RESULT == 1
+		GOTO PARTYIN
+	SIF RESULT == 2
+		GOTO GIFT
+	SIF RESULT == 3
+		GOTO ASSAULT
+	SIF RESULT == 4
+		GOTO ANGRY
+	SIF RESULT == 5
+		GOTO ESCAPE
+	SIF RESULT == 6
+		GOTO CHECK_TALKBREAK
+;仲魔になった
+SIF RESULT == 9
+	RETURN 1
+;ムフフ전개で搾りとられた
+SIF RESULT == 10
+	GOTO LOSTMAG
+;ムフフ전개で満발させた
+SIF RESULT == 11
+	GOTO PARTYIN
+
+
+IF FLAG:交渉목적 > 0
+	;おねだりの前の회화
+	CALL KOJO_TALK,ARG,2
+	GOTO ONEDARI
+ENDIF
+
+;交渉
+
+$NEGOTIATE_START
+	CALL KOJO_TALK,ARG,3
+
+PRINTFORML
+IF FLAG:ムフフ전개 == 0
+	CALL INPUT_SELECT,1,"동료마가 되어줘",2,"뭔가 줘",3,"도망치게 해줘"
+ELSEIF CFLAG:PLAYER:던전内発情用욕정치 > 5000 || 위험일(PLAYER) == 2
+	CALL INPUT_SELECT, 4 , "하게 해줘" ,5, "범해줘"
+ELSE
+	CALL INPUT_SELECT,1,"동료마가 되어줘",2,"뭔가 줘",3,"도망치게 해줘",4,"하게 해줘",5,"범해줘"
+ENDIF
+FLAG:交渉목적 = RESULT
+SELECTCASE RESULT
+	CASE 1
+		IF FLAG:交渉목적 == 99
+			FLAG:交渉목적 = 1
+			LOCAL = 1
+			GOTO SUCCESS_NEGOTIATE
+		ELSE
+			FLAG:交渉목적 = 1
+			LOCAL = 1
+			GOTO ONEDARI
+		ENDIF
+	CASE 2
+		SIF RAND:100 + RAND:(30)*유혹(PLAYER,ARG) < 30 && CFLAG:ARG:緊張度 > RAND:10
+			GOTO GET_DAMAGE
+		IF FLAG:交渉목적 == 99
+			FLAG:交渉목적 = 2
+			LOCAL = 2
+			CFLAG:ARG:友好度 += RAND:15
+			GOTO SUCCESS_NEGOTIATE
+		ELSE
+			FLAG:交渉목적 = 2
+			LOCAL = 2
+			CFLAG:ARG:友好度 += RAND:15
+			GOTO ONEDARI
+		ENDIF
+	CASE 3
+		IF FLAG:交渉목적 == 99
+			FLAG:交渉목적 = 3
+			LOCAL = 3
+			CFLAG:ARG:友好度 += RAND:60
+			GOTO SUCCESS_NEGOTIATE
+		ELSE
+			FLAG:交渉목적 = 3
+			LOCAL = 3
+			CFLAG:ARG:友好度 += RAND:60
+			GOTO ONEDARI
+		ENDIF
+	CASE 4
+		IF EQUIP:MASTER:섹스아이템 == 0 && EQUIP:MASTER:섹스프렌드 == 1 && NUM_SUMMONER()
+			LOCAL = 1
+		ELSEIF EQUIP:MASTER:섹스프렌드 == 0 && EQUIP:MASTER:섹스아이템 == 1 && NUM_SUMMONER()
+			LOCAL = 2
+		ELSE
+			LOCAL = 1 + RAND:2
+		ENDIF
+		IF 仮_やらせてくれるか？(ARG,PLAYER) == 0
+			FLAG:交渉목적 = 4
+			CALL KOJO_TALK,ARG,4
+			;取り付く島もなし
+			GOTO ANGRY
+		ELSEIF 仮_やらせてくれるか？(ARG,PLAYER) == 1
+			CALL KOJO_TALK,ARG,5
+			;交渉次第
+			IF FLAG:交渉목적 == 99
+				FLAG:交渉목적 = 4
+				GOTO YARANAIKA
+			ELSE
+				FLAG:交渉목적 = 4
+				GOTO ONEDARI
+			ENDIF
+		ELSE
+			FLAG:交渉목적 = 4
+			CALL KOJO_TALK,ARG,6
+			;一発おｋ
+			GOTO YARANAIKA
+		ENDIF
+	CASE 5
+		IF EQUIP:MASTER:섹스아이템 == 0 && EQUIP:MASTER:섹스프렌드 == 1 && NUM_SUMMONER()
+			LOCAL = 1
+		ELSEIF EQUIP:MASTER:섹스프렌드 == 0 && EQUIP:MASTER:섹스아이템 == 1 && NUM_SUMMONER()
+			LOCAL = 2
+		ELSE
+			LOCAL = 1 + RAND:2
+		ENDIF
+		IF 仮_犯してくれるか？(ARG,PLAYER) == 0
+			CALL KOJO_TALK,ARG,7
+			;取り付く島もなし
+			GOTO ANGRY
+		ELSEIF 仮_犯してくれるか？(ARG,PLAYER) == 1
+			;交渉次第
+			CALL KOJO_TALK,ARG,8
+			IF FLAG:交渉목적 == 99
+				FLAG:交渉목적 = 5
+				GOTO OKASHITE
+			ELSE
+				FLAG:交渉목적 = 5
+				GOTO ONEDARI
+			ENDIF
+		ELSE
+			;一発おｋ
+			FLAG:交渉목적 = 5
+			CALL KOJO_TALK,ARG,9
+			GOTO OKASHITE
+		ENDIF
+ENDSELECT
+
+
+$ONEDARI
+CALL KOJO_TALK,ARG,84
+PRINTFORMW
+SELECTCASE RAND:(3+仮_異性を要求するか？(ARG)*(1+(FLAG:月齢 == 8)))
+	CASE 0
+		;お金を要求
+		TFLAG:TALK用要求値 = CSVBASE(NO:ARG,GETNUM(BASE,"LV"),0) * (300 + RAND:1000)/100
+		CALL KOJO_TALK,ARG,10
+		CALL INPUT_YN,"Yes","No"
+		IF RESULT == 0 && MONEY < TFLAG:TALK用要求値
+			;払おうとして、소지金が발りない場合
+			CFLAG:ARG:友好度 -= RAND:5 +1
+			TFLAG:TALK用성공판정値 = RAND:100 + RAND:(MAXBASE:PLAYER:지혜+MAXBASE:PLAYER:운/2) + CFLAG:ARG:友好度 + 20*유혹(PLAYER,ARG)
+
+			
+			;IF TFLAG:TALK用성공판정値 > 90
+			;	;お金を恵まれる
+			;	CALL KOJO_TALK,ARG,85
+			;	PRINTFORMW ￥{TFLAG:TALK用要求値}恵まれた
+			;	MONEY += TFLAG:TALK用要求値
+			;	GOTO ONEDARI
+			IF TFLAG:TALK用성공판정値 > 50
+				;代わりのものを要求する
+				CALL KOJO_TALK,ARG,11
+				GOTO ONEDARI
+			ELSEIF TFLAG:TALK用성공판정値 > 15
+				;交渉실패。逃げる
+				CALL KOJO_TALK,ARG,12
+				RESULT = 5
+				CFLAG:ARG:緊張度 += 20
+				GOTO GOODBYE
+			ELSE
+				;交渉실패。적対する
+				CALL KOJO_TALK,ARG,13
+				GOTO ANGRY
+			ENDIF
+			
+			
+		ELSEIF RESULT == 0
+		;払った場合
+			MONEY -= TFLAG:TALK用要求値
+			CFLAG:ARG:友好度 += RAND:5 + 2
+			TFLAG:TALK用성공판정値 = RAND:100 + CFLAG:ARG:友好度 + 20*유혹(PLAYER,ARG)
+			
+			IF TFLAG:TALK用성공판정値 < 50
+			;払ったのに逃げられる
+				CALL KOJO_TALK,ARG,14
+				GOTO ESCAPE
+			ELSEIF TFLAG:TALK用성공판정値 < 80
+			;さらに要求される
+				CALL KOJO_TALK,ARG,15
+				GOTO ONEDARI
+			ELSE
+			;交渉성공
+				CALL KOJO_TALK,ARG,16
+				GOTO SUCCESS_NEGOTIATE
+			ENDIF
+		ELSEIF RESULT == 1
+		;断った場合
+			CFLAG:ARG:友好度 -= RAND:5 + 2
+			TFLAG:TALK用성공판정値 = RAND:100 + CFLAG:ARG:友好度 + 20*유혹(PLAYER,ARG)
+			IF TFLAG:TALK用성공판정値 < 30
+			;交渉실패。奇襲する
+				CALL KOJO_TALK,ARG,17
+				GOTO ASSAULT
+			ELSEIF TFLAG:TALK用성공판정値 < 60
+			;交渉실패。적対する
+				CALL KOJO_TALK,ARG,18
+				GOTO ANGRY
+			ELSE
+			;他のものを要求する
+				CALL KOJO_TALK,ARG,19
+				GOTO ONEDARI
+			ENDIF
+		ENDIF
+	CASE 1
+	;ＭＡＧを要求
+		TFLAG:TALK用要求値 = CSVBASE(NO:ARG,GETNUM(BASE,"LV"),0) * (300 + RAND:1000)/100
+		IF EQUIP:MASTER:더블・밸류 == 1 && NUM_SUMMONER()
+			TFLAG:TALK用要求値 = TFLAG:TALK用要求値 / 2
+		ENDIF
+		CALL KOJO_TALK,ARG,20
+		CALL INPUT_YN,"Yes","No"
+		IF RESULT == 0 && BASE:PLAYER:ＭＡＧ < TFLAG:TALK用要求値
+		;払おうとするが、ＭＡＧが발りない場合
+			CFLAG:ARG:友好度 -= RAND:5 +1
+			TFLAG:TALK用성공판정値 = RAND:100 + RAND:(MAXBASE:PLAYER:지혜+MAXBASE:PLAYER:운/2) + CFLAG:ARG:友好度 + 20*유혹(PLAYER,ARG)
+			
+			
+			IF TFLAG:TALK用성공판정値 > 90
+				;MAGを恵まれる
+				CALL KOJO_TALK,ARG,86
+				PRINTFORMW {TFLAG:TALK用要求値}MAG를 받았다
+				CALL CONTROL_MAG,MASTER,TFLAG:TALK用要求値
+				GOTO ONEDARI
+			ELSEIF TFLAG:TALK用성공판정値 > 50
+			;別のものを要求する
+				CALL KOJO_TALK,ARG,21
+				GOTO ONEDARI
+			ELSEIF TFLAG:TALK用성공판정値 > 15
+			;交渉실패。立ち去る
+				CALL KOJO_TALK,ARG,22
+				RESULT = 5
+				CFLAG:ARG:緊張度 += 20
+				GOTO GOODBYE
+			ELSE
+			;交渉실패。적対する
+				CALL KOJO_TALK,ARG,23
+				GOTO ANGRY
+			ENDIF
+			
+			
+		ELSEIF RESULT == 0
+		;払った場合
+			CALL CONTROL_MAG,PLAYER,-TFLAG:TALK用要求値
+			CFLAG:ARG:友好度 += RAND:5 + 2
+			TFLAG:TALK用성공판정値 = RAND:100 + CFLAG:ARG:友好度 + 20*유혹(PLAYER,ARG)
+			
+			IF TFLAG:TALK用성공판정値 < 50
+			;払ったのに逃げられる
+				;구상呼び出し
+				CALL KOJO_TALK,ARG,24
+				GOTO ESCAPE
+			ELSEIF TFLAG:TALK用성공판정値 < 80
+			;さらに要求する
+				CALL KOJO_TALK,ARG,25
+				GOTO ONEDARI
+			ELSE
+			;交渉성공
+				CALL KOJO_TALK,ARG,26
+				GOTO SUCCESS_NEGOTIATE
+			ENDIF
+		ELSEIF RESULT == 1
+		;断った場合
+			CFLAG:ARG:友好度 -= RAND:5 + 2
+			TFLAG:TALK用성공판정値 = RAND:100 + CFLAG:ARG:友好度 + 20*유혹(PLAYER,ARG)
+			
+			IF TFLAG:TALK用성공판정値 < 30
+			;交渉실패。奇襲する
+				;구상呼び出し
+				CALL KOJO_TALK,ARG,27
+				GOTO ASSAULT
+			ELSEIF TFLAG:TALK用성공판정値 < 60
+			;交渉실패。적対する
+				;구상呼び出し
+				CALL KOJO_TALK,ARG,28
+				GOTO ANGRY
+			ELSE
+			;他のものを要求する
+				;구상呼び出し
+				CALL KOJO_TALK,ARG,29
+				GOTO ONEDARI
+			ENDIF
+		ENDIF
+	CASE 2
+		;구상呼び出し
+		CALL KOJO_TALK,ARG,30
+		CALL INPUT_YN,"Yes","No"
+		IF RESULT == 0 && ITEM:마석 < 1
+			;渡そうとするが、持ってない場合
+			CFLAG:ARG:友好度 -= RAND:5 +1
+			TFLAG:TALK用성공판정値 = RAND:100 + RAND:(MAXBASE:PLAYER:지혜+MAXBASE:PLAYER:운/2) + CFLAG:ARG:友好度 + 20*유혹(PLAYER,ARG)
+			
+			
+			IF TFLAG:TALK用성공판정値 > 90
+				;MAGを恵まれる
+				CALL KOJO_TALK,ARG,87
+				PRINTFORMW 마석을 받았다
+				CALL GET_ITEMS("마석",1)
+				GOTO ONEDARI
+			ELSEIF TFLAG:TALK用성공판정値 > 50
+			;別のものを要求する
+				;구상呼び出し
+				CALL KOJO_TALK,ARG,31
+				GOTO ONEDARI
+			ELSEIF TFLAG:TALK用성공판정値 > 15
+			;交渉실패。立ち去る
+				;구상呼び出し
+				CALL KOJO_TALK,ARG,32
+				RESULT = 5
+				CFLAG:ARG:緊張度 += 20
+				GOTO GOODBYE
+			ELSE
+			;交渉실패。적対する。
+				;구상呼び出し
+				CALL KOJO_TALK,ARG,33
+				GOTO ANGRY
+			ENDIF
+			
+			
+		ELSEIF RESULT == 0
+			;渡す
+			ITEM:마석 -= 1
+			CFLAG:ARG:友好度 += RAND:5 + 2
+			TFLAG:TALK用성공판정値 = RAND:100 + CFLAG:ARG:友好度 + 20*유혹(PLAYER,ARG)
+			
+			
+			IF TFLAG:TALK用성공판정値 < 50
+			;払ったのに逃げられる
+				;구상呼び出し
+				CALL KOJO_TALK,ARG,34
+				GOTO ESCAPE
+			ELSEIF TFLAG:TALK用성공판정値 < 80
+			;交渉실패。逃げる
+				;구상呼び出し
+				CALL KOJO_TALK,ARG,35
+				GOTO ONEDARI
+			ELSE
+			;交渉실패。적対する。
+				;구상呼び出し
+				CALL KOJO_TALK,ARG,36
+				GOTO SUCCESS_NEGOTIATE
+			ENDIF
+		ELSEIF RESULT == 1
+			;渡さない
+			CFLAG:ARG:友好度 -= RAND:5 + 2
+			TFLAG:TALK用성공판정値 = RAND:100 + CFLAG:ARG:友好度 + 20*유혹(PLAYER,ARG)
+			
+			IF TFLAG:TALK用성공판정値 < 30
+				;구상呼び出し
+				CALL KOJO_TALK,ARG,37
+				GOTO ASSAULT
+			ELSEIF TFLAG:TALK用성공판정値 < 60
+			;気分を害される
+				;구상呼び出し
+				CALL KOJO_TALK,ARG,38
+				GOTO ANGRY
+			ELSE
+				;구상呼び出し
+				CALL KOJO_TALK,ARG,39
+				GOTO ONEDARI
+			ENDIF
+		ENDIF
+	CASE IS >= 3
+		;異性を欲しがる
+
+		;구상呼び出し
+		CALL KOJO_TALK,ARG,40
+
+		$SEXIAL_REQ_LOOP
+		PRINTFORML
+		CALL INPUT_YN,"Yes","No"
+		IF RESULT == 0
+			;キャラ選択
+			DRAWLINE
+			PRINTL 누구를 시키겠습니까?
+			CALL SHOW_NOW_FORMATION_P,0,2
+			PRINTC [1000] - 그만둔다
+			$INPUT_LOOP_SEXIAL_REQ_CHOICE
+			INPUT
+			IF RESULT == 1000
+				GOTO NO_SEXIAL_REQ
+			ELSEIF	RESULT <= 0 || RESULT > 6 || POS(RESULT) == -1 || SEX_TALKABLE(ARG,POS(RESULT)) == 0
+				GOTO INPUT_LOOP_SEXIAL_REQ_CHOICE
+			ELSE
+				RESULT:2 = RESULT
+				;行動입력可能なキャラのみおｋ
+				CALL INPUTABLE_CHARA,POS(RESULT:2)
+				SIF RESULT == 0
+					GOTO INPUT_LOOP_SEXIAL_REQ_CHOICE
+			ENDIF
+			TFLAG:捧げたキャラ = POS(RESULT:2)
+			
+			;異性をあてがった反応の구상呼び出し
+			CALL KOJO_TALK,ARG,41
+
+			;ここまで来たなら性的要求に応えられる
+			CALL SEXIAL_NEGOCIATE,ARG,POS(RESULT:2)
+			CFLAG:ARG:友好度 += RESULT
+			PRINTW
+			
+			TFLAG:TALK用성공판정値 = FLAG:악마만족도 + CFLAG:ARG:友好度
+			CFLAG:ARG:友好度 += FLAG:악마만족도
+			
+			
+			;敗北してる場合ここでゲームオーバー
+			IF FLAG:敗北フラグ
+				;구상呼び出し
+				CALL KOJO_TALK,ARG,42
+				CALL SEXTALK_LOSE,ARG
+			ENDIF
+			
+			;話しかけたキャラが倒れてたら회화終わり
+			CALL INPUTABLE_CHARA,PLAYER
+			IF RESULT == 0
+				;구상呼び出し
+				CALL KOJO_TALK,ARG,43
+				RETURN 5
+			ENDIF
+			
+			IF TFLAG:TALK用성공판정値 < 30
+			;払ったのに逃げられる
+				;구상呼び出し
+				CALL KOJO_TALK,ARG,44
+				GOTO ESCAPE
+			ELSEIF TFLAG:TALK用성공판정値 < 80
+			;満발してない
+				;구상呼び出し
+				CALL KOJO_TALK,ARG,45
+				GOTO SEXIAL_REQ_LOOP
+			ELSE
+			;満발
+				;구상呼び出し
+				CALL KOJO_TALK,ARG,46
+				GOTO SUCCESS_NEGOTIATE
+			ENDIF
+		ELSE
+			$NO_SEXIAL_REQ
+			CFLAG:ARG:友好度 -= RAND:5 + 2
+			TFLAG:TALK用성공판정値 = RAND:100 + CFLAG:ARG:友好度
+			
+			
+
+			
+			IF TFLAG:TALK用성공판정値 < 30
+			;交渉실패。奇襲する
+				;구상呼び出し
+				CALL KOJO_TALK,ARG,47
+				GOTO ASSAULT
+			ELSEIF TFLAG:TALK用성공판정値 < 60
+			;交渉실패。적対する
+				;구상呼び出し
+				CALL KOJO_TALK,ARG,48
+				GOTO ANGRY
+			ELSE
+			;他のものを要求する
+				;구상呼び出し
+				CALL KOJO_TALK,ARG,49
+				GOTO ONEDARI
+			ENDIF
+		ENDIF
+	CASEELSE
+ENDSELECT
+
+
+$YARANAIKA
+	CALL SEXIAL_ヤらせてもらう,ARG,PLAYER
+	CFLAG:ARG:友好度 += RESULT
+	
+	TFLAG:TALK用성공판정値 = FLAG:악마만족도 + CFLAG:ARG:友好度
+	CFLAG:ARG:友好度 += FLAG:악마만족도
+	
+	;敗北してる場合ここでゲームオーバー
+	IF FLAG:敗北フラグ
+		;구상呼び出し
+		CALL KOJO_TALK,ARG,50
+		CALL SEXTALK_LOSE,ARG
+	ENDIF
+	;主人が倒れてたら회화終わり
+	CALL INPUTABLE_CHARA,PLAYER
+	IF RESULT == 0
+		;구상呼び出し
+		CALL KOJO_TALK,ARG,51
+		RETURN 5
+	ENDIF
+	IF TFLAG:TALK用성공판정値 < 80
+	;満발して去っていく
+		;구상呼び出し
+		CALL KOJO_TALK,ARG,52
+		RESULT = 2
+		GOTO GOODBYE
+	ELSE
+		IF LOCAL == 1
+			;구상呼び出し
+			CALL KOJO_TALK,ARG,53
+			GOTO PARTYIN
+		ELSEIF LOCAL == 2
+			;구상呼び出し
+			CALL KOJO_TALK,ARG,54
+			GOTO GIFT
+		ELSEIF LOCAL == 3
+			;구상呼び出し
+			CALL KOJO_TALK,ARG,55
+			RESULT = 6
+			GOTO GOODBYE
+		ENDIF
+	ENDIF
+$OKASHITE
+	CALL SEXIAL_犯してもらう,ARG,PLAYER
+	CFLAG:ARG:友好度 += RESULT
+	
+	TFLAG:TALK用성공판정値 = FLAG:악마만족도 + CFLAG:ARG:友好度
+	CFLAG:ARG:友好度 += FLAG:악마만족도
+	
+	PRINTW
+	
+	;敗北してる場合ここでゲームオーバー
+	IF FLAG:敗北フラグ
+		;구상呼び出し
+		CALL KOJO_TALK,ARG,56
+		CALL SEXTALK_LOSE,ARG
+	ENDIF
+	;主人が倒れてたら회화終わり
+	CALL INPUTABLE_CHARA,PLAYER
+	;악마満발度が0でも회화終わり
+	;魅了・睡眠でもINPUTABLE_CHARAは0を返してくるのでこの処理は不要
+	;SIF FLAG:악마만족도 == 0
+	;	RESULT = 0
+	IF RESULT == 0 || MAXBASE:PLAYER:체력 == 0
+		;구상呼び出し
+		CALL KOJO_TALK,ARG,57
+		RETURN 5
+	ENDIF
+	IF TFLAG:TALK用성공판정値 < 80
+	;満발して去っていく
+		;구상呼び出し
+		CALL KOJO_TALK,ARG,58
+		RESULT = 2
+		GOTO GOODBYE
+	ELSE
+		IF LOCAL == 1
+			;구상呼び出し
+			CALL KOJO_TALK,ARG,59
+			GOTO PARTYIN
+		ELSEIF LOCAL == 2
+			;구상呼び出し
+			CALL KOJO_TALK,ARG,60
+			GOTO GIFT
+		ELSEIF LOCAL == 3
+			;구상呼び出し
+			CALL KOJO_TALK,ARG,61
+			RESULT = 6
+			GOTO GOODBYE
+		ENDIF
+	ENDIF
+
+
+$SUCCESS_NEGOTIATE
+IF FLAG:交渉목적 == 4
+	;구상呼び出し
+	CALL KOJO_TALK,ARG,88
+	GOTO YARANAIKA
+ENDIF
+IF FLAG:交渉목적 == 5
+	;구상呼び出し
+	CALL KOJO_TALK,ARG,89
+	GOTO OKASHITE
+ENDIF
+IF LOCAL == 1
+	GOTO PARTYIN
+ELSEIF LOCAL == 2
+	GOTO GIFT
+ELSEIF LOCAL == 3
+	RESULT = 6
+	GOTO GOODBYE
+ENDIF
+
+$ESCAPE
+PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 도망쳤다
+
+;---- EDIT 004 ADD START -------------------------
+FOR LOCAL, 7 ,17
+	SIF POS(LOCAL) >= 0 && NO:POS(LOCAL) == NO:ARG
+		CALL REMOVE_POSITION, LOCAL
+NEXT
+;---- EDIT 004 ADD END   -------------------------
+;CALL REMOVE_POSITION,CFLAG:ARG:포지션
+RETURN 5
+
+
+$PARTYIN
+;---- EDIT 018 MOD START -------------------------
+IF (ＣＯＭＰ空き容量() == 1 || SOFT_ON("ＤＤＭ")) && BASE:MASTER:LV >= CSVBASE(NO:ARG,GETNUM(BASE,"LV"),0)
+;---- EDIT 018 MOD END ---------------------------
+	;구상呼び出し
+	CALL KOJO_TALK,ARG,62
+	;仲間になる
+	PRINTFORMW %STR:(ABL:ARG:종족)% %조사처리(CALLNAME:ARG,"가")% 동료마로 들어왔다
+	CALL ADD_NEW_COMPANION,NO:ARG,200
+	
+	;性的交渉などで経験等に変化がある場合のために회화相손と同期化
+	FOR LCOUNT:1,0,65
+		EXP:(CHARANUM-1):(LCOUNT:1) = EXP:(ARG):(LCOUNT:1)
+	NEXT
+	SIF EXP:(CHARANUM-1):Ｖ경험 > 0 && CSVTALENT(NO:ARG,GETNUM(TALENT,"처녀"),0) > 0
+		TALENT:(CHARANUM-1):처녀 = 0
+	;악마解析度が100未満なら100に。
+	SIF FLAG:(20000+NO:ARG) < 100
+		FLAG:(20000+NO:ARG) = 100
+	;一応CFLAG:리라쿠제스프레이をリセット
+	CFLAG:ARG:리라쿠제스프레이 = 0
+	;배우자랜덤부여
+	;배우자が랜덤부여されていた場合は、ここで설정しなおす
+	SIF CSVCSTR(NO:(CHARANUM-1) , GETNUM(CSTR , "배우자") , 0) == "" && CSTR:ARG:배우자 != ""
+		CSTR:(CHARANUM-1):배우자 = %CSTR:ARG:배우자%
+	;야생악마소질랜덤설정
+	;素質が랜덤설정されていた場合は、ここで설정しなおす
+	;こんなに필요ないけど一応
+	FOR LCOUNT:1,10,160
+		TALENT:(CHARANUM-1):(LCOUNT:1) = TALENT:(ARG):(LCOUNT:1)
+	NEXT
+	;회화相손が女で、회화キャラが大業物持ちでFLAG:악마満발度が200の場合、즉각함락取得
+	IF TALENT:(CHARANUM-1):남자 == 0 && TALENT:PLAYER:크고아름다움 && FLAG:악마만족도 == 200
+		TALENT:(CHARANUM-1):즉각함락 = 1
+		EXP:(CHARANUM-1):이상경험 += 2
+	ENDIF
+	RETURN 1
+ELSEIF BASE:MASTER:LV < CSVBASE(NO:ARG,GETNUM(BASE,"LV"),0)
+;マスターの레벨より高い場合
+	;구상呼び出し
+	CALL KOJO_TALK,ARG,63
+	PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 떠나갔다
+	RETURN 6
+ELSE
+;ＣＯＭＰの空きが無い場合
+	;구상呼び出し
+	CALL KOJO_TALK,ARG,64
+	PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 떠나갔다
+	RETURN 6
+ENDIF
+
+;女악마とのムフフ전개用にを추가
+$LOSTMAG
+;구상呼び出し
+CALL KOJO_TALK,ARG,65
+LOCAL:2 = CSVBASE(NO:ARG,GETNUM(BASE,"LV"),0) * (600 + RAND:1500) * -5 /10
+CALL VAR_HP,PLAYER,-MAXBASE:PLAYER:ＨＰ/5,0
+PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% {LOCAL:2}MAG와 체력을 잃었다
+
+CALL CONTROL_MAG,PLAYER,LOCAL:2
+RESULT = 2
+
+;搾り取られたので主人の経験値を추가する
+IF TALENT:PLAYER:남자 || TALENT:PLAYER:오토코노코
+	EXP:PLAYER:사정경험      += 10
+	EXP:PLAYER:봉사쾌락경험  += 10
+	EXP:PLAYER:고통쾌락경험  += 20
+ELSE
+	EXP:PLAYER:Ｖ경험        += 10
+	EXP:PLAYER:절정경험      += 10
+	EXP:PLAYER:레즈경험      += 10
+	IF TALENT:PLAYER:후타나리 == 1
+		EXP:PLAYER:사정경험  += 10
+	ENDIF
+	EXP:PLAYER:봉사쾌락경험  += 10
+	EXP:PLAYER:고통쾌락경험  += 20
+ENDIF
+
+GOTO GOODBYE
+
+$GIFT
+;---- EDIT 004 ADD START -------------------------
+SIF RAND:100 + RAND:(MAXBASE:PLAYER:지혜+MAXBASE:PLAYER:운/2) + CFLAG:ARG:友好度 < 50 && FLAG:交渉목적 < 4
+	GOTO GET_DAMAGE
+;SIF RAND:3 == 0 && FLAG:조교난이도 == 1
+;	GOTO GETMONEY
+SIF RAND:3 == 0 && FLAG:交渉목적 > 3
+	GOTO GETEXP
+SIF RAND:2 == 0
+	GOTO GETGIFT
+GOTO GETMAG
+
+
+$GETMONEY
+;お金をくれる
+;구상呼び出し
+;---- EDIT 004 MOD START -------------------------
+TFLAG:TALK用要求値 = CSVBASE(NO:ARG,GETNUM(BASE,"LV"),0) * (300 * ENEMYNUM + RAND:1000) * 5 /100
+;---- EDIT 004 MOD END   -------------------------
+CALL KOJO_TALK,ARG,66
+PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% ￥{TFLAG:TALK用要求値}을 손에 넣었다
+MONEY += TFLAG:TALK用要求値
+RESULT = 2
+GOTO GOODBYE
+
+$GETMAG
+;ＭＡＧをくれる
+;구상呼び出し
+;---- EDIT 004 MOD START -------------------------
+TFLAG:TALK用要求値 = CSVBASE(NO:ARG,GETNUM(BASE,"LV"),0) * (600 * ENEMYNUM + RAND:1500) * 5 /100
+;---- EDIT 004 MOD END   -------------------------
+CALL KOJO_TALK,ARG,67
+PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% {TFLAG:TALK用要求値}MAG를 손에 넣었다
+CALL CONTROL_MAG,MASTER,TFLAG:TALK用要求値
+RESULT = 2
+GOTO GOODBYE
+
+$GETEXP
+;ＥＸＰをくれる
+;구상呼び出し
+;---- EDIT 004 MOD START -------------------------
+TFLAG:TALK用要求値 = (COEFFICIENT_EXP(ABL:ARG:종족)+CFLAG:ARG:ＥＸＰ보정) * BASE:ARG:(GET_BASESTATUS(0)) * (4+BASE:ARG:LV/4) / 4
+				;레벨差による보정
+				SIF BASE:PLAYER:(GET_BASESTATUS(0)) > BASE:ARG:(GET_BASESTATUS(0)) + 5
+					TFLAG:TALK用要求値 /= POWER(2 , MIN((BASE:PLAYER:(GET_BASESTATUS(0)) - BASE:ARG:(GET_BASESTATUS(0)) - 5)/4 , 30))
+				IF BASE:PLAYER:(GET_BASESTATUS(0)) < BASE:ARG:(GET_BASESTATUS(0)) 
+					TFLAG:TALK用要求値 *= POWER(3, MIN(( BASE:ARG:(GET_BASESTATUS(0)) - BASE:PLAYER:(GET_BASESTATUS(0)))/4,4))
+					TFLAG:TALK用要求値 /= POWER(2, MIN(( BASE:ARG:(GET_BASESTATUS(0)) - BASE:PLAYER:(GET_BASESTATUS(0)))/4,4))
+				ENDIF
+				CFLAG:PLAYER:입수경험치 += TFLAG:TALK用要求値
+;---- EDIT 004 MOD END   -------------------------
+PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% EXP{TFLAG:TALK用要求値} 손에 넣었다
+RESULT = 2
+GOTO GOODBYE
+
+$GET_DAMAGE
+;데미지を受ける
+;구상呼び出し
+CALL KOJO_TALK,ARG,68
+;---- EDIT 004 MOD START -------------------------
+;---- EDIT 005 FIX START -------------------------
+LOCAL:2 = MAXBASE:PLAYER:ＨＰ * (17 + ENEMYNUM*3)/100
+;---- EDIT 005 FIX END   -------------------------
+;---- EDIT 004 MOD END   -------------------------
+
+;---- EDIT 019 ADD START -------------------------
+; 아미티프로텍터장비時に、交渉相손と同じ仲魔がいる場合
+IF EQUIP:MASTER:아미티프로텍터 && ((0 < CFLAG:(FINDCHARA(NO,NO:ARG)):PTフラグ) || (80 <= CFLAG:ARG:友好度))
+	LOCAL:3 = LOCAL:2 * 10
+	IF LOCAL:3 <= BASE:MASTER:ＭＡＧ
+		PRINTFORMW 소프트가 데미지를 막았다！ {LOCAL:3}MAG를 소비
+		BASE:MASTER:ＭＡＧ -= LOCAL:3
+	ELSE
+		PRINTFORML 소프트가 데미지를 막으려 했지만 MAG가 부족하다！
+		PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% {LOCAL:2}의 데미지를 받았다
+		CALL VAR_HP,PLAYER,-LOCAL:2,0
+	ENDIF
+ELSE
+PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% {LOCAL:2}의 데미지를 받았다
+	CALL VAR_HP,PLAYER,-LOCAL:2,0
+ENDIF
+;---- EDIT 019 ADD END -------------------------
+RESULT = 2
+GOTO GOODBYE
+
+$GETGIFT
+;아이템をくれたり、회복してくれる
+	TFLAG:TALK用성공판정値 = RAND:100
+	IF TFLAG:TALK用성공판정値 < 1 && FLAG:소마ギフト == 0
+		;구상呼び出し
+		CALL KOJO_TALK,ARG,69
+		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 소마를 사용했다
+		FOR LOCAL:9,1,7
+			LOCALS = 포지션{LOCAL:9}
+			SIF FLAG:LOCALS < 0
+				CONTINUE
+			SIF GET_STATE(CFLAG:(FLAG:LOCALS):ステート) == "DYING"
+				CONTINUE
+			;HP회복量
+			LOCAL = MAXBASE:(FLAG:LOCALS):ＨＰ
+			CALL VAR_HP,FLAG:LOCALS,LOCAL,3
+			;MP회복量
+			LOCAL = MAXBASE:(FLAG:LOCALS):ＭＰ
+			CALL VAR_MP,FLAG:LOCALS,LOCAL,3
+		NEXT
+		FLAG:소마ギフト += 1
+	ELSEIF TFLAG:TALK用성공판정値 < 3 && FLAG:보옥륜ギフト < 3
+		;구상呼び出し
+		CALL KOJO_TALK,ARG,70
+		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 보옥륜을 사용했다
+		FOR LOCAL:9,1,7
+		LOCALS = 포지션{LOCAL:9}
+			SIF FLAG:LOCALS < 0
+				CONTINUE
+			SIF GET_STATE(CFLAG:(FLAG:LOCALS):ステート) == "DYING"
+				CONTINUE
+			;HP회복量
+			LOCAL = MAXBASE:(FLAG:LOCALS):ＨＰ
+			CALL VAR_HP,FLAG:LOCALS,LOCAL,3
+		NEXT
+		FLAG:보옥륜ギフト += 1
+	ELSEIF TFLAG:TALK用성공판정値 < 20
+		;구상呼び出し
+		CALL KOJO_TALK,ARG,71
+		PRINTFORM %조사처리(CALLNAME:PLAYER,"는")% 
+		;もらえる아이템の판정 1>2>3>마석
+		IF ABL:ARG:아이템1 > 0 && ABL:ARG:입수확률1 > RAND:100
+			CALL GET_GIFT, ABL:ARG:아이템1, 1
+		ELSEIF ABL:ARG:아이템2 > 0 && ABL:ARG:입수확률2 > RAND:100
+			CALL GET_GIFT, ABL:ARG:아이템2, 1
+		ELSEIF ABL:ARG:아이템3 > 0 && ABL:ARG:입수확률3 > RAND:100
+			CALL GET_GIFT, ABL:ARG:아이템3, 1
+		ELSE
+			CALL GET_GIFT, [[아이템:마석]], 1
+		ENDIF
+	ELSEIF TFLAG:TALK用성공판정値 < 50
+		;구상呼び出し
+		CALL KOJO_TALK,ARG,72
+		PRINTFORM %조사처리(CALLNAME:PLAYER,"는")% 
+		CALL GET_GIFT, [[아이템:마석]], 1
+	ELSEIF TFLAG:TALK用성공판정値 < 80
+		;구상呼び出し
+		CALL KOJO_TALK,ARG,73
+		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% %CALLNAME:PLAYER%에게 마석을 사용했다.
+		CALL VAR_HP,PLAYER,MAXBASE:PLAYER:ＨＰ/5,3
+	ELSEIF TFLAG:TALK用성공판정値 < 90
+		;구상呼び出し
+		CALL KOJO_TALK,ARG,74
+		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% %CALLNAME:PLAYER%에게 보옥을 사용했다.
+		CALL VAR_HP,PLAYER,MAXBASE:PLAYER:ＨＰ,3
+	ELSEIF TFLAG:TALK用성공판정値 < 100
+		;구상呼び出し
+		CALL KOJO_TALK,ARG,75
+		PRINTFORM %조사처리(CALLNAME:PLAYER,"는")% 
+		CALL GET_GIFT, [[아이템:보옥]], 1
+	ENDIF
+RESULT = 2
+GOTO GOODBYE
+
+$CHECK_TALKBREAK
+PRINTFORML
+PRINTFORMW 어색해졌다……
+PRINTFORML
+TFLAG:TALK用성공판정値 = RAND:100 + RAND:(MAXBASE:PLAYER:지혜+MAXBASE:PLAYER:운/2) + CFLAG:ARG:友好度 + 20*유혹(PLAYER,ARG)
+
+;리라쿠제스프레이をインス토르している場合
+IF SOFT_ON("리라쿠제스프레이")
+	PRINTFORMW ＞리라쿠제스프레이 기동
+	PRINTFORML 
+	SELECTCASE CFLAG:ARG:리라쿠제스프레이
+		CASE 0
+			;구상呼び出し
+			CALL KOJO_TALK,ARG,78
+			PRINTFORML 
+			PRINTFORML ＞악마는
+			PRINTFORMW 　다시 화제를 맞춰주었다.
+			CFLAG:ARG:리라쿠제스프레이 = 1
+			GOTO RETURNPOINT
+		CASE 1
+			PRINTFORMW ＞그러나 별 효과가 없었다.
+	ENDSELECT
+ENDIF
+
+SELECTCASE TFLAG:TALK用성공판정値
+	CASE IS < 20
+	;회화실패。奇襲する
+		;구상呼び出し
+		CALL KOJO_TALK,ARG,76
+		GOTO ASSAULT
+	CASE IS < 70
+	;회화실패。적対する
+		;구상呼び出し
+		CALL KOJO_TALK,ARG,77
+		GOTO ANGRY
+	CASEELSE
+	;회화継続
+		;구상呼び出し
+		CALL KOJO_TALK,ARG,78
+		GOTO RETURNPOINT
+ENDSELECT
+
+
+$ANGRY
+PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 싸울 생각이다
+;---- EDIT 004 ADD START -------------------------
+FOR LOCAL, 7, 17
+	SIF POS(LOCAL) >= 0 && NO:POS(LOCAL) == NO:ARG
+		CFLAG:POS(LOCAL):決裂フラグ = 1
+NEXT
+;---- EDIT 004 ADD END   -------------------------
+;CFLAG:ARG:決裂フラグ = 1
+RETURN 4
+
+$ASSAULT
+PRINTFORMW %CALLNAME:ARG%에게 허를 찔렸다!
+;---- EDIT 004 ADD START -------------------------
+FOR LOCAL, 7, 17
+	SIF POS(LOCAL) >= 0 && NO:POS(LOCAL) == NO:ARG
+		CFLAG:POS(LOCAL):決裂フラグ = 1
+NEXT
+;---- EDIT 004 ADD END   -------------------------
+;CFLAG:ARG:決裂フラグ = 1
+RETURN 3
+
+$GOODBYE
+;逃げるときの台詞
+IF CFLAG:(FINDCHARA(NO,NO:ARG)):PTフラグ > 0
+;同じ仲間がいる場合仲魔
+	;구상呼び出し
+	CALL KOJO_TALK,ARG,79
+	PRINTFORML 
+	PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 떠나갔다
+ELSEIF CFLAG:ARG:緊張度 > 20
+;険悪な雰囲気
+	;구상呼び出し
+	CALL KOJO_TALK,ARG,80
+	PRINTFORML 
+	PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 떠나갔다
+ELSEIF CFLAG:ARG:友好度 < 50
+;友好度が低い
+	;구상呼び出し
+	CALL KOJO_TALK,ARG,81
+	PRINTFORML 
+	PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 떠나갔다
+ELSEIF CFLAG:ARG:友好度 < 80
+;友好度が普通
+	;구상呼び出し
+	CALL KOJO_TALK,ARG,82
+	PRINTFORML 
+	PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 떠나갔다
+ELSEIF CFLAG:ARG:友好度 > 79
+;友好度が高い
+	;구상呼び出し
+	CALL KOJO_TALK,ARG,83
+	PRINTFORML 
+	PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 떠나갔다
+ENDIF
+FOR LOCAL, 7, 17
+	SIF POS(LOCAL) >= 0 && NO:POS(LOCAL) == NO:ARG
+		CALL REMOVE_POSITION, LOCAL
+NEXT
+;CALL REMOVE_POSITION,CFLAG:ARG:포지션
+RETURN RESULT
+
+;============================================================
+;@유혹？,ARG,ARG:1
+;============================================================
+@유혹,ARG,ARG:1
+#FUNCTION
+SIF !HAVE_SKILL(ARG,[[스킬:유혹]])
+	RETURNF 0
+SIF TALENT:(ARG:1):여성혐오 && TALENT:ARG:남자 == 0
+	RETURNF -1
+SIF TALENT:(ARG:1):남성혐오 && (TALENT:ARG:남자 && TALENT:ARG:오토코노코 == 0)
+	RETURNF -1
+SIF (TALENT:(ARG:1):바이)
+	RETURNF 1
+IF TALENT:(ARG:1):남자
+	SIF (TALENT:ARG:남자 == 0 || TALENT:ARG:오토코노코) || (ABL:(ARG:1):ＢＬ끼 > 0 && TALENT:ARG:남자)
+		RETURNF 1
+ELSEIF TALENT:(ARG:1):남자 == 0
+	SIF (TALENT:ARG:남자) || (ABL:(ARG:1):레즈끼 > 0 && TALENT:ARG:남자 == 0)
+		RETURNF 1
+ENDIF
+RETURNF -1
+
+;============================================================
+;コード短縮用・TALK用구상呼び出し関数
+;============================================================
+@KOJO_TALK,ARG,ARG:1
+TFLAG:TALK구상呼び出し用 = ARG:1
+TRYCCALLFORM KOJO_TALK_K{NO:ARG},ARG,ARG:1
+CATCH
+	TRYCCALLFORM KOJO_TALK_PUB{ABL:ARG:회화타입},ARG,ARG:1
+	CATCH
+		SELECTCASE ARG:1
+			CASE 1
+				;1:레이디・킬러즈
+				PRINTFORML %조사처리(CALLNAME:ARG,"는")% %CALLNAME:PLAYER%에게 헤롱거리는 듯하다
+				
+			CASE 2
+				; 2:おねだり前の逡巡時(아이さつor問答で눈的が決まっている場合)
+			CASE 3
+				; 3:交渉の목적を尋ねる
+				PRINTFORML 용건을 물었다
+			CASE 84
+				;84:要求前の1文
+			CASE 4
+				; 4-6:交渉목적：やらせてくれと言った時の反応
+				; 4:取り付く島もなし
+					PRINTFORMW 격렬하게 거부당했다
+			CASE 5
+				; 5:交渉次第
+				PRINTFORMW 조건에 따라 해줄 것 같다
+			CASE 6
+				; 6:一発おｋ
+				PRINTFORMW 기분좋게 승낙해 주었다
+				CALL MESSAGE_TALK
+			CASE 7
+				; 7-9:交渉목적：やらせてくれと言った時の反応
+				; 7:取り付く島もなし
+					PRINTFORMW 격렬하게 거부당했다
+			CASE 8
+				; 8:交渉次第
+				PRINTFORMW 조건에 따라 범해줄 것 같다
+			CASE 9
+				; 9:一発おｋ
+				PRINTFORMW 기분좋게 승낙해 주었다
+				CALL MESSAGE_TALK
+			CASE 10
+				;10:要求額を提示：￥
+				PRINTFORML ￥{TFLAG:TALK用要求値}을 요구 받았다
+				
+			CASE 11
+				;11-13:￥を払おうとしてお金が발りない
+				;11:別のものを要求する
+				PRINTFORMW 소지금이 부족합니다
+			CASE 85
+				;85 恵まれる
+				PRINTFORMW 소지금이 부족합니다
+				PRINTFORMW ＞%CALLNAME:ARG%에게 불쌍하게 여겨진 것 같다
+			CASE 12
+				;12:交渉실패。立ち去る
+				PRINTFORMW 소지금이 부족합니다
+			CASE 13
+				;13:交渉실패。적対する
+				PRINTFORMW 소지금이 부족합니다
+			CASE 14
+				;14-16:￥を支払った
+				;14:払ったのに逃げられる
+			CASE 15
+				;15:さらに要求される
+			CASE 16
+				;16:交渉성공
+			CASE 17
+				;17-19:￥を支払うのを断った::
+				;17:交渉실패。奇襲する
+			CASE 18
+				;18:交渉실패。적対する
+			CASE 19
+				;19:他のものを要求する:
+			CASE 20
+				;20:要求額を提示：ＭＡＧ
+				PRINTFORML {TFLAG:TALK用要求値}MAG를 요구 받았다
+			CASE 21
+				;21-23:ＭＡＧを支払おうとしたが발りない
+				;21:別のものを要求する
+				PRINTFORMW ＭＡＧ가 부족합니다
+			CASE 86
+				;86 恵まれる
+				PRINTFORMW ＭＡＧ가 부족합니다
+				PRINTFORMW ＞%CALLNAME:ARG%에게 불쌍하게 여겨진 듯하다
+			CASE 22
+				;22:交渉실패。立ち去る
+				PRINTFORMW ＭＡＧ가 부족합니다
+			CASE 23
+				;23:交渉실패。적対する
+				PRINTFORMW ＭＡＧ가 부족합니다
+			CASE 24
+				;24-26:ＭＡＧを支払った
+				;24:払ったのに逃げられる
+			CASE 25
+				;25:さらに要求される
+			CASE 26
+				;26:交渉성공
+			CASE 27
+				;27-29:ＭＡＧを支払うのを断った
+				;27:交渉실패。奇襲する
+			CASE 28
+				;28:交渉실패。적対する
+			CASE 29
+				;29:他のものを要求する
+			CASE 30
+				;30:마석を要求
+				PRINTFORML 마석을 요구 받았다
+				
+			CASE 31
+				;31-33:마석を渡そうとしたが持っていない
+				;31:別のものを要求する
+				PRINTFORMW 마석을 갖고 있지 않습니다
+			CASE 87
+				;87 恵まれる
+				PRINTFORMW 마석을 갖고 있지 않습니다
+				PRINTFORMW ＞%CALLNAME:ARG%에게 불쌍하게 여겨진 듯하다
+			CASE 32
+				;32:交渉실패。立ち去る
+				PRINTFORMW 마석을 갖고 있지 않습니다
+			CASE 33
+				;33:交渉실패。적対する
+				PRINTFORMW 마석을 갖고 있지 않습니다
+			CASE 34
+				;34-36:마석を渡した
+				;34:払ったのに逃げられる
+			CASE 35
+				;35:さらに要求される
+			CASE 36
+				;36:交渉성공
+			CASE 37
+				;37-39:마석を渡すのを断った
+				;37:交渉실패。奇襲する
+			CASE 38
+				;38:交渉실패。적対する
+			CASE 39
+				;39:他のものを要求する
+			CASE 40
+				;40:異性との성교渉を要求
+				PRINTFORML \@TALENT:ARG:남자 ?여자#남자\@를 요구 받았다
+			CASE 41
+				;41:異性を宛がってもらった時の反応
+				CALL MESSAGE_TALK
+			CASE 42
+				;42-46:성교渉が終わった後
+				;42:敗北してる場合ここでゲームオーバー
+			CASE 43
+				;43:話しかけたキャラが倒れている
+			CASE 44
+				;44:ヤらせたのに逃げられる
+				PRINTFORMW %CALLNAME:ARG%에게 차였다
+			CASE 45
+				;45:満발してない
+				PRINTFORML %조사처리(CALLNAME:ARG,"는")% 아직 만족하지 않은 듯하다
+			CASE 46
+				;46:満발
+				PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 만족한 듯하다
+			CASE 47
+				;47-49:성교渉を断った
+				;47:交渉실패。奇襲する
+			CASE 48
+				;48:交渉실패。적対する
+			CASE 49
+				;49:他のものを要求する
+			CASE 50
+				;50-55:ヤらせてもらった後
+				;50:敗北してる場合ここでゲームオーバー
+			CASE 51
+				;51:話かけたキャラが倒れいる
+			CASE 52
+				;52:去っていく
+			CASE 53
+				;53:満발し、仲魔になる
+			CASE 54
+				;54:満발し、아이템をくれる
+			CASE 53
+				;53:満발し、見逃してくれる
+				;現状、死に処理
+			CASE 56
+				;56-61:犯してもらった後
+				;56:敗北してる場合ここでゲームオーバー
+			CASE 57
+				;57:話かけたキャラが倒れいる
+			CASE 58
+				;58:去っていく
+			CASE 59
+				;59:満발し、仲魔になる
+			CASE 60
+				;60:満발し、아이템をくれる
+			CASE 61
+				;61:満발し、見逃してくれる
+				;現状、死に処理
+			CASE 62
+				;62:仲魔になる
+					IF FLAG:交渉목적 > 3
+						PRINTFORMW %CALLNAME:PLAYER%의 몸에 매우 만족해、%조사처리(CALLNAME:ARG,"가")% 동료마로 들어와주었다
+					ELSE
+					ENDIF
+			CASE 63
+				;63:マスターの레벨より高い場合
+				PRINTFORMW 교섭에 성공했지만, 상대보다 레벨이 낮아서 돌아가버렸습니다
+			CASE 64
+				;64:ＣＯＭＰの空きが無い場合
+					PRINTFORML 교섭에 성공했지만, 동료마가 가득 차서 돌아가버렸습니다
+			CASE 65
+				;65:搾りとられた
+			CASE 66
+				;66:お金をくれる
+				IF FLAG:交渉목적 > 3
+					PRINTFORMW %CALLNAME:PLAYER%의 몸에 매우 만족해、돈을 주었습니다
+				ELSE
+				ENDIF
+			CASE 67
+				;67:ＭＡＧをくれる
+				IF FLAG:交渉목적 > 3
+					PRINTFORMW %CALLNAME:PLAYER%의 몸에 매우 만족해、ＭＡＧ를 주었습니다
+				ELSE
+				ENDIF
+			CASE 68
+				;68:데미지をくれる
+			CASE 69
+				;69-75:아이템をくれるor회복してくれる
+				;69:소마を使ってくれる
+			CASE 70
+				;70:보옥륜を使ってくれる
+			CASE 71
+				;71:ITEMor마석をくれる
+			CASE 72
+				;72:마석をくれる
+			CASE 73
+				;73:마석を使ってくれる
+			CASE 74
+				;74:보옥を使ってくれる
+			CASE 75
+				;75:보옥をくれる
+			CASE 76
+				;76-78:気まずくなった
+				;76:회화실패。奇襲する
+			CASE 77
+				;77:회화실패。적対する
+			CASE 78
+				;78:회화継続
+			CASE 79
+				;79-83:立ち去る
+				;79:同じ仲魔がいる場合
+			CASE 80
+				;険悪な雰囲気
+			CASE 81
+				;友好度が低い
+			CASE 82
+				;友好度が普通
+			CASE 83
+				;友好度が高い
+			CASE 88
+				;ヤらせてもらう・交渉が성공した場合
+				PRINTFORMW 교섭에 성공해서 하게 해 줄 것 같다
+				CALL MESSAGE_TALK
+			CASE 89
+				;犯してもらう・交渉が성공した場合
+				PRINTFORMW 교섭에 성공해서 범해줄 수 있게 되었다
+				CALL MESSAGE_TALK
+			CASE 90
+				;던전内성욕처리：윤간이벤트
+			CASE 91
+				;적が命乞いCASE91〜93
+				;命乞い
+			CASE 92
+				;助けた場合（RETURN 0, X = 0.逃げる　1.仲魔になる　2.何か貰う　3.奇襲）
+			CASE 93
+				;断った場合
+			CASE 94
+				;적から助ける代わりに取引を持ちかけられるCASE94〜101
+				;取引内容（RETURN 0, X = 1.￥　2.마카　3.異性）
+			CASE 95
+				;要求をのむ（￥）
+			CASE 96
+				;要求をのむ（마카）
+			CASE 97
+				;要求をのむ（異性）
+				CALL MESSAGE_TALK
+			CASE 98
+				;約束を守るかどうか구상内で決める（RETURN 0, X = 1.去っていく　2.전투続行）
+			CASE 99
+				;約束を守って去っていく
+			CASE 100
+				;約束を守らず전투続行
+			CASE 101
+				;要求を断る
+		ENDSELECT
+	ENDCATCH
+ENDCATCH
+;==============================================
+;性的交渉の地の文
+;==============================================
+@MESSAGE_TALK,ARG = -1
+;ARGが-1以外で呼び出されていた場合、ARGの番号の메시지を呼び出し
+SELECTCASE (ARG > -1 ? ARG # TFLAG:TALK구상呼び出し用)
+
+	;------------------------------------------
+	;ヤらせてもらう・一発ＯＫの場合
+	;------------------------------------------
+			CASE 6
+				
+	;------------------------------------------
+	;犯してもらう・一発ＯＫの場合
+	;------------------------------------------
+			CASE 9
+				TFLAG:메시지패턴 = 0
+				IF TALENT:PLAYER:남자 == 0 || TALENT:PLAYER:오토코노코
+					;魅了상태
+					IF CFLAG:PLAYER:ステート == GET_STATE_NUM("CHARM")
+						PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% 텅빈 눈동자를 한 채로 피부를 드러내고、%CALLNAME:交渉대상()%에게 몸을 맡겼다
+						TFLAG:메시지패턴 = 8
+					ELSEIF TEQUIP:PLAYER:스커트걷어올림 && RAND:4 == 0
+						TFLAG:메시지패턴 = 1
+						PRINTFORM %조사처리(CALLNAME:PLAYER, "가")% 
+						IF CFLAG:PLAYER:던전内発情用욕정치 >= 6000
+							PRINTFORM 녹을 듯한 표정으로 
+						ELSEIF TALENT:PLAYER:음란 || TALENT:PLAYER:창부 || TALENT:PLAYER:ＮＴＲ == 2 || TALENT:PLAYER:ＮＴＲ == 5
+							PRINTFORM 보란듯이 
+						ELSEIF CFLAG:PLAYER:던전内発情用욕정치 > 2500
+							IF TALENT:PLAYER:연모 || TALENT:PLAYER:친애 || TALENT:PLAYER:ＮＴＲ == 1 || TALENT:PLAYER:ＮＴＲ == 4
+								PRINTFORM 상기된 얼굴을 숙이고 
+							ELSE
+								PRINTFORM 상기된 표정으로 
+							ENDIF
+						ELSE
+							IF TALENT:PLAYER:연모 || TALENT:PLAYER:친애 || TALENT:PLAYER:ＮＴＲ == 1 || TALENT:PLAYER:ＮＴＲ == 4
+								PRINTFORM 빨개진 얼굴을 숙이고 
+							ENDIF
+						ENDIF
+						IF TEQUIP:PLAYER:Ｖ밀기가능 && RAND:2 == 0
+							TFLAG:메시지패턴 = 5
+							;스커트걷어올림・パンツずらし
+							SELECTCASE TEQUIP:PLAYER:스커트걷어올림
+								CASE 1
+									PRINTFORM 스커트 끝을 들어올리고、
+								CASE 2
+									PRINTFORM 스커트 끝을 들어올리고、
+								CASE 3
+									PRINTFORM 스커트 자락을 들어올려 입에 물고、
+								CASE 4
+									PRINTFORM 스커트 자락을 들어올려 입에 물고、
+							ENDSELECT
+							PRINTFORML %CLOTHESNAMEF(PLAYER,TEQUIP:PLAYER:음순노출)%을 젖혀、
+							IF STAIN:PLAYER:3 & 4
+								SIF PALAM:PLAYER:윤활 >= PALAMLV:2 && TALENT:PLAYER:남자 == 0
+									PRINTFORM 애액과 
+								PRINTFORM 정액이 흘러 떨어져내리는 
+							ELSEIF PALAM:PLAYER:윤활 >= PALAMLV:2
+								IF CFLAG:PLAYER:던전内発情用욕정치 >= 6000
+									PRINTFORM 희롱당할 것에 대한 기대감으로 
+								ELSEIF TALENT:PLAYER:남자 == 0
+									PRINTFORM 스스로의 애액으로 
+								ENDIF
+								PRINTFORM 젖은 
+							ELSEIF CFLAG:PLAYER:던전内発情用욕정치 >= 6000
+								PRINTFORM 기대에 움찔움찔 떨리는 
+							ENDIF
+							IF TALENT:PLAYER:오토코노코
+								PRINTFORMW 움츠러든 것을 손가락으로 벌려、%CALLNAME:交渉대상()%\@ HAVE_PENIS(交渉대상()) ? 에게 정자를 졸랐다 # 권했다 \@…
+							ELSE
+								PRINTFORMW \@ TALENT:PLAYER:소인체형 ? 균열 # 비순\@을 손가락으로 벌리고、%CALLNAME:交渉대상()%\@ HAVE_PENIS(交渉대상()) ? 에게 정자를 졸랐다 # 권했다 \@…
+							ENDIF
+						ELSE
+							SELECTCASE TEQUIP:PLAYER:스커트걷어올림
+								CASE 1
+									PRINTFORML 스커트 끝을 걷어올리자、
+								CASE 2
+									PRINTFORML 스커트를 걷어올리자、
+								CASE 3
+									PRINTFORM 스커트 자락을 걷어올려 입에 물자、
+								CASE 4
+									PRINTFORM 스커트 자락을 걷어올려 입에 물자、
+							ENDSELECT
+							
+							IF TEQUIP:PLAYER:음순노출 == -1
+								;스커트걷어올림・ノーパン
+								IF STAIN:PLAYER:3 & 4
+									SIF PALAM:PLAYER:윤활 >= PALAMLV:2
+										PRINTFORM 애액과 
+									PRINTFORMW 정액으로 질퍽질퍽하게 되어 있는 \@ TALENT:PLAYER:소인체형 ? 균열 # 비소\@가 바깥 공기에 노출되었다…
+								ELSEIF PALAM:PLAYER:윤활 >= PALAMLV:2
+									IF CFLAG:PLAYER:던전内発情用욕정치 >= 6000
+										PRINTFORM 희롱당할 것에 대한 기대감으로 
+									ELSE
+										PRINTFORM 스스로의 애액으로 
+									ENDIF
+									PRINTFORMW 젖은 \@ TALENT:PLAYER:소인체형 ? 균열 # 비소\@가 드러났다…
+								ELSEIF CFLAG:PLAYER:던전内発情用욕정치 >= 6000
+									PRINTFORMW 기대로 움찔움찔 떨리는 \@ TALENT:PLAYER:소인체형 ? 균열 # 비소\@가 바깥 공기에 노출되었다…
+																	ELSE
+									PRINTFORMW 예쁜 그대로의\@ TALENT:PLAYER:소인체형 ? 균열 # 비소\@가 바깥 공기에 노출되었다…
+								ENDIF
+							ELSE
+								;스커트걷어올림・下着見せ
+								IF TALENT:PLAYER:오토코노코 && CFLAG:PLAYER:던전内発情用욕정치 >= 6000
+									PRINTFORMW %CLOTHESNAMEF(PLAYER,TEQUIP:PLAYER:음순노출)%의 아래에서 귀여운 페니스가 딱딱하게 솟아오른 모습이 훤히 들여다보인다…
+								ELSEIF TALENT:PLAYER:오토코노코
+									PRINTFORMW 귀여운 페니스를 감싸고 있는 %CLOTHESNAMEF(PLAYER,TEQUIP:PLAYER:음순노출)%가 드러났다…
+								ELSEIF STAIN:PLAYER:16 & 4 || STAIN:PLAYER:17 & 4
+									SIF STAIN:PLAYER:16 & 1 || STAIN:PLAYER:17 & 1
+										PRINTFORM 애액과 
+									PRINTFORMW 정액 투성이로、엉망진창이 된 %CLOTHESNAMEF(PLAYER,TEQUIP:PLAYER:음순노출)%가 드러났다…
+								ELSEIF PALAM:PLAYER:윤활 >= PALAMLV:2 || CFLAG:PLAYER:던전内発情用욕정치 >= 6000
+									PRINTFORMW 애액으로 촉촉하고 습기차, 비순을 숨긴 부분에 얼룩이 생긴 %CLOTHESNAMEF(PLAYER,TEQUIP:PLAYER:음순노출)%가 바깥 공기에 노출되었다…
+								ELSE
+									PRINTFORMW 예쁜 그대로의%CLOTHESNAMEF(PLAYER,TEQUIP:PLAYER:음순노출)%가 바깥 공기에 노출되었다…
+								ENDIF
+							ENDIF
+						ENDIF
+					ELSEIF !(TEQUIP:PLAYER:가랑이구조 & 1) && RAND:3 == 0
+						TFLAG:메시지패턴 = 2
+					;Ｍ字開다리・ノーパン+開帳
+						PRINTFORM %조사처리(CALLNAME:PLAYER,"는")% 조용히 자리에 앉아 
+						;바지履いてる場合は摺り下ろす
+						SIF TEQUIP:PLAYER:가랑이구조 & 1
+							PRINTFORM %CLOTHESNAMEF(PLAYER,TEQUIP:PLAYER:음순노출)%를 벗어 던지고 
+						IF ((TALENT:PLAYER:연모 || TALENT:PLAYER:친애) && TALENT:PLAYER:ＮＴＲ == 0 ) || TALENT:PLAYER:ＮＴＲ == 1 || TALENT:PLAYER:ＮＴＲ == 4
+							IF CFLAG:PLAYER:던전内発情用욕정치 >= 6000
+								PRINTFORM 뺨을 붉히면서、
+							ELSE
+								PRINTFORM 수치심에 몸을 떨면서 
+							ENDIF
+							SIF ((TALENT:PLAYER:연모 || TALENT:PLAYER:친애) && TALENT:PLAYER:ＮＴＲ == 0 )
+								PRINTFORML %CALLNAME:MASTER%의 눈 앞인데도 불구하고 
+						ELSEIF ((TALENT:PLAYER:음란 || TALENT:PLAYER:창부) && TALENT:PLAYER:ＮＴＲ == 0 ) || TALENT:PLAYER:ＮＴＲ == 2 || TALENT:PLAYER:ＮＴＲ
+							PRINTFORM 도발적인 미소를 띄우면서 
+						ENDIF
+							PRINTFORM 다리를 크게 M자로 벌리고
+					;Ｍ字開다리・パンツずらし
+						IF TEQUIP:PLAYER:Ｖ밀기가능 && CFLAG:PLAYER:던전内発情用욕정치 >= 6000
+							SIF ((TALENT:PLAYER:음란 || TALENT:PLAYER:창부) && TALENT:PLAYER:ＮＴＲ == 0 )
+								PRINTFORM 선정적인 손가락 끝으로 
+							PRINTFORM %CLOTHESNAMEF(PLAYER,TEQUIP:PLAYER:음순노출)%을 젖히고 
+							IF TALENT:PLAYER:오토코노코
+								PRINTFORML 오므라진 항문을 손가락으로 벌려 보이면서、
+							ELSE
+								PRINTFORML \@ TALENT:PLAYER:소인체형 ? 균열 # 비소\@를 손가락으로 벌려 보이면서、
+							ENDIF
+						ELSEIF TEQUIP:PLAYER:가랑이구조 & 2
+							;ビキニ구조
+							SIF ((TALENT:PLAYER:음란 || TALENT:PLAYER:창부) && TALENT:PLAYER:ＮＴＲ == 0 )
+								PRINTFORM 선정적인 손가락 끝으로 
+							PRINTFORM %CLOTHESNAMEF(PLAYER,TEQUIP:PLAYER:음순노출)%을 젖히고 
+							IF STAIN:PLAYER:3 & 4
+								SIF PALAM:PLAYER:윤활 >= PALAMLV:2 && TALENT:PLAYER:남자 == 0
+									PRINTFORM 애액과 
+								PRINTFORM 정액이 흘러 떨어져내리는 
+							ELSEIF PALAM:PLAYER:윤활 >= PALAMLV:2
+								IF CFLAG:PLAYER:던전内発情用욕정치 >= 6000
+									PRINTFORM 희롱당할 것에 대한 기대감으로 
+								ELSEIF TALENT:PLAYER:남자 == 0
+									PRINTFORM 스스로의 애액으로 
+								ENDIF
+								PRINTFORM 젖은 
+							ELSEIF CFLAG:PLAYER:던전内発情用욕정치 >= 6000
+								PRINTFORM 기대로 움찔움찔 떨리는 
+							ENDIF
+
+							IF TALENT:PLAYER:오토코노코
+								PRINTFORML 오므라진 항문을 손가락으로 벌려 보이면서、
+							ELSE
+								PRINTFORML \@ TALENT:PLAYER:소인체형 ? 균열 # 비소\@를 손가락으로 벌려 보이면서、
+							ENDIF
+						ELSE
+							;四つんばい・ボトムレスorノーパンor바지はいてる(摺り下ろしずみ)
+							PRINTFORM 숨김없이 
+							IF TALENT:PLAYER:오토코노코
+								PRINTFORML 오므라진 항문을 손가락으로 벌려보이며 
+							ELSE
+								PRINTFORML \@ TALENT:PLAYER:소인체형 ? 균열 # 비소\@를 를 손가락으로 벌려보이며 
+							ENDIF
+							SIF ((TALENT:PLAYER:음란 || TALENT:PLAYER:창부) && TALENT:PLAYER:ＮＴＲ == 0 )
+								PRINTFORM 스스로를 위로하면서 
+						ENDIF
+						PRINTFORMW %CALLNAME:交渉대상()%에게 범해줬으면 한다고 애원했다……
+					;Ｍ字開다리・ノーパン
+					;Ｍ字開다리・パンツなぞり
+					;Ｍ字開다리
+
+					ELSEIF !(TALENT:PLAYER:절벽 && TALENT:PLAYER:남자) && RAND:2 == 0
+						TFLAG:메시지패턴 = 3
+							PRINTFORM %조사처리(CALLNAME:PLAYER,"는")% 
+						;おっぱいオープン中			
+						;おっぱい見えてる
+						IF TEQUIP:PLAYER:유방노출 == -1
+							PRINTFORM 숨김없이 
+						;おっぱいオープン가능
+						ELSEIF TEQUIP:PLAYER:가슴앞열림 & 0
+							PRINTFORM 가슴섬을 벌리고 
+						;가슴での유혹がな場合は脱ぐ
+						ELSE
+							PRINTFORM 의복을 벗고 
+						ENDIF
+						IF TALENT:PLAYER:폭유 
+							PRINTFORM 손에 남을 정도의 폭유를 
+						ELSEIF TALENT:PLAYER:거유 
+							PRINTFORM 남자의 정욕을 자극하는 거유를 
+						ELSEIF TALENT:PLAYER:빈유 
+							PRINTFORM 조금 부풀어오른 유방을 
+						ELSE
+							PRINTFORM 형태 좋은 유방을 
+						ENDIF
+						IF ((TALENT:PLAYER:연모 || TALENT:PLAYER:친애) && TALENT:PLAYER:ＮＴＲ == 0 ) || TALENT:PLAYER:ＮＴＲ == 1 || TALENT:PLAYER:ＮＴＲ == 4
+							IF CFLAG:PLAYER:던전内発情用욕정치 >= 6000
+								PRINTFORML 녹아내릴듯한 표정으로, %CALLNAME:交渉대상()%에게 달라붙으면서 
+								PRINTFORMW 범해주세요 라고 말하며 키스를 주고 받았다
+							ELSE
+								PRINTFORML 부끄러운듯이 손으로 가리면서 
+								PRINTFORMW 마음대로 해주세요 라고 시선을 피하며 중얼거렸다
+							ENDIF
+						ELSEIF ((TALENT:PLAYER:음란 || TALENT:PLAYER:창부) && TALENT:PLAYER:ＮＴＲ == 0 ) || TALENT:PLAYER:ＮＴＲ == 2 || TALENT:PLAYER:ＮＴＲ
+							PRINTFORML 주무르면서 다가오며 %CALLNAME:交渉대상()%의 손을 가슴으로 끌어당겨 
+							PRINTFORMW 도발적인 미소를 띄웠다
+						ELSE
+							PRINTFORML 애무하면서 
+							PRINTFORMW %CALLNAME:交渉대상()%에게 범해줬으면 한다고 애원했다……
+						ENDIF
+					ELSEIF RAND:2 == 0
+						TFLAG:메시지패턴 = 4
+					;발が無いキャラは四つんばいでなく、손を付いて尻を向ける？
+						;PRINTFORM %조사처리(CALLNAME:PLAYER,"는")% 그 자리에 \@ TALENT:PLAYER:팔 || TALENT:PLAYER:\@\@\@、
+						PRINTFORM %조사처리(CALLNAME:PLAYER,"는")% 
+						IF ((TALENT:PLAYER:연모 || TALENT:PLAYER:친애) && TALENT:PLAYER:ＮＴＲ == 0 ) || TALENT:PLAYER:ＮＴＲ == 1 || TALENT:PLAYER:ＮＴＲ == 4
+							IF CFLAG:PLAYER:던전内発情用욕정치 >= 6000
+								PRINTFORM 녹아내릴듯한 표정으로, 
+							ELSE
+								PRINTFORM 더 이상 참을 수 없다는듯한 모습으로、
+							ENDIF
+							SIF ((TALENT:PLAYER:연모 || TALENT:PLAYER:친애) && TALENT:PLAYER:ＮＴＲ == 0 )
+								PRINTFORML %CALLNAME:MASTER%의 눈 앞인데도 불구하고 
+						ELSEIF ((TALENT:PLAYER:음란 || TALENT:PLAYER:창부) && TALENT:PLAYER:ＮＴＲ == 0 ) || TALENT:PLAYER:ＮＴＲ == 2 || TALENT:PLAYER:ＮＴＲ
+							PRINTFORM %CALLNAME:交渉대상()%에게 범해질것에 대한 기대감으로 몸을 떨며 
+							PRINTFORM 녹아내릴듯한 표정으로, 
+						ENDIF
+						PRINTFORM 그 자리에 손을 대고 엎드린 자세로、
+						SIF TEQUIP:PLAYER:스커트걷어올림
+							PRINTFORM 스커트를 걷어올리고, 
+						;바지履いてる場合は摺り下ろす
+						SIF TEQUIP:PLAYER:가랑이구조 & 1
+							PRINTFORM %CLOTHESNAMEF(PLAYER,TEQUIP:PLAYER:음순노출)%를 내려 
+						PRINTFORM %CALLNAME:交渉대상()%에게 
+						IF TEQUIP:PLAYER:Ｖ밀기가능 && CFLAG:PLAYER:던전内発情用욕정치 >= 6000
+							;四つんばい・パンツずらし
+							PRINTFORM 엉덩이를 
+							SIF ((TALENT:PLAYER:음란 || TALENT:PLAYER:창부) && TALENT:PLAYER:ＮＴＲ == 0 )
+								PRINTFORM 높게 쓱 내밀듯이 
+							PRINTFORM 향해、젖혀둔 %CLOTHESNAMEF(PLAYER,TEQUIP:PLAYER:음순노출)%의 아래에서 들여다보이는 
+							IF TALENT:PLAYER:오토코노코
+								PRINTFORML 오므라진 항문을 손가락으로 벌려 보이면서、
+							ELSE
+								PRINTFORML \@ TALENT:PLAYER:소인체형 ? 균열 # 비소\@를 손가락으로 벌려 보이면서、
+							ENDIF
+						ELSEIF TEQUIP:PLAYER:가랑이구조 & 2
+							;四つんばい・ビキニ구조
+							PRINTFORM %CLOTHESNAMEF(PLAYER,TEQUIP:PLAYER:음순노출)%으로 감싼 엉덩이를 
+							SIF ((TALENT:PLAYER:음란 || TALENT:PLAYER:창부) && TALENT:PLAYER:ＮＴＲ == 0 )
+								PRINTFORM 높게 쓱 내밀듯이 
+							PRINTFORML 향하게 하면서, 
+						ELSE
+							;四つんばい・ボトムレスorノーパンor바지はいてる(摺り下ろしずみ)
+							PRINTFORM 숨김없이 
+							IF TALENT:PLAYER:오토코노코
+								PRINTFORML 오므라진 항문을 
+							ELSE
+								PRINTFORML \@ TALENT:PLAYER:소인체형 ? 균열 # 비소\@를 
+							ENDIF
+							SIF ((TALENT:PLAYER:음란 || TALENT:PLAYER:창부) && TALENT:PLAYER:ＮＴＲ == 0 )
+								PRINTFORM 높게 쓱 내밀듯이 
+							PRINTFORML 향하게 하면서, 
+						ENDIF
+						PRINTFORMW %CALLNAME:交渉대상()%에게 범해줬으면 한다고 애원했다……
+					ELSE
+						TFLAG:메시지패턴 = 7						
+					;펠라치오
+						PRINTFORM %조사처리(CALLNAME:PLAYER,"는")% %CALLNAME:交渉대상()%의 앞에 무릎 꿇고
+						PRINTFORM 우뚝 솟은 페니스를 
+						IF ((TALENT:PLAYER:연모 || TALENT:PLAYER:친애) && TALENT:PLAYER:ＮＴＲ == 0 ) || TALENT:PLAYER:ＮＴＲ == 1 || TALENT:PLAYER:ＮＴＲ == 4
+							IF CFLAG:PLAYER:던전内発情用욕정치 >= 6000
+								SIF ((TALENT:PLAYER:연모 || TALENT:PLAYER:친애) && TALENT:PLAYER:ＮＴＲ == 0 )
+									PRINTFORML %CALLNAME:MASTER%의 눈 앞인데도 불구하고 
+								PRINTFORML 황홀한 표정으로 보면서 입안에 물고、
+							ELSE
+								PRINTFORML 눈을 감고 천천히 입 안에 삼키고、
+							ENDIF
+						ELSEIF ((TALENT:PLAYER:음란 || TALENT:PLAYER:창부) && TALENT:PLAYER:ＮＴＲ == 0 ) || TALENT:PLAYER:ＮＴＲ == 2 || TALENT:PLAYER:ＮＴＲ
+							PRINTFORML 사랑스러운듯한 표정으로 입 에 물고 스스로를 위로하면서 、
+						ELSE
+							PRINTFORML 끝부분부터 빨며 그대로 불알을 입에 물고、
+						ENDIF
+						IF ABL:PLAYER:기교 > 6
+							PRINTFORM 끈적끈적한 혀놀림으로 
+						ELSEIF ABL:PLAYER:기교 > 3
+							PRINTFORM 정성스러운 혀놀림으로 
+						ELSE
+							PRINTFORM 서툰 혀놀림으로 
+						ENDIF
+						IF ABL:PLAYER:정액중독 > 2
+							PRINTFORM 쏟아지는 정액을 전부 마셨다
+						ELSE
+							PRINTFORMW 사정시켰다
+						ENDIF
+					ENDIF
+				ELSE
+				;PLAYERが남자かつ오토코노코でない
+					
+				ENDIF
+	;------------------------------------------
+	;女を宛がった場合
+	;------------------------------------------
+	CASE 41, 97
+		IF HAVE_PENIS(交渉대상())
+		;竿持ちの場合
+			IF 捧げたキャラ() != MASTER
+			TFLAG:메시지패턴 = 6
+				IF 위험일((捧げたキャラ()))
+					IF TALENT:(捧げたキャラ()):발정가능 || 위험일((捧げたキャラ())) == 2
+						PRINTFORM 発情した%CALLNAME:(捧げたキャラ())%는 
+						SIF TALENT:(捧げたキャラ()):연모 || TALENT:(捧げたキャラ()):친애
+							PRINTFORM %CALLNAME:MASTER%에게 보여지고 있다는 것도 잊고 
+						PRINTFORMW %CALLNAME:交渉대상()%의 정액을 요구하면서 필사적으로 허리를 흔들고 있다……
+					ELSE
+						PRINTFORMW %CALLNAME:(捧げたキャラ())%(이)가 위험일이라는 것을 깨달은 %조사처리(CALLNAME:交渉대상(),"는")% 자신의 씨앗을 집요하게 질내에 쏟아붓고 있다……
+					ENDIF
+				ELSEIF ABL:(捧げたキャラ()):종족 > 0 && FLAG:月齢 == 8
+						PRINTFORMW 발정한 %조사처리(CALLNAME:(捧げたキャラ()),"는")% 
+						SIF TALENT:(捧げたキャラ()):연모 || TALENT:(捧げたキャラ()):친애
+							PRINTFORM %CALLNAME:MASTER%에게 보여지고 있다는 것도 잊고 
+						PRINTFORMW %CALLNAME:交渉대상()%의 정액을 요구하면서 필사적으로 허리를 흔들고 있다……
+				ELSEIF TALENT:(捧げたキャラ()):연모 || TALENT:(捧げたキャラ()):친애
+					PRINTFORMW %CALLNAME:(捧げたキャラ())%는 %CALLNAME:交渉대상()%에게 깔아눕혀져 제멋대로 범해지고 있다……
+				ELSEIF TALENT:(捧げたキャラ()):음란 || TALENT:(捧げたキャラ()):창부
+					PRINTFORMW %CALLNAME:(捧げたキャラ())%는 %CALLNAME:交渉대상()%의 페니스를 받아들이더니, 교성을 지르며 허리를 움직이기 시작했다……
+				ELSEIF TALENT:(捧げたキャラ()):복종 || TALENT:(捧げたキャラ()):예속
+					PRINTFORMW %조사처리(CALLNAME:(捧げたキャラ()),"는")% %CALLNAME:交渉대상()%의 페니스에 정성껏 봉사하고 있다……
+				ELSE
+					PRINTFORMW %조사처리(CALLNAME:(捧げたキャラ()),"는")% %조사처리(CALLNAME:交渉대상(),"와")% 딱 달라붙어、탐내듯이 범하기 시작했다……
+				ENDIF
+			ELSE
+				IF RAND:4 == 0
+					PRINTFORMW %CALLNAME:交渉대상()%에게 자신의 몸을 제공했다……
+				ELSEIF RAND:3 == 0
+					PRINTFORMW 스스로 다리를 크게 벌리고 %조사처리(CALLNAME:交渉대상(),"를")% 권하자、난폭하게 깔린채로 계속 범해졌다……
+				ELSEIF RAND:2 == 0
+					PRINTFORMW %CALLNAME:交渉대상()%에게 몸을 바쳤다……
+				ELSE
+					PRINTFORMW %조사처리(CALLNAME:交渉대상(),"가")% 하는대로 희롱당했다……
+				ENDIF
+				;本番횟수が多い
+				IF LOCAL:1 >= (LOCAL:2 || LOCAL:3)
+					PRINTFORML 
+					IF RAND:2 == 0
+						PRINTFORM %CALLNAME:MASTER%は%CALLNAME:交渉대상()%
+						IF RAND:2 == 0
+							PRINTFORML に正常位で犯された
+						ELSE
+							PRINTFORM と向き合う姿勢
+							IF RAND:2 == 0
+								PRINTFORML で一つになった
+							ELSE
+								PRINTFORML で犯された
+							ENDIF
+						ENDIF
+						;獣or鳥
+						IF TALENT:交渉대상():짐승 || TALENT:交渉대상():새
+							PRINTFORM ケダモノの姿をした悪魔は%CALLNAME:MASTER%を押し倒し
+						ELSE
+							IF RAND:2 == 0
+								PRINTFORM 力強く
+							ELSE
+								PRINTFORM 乱暴に
+							ENDIF
+							PRINTFORM 悪魔は%CALLNAME:MASTER%を押し倒すと
+						ENDIF
+						IF RAND:2 == 0
+							PRINTFORM %CALLNAME:交渉대상()%はテクニックなど何もない荒々しい腰使いで
+						ELSE
+							PRINTFORM %CALLNAME:MASTER%の様子などお構い無しに
+						ENDIF
+						IF RAND:2 == 0
+							PRINTFORMW 何度も%CALLNAME:MASTER%の雌穴を突き上げて絶頂し熱い精液が子宮の中に流し込まれた
+						ELSE
+							PRINTFORMW 激しく雌穴を犯し、子宮の中に精液を吐き出していく
+						ENDIF
+					ELSE
+						PRINTFORM %CALLNAME:交渉대상()%は%CALLNAME:MASTER%
+						IF RAND:2 == 0
+							PRINTFORM を組み伏すと
+						ELSE
+							PRINTFORM を押し倒して
+						ENDIF
+						IF RAND:2 == 0
+							PRINTFORM バックから
+						ELSE
+							PRINTFORM 背後から
+						ENDIF
+						IF RAND:2 == 0
+							PRINTFORML 挿入してきた
+						ELSE
+							PRINTFORML 一気に膣を犯しはじめた
+						ENDIF
+						IF RAND:2 == 0
+							PRINTFORM 力任せに
+						ELSE
+							PRINTFORM %CALLNAME:MASTER%の様子などお構い無しに
+						ENDIF
+						IF RAND:3 == 0
+							PRINTFORM 叩きつけるように
+						ELSEIF RAND:2 == 0
+							PRINTFORM 荒々しく
+						ELSE
+							PRINTFORM 激しく
+						ENDIF
+						IF RAND:2 == 0
+							PRINTFORMW %CALLNAME:交渉대상()%は何度も何度も肉棒を膣の奥深くまで突き上げてくる
+						ELSE
+							PRINTFORMW 腰をつかい、%CALLNAME:MASTER%の雌穴の入り口は押し広げられていく
+						ENDIF
+					ENDIF
+				;アナル回数が多い
+				ELSEIF LOCAL:2 >= LOCAL:3
+					PRINTFORML 
+					IF RAND:2 == 0
+						PRINTFORM %조사처리(CALLNAME:MASTER,"는")% %CALLNAME:交渉대상()%
+						IF RAND:2 == 0
+							PRINTFORML 에게 정상위로 범해졌다
+						ELSE
+							PRINTFORM 와 서로 마주보는 자세
+							IF RAND:2 == 0
+								PRINTFORML 로 하나가 되었다
+							ELSE
+								PRINTFORML 로 범해졌다
+							ENDIF
+						ENDIF
+						;짐승or새
+						IF TALENT:交渉대상():짐승 || TALENT:交渉대상():새
+							PRINTFORM 짐승의 모습을 한 악마는 %플레이어를()% 밀어넘어뜨리고
+						ELSE
+							IF RAND:2 == 0
+								PRINTFORM 강하게 
+							ELSE
+								PRINTFORM 난폭하게 
+							ENDIF
+							PRINTFORM 악마는 %플레이어를()% 밀어넘어뜨리고
+						ENDIF
+						IF RAND:2 == 0
+							PRINTFORM %조사처리(CALLNAME:交渉대상(),"는")% 테크닉 따위는 전혀 없는 몹시 거친 허리놀림으로 
+						ELSE
+							PRINTFORM %CALLNAME:MASTER%의 상태 따위는 관계없이 
+						ENDIF	
+						IF RAND:2 == 0
+							PRINTFORMW 몇 번이나 %CALLNAME:MASTER%의 고혈을 밀어 올려 절정해 뜨거운 정액을 애널 안에 흘려넣었다
+						ELSE
+							PRINTFORMW 격렬하게 고혈을 범해、애널 안에 정액을 토해낸다
+						ENDIF
+					ELSE
+						PRINTFORM %조사처리(CALLNAME:交渉대상(),"는")% %CALLNAME:MASTER%
+						IF RAND:2 == 0
+							PRINTFORM 을(를) 덮쳐누르고 
+						ELSE
+							PRINTFORM 을(를) 밀어 넘어뜨리고 
+						ENDIF
+						IF RAND:2 == 0
+							PRINTFORM 뒤에서부터 
+						ELSE
+							PRINTFORM 등 뒤에서 
+						ENDIF
+						IF RAND:2 == 0
+							PRINTFORML 삽입해왔다
+						ELSE
+							PRINTFORML 단번에 애널을 범하기 시작했다
+						ENDIF
+						IF RAND:2 == 0
+							PRINTFORM 힘껏 
+						ELSE
+							PRINTFORM %CALLNAME:MASTER%의 상태 따위는 신경쓰지 않고 
+						ENDIF
+						IF RAND:3 == 0
+							PRINTFORM 부딪히듯이 
+						ELSEIF RAND:2 == 0
+							PRINTFORM 몹시 거칠게 
+						ELSE
+							PRINTFORM 격렬하게 
+						ENDIF
+						IF RAND:2 == 0
+							PRINTFORMW %조사처리(CALLNAME:交渉대상(),"는")% 몇 번이나 몇 번이나 페니스를 애널 깊숙한곳까지 밀어올린다
+						ELSE
+							PRINTFORMW 허리를 사용해、%CALLNAME:MASTER%의 고혈에 삽입해 넓게 벌려간다
+						ENDIF
+					ENDIF
+				;フェラ횟수が多い
+				ELSEIF LOCAL:3 >= LOCAL:2
+					PRINTFORML 
+					IF RAND:4 == 0
+						PRINTFORML %조사처리(CALLNAME:MASTER,"는")% %CALLNAME:交渉대상()%의 앞에 무릎꿇고 입으로 페니스를 삼켰다
+						PRINTFORMW 정중하게 혀를 사용해、입안 전체를 사용해 감싸듯이하며 자극해나간다
+					ELSEIF RAND:3 == 0
+						PRINTFORML %조사처리(CALLNAME:MASTER,"는")% %CALLNAME:交渉대상()%에게 억눌려 격렬하게 입안을 범해졌다
+						PRINTFORMW 숨이 막힌듯한 %CALLNAME:MASTER%의 모습따위에는 아랑곳않고 %CALLNAME:交渉대상()%는 더욱 격렬하게 허리를 흔든다
+					ELSEIF RAND:2 == 0
+						PRINTFORML 지독한 체취를 풍기는 %CALLNAME:交渉대상()%의 더러운 페니스가 %CALLNAME:MASTER%의 입안에 삽입되었다
+						PRINTFORMW 무심코 괴로운듯이 %조사처리(CALLNAME:MASTER,"가")% 신음하면 악마는 기쁜듯이 더욱 격렬하게 페니스를 사용해 입안 가득 문질러왔다
+					ELSE
+						PRINTFORML %CALLNAME:MASTER%의 입안에 발해진 진한 %CALLNAME:交渉대상()%의 정액의 맛이 퍼져간다
+						PRINTFORMW 너무나도 많은 양에 넘쳐버린 정액이 %CALLNAME:MASTER%의 입 주변으로 흘러넘쳐 떨어져내렸다
+					ENDIF
+				ENDIF
+			ENDIF
+		ELSE
+		;痴女の場合
+			IF 捧げたキャラ() != MASTER
+				IF HAVE_PENIS(交渉대상())
+					IF TALENT:(捧げたキャラ()):연모 || TALENT:(捧げたキャラ()):친애
+						PRINTFORMW %조사처리(CALLNAME:(捧げたキャラ()),"는")% %CALLNAME:交渉대상()%에게 깔려 마음껏 범해지고 있다……
+					ELSEIF TALENT:(捧げたキャラ()):음란 || TALENT:(捧げたキャラ()):창부
+						PRINTFORMW %조사처리(CALLNAME:(捧げたキャラ()),"는")% %조사처리(CALLNAME:交渉대상(),"와")% 경쟁하듯이 허리를 흔들고 있다……
+					ELSEIF TALENT:(捧げたキャラ()):복종 || TALENT:(捧げたキャラ()):예속
+						PRINTFORMW %조사처리(CALLNAME:(捧げたキャラ()),"는")% %CALLNAME:交渉대상()%에게 정성껏 봉사하고 있다……
+					ELSE
+						PRINTFORMW %조사처리(CALLNAME:(捧げたキャラ()),"는")% %조사처리(CALLNAME:交渉대상(),"와")% 딱 달라붙어、탐내듯이 범하기 시작했다……
+					ENDIF
+				ELSE
+				ENDIF
+			ELSE
+				IF RAND:4 == 0
+					PRINTFORMW %CALLNAME:交渉대상()%에게 자신의 몸을 제공했다……
+				ELSEIF RAND:3 == 0
+					PRINTFORMW 스스로 누워 %조사처리(CALLNAME:交渉대상(),"를")% 권하면、난폭하게 깔려 계속 범해졌다……
+				ELSEIF RAND:2 == 0
+					PRINTFORMW %CALLNAME:交渉대상()%에게 몸을 바쳤다……
+				ELSE
+					PRINTFORMW %CALLNAME:交渉대상()%이 하는 대로 희롱당했다……
+				ENDIF
+			ENDIF
+		ENDIF
+
+	;------------------------------------------
+	;犯してもらう・交渉が성공した場合
+	;------------------------------------------
+			CASE 89
+				TFLAG:메시지패턴 = 0
+				IF TALENT:PLAYER:남자 == 0 || TALENT:PLAYER:오토코노코
+					IF TEQUIP:PLAYER:스커트걷어올림 && RAND:4 == 0
+						TFLAG:메시지패턴 = 1
+						PRINTFORM %조사처리(CALLNAME:PLAYER, "가")%
+						IF CFLAG:PLAYER:던전内発情用욕정치 >= 6000
+							PRINTFORM 녹아내릴듯한 표정으로 
+						ELSEIF TALENT:PLAYER:음란 || TALENT:PLAYER:창부 || TALENT:PLAYER:ＮＴＲ == 2 || TALENT:PLAYER:ＮＴＲ == 5
+							PRINTFORM 보란 듯이 
+						ELSEIF CFLAG:PLAYER:던전内発情用욕정치 > 2500
+							IF TALENT:PLAYER:연모 || TALENT:PLAYER:친애 || TALENT:PLAYER:ＮＴＲ == 1 || TALENT:PLAYER:ＮＴＲ == 4
+								PRINTFORM 상기된 얼굴을 숙이고 
+							ELSE
+								PRINTFORM 상기된 표정으로 
+							ENDIF
+						ELSE
+							IF TALENT:PLAYER:연모 || TALENT:PLAYER:친애 || TALENT:PLAYER:ＮＴＲ == 1 || TALENT:PLAYER:ＮＴＲ == 4
+								PRINTFORM 빨개진 얼굴을 숙이고 
+							ENDIF
+						ENDIF
+						IF TEQUIP:PLAYER:Ｖ밀기가능 && RAND:2 == 0
+							TFLAG:메시지패턴 = 5
+							;스커트걷어올림・パンツずらし
+							SELECTCASE TEQUIP:PLAYER:스커트걷어올림
+								CASE 1
+									PRINTFORML 스커트 끝을 걷어올리고、
+								CASE 2
+									PRINTFORML 스커트를 걷어올리고、
+								CASE 3
+									PRINTFORM 스커트 자락을 걷어올려 입에 물고、
+								CASE 4
+									PRINTFORM 스커트 자락을 걷어올려 입에 물고、
+							ENDSELECT
+							PRINTFORML %CLOTHESNAMEF(PLAYER,TEQUIP:PLAYER:음순노출)%를 젖히고、
+							IF STAIN:PLAYER:3 & 4
+								SIF PALAM:PLAYER:윤활 >= PALAMLV:2 && TALENT:PLAYER:남자 == 0
+									PRINTFORM 애액과 
+								PRINTFORM 정액이 흘러 떨어져내리는 
+							ELSEIF PALAM:PLAYER:윤활 >= PALAMLV:2
+								IF CFLAG:PLAYER:던전内発情用욕정치 >= 6000
+									PRINTFORM 희롱당할 것에 대한 기대감으로 
+								ELSEIF TALENT:PLAYER:남자 == 0
+									PRINTFORM 스스로의 애액으로 
+								ENDIF
+								PRINTFORM 젖은 
+							ELSEIF CFLAG:PLAYER:던전内発情用욕정치 >= 6000
+								PRINTFORM 기대로 움찔움찔 떨리는 
+							ENDIF
+							IF TALENT:PLAYER:오토코노코
+								PRINTFORMW 균열을 손가락으로 벌리고、%CALLNAME:交渉대상()%\@ HAVE_PENIS(交渉대상()) ? 에게 정자를 졸랐다 # 를 유혹했다 \@…
+							ELSE
+								PRINTFORMW \@ TALENT:PLAYER:소인체형 ? 균열 # 비소\@를 손가락으로 벌리고、%CALLNAME:交渉대상()%\@ HAVE_PENIS(交渉대상()) ? 에게 정자를 졸랐다 # 를 유혹했다 \@…
+							ENDIF
+						ELSE
+							SELECTCASE TEQUIP:PLAYER:스커트걷어올림
+								CASE 1
+									PRINTFORML 스커트 끝을 걷어올리고、
+								CASE 2
+									PRINTFORML 스커트 자락을 걷어올리고、
+								CASE 3
+									PRINTFORML 스커트 자락을 걷어올려 입에 물고、
+								CASE 4
+									PRINTFORML 스커트 자락을 걷어올려 입에 물고、
+							ENDSELECT
+							
+							IF TEQUIP:PLAYER:음순노출 == -1
+								;스커트걷어올림・ノーパン
+								IF STAIN:PLAYER:3 & 4
+									SIF PALAM:PLAYER:윤활 >= PALAMLV:2
+										PRINTFORM 애액과 
+									PRINTFORMW 정액으로 질퍽질퍽해진 \@ TALENT:PLAYER:소인체형 ? 균열 # 비소\@가 바깥 공기에 노출되었다…
+								ELSEIF PALAM:PLAYER:윤활 >= PALAMLV:2
+									IF CFLAG:PLAYER:던전内発情用욕정치 >= 6000
+										PRINTFORM 희롱당할 것에 대한 기대감으로 
+									ELSE
+										PRINTFORM 스스로의 애액으로 
+									ENDIF
+									PRINTFORMW 젖은 \@ TALENT:PLAYER:소인체형 ? 균열 # 비소\@가 드러났다…
+								ELSEIF CFLAG:PLAYER:던전内発情用욕정치 >= 6000
+									PRINTFORMW 기대로 움찔움찔 떨리고 있는 \@ TALENT:PLAYER:소인체형 ? 균열 # 비소\@가 바깥 공기에 노출되었다…
+								ELSE
+									PRINTFORMW 예쁜 그대로의\@ TALENT:PLAYER:소인체형 ? 군열 # 비소\@가 바깥 공기에 노출되었다…
+								ENDIF
+							ELSE
+								;스커트걷어올림・下着見せ
+								IF TALENT:PLAYER:오토코노코 && CFLAG:PLAYER:던전内発情用욕정치 >= 6000
+									PRINTFORMW %CLOTHESNAMEF(PLAYER,TEQUIP:PLAYER:음순노출)% 아래에서 귀여운 페니스가 딱딱하게 발기한 모습이 훤히 들여다보이게 되었다…
+								ELSEIF TALENT:PLAYER:오토코노코
+									PRINTFORMW 귀여운 페니스를 감싸고 있는 %CLOTHESNAMEF(PLAYER,TEQUIP:PLAYER:음순노출)%가 드러났다…
+								ELSEIF STAIN:PLAYER:16 & 4 || STAIN:PLAYER:17 & 4
+									SIF STAIN:PLAYER:16 & 1 || STAIN:PLAYER:17 & 1
+										PRINTFORM 애액과 
+									PRINTFORMW 정액 투성이로、엉망진창이 된 %CLOTHESNAMEF(PLAYER,TEQUIP:PLAYER:음순노출)%가 드러났다…
+								ELSEIF PALAM:PLAYER:윤활 >= PALAMLV:2
+									PRINTFORMW 애액으로 촉촉하고 습기차, 비순을 숨긴 부분에 얼룩이 생긴 %CLOTHESNAMEF(PLAYER,TEQUIP:PLAYER:음순노출)%가 바깥 공기에 노출되었다…
+								ELSE
+									PRINTFORMW 예쁜 그대로의%CLOTHESNAMEF(PLAYER,TEQUIP:PLAYER:음순노출)%가 바깥 공기에 노출되었다…
+								ENDIF
+							ENDIF
+						ENDIF
+					ELSEIF !(TEQUIP:PLAYER:가랑이구조 & 1) && RAND:3 == 0
+						TFLAG:메시지패턴 = 2
+					;Ｍ字開다리・ノーパン+開帳
+						PRINTFORM %조사처리(CALLNAME:PLAYER,"는")% 조용히 자리에 앉아 
+						;바지履いてる場合は摺り下ろす
+						SIF TEQUIP:PLAYER:가랑이구조 & 1
+							PRINTFORM %CLOTHESNAMEF(PLAYER,TEQUIP:PLAYER:음순노출)%를 벗어 던지고 
+						IF ((TALENT:PLAYER:연모 || TALENT:PLAYER:친애) && TALENT:PLAYER:ＮＴＲ == 0 ) || TALENT:PLAYER:ＮＴＲ == 1 || TALENT:PLAYER:ＮＴＲ == 4
+							IF CFLAG:PLAYER:던전内発情用욕정치 >= 6000
+								PRINTFORM 뺨을 붉히면서、
+							ELSE
+								PRINTFORM 수치심에 몸을 떨면서 
+							ENDIF
+							SIF ((TALENT:PLAYER:연모 || TALENT:PLAYER:친애) && TALENT:PLAYER:ＮＴＲ == 0 )
+								PRINTFORML %CALLNAME:MASTER%의 눈 앞인데도 불구하고 
+						ELSEIF ((TALENT:PLAYER:음란 || TALENT:PLAYER:창부) && TALENT:PLAYER:ＮＴＲ == 0 ) || TALENT:PLAYER:ＮＴＲ == 2 || TALENT:PLAYER:ＮＴＲ
+							PRINTFORM 도발적인 미소를 띄우면서 
+						ENDIF
+							PRINTFORM 다리를 크게 M자로 벌리고 
+					;Ｍ字開다리・パンツずらし
+						IF TEQUIP:PLAYER:Ｖ밀기가능 && CFLAG:PLAYER:던전内発情用욕정치 >= 6000
+							SIF ((TALENT:PLAYER:음란 || TALENT:PLAYER:창부) && TALENT:PLAYER:ＮＴＲ == 0 )
+								PRINTFORM 선정적인 손가락 끝으로 
+							PRINTFORM %CLOTHESNAMEF(PLAYER,TEQUIP:PLAYER:음순노출)%을 젖히고 
+							IF TALENT:PLAYER:오토코노코
+								PRINTFORML 오므라진 항문을 손가락으로 벌려 보이면서、
+							ELSE
+								PRINTFORML \@ TALENT:PLAYER:소인체형 ? 균열 # 비소\@를 손가락으로 벌려 보이면서、
+							ENDIF
+						ELSEIF TEQUIP:PLAYER:가랑이구조 & 2
+							;ビキニ구조
+							SIF ((TALENT:PLAYER:음란 || TALENT:PLAYER:창부) && TALENT:PLAYER:ＮＴＲ == 0 )
+								PRINTFORM 선정적인 손가락 끝으로 
+							PRINTFORM %CLOTHESNAMEF(PLAYER,TEQUIP:PLAYER:음순노출)%을 젖히고 
+							IF STAIN:PLAYER:3 & 4
+								SIF PALAM:PLAYER:윤활 >= PALAMLV:2 && TALENT:PLAYER:남자 == 0
+									PRINTFORM 애액과 
+								PRINTFORM 정액이 흘러 떨어져내리는 
+							ELSEIF PALAM:PLAYER:윤활 >= PALAMLV:2
+								IF CFLAG:PLAYER:던전内発情用욕정치 >= 6000
+									PRINTFORM 희롱당할 것에 대한 기대감으로 
+								ELSEIF TALENT:PLAYER:남자 == 0
+									PRINTFORM 스스로의 애액으로 
+								ENDIF
+								PRINTFORM 젖은 
+							ELSEIF CFLAG:PLAYER:던전内発情用욕정치 >= 6000
+								PRINTFORM 기대로 움찔움찔 떨리는 
+							ENDIF
+
+							IF TALENT:PLAYER:오토코노코
+								PRINTFORML 애널을 손가락으로 벌려 보이면서、
+							ELSE
+								PRINTFORML \@ TALENT:PLAYER:소인체형 ? 균열 # 비소\@를 손가락으로 벌려 보이면서、
+							ENDIF
+						ELSE
+							;四つんばい・ボトムレスorノーパンor바지はいてる(摺り下ろしずみ)
+							PRINTFORM 숨김 없이 
+							IF TALENT:PLAYER:오토코노코
+								PRINTFORML 애널을 손가락으로 벌려보이며 
+							ELSE
+								PRINTFORML \@ TALENT:PLAYER:소인체형 ? 작은균열 # 비순\@을 손가락으로 벌려 보이면서 
+							ENDIF
+							SIF ((TALENT:PLAYER:음란 || TALENT:PLAYER:창부) && TALENT:PLAYER:ＮＴＲ == 0 )
+								PRINTFORM 스스로를 위로하면서 
+						ENDIF
+						PRINTFORMW %CALLNAME:交渉대상()%에게 범해줬으면 한다고 애원했다……
+					;Ｍ字開다리・ノーパン
+					;Ｍ字開다리・パンツなぞり
+					;Ｍ字開다리
+
+					ELSEIF !(TALENT:PLAYER:절벽 && TALENT:PLAYER:남자) && RAND:2 == 0
+						TFLAG:메시지패턴 = 3
+							PRINTFORM %조사처리(CALLNAME:PLAYER,"는")% 
+						;おっぱいオープン中			
+						;おっぱい見えてる
+						IF TEQUIP:PLAYER:유방노출 == -1
+							PRINTFORM 숨김없이 
+						;おっぱいオープン가능
+						ELSEIF TEQUIP:PLAYER:가슴앞열림 & 0
+							PRINTFORM 가슴섬을 벌리고 
+						;가슴での유혹がな場合は脱ぐ
+						ELSE 
+							PRINTFORM 의복을 벗고 
+						ENDIF
+						IF TALENT:PLAYER:폭유 
+							PRINTFORM 손에 남을 정도의 폭유를 
+						ELSEIF TALENT:PLAYER:거유 
+							PRINTFORM 남자의 정욕을 자극하는 거유를 
+						ELSEIF TALENT:PLAYER:빈유 
+							PRINTFORM 조금 부풀어오른 유방을 
+						ELSE
+							PRINTFORM 형태 좋은 유방을 
+						ENDIF
+						IF ((TALENT:PLAYER:연모 || TALENT:PLAYER:친애) && TALENT:PLAYER:ＮＴＲ == 0 ) || TALENT:PLAYER:ＮＴＲ == 1 || TALENT:PLAYER:ＮＴＲ == 4
+							IF CFLAG:PLAYER:던전内発情用욕정치 >= 6000
+								PRINTFORM 녹아내릴듯한 표정으로, %CALLNAME:交渉대상()%에게 달라붙으면서 
+								PRINTFORMW 범해주세요 라고 말하며 키스를 주고 받았다
+							ELSE
+								PRINTFORM 부끄러운듯이 손으로 가리면서 
+								PRINTFORMW 마음대로 해주세요 라고 시선을 피하며 중얼거렸다
+							ENDIF
+						ELSEIF ((TALENT:PLAYER:음란 || TALENT:PLAYER:창부) && TALENT:PLAYER:ＮＴＲ == 0 ) || TALENT:PLAYER:ＮＴＲ == 2 || TALENT:PLAYER:ＮＴＲ
+							PRINTFORM 주무르면서 다가오며 
+							PRINTFORM %CALLNAME:交渉대상()%의 손을 가슴으로 끌어당겨 
+							PRINTFORMW 도발적인 미소를 띄웠다
+						ELSE
+							PRINTFORM 애무하면서 
+							PRINTFORMW %CALLNAME:交渉대상()%에게 범해줬으면 한다고 애원했다……
+						ENDIF
+					ELSE
+						TFLAG:메시지패턴 = 4
+					;발が無いキャラは四つんばいでなく、손を付いて尻を向ける？
+						;PRINTFORM %조사처리(CALLNAME:PLAYER,"는")% 그 자리에서 \@ TALENT:PLAYER:팔 || TALENT:PLAYER:\@\@\@、
+						PRINTFORM %조사처리(CALLNAME:PLAYER,"는")% 
+						IF ((TALENT:PLAYER:연모 || TALENT:PLAYER:친애) && TALENT:PLAYER:ＮＴＲ == 0 ) || TALENT:PLAYER:ＮＴＲ == 1 || TALENT:PLAYER:ＮＴＲ == 4
+							IF CFLAG:PLAYER:던전内発情用욕정치 >= 6000
+								PRINTFORM 녹아내릴듯한 표정으로, 
+							ELSE
+								PRINTFORM 더 이상 참을 수 없다는듯한 모습으로、
+							ENDIF
+							SIF ((TALENT:PLAYER:연모 || TALENT:PLAYER:친애) && TALENT:PLAYER:ＮＴＲ == 0 )
+								PRINTFORML %CALLNAME:MASTER%의 눈 앞인데도 불구하고 
+						ELSEIF ((TALENT:PLAYER:음란 || TALENT:PLAYER:창부) && TALENT:PLAYER:ＮＴＲ == 0 ) || TALENT:PLAYER:ＮＴＲ == 2 || TALENT:PLAYER:ＮＴＲ
+							PRINTFORM %CALLNAME:交渉대상()%에게 범해질 것에 대한 기대감으로 몸을 떨며 
+							PRINTFORM 녹아내릴듯한 표정으로, 
+						ENDIF
+						PRINTFORM 그 자리에 손을 대고 엎드린 자세로、
+						SIF TEQUIP:PLAYER:스커트걷어올림
+							PRINTFORM 스커트를 걷어 올려 
+						;바지履いてる場合は摺り下ろす
+						SIF TEQUIP:PLAYER:가랑이구조 & 1
+							PRINTFORM %CLOTHESNAMEF(PLAYER,TEQUIP:PLAYER:음순노출)%를 내려 
+						PRINTFORM %CALLNAME:交渉대상()%에게 
+						IF TEQUIP:PLAYER:Ｖ밀기가능 && CFLAG:PLAYER:던전内発情用욕정치 >= 6000
+							;四つんばい・パンツずらし
+							PRINTFORM 엉덩이를 
+							SIF ((TALENT:PLAYER:음란 || TALENT:PLAYER:창부) && TALENT:PLAYER:ＮＴＲ == 0 )
+								PRINTFORM 높게 쓱 내밀듯이 
+							PRINTFORM 향해、젖혀둔 %CLOTHESNAMEF(PLAYER,TEQUIP:PLAYER:음순노출)%의 아래에서 들여다보이는 
+							IF TALENT:PLAYER:오토코노코
+								PRINTFORML 애널을 손가락으로 벌려 보이면서、
+							ELSE
+								PRINTFORML \@ TALENT:PLAYER:소인체형 ? 균열을 # 비소를\@ 손가락으로 벌려 보이면서、
+							ENDIF
+						ELSEIF TEQUIP:PLAYER:가랑이구조 & 2
+							;四つんばい・ビキニ구조
+							PRINTFORM %CLOTHESNAMEF(PLAYER,TEQUIP:PLAYER:음순노출)%으로 감싼 엉덩이를 
+							SIF ((TALENT:PLAYER:음란 || TALENT:PLAYER:창부) && TALENT:PLAYER:ＮＴＲ == 0 )
+								PRINTFORM 높게 쓱 내밀듯이 
+							PRINTFORML 향하게 하면서, 
+						ELSE
+							;四つんばい・ボトムレスorノーパンor바지はいてる(摺り下ろしずみ)
+							PRINTFORM 숨김없이 
+							IF TALENT:PLAYER:오토코노코
+								PRINTFORML 애널을 
+							ELSE
+								PRINTFORML \@ TALENT:PLAYER:소인체형 ? 균열 # 비소\@를 
+							ENDIF
+							SIF ((TALENT:PLAYER:음란 || TALENT:PLAYER:창부) && TALENT:PLAYER:ＮＴＲ == 0 )
+								PRINTFORM 높게 쓱 내밀듯이 
+							PRINTFORML 향하게 하면서, 
+						ENDIF
+						PRINTFORMW %CALLNAME:交渉대상()%에게 범해줬으면 한다고 애원했다……
+					ENDIF
+				ELSE
+				;PLAYERが남자かつ오토코노코でない
+					
+				ENDIF
+ENDSELECT
+
+
+;==========================================================
+;@仲魔회화_お任せ
+; 仲魔に회화を任せたときの処理
+;<引数>
+;	ARG    = 相손악마
+;	PLAYER = 회화担当キャラ
+;<戻り値>
+;	1.仲魔になる 2.何か貰う 3.奇襲 4.激怒 5.도주 6.犯してもらう
+;==========================================================
+@仲魔회화_お任せ, ARG
+#DIM 회화성공率
+#DIM 犯してもらう選択확률
+
+犯してもらう選択확률 = 0
+;一応구상の呼び出しも置いてみたけれど、구상の作業量的にきついかも
+;ない方が良いと判断して무효화
+;아군회화担当個人구상체크
+TRYCCALLFORM AUTO_K_PARTY{NO:PLAYER},ARG
+CATCH
+	;相손악마個人구상체크
+	TRYCCALLFORM AUTO_K{NO:ARG},ARG
+	;相손악마汎用구상체크
+	CATCH
+		TRYCCALLFORM AUTO_PUB{ABL:ARG:회화타입}, ARG
+			;-1を返された場合（구상が書かれていない）は簡易計算
+			SIF RESULT == -1
+				CALL 仲魔회화_お任せ_簡易計算, ARG
+		
+		;ない場合は簡易式に
+		CATCH
+			;簡易計算
+			CALL 仲魔회화_お任せ_簡易計算, ARG
+			회화성공率 = RESULT
+		ENDCATCH
+	ENDCATCH
+ENDCATCH
+
+PRINTFORMW 교섭의 결과가 나올 성싶다……
+PRINTFORML 
+
+;결과
+;성공
+;성공の場合は마카・아이템・仲魔が손に入る
+;회화担当が『바람기』『淫ＮＴＲ』또는発情している場合は성교渉を望む事もある
+IF RAND:100 < 회화성공率
+
+	;ムフフがオンで회화担当が『바람기』『淫ＮＴＲ』또는発情している場合は성교渉も選択肢に入る
+	;仲魔は少しだけ확률を落とす
+	IF FLAG:ムフフ전개 == 1 && (TALENT:PLAYER:ＮＴＲ == 2 || TALENT:PLAYER:바람기 || CFLAG:PLAYER:던전内発情用욕정치 > 5000 || 위험일(PLAYER) == 2)
+		;확률計算
+		;淫ＮＴＲは+2
+		SIF TALENT:PLAYER:ＮＴＲ == 2
+			犯してもらう選択확률 += 2
+
+		;바람癖は+1
+		SIF TALENT:PLAYER:바람기
+			犯してもらう選択확률 += 1
+
+		;던전内発情用욕정치が5000より大きい場合は+1
+		SIF CFLAG:PLAYER:던전内発情用욕정치 > 5000
+			犯してもらう選択확률 += 1
+
+		;発情している場合は+2
+		SIF 위험일(PLAYER) == 2
+			犯してもらう選択확률 += 2
+		
+		SELECTCASE RAND:(4+犯してもらう選択확률)
+			;仲魔
+			CASE 0
+				PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% %CALLNAME:ARG%에게 동료마로 들어오라고 권유하고, 성공했다
+				PRINTFORML 
+				RETURN 1
+			;何か貰う
+			CASE 1 TO 3
+				PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% %CALLNAME:ARG%에게 물품을 요구하고, 그에 성공했다
+				PRINTFORML 
+				RETURN 2
+			;犯してもらう
+			CASEELSE
+				;犯してもらえない場合は何か貰う
+				IF 仮_犯してくれるか？(ARG,PLAYER) == 0
+					PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% %CALLNAME:ARG%에게 물품을 요구하고, 그에 성공했다
+					PRINTFORML 
+					RETURN 2
+				
+				;犯してもらえる場合
+				ELSEIF 仮_犯してくれるか？(ARG,PLAYER)
+					PRINTFORMW なんと%조사처리(CALLNAME:PLAYER,"는")% %CALLNAME:ARG%에게 자신을 범하도록 부탁하고 있었다!
+					PRINTFORML 
+					CALL KOJO_TALK,ARG,9
+					RETURN 6
+				ENDIF
+				
+				
+				
+		ENDSELECT
+
+	;ムフフがオフ、若しくは上の조건に当てはまらない場合は마카・아이템・仲魔のみ
+	;仲魔は少しだけ확률を落とす
+	ELSE
+		SELECTCASE RAND:4
+			;仲魔
+			CASE 0
+				PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% %CALLNAME:ARG%에게 동료마로 들어오라고 권유하고, 성공했다
+				PRINTFORML 
+				RETURN 1
+			;何か貰う
+			CASEELSE
+				PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% %CALLNAME:ARG%에게 물품을 요구하고, 그에 성공했다
+				PRINTFORML 
+				RETURN 2
+		ENDSELECT
+	ENDIF
+	
+	
+	
+
+	
+
+;실패
+ELSE
+	PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% 교섭에 실패했다!
+	PRINTFORML 
+	;とりあえず실패結果は랜덤で
+	SELECTCASE RAND:3
+		;奇襲
+		CASE 0
+			RETURN 3
+		;激怒
+		CASE 1
+			RETURN 4
+		;도주
+		CASE 2
+			RETURN 5
+	ENDSELECT
+ENDIF
+
+
+;==========================================================
+;@仲魔회화_お任せ_簡易計算
+; 구상がないときの簡易計算
+;<引数>
+;	ARG    = 相손악마
+;	PLAYER = 회화担当キャラ
+;<戻り値>
+;	RESULT = 회화성공率
+;==========================================================
+@仲魔회화_お任せ_簡易計算, ARG
+#DIM 회화성공率
+#DIM 회화성공率計算用
+#DIM 성교渉発生率
+#DIM 성교渉発生フラグ
+#DIM 性行為の횟수
+
+회화성공率 = 60
+성교渉発生率 = 0
+성교渉発生フラグ = 0
+
+;ムフフがオンで異性を要求する場合は성교渉のフラグを立てる
+SIF FLAG:ムフフ전개 == 1 && 仮_異性を要求するか？(ARG) > 0
+	성교渉発生フラグ = 1
+
+;性格の相性による기본値설정
+;相손が겁쟁이
+IF TALENT:ARG:겁쟁이
+	SIF TALENT:PLAYER:얌전함
+		회화성공率 += 5
+
+	SIF TALENT:PLAYER:프라이드높음 || TALENT:PLAYER:건방짐
+		회화성공率 -= 5
+ENDIF
+
+;相손が반항적
+IF TALENT:ARG:반항적
+	SIF TALENT:PLAYER:프라이드높음 || TALENT:PLAYER:건방짐 || TALENT:PLAYER:반항적 || TALENT:PLAYER:츤데레
+		회화성공率 -= 5
+ENDIF
+
+;相손が꿋꿋함
+IF TALENT:ARG:꿋꿋함
+	SIF TALENT:PLAYER:솔직함 || TALENT:PLAYER:얌전함 || TALENT:PLAYER:겁쟁이 || TALENT:PLAYER:꿋꿋함
+		회화성공率 += 5
+ENDIF
+
+;相손が솔직함
+IF TALENT:ARG:솔직함
+	회화성공率 += 5
+ENDIF
+
+;相손が얌전함
+IF TALENT:ARG:얌전함
+	SIF TALENT:PLAYER:솔직함 || TALENT:PLAYER:얌전함 || TALENT:PLAYER:겁쟁이 || TALENT:PLAYER:꿋꿋함
+		회화성공率 += 5
+
+	SIF TALENT:PLAYER:프라이드높음 || TALENT:PLAYER:건방짐 || TALENT:PLAYER:반항적 || TALENT:PLAYER:츤데레
+		회화성공率 -= 5
+ENDIF
+
+;相손が프라이드높음
+IF TALENT:ARG:프라이드높음
+	SIF TALENT:PLAYER:솔직함 || TALENT:PLAYER:얌전함 || TALENT:PLAYER:꿋꿋함
+		회화성공率 += 5
+
+	SIF TALENT:PLAYER:프라이드높음 || TALENT:PLAYER:건방짐 || TALENT:PLAYER:반항적 || TALENT:PLAYER:츤데레 || TALENT:PLAYER:겁쟁이 || TALENT:PLAYER:프라이드낮음
+		회화성공率 -= 10
+ENDIF
+
+;相손が건방짐
+IF TALENT:ARG:건방짐
+	SIF TALENT:PLAYER:솔직함 || TALENT:PLAYER:얌전함 || TALENT:PLAYER:겁쟁이
+		회화성공率 += 5
+
+	SIF TALENT:PLAYER:프라이드높음 || TALENT:PLAYER:건방짐 || TALENT:PLAYER:반항적 || TALENT:PLAYER:츤데레 || TALENT:PLAYER:꿋꿋함 || TALENT:PLAYER:프라이드낮음
+		회화성공率 -= 5
+ENDIF
+
+;相손が프라이드낮음
+IF TALENT:ARG:프라이드낮음
+	SIF TALENT:PLAYER:프라이드높음
+		회화성공率 += 10
+
+ENDIF
+
+;相손が츤데레
+IF TALENT:ARG:츤데레
+	SIF TALENT:PLAYER:솔직함 || TALENT:PLAYER:꿋꿋함
+		회화성공率 += 5
+
+	SIF TALENT:PLAYER:프라이드높음 || TALENT:PLAYER:건방짐 || TALENT:PLAYER:반항적 || TALENT:PLAYER:츤데레 || TALENT:PLAYER:꿋꿋함 || TALENT:PLAYER:프라이드낮음 || TALENT:PLAYER:겁쟁이
+		회화성공率 -= 5
+ENDIF
+
+
+;交渉の종류：通常・키스要求・입봉사要求（生えてるのならフェラ・ないなら커닐링구스）・성교渉要求
+;通常以外の확률は低くし、ムフフがオフの場合は発生しない
+
+;성교渉発生の확률計算と相손がこちらを性的대상としてみるかどうかの판정
+IF 성교渉発生フラグ == 1
+	성교渉発生率 = 仮_異性を要求するか？(ARG)
+
+	;유방・둔부が노출していると확률上昇
+	SIF TEQUIP:PLAYER:유방노출 == -1 || TEQUIP:PLAYER:둔부노출 == -1
+		성교渉発生率 += 1
+
+	;유두が노출していると확률上昇
+	SIF TEQUIP:PLAYER:유두노출 == -1
+		성교渉発生率 += 1
+
+	;음순が노출していると확률上昇
+	SIF TEQUIP:PLAYER:음순노출 == -1
+		성교渉発生率 += 1
+
+	;それぞれの箇所に정액의 불결が付いている場合は확률上昇
+	SIF GET_STAIN("바기나" , "정액" , PLAYER) ||GET_STAIN("입" , "정액" , PLAYER) || GET_STAIN("손" , "정액" , PLAYER) || GET_STAIN("가슴" , "정액" , PLAYER) || GET_STAIN("머리카락" , "정액" , PLAYER)
+		성교渉発生率 += 1
+
+	;배덕의반지を장비している場合は확률がかなり上がる
+	SIF (TEQUIP:PLAYER:그외 == [[아이템:배덕의반지]] || TEQUIP:PLAYER:그외2 == [[아이템:배덕의반지]] || TEQUIP:PLAYER:그외3 == [[아이템:배덕의반지]])
+		성교渉発生率 += 5
+
+	;하이레그아머を장비している場合は확률上昇、えろいから仕方ないね
+	SIF EQUIP:PLAYER:몸통 == [[아이템:하이레그아머]]
+		성교渉発生率 += 1
+
+	;창부의옷を장비している場合は확률上昇
+	SIF EQUIP:PLAYER:몸통 == [[아이템:창부의옷]]
+		성교渉発生率 += 2
+
+	;ここで性の대상になるかを판정、ならない場合は성교渉はおこらない
+	IF TALENT:ARG:남자
+		;ＢＬ끼１이상じゃないと오토코노코以外の남자には起たない
+		SIF ABL:ARG:ＢＬ끼 == 0 && (TALENT:PLAYER:남자 && TALENT:PLAYER:오토코노코 == 0)
+			성교渉発生フラグ = 0
+	ELSE
+		;레즈끼１이상じゃないと女には起たない
+		SIF (ABL:ARG:레즈끼 == 0 && (TALENT:PLAYER:남자 == 0)) && TALENT:ARG:후타나리 == 0
+			성교渉発生フラグ = 0
+	ENDIF
+	;횟수計算：１〜３回+욕망の数値
+	性行為の횟수 = 1 + RAND:2 + ABL:ARG:욕망
+ENDIF
+
+;회화開始
+FOR LOCAL, 0, 2
+	SIF LOCAL == 1
+		PRINTFORM 계속해서 
+	PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% %조사처리(CALLNAME:ARG,"와")% 교섭하고 있다……
+	PRINTFORML 
+	PRINTFORMW ・・・
+	PRINTFORML 
+	PRINTFORMW ・・
+	PRINTFORML 
+	PRINTFORMW ・
+	PRINTFORML 
+	
+	;성교渉を要求する확률は20％〜
+	IF 성교渉発生フラグ == 1 && RAND:(10+성교渉発生率) > 7
+		SELECTCASE RAND:10
+			;키스要求
+			CASE 0 TO 4
+				PRINTFORMW %조사처리(CALLNAME:ARG,"가")% %CALLNAME:PLAYER%에게 키스를 요구해왔다
+				PRINTFORML 
+				PRINTFORMW ・・・
+				PRINTFORML 
+				PRINTFORMW ・・
+				PRINTFORML 
+				PRINTFORMW ・
+				PRINTFORML 
+				
+				;要求に応じて키스をする
+				;特に対応した経験もないので레즈・ＢＬ경험だけ판정する
+				;淫ＮＴＲ・발정중・배덕의반지장비中の場合は無조건で応じる
+				IF TALENT:PLAYER:ＮＴＲ == 2 || CFLAG:PLAYER:던전内発情用욕정치 > 5000 || 위험일(PLAYER) == 2 || (TEQUIP:PLAYER:그외 == [[아이템:배덕의반지]] || TEQUIP:PLAYER:그외2 == [[아이템:배덕의반지]] || TEQUIP:PLAYER:그외3 == [[아이템:배덕의반지]])
+					PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 요구에 응해 %조사처리(CALLNAME:PLAYER,"와")% 키스를 나누고 있다……
+					회화성공率計算用 += 20
+					性行為の횟수 = 1 + RAND:2
+					TCVAR:PLAYER:획득키스경험 = 회화성공率計算用
+					;레즈・ＢＬ경험計算
+					IF IS_LESBIAN(ARG,PLAYER)
+						CALL ADDS_EXP("레즈경험", 性行為の횟수, ARG)
+						CALL ADDS_EXP("레즈경험", 性行為の횟수, PLAYER)
+					ELSEIF IS_GAY(ARG,PLAYER)
+						CALL ADDS_EXP("ＢＬ경험", 性行為の횟수, ARG)
+						CALL ADDS_EXP("ＢＬ경험", 性行為の횟수, PLAYER)
+					ENDIF
+					;함락している場合は바람경험が付く
+					IF 함락(PLAYER)
+						CALL ADDS_EXP("바람경험", 1, PLAYER)
+					ENDIF
+					CALL SHOW_ADD_EXP, PLAYER
+					;次の확률が上がる
+					성교渉発生率 += 1
+
+				;바람기の場合は３０％の확률로応じる
+				ELSEIF TALENT:PLAYER:바람기
+					PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 들이민 요구에 망설이고 있다
+					
+					IF RAND:10 < 3
+						PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 어쩔 수 없이 요구에 응해 %조사처리(CALLNAME:PLAYER,"와")% 키스를 나누고 있다……
+						PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% 마지못해 하는 것 같지 않을 만큼 열정 어린 입맞춤을 나누고 있다……
+						회화성공率計算用 += 20
+						性行為の횟수 = 회화성공率計算用
+						TCVAR:PLAYER:획득키스경험 = 1 + RAND:2
+						;레즈・ＢＬ경험計算
+						IF IS_LESBIAN(ARG,PLAYER)
+							CALL ADDS_EXP("레즈경험", 性行為の횟수, ARG)
+							CALL ADDS_EXP("레즈경험", 性行為の횟수, PLAYER)
+						ELSEIF IS_GAY(ARG,PLAYER)
+							CALL ADDS_EXP("ＢＬ경험", 性行為の횟수, ARG)
+							CALL ADDS_EXP("ＢＬ경험", 性行為の횟수, PLAYER)
+						ENDIF
+						;함락している場合は바람경험が付く
+						IF 함락(PLAYER)
+							CALL ADDS_EXP("바람경험", 1, PLAYER)
+						ENDIF
+						CALL SHOW_ADD_EXP, PLAYER
+						;次の확률が上がる
+						성교渉発生率 += 1
+					
+					;拒否した場合は랜덤で회화성공率が변화
+					ELSE
+						PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% %CALLNAME:ARG%의 요구를 거부했다
+						IF RAND:2 == 0
+							회화성공率計算用 -= 10
+						ELSE
+							회화성공率計算用 = 0
+						ENDIF
+					ENDIF
+				
+				;그외:拒否
+				ELSE
+					PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% %CALLNAME:ARG%의 요구를 거부했다
+					IF RAND:2 == 0
+						회화성공率計算用 -= 10
+					ELSE
+						회화성공率計算用 = 0
+					ENDIF
+				ENDIF
+				PRINTFORML 
+				
+			;입봉사要求
+			CASE 5 TO 7
+				PRINTFORMW %조사처리(CALLNAME:ARG,"가")% %CALLNAME:PLAYER%에게 입 봉사를 요구해왔다
+				PRINTFORML 
+				PRINTFORMW ・・・
+				PRINTFORML 
+				PRINTFORMW ・・
+				PRINTFORML 
+				PRINTFORMW ・
+				PRINTFORML 
+				
+				;要求に応じて입봉사をする
+				;淫ＮＴＲ・발정중・배덕의반지장비中の場合は無조건で応じる
+				IF TALENT:PLAYER:ＮＴＲ == 2 || CFLAG:PLAYER:던전内発情用욕정치 > 5000 || 위험일(PLAYER) == 2 || (TEQUIP:PLAYER:그외 == [[아이템:배덕의반지]] || TEQUIP:PLAYER:그외2 == [[아이템:배덕의반지]] || TEQUIP:PLAYER:그외3 == [[아이템:배덕의반지]])
+					;페니스がある場合はフェラ
+					IF HAVE_PENIS(ARG)
+						PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% 요구에 응해 %CALLNAME:ARG%의 페니스를 물고 있다……
+						TCVAR:PLAYER:획득펠라경험 = 性行為の횟수
+						TCVAR:PLAYER:획득정액경험 = 性行為の횟수
+
+					;ない場合は커닐링구스
+					ELSE
+						PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% 요구에 응해 %CALLNAME:ARG%의 바기나에 혀를 놀리고 있다……
+					
+					ENDIF
+					회화성공率計算用 += 30
+					;레즈・ＢＬ경험計算
+					IF IS_LESBIAN(ARG,PLAYER)
+						CALL ADDS_EXP("레즈경험", 性行為の횟수, ARG)
+						CALL ADDS_EXP("레즈경험", 性行為の횟수, PLAYER)
+					ELSEIF IS_GAY(ARG,PLAYER)
+						CALL ADDS_EXP("ＢＬ경험", 性行為の횟수, ARG)
+						CALL ADDS_EXP("ＢＬ경험", 性行為の횟수, PLAYER)
+					ENDIF
+					;함락している場合は바람경험が付く
+					IF 함락(PLAYER)
+						CALL ADDS_EXP("바람경험", 1, PLAYER)
+					ENDIF
+					CALL SHOW_ADD_EXP, PLAYER
+					;次の확률が上がる
+					성교渉発生率 += 1
+
+				;바람癖の場合は３０％の확률で応じる
+				ELSEIF TALENT:PLAYER:바람기
+					PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 들이민 요구에 망설이고 있다
+					
+					IF RAND:10 < 3
+						;페니스がある場合はフェラ
+						IF HAVE_PENIS(ARG)
+							PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% 어쩔 수 없이 요구에 응해 %CALLNAME:ARG%의 페니스를 물었다……
+							PRINTFORMW %CALLNAME:PLAYER%의 혀놀림은 마지못해서 하는 거라고 생각할 수 없을 만큼 열정이 담겨 있다……
+							TCVAR:PLAYER:획득펠라경험 = 性行為の횟수
+							TCVAR:PLAYER:획득정액경험 = 性行為の횟수
+
+						;ない場合は커닐링구스
+						ELSE
+							PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% 어쩔 수 없이 요구에 응해 %CALLNAME:ARG%의 바기나에 혀를 놀렸다……
+							PRINTFORMW %CALLNAME:PLAYER%의 혀놀림은 마지못해서 하는 거라고 생각할 수 없을 만큼 열정이 담겨 있다……
+						
+						ENDIF
+						회화성공率計算用 += 20
+						性行為の횟수 = 1 + RAND:2
+						;레즈・ＢＬ경험計算
+						IF IS_LESBIAN(ARG,PLAYER)
+							CALL ADDS_EXP("레즈경험", 性行為の횟수, ARG)
+							CALL ADDS_EXP("레즈경험", 性行為の횟수, PLAYER)
+						ELSEIF IS_GAY(ARG,PLAYER)
+							CALL ADDS_EXP("ＢＬ경험", 性行為の횟수, ARG)
+							CALL ADDS_EXP("ＢＬ경험", 性行為の횟수, PLAYER)
+						ENDIF
+						;함락している場合は바람경험が付く
+						IF 함락(PLAYER)
+							CALL ADDS_EXP("바람경험", 1, PLAYER)
+						ENDIF
+						CALL SHOW_ADD_EXP, PLAYER
+						;次の확률が上がる
+						성교渉発生率 += 1
+					
+					;拒否した場合は랜덤で회화성공率が変化
+					ELSE
+						PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% %CALLNAME:ARG%의 요구를 거부했다
+						IF RAND:2 == 0
+							회화성공率計算用 -= 10
+						ELSE
+							회화성공率計算用 = 0
+						ENDIF
+					ENDIF
+				
+				;그외:拒否
+				ELSE
+					PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% %CALLNAME:ARG%의 요구를 거부했다
+					IF RAND:2 == 0
+						회화성공率計算用 -= 10
+					ELSE
+						회화성공率計算用 = 0
+					ENDIF
+				ENDIF
+				PRINTFORML 
+				
+				
+			;本番要求
+			CASE IS > 7
+				PRINTFORMW %조사처리(CALLNAME:ARG,"가")% %CALLNAME:PLAYER%에게 성교섭을 요구해왔다
+				PRINTFORML 
+				PRINTFORMW ・・・
+				PRINTFORML 
+				PRINTFORMW ・・
+				PRINTFORML 
+				PRINTFORMW ・
+				PRINTFORML 
+				
+				;要求に応じて성교渉をする
+				;淫ＮＴＲ・발정중・배덕의반지장비中の場合は無조건で応じる
+				IF TALENT:PLAYER:ＮＴＲ == 2 || CFLAG:PLAYER:던전内発情用욕정치 > 5000 || 위험일(PLAYER) == 2 || (TEQUIP:PLAYER:그외 == [[아이템:배덕의반지]] || TEQUIP:PLAYER:그외2 == [[아이템:배덕의반지]] || TEQUIP:PLAYER:그외3 == [[아이템:배덕의반지]])
+					PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% 요구에 응해 %CALLNAME:ARG%에게 안기고 있다……
+					CALL SEXIAL_NEGOCIATE, ARG, PLAYER
+					회화성공率計算用 += 40
+					;次の확률が上がる
+					성교渉発生率 += 1
+
+				;바람기の場合は３０％の확률로応じる
+				ELSEIF TALENT:PLAYER:바람기
+					PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 들이민 요구에 망설이고 있다
+					
+					IF RAND:10 < 3
+						PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% 어쩔 수 없이 요구에 응해 %CALLNAME:ARG%에게 안겼다……
+						PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% 마지못해 안기고 있다고 여겨지지 않을 만큼 흐트러졌다……
+						CALL SEXIAL_NEGOCIATE, ARG, PLAYER
+						회화성공率計算用 += 40
+						;次の확률が上がる
+						성교渉発生率 += 1
+					
+					;拒否した場合は랜덤で회화성공率が변화
+					ELSE
+						PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% %CALLNAME:ARG%의 요구를 거부했다
+						IF RAND:2 == 0
+							회화성공率計算用 -= 10
+						ELSE
+							회화성공率計算用 = 0
+						ENDIF
+					ENDIF
+				
+				;그외:拒否
+				ELSE
+					PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% %CALLNAME:ARG%의 요구를 거부했다
+					IF RAND:2 == 0
+						회화성공率計算用 -= 10
+					ELSE
+						회화성공率計算用 = 0
+					ENDIF
+				ENDIF
+				PRINTFORML 
+				
+		ENDSELECT
+		
+		
+		
+		
+	;통상の交渉
+	ELSE
+		;とりあえず５０％
+		IF RAND:2 == 0
+			회화성공率計算用 += 10
+			
+		ELSE
+			회화성공率計算用 -= 10
+			
+		ENDIF
+	
+	ENDIF
+	
+	;印象の地の文표시
+	;회화성공率計算用が＋なら好感、−なら不満の地の文を표시
+	IF 회화성공率計算用 > 0
+		PRINTFORMW 호감을 가진 것 같다
+		
+	ELSEIF 회화성공率計算用 < 0
+		PRINTFORMW 불만을 가진 것 같다
+	
+	ELSE
+		PRINTFORMW 딱히 인상에 변화는 없는 것 같다
+	
+	ENDIF
+	회화성공率 += 회화성공率計算用
+	
+	PRINTFORML 
+NEXT
+
+RETURN 회화성공率
+
+;==========================================================
+;@CUCKOLD_LOVER_SEX
+; インス토르ソフト「커코러버」の処理
+;<引数>
+;	ARG   = 相손악마
+;	ARG:1 = 指名キャラ
+;<戻り値>
+;	RESULT = 회화성공率
+;==========================================================
+@CUCKOLD_LOVER_SEX, ARG,ARG:1
+#DIM L_I
+
+L_I = ARG:1
+
+
+CALL KOJO_TALK,ARG,102
+
+PRINTFORMW %조사처리(CALLNAME:ARG, "는")% %조사처리(CALLNAME:L_I, "를")% 안게 해달라고 요구했다
+PRINTFORML 
+PRINTFORML [1]%조사처리(CALLNAME:L_I, "를")% 내민다　　　　　[2]거절한다
+$INPUT_LOOP
+INPUT
+PRINTFORML
+
+IF RESULT == 1
+		;女を差し出す
+		TFLAG:捧げたキャラ = L_I
+		;異性をあてがった反応の구상呼び出し
+		CALL KOJO_TALK,ARG,41
+		CALL SEXIAL_NEGOCIATE,ARG,L_I
+		PRINTW
+
+		TFLAG:TALK用성공판정値 = FLAG:악마만족도 + CFLAG:ARG:友好度
+		CFLAG:ARG:友好度 += FLAG:악마만족도
+		;敗北してる場合ここでゲームオーバー
+		IF FLAG:敗北フラグ
+			;구상呼び出し
+			CALL KOJO_TALK,ARG,42
+			CALL SEXTALK_LOSE,ARG
+		ENDIF
+
+		;話しかけたキャラが倒れてたら逃げられる
+		CALL INPUTABLE_CHARA,PLAYER
+		IF RESULT == 0
+			CALL KOJO_TALK,ARG,57
+			PRINTFORML 
+			PRINTFORMW 「그럼 할 만큼 했으니、%조사처리(CSTR:ARG:一人称, "는")% 돌아간다고」
+			PRINTFORML 
+			RETURN 5
+		ENDIF
+	
+		;満발
+		;구상呼び出し
+		CALL KOJO_TALK,ARG,46
+		RETURN 1
+
+ELSEIF RESULT == 2
+	;2.断る
+	PRINTFORML 断りました
+	CALL KOJO_TALK,ARG,49
+	PRINTL 
+
+	RETURN 0
+ELSE
+	GOTO INPUT_LOOP
+ENDIF
+
+
+
+
+
+
+
+
+
+

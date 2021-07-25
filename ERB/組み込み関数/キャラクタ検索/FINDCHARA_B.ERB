@@ -1,0 +1,72 @@
+﻿;-------------------------------------------------
+;@FINDCHARA_B(ARG,ARG:1,ARG:2)
+;PT内というか、전투に関わるメンバーでARGのキャラがいて、健在かどうかを調べる
+;
+;//（ついでに적も調べられるので）→적は別関数に변경
+;
+;
+;ARG:1は이벤트加入フラグで、これが一致していない場合はキャラがいても戻りは-1となる
+;なお、ARG:1が생략されていた場合はフラグを問わずになる
+;特定이벤트ではいった○○を체크したい場合に活用してください
+;戻り値はいない場合はいない場合は-1、いて健在な場合はPTフラグを返す
+;いても、行動입력能な상태のときはPTフラグ+10の値を返す
+;ただし、스토리지にしか居ない場合は3となる
+;
+;계약・스토리지の都合で複数キャラが存在するのが日常茶飯事になったので仕様변경(2011/3/08)
+;//ARG:2が真の場合、後ろから検索する。적と아군両方いる場合、先머리から検索すると아군拾った時点で止まるので、적を調べたい場合は、ARG:2を真にしてやったほうがいい
+;→ARG:2が偽の場合、아군サーチ。아군しかひっかからなくなる。
+;
+;最初に引っかかったキャラの数値を返していた
+;→常に全員を체크し、優先順位の高い順に返す
+;健在な전투참가メンバー(2) > 健在でない전투참가メンバー(12) > 健在なCOMP内악마OR탐색不참가인간(1) > 健在でない～(11) > 자택서버ーに保存してある악마(0)
+
+;RESULT:1で、キャラ번호を취득して、いない場合は-1を返しています
+;先にFINDCHARA_Bを판정してるんで、そっちでちゃんと折れるはずなんで&&でつないでもまったく問題ないはず
+;-------------------------------------------------
+@FINDCHARA_B(ARG, ARG:1 = -100, ARG:2 = 0)
+#FUNCTION
+LOCAL:1 = -1
+LOCAL:2 = -1
+FOR LOCAL,CHARANUM-1,-1,-1
+	SIF NO:LOCAL != ARG
+		CONTINUE
+	SIF ARG:1 != CFLAG:LOCAL:이벤트加入 && ARG:1 > -100
+		CONTINUE
+	SIF CFLAG:LOCAL:PTフラグ == 0
+		CONTINUE
+	IF CFLAG:LOCAL:PTフラグ == 1
+		;자택서버ー内の악마
+		IF CFLAG:LOCAL:所属ＣＯＭＰ == -1
+			IF LOCAL:1 == -1
+				LOCAL:1 = 0
+				LOCAL:2 = LOCAL
+			ENDIF
+		;PTフラグが1の인간あるいは악마
+		ELSE
+			IF LOCAL:1 % 10 != 2
+				IF INPUTABLEF_CHARA(LOCAL)
+					LOCAL:1 = 1
+					LOCAL:2 = LOCAL
+				ELSE
+					IF LOCAL:1 != 1
+						LOCAL:1 = 11
+						LOCAL:2 = LOCAL
+					ENDIF
+				ENDIF
+			ENDIF
+		ENDIF
+	ELSE
+		;PTフラグが2、つまり実際に전투に참가している
+		IF INPUTABLEF_CHARA(LOCAL)
+			RESULT:1 = LOCAL
+			RETURNF 2
+		ELSE
+			IF LOCAL:1 != 2
+				LOCAL:1 = 12
+				LOCAL:2 = LOCAL
+			ENDIF
+		ENDIF
+	ENDIF
+NEXT
+RESULT:1 = LOCAL:2
+RETURNF LOCAL:1

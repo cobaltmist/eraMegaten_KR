@@ -1,0 +1,507 @@
+﻿;=======================================================================
+;야토 빌딩
+;ボス・피샤차
+;改変수정ご自由にどうぞ
+;=======================================================================
+;攻略조건
+;=======================================================================
+@PREREQUISITE_DUNGEON_76
+;IF 의뢰フラグ:31:0 == 1 && (던전フラグ:1:1 == 0 || 던전フラグ:34:8 == 0 || 던전フラグ:61:0 == 0)
+;IF 던전フラグ:1:1 == 0 && 던전フラグ:34:8 == 0 && 던전フラグ:61:0 == 0 &&  던전フラグ:76:0 == 0
+IF BASE:MASTER:LV <= 10 && 의뢰フラグ:5:0 == 0 &&  던전フラグ:76:0 == 0
+	RETURN 1
+ENDIF
+RETURN 0
+
+;=======================================================================
+;던전名
+;=======================================================================
+@GET_DUNGEON_NAME_76
+RESULTS = 야토 빌딩
+
+;=======================================================================
+;フ로어名표시
+;=======================================================================
+@FLOORNAME_76
+PRINT 야토 빌딩
+SELECTCASE FLAG:現M
+	CASE 0
+		PRINTL １Ｆ
+	CASE 1
+		PRINTL ２Ｆ
+	CASE 2
+		PRINTL ３Ｆ
+ENDSELECT
+
+;=======================================================================
+;스타ト地点입력
+;=======================================================================
+@START_DUNGEON_76,ARG
+FLAG:現M = 0 
+FLAG:現X = 1
+FLAG:現Y = 5
+
+;=======================================================================
+;指定したマスに進入可能か
+;=======================================================================
+@CAN_ENTER_76,ARG,ARG:1
+CALL CAN_ENTER,ARG,ARG:1
+RETURN RESULT
+;=======================================================================
+;스타ト時이벤트
+;=======================================================================
+@EVENT_DUNGEON_START_76
+IF 던전フラグ:76:1 == 0
+	CALL SHOW_PICTURE, "NONFLOORD"
+	;CALL MESSAGE_WINDOW_D, "", @"＞야토 빌딩에 침입했다/＞이계화의 원인을 밝혀내고 배제해야 한다."
+CALL MESSAGE_WINDOW_D, "", @"＞야토 빌딩에 침입했다/＞조직에서 내려온 의뢰를 수행하기 위해선 이 빌딩의 이계화를 해결해야 한다."
+ENDIF
+
+;=======================================================================
+;フ로어데이터
+;=======================================================================
+@MAKE_FLOOR_76
+SELECTCASE FLAG:現M
+	CASE 0
+	;１階
+		FLAG:최대X = 10
+		FLAG:최대Y = 7
+		CALL MAKE_FLOOR_LINE,0, "0000000000"
+		CALL MAKE_FLOOR_LINE,1, "0111111060"
+		CALL MAKE_FLOOR_LINE,2, "0100101010"
+		CALL MAKE_FLOOR_LINE,3, "0110101010"	
+		CALL MAKE_FLOOR_LINE,4, "0000101010"
+		CALL MAKE_FLOOR_LINE,5, "0114101110"
+		CALL MAKE_FLOOR_LINE,6, "0000000000"
+		;이벤트タイル변경
+		CALL SET_TILE,3,5,던전フラグ:76:1,1,1
+		;出입
+		CALL SET_TILE,0,5,던전フラグ:76:0,1,8
+	CASE 1
+	;２階
+		FLAG:최대X = 10
+		FLAG:최대Y = 7
+;							012345678
+		CALL MAKE_FLOOR_LINE,0, "0000000000" ;0
+		CALL MAKE_FLOOR_LINE,1, "0111111170" ;1
+		CALL MAKE_FLOOR_LINE,2, "0100000000" ;2
+		CALL MAKE_FLOOR_LINE,3, "0111111110" ;3
+		CALL MAKE_FLOOR_LINE,4, "0000100000" ;4
+		CALL MAKE_FLOOR_LINE,5, "0311111160" ;5
+		CALL MAKE_FLOOR_LINE,6, "0000000000" ;6
+		;宝箱
+		CALL SET_TILE,1,5,던전フラグ:76:2,1,1	
+	CASE 2
+	;３階
+		FLAG:최대X = 10
+		FLAG:최대Y = 7
+;								 012345678
+		CALL MAKE_FLOOR_LINE,0, "0000000000"
+		CALL MAKE_FLOOR_LINE,1, "0111001110"
+		CALL MAKE_FLOOR_LINE,2, "0102001010"
+		CALL MAKE_FLOOR_LINE,3, "0104001010"
+		CALL MAKE_FLOOR_LINE,4, "0100001010"
+		CALL MAKE_FLOOR_LINE,5, "0111111070"
+		CALL MAKE_FLOOR_LINE,6, "0000000000"
+	CASEELSE
+ENDSELECT
+
+;=======================================================================
+;[5]조사　実行時の이벤트
+;=======================================================================
+@EVENT_CHECK_DUNGEON_76
+;==========
+;出입の処理
+;==========
+IF DA:(FLAG:現X):(FLAG:現Y) == 8
+	CALL DUNGEON_EXIT
+	RETURN 1
+;========
+;宝の処理
+;========
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 3
+	SELECTCASE FLAG:現M
+		CASE 1
+			IF FLAG:現X == 1 && FLAG:現Y == 5
+				;외상약
+				CALL GET_TREASURE,1001,1,FLAG:現던전,1
+			ENDIF
+	ENDSELECT
+	RETURN 1
+;=======
+;階段
+;=======
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 6
+	CALL UPSTAIRS_76
+	RETURN RESULT
+
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 7
+	CALL DOWNSTAIRS_76
+	RETURN RESULT
+ELSE
+	CALL MESSAGE_WINDOW_D, "", "＞何も無いようだ"
+	RETURN 0
+ENDIF
+
+;=======================================================================
+;タイル進入時の이벤트
+;=======================================================================
+@EVENT_ENTER_DUNGEON_76,ARG
+;ARG = 進入時の向き　0の場合ワープなど
+;==========
+;出입の処理
+;==========
+IF DA:(FLAG:現X):(FLAG:現Y) == 8
+	CALL DUNGEON_EXIT
+	RETURN 1
+;========
+;宝の処理
+;========
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 3
+	SELECTCASE FLAG:現M
+		CASE 1
+			IF FLAG:現X == 1 && FLAG:現Y == 5
+				;외상약
+				CALL GET_TREASURE,1001,1,FLAG:現던전,1
+			DA:(FLAG:現X):(FLAG:現Y) = 1
+			던전フラグ:76:2 = 1
+			ENDIF
+	ENDSELECT
+	RETURN 1
+;=======
+;階段
+;=======
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 6
+	CALL UPSTAIRS_76
+	RETURN RESULT
+
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) % 10 == 7
+	CALL DOWNSTAIRS_76
+	RETURN RESULT
+
+;==========
+;扉の処理
+;==========
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 2
+	CALL DUNGEON_DOOR,ARG
+	RETURN 1
+
+;========================
+;이벤트
+;========================
+ELSEIF DA:(FLAG:現X):(FLAG:現Y) == 4
+;lF DA:(FLAG:現X):(FLAG:現Y) == 4
+	IF FLAG:現M == 0
+		CALL MESSAGE_WINDOW_D, "","＞이계화한 빌딩에 악마가 꿈틀거리고 있다."
+		CALL MESSAGE_WINDOW_D, "",@"＞%CALLNAME:MASTER%는 무기를 뽑은 뒤 악마에게 달려들었다"
+
+			FLAG:도주불가フラグ = 1
+			FLAG:회화불능フラグ = 1
+			FLAG:선제기습취소 = 1
+			CALL INCREASE_ANALYZE([[キャラ:아귀]],1000)
+			CALL SET_ENEMY,8,1093,1,0,0
+			CFLAG:(CHARANUM-1):行動횟수 = 1
+			CFLAG:(CHARANUM-1):ＨＰ보정 = 0
+			CFLAG:(CHARANUM-1):ＭＰ보정 = 0
+			ABL:(CHARANUM-1):스킬1 = 301
+			ABL:(CHARANUM-1):스킬2 = 321
+			ABL:(CHARANUM-1):스킬3 = 0
+			ABL:(CHARANUM-1):스킬4 = 0
+			ABL:(CHARANUM-1):스킬5 = 0
+			ABL:(CHARANUM-1):스킬6 = 0
+			ABL:(CHARANUM-1):스킬7 = 0
+			ABL:(CHARANUM-1):스킬8 = 0
+			CALL SYNC_STATUS,(CHARANUM-1)
+			CALL HEALTH_CHARA,(CHARANUM-1)
+
+			CALL SET_ENEMY,9,1093,1,0,0
+			CFLAG:(CHARANUM-1):行動횟수 = 1
+			CFLAG:(CHARANUM-1):ＨＰ보정 = 0
+			CFLAG:(CHARANUM-1):ＭＰ보정 = 0
+			ABL:(CHARANUM-1):스킬1 = 301
+			ABL:(CHARANUM-1):스킬2 = 321
+			ABL:(CHARANUM-1):스킬3 = 0
+			ABL:(CHARANUM-1):스킬4 = 0
+			ABL:(CHARANUM-1):스킬5 = 0
+			ABL:(CHARANUM-1):스킬6 = 0
+			ABL:(CHARANUM-1):스킬7 = 0
+			ABL:(CHARANUM-1):스킬8 = 0
+			CALL SYNC_STATUS,(CHARANUM-1)
+			CALL HEALTH_CHARA,(CHARANUM-1)
+
+			CALL SET_ENEMY,10,1093,1,0,0
+			CFLAG:(CHARANUM-1):行動횟수 = 1
+			CFLAG:(CHARANUM-1):ＨＰ보정 = 0
+			CFLAG:(CHARANUM-1):ＭＰ보정 = 0
+			ABL:(CHARANUM-1):스킬1 = 301
+			ABL:(CHARANUM-1):스킬2 = 321
+			ABL:(CHARANUM-1):스킬3 = 0
+			ABL:(CHARANUM-1):스킬4 = 0
+			ABL:(CHARANUM-1):스킬5 = 0
+			ABL:(CHARANUM-1):스킬6 = 0
+			ABL:(CHARANUM-1):스킬7 = 0
+			ABL:(CHARANUM-1):스킬8 = 0
+			CALL SYNC_STATUS,(CHARANUM-1)
+			CALL HEALTH_CHARA,(CHARANUM-1)
+			CALL BATTLE_START
+			FLAG:도주불가フラグ = 0
+			FLAG:회화불능フラグ = 0
+			FLAG:선제기습취소 = 0
+			CALL SHOW_PICTURE, "D"
+		CALL MESSAGE_WINDOW_D, "","＞악마를 쓰러트렸다……"
+		CALL MESSAGE_WINDOW_D, "수수께끼의 남자","여기서 뭘하고 있지?"
+		CALL MESSAGE_WINDOW_D, "","＞뒤에서 들려온 목소리에/＞돌아보니 하얀 수트를 입은 남자가 서있었다."
+		CALL MESSAGE_WINDOW_D, "","＞일체의 빈틈조차 느껴지지 않는 모습과/은연중에 드러나는 위압감은 그가 상당한 실력자임을 나타내주고 있다"
+		CALL MESSAGE_WINDOW_D, "","＞……섣부르게 행동했다간/어떻게 될지 모른다"
+		CALL MESSAGE_WINDOW_D, "",@"＞%CALLNAME:MASTER%는 조직의 이름은 숨긴 채/이 빌딩의 이계화를 해결하기 위해 온 사람이라고 말했다"
+		CALL MESSAGE_WINDOW_D, "수수께끼의 남자","……의뢰가 중복되었나？"
+		CALL MESSAGE_WINDOW_D, "수수께끼의 남자","실력을 보니 신참같은데"
+		CALL MESSAGE_WINDOW_D, "","＞전투를 보고 있었던것 같다"
+		CALL MESSAGE_WINDOW_D, "","＞『의뢰가 중복되었다』고 이야기하는 것을 보면/이 남자도 이곳에 볼일이 있는 거겠지 "
+		CALL MESSAGE_WINDOW_D, "수수께끼의 남자","……뭐, 좋다/과녁이 같다면 해야할 일도 동일"
+		CALL MESSAGE_WINDOW_D, "수수께끼의 남자","어이、너。앞장서라、협력해주마/빠르게 이 이계화를 처리하도록 하지"
+		CALL MESSAGE_WINDOW_D, "","＞아무래도 함께 행동하기로 한 듯하다"
+		CALL MESSAGE_WINDOW_D, "",@"＞등에 칼을 들이대고 있는듯한 느낌을 받으며/%CALLNAME:MASTER%는、이계화를 해결하기 위해 움직였다"
+			FLAG:탈출스킬禁止 = 1
+			LOCAL = GETCHARA([[キャラ:쿄우지]])
+			IF LOCAL == -1
+				CALL ADD_GUEST_COMPANION([[キャラ:쿄우지]], 100)
+				LOCAL = GETCHARA([[キャラ:쿄우지]])
+				NAME:LOCAL = 謎の男
+				CALLNAME:LOCAL = 謎の男
+;				BASE:LOCAL:LV = 50
+;				BASE:LOCAL:힘 = 
+;				BASE:LOCAL:지혜 = 
+;				BASE:LOCAL:마력 = 
+;				BASE:LOCAL:인내력 = 
+;				BASE:LOCAL:속도 = 
+;				BASE:LOCAL:운 = 
+;				CALL GUEST_ENHANCED_D50, LOCAL
+;				CALL SYNC_STATUS, LOCAL
+			ELSE
+				FOR LOCAL:1, 1, 7
+					IF POS(LOCAL:1) == -1 || ABL:POS(LOCAL:1):종족 > 0
+						CALL INSERT_POSITION, LOCAL:1, LOCAL
+						BREAK
+					ENDIF
+				NEXT
+			ENDIF
+		DA:(FLAG:現X):(FLAG:現Y) = 1
+		던전フラグ:76:1 = 1
+	ELSE
+		CALL MESSAGE_WINDOW_D, "","＞창백한 피부의 남자가 혼자서 떠들어대고 있다"
+		CALL MESSAGE_WINDOW_D, "타카시","우히히, 우히히히힛/좋아좋아좋아、피가 마구마구 모이고 있다/이 빌딩에 있는 자식들、다 죽은거구나"
+		CALL MESSAGE_WINDOW_D, "타카시","두목은、너무 날뛰지 말라고 했지만、더 이상은 참을 수 없어！/히힉、우히힛、히히히힉！"
+		CALL MESSAGE_WINDOW_D, "수수께끼의 남자","어이, 거기 양아치. 장난은 여기까지다/넌 이걸로 끝이야"
+		CALL MESSAGE_WINDOW_D, "타카시","뭐냐？네놈은？"
+		CALL MESSAGE_WINDOW_D, "타카시","이 타카시님을 그저 그런 피라미라고 생각하면/큰 코 다칠 거다！！"
+		CALL MESSAGE_WINDOW_D, "타카시","이 타카시님은 악마를 불러낼 수 있다고！/어떠냐、놀랍지！"
+		CALL MESSAGE_WINDOW_D, "수수께끼의 남자","허、그것 참 굉장하군/그렘린이라도 부를 수 있나보지？"
+		CALL MESSAGE_WINDOW_D, "타카시","뭐 이새끼가！/입닥쳐！나중에 우는 소리 하지 마라！"
+		CALL MESSAGE_WINDOW_D, "타카시","나와라！피샤차！"
+			FLAG:도주불가フラグ = 1
+			FLAG:회화불능フラグ = 1
+			FLAG:선제기습취소 = 1
+			CALL INCREASE_ANALYZE([[キャラ:피샤차]],1000)
+			CALL SET_ENEMY,8,1033,15,0,0
+			CFLAG:(CHARANUM-1):行動횟수 = 1
+			CFLAG:(CHARANUM-1):ＨＰ보정 = 300
+			CFLAG:(CHARANUM-1):ＭＰ보정 = 50
+			ABL:(CHARANUM-1):스킬1 = 301
+			ABL:(CHARANUM-1):스킬2 = 321
+			ABL:(CHARANUM-1):스킬3 = 302
+			ABL:(CHARANUM-1):스킬4 = 0
+			ABL:(CHARANUM-1):스킬5 = 0
+			ABL:(CHARANUM-1):스킬6 = 0
+			ABL:(CHARANUM-1):스킬7 = 0
+			ABL:(CHARANUM-1):스킬8 = 0
+			CALL SYNC_STATUS,(CHARANUM-1)
+			CALL HEALTH_CHARA,(CHARANUM-1)
+
+			CALL SET_ENEMY,9,1033,15,0,0
+			CFLAG:(CHARANUM-1):行動횟수 = 1
+			CFLAG:(CHARANUM-1):ＨＰ보정 = 300
+			CFLAG:(CHARANUM-1):ＭＰ보정 = 50
+			ABL:(CHARANUM-1):스킬1 = 301
+			ABL:(CHARANUM-1):스킬2 = 321
+			ABL:(CHARANUM-1):스킬3 = 302
+			ABL:(CHARANUM-1):스킬4 = 0
+			ABL:(CHARANUM-1):스킬5 = 0
+			ABL:(CHARANUM-1):스킬6 = 0
+			ABL:(CHARANUM-1):스킬7 = 0
+			ABL:(CHARANUM-1):스킬8 = 0
+			CALL SYNC_STATUS,(CHARANUM-1)
+			CALL HEALTH_CHARA,(CHARANUM-1)
+
+			CALL SET_ENEMY,10,1033,15,0,0
+			CFLAG:(CHARANUM-1):行動횟수 = 1
+			CFLAG:(CHARANUM-1):ＨＰ보정 = 300
+			CFLAG:(CHARANUM-1):ＭＰ보정 = 50
+			ABL:(CHARANUM-1):스킬1 = 301
+			ABL:(CHARANUM-1):스킬2 = 321
+			ABL:(CHARANUM-1):스킬3 = 302
+			ABL:(CHARANUM-1):스킬4 = 0
+			ABL:(CHARANUM-1):스킬5 = 0
+			ABL:(CHARANUM-1):스킬6 = 0
+			ABL:(CHARANUM-1):스킬7 = 0
+			ABL:(CHARANUM-1):스킬8 = 0
+			CALL SYNC_STATUS,(CHARANUM-1)
+			CALL HEALTH_CHARA,(CHARANUM-1)
+			CALL BATTLE_START
+			FLAG:도주불가フラグ = 0
+			FLAG:회화불능フラグ = 0
+			FLAG:선제기습취소 = 0
+			CALL SHOW_PICTURE, "D"
+		CALL MESSAGE_WINDOW_D, "타카시","뭐、뭐라고！/피샤차를 이렇게 간단하게 해치우다니 네놈은 대체…？"
+		CALL MESSAGE_WINDOW_D, "타카시","젠장！너따윈 시드선생님한테 걸리면 별것도 아니라고！/제기랄！두고보자！！"
+		CALL MESSAGE_WINDOW_D, "","＞타카시는 잽싸게 도망쳤다"
+		CALL MESSAGE_WINDOW_D, "수수께끼의 남자","이계화가 풀렸다……/이번 일은 이걸로 끝이군"
+		CALL MESSAGE_WINDOW_D, "","＞남자가 이야기한대로 이계화가 풀렸다/＞함께 입구로 돌아간다"
+		던전フラグ:76:0 = 1
+		CALL SHOW_PICTURE, "EMPTY"
+		CALL DUNGEON_WORP, 0, 2, 5					
+		CALL SHOW_PICTURE, "D"
+		CALL MESSAGE_WINDOW_D, "수수께끼의 남자","이번엔 손을 빌려줬다지만/살아남고 싶다면 실력을 길러라"
+		CALL MESSAGE_WINDOW_D, "수수께끼의 남자","그렇지 않으면 죽는다"
+		CALL MESSAGE_WINDOW_D, "여자의 목소리","쿄우지！일이 끝났나보네~/어머、그쪽은？"
+		CALL MESSAGE_WINDOW_D, "","＞입구 바깥쪽에서 한 여자가 들어왔다"
+		CALL MESSAGE_WINDOW_D, "","＞검은색과 흰색의 스트라이트 슈트의 단발 머리를 한 여자다/＞드세보이면서도、단정한 용모를 지니고 있다"
+		CALL MESSAGE_WINDOW_D, "쿄우지","뭐야……레이、너냐"
+		CALL MESSAGE_WINDOW_D, "레이","뭐야라니 너무 한거 아니야?/일부러 데리러 와준건데"
+		CALL MESSAGE_WINDOW_D, "레이","뭐、당신 능력이라면 별 문제 없을거라고 생각했지만"
+		CALL MESSAGE_WINDOW_D, "레이","그래서、그쪽은？"
+		CALL MESSAGE_WINDOW_D, "쿄우지","신참이다/보고만 있긴 뭣해서 손을 좀 빌려줬지"
+		CALL MESSAGE_WINDOW_D, "레이","당신이 누굴 도와줬다고？/내일은 비가 아니라 우박이 내리려나"
+		CALL MESSAGE_WINDOW_D, "쿄우지","시끄러워/그러고보니 서로 통성명도 안했군"
+		CALL MESSAGE_WINDOW_D, "쿄우지","나는 쿠즈노하 쿄우지、너는？"
+		CALL MESSAGE_WINDOW_D, "","＞쿠즈노하의 이름을 듣고/표정을 무너트리지 않은 것은 스스로도 칭찬하고 싶은 부분이었다"
+		CALL MESSAGE_WINDOW_D, "","＞그들과 조직은 기본적으로 적대관계이니만큼/＞조직의 일원이라는 걸 들킨다면 난감해지리라"
+		CALL MESSAGE_WINDOW_D, "",@"＞%CALLNAME:MASTER%는 그러한 속내를 드러내지 않으려 노력하며 이름을 밝혔다"
+		CALL MESSAGE_WINDOW_D, "쿄우지","마음 내키면 기억해주마、그럼, 안녕이다"
+		CALL MESSAGE_WINDOW_D, "레이",@"이름을 물어놓고 뭐라는거야、%CALLNAME:MASTER%/그럼 나도 이만, 안녕"
+		CALL MESSAGE_WINDOW_D, "","………………/…………/……"
+		CALL MESSAGE_WINDOW_D, "","＞세이프티 하우스로 돌아가、의뢰를 해결했음을 보고 했다"
+		CALL MESSAGE_WINDOW_D, "","＞의뢰 보수로 ￥10000을 얻었다……"
+		LOCAL = GETCHARA([[キャラ:쿄우지]])
+		IF LOCAL >= 0 && !CFLAG:LOCAL:引継ぎ횟수
+		CALL DEL_GUEST, LOCAL
+		MONEY += 10000
+		FLAG:탈출스킬禁止 = 0
+		FLAG:탈출 = 1
+ENDIF
+	ENDIF
+	RETURN 1
+ENDIF
+RETURN 0
+;========
+;階段移動
+;========
+@UPSTAIRS_76
+SELECTCASE FLAG:現M
+	CASE 0
+		SIF FLAG:現X == 8 && FLAG:現Y == 1
+			CALL DUNGEON_UPSTAIRS,1,8,1
+	CASE 1
+		SIF FLAG:現X == 8 && FLAG:現Y == 5
+			CALL DUNGEON_UPSTAIRS,2,8,5
+	CASEELSE
+ENDSELECT
+RETURN 1
+
+@DOWNSTAIRS_76
+SELECTCASE FLAG:現M
+	CASE 1
+		SIF FLAG:現X == 8 && FLAG:現Y == 1
+			CALL DUNGEON_DOWNSTAIRS,0,8,1
+	CASE 2
+		SIF FLAG:現X == 8 && FLAG:現Y == 5
+			CALL DUNGEON_DOWNSTAIRS,1,8,5
+	CASEELSE
+ENDSELECT
+RETURN 1
+
+;=======================================================================
+;エンカウント率
+;=======================================================================
+@ENCOUNT_RATE_76
+FLAG:エンカウント率 = FLAG:未遭遇歩数*3
+SIF FLAG:未遭遇歩数 < 8
+	FLAG:エンカウント率 = 0
+;=======================================================================
+;필요레벨눈安
+;권장LV 雑물고기최저LV 雑물고기최고LV ボスLV 
+;=======================================================================
+@GET_DUNGEON_LV_76
+RETURN 5, 3, 10, 15
+
+;=======================================================================
+;エンカウント処理
+;=======================================================================
+@CHECK_ENCOUNT_76
+IF RAND:100 < FLAG:エンカウント率
+	CALL ENEMY_TABLE
+	RETURN 1
+ELSE
+	FLAG:未遭遇歩数 += 1
+	RETURN 0
+ENDIF
+;=======================================================================
+;적の종족の종류数
+;=======================================================================
+@CLASS_NUM_76
+RETURN CLASS_NUM_COMMON("初級")
+
+;=======================================================================
+;적の総数
+;ARGは出現する적の종류です
+;RAND(X, Y)はX～Y-1のうち중 하나になるRANDです
+;なお、ここで帰った数字は下限を종족数、上限を10として自動的に調整されます
+;=======================================================================
+@ENEMY_NUM_76, ARG
+RETURN ENEMY_NUM_COMMON("初級", ARG)
+
+;=======================================================================
+;적の종류
+;=======================================================================
+@ENEMY_76, ARG
+SELECTCASE FLAG:現M
+	;１Ｆでの遭遇
+	CASE 0
+		SELECTCASE RAND:100
+			CASE IS < 50
+				;아귀
+				RETURN 1093, 5
+			CASE IS < 80
+				;좀비독
+				RETURN 1083, 3
+			CASE IS < 100
+				;슬라임
+				RETURN 1028, 3
+		ENDSELECT
+	;2Ｆでの遭遇
+	CASE 1
+		SELECTCASE RAND:100
+			CASE IS < 50
+				;아귀
+				RETURN 1093, 6
+			CASE IS < 80
+				;좀비독
+				RETURN 1083, 4
+			CASE IS < 100
+				;슬라임
+				RETURN 1028, 4
+		ENDSELECT
+	;2Ｆでの遭遇
+	CASE 2
+		SELECTCASE RAND:100
+			CASE IS < 50
+				;아귀
+				RETURN 1093, 8
+			CASE IS < 80
+				;좀비캅
+				RETURN 1095, 10
+			CASE IS < 100
+				;좀비군
+				RETURN 1094, 8
+		ENDSELECT
+	ENDSELECT

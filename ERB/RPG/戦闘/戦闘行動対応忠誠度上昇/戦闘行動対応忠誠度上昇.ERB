@@ -1,0 +1,113 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;	Edit	Date			Author					Reason
+;	001		20XX/XX/XX		----					新規作成
+;	002		2020/05/31		Jガン					ボイコット판정の計算式を変えて구상が出やすいように
+;	003		2021/01/04		Jガン					링케이지참가자も구상が出せるように
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+
+@전투行動対応충성도上昇,ARG
+	#DIMS CONST COLOUR = "붕괴","우애","영맹","우둔","교만","교활","냉정","잔학","현명","좀비","천사","타천사","허심"
+	#DIM LOYALTY,1
+	#DIM MOTIVE,1
+	;LOYALTY      획득충성도
+	;MOTIVE       충성도上昇の引き金となったTALENT
+	LOYALTY = 0
+	MOTIVE = 0
+
+	;ボイコット설정がOFFの場合はセリフ処理のみ
+	IF FLAG:전투시보이콧설정 ==  0
+		;인간は処理されない
+		SIF IS_HUMAN(ARG) == 1
+			GOTO RISE_SKIPPED_OFF
+		;기본動機となる소질ごとの판정
+		FOR LOCAL,0,VARSIZE("COLOUR")
+			SIF !TALENT:ARG:(COLOUR:LOCAL)
+				CONTINUE
+			CALLFORM COMBAT_HIGH_%COLOUR:LOCAL%,ARG,CFLAG:ARG:입력行動
+			IF RESULT > LOYALTY || (RESULT <= 0 && LOYALTY <= 0)
+				LOYALTY = RESULT
+				MOTIVE = GETNUM(TALENT,COLOUR:LOCAL)
+			ENDIF
+		NEXT
+		;계승타입と一致する스킬なら충성도+1(조마を除く)
+		IF LOYALTY <= 0 && ABL:ARG:종족 != GET_RACE_NUM("조마")
+			CALLFORM SKILL_SUCCESSION_TYPE_{CFLAG:ARG:입력行動}
+			SIF TALENT:ARG:GET_SUCCESSION(RESULT)
+				LOYALTY += 1
+		ENDIF
+		;메시지呼び出し
+		$RISE_SKIPPED_OFF
+		CALL 구상呼び出し , "BATTLE_MESSAGE" , FLAG:行動順1 , FLAG:行動順1 , MOTIVE
+		;충성도増減
+		TCVAR:ARG:획득충성도 = MAX(0,TCVAR:ARG:획득충성도+LOYALTY)
+		
+	;ボイコット설정が有効な場合
+	ELSE
+		;인간は処理されない
+		SIF IS_HUMAN(ARG) == 1
+			GOTO RISE_SKIPPED_ON
+
+		;기본動機となる소질ごとの판정
+		FOR LOCAL,0,VARSIZE("COLOUR")
+			SIF !TALENT:ARG:(COLOUR:LOCAL)
+				CONTINUE
+			CALLFORM COMBAT_HIGH_%COLOUR:LOCAL%,ARG,CFLAG:ARG:입력行動
+			IF RESULT > LOYALTY || (RESULT <= 0 && LOYALTY <= 0)
+				LOYALTY = RESULT
+				MOTIVE = GETNUM(TALENT,COLOUR:LOCAL)
+			ENDIF
+		NEXT
+
+		;계승타입と一致する스킬なら충성도+1(조마を除く)
+		IF LOYALTY <= 0 && ABL:ARG:종족 != GET_RACE_NUM("조마")
+			CALLFORM SKILL_SUCCESSION_TYPE_{CFLAG:ARG:입력行動}
+			SIF TALENT:ARG:GET_SUCCESSION(RESULT)
+				LOYALTY += 1
+		ENDIF
+
+		$RISE_SKIPPED_ON
+
+		;인스톨소프트《블랙컴퍼니》は충성도上昇を阻害
+		SIF EQUIP:MASTER:블랙컴퍼니 == 1 && LOYALTY > 0
+			LOYALTY *= TALENT:ARG:허심 ? -1 # -5
+		;ボイコット판정
+		CFLAG:ARG:ボイコットフラグ = 0
+		IF LOYALTY <= 0 && IS_HUMAN(ARG) == 0
+			;충성도上昇がない場合はボイコット판정
+			IF MOTIVE != 0
+				CALL ボイコット판정, ARG
+				CALL 구상呼び出し , "BATTLE_BOYCOTT_MESSAGE" , FLAG:行動順1 , FLAG:行動順1 , MOTIVE
+			ENDIF
+			;스킬コストに応じてペナルティ설정
+			CALLFORM SKILL_COST_{CFLAG:ARG:입력行動},ARG
+			LOYALTY -= MAX(1,RESULT) * (TALENT:ARG:허심 ? 1 # 5)
+		ENDIF
+		IF CFLAG:ARG:ボイコットフラグ == 1
+			CALL 구상呼び出し , "BATTLE_BOYCOTT_MESSAGE" , FLAG:行動順1 , FLAG:行動順1 , MOTIVE
+		ELSE
+			;충성도上昇に伴う메시지
+			CALL 구상呼び出し , "BATTLE_MESSAGE" , FLAG:行動順1 , FLAG:行動順1 , MOTIVE
+		ENDIF
+		;난이도[EASY]이상で기력値増減
+		SIF FLAG:전투시보이콧설정 > 1
+			BASE:ARG:기력 = LIMIT(BASE:ARG:기력+LOYALTY,0,MAXBASE:ARG:기력)
+		;충성도増減
+		TCVAR:ARG:획득충성도 = MAX(0,TCVAR:ARG:획득충성도+LOYALTY)
+	ENDIF
+	
+	;---- EDIT 003 MOD START -------------------------
+	IF CFLAG:(FLAG:行動順1):ボイコットフラグ == 1 && FLAG:전투시보이콧설정 > 2
+		TFLAG:전투이벤트 = 100
+		;링케이지の場合、更に링케이지참가자の구상も出す
+		IF CFLAG:ARG:링케이지발동 && RANGE(CFLAG:ARG:입력行動,4000,4999)
+			CALLFORM 참가人数_{CFLAG:ARG:입력行動}
+			LOCAL:1 = RESULT
+			FOR LOCAL , 1 , LOCAL:1
+				SIF RANGE(CFLAG:ARG:("링케이지참가자"+TOSTR(LOCAL)),0,CHARANUM) == 0
+					CONTINUE
+				CALL 구상呼び出し , "BATTLE_EVENT" , CFLAG:ARG:("링케이지참가자"+TOSTR(LOCAL)) , CFLAG:ARG:("링케이지참가자"+TOSTR(LOCAL)) , ARG
+			NEXT
+		ENDIF
+	ENDIF
+	;---- EDIT 003 MOD END ---------------------------
+

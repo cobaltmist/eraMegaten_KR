@@ -1,0 +1,1601 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:FUSION.ERB
+;	Facility	:악마合体のベースとなる処理群
+;
+;	Licence		:ライセンスフリー。
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		20XX/XX/XX		----					新規作成
+;	002		2011/01/28		P						젠더프리の処理を추가
+;	003		2011/02/03		名無し					손紙システムで汎用だけでなく個人구상にも対応
+;	004		2011/02/05		Rsp暇人					重複습득可能스킬は複数스킬継承するように변경
+;	005		2011/02/16		Ｎ鳥					ストレージ기능に対応・継承方式변경
+;	006		2011/02/22		Rsp暇人					特殊合体時用処理を呼び出すタイミングを추가
+;	007		2011/03/08		P						조마강화合体が実行不能なときでも표시されていた場合があったのを修正。また판정を변경
+;	008		2011/05/19		P						코딩処理を추가。코딩のためにCHARANUMを全部回す処理が出来たので、シフターイケニエの판정を統合
+;	009		2011/06/13		名無し					3身合体の소재스킬표시にミスがあったのを修正
+;	010		2012/01/06		TR						악마ストレージを사교의관から呼び出せるように、ボタンの数字表記を右揃えで整列
+;	011		2013/01/12		ネトリス				合体用ソフトクイック설정を추가
+;	012		2012/01/16		TR						「라지엘의서」適用時に一部악마の素質や변이先を변경する処理を追記
+;	013		2013/12/02		ひみつ					リスト표시数설정と合体用ソフトクイック설정(改)を추가。스킬속성표시の適用範囲拡大。
+;													合体で데빌시프터や식노が作られた場合の処理を추가。チラつき抑止。
+;													스킬속성표시にキャラ情報を渡すように
+;	014		2015/01/01		セーロGUN				館内변신악마변경コマンドから전투用素質が複合した데빌시프터を弾く処理を추가
+;	015		2017/06/23		kuni					キャラ표시でINPUT_CHARA_LISTを사용するように변경
+;	016		2015/10/02		魔晶확장パッチ			마정무기作成に分岐処理を추가
+;	017		2017/09/23		名無					ガチャモード(「ガチャ」素質継承)
+;	018		2017/10/03		名無					악마合体ライト処理추가
+;	019		2018/10/13		しぐれみそ				마정무기作成に杖作成の分岐処理を추가
+;	020		2019/08/28		空気					COMPに仲魔が加入できる余裕があるかどうか판정する関数を導入
+;	021		2019/10/04		なんとなくの人			스킬카드確認コマンドを추가
+;	022		2019/11/21		JK好き					@CASTING_CHANGE_LINKをIF文に使えるように#FUNCTION対応
+;	023		2019/12/02		JK好き					@CASTING_CHANGE_LINK_Fを新たに추가して@CASTING_CHANGE_LINKは差し戻しました
+;	024		2020/08/31		JK好き					달인악마は素材の스킬を継承できないように변경
+;	025		2020/12/20		JK好き					ABL인계체크に素材:3を추가
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+@SHOPCOMABLE_120
+RESULT:1 = 4
+RESULTS = 사교의관
+RETURN 1
+
+
+
+@SHOP_COM_120
+#DIM JAKYOU_COMMAND_NUMBER ;사용가능 커맨드 개수
+#LOCALSIZE 10
+;---- EDIT 008 ADD START -------------------------
+VARSET LOCAL
+;---- EDIT 008 ADD END   -------------------------
+;---- EDIT 010 MOD START -------------------------
+JAKYOU_COMMAND_NUMBER = 0
+CUSTOMDRAWLINE =
+PRINTL 관의 주인：
+PRINTFORML 「악마가 모이는
+PRINTFORML   사교의 관에 어서 오게」
+DRAWLINE
+PRINTL
+PRINTL
+PRINTL
+DRAWLINE
+PRINTL [CLICK]
+TWAIT 2000,0
+CLEARLINE 9
+$JAKYOU_START
+JAKYOU_COMMAND_NUMBER = 0
+PRINTL 관의 주인：
+PRINTFORML \@ RESULT ? 「무엇을 원하는가?」#「다른 원하는 게 있는가?」\@
+DRAWLINE
+PRINTL [ 1] ２신 합체
+JAKYOU_COMMAND_NUMBER += 1 ;커맨드 개수 가산
+PRINTL [ 2] ３신 합체
+JAKYOU_COMMAND_NUMBER += 1 ;커맨드 개수 가산
+IF ITEM:도리・카드몬 > 0
+	PRINTL [ 3] 조마 작성
+	JAKYOU_COMMAND_NUMBER += 1 ;커맨드 개수 가산
+ENDIF
+IF NUM_ZOUMA() > 0 && NUM_FUSIONABLE() > 0
+	PRINTL [ 4] 조마 강화 합체
+	JAKYOU_COMMAND_NUMBER += 1 ;커맨드 개수 가산
+ENDIF
+;메어리が居る場合は필요한조마の数に+1
+IF NUM_ZOUMA() > (GETCHARA(4509) > -1) ? 1 # 0
+	PRINTL [ 5] 조마 초기화
+	JAKYOU_COMMAND_NUMBER += 1 ;커맨드 개수 가산
+ENDIF
+IF ITEM:무명의도 || EQUIP:MASTER:마장의공방
+	PRINTL [ 6] 마정무구 작성
+	JAKYOU_COMMAND_NUMBER += 1 ;커맨드 개수 가산
+ENDIF
+FOR LOCAL,2000,VARSIZE("ITEM")
+	IF 마정장비(LOCAL)
+		IF ITEM:LOCAL > 0
+			PRINTL [7] 마정무구 소재화
+			LOCAL:3 = 1
+			JAKYOU_COMMAND_NUMBER += 1 ;커맨드 개수 가산
+			BREAK
+		ENDIF
+	ELSE
+	ENDIF
+NEXT
+
+PRINTL [ 8] 스킬 카드 작성
+JAKYOU_COMMAND_NUMBER += 1 ;커맨드 개수 가산
+;---- EDIT 008 MOD START -------------------------
+FOR LOCAL,0,CHARANUM
+	SIF 계약(LOCAL) > 0 && ABL:LOCAL:종족 > 0 && ABL:LOCAL:종족 < 45
+		LOCAL:4 = 1
+	SIF TALENT:LOCAL:데빌시프터
+		LOCAL:5 = 1
+	IF FLAG:(NO:LOCAL + 20000) == 1000
+		IF ABL:LOCAL:코딩 > 0 && ITEM:(ABL:LOCAL:코딩) == 0
+			LOCAL:6 = 1
+		ELSEIF CSVABL(NO:LOCAL, GETNUM(ABL, "코딩") ,0) > 0 && ITEM:(CSVABL(NO:LOCAL, GETNUM(ABL, "코딩"), 0)) == 0
+			LOCAL:6 = 1
+		ENDIF
+		IF ABL:LOCAL:코딩 == 0
+			IF (ABL:LOCAL:종족 == 1 && ITEM:8056 == 0) || (ABL:LOCAL:종족 == 2 && ITEM:8067 == 0)
+				LOCAL:6 = 1
+			ELSEIF (ABL:LOCAL:종족 == 3 && ITEM:8071 == 0) || (ABL:LOCAL:종족 == 4 && ITEM:8058 == 0)
+				LOCAL:6 = 1
+			ELSEIF (ABL:LOCAL:종족 == 5 && ITEM:8065 == 0) || (ABL:LOCAL:종족 == 6 && TALENT:LOCAL:남자 && ITEM:8064 == 0)
+				LOCAL:6 = 1
+			ELSEIF (ABL:LOCAL:종족 == 6 && !TALENT:LOCAL:남자 && ITEM:8055 == 0) || (ABL:LOCAL:종족 == 7 && ITEM:8063 == 0)
+				LOCAL:6 = 1
+			ELSEIF (ABL:LOCAL:종족 == 8 && TALENT:LOCAL:남자 && ITEM:8066 == 0) || (ABL:LOCAL:종족 == 8 && !TALENT:LOCAL:남자 && ITEM:8060 == 0)
+				LOCAL:6 = 1
+			ELSEIF (ABL:LOCAL:종족 == 9 && ITEM:8069 == 0) || (ABL:LOCAL:종족 == 10 && ITEM:8068 == 0)
+				LOCAL:6 = 1
+			ELSEIF (ABL:LOCAL:종족 == 11 && TALENT:LOCAL:남자 && ITEM:8059 == 0) || (ABL:LOCAL:종족 == 11 && !TALENT:LOCAL:남자 && ITEM:8062 == 0)
+				LOCAL:6 = 1
+			ELSEIF (ABL:LOCAL:종족 == 15 && ITEM:8061 == 0) || (ABL:LOCAL:종족 == 16 && ITEM:8070 == 0)
+				LOCAL:6 = 1
+			ELSEIF ABL:LOCAL:종족 == 18 && ITEM:8057 == 0
+				LOCAL:6 = 1
+			ENDIF
+		ENDIF
+	ENDIF
+NEXT
+IF LOCAL:4 == 1
+	PRINTL [ 9] 제물 합체
+	JAKYOU_COMMAND_NUMBER += 1 ;커맨드 개수 가산
+ENDIF
+;---- EDIT 010 MOD END   -------------------------
+PRINTL [10] 악마전서
+JAKYOU_COMMAND_NUMBER += 1 ;커맨드 개수 가산
+IF LOCAL:5 == 1
+	PRINTL [11] 변신악마 변경
+	JAKYOU_COMMAND_NUMBER += 1 ;커맨드 개수 가산
+ENDIF
+IF LOCAL:6 == 1
+	PRINTL [12] 코딩
+	JAKYOU_COMMAND_NUMBER += 1 ;커맨드 개수 가산
+ENDIF
+;---- EDIT 008 MOD END   -------------------------
+;---- EDIT 010 ADD START -------------------------
+PRINTL [13] 악마서버전송
+JAKYOU_COMMAND_NUMBER += 1 ;커맨드 개수 가산
+;---- EDIT 010 ADD END ---------------------------
+;---- EDIT WITH YOU ADD START -------------------------
+IF TALENT:MASTER:144
+	PRINTL [14] 당신 합체
+	JAKYOU_COMMAND_NUMBER += 1 ;커맨드 개수 가산
+ENDIF
+;---- EDIT WITH YOU ADD END ---------------------------
+IF GETBIT(FLAG:発見ED, 30)
+	PRINTL [15]시간성
+	JAKYOU_COMMAND_NUMBER += 1 ;커맨드 개수 가산
+ENDIF
+	
+CUSTOMDRAWLINE =
+PRINTL [ 0]돌아간다
+
+$INPUT_LOOP
+INPUT
+IF RESULT == 1
+	CALL FUSION_DOUBLE
+	CUSTOMDRAWLINE =
+	GOTO JAKYOU_START ;이전으로 돌아가기
+ELSEIF RESULT == 2
+	CALL FUSION_DOUBLE,3
+	CUSTOMDRAWLINE =
+	GOTO JAKYOU_START ;이전으로 돌아가기
+ELSEIF RESULT == 3 && ITEM:도리・카드몬 > 0
+	CALL MAKE_ZOUMA
+	CUSTOMDRAWLINE =
+	GOTO JAKYOU_START ;이전으로 돌아가기
+ELSEIF RESULT == 4 && NUM_ZOUMA() > 0 && NUM_FUSIONABLE() > 0
+	CALL FUSION_ZOUMA
+	CUSTOMDRAWLINE =
+	GOTO JAKYOU_START ;이전으로 돌아가기
+ELSEIF RESULT == 5 && NUM_ZOUMA() > (GETCHARA(4509) > -1) ? 1 # 0
+	CALL DEL_ZOUMA
+	CUSTOMDRAWLINE =
+	GOTO JAKYOU_START ;이전으로 돌아가기
+ELSEIF RESULT == 6 && ((ITEM:무명의도) || (EQUIP:MASTER:마장의공방))
+	PRINTL [ 1]마정검작성
+	PRINTL [ 2]마정지팡이작성
+	DRAWLINE
+	PRINTL [0]돌아간다
+	
+	ONEINPUT
+	
+	IF RESULT == 1
+		SIF EQUIP:MASTER:마장의공방
+			CALL SELECT_MASHO2
+		SIF !EQUIP:MASTER:마장의공방
+		CALL MAKE_MASHO
+	ELSEIF RESULT == 2
+		CALL MAKE_MASHO_STAFF
+	ELSEIF RESULT == 0
+		CLEARLINE 5
+		CUSTOMDRAWLINE =
+		GOTO JAKYOU_START ;이전으로 돌아가기
+	ENDIF
+ELSEIF RESULT == 7 && LOCAL:3
+	CALL DEL_MASHO
+	CUSTOMDRAWLINE =
+	GOTO JAKYOU_START ;이전으로 돌아가기
+ELSEIF RESULT == 8
+	CALL MAKE_SKILLCARD
+	CUSTOMDRAWLINE =
+	GOTO JAKYOU_START ;이전으로 돌아가기
+ELSEIF RESULT == 9 && LOCAL:4
+	CALL FUSION_SACRIFICE
+	CUSTOMDRAWLINE =
+	GOTO JAKYOU_START ;이전으로 돌아가기
+ELSEIF RESULT == 10
+	CALL DEVIL_COMPENDIUM
+	CUSTOMDRAWLINE =
+	GOTO JAKYOU_START ;이전으로 돌아가기
+ELSEIF RESULT == 0
+	CLEARLINE JAKYOU_COMMAND_NUMBER + 6
+	PRINTL 관의 주인：
+	PRINTL 「동료마가 늘면 다시 오도록 하게」
+	DRAWLINE
+	PRINTL
+	PRINTL
+	PRINTL
+	DRAWLINE
+	PRINTL
+	TWAIT 2000,0
+	RETURN 0
+ELSEIF RESULT == 11 && LOCAL:5
+	CALL CHANGE_LINK
+	CUSTOMDRAWLINE =
+	GOTO JAKYOU_START ;이전으로 돌아가기
+;---- EDIT 008 ADD START -------------------------
+ELSEIF RESULT == 12 && LOCAL:6
+;---- EDIT 008 ADD END   -------------------------
+	CALL CODING
+	CUSTOMDRAWLINE =
+	GOTO JAKYOU_START ;이전으로 돌아가기
+;---- EDIT 010 ADD START -------------------------
+ELSEIF RESULT == 13
+	CALL DEVIL_STORAGE
+	CUSTOMDRAWLINE =
+	GOTO JAKYOU_START ;이전으로 돌아가기
+;---- EDIT 010 ADD END ---------------------------
+;---- EDIT WITH YOU ADD START -------------------------
+ELSEIF RESULT == 14
+	CALL FUSION_WITH_YOU
+	CUSTOMDRAWLINE =
+	GOTO JAKYOU_START ;이전으로 돌아가기
+;---- EDIT WITH YOU ADD END ---------------------------
+ELSEIF RESULT == 15
+	CALL CASTLE_OF_WATCH
+	CUSTOMDRAWLINE =
+	GOTO JAKYOU_START ;이전으로 돌아가기
+ELSEIF RESULT == 16
+	CALL SKILLCARD_CHECK
+	CUSTOMDRAWLINE =
+	GOTO JAKYOU_START ;이전으로 돌아가기
+ELSE
+	GOTO INPUT_LOOP
+ENDIF
+;末꼬리キャラが필터링フラグを持っていない場合（新キャラを作った場合）ソート実行
+;IF !CFLAG:(CHARANUM-1):필터링フラグ
+;	FOR LOCAL:10, 0, CHARANUM - 1
+;		IF CFLAG:(LOCAL:10):필터링フラグ
+;			FOR LOCAL:11, LOCAL:10, CHARANUM
+;				SIF CFLAG:(LOCAL:11):필터링フラグ
+;					CONTINUE
+;				SIF TARGET == LOCAL:11
+;					TARGET = LOCAL:10
+;				SWAPCHARA LOCAL:10, LOCAL:11
+;				BREAK
+;			NEXT
+;		ENDIF
+;	NEXT
+;	;一応포지션復帰
+;	CALL REFRESH_POS
+;ENDIF
+;RESTART
+;================================================================
+;２身合体
+;================================================================
+@FUSION_DOUBLE, ARG = 2, ARG:1 = 0, ARG:2 = -1
+;ARG:1 탐색中フラグ、なおここが2なら악마合体ライトとする
+;ARG:2 合体者。악마合体ライトで万が一自身を合体소재にするのを防ぐため。
+#DIM LLINE
+#DIM LREDRAW
+#DIM LLOCK
+#DIM PCOUNT, 2
+#DIM SKILLCOLOR,1
+#DIM 소재 , 4
+#DIM 完成品 , 1
+#DIM 레벨부족合体 , 1
+#DIM LCOUNT
+
+LREDRAW = LLOCK ? LREDRAW # CURRENTREDRAW()
+SIF !LLOCK
+	REDRAW 2
+LLOCK = 1
+
+;소재:1、完成品　一번째と２번째の登録番号
+소재:1 = -1
+소재:2 = -1
+소재:3 = -1
+FLAG:合体人数 = ARG
+LOCAL:11 = 0
+FOR LCOUNT, 500, 600
+	IF ITEM:LCOUNT
+		IF SOFT_IS_FUSIONSOFT(LCOUNT, ARG:1)
+			LOCAL:11 = 1
+			BREAK
+		ENDIF
+	ENDIF
+NEXT
+$START_FUSION
+FLAG:合体予定악마1 = 소재:1
+FLAG:合体予定악마2 = 소재:2
+LOCAL:6 = 0
+LOCAL:9 = 0
+
+$PRINT_LIST
+Z = ARG:1
+CALL INPUT_CHARA_LIST("합체 시키고 싶은 악마를 선택하세요", "CASTING_FUSION_DOUBLE", "UP_PRINT_FUSION_DOUBLE", "DOWN_PRINT_FUSION_DOUBLE", "MODECHANGE_FUSION_DOUBLE")
+
+IF RESULT == 1000
+	IF 소재:2 > -1
+		소재:2 = -1
+		GOTO START_FUSION
+	ELSEIF 소재:1 > -1
+		소재:1 = -1
+		GOTO START_FUSION
+	ELSE
+		REDRAW LREDRAW
+		LLOCK = 0
+		RETURN 0
+	ENDIF
+ELSEIF RESULT == 1010
+	IF LOCAL:11
+		;CALL SETUP_SOFT, 500, ARG:1, ARG:1
+		CALL SETUP_SOFT, 500, 1, ARG:1
+	ENDIF
+	GOTO PRINT_LIST
+ELSEIF RESULT == 1011 || RESULT == 1012 || RESULT == 1013 || RESULT == 1014
+	FLAG:二身合体時男女표시 = RESULT - 1011
+	GOTO START_FUSION
+
+;ELSEIF GETBIT(FLAG:合体用ソフトクイック설정, 6) == 1 && (RESULT == 1020 || RESULT == 1021 || RESULT == 1022 || RESULT == 1023 || RESULT == 1024 || RESULT == 1025)
+;	SELECTCASE RESULT
+;		CASE 1020
+;			IF EQUIP:MASTER:알버트 == 1
+;				EQUIP:MASTER:알버트 = 0
+;			ELSEIF EQUIP:MASTER:알버트 == 0 && FLAG:ＣＯＭＰ용량-NUM_NAKAMA()-ソフト용량() >= SOFT_SIZE(500)
+;				EQUIP:MASTER:알버트 = 1
+;			ENDIF
+;		CASE 1021
+;			IF EQUIP:MASTER:파라켈수스 == 1
+;				EQUIP:MASTER:파라켈수스 = 0
+;			ELSEIF EQUIP:MASTER:파라켈수스 == 0 && FLAG:ＣＯＭＰ용량-NUM_NAKAMA()-ソフト용량() >= SOFT_SIZE(534)
+;				EQUIP:MASTER:파라켈수스 = 1
+;			ENDIF
+;		CASE 1022
+;			IF EQUIP:MASTER:라플라스 == 1
+;				EQUIP:MASTER:라플라스 = 0
+;			ELSEIF EQUIP:MASTER:라플라스 == 0 && FLAG:ＣＯＭＰ용량-NUM_NAKAMA()-ソフト용량() >= SOFT_SIZE(536)
+;				EQUIP:MASTER:라플라스 = 1
+;			ENDIF
+;		CASE 1023
+;			IF EQUIP:MASTER:코페르니쿠스 == 1
+;				EQUIP:MASTER:코페르니쿠스 = 0
+;			ELSEIF EQUIP:MASTER:코페르니쿠스 == 0 && FLAG:ＣＯＭＰ용량-NUM_NAKAMA()-ソフト용량() >= SOFT_SIZE(537)
+;				EQUIP:MASTER:코페르니쿠스 = 1
+;			ENDIF
+;		CASE 1024
+;			IF EQUIP:MASTER:고에티아 == 1
+;				EQUIP:MASTER:고에티아 = 0
+;			ELSEIF EQUIP:MASTER:고에티아 == 0
+;				EQUIP:MASTER:고에티아 = 1
+;			ENDIF
+;		CASE 1025
+;			IF EQUIP:MASTER:라지엘의서 == 1
+;				EQUIP:MASTER:라지엘의서 = 0
+;			ELSEIF EQUIP:MASTER:라지엘의서 == 0
+;				EQUIP:MASTER:라지엘의서 = 1
+;			ENDIF
+;	ENDSELECT
+;	GOTO PRINT_LIST
+
+;==合体用ソフトクイック설정 その２ =========================Start
+ELSEIF INRANGE(RESULT, 1500, 1599) && SOFT_IS_FUSIONSOFT(RESULT - 1000, ARG:1) && FSQS_BIT(RESULT - 1000)
+	IF EQUIP:MASTER:(ITEMNAME:(RESULT - 1000))
+		EQUIP:MASTER:(ITEMNAME:(RESULT - 1000)) = 0
+	ELSEIF FLAG:ＣＯＭＰ용량 - NUM_NAKAMA() - ソフト용량() >= SOFT_SIZE(RESULT - 1000)
+		EQUIP:MASTER:(ITEMNAME:(RESULT - 1000)) = 1
+	ENDIF
+	GOTO PRINT_LIST
+;===========================================================End
+ENDIF
+;---- EDIT 018 MOD START -------------------------
+;악마召喚ライトなら전투中、召喚されようとしている악마や적、自分自身を소재に出来ない。
+IF Z == 2 && RESULT > -1
+	SIF FLAG:DEBUG
+		PRINTFORMW 디버그용　소환대상번호RESULT={RESULT}
+	IF CFLAG:RESULT:被소환フラグ
+		PRINTFORMW 다른 캐릭터에 소환하려 하고 있습니다.
+		GOTO PRINT_LIST
+	ELSEIF CFLAG:RESULT:PTフラグ <= 0
+		PRINTFORMW 적은 합체 소재로 쓸 수 없습니다.
+		GOTO PRINT_LIST
+	ELSEIF RESULT == ARG:2
+		PRINTFORMW 악마 합체 라이트로 자신을 합체 소재로 하는 것은 불가능합니다.
+		GOTO PRINT_LIST
+	ENDIF
+ENDIF
+;---- EDIT 018 MOD END -------------------------
+IF 소재:2 > 0
+	소재:3 = RESULT
+ELSEIF 소재:1 > 0
+	소재:2 = RESULT
+ELSE
+	소재:1 = RESULT
+ENDIF
+
+IF 소재:(FLAG:合体人数) > 0
+	;合体人数が2なら소재:3 = -1なので投げてＯＫ
+	CALL RESULT_FUSION,소재:1,소재:2,소재:3
+	IF RESULT == 0
+		소재:(FLAG:合体人数) = -1
+		GOTO START_FUSION
+	ENDIF
+	完成品 = CHARANUM
+	LOCAL:4 = RESULT
+	SIF CSVCFLAG(LOCAL:4 , GETNUM(CFLAG,"１体のみ"),0) && FINDCHARA(NO,LOCAL:4) > -1
+		LOCAL:9 = 1
+	;合体結果の악마が既に仲魔(未계약かつＣＯＭＰに居る)である場合
+	SIF FINDCHARA_NO_C(LOCAL:4) > -1
+		LOCAL:6 = 1
+	
+	;一旦合体結果の악마をキャラ登録
+	IF FLAG:合体人数 == 2
+		CALL ADD_NEW_COMPANION,LOCAL:4,MAX(100 , (BASE:(소재:1):충성도 + BASE:(소재:2):충성도)/2), -1
+	ELSE
+		CALL ADD_NEW_COMPANION,LOCAL:4,MAX(100 , (BASE:(소재:1):충성도 + BASE:(소재:2):충성도 + BASE:(소재:3):충성도)/3), -1
+	ENDIF
+	;なんらかの理由でキャラ登録できない場合
+	IF RESULT == 0
+		PRINTW 캐릭터 등록이 불가능하므로 합체 처리를 중단합니다
+		REDRAW LREDRAW
+		LLOCK = 0
+		RETURN 0
+	ENDIF
+	;---- EDIT 006 ADD START -------------------------
+	;特殊合体時専用処理があれば呼び出し
+	TRYCALLFORM FUSION_SPECIAL_PROCESS_{LOCAL:4}, 完成品, 소재:1, 소재:2 , 소재:3
+	;---- EDIT 006 ADD END -------------------------
+	;스킬継承
+	;달인악마は스킬を継承できないように수정
+	IF !TALENT:完成品:달인
+		CALL SUCCESS_SKILL,完成品,소재:1,소재:2,소재:3,0
+		;사교의관なら更に소질のない스킬も継承
+		SIF FLAG:SHOPコマンド == [[SHOP:사교의관]]
+			CALL SUCCESS_SKILL,完成品,소재:1,소재:2,소재:3,1
+	ENDIF
+	;사교의관なら更に소질も継承
+	SIF FLAG:SHOPコマンド == [[SHOP:사교의관]]
+		CALL SUCCESS_TALENT,完成品,소재:1,소재:2,소재:3
+	;----------------------------------------
+	;ガチャモード時、強引に素質継承処理
+	;----------------------------------------
+	IF FLAG:악마가챠모드 > 0
+		TALENT:完成品:ガチャ = 1
+		SIF 소재:1 > -1
+			TALENT:完成品:ガチャ *= TALENT:(소재:1):ガチャ
+		SIF 소재:2 > -1
+			TALENT:完成品:ガチャ *= TALENT:(소재:1):ガチャ
+		SIF 소재:3 > -1
+			TALENT:完成品:ガチャ *= TALENT:(소재:1):ガチャ
+	ENDIF
+	;---- EDIT 011 ADD START ----------------------
+	;라지엘의서장비中なら一部素質や랭크アップ先を変化
+	SIF EQUIP:MASTER:라지엘의서 && EXTRACHECK_DEVIL_CHILDREN(NO:完成品)
+		CALL EXTRA_DEVIL_CHILDREN , 完成品
+	;---- EDIT 011 ADD END ------------------------
+	;스테이터스강화
+	CALL FUSION_ENHANCE_STATUS,完成品,소재:1,소재:2,소재:3
+	;조교効果による能力アップ
+	;BASE:(完成品):힘 +=   ((ABL:(소재:1):욕망+1) + (ABL:(소재:2):욕망+1))/4
+	;BASE:(完成品):지혜 += ((ABL:(소재:1):기교+1) + (ABL:(소재:2):기교+1))/4
+	;BASE:(完成品):마력 += ((ABL:(소재:1):욕망+1) + (ABL:(소재:2):욕망+1))/4
+	;BASE:(完成品):인내력 += ((ABL:(소재:1):순종+1) + (ABL:(소재:2):순종+1))/4
+	;BASE:(完成品):속도 += ((ABL:(소재:1):기교+1) + (ABL:(소재:2):기교+1))/4
+	;BASE:(完成品):운 +=   ((ABL:(소재:1):순종+1) + (ABL:(소재:2):순종+1))/4
+	;----- 변신する악마向けというか主に東方ＭＯＤ用 はじめ -----
+	IF TALENT:完成品:데빌시프터 || TALENT:完成品:식노
+		FOR PCOUNT, 1, FLAG:스킬数 + 1
+			ABL:完成品:@"인간시스킬{PCOUNT}" = ABL:完成品:@"스킬{PCOUNT}"
+		NEXT
+	ENDIF
+	;----- 변신する악마向けというか主に東方ＭＯＤ用 결론 -----
+	CALL SYNC_STATUS,完成品
+	
+	
+	;표시用に충성도を변경しておく
+	;BASE:(完成品):충성도 = MAX(100,(BASE:(소재:1):충성도+BASE:(소재:2):충성도)/2)
+	레벨부족合体 = 0
+	IF (BASE:(完成品):LV > BASE:MASTER:LV) && (EQUIP:MASTER:스티븐 == 0)
+		IF BASE:完成品:충성도 >= POWER(BASE:(完成品):LV - (BASE:MASTER:LV + FLAG:경험ED数) , 2)*500
+			레벨부족合体 = 1
+			BASE:完成品:충성도 -= POWER(BASE:(完成品):LV - (BASE:MASTER:LV + FLAG:경험ED数) , 2)*500
+		ELSE
+		ENDIF
+	ENDIF
+	
+	CUSTOMDRAWLINE =
+	;合体結果の스테이터스を표시
+	U = 完成品
+	;스테이터스표시
+	LOCAL:10 = 2
+	LLINE = LINECOUNT
+	$PRINT_STATUS
+	CLEARLINE LINECOUNT - LLINE
+	PRINTFORM %종족명(U)%　　
+	PRINTFORML %CALLNAME:U%　　
+	RESETCOLOR
+	FLAG:二身合体표시 = 1
+	CALLFORM SHOW_INFO_PAGE_{LOCAL:10}
+	IF LOCAL:10 == 2
+		IF GETBIT(FLAG:스테이터스화면타입,1)
+			PRINTFORM 소지스킬(합체 후:%CALLNAME:(完成品)%)
+				FOR PCOUNT,1,21
+					IF ABL:(完成品):@"습득스킬{PCOUNT}" > 0
+						IF PCOUNT:1 == 0
+							PCOUNT:1 = PCOUNT
+						ELSE
+							SIF ABL:(完成品):@"습득LV{PCOUNT:1}" > ABL:(完成品):@"습득LV{PCOUNT}"
+								PCOUNT:1 = PCOUNT
+						ENDIF
+					ENDIF
+				NEXT
+				IF PCOUNT:1 > 0
+					IF ABL:(完成品):@"습득LV{PCOUNT:1}" > (BASE:(完成品):LV)+5
+						SETCOLOR 0x666666
+						PRINTFORML    NEXT[????????]  습득LV {ABL:(完成品):@"습득LV{PCOUNT:1}"}
+						RESETCOLOR
+					ELSE
+						CALLFORM SKILL_NAME_{ABL:(完成品):@"습득스킬{PCOUNT:1}"},完成品
+						SETCOLOR 0x666666
+						PRINTFORML    NEXT[%RESULTS%]  습득LV {ABL:(完成品):@"습득LV{PCOUNT:1}"}
+						RESETCOLOR
+					ENDIF
+				ELSE
+					PRINTL
+				ENDIF
+			FOR PCOUNT,1,FLAG:스킬数+1
+				IF ABL:(完成品):@"스킬{PCOUNT}"
+					PRINTFORM 　[{PCOUNT,2}]
+					SKILLCOLOR = 0
+					SIF GROUPMATCH(ABL:(完成品):@"스킬{PCOUNT}", ABL:(소재:1):스킬1, ABL:(소재:1):스킬2, ABL:(소재:1):스킬3, ABL:(소재:1):스킬4, ABL:(소재:1):스킬5, ABL:(소재:1):스킬6, ABL:(소재:1):스킬7, ABL:(소재:1):스킬8)
+						SKILLCOLOR |= 1
+					SIF GROUPMATCH(ABL:(完成品):@"스킬{PCOUNT}", ABL:(소재:2):스킬1, ABL:(소재:2):스킬2, ABL:(소재:2):스킬3, ABL:(소재:2):스킬4, ABL:(소재:2):스킬5, ABL:(소재:2):스킬6, ABL:(소재:2):스킬7, ABL:(소재:2):스킬8)
+						SKILLCOLOR |= 2
+					SIF 소재:3 > 0 && GROUPMATCH(ABL:(完成品):@"스킬{PCOUNT}", ABL:(소재:3):스킬1, ABL:(소재:3):스킬2, ABL:(소재:3):스킬3, ABL:(소재:3):스킬4, ABL:(소재:3):스킬5, ABL:(소재:3):스킬6, ABL:(소재:3):스킬7, ABL:(소재:3):스킬8)
+						SKILLCOLOR |= 2
+					IF SKILLCOLOR == 3
+						SETCOLOR 0xff69b4
+					ELSEIF SKILLCOLOR == 2
+						SETCOLOR 0x00ff00
+					ELSEIF SKILLCOLOR == 1
+						SETCOLOR COLOR("aqua")
+					ENDIF
+					SIF GROUPMATCH(ABL:(完成品):@"스킬{PCOUNT}", CSVABL(NO:(完成品), GETNUM(ABL, "스킬1"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "스킬2"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "스킬3"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "스킬4"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "스킬5"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "스킬6"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "스킬7"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "스킬8"), 0))
+						RESETCOLOR
+					CALLFORM SKILL_NAME_{ABL:(完成品):@"스킬{PCOUNT}"},完成品
+					IF GETBIT(FLAG:カスタムゲーム화면,1)
+						PRINTFORM %RESULTS,38,LEFT%
+					ELSE
+						PRINTFORM %RESULTS,20,LEFT%
+					ENDIF
+				ENDIF
+				RESETCOLOR
+				IF GETBIT(FLAG:カスタムゲーム화면,1)
+					SIF PCOUNT  == 3 || PCOUNT  == 6 || PCOUNT  == 8
+						PRINTL
+				ELSE
+					SIF PCOUNT % 4 == 0
+						PRINTL
+			ENDIF
+			NEXT
+			PCOUNT:1 = 0
+			IF GETBIT(FLAG:カスタムゲーム화면,1) == 0
+				FOR PCOUNT,1,21
+					IF ABL:(完成品):@"습득스킬{PCOUNT}" > 0
+						IF PCOUNT:1 == 0
+							PCOUNT:1 = PCOUNT
+						ELSE
+							SIF ABL:(完成品):@"습득LV{PCOUNT:1}" > ABL:(完成品):@"습득LV{PCOUNT}"
+								PCOUNT:1 = PCOUNT
+						ENDIF
+					ENDIF
+				NEXT
+				IF PCOUNT:1 > 0
+					IF ABL:(完成品):@"습득LV{PCOUNT:1}" > (BASE:(完成品):LV)+5
+						SETCOLOR 0x666666
+						PRINTFORML    NEXT[????????]  습득LV {ABL:(完成品):@"습득LV{PCOUNT:1}"}
+						RESETCOLOR
+					ELSE
+						CALLFORM SKILL_NAME_{ABL:(完成品):@"습득스킬{PCOUNT:1}"},完成品
+						SETCOLOR 0x666666
+						PRINTFORML    NEXT[%RESULTS%]  습득LV {ABL:(完成品):@"습득LV{PCOUNT:1}"}
+						RESETCOLOR
+					ENDIF
+				ENDIF
+			ENDIF
+			DRAWLINE
+		ENDIF
+		PRINTFORML 소지 스킬(첫번째:%CALLNAME:(소재:1)%)
+		FOR PCOUNT,1,FLAG:스킬数+1
+			IF ABL:(소재:1):@"스킬{PCOUNT}"
+				PRINTFORM 　[{PCOUNT+10,2}]
+				SKILLCOLOR = 0
+				SIF GROUPMATCH(ABL:(소재:1):@"스킬{PCOUNT}", ABL:(完成品):스킬1, ABL:(完成品):스킬2, ABL:(完成品):스킬3, ABL:(完成品):스킬4, ABL:(完成品):스킬5, ABL:(完成品):스킬6, ABL:(完成品):스킬7, ABL:(完成品):스킬8)
+					SKILLCOLOR |= 1
+				SIF GROUPMATCH(ABL:(소재:1):@"스킬{PCOUNT}", ABL:(소재:2):스킬1, ABL:(소재:2):스킬2, ABL:(소재:2):스킬3, ABL:(소재:2):스킬4, ABL:(소재:2):스킬5, ABL:(소재:2):스킬6, ABL:(소재:2):스킬7, ABL:(소재:2):스킬8)
+					SKILLCOLOR |= 2
+				SIF 소재:3 > 0 && GROUPMATCH(ABL:(소재:1):@"스킬{PCOUNT}", ABL:(소재:3):스킬1, ABL:(소재:3):스킬2, ABL:(소재:3):스킬3, ABL:(소재:3):스킬4, ABL:(소재:3):스킬5, ABL:(소재:3):스킬6, ABL:(소재:3):스킬7, ABL:(소재:3):스킬8)
+					SKILLCOLOR |= 2
+				IF SKILLCOLOR == 3
+					SETCOLOR 0xff69b4
+				ELSEIF SKILLCOLOR == 1
+					SETCOLOR COLOR("aqua")
+				ELSE
+					SETCOLOR COLOR("gray")
+				ENDIF
+				SIF GROUPMATCH(ABL:(소재:1):@"스킬{PCOUNT}", CSVABL(NO:(完成品), GETNUM(ABL, "스킬1"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "스킬2"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "스킬3"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "스킬4"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "스킬5"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "스킬6"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "스킬7"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "스킬8"), 0))
+					RESETCOLOR
+				CALLFORM SKILL_NAME_{ABL:(소재:1):@"스킬{PCOUNT}"},소재:1
+				IF GETBIT(FLAG:カスタムゲーム화면,1)
+					PRINTFORM %RESULTS,38,LEFT%
+				ELSE
+					PRINTFORM %RESULTS,20,LEFT%
+				ENDIF
+			ENDIF
+			RESETCOLOR
+			IF GETBIT(FLAG:カスタムゲーム화면,1)
+				SIF PCOUNT  == 3 || PCOUNT  == 6 || PCOUNT  == 8
+					PRINTL
+			ELSE
+				SIF PCOUNT % 4 == 0
+					PRINTL
+			ENDIF
+		NEXT
+		SIF GETBIT(FLAG:カスタムゲーム화면,1) == 0
+			DRAWLINE
+		PRINTFORML 소지 스킬(두번째:%CALLNAME:(소재:2)%)
+		FOR PCOUNT,1,FLAG:스킬数+1
+			IF ABL:(소재:2):@"스킬{PCOUNT}"
+				PRINTFORM 　[{PCOUNT+20,2}]
+				SKILLCOLOR = 0
+				SIF GROUPMATCH(ABL:(소재:2):@"스킬{PCOUNT}", ABL:(完成品):스킬1, ABL:(完成品):스킬2, ABL:(完成品):스킬3, ABL:(完成品):스킬4, ABL:(完成品):스킬5, ABL:(完成品):스킬6, ABL:(完成品):스킬7, ABL:(完成品):스킬8)
+					SKILLCOLOR |= 1
+				SIF GROUPMATCH(ABL:(소재:2):@"스킬{PCOUNT}", ABL:(소재:1):스킬1, ABL:(소재:1):스킬2, ABL:(소재:1):스킬3, ABL:(소재:1):스킬4, ABL:(소재:1):스킬5, ABL:(소재:1):스킬6, ABL:(소재:1):스킬7, ABL:(소재:1):스킬8)
+					SKILLCOLOR |= 2
+				SIF 소재:3 > 0 && GROUPMATCH(ABL:(소재:2):@"스킬{PCOUNT}", ABL:(소재:3):스킬1, ABL:(소재:3):스킬2, ABL:(소재:3):스킬3, ABL:(소재:3):스킬4, ABL:(소재:3):스킬5, ABL:(소재:3):스킬6, ABL:(소재:3):스킬7, ABL:(소재:3):스킬8)
+					SKILLCOLOR |= 2
+				IF SKILLCOLOR == 3
+					SETCOLOR 0xff69b4
+				ELSEIF SKILLCOLOR == 1
+					SETCOLOR 0x00ff00
+				ELSE
+					SETCOLOR COLOR("gray")
+				ENDIF
+				SIF GROUPMATCH(ABL:(소재:2):@"스킬{PCOUNT}", CSVABL(NO:(完成品), GETNUM(ABL, "스킬1"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "스킬2"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "스킬3"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "스킬4"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "스킬5"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "스킬6"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "스킬7"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "스킬8"), 0))
+					RESETCOLOR
+				CALLFORM SKILL_NAME_{ABL:(소재:2):@"스킬{PCOUNT}"},소재:2
+				IF GETBIT(FLAG:カスタムゲーム화면,1)
+					PRINTFORM %RESULTS,38,LEFT%
+				ELSE
+					PRINTFORM %RESULTS,20,LEFT%
+				ENDIF
+			ENDIF
+			RESETCOLOR
+			IF GETBIT(FLAG:カスタムゲーム화면,1)
+				SIF PCOUNT  == 3 || PCOUNT  == 6 || PCOUNT  == 8
+					PRINTL
+			ELSE
+				SIF PCOUNT % 4 == 0
+					PRINTL
+			ENDIF
+		NEXT
+		IF 소재:3 > 0
+			SIF GETBIT(FLAG:カスタムゲーム화면,1) == 0
+				DRAWLINE
+			PRINTFORML 소지 스킬(세번째:%CALLNAME:(소재:3)%)
+			FOR PCOUNT,1,FLAG:스킬数+1
+				IF ABL:(소재:3):@"스킬{PCOUNT}"
+					PRINTFORM 　[{PCOUNT+30,2}]
+					SKILLCOLOR = 0
+					SIF GROUPMATCH(ABL:(소재:3):@"스킬{PCOUNT}", ABL:(完成品):스킬1, ABL:(完成品):스킬2, ABL:(完成品):스킬3, ABL:(完成品):스킬4, ABL:(完成品):스킬5, ABL:(完成品):스킬6, ABL:(完成品):스킬7, ABL:(完成品):스킬8)
+						SKILLCOLOR |= 1
+					SIF GROUPMATCH(ABL:(소재:3):@"스킬{PCOUNT}", ABL:(소재:1):스킬1, ABL:(소재:1):스킬2, ABL:(소재:1):스킬3, ABL:(소재:1):스킬4, ABL:(소재:1):스킬5, ABL:(소재:1):스킬6, ABL:(소재:1):스킬7, ABL:(소재:1):스킬8)
+						SKILLCOLOR |= 2
+					SIF 소재:3 > 0 && GROUPMATCH(ABL:(소재:3):@"스킬{PCOUNT}", ABL:(소재:2):스킬1, ABL:(소재:2):스킬2, ABL:(소재:2):스킬3, ABL:(소재:2):스킬4, ABL:(소재:2):스킬5, ABL:(소재:2):스킬6, ABL:(소재:2):스킬7, ABL:(소재:2):스킬8)
+						SKILLCOLOR |= 2
+					IF SKILLCOLOR == 3
+						SETCOLOR 0xff69b4
+					ELSEIF SKILLCOLOR == 1
+						SETCOLOR 0x00ff00
+					ELSE
+						SETCOLOR COLOR("gray")
+					ENDIF
+					SIF GROUPMATCH(ABL:(소재:3):@"스킬{PCOUNT}", CSVABL(NO:(完成品), GETNUM(ABL, "스킬1"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "스킬2"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "스킬3"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "스킬4"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "스킬5"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "스킬6"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "스킬7"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "스킬8"), 0))
+						RESETCOLOR
+					CALLFORM SKILL_NAME_{ABL:(소재:3):@"스킬{PCOUNT}"},소재:2
+					IF GETBIT(FLAG:カスタムゲーム화면,1)
+						PRINTFORM %RESULTS,38,LEFT%
+					ELSE
+						PRINTFORM %RESULTS,20,LEFT%
+					ENDIF
+				ENDIF
+				RESETCOLOR
+				IF GETBIT(FLAG:カスタムゲーム화면,1)
+					SIF PCOUNT  == 3 || PCOUNT  == 6 || PCOUNT  == 8
+						PRINTL
+				ELSE
+					SIF PCOUNT % 4 == 0
+						PRINTL
+				ENDIF
+			NEXT
+		ENDIF
+	ENDIF
+	FLAG:二身合体표시 = 0
+	PRINTFORM %"\n" * MAX(0, (ARG == 3 ? 41 # 37) - LINECOUNT + LLINE)%
+	IF GETBIT(FLAG:스테이터스화면타입,1)
+		CLEARLINE 1
+	ELSE
+		CLEARLINE 4
+	ENDIF
+	CUSTOMDRAWLINE =
+	IF LOCAL:9 == 1
+		IF FLAG:SHOPコマンド != [[SHOP:사교의관]]
+			PRINTW 유감스럽지만 이 악마는 2체 이상 동료마로 삼을 수 없다
+		ELSE
+			PRINTW ２체 이상 동료마로 삼을 수 없는 악마입니다
+		ENDIF
+		DELCHARA 完成品
+		
+		RESTART
+		
+	ENDIF
+	
+	IF LOCAL:6 == 1 && FLAG:SHOPコマンド != [[SHOP:사교의관]]
+		PRINTW ＣＯＭＰ 안에 동일한 악마가 있는 것 같다
+		DELCHARA 完成品
+		RESTART
+		
+	ENDIF
+	;合体結果の악마の레벨>主人の레벨だった場合駄눈
+	;스티븐
+	IF (BASE:(完成品):LV > BASE:MASTER:LV + FLAG:경험ED数) && (EQUIP:MASTER:스티븐 == 0) && 레벨부족合体 == 0
+		IF FLAG:SHOPコマンド != [[SHOP:탐색]]
+			PRINTW 유감스럽지만…… 네 레벨로는 다룰 수 없다
+		ELSE
+			PRINTW 레벨이 부족합니다
+		ENDIF
+		DELCHARA 完成品
+		RESTART
+	ENDIF
+	
+	;스테이터스の표시변경用
+	PRINTFORMLC \@ LOCAL:10 == 2 ? [1007]이전 페이지 # %" " * 16% \@
+	PRINTFORMLC \@ U != 完成品 && FLAG:合体人数 == 3 && PRINTCPERLINE() < 4 ? [1012]합체 후 악마 # %" " * 18% \@
+	PRINTFORMLC \@ LOCAL:10 == 1 ? [1009]다음 페이지 # %" " * 16% \@
+	PRINTL 
+	PRINTFORMLC \@ U != 소재:1 ? [1010]첫번째 악마 # %" " * 18% \@
+	PRINTFORMLC \@ U != 소재:2 ? [1011]두번째 악마 # %" " * 18% \@
+	SIF FLAG:合体人数 == 3
+		PRINTFORMLC \@ U != 소재:3 ? [1013]세번째 악마 # %" " * 18% \@
+	SIF FLAG:合体人数 != 3 || PRINTCPERLINE() > 3
+		PRINTFORMLC \@ U != 完成品 ? [1012]합체 후 악마 # %" " * 18% \@
+	PRINTL
+	
+	;合体するかどうか　→　合体実行（実際には既に終わっている）
+	IF 레벨부족合体
+		PRINTL 레벨이 부족하지만 충성도를 소비해서 작성하겠습니까? [0]Yes [9]No
+	ELSE
+		PRINTL 이 악마면 되겠습니까? [0]Yes [9]No
+	ENDIF
+	$INPUT_LOOP
+	INPUT
+	IF RESULT == 1007 && LOCAL:10 == 2
+		LOCAL:10 = 1
+		GOTO PRINT_STATUS
+	ELSEIF RESULT == 1009 && LOCAL:10 == 1
+		LOCAL:10 = 2
+		GOTO PRINT_STATUS
+	ELSEIF RESULT == 1010 && U != 소재:1
+		U = 소재:1
+		GOTO PRINT_STATUS
+	ELSEIF RESULT == 1011 && U != 소재:2
+		U = 소재:2
+		GOTO PRINT_STATUS
+	ELSEIF RESULT == 1013 && U != 소재:3 && 소재:3 > 0
+		U = 소재:3
+		GOTO PRINT_STATUS
+	ELSEIF RESULT == 1012 && U != 完成品
+		U = 完成品
+		GOTO PRINT_STATUS
+	ELSEIF RESULT <= 8 && RESULT > 0
+		IF ABL:(完成品):@"스킬{RESULT}" > 0
+			SIF FLAG:스킬속성표시설정 == 1
+				CALL SKILL_EXPLAIN_PERFORMANCE, ABL:完成品:@"스킬{RESULT}", 完成品
+			TRYCALLFORM SKILL_EXPLAIN_{ABL:完成品:@"스킬{RESULT}"}
+			WAIT
+			GOTO PRINT_STATUS
+		ELSE
+			GOTO INPUT_LOOP
+		ENDIF
+	ELSEIF RESULT <= 18 && RESULT > 10
+		IF ABL:(소재:1):@"스킬{(RESULT-10)}" > 0
+			SIF FLAG:스킬속성표시설정 == 1
+				CALL SKILL_EXPLAIN_PERFORMANCE, ABL:(소재:1):@"스킬{RESULT - 10}", 소재:1
+			TRYCALLFORM SKILL_EXPLAIN_{ABL:(소재:1):@"스킬{(RESULT - 10)}"}
+			WAIT
+			GOTO PRINT_STATUS
+		ELSE
+			GOTO INPUT_LOOP
+		ENDIF
+	ELSEIF RESULT <= 28 && RESULT > 20
+		IF ABL:(소재:2):@"스킬{RESULT-20}" > 0
+			SIF FLAG:스킬속성표시설정 == 1
+				CALL SKILL_EXPLAIN_PERFORMANCE, ABL:(소재:2):@"스킬{RESULT - 20}", 소재:2
+			TRYCALLFORM SKILL_EXPLAIN_{ABL:(소재:2):@"스킬{(RESULT - 20)}"}
+			WAIT
+			GOTO PRINT_STATUS
+		ELSE
+			GOTO INPUT_LOOP
+		ENDIF
+	ELSEIF RESULT <= 38 && RESULT > 30 && 소재:3 > 0
+		IF ABL:(소재:3):@"스킬{RESULT-30}" > 0
+			SIF FLAG:스킬속성표시설정 == 1
+				CALL SKILL_EXPLAIN_PERFORMANCE, ABL:(소재:3):@"스킬{RESULT - 30}", 소재:3
+			TRYCALLFORM SKILL_EXPLAIN_{ABL:(소재:3):@"스킬{(RESULT - 30)}"}
+			WAIT
+			GOTO PRINT_STATUS
+		ELSE
+			GOTO INPUT_LOOP
+		ENDIF
+	ELSEIF RESULT == 9
+		DELCHARA 完成品
+		RESTART
+	ELSEIF RESULT == 0
+	ELSE
+		GOTO INPUT_LOOP
+	ENDIF
+	
+	;作成時のセリフを표시
+	IF FLAG:SHOPコマンド == [[SHOP:탐색]]
+		; 合体事故発生체크
+		IF FUSION_ACCIDENT_CHECK(1)
+			CALL FUSION_ACCIDENT,完成品,소재:1,소재:2,소재:3
+			PRINTFORMW 합체 사고가 발생
+			PRINTFORMW 예정과는 다른 악마 \@CSTR:(完成品):종족명 != "" ? %CSTR:(完成品):종족명% # %STR:(ABL:(完成品):종족)% \@ %조사처리(CALLNAME:完成品,"가")% 작성되고 말았습니다
+		ELSE
+			PRINTFORML 새로운 소환 프로그램을 작성
+			PRINTFORMW \@CSTR:(完成品):종족명 != "" ? %CSTR:(完成品):종족명% # %STR:(ABL:(完成品):종족)% \@ %조사처리(CALLNAME:完成品,"가")% 소환 가능해졌습니다
+		ENDIF
+	ELSE
+		; 合体事故発生체크
+		IF FUSION_ACCIDENT_CHECK(0)
+			CALL FUSION_ACCIDENT,完成品,소재:1,소재:2,소재:3
+			PRINTFORMW 합체 사고가 발생
+			PRINTFORMW 예정과는 다른 악마 \@CSTR:(完成品):종족명 != "" ? %CSTR:(完成品):종족명% # %STR:(ABL:(完成品):종족)% \@ %조사처리(CALLNAME:完成品,"가")% 작성되고 말았습니다
+		ELSE
+		ENDIF
+		TRYCCALLFORM FUSION_MESSAGE_K{NO:(完成品)},完成品
+		CATCH
+			TRYCALLFORM FUSION_MESSAGE_PUB{ABL:(完成品):회화타입},完成品
+		ENDCATCH
+	ENDIF
+	IF FLAG:SHOPコマンド == [[SHOP:사교의관]]
+		LOCAL:8 = 소재:1
+		;충성도の高い方の손紙を選択
+		SIF BASE:(LOCAL:8):충성도 < BASE:(소재:2):충성도
+			LOCAL:8 = 소재:2
+		SIF 소재:3 > -1 && BASE:(LOCAL:8):충성도 < BASE:(소재:3):충성도
+			LOCAL:8 = 소재:3
+		CALL FUSION_LETTER,LOCAL:8,0
+	ENDIF
+	;ここに충성도による소질変化とか予定
+	;프라이데이
+	;CALL MAKE_TALENT,完成品,(BASE:(소재:1):충성도+BASE:(소재:2):충성도)/10
+	;BASE:(完成品):충성도 = MIN((BASE:(소재:1):충성도+BASE:(소재:2):충성도) / 2 , (RESULT*10 + (BASE:(소재:1):충성도+BASE:(소재:2):충성도)%10)/2)
+	SIF EQUIP:MASTER:프라이데이 == 1 && BASE:(完成品):충성도 < 1000
+		BASE:(完成品):충성도 = 1000
+	
+	;LOCAL:7 ABL인계레벨
+	LOCAL:7 = ABL인계체크(소재:1,소재:2,소재:3)
+	IF BASE:(完成品):충성도 >= 200 && LOCAL:7 >= 1
+		PRINTL 충성도를 소비해 조교에 관련된 능력을 계승할 수 있습니다
+		
+		PRINTL [0] 계승하지 않는다
+		LOCAL:7 = ABL인계체크(소재:1,소재:2,소재:3)
+		SIF BASE:(完成品):충성도 >= 200 && LOCAL:7 >= 1
+			PRINTL [1] LV1까지 계승  -  소비충성도 200
+		SIF BASE:(完成品):충성도 >= 500 && LOCAL:7 >= 2
+			PRINTL [2] LV2까지 계승  -  소비충성도 500
+		SIF BASE:(完成品):충성도 >= 1000 && LOCAL:7 >= 3
+			PRINTL [3] LV3까지 계승  -  소비충성도 1000
+		SIF BASE:(完成品):충성도 >= 3000 && LOCAL:7 >= 4
+			PRINTL [4] LV4까지 계승  -  소비충성도 3000
+		SIF BASE:(完成品):충성도 >= 5000 && LOCAL:7 >= 5
+			PRINTL [5] LV5까지 계승  -  소비충성도 5000
+		
+		$INPUT_LOOP_ABL
+		INPUT
+		IF RESULT == 0
+			LOCAL:7 = 0
+		ELSEIF RESULT == 1 && BASE:(完成品):충성도 >= 200
+			LOCAL:7 = 1
+			BASE:(完成品):충성도 -= 200
+		ELSEIF RESULT == 2 && BASE:(完成品):충성도 >= 500
+			LOCAL:7 = 2
+			BASE:(完成品):충성도 -= 500
+		ELSEIF RESULT == 3 && BASE:(完成品):충성도 >= 1000
+			LOCAL:7 = 3
+			BASE:(完成品):충성도 -= 1000
+		ELSEIF RESULT == 4 && BASE:(完成品):충성도 >= 3000
+			LOCAL:7 = 4
+			BASE:(完成品):충성도 -= 3000
+		ELSEIF RESULT == 5 && BASE:(完成品):충성도 >= 5000
+			LOCAL:7 = 5
+			BASE:(完成品):충성도 -= 5000
+		ELSE
+			GOTO INPUT_LOOP_ABL
+		ENDIF
+		;조교効果の引き継ぎ
+		IF 소재:3 > 0
+			FOR LOCAL,0,26
+				ABL:(完成品):LOCAL = MAX(MIN(LOCAL:7 , MAX(ABL:(소재:1):LOCAL , ABL:(소재:2):LOCAL , ABL:(소재:3):LOCAL)) , ABL:(完成品):LOCAL)
+			NEXT
+		ELSE
+			FOR LOCAL,0,26
+				ABL:(完成品):LOCAL = MAX(MIN(LOCAL:7 , MAX(ABL:(소재:1):LOCAL , ABL:(소재:2):LOCAL)) , ABL:(完成品):LOCAL)
+			NEXT
+		ENDIF
+	ENDIF
+	MAXBASE:(完成品):충성도 = BASE:(完成品):충성도
+
+	PRINTFORMW %종족명(完成品)% %CALLNAME:(完成品)%이(가) 동료가 되었다。
+	
+	;악마解析度が100미만なら100に。
+	SIF FLAG:(20000+NO:(完成品)) < 100
+		FLAG:(20000+NO:(完成品)) = 100
+	;해피버스데이の능력저하はここでやる
+	IF EQUIP:MASTER:해피버스데이 && NUM_SUMMONER()
+		LOCAL:7 = BASE:(完成品):LV
+		BASE:(完成品):LV = 1
+		BASE:(完成品):ＥＸＰ = 0
+		BASE:(完成品):ＭＡＧ = 0
+		FOR LCOUNT, 0, 6
+			BASE:(完成品):GET_BASESTATUS(LCOUNT + 1) = 3
+		NEXT
+	ENDIF
+	CALL SYNC_STATUS,完成品
+	CALL HEALTH_CHARA,完成品
+
+	CALL CHECK_LEVEL_UP,完成品
+	;ＭＡＧ継承
+;	CALL CONTROL_MAG,完成品,((BASE:(소재:1):ＭＡＧ + BASE:(소재:2):ＭＡＧ) + CFLAG:(소재:1):강화사용ＭＡＧ + CFLAG:(소재:2):강화사용ＭＡＧ)
+	CALL CONTROL_MAG,完成品,((BASE:(소재:1):ＭＡＧ) + CFLAG:(소재:1):강화사용ＭＡＧ) + ((BASE:(소재:2):ＭＡＧ) + CFLAG:(소재:2):강화사용ＭＡＧ)
+	SIF 소재:3 > 0
+		CALL CONTROL_MAG,完成品, ((BASE:(소재:3):ＭＡＧ) + CFLAG:(소재:3):강화사용ＭＡＧ)
+	SIF BASE:(完成品):ＭＡＧ > MAXBASE:(完成品):ＭＡＧ
+		BASE:(完成品):ＭＡＧ = MAXBASE:(完成品):ＭＡＧ
+	;合体소재の악마を소거
+	;---- EDIT 018 MOD START -------------------------
+	;악마召喚ライトなら전투中、포지션占領してる악마を外す。ついでに完成品の입력行動をリセット。
+	IF Z == 2
+		IF CFLAG:(소재:1):포지션 > 0
+			CALL REMOVE_POSITION, CPOS(소재:1)
+		ELSEIF CFLAG:(소재:2):포지션 > 0
+			CALL REMOVE_POSITION, CPOS(소재:2)
+		ENDIF
+	ENDIF
+	CFLAG:(完成品):입력行動 = -1
+	;---- EDIT 018 MOD END -------------------------
+	;소재にした악마が瀕死だと主人がDARKに傾く
+	SIF GET_STATE(CFLAG:(소재:1):ステート) == "DYING"
+		CALL INCREASE_LD,-7
+	SIF GET_STATE(CFLAG:(소재:2):ステート) == "DYING"
+		CALL INCREASE_LD,-7
+	SIF 소재:3 > 0 && GET_STATE(CFLAG:(소재:3):ステート) == "DYING"
+		CALL INCREASE_LD,-7
+	;소재にした악마の반발각인によってDARKに傾く
+	CALL INCREASE_LD,-3*(MARK:(소재:1):반발각인 + MARK:(소재:2):반발각인)
+	SIF 소재:3 > 0
+		CALL INCREASE_LD,-3*(MARK:(소재:3):반발각인)
+	IF 소재:3 > 0
+		FOR LOCAL, CHARANUM-1 , 0 , -1
+			SIF MATCH(소재 , LOCAL)
+				CALL キャラ삭제, LOCAL
+		NEXT
+	ELSE
+		CALL キャラ삭제, MAX(소재:1,소재:2)
+		CALL キャラ삭제, MIN(소재:1,소재:2)
+	ENDIF
+;---- EDIT 020 MOD START -------------------------
+	SIF ＣＯＭＰ空き容量() < 0 || LOCAL:6 || ABL:(完成品 - FLAG:合体人数):종족 < 1 || ABL:(完成品 - FLAG:合体人数):종족 > 45 || CFLAG:(完成品 - FLAG:合体人数):용량未사용
+		CFLAG:(完成品 - FLAG:合体人数):所属ＣＯＭＰ = -1
+;---- EDIT 020 MOD END ---------------------------
+	FLAG:合体予定악마1 = -1
+	FLAG:合体予定악마2 = -1
+	LLOCK = 0
+	REDRAW LREDRAW
+	;---- EDIT 018 MOD START -------------------------
+	;악마召喚ライトなら1を返してDUO횟수소비させにいく
+	IF Z >= 2
+		RETURN 1
+	ENDIF
+	;---- EDIT 018 MOD END -------------------------
+	RETURN 0
+;ELSE
+;	소재:1 = RESULT
+ENDIF
+
+GOTO START_FUSION
+
+@CASTING_FUSION_DOUBLE(ARG)
+SIF 계약(ARG) > 0
+	RETURN 0
+;SIF ABL:ARG:종족 == 0 || ABL:ARG:종족 > 44
+;	RETURN 0
+SIF (ABL:ARG:종족 == 0 && NO:ARG != 4552)|| NO:ARG == 4509
+	RETURN 0
+SIF ARG == FLAG:合体予定악마1 || ARG == FLAG:合体予定악마2
+	RETURN 0
+SIF CFLAG:ARG:노역フラグ == 3
+	RETURN 0
+SIF CFLAG:ARG:合体불가
+	RETURN 0
+SIF CFLAG:ARG:この場に居ないフラグ == 1
+	RETURN 0
+SIF FLAG:二身合体時男女표시 == 3 && !FLAG:악마가챠모드
+	FLAG:二身合体時男女표시 = 0
+SIF FLAG:二身合体時男女표시 == 1 && TALENT:ARG:남자
+	RETURN 0
+SIF FLAG:二身合体時男女표시 == 2 && !TALENT:ARG:남자
+	RETURN 0
+SIF FLAG:二身合体時男女표시 == 3 && !TALENT:ARG:ガチャ
+	RETURN 0
+IF FLAG:合体予定악마1 > -1 && FLAG:合体人数 == 2
+	;特殊合体が설정されている組み合わせは性別が違ってもおｋ
+	CALL FUSION_SPECIAL, FLAG:合体予定악마1 , ARG
+	SIF RESULT > 0
+		RETURN 1
+ELSEIF FLAG:合体予定악마2 > -1 && FLAG:合体人数 == 3
+	;特殊合体が설정されている組み合わせは性別が違ってもおｋ
+	CALL FUSION_SPECIAL, FLAG:合体予定악마1 , FLAG:合体予定악마2 , ARG
+	SIF RESULT > 0
+		RETURN 1
+ENDIF
+IF FLAG:合体予定악마1 > -1
+	;젠더프리の조건を추가
+	;それ以外は性別が同じ악마でないとダメ
+	SIF TALENT:(FLAG:合体予定악마1):남자 == TALENT:(ARG):남자 || EQUIP:MASTER:젠더프리 == 1
+		RETURN 1
+	;---- EDIT 006 ADD END   -------------------------
+	RETURN 0
+ENDIF
+RETURN 1
+
+@UP_PRINT_FUSION_DOUBLE
+PRINTFORML 합체시키고 싶은 악마를 선택하십시오　\@ A > リスト표시数() ? ＜page.{P + 1}/{A / リスト표시数() + 1}＞ # \@　%NAME:MASTER% LV:{BASE:MASTER:LV,3} \@ FLAG:경험ED数 > 0 ? + 경험ED数:{FLAG:경험ED数,3} # \@
+
+@DOWN_PRINT_FUSION_DOUBLE
+IF FLAG:合体予定악마1 > -1
+	PRINTL 
+	PRINTFORML １번째:%CALLNAME:(FLAG:合体予定악마1)%
+ENDIF
+SIF FLAG:合体予定악마2 > -1
+	PRINTFORML ２번째:%CALLNAME:(FLAG:合体予定악마2)%
+
+@MODECHANGE_FUSION_DOUBLE , ARG
+#DIM LCOUNT
+SELECTCASE ARG
+	CASE -1
+		LOCAL:11 = 0
+		FOR LCOUNT, 500, 600
+			IF ITEM:LCOUNT
+				IF SOFT_IS_FUSIONSOFT(LCOUNT, Z)
+					LOCAL:11 = 1
+					BREAK
+				ENDIF
+			ENDIF
+		NEXT
+		IF Z == 0
+			SIF LOCAL:11
+				;PRINTLC [1010]인스톨 소프트 변경
+				PRINTLC [1010]합체 소프트 변경
+		ELSE
+			SIF LOCAL:11
+				PRINTLC [1010]컨버터 변경
+		ENDIF
+		PRINTL 
+		SIF !FLAG:二身合体時男女표시
+			SETCOLOR COLOR("aqua")
+		PRINTLC [1011] 남녀전부
+		RESETCOLOR
+		SIF FLAG:二身合体時男女표시 == 1
+			SETCOLOR COLOR("aqua")
+		PRINTLC [1012] 여자만
+		RESETCOLOR
+		SIF FLAG:二身合体時男女표시 == 2
+			SETCOLOR COLOR("aqua")
+		PRINTLC [1013] 남자만
+		RESETCOLOR
+		;가챠모드時
+		IF FLAG:악마가챠모드 > 0
+			SIF FLAG:二身合体時男女표시 == 3
+				SETCOLOR COLOR("aqua")
+			PRINTLC [1014] 가챠산만
+			RESETCOLOR
+		ENDIF
+		
+		;SIF GETBIT(FLAG:合体用ソフトクイック설정, 6) == 1
+		;	CALL 合体用ソフトクイック설정_FUSION
+		;==合体用ソフトクイック설정 その１ =========================Start
+		PRINTL 
+		FOR LCOUNT, 500, 600
+			IF SOFT_IS_FUSIONSOFT(LCOUNT, Z) && FSQS_BIT(LCOUNT)
+				SETCOLOR EQUIP:MASTER:(ITEMNAME:LCOUNT) ? GETCOLOR() # COLOR("gray")
+				PRINTFORMLC [{1000 + LCOUNT}] %ITEMNAME:LCOUNT%
+				RESETCOLOR
+			ENDIF
+		NEXT
+		;===========================================================End
+	CASE 1010 TO 1013
+		RETURN ARG, 0
+	CASE 1014
+		SIF FLAG:악마가챠모드 > 0
+			RETURN ARG, 0
+ENDSELECT
+RETURN ARG , 1
+
+;=====================================================
+;스킬継承
+;=====================================================
+@SUCCESS_SKILL,ARG,ARG:1,ARG:2,ARG:3 = -1,ARG:4 = 0
+#DIM CHARA , 1
+#DIM 카운트 , 1
+#DIM SKILL
+;ARG = 合体後악마
+;ARG:1 = 合体前악마Ａ
+;ARG:2 = 同Ｂ
+;ARG:3 = 同Ｃ
+;ARG:4 = 真の時、사교의관での合体扱いとなる
+;LOCAL = 継承스킬(仮)
+;LOCAL:1 = 優先度
+;LOCAL:3 = LOCALの스킬の優先度（保存用）
+;LOCALS:1 = 継承する스킬枠
+
+;ARGの空いている스킬枠を参照する
+;空いていなければRETURN 0
+FOR LOCAL:2,1,FLAG:스킬数+1
+	LOCALS = 스킬{LOCAL:2}
+	IF ABL:ARG:LOCALS == 0
+		LOCALS:1 = %LOCALS%
+		BREAK
+	ENDIF
+	SIF LOCAL:2 == FLAG:스킬数
+		RETURN 0
+NEXT
+
+;ARG:1とARG:2の스킬の中から継承可能かつ持っていない스킬をピックアップ。
+;見つけた場合、LOCALに放り込む。
+;LOCALが埋まっている場合は、優先度がより高ければLOCALに上書き。
+
+LOCAL = 0
+
+FOR 카운트 , 1 , (ARG:3 > -1 ? 4 # 3)
+	CHARA = ARG:카운트
+	FOR LOCAL:2,1,FLAG:스킬数+1
+		SKILL = ABL:(CHARA):@"스킬{LOCAL:2}"
+		;未修得なら次へ
+		SIF SKILL == 0
+			CONTINUE
+		TRYCCALLFORM 継承不能_{SKILL}
+			SIF RESULT
+				CONTINUE
+		CATCH
+		ENDCATCH
+		;조건無視스킬は판정しない
+		TRYCCALLFORM 継承条件無視_{SKILL}
+		CATCH
+			;계승타입読み込み、ARGが継承できる타입でなければ次へ
+			CALLFORM SKILL_SUCCESSION_TYPE_{SKILL}
+			;SIF TALENT:ARG:(320+RESULT) == 0 || RESULT == 22
+			;一般の範囲外の스킬を弾く・사교의관でないときは자동효과と계승타입を持っている스킬のみを引き継ぐ
+			SIF !RANGE(RESULT, 0, 22) || (TALENT:ARG:GET_SUCCESSION(RESULT) == 0 && RESULT != 22 && ARG:4 == 0)
+				CONTINUE
+		ENDCATCH
+		;継承필요部位読み込み、사교의관でなくARGが持ってなければ次へ
+		CALLFORM 継承部位_{SKILL},ARG
+		SIF RESULT == 0 && ARG:4 == 0
+			CONTINUE
+		;既に습득している스킬かつ、重複습득数（通常１）以上になるならば次へ
+		IF CHECK_SKILL(ARG,SKILL)
+			TRYCCALLFORM 重複習得数_{SKILL}
+				SIF HAVE_SKILL_OVERLAP(ARG,SKILL) + 1 > RESULT
+					CONTINUE
+			CATCH
+				CONTINUE
+			ENDCATCH
+		ENDIF
+		
+		IF LOCAL == 0
+			LOCAL = SKILL
+			TRYCCALLFORM SKILL_RANK_{SKILL}
+				LOCAL:3 = RESULT
+			CATCH
+				LOCAL:3 = 0
+			ENDCATCH
+		ENDIF
+		
+		TRYCCALLFORM SKILL_RANK_{SKILL}
+			LOCAL:1 = RESULT
+		CATCH
+			LOCAL:1 = 0
+		ENDCATCH
+		
+		IF LOCAL:1 > LOCAL:3
+			LOCAL = SKILL
+			LOCAL:3 = LOCAL:1
+		ENDIF
+	NEXT
+NEXT
+
+
+;この時点でLOCALが0＝継承できる스킬が無いのでRETURN
+SIF LOCAL == 0
+	RETURN 0
+
+;全部捜査したらLOCAL:1の스킬枠に습득させる。
+ABL:ARG:(LOCALS:1) = LOCAL
+
+RESTART
+
+;========================================
+;合体時の능력강화処理
+;========================================
+@FUSION_ENHANCE_STATUS,ARG,ARG:1,ARG:2,ARG:3 = -1
+#DIM CHARA , 1
+#DIM 경험치 , 3
+#DIM 카운트 , 1
+VARSET 경험치
+
+
+FOR 카운트 , 0 , (ARG:3 > -1 ? 3 # 2)
+	CHARA = ARG:(카운트+1)
+	LOCAL = CFLAG:CHARA:초기LV
+	LOCAL:1 = BASE:CHARA:ＥＸＰ - LOCAL * (LOCAL-1) * (LOCAL +1) * 5 / 3
+	SIF BASE:ARG:LV > LOCAL
+		LOCAL:1 /= ((BASE:ARG:LV - LOCAL)/4+1)
+	SIF BASE:ARG:LV < LOCAL
+		LOCAL:1 *= POWER(2,(BASE:ARG:LV - LOCAL)/4)
+	경험치:카운트 = LOCAL:1
+NEXT
+
+;;LOCAL = CSVBASE(NO:(ARG:1),(GETNUM(BASE,"LV")),0)
+;LOCAL = CFLAG:(ARG:1):초기LV
+;LOCAL:1 = BASE:(ARG:1):ＥＸＰ - LOCAL * (LOCAL-1) * (LOCAL +1) * 5 / 3
+;SIF BASE:ARG:LV > LOCAL
+;	LOCAL:1 /= ((BASE:ARG:LV - LOCAL)/4+1)
+;SIF BASE:ARG:LV < LOCAL
+;	LOCAL:1 *= POWER(2,(BASE:ARG:LV - LOCAL)/4)
+;LOCAL:2 = LOCAL:1
+;
+;LOCAL = CFLAG:(ARG:2):초기LV
+;LOCAL:1 = BASE:(ARG:2):ＥＸＰ - LOCAL * (LOCAL-1) * (LOCAL +1) * 5 / 3
+;SIF BASE:ARG:LV > LOCAL
+;	LOCAL:1 /= ((BASE:ARG:LV - LOCAL)/4+1)
+;SIF BASE:ARG:LV < LOCAL
+;	LOCAL:1 *= POWER(2,(BASE:ARG:LV - LOCAL)/4)
+
+IF ARG:3 > -1
+	TIMES 경험치:0,0.5
+	TIMES 경험치:1,0.5
+	TIMES 경험치:2,0.5
+ELSE
+	TIMES 경험치:0,0.7
+	TIMES 경험치:1,0.7
+ENDIF
+IF FLAG:SHOPコマンド != [[SHOP:사교의관]]
+	BASE:ARG:ＥＸＰ += SUMARRAY(경험치)/2
+ELSE
+	BASE:ARG:ＥＸＰ += SUMARRAY(경험치)
+ENDIF
+
+;CFLAG:ARG:능력강화횟수 = CFLAG:(ARG:1):능력강화횟수
+;FOR LOCAL,1,7
+;	LOCALS = %GET_BASESTATUS(LOCAL)%강화횟수
+;	LOCAL:1 = BASE:(ARG:1):LOCALS - CSVBASE(NO:(ARG:1),(GETNUM(BASE,LOCALS)),0)
+;	LOCAL:2 = BASE:(ARG:2):LOCALS - CSVBASE(NO:(ARG:2),(GETNUM(BASE,LOCALS)),0)
+;	
+;	CFLAG:ARG:LOCALS += CFLAG:(ARG:1):LOCALS
+;NEXT
+
+;========================================
+;데빌시프터用、사교의관内변신악마변경
+;========================================
+@CHANGE_LINK
+CALL INPUT_CHARA_LIST("누구를 변경합니까？", "CASTING_CHANGE_LINK")
+IF RESULT == 1000
+	RETURN 0
+ENDIF
+CALL ACTION_2311,RESULT
+
+@CASTING_CHANGE_LINK(ARG)
+;인간・造間・半魔は無理
+SIF TALENT:ARG:데빌시프터 == 0
+	RETURN 0
+SIF CFLAG:ARG:この場に居ないフラグ == 1
+	RETURN 0
+SIF CFLAG:ARG:PTフラグ == 0
+	RETURN 0
+;데빌시프터以外の전투系素質持ってたらアウト
+SIF TALENT:ARG:건슬링거 || TALENT:ARG:석세서 || TALENT:ARG:이능자 || TALENT:ARG:페르소나구사자 || TALENT:ARG:달인
+	RETURN 0
+RETURN 1
+
+;IF文にそのまま入れたかったので新規に作成
+@CASTING_CHANGE_LINK_F(ARG)
+#FUNCTION
+;인간・造間・半魔は無理
+SIF TALENT:ARG:데빌시프터 == 0
+	RETURNF 0
+SIF CFLAG:ARG:この場に居ないフラグ == 1
+	RETURNF 0
+SIF CFLAG:ARG:PTフラグ == 0
+	RETURNF 0
+;데빌시프터以外の전투系素質持ってたらアウト
+SIF TALENT:ARG:건슬링거 || TALENT:ARG:석세서 || TALENT:ARG:이능자 || TALENT:ARG:페르소나구사자 || TALENT:ARG:달인
+	RETURNF 0
+RETURNF 1
+
+;========================================
+;ABL引き継ぎ時に、そもそもその레벨のABLが存在するかを調べる
+;========================================
+@ABL인계체크(ARG,ARG:1,ARG:2 = -1)
+#FUNCTION
+LOCAL:1 = 0
+IF ARG:2 < 1
+	FOR LOCAL,0,26
+		LOCAL:1 = MAX(ABL:ARG:LOCAL , ABL:(ARG:1):LOCAL , LOCAL:1)
+	NEXT
+ELSE
+	FOR LOCAL,0,26
+		LOCAL:1 = MAX(ABL:ARG:LOCAL , ABL:(ARG:1):LOCAL, ABL:(ARG:2):LOCAL , LOCAL:1)
+	NEXT
+ENDIF
+
+RETURNF LOCAL:1
+
+;========================================
+;손紙システム
+;	ARG:1（0:通常合体　1:魔晶武具　2:스킬카드　3:조마作成　4:조마강화　5:조마초기化 6:イケニエ）
+;========================================
+@FUSION_LETTER,ARG,ARG:1
+
+PRINTL 편지가 있습니다. 읽겠습니까?
+
+CALL INPUT_YN,"Yes","NO"
+IF RESULT == 0
+	TRYCCALLFORM FUSION_LETTER_MESSAGE_K{NO:ARG},ARG,ARG:1
+	CATCH
+		TRYCCALLFORM FUSION_LETTER_MESSAGE_PUB{ABL:(ARG):회화타입},ARG,ARG:1
+		CATCH
+			PRINTFORMW %CALLNAME:(ARG)%으로부터의 편지다。
+			CALL FUSION_LETTER_MESSAGE_PUB,ARG,ARG:1
+		ENDCATCH
+	ENDCATCH
+ENDIF
+
+;=====================================================
+;素質継承
+;=====================================================
+@SUCCESS_TALENT,ARG,ARG:1,ARG:2,ARG:3 = -1
+#DIM CHARA , 1
+#DIM 카운트 , 1
+CALL SUCCESS_TALENT_CHECK, "처녀", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "겁쟁이", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "꿋꿋함", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "반항적", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "솔직함", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "얌전함", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "프라이드높음", "프라이드낮음" ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "건방짐", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "츤데레", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "자제심", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "무관심", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "감정결핍", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "호기심", "보수적" ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "낙관적", "비관적" ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "일선을넘지않음", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "눈에띄고싶어함", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "정조관념", "정조관결여" ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "억압", "해방" ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "저항", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "부끄럼쟁이", "부끄럼없음" ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "헌신적", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "소악마", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "광기", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "유치", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "아픔에강함", "아픔에약함" ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "젖기어려움", "젖기쉬움" ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "습득빠름", "습득느림" ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "바늘다루기", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "약독내성", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "오줌싸개", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "자위하기쉬움", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "악취민감", "악취둔감" ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "불결무시", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "쾌감에솔직", "쾌감을부정" ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "중독되기쉬움", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "도착적", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "바이", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "남성혐오", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "여성혐오", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "Ｃ민감", "Ｃ둔감" ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "Ｖ민감", "Ｖ둔감" ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "Ａ민감", "Ａ둔감" ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "Ｂ민감", "Ｂ둔감" ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "매력", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "매혹", ,ARG,ARG:1,ARG:2,ARG:3
+;가슴・体格・性別・후타나리はお薬で弄くれるのでとりあえず無し
+
+
+
+
+;=====================================================
+;소질継承체크
+;=====================================================
+@SUCCESS_TALENT_CHECK,ARGS,ARGS:1 = "",ARG,ARG:1,ARG:2,ARG:3 = -1
+#LOCALSIZE 3
+;ARGS 継承체크を行う소질
+;ARGS:1 その相反する소질
+LOCAL:1 = 0
+;LOCAL:2 소질포인트を2倍にするキャラ
+;LOCAL:2 = 1
+;FOR LOCAL , 2 , (ARG:3 > 0 ? 4 # 3)
+;	IF ABS(ABL:ARG:종족 - ABL:(ARG:(LOCAL:2)):종족) == ABS(ABL:ARG:종족 - ABL:(ARG:(LOCAL)):종족)
+;		;同じ場合はCSV번호の若い方
+;		SIF NO:(ARG:(LOCAL:2)) > NO:(ARG:(LOCAL))
+;			LOCAL:2 = LOCAL
+;	ELSEIF ABS(ABL:ARG:종족 - ABL:(ARG:(LOCAL:2)):종족) > ABS(ABL:ARG:종족 - ABL:(ARG:(LOCAL)):종족)
+;		;종족번호が近いキャラ優先
+;		LOCAL:2 = LOCAL
+;	ENDIF
+;NEXT
+
+
+IF TALENT:ARG:ARGS
+	;ARGSを소지している場合
+	;相反する소질が指定されていれば、持っている소재악마の数を数える
+	IF ARGS:1 != ""
+		FOR LOCAL , 1 , (ARG:3 > 0 ? 4 # 3)
+			SIF TALENT:(ARG:LOCAL):(ARGS:1)
+				LOCAL:1 ++
+			SIF TALENT:(ARG:LOCAL):(ARGS)
+				LOCAL:1 --
+		NEXT
+		;１Ｐ이상で打ち消し
+		SIF LOCAL:1 >= 1
+			TALENT:ARG:ARGS = 0
+		;２Ｐ이상で相反する소질を継承
+		SIF LOCAL:1 >= 2
+			TALENT:ARG:(ARGS:1) = 1
+	ELSE
+		RETURN 0
+	ENDIF
+ELSEIF ARGS:1 != "" && TALENT:ARG:(ARGS:1)
+	;ARGS:1を소지している場合
+	;相反する소질が指定されていれば、持っている소재악마の数を数える
+	FOR LOCAL , 1 , (ARG:3 > 0 ? 4 # 3)
+		SIF TALENT:(ARG:LOCAL):(ARGS)
+			LOCAL:1 ++
+		SIF TALENT:(ARG:LOCAL):(ARGS:1)
+			LOCAL:1 --
+	NEXT
+		;１Ｐ이상で打ち消し
+	SIF LOCAL:1 >= 1
+		TALENT:ARG:(ARGS:1) = 0
+		;２Ｐ이상で相反する소질を継承
+	SIF LOCAL:1 >= 2
+		TALENT:ARG:(ARGS) = 1
+ELSE
+	;どちらも持っていない場合
+	;소질:ARGSを소지している소재악마を数える
+	;相反する소질がある場合はその소질を持つ악마の数だけ減算
+	FOR LOCAL , 1 , (ARG:3 > 0 ? 4 # 3)
+		SIF TALENT:(ARG:LOCAL):(ARGS)
+			LOCAL:1 ++
+		SIF ARGS:1 != "" && TALENT:(ARG:LOCAL):(ARGS:1)
+			LOCAL:1 --
+	NEXT
+	;２Ｐ(相反する소질がある소질なら１Ｐ)이상で継承
+	IF LOCAL:1 >= 2 || (ARGS:1 != "" && LOCAL:1 >= 1)
+		TALENT:ARG:(ARGS) = 1
+	;－１Ｐ以下なら相反する소질を継承
+	ELSEIF LOCAL:1 <= -1
+		TALENT:ARG:(ARGS:1) = 1
+	ENDIF
+ENDIF
+
+;=====================================================
+;合体事故発生체크
+;ARG = 던전かどうか
+;=====================================================
+@FUSION_ACCIDENT_CHECK(ARG = 0)
+#FUNCTION
+
+; 合体事故확률초기値설정
+LOCAL = 0
+
+; 알버트を장비している場合、必ず0。
+; ただし、알버트と코페르니쿠스を同時にONしていると相殺される
+IF EQUIP:MASTER:알버트 == 0 || EQUIP:MASTER:코페르니쿠스 == 1
+	
+	; 月齢を체크して、기본확률を산출
+	SELECTCASE FLAG:月齢
+		; 新月は1%
+		CASE 0
+			LOCAL = 1
+		; 만월は4%
+		CASE 8
+			LOCAL = 4
+		; 그외は2%
+		CASEELSE
+			LOCAL = 2
+	ENDSELECT
+	
+	; 탐색中なら3倍
+	SIF ARG == 1
+		LOCAL = LOCAL * 3
+	
+	; 코페르니쿠스장비してて、알버트장비してないならさらに5倍
+	SIF EQUIP:MASTER:코페르니쿠스 == 1 && EQUIP:MASTER:알버트 == 0
+		LOCAL = LOCAL * 5
+ENDIF
+
+IF LOCAL == 0
+	RETURNF 0
+ELSEIF RAND:100 < LOCAL
+	RETURNF 1
+ENDIF
+
+RETURNF 0
+
+;@合体用ソフトクイック설정_FUSION
+;#LOCALSIZE 6
+;#LOCALSSIZE 6
+;#DIM LCOUNT
+;PRINTL 
+;LOCAL = 150
+;LOCAL:1 = 184
+;LOCAL:2 = 186
+;LOCAL:3 = 187
+;LOCAL:4 = 190
+;LOCAL:5 = 192
+;LOCALS = [1020] 알버트
+;LOCALS:1 = [1021] 파라켈수스
+;LOCALS:2 = [1022] 라플라스
+;LOCALS:3 = [1023] 코페르니쿠스
+;LOCALS:4 = [1024] 고에티아
+;LOCALS:5 = [1025] 라지엘의서
+;
+;FOR LCOUNT, 0, 6
+;	RESETCOLOR
+;	SIF GETBIT(FLAG:合体用ソフトクイック설정, LCOUNT) == 0
+;		CONTINUE
+;	SIF EQUIP:MASTER:(LOCAL:LCOUNT) == 0
+;		SETCOLOR COLOR("灰色")
+;	PRINTFORMLC %LOCALS:LCOUNT%
+;NEXT
+;RESETCOLOR
+;

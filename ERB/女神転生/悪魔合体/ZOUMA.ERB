@@ -1,0 +1,593 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:ZOUMA.ERB
+;	Facility	:조마作成
+;
+;	Licence		:ライセンスフリー。
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		20XX/XX/XX		----					新規作成
+;	002		2013/11/24		ひみつ					リスト표시数설정
+;	003		2015/08/06		----					소재の保有MAGが譲渡されないバグを修正
+;	004		2017/06/23		kuni					キャラ표시でINPUT_CHARA_LISTを사용するように변경
+;	005		2018/08/22		JK好き					登録キャラ199人の상태で조마作成を行うと엘라ー落ちする問題を修正
+;	006		2019/11/17		JK好き					조마강화合体時の説明文が逆になっているのを修正
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;================================================================
+;조마作成
+;================================================================
+@MAKE_ZOUMA
+#DIM LCOUNT
+;LOCAL:1 소재の登録番号
+LOCAL:1 = -1
+$START_MAKE
+
+CALL INPUT_CHARA_LIST("소재로 쓸 악마를 선택해주십시오", "CASTING_MAKE_ZOUMA")
+IF RESULT == 1000
+	RETURN 0
+ENDIF
+
+LOCAL:1 = RESULT
+LOCAL:3 = CHARANUM
+
+;一旦合体結果の악마をキャラ登録
+CALL ADD_NEW_COMPANION,4402,500, -1
+;なんらかの理由でキャラ登録できない場合
+IF RESULT == 0
+	PRINTW 캐릭터 등록이 불가능하여 합체 처리를 중단합니다
+	RETURN 0
+ENDIF
+
+;스킬継承
+FOR LOCAL,1,FLAG:스킬数+1
+	LOCALS = 스킬{LOCAL}
+	ABL:(LOCAL:3):LOCALS = ABL:(LOCAL:1):LOCALS
+NEXT
+;能力継承
+FOR LOCAL,0,7
+	BASE:(LOCAL:3):(GET_BASESTATUS(LOCAL)) = BASE:(LOCAL:1):(GET_BASESTATUS(LOCAL)) +1
+NEXT
+;CFLAG:(LOCAL:3):초기LV = CSVBASE(NO:(LOCAL:1),GETNUM(BASE,"LV"),0)
+CFLAG:(LOCAL:3):초기LV = BASE:(LOCAL:3):LV
+
+;조교効果による能力アップ
+BASE:(LOCAL:3):힘 += (ABL:(LOCAL:1):욕망+1)/2
+BASE:(LOCAL:3):지혜 += (ABL:(LOCAL:1):기교+1)/2
+BASE:(LOCAL:3):마력 += (ABL:(LOCAL:1):욕망+1)/2
+BASE:(LOCAL:3):인내력 += (ABL:(LOCAL:1):순종+1)/2
+BASE:(LOCAL:3):속도 += (ABL:(LOCAL:1):기교+1)/2
+BASE:(LOCAL:3):운 += (ABL:(LOCAL:1):순종+1)/2
+
+;ガチャモードONで、ガチャ継承処理
+IF FLAG:악마가챠모드 > 0
+	SIF TALENT:(LOCAL:1):ガチャ
+		TALENT:(LOCAL:3):ガチャ = 1
+ENDIF
+
+SIF TALENT:(LOCAL:1):무기
+	TALENT:(LOCAL:3):무기 = 1
+SIF TALENT:(LOCAL:1):갈퀴
+	TALENT:(LOCAL:3):갈퀴 = 1
+SIF TALENT:(LOCAL:1):갈퀴발
+	TALENT:(LOCAL:3):갈퀴발 = 1
+SIF TALENT:(LOCAL:1):날개
+	TALENT:(LOCAL:3):날개 = 1
+SIF TALENT:(LOCAL:1):꼬리
+	TALENT:(LOCAL:3):꼬리 = 1
+SIF TALENT:(LOCAL:1):사격무기
+	TALENT:(LOCAL:3):사격무기 = 1
+SIF TALENT:(LOCAL:1):모피
+	TALENT:(LOCAL:3):모피 = 1
+SIF TALENT:(LOCAL:1):촉수
+	TALENT:(LOCAL:3):촉수 = 1
+SIF TALENT:(LOCAL:1):부리
+	TALENT:(LOCAL:3):부리 = 1
+SIF TALENT:(LOCAL:1):동물귀
+	TALENT:(LOCAL:3):동물귀 = 1
+SIF TALENT:(LOCAL:1):유아체형
+	TALENT:(LOCAL:3):유아체형 = 1
+SIF TALENT:(LOCAL:1):소인체형
+	TALENT:(LOCAL:3):소인체형 = 1
+SIF TALENT:(LOCAL:1):큰체형
+	TALENT:(LOCAL:3):큰체형 = 1
+SIF TALENT:(LOCAL:1):거체
+	TALENT:(LOCAL:3):거체 = 1
+
+;ソウルハッカーズの조마の내성変化をアレンジ　짐승：짐승型、파충류：竜型、←以外で날개持ち：천사型、←以外：人型
+IF TALENT:(LOCAL:1):짐승
+	TALENT:(LOCAL:3):동물귀 = 1
+	TALENT:(LOCAL:3):꼬리 = 1
+	TALENT:(LOCAL:3):모피 = 1
+	BASE:(LOCAL:3):검격 = 75
+	BASE:(LOCAL:3):비구 = 75
+ELSEIF TALENT:(LOCAL:1):파충류
+	TALENT:(LOCAL:3):꼬리 = 1
+	BASE:(LOCAL:3):충격 = 75
+	BASE:(LOCAL:3):핵열 = 75
+ELSEIF TALENT:(LOCAL:3):날개
+	BASE:(LOCAL:3):화염 = 75
+	BASE:(LOCAL:3):수격 = 75
+ELSE
+	BASE:(LOCAL:3):화염 = 75
+	BASE:(LOCAL:3):충격 = 75
+ENDIF
+
+;무기によって사거리と相性が변경
+IF TALENT:(LOCAL:3):무기
+	ABL:(LOCAL:3):공격상성 = 0
+ELSEIF TALENT:(LOCAL:3):사격무기
+	ABL:(LOCAL:3):공격상성 = 1
+	ABL:(LOCAL:3):사거리= 3
+ENDIF
+
+CALL SYNC_STATUS,LOCAL:3
+CALL HEALTH_CHARA,LOCAL:3
+CALL CONTROL_MAG,LOCAL:3,BASE:(LOCAL:1):ＭＡＧ+CFLAG:(LOCAL:1):강화사용ＭＡＧ
+
+NAME:(LOCAL:3) = %" "%
+CALLNAME:(LOCAL:3) = %" "%
+
+CUSTOMDRAWLINE =
+;合体結果の스테이터스を표시
+U = LOCAL:3
+LOCAL:10 = 2
+$PRINT_STATUS
+PRINTFORML %STR:(ABL:U:80)%　　%CALLNAME:U%　　
+CALLFORM SHOW_INFO_PAGE_{LOCAL:10}
+CUSTOMDRAWLINE =
+
+
+	;스테이터스の표시변경用
+PRINTFORMLC \@ LOCAL:10 == 2 ? [1007]이전 페이지 # %" " * 16% \@
+PRINTFORMLC                 
+PRINTFORMLC \@ LOCAL:10 == 1 ? [1009]다음 페이지 # %" " * 16% \@
+PRINTL
+PRINTL
+
+;合体するかどうか　→　合体実行（実際には既に終わっている）
+PRINTL 이 악마로 합니까？ [0]Yes [1]No
+$INPUT_LOOP
+INPUT
+IF RESULT == 1007 && LOCAL:10 == 2
+	LOCAL:10 = 1
+	GOTO PRINT_STATUS
+ELSEIF RESULT == 1009 && LOCAL:10 == 1
+	LOCAL:10 = 2
+	GOTO PRINT_STATUS
+ELSEIF RESULT == 1
+	DELCHARA LOCAL:3
+	FOR LCOUNT, 0, 4
+		LOCAL:(LCOUNT+1) = -1
+	NEXT
+	RESTART
+ELSEIF RESULT == 0
+ELSE
+	GOTO INPUT_LOOP
+ENDIF
+
+
+;명칭決定
+CALL NAME_ZOUMA,LOCAL:3
+
+;作成時のセリフを표시
+TRYCCALLFORM FUSION_MESSAGE_K{NO:(LOCAL:3)},LOCAL:3
+
+CATCH
+	TRYCALLFORM FUSION_MESSAGE_PUB{ABL:(LOCAL:3):회화타입},LOCAL:3
+ENDCATCH
+
+;충성도による素質변경
+CALL MAKE_TALENT,LOCAL:3,BASE:(LOCAL:1):충성도*3
+
+PRINTFORMW %STR:(ABL:(LOCAL:3):종족)% %CALLNAME:(LOCAL:3)%이(가) 동료가 되었다。
+
+CALL FUSION_LETTER,LOCAL:1,3
+
+;合体소재の악마を소거
+SIF GET_STATE(CFLAG:(LOCAL:1):ステート) == "DYING"
+	CALL INCREASE_LD,-7
+CALL キャラ삭제, LOCAL:1
+
+ITEM:도리・카드몬 -= 1
+
+RETURN 0
+
+GOTO START_MAKE
+
+
+@CASTING_MAKE_ZOUMA(ARG)
+SIF 계약(ARG) > 0
+	RETURN 0
+SIF ABL:ARG:종족 == 0 || ABL:ARG:종족 > 44
+	RETURN 0
+SIF CFLAG:ARG:노역フラグ == 3
+	RETURN 0
+SIF CFLAG:ARG:合体불가
+	RETURN 0
+SIF CFLAG:ARG:この場に居ないフラグ == 1
+	RETURN 0
+RETURN 1
+
+
+;==========================================================================
+;조마を도리・카드몬に戻す
+;==========================================================================
+@DEL_ZOUMA
+
+CALL INPUT_CHARA_LIST("どの조마を도리・카드몬に戻しますか？", "CASTING_DEL_ZOUMA")
+IF RESULT == 1000
+		RETURN 0
+ENDIF
+
+LOCAL:1 = RESULT
+PRINTFORMW %NAME:(LOCAL:1)%은(는) 도리・카드몬으로 되돌아갔다
+
+CALL FUSION_LETTER, LOCAL:1,5
+
+IF TARGET == LOCAL:1
+	TARGET = -1
+ELSE
+	SIF TARGET > LOCAL:1
+		TARGET -= 1
+ENDIF
+IF ASSI == LOCAL:1
+	ASSI = -1
+ELSE
+	SIF ASSI > LOCAL:1
+		ASSI -= 1
+ENDIF
+
+;合体소재の악마を소거
+;SIF CFLAG:(LOCAL:1):포지션 > 0
+;	CALL REMOVE_POSITION,CFLAG:(LOCAL:1):포지션
+;DELCHARA LOCAL:1
+CALL キャラ삭제, LOCAL:1
+;포지션に齟齬が発生するので、FLAG側を초기化＋CFLAG側から読み込み
+;CALL REFRESH_POS
+
+ITEM:도리・카드몬 += 1
+
+@CASTING_DEL_ZOUMA(ARG)
+SIF ABL:ARG:종족 != 45
+	RETURN 0
+;메어리は削除できない
+SIF NO:ARG == 4509
+	RETURN 0
+SIF CFLAG:ARG:この場に居ないフラグ == 1
+	RETURN 0
+RETURN 1
+
+;================================================================
+;조마강화合体
+;================================================================
+@FUSION_ZOUMA
+;#DIM 강화する조마
+;#DIM 合体소재
+FLAG:合体予定악마1 = -1
+FLAG:合体予定악마2 = -1
+$START_FUSION
+
+IF FLAG:合体予定악마1 > -1
+	CALL INPUT_CHARA_LIST("합체시키고 싶은 악마를 골라주십시오", "CASTING_FUSION_ZOUMA", "", "DOWN_PRINT_FUSION_ZOUMA")
+ELSE
+	CALL INPUT_CHARA_LIST("강화할 조마를 골라주십시오", "CASTING_FUSION_ZOUMA", "", "DOWN_PRINT_FUSION_ZOUMA")
+ENDIF
+IF RESULT == 1000
+	IF FLAG:合体予定악마1 > -1
+		FLAG:合体予定악마1 = -1
+		GOTO START_FUSION
+	ELSE
+		RETURN 0
+	ENDIF
+ENDIF
+
+
+
+IF FLAG:合体予定악마1 > 0
+	FLAG:合体予定악마2 = RESULT
+	
+	;能力と스킬を保存
+	FOR LOCAL, 0, 7
+		LOCAL:(10+LOCAL) = BASE:(FLAG:合体予定악마1):(GET_BASESTATUS(LOCAL))
+	NEXT
+	FOR LOCAL,1,FLAG:스킬数+1
+		LOCALS = 스킬{LOCAL}
+		LOCAL:(20+LOCAL) = ABL:(FLAG:合体予定악마1):LOCALS
+		SIF !EQUIP:MASTER:스킬키퍼
+		ABL:(FLAG:合体予定악마1):LOCALS = 0
+	NEXT
+
+	;能力平均化処理
+	FOR LOCAL, 1, 7
+		IF BASE:(FLAG:合体予定악마1):(GET_BASESTATUS(LOCAL)) < MAXBASE:(FLAG:合体予定악마2):GET_BASESTATUS(LOCAL)
+			BASE:(FLAG:合体予定악마1):(GET_BASESTATUS(LOCAL)) = (BASE:(FLAG:合体予定악마1):(GET_BASESTATUS(LOCAL)) + MAXBASE:(FLAG:合体予定악마2):(GET_BASESTATUS(LOCAL))*3)/4
+		ELSE
+			BASE:(FLAG:合体予定악마1):(GET_BASESTATUS(LOCAL)) = (BASE:(FLAG:合体予定악마1):(GET_BASESTATUS(LOCAL)) * 2 + MAXBASE:(FLAG:合体予定악마2):(GET_BASESTATUS(LOCAL))*3)/5
+		ENDIF
+	NEXT
+	;Lvは上がりづらく
+	BASE:(FLAG:合体予定악마1):LV = MAX(BASE:(FLAG:合体予定악마1):LV, (BASE:(FLAG:合体予定악마1):LV * 3 + BASE:(FLAG:合体予定악마2):LV) / 4)
+	SIF EQUIP:MASTER:스킬키퍼
+		GOTO WEN
+	;스킬ごちゃ混ぜ処理
+	$WHI
+		;강화する조마の空いている스킬枠を参照する
+		;空いていなければRETURN 0
+		FOR LOCAL:3,1,FLAG:스킬数+1
+			LOCALS = 스킬{LOCAL:3}
+			IF ABL:(FLAG:合体予定악마1):LOCALS == 0
+				LOCALS:1 = %LOCALS%
+				BREAK
+			ENDIF
+			SIF LOCAL:3 == FLAG:스킬数
+				GOTO WEN
+		NEXT
+
+		;강화する조마と合体소재の스킬の中から継承可能かつ持っていない스킬をピックアップ。
+		;見つけた場合、LOCALに放り込む。
+		;LOCALが埋まっている場合は、優先度がより高ければLOCALに上書き。
+
+		LOCAL = 0
+
+		;合体소재
+		FOR LOCAL:3,1,FLAG:스킬数+1
+			LOCALS = 스킬{LOCAL:3}
+			;未修得なら次へ
+			SIF ABL:(FLAG:合体予定악마2):LOCALS == 0
+				CONTINUE
+			;継承필요部位読み込み、강화する조마が持ってなければ次へ
+			RESULT = 1
+			TRYCALLFORM 継承部位_{ABL:(FLAG:合体予定악마2):LOCALS}, FLAG:合体予定악마1
+			SIF RESULT == 0
+				CONTINUE
+			;既に습득している스킬かつ、重複습득数（通常１）以上になるならば次へ
+			IF CHECK_SKILL(FLAG:合体予定악마1, ABL:(FLAG:合体予定악마2):LOCALS)
+				TRYCCALLFORM 重複習得数_{ABL:(FLAG:合体予定악마2):LOCALS}
+					SIF HAVE_SKILL_OVERLAP(FLAG:合体予定악마1, ABL:(FLAG:合体予定악마2):LOCALS) + 1 > RESULT
+						CONTINUE
+				CATCH
+					CONTINUE
+				ENDCATCH
+			ENDIF
+			
+			IF LOCAL == 0
+				LOCAL = ABL:(FLAG:合体予定악마2):LOCALS
+				TRYCCALLFORM SKILL_RANK_{ABL:(FLAG:合体予定악마2):LOCALS}
+					LOCAL:4 = RESULT
+				CATCH
+					LOCAL:4 = 0
+				ENDCATCH
+			ENDIF
+			
+			TRYCCALLFORM SKILL_RANK_{ABL:(FLAG:合体予定악마2):LOCALS}
+				LOCAL:6 = RESULT
+			CATCH
+				LOCAL:6 = 0
+			ENDCATCH
+			
+			IF LOCAL:6 < LOCAL:4
+				LOCAL = ABL:(FLAG:合体予定악마2):LOCALS
+				LOCAL:4 = LOCAL:6
+			ENDIF
+		NEXT
+
+		;LOCAL:20~
+		FOR LOCAL:3,1,FLAG:스킬数+1
+			;未修得なら次へ
+			SIF LOCAL:(20+LOCAL:3) == 0
+				CONTINUE
+			;継承필요部位読み込み、강화する조마が持ってなければ次へ
+			RESULT = 1
+			TRYCALLFORM 継承部位_{LOCAL:(20+LOCAL:3)}, FLAG:合体予定악마1
+			SIF RESULT == 0
+				CONTINUE
+			;既に습득している스킬かつ、重複습득数（通常１）以上になるならば次へ
+			IF CHECK_SKILL(FLAG:合体予定악마1, LOCAL:(20+LOCAL:3))
+				TRYCCALLFORM 重複習得数_{LOCAL:(20+LOCAL:3)}
+					SIF HAVE_SKILL_OVERLAP(FLAG:合体予定악마1, LOCAL:(20+LOCAL:3)) + 1 > RESULT
+						CONTINUE
+				CATCH
+					CONTINUE
+				ENDCATCH
+			ENDIF
+			
+			IF LOCAL == 0
+				LOCAL = LOCAL:(20+LOCAL:3)
+				TRYCCALLFORM SKILL_RANK_{LOCAL:(20+LOCAL:3)}
+					LOCAL:4 = RESULT
+				CATCH
+					LOCAL:4 = 0
+				ENDCATCH
+			ENDIF
+			
+			TRYCCALLFORM SKILL_RANK_{LOCAL:(20+LOCAL:3)}
+				LOCAL:6 = RESULT
+			CATCH
+				LOCAL:6 = 0
+			ENDCATCH
+			
+			IF LOCAL:6 < LOCAL:4
+				LOCAL = LOCAL:(20+LOCAL:3)
+				LOCAL:4 = LOCAL:6
+			ENDIF
+		NEXT
+
+		;この時点でLOCALが0＝継承できる스킬が無いのでBREAK
+		SIF LOCAL == 0
+			GOTO WEN
+
+		;全部捜査したらLOCALS:1の스킬枠に습득させる。
+		ABL:(FLAG:合体予定악마1):(LOCALS:1) = LOCAL
+	GOTO WHI
+	$WEN
+
+	;ガチャモードONで両方ガチャ素質持ってるか検出、持ってないなら一時的に-999に
+	IF FLAG:악마가챠모드 > 0
+		SIF TALENT:(FLAG:合体予定악마1):ガチャ > 0 && TALENT:(FLAG:合体予定악마2):ガチャ <= 0
+			TALENT:(FLAG:合体予定악마1):ガチャ = -999
+	ENDIF
+	CALL SYNC_STATUS, FLAG:合体予定악마1
+	CALL HEALTH_CHARA, FLAG:合体予定악마1
+	CUSTOMDRAWLINE =
+	;合体結果の스테이터스を표시
+	U = FLAG:合体予定악마1
+	PRINTFORML %STR:(ABL:U:80)%　　%CALLNAME:U%　　
+	CALL SHOW_INFO_PAGE_2
+	CUSTOMDRAWLINE =
+	
+	
+	;合体するかどうか　→　合体実行（実際には既に終わっている）
+	PRINT 이 악마로 합니까？ 
+
+	CALL INPUT_YN,"Yes","No",2
+
+	IF RESULT == 1
+		;ガチャモードONならガチャ素質を復元
+		SIF FLAG:악마가챠모드 == -999
+			TALENT:(FLAG:合体予定악마1):ガチャ = 1
+
+		;能力と스킬を復元
+		FOR LOCAL,0,7
+			BASE:(FLAG:合体予定악마1):(GET_BASESTATUS(LOCAL)) = LOCAL:(10+LOCAL)
+		NEXT
+		FOR LOCAL,1,FLAG:스킬数+1
+			LOCALS = 스킬{LOCAL}
+			ABL:(FLAG:合体予定악마1):LOCALS = LOCAL:(20+LOCAL) 
+		NEXT
+			CALL SYNC_STATUS, FLAG:合体予定악마1
+			CALL HEALTH_CHARA, FLAG:合体予定악마1
+		RESTART
+	ENDIF
+	
+	;ＭＡＧを흡수
+	CALL CONTROL_MAG, FLAG:合体予定악마1, BASE:(FLAG:合体予定악마2):ＭＡＧ+CFLAG:(FLAG:合体予定악마2):강화사용ＭＡＧ
+;---충성도による素質변경--------------------------
+	SIF TALENT:(FLAG:合体予定악마1):아내 || TALENT:(FLAG:合体予定악마1):남편 || TALENT:(FLAG:合体予定악마1):음마 || TALENT:(FLAG:合体予定악마1):노리개
+		CALL MAKE_TALENT, FLAG:合体予定악마1, BASE:(FLAG:合体予定악마2):충성도
+;-------------------------------------------------
+	IF TALENT:(FLAG:合体予定악마2):창부 || TALENT:(FLAG:合体予定악마2):친애 || TALENT:(FLAG:合体予定악마2):예속
+		CALL 조마내성강화(FLAG:合体予定악마1,1)
+	ELSEIF TALENT:(FLAG:合体予定악마2):음란 || TALENT:(FLAG:合体予定악마2):연모 || TALENT:(FLAG:合体予定악마2):복종
+		CALL 조마내성강화(FLAG:合体予定악마1,0)
+	ENDIF
+;	;作成時のセリフを표시
+;	TRYCCALLFORM FUSION_MESSAGE_K{NO:(FLAG:合体予定악마1)},LOCAL:3
+;	
+;	
+;	
+;	CATCH
+;		TRYCALLFORM FUSION_MESSAGE_PUB{ABL:(FLAG:合体予定악마1):회화타입},LOCAL:3
+;	ENDCATCH
+;	
+;	;ここに충성도による素質変化とか予定
+;	CALL MAKE_TALENT,LOCAL:3,(BASE:(FLAG:合体予定악마1):충성도+BASE:(FLAG:合体予定악마2):충성도)
+;	BASE:(LOCAL:3):충성도 = MAX(100,RESULT/2)
+;	
+;	PRINTFORMW %STR:(ABL:(LOCAL:3):종족)% %CALLNAME:(LOCAL:3)%が仲魔になった。
+	
+	IF TARGET == FLAG:合体予定악마2
+		TARGET = -1
+	ELSE
+		SIF TARGET > FLAG:合体予定악마2
+			TARGET -= 1
+	ENDIF
+	IF ASSI == FLAG:合体予定악마2
+		ASSI = -1
+	ELSE
+		SIF ASSI > FLAG:合体予定악마2
+			ASSI -= 1
+	ENDIF
+	
+	;손紙システム
+	CALL FUSION_LETTER, FLAG:合体予定악마2, 4
+	
+	;合体소재の악마を소거
+	SIF GET_STATE(CFLAG:(FLAG:合体予定악마2):ステート) == "DYING"
+		CALL INCREASE_LD,-7
+	CALL キャラ삭제, FLAG:合体予定악마2
+	FLAG:合体予定악마1 = -1
+	FLAG:合体予定악마2 = -1
+	RETURN 0
+ELSE
+	FLAG:合体予定악마1 = RESULT
+ENDIF
+
+GOTO START_FUSION
+
+@CASTING_FUSION_ZOUMA(ARG)
+SIF 계약(ARG) > 0 && FLAG:合体予定악마1 > -1 
+	RETURN 0
+SIF (FLAG:合体予定악마1 > -1 && (ABL:ARG:종족 == 0 || ABL:ARG:종족 > 44)) || (FLAG:合体予定악마1 == -1 && ABL:ARG:종족 != 45)
+	RETURN 0
+SIF ARG == FLAG:合体予定악마1 || ARG == FLAG:合体予定악마2
+	RETURN 0
+SIF CFLAG:ARG:노역フラグ == 3
+	RETURN 0
+SIF CFLAG:ARG:合体불가
+	RETURN 0
+SIF CFLAG:ARG:この場に居ないフラグ == 1
+	RETURN 0
+RETURN 1
+
+@DOWN_PRINT_FUSION_ZOUMA
+SIF FLAG:合体予定악마1 > -1
+	PRINTFORML 선택조마:%CALLNAME:(FLAG:合体予定악마1)%
+;SIF FLAG:合体予定악마2 > -1
+;	PRINTFORML ２体눈:%CALLNAME:(FLAG:合体予定악마2)%
+
+;===========================================
+;조마の名前決定
+;===========================================
+@NAME_ZOUMA,ARG
+PRINTL 조마에게 이름을 붙여주세요
+
+	CALL CREATE_RANDOM_NAME_IF
+	NAME:ARG     = %RESULTS%
+	CALLNAME:ARG = %RESULTS%
+
+@조마내성강화(ARG,ARG:1)
+#DIM LCOLOR
+LCOLOR = GETCOLOR()
+PRINTFORMW 함락 소질이 있는 악마를 소재로 하였으므로、相性 하나를 \@ ARG:1 ? 무효 # 반감\@로 할 수 있습니다。
+IF CFLAG:ARG:변경相性1
+	PRINTFORM 현재 강화시킨 相性：%GET_TYPE(CFLAG:ARG:변경相性1 - 1) % 
+	CALL SET_AISYOU_COLOR(CFLAG:ARG:변경相性치1)
+	PRINTFORML \@ CFLAG:ARG:변경相性치1 < 0 ? 吸 # 　 \@\@ CFLAG:ARG:변경相性치1 != 999 ? {ABS(CFLAG:ARG:변경相性치1), 3}％ # %" "%반사 \@
+	SETCOLOR LCOLOR
+ENDIF
+DRAWLINE
+PRINTL 어떤 相性을 변경합니까？
+FOR LOCAL, 0, FLAG:相性数 - 1
+	SIF LOCAL >= 8 && LOCAL <= 11
+		CONTINUE
+	PRINTFORM [{LOCAL, 2}]%GET_TYPE(LOCAL)% 
+	CALL SET_AISYOU_COLOR(MAXBASE:ARG:(GET_TYPE(LOCAL)))
+	PRINTFORM \@ MAXBASE:ARG:(GET_TYPE(LOCAL)) < 0 ? 흡수 # 　 \@
+	PRINTFORM \@ MAXBASE:ARG:(GET_TYPE(LOCAL)) != 999 ? {ABS(MAXBASE:ARG:(GET_TYPE(LOCAL))), 3}％ # %" "%반사 \@　
+	PRINTFORM \@ LOCAL % 6 == 5 ? \n # \@
+	SETCOLOR LCOLOR
+NEXT
+PRINTL 
+DRAWLINE
+PRINTL [100] 변경하지 않는다
+DRAWLINE
+$INPUT_LOOP
+INPUT
+IF RESULT == 100
+	RETURN 0
+ELSEIF RESULT < 0 || RESULT >= FLAG:相性数-1 || (RESULT >= 8 && RESULT <= 11)
+	GOTO INPUT_LOOP
+ENDIF
+CFLAG:ARG:변경相性1 = RESULT+1
+
+PRINTFORM %CALLNAME:ARG%의 신체는、%GET_TYPE(CFLAG:ARG:변경相性1 - 1)%
+IF !ARG:1
+	CFLAG:ARG:변경相性치1 = 50
+	PRINTW 내성이 되었다
+ELSE
+	CFLAG:ARG:변경相性치1 = 0
+	PRINTW 무효가 되었다
+ENDIF
+DRAWLINE

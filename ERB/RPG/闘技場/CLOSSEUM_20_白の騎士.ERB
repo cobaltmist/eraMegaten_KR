@@ -1,0 +1,226 @@
+﻿
+;====================
+;조건
+;====================
+@PLAYABLE_COLOSSEUM_20
+
+IF FLAG:闘技場랭크 >= 3 && FLAG:闘技場名声 >= 800 && 투기장フラグ:20:0 < 1 && 던전フラグ:68:40 > 1
+	RESULTS = 시합 랭크 Ｂ　ＶＳ 백기사
+	RETURN 1
+ENDIF
+RETURN 0
+
+
+;====================
+;内容
+;====================
+@COLOSSEUM_20
+FLAG:도주불가フラグ = 1
+FLAG:회화불능フラグ = 1
+FLAG:선제기습취소 = 1
+CUSTOMDRAWLINE =
+
+PRINTFORML 　사회자
+PRINTFORML 「레이디이이이스! 앤! 젠틀멘!
+PRINTFORMW 　기다리셨습니다! 금일 주목할 카드는 여기!」
+PRINTFORML 
+PRINTFORMW ＞스크린에 %CALLNAME:MASTER% 팀과 상태 팀이 떴다…
+PRINTFORML 
+PRINTFORMW ＞・・・
+PRINTFORMW ＞・・・메노라의 불길이 일렁이고 있다
+PRINTFORML 
+PRINTFORML 
+PRINTFORML 
+
+PRINTFORML 「하핫!
+PRINTFORMW 　또 만났구나, %CALLNAME:MASTER%!」
+PRINTFORMW 「모든 것은 메노라의 인도・・・」
+PRINTFORML 「그 빛은 오직 한 사람의 주인만을 원해 끌어당기고
+PRINTFORMW 　불타올라 우리와 만나게 한다!」
+PRINTFORML 「네가 모든 마인을 쓰러뜨리고
+PRINTFORMW 　메노라를 손에 넣는다면 그 또한 좋으리!」
+PRINTFORMW 「네게 그만한 힘이 없다면・・・」
+PRINTFORMW 「이 화이트 라이더의 신의 화살에 쓰러질 뿐이니라!」
+
+CUSTOMDRAWLINE =
+WAIT
+
+CALL SET_ENEMY,9,[[キャラ:화이트라이더]],55,0,1
+CFLAG:(CHARANUM-1):ＨＰ보정 += 3000
+CFLAG:(CHARANUM-1):ＭＰ보정 += 5000
+CFLAG:(CHARANUM-1):行動횟수 = 2
+CSTR:(CHARANUM-1):増援패턴 = ホワイトライダーの
+	CSTR:(CHARANUM-1):사고패턴 = 41076800
+	ABL:(CHARANUM-1):아이템1 = 350
+	ABL:(CHARANUM-1):입수확률1 = 100
+	ABL:(CHARANUM-1):아이템2 = 11322
+	ABL:(CHARANUM-1):입수확률2 = 50
+CALL SYNC_STATUS,(CHARANUM-1)
+CALL HEALTH_CHARA,(CHARANUM-1)
+
+CALL SET_ENEMY,8,[[キャラ:버쳐]],50,0,1
+CFLAG:(CHARANUM-1):ＨＰ보정 += 1000
+CFLAG:(CHARANUM-1):ＭＰ보정 += 500
+ABL:(CHARANUM-1):스킬5 = 0
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+CALL SYNC_STATUS,(CHARANUM-1)
+CALL HEALTH_CHARA,(CHARANUM-1)
+
+CALL SET_ENEMY,10,[[キャラ:버쳐]],50,0,1
+CFLAG:(CHARANUM-1):ＨＰ보정 += 1000
+CFLAG:(CHARANUM-1):ＭＰ보정 += 500
+ABL:(CHARANUM-1):스킬5 = 0
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+CALL SYNC_STATUS,(CHARANUM-1)
+CALL HEALTH_CHARA,(CHARANUM-1)
+
+CALL BATTLE_START
+CUSTOMDRAWLINE =
+
+PRINTW 마인 화이트 라이더를 쓰러뜨렸다
+PRINTL 
+
+CUSTOMDRAWLINE =
+WAIT
+FLAG:도주불가フラグ = 0
+FLAG:회화불능フラグ = 0
+FLAG:선제기습취소 = 0
+PRINTW ￥50000을 상금으로 받았다
+PRINTFORMW %조사처리(CALLNAME:MASTER,"는")% 100의 명성을 얻었다
+MONEY += 50000
+FLAG:名声 += 100
+FLAG:闘技場名声 += 100
+투기장フラグ:20:0 = 1
+
+;合体解禁しておく、전서소환も가능じゃねーかな
+CALL LIFTING_A_BAN([[キャラ:화이트라이더]])
+;FLAG:14107 = 1
+
+FOR LOCAL,0,CHARANUM
+	CALL HEALTH_CHARA,LOCAL
+NEXT
+
+;=======================================================================
+;ホワイトライダー行動패턴
+;=======================================================================
+@SET_ACTION_41076800,ARG
+#LOCALSIZE 2
+#LOCALSSIZE 1
+;HPが５０％切ったら行動횟수増える
+IF CFLAG:ARG:行動횟수 < 3 && (BASE:ARG:ＨＰ)*100/(MAXBASE:ARG:ＨＰ) < 50
+	PRINTFORML ┏>CHARA━━━━━━━━━━┓　┏>ACT━━━━━━━━━━━━━━━━━━┓
+	PRINTFORM  ┃[{CFLAG:ARG:포지션,2}] %CALLNAME:ARG,21,LEFT%┃　┃
+	RESULTS = 용의안광　		      
+	PRINTFORML %RESULTS,40,LEFT%┃
+	PRINTFORMW ┗━━━━━━━━━━━━━┛　┗━━━━━━━━━━━━━━━━━━━━┛
+	CFLAG:ARG:行動횟수 = 4
+ENDIF
+
+;４分の１でデカジャ체크
+IF RAND:4 == 1
+	FOR LOCAL,1,7
+		LOCALS = 포지션{LOCAL}
+		SIF FLAG:LOCALS == -1
+			CONTINUE
+		SIF GET_STATE(CFLAG:(FLAG:LOCALS):ステート) == "DYING"
+			CONTINUE
+		FOR LOCAL:1,0,6
+			IF CFLAG:(FLAG:LOCALS):(GET_BATTLESTATUS(LOCAL:1) + "강화") > 0
+				;デカジャ
+				CFLAG:ARG:입력行動 = 509
+				CALL RANDOM_TARGET,ARG,CFLAG:ARG:입력行動
+				RETURN 0
+			ENDIF
+		NEXT
+	NEXT
+	GOTO DECIDE_ACTION
+;２分の１で테트라쟈체크
+ELSEIF RAND:2 == 1
+	FOR LOCAL,7,17
+		LOCALS = 포지션{LOCAL}
+		SIF FLAG:LOCALS == -1
+			CONTINUE
+		SIF GET_STATE(CFLAG:(FLAG:LOCALS):ステート) == "DYING"
+			CONTINUE
+		IF CFLAG:(FLAG:LOCALS):DYING무효화횟수 < 1
+			;테트라쟈
+			CFLAG:ARG:입력行動 = 601
+			CALL RANDOM_TARGET,ARG,CFLAG:ARG:입력行動
+			RETURN 0
+		ENDIF
+	NEXT
+	GOTO DECIDE_ACTION
+ELSE
+	$DECIDE_ACTION
+	LOCAL = RAND:10
+	;통상공격
+	IF LOCAL <= 3
+		CFLAG:ARG:입력行動 = 0
+	;갓애로우、파마効く奴探してそいつ狙う(ただし테트라쟈スルー)실패は파마가드킬
+	ELSEIF 4 <= LOCAL && LOCAL <= 5
+		FOR LOCAL,6,0,-1
+			LOCALS = 포지션{LOCAL}
+			SIF FLAG:LOCALS < 0
+				CONTINUE
+			SIF CFLAG:(FLAG:LOCALS):ステート == GET_STATE_NUM("DYING")
+				CONTINUE
+			IF (MAXBASE:(FLAG:LOCALS):파마 > 0 && MAXBASE:(FLAG:LOCALS):파마 != 999) || CFLAG:LOCAL:파마가드킬 > 0
+				;갓애로우
+				CFLAG:ARG:입력行動 = 1322
+				CFLAG:ARG:ターゲット = LOCAL
+				RETURN 1
+			ENDIF
+		NEXT
+		IF !CFLAG:ARG:600
+			SETCOLOR 0xff0033
+			PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━┓
+			PRINTFORML ┃음음? 뭐냐 너,　　　　　　　　　　　　　　　┃
+			PRINTFORML ┃신의 화살이 듣지 않는 것이냐? 그럼 이거다!　┃
+			PRINTFORML ┃　　　　　　　　　　　　　　　　　　　　　　┃
+			PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━┛
+			RESETCOLOR
+			CFLAG:ARG:600 = 1
+		ENDIF
+		CFLAG:ARG:입력行動 = 1331
+	;지옥의업화
+	ELSEIF 6 <= LOCAL && LOCAL <= 8
+		CFLAG:ARG:입력行動 = 709
+	;악마소환、버쳐出す　枠無ければ통상공격
+	ELSE
+		FOR LOCAL, 7, 17
+			SIF POS(LOCAL) >= 0
+				CONTINUE
+			BREAK
+		NEXT
+		IF LOCAL == 17
+			CFLAG:ARG:입력行動 = 0
+		ELSE
+			CFLAG:ARG:입력行動 = 2308
+		ENDIF
+	ENDIF
+ENDIF
+
+CALL CHECK_ACTIONABLE,ARG,CFLAG:ARG:입력行動
+IF RESULT == 1
+	CALL RANDOM_TARGET,ARG,CFLAG:ARG:입력行動
+ELSE
+	;なんかエラーあれば통상공격に
+	CFLAG:ARG:입력行動 = 0
+	CALL RANDOM_TARGET,ARG,CFLAG:ARG:입력行動
+ENDIF
+RETURN 0
+
+@増援패턴_ホワイトライダーの, ARG, ARG:1, ARG:2
+CALL SET_ENEMY, ARG:1, [[キャラ:버쳐]],45,0,0
+CFLAG:(CHARANUM-1):ＨＰ보정 = 200
+ABL:(CHARANUM-1):스킬5 = 0
+	ABL:(CHARANUM-1):아이템1 = 1002
+	ABL:(CHARANUM-1):입수확률1 = 0
+CALL HEALTH_CHARA,(CHARANUM-1)
+CALL SYNC_STATUS,(CHARANUM-1)
+SIF ARG:2 == 1
+	RETURN 1
+RETURN 0
+

@@ -1,0 +1,89 @@
+﻿;-------------------------------------------------
+;가슴애무
+;애무계コマンド、레벨2
+;-------------------------------------------------
+@ACT_COM8
+PRINTL 가슴애무
+TSTR:0 = 가슴애무
+;CALL KOJO_MESSAGE_COM
+
+;조교者→조교대상
+TFLAG:28 = 2
+;-------------------------------------------------
+;ソース추가処理
+;-------------------------------------------------
+;소비체력、기력
+DOWNBASE:TARGET:체력 += 5
+DOWNBASE:TARGET:기력 += 50
+
+SOURCE:TARGET:쾌Ｂ = 100
+SOURCE:TARGET:정애 = 50
+SOURCE:TARGET:성행위 = 60
+SOURCE:TARGET:노출 = 10
+SOURCE:TARGET:불결 = 20
+SOURCE:TARGET:반감 = 20
+
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;억압、저항持ちには、억울ソース추가
+SIF TALENT:32 || TALENT:34
+	SOURCE:TARGET:울굴 += 20
+
+;-------------------------------------------------
+;불결の処理
+;-------------------------------------------------
+IF TEQUIP:25
+	;奴隷のＢに촉수の불결がつく
+	CALL SET_STAIN("가슴", "점액", TARGET)
+ELSE
+	;奴隷の가슴の불결がなければ입をつかう（애액と모유よごれはＯＫ、불결무시か조수조교時は問題なし）
+	;IF STAIN:TARGET:5 < 2 || STAIN:TARGET:5 == 16 || STAIN:TARGET:5 == 17 || ASSIPLAY == 1 || TALENT:MASTER:64 == 1
+	IF !DIRTY("입", TARGET) && (ASSIPLAY || TALENT:MASTER:불결무시)
+		;조교者のTALENT:혀놀림をみる
+		IF TALENT:PLAYER:혀놀림
+			TIMES SOURCE:TARGET:일탈 , 1.40
+			SOURCE:TARGET:울굴 += SOURCE:TARGET:일탈/20
+		ENDIF
+		;奴隷のＢ⇔조교者の입の불결が移動
+		CALL MOVE_STAIN("가슴", TARGET, "입", PLAYER)
+	ENDIF
+	;奴隷のＢ⇔조교者の指の불결が移動
+CALL MOVE_STAIN("가슴", TARGET, "손", PLAYER)
+ENDIF
+
+;-------------------------------------------------
+;吸精処理
+;-------------------------------------------------
+IF CFLAG:PLAYER:ＭＡＧ非被흡수 == 0
+	LOCAL = (RAND:2+1) * BASE:LV
+	CALL DRAIN_MAG,PLAYER,LOCAL,TARGET
+ELSEIF CFLAG:TARGET:ＭＡＧ非被흡수 == 0
+	LOCAL = (RAND:2+1) * BASE:LV
+	CALL DRAIN_MAG,TARGET,LOCAL,PLAYER
+ENDIF
+
+;-------------------------------------------------
+;경험の処理
+;-------------------------------------------------
+A = 5
+IF IS_LESBIAN(TARGET,PLAYER)
+	CALL ADDS_EXP("레즈경험", A, TARGET)
+	CALL ADDS_EXP("레즈경험", A, PLAYER)
+ELSEIF IS_GAY(TARGET,PLAYER)
+	CALL ADDS_EXP("ＢＬ경험", A, TARGET)
+	CALL ADDS_EXP("ＢＬ경험", A, PLAYER)
+ENDIF
+
+;의존도ベクトル
+TFLAG:33 = 1
+
+
+RETURN 1
+
+;===================================================
+;조교타입
+;===================================================
+@COMTYPE_8
+RETURN COMTYPE("애무계")

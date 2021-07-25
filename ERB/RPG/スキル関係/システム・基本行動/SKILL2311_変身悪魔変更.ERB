@@ -1,0 +1,167 @@
+﻿;ＣＨＡＮＧＥ
+;システム用스킬です
+
+;스킬名
+@SKILL_NAME_2311,ARG
+RESULTS = 변신악마변경
+
+;　명중
+@SKILL_HITRATE_2311, ARG
+RETURN 0
+
+;　위력
+@SKILL_POWER_2311, ARG
+RETURN 0
+
+;　최저공격횟수
+@SKILL_MINATTACKNUMBER_2311,ARG
+RETURN 0
+
+;　최대공격횟수
+@SKILL_MAXATTACKNUMBER_2311,ARG
+RETURN 0
+
+;　ＨＰ2を支払うかＭＰ3を支払うか
+@SKILL_COSTTYPE_2311, ARG
+RETURN 1
+;소비なし＝1
+
+;　コストの量
+@SKILL_COST_2311,ARG
+RETURN 0
+
+;　相性
+@SKILL_TYPE_2311,ARG
+RETURN 0
+
+;　1EXTRAか2MAGICか
+@SKILL_DECIDE_TYPE_2311, ARG
+RETURN 0
+;どちらでもない
+
+;　1물리데미지で計算するか2마법데미지で計算するか
+@SKILL_DAMAGETYPE_2311, ARG
+RETURN 1
+
+
+;　대상が1적か2아군か3場전체か4特殊か
+@SKILL_TARGET_2311
+RETURN 4
+
+;　사거리
+@SKILL_RANGE_2311,ARG
+RETURN 1
+
+;　범위　11명　21열　3전체　4　적아군전체
+@SKILL_SPHERE_2311,ARG
+RETURN 1
+
+;　 効果の타입　1공격、2회복、3상태변화、4特殊、5상태회복
+@SKILL_EFECT_2311
+RETURN 4
+
+;계승타입
+@SKILL_SUCCESSION_TYPE_2311
+RETURN 0
+;継承
+
+;속도보정
+@SKILL_SPEED_2311, ARG = -1
+RETURN 10
+
+;　구상の표시とその타입
+@SKILL_MESSAGE_2311,ARG
+
+;전투時以外に사용できるか
+@SKILL_ACTIONABLE_FIELD_2311
+RETURN 1
+
+;스킬변화？用랭크
+@SKILL_RANK_2311
+RETURN 0
+;변화
+
+;====================================================
+;스킬及び行動の実行
+;====================================================
+@CASTING_LINK_DEVIL(ARG:0)
+;인간・造間・半魔は無理
+SIF (ABL:(ARG:0):종족 == 0 || ABL:(ARG:0):종족 == 45 || ABL:(ARG:0):종족 == 36)
+	RETURN 0
+SIF CFLAG:(ARG:0):被リンクフラグ > -1
+	RETURN 0
+SIF TALENT:(ARG:0):비전투원
+	RETURN 0
+SIF CFLAG:(ARG:0):この場に居ないフラグ == 1
+	RETURN 0
+SIF CFLAG:(ARG:0):PTフラグ == 0
+	RETURN 0
+RETURN 1
+
+@UP_PRINT_ACTION_2311
+	PRINTFORM 누구와 링크합니까？　
+	SIF A > リスト표시数()
+		PRINTFORM ＜page.{P + 1}/{A / リスト표시数() + 1}＞
+	PRINTL
+DRAWLINE
+PRINTFORML 　　　[1001] %CSVNAME(CFLAG:Z:초기링크악마,0)%
+
+@CASTING_RESULT_ACTION_2311 , ARG
+SIF ARG == 1001
+	RETURN 1001 , 0
+RETURN ARG , 1
+
+@ACTION_2311,ARG,ARG:1
+#LOCALSIZE 1
+SWAP Z , ARG
+;キャラリストを표시・選択
+CALL INPUT_CHARA_LIST("누구와 링크합니까？", "CASTING_LINK_DEVIL" , "UP_PRINT_ACTION_2311" , , "CASTING_RESULT_ACTION_2311")
+SWAP Z , ARG
+IF RESULT == 1000
+	RETURN 0
+ELSEIF RESULT == 1001
+
+	SIF CFLAG:ARG:악마변신 == 1
+		CALL ACTION_2310 , ARG , 0
+	IF FINDCHARA_ID(CFLAG:ARG:링크악마) > 0
+		CFLAG:FINDCHARA_ID(CFLAG:ARG:링크악마):被リンクフラグ = -1
+		CFLAG:FINDCHARA_ID(CFLAG:ARG:링크악마):被변신フラグ = 0
+	ENDIF
+	CFLAG:ARG:링크악마 = -1
+	;CFLAG:ARG:악마변신 = 0
+	RETURN 0
+ENDIF
+LOCAL = RESULT
+IF FINDCHARA_ID(CFLAG:ARG:링크악마) > 0
+	CFLAG:FINDCHARA_ID(CFLAG:ARG:링크악마):被リンクフラグ = -1
+	CFLAG:FINDCHARA_ID(CFLAG:ARG:링크악마):被변신フラグ = 0
+ENDIF
+
+;변신している場合변신해제
+SIF CFLAG:ARG:악마변신 == 1
+	CALL ACTION_2310 , ARG , 0
+
+CFLAG:LOCAL:被リンクフラグ = CFLAG:ARG:キャラ固有の번호
+CFLAG:LOCAL:被변신フラグ = 0
+CFLAG:ARG:링크악마 = CFLAG:LOCAL:キャラ固有の번호
+;CFLAG:ARG:악마변신 = 0
+;스킬を復元
+;FOR LOCAL,1, FLAG:스킬数 + 1
+;	ABL:ARG:("스킬" + TOSTR(LOCAL)) = ABL:ARG:("인간시스킬" + TOSTR(LOCAL))
+;NEXT
+
+
+
+;====================================================
+;実行内容ここまで
+;====================================================
+
+;　 설명문の표시
+@SKILL_EXPLAIN_2311
+PRINTL 변신할 악마를 변경한다。
+
+;사용조건
+@SKILL_SPECIAL_ACTIONABLE_2311,ARG
+RETURN 1
+;とくにない
+

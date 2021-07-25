@@ -1,0 +1,2367 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:EQUIPMENT.ERB
+;	Facility	:장비の脱着などのシステム
+;
+;	Licence		:ライセンスフリー。
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		20XX/XX/XX		----					新規作成
+;	002		2011/05/19		P						プラグインソフトの処理を추가
+;	003		2011/10/23		旅人					장비品のリスト표시化
+;	004		2011/10/23		旅人					処理を共通化
+;	005		2012/05/20		P						장비の변경時に変動스테이터스の표시화면を추가
+;	006		2013/03/27		총P						생득무기소지にエレジー追記
+;	007		2013/12/02		ひみつ					バステ내성の표시の仕方を少し변경。장비リスト(キャラクタ版)もページで표시するように。
+;													キャラクタ표시の際に반마인の악세사리が변경出来ないのを修正。
+;													장비選択中に戻るを選んだ場合に変動스테이터스値표시が残る問題を修正
+;	008		2018/10/23		しぐれみそ				장비설명に마정장비추가스킬用の処理を추가
+;	009		2019/05/14		JK好き					장비화면생략설정を추가 레이アウト微調整
+;	010		2019/07/02		JK好き					장비화면생략설정を調整
+;	011		2019/12/25		Jガン					SKILL_NAMEの引数を正しいものに
+;	012		2019/01/13		Jガン					「장비상세선택」選択時の処理を추가
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;===================================================================
+;장비品の변경等
+;===================================================================
+
+@CASTING_EQUIPMENT(ARG:0)
+SIF CFLAG:(ARG:0):PTフラグ == 0
+	RETURN 0
+SIF ABL:(ARG:0):종족 > 0 && ABL:(ARG:0):종족 < 46 && ABL:(ARG:0):종족 != 36 && SKILL_EQUIPTHEORY_IS_HAVE_SKILL(ARG:0) == 0
+	RETURN 0
+;던전攻略中はPT内のキャラ以外ダメ
+;SIF FLAG:SHOPコマンド == [[SHOP:탐색]] && CFLAG:(ARG:0):PTフラグ != 2
+;	RETURN 0
+SIF CFLAG:(ARG:0):노역フラグ == 3
+	RETURN 0
+SIF TALENT:(ARG:0):비전투원
+	RETURN 0
+SIF CFLAG:(ARG:0):この場に居ないフラグ == 1
+	RETURN 0
+RETURN 1
+
+@EQUIPMENT , ARG = -1 , ARG:1 = -1
+#DIM LINE
+#DIM LCOUNT
+;キャラリストを표시・選択
+IF ARG == -1
+	CALL INPUT_CHARA_LIST("장비를 변경시키고 싶은 캐릭터를 선택하십시오", "CASTING_EQUIPMENT")
+	SIF RESULT == 1000
+		RETURN 0
+	LOCAL:10 = RESULT
+ELSE
+	;스테이터스화면から来た人用
+	LOCAL:10 = ARG
+	
+	;キャラ送り用のリスト作成
+	VARSET Q , -1
+	FOR LCOUNT, 0, CHARANUM
+		CALL CASTING_EQUIPMENT(LCOUNT)
+		SIF RESULT
+			Q:FINDELEMENT(Q, -1) = LCOUNT
+	NEXT
+	
+ENDIF
+LOCAL:1 = FINDELEMENT(Q, LOCAL:10)
+
+SIF GETBIT(FLAG:스테이터스화면타입, 2)
+	GOTO PRINT_ELIST
+
+CUSTOMDRAWLINE =
+LINE = LINECOUNT
+LOCAL:1 = FINDELEMENT(Q, LOCAL:10)
+변경장비箇所 = ARG:1
+
+$RESET
+VARSET 아이템リスト , -1
+SIF 변경장비箇所 != -1
+	CALL STATUS_WINDOW_EQUIP_ITEM_LIST , LOCAL:10 , 0 , 0 , 변경장비箇所 , "リスト作成"
+VARSET 변경予定장비 , -1
+CALL 장비변경時스테이터스更新 , LOCAL:10
+;ここまでが変数など초기化処理
+CALL PUEQ_SET(LOCAL:10);PUEQ
+
+$PRINTLOOP
+CLEARLINE LINECOUNT - LINE
+
+CALL SET_PICTURE , , , "소거"
+
+;CALL STATUS_WINDOW_MAIN , LOCAL:10 , 0 , 0
+
+CALL STATUS_WINDOW_EQUIP , LOCAL:10 , 0 , 0 , 1
+CALL STATUS_WINDOW_BATTLE_STATUS , LOCAL:10 , 13 , 0 , 1
+CALL STATUS_WINDOW_DEFTYPE , LOCAL:10 , 24 , 0 , 1
+CALL STATUS_WINDOW_EQUIP_ITEM_LIST , LOCAL:10 , 0 , 52
+
+;
+IF 변경장비箇所 != -1
+	CALL STATUS_WINDOW_EQUIP_DATA , LOCAL:10 , 13 , 76 , EQUIP:(LOCAL:10):GET_EQUIP(변경장비箇所) , ""
+	CALL SET_PICTURE , "[-],,,-_표시정보전환_[+],,,+" , 13 , , 100
+ENDIF
+IF 변경장비箇所 > -1 && 변경予定장비:변경장비箇所 != -1
+	CALL SET_PICTURE , "↓↓↓" , 23 , , 90
+	CALL STATUS_WINDOW_EQUIP_DATA , LOCAL:10 , 24 , 76 , 변경予定장비:변경장비箇所 , ""
+ENDIF
+
+CALL SET_PICTURE ,  , 0 , "표시" , 35 ;35行まで표시
+IF FLAG:장비화면생략スイッチ == 0
+	PRINTL ========
+	PRINTL 장비해설
+	PRINTL ========
+	IF 변경장비箇所 != -1
+		LOCALS = %PUEQ_NAME_GET(LOCAL:10,EQUIP:(LOCAL:10):GET_EQUIP(변경장비箇所))%
+		IF LOCALS != ""
+			TRYCALLFORM 장비해설_%LOCALS%
+		ELSE
+			TRYCCALLFORM 장비해설_{EQUIP:(LOCAL:10):GET_EQUIP(변경장비箇所)}
+			CATCH
+				PRINTL
+			ENDCATCH
+		ENDIF
+		IF 1999 < EQUIP:(LOCAL:10):GET_EQUIP(변경장비箇所) && 2500 > EQUIP:(LOCAL:10):GET_EQUIP(변경장비箇所)
+			PRINT 종별：
+				TRYCCALLFORM 검타입_{EQUIP:(LOCAL:10):GET_EQUIP(변경장비箇所)}
+					SELECTCASE RESULT
+						CASE 1
+							PRINTL 도검
+						CASE 2
+							PRINTL 레이피어
+						CASE 3
+							PRINTL 활
+						CASE 4
+							PRINTL 검
+						CASE 5
+							PRINTL 창
+						CASE 6
+							PRINTL 부・둔기
+						CASE 7
+							PRINTL 채찍
+						CASE 8
+							PRINTL 투구
+						CASE 9
+							PRINTL 지팡이・제사도구
+						CASE 10
+							PRINTL 곤
+						CASE 11
+							PRINTL 권투구
+						CASEELSE
+							PRINTL 그 외
+					ENDSELECT
+				CATCH
+					PRINTL 그 외
+				ENDCATCH
+		ENDIF
+		CALL 장비강화_CSTR, "해설표시", (LOCAL:10),EQUIP:(LOCAL:10):GET_EQUIP(변경장비箇所)
+	ELSE
+		PRINTL
+	ENDIF
+	IF 변경장비箇所 > -1 && 변경予定장비:변경장비箇所 != -1
+		PRINTL 　↓　　　　　　
+		LOCALS = %PUEQ_NAME_GET(LOCAL:10,변경予定장비:변경장비箇所)%
+		IF LOCALS != ""
+			TRYCALLFORM 장비해설_%LOCALS%
+		ELSE
+			TRYCCALLFORM 장비해설_{변경予定장비:변경장비箇所}
+			CATCH
+				PRINTL
+		ENDCATCH
+		ENDIF
+		IF 1999 < 변경予定장비:변경장비箇所 && 2500 > 변경予定장비:변경장비箇所
+			PRINT 종별：
+				TRYCCALLFORM 검타입_{변경予定장비:변경장비箇所}
+					SELECTCASE RESULT
+						CASE 1
+							PRINTL 도검
+						CASE 2
+							PRINTL 레이피어
+						CASE 3
+							PRINTL 활
+						CASE 4
+							PRINTL 검
+						CASE 5
+							PRINTL 창
+						CASE 6
+							PRINTL 부・둔기
+						CASE 7
+							PRINTL 채찍
+						CASE 8
+							PRINTL 투구
+						CASE 9
+							PRINTL 지팡이・제사도구
+						CASE 10
+							PRINTL 곤
+						CASE 11
+							PRINTL 권투구
+						CASEELSE
+							PRINTL 그 외
+					ENDSELECT
+				CATCH
+					PRINTL 그 외
+				ENDCATCH
+		ENDIF
+	ELSE
+		PRINTL
+	ENDIF
+ENDIF
+IF FLAG:장비화면생략スイッチ == 1
+	CUSTOMDRAWLINE =
+	PRINTL [401] 등록장비세트 1 　　[402] 등록장비세트 2 　　[403] 등록장비세트 3
+	PRINTL [404] 등록장비세트 4 　　[405] 등록장비세트 5 　　[406] 등록장비세트 6 
+ENDIF
+CUSTOMDRAWLINE =
+PRINTFORM \@(LOCAL:1 == 0) ? %" " * 16% # [1001] 이전 캐릭터\@
+PRINT 	[100] 돌아간다 [200] 장비변경적용 [300] 모든장비제외 
+PRINTFORM \@(LOCAL:1 == FINDELEMENT(Q, -1) - 1) ? %" " * 16% # [1003] 다음 캐릭터\@
+PRINTL 	[400] 현재장비등록 [500] 표시변경
+
+$INPUTS_LOOP
+INPUTS
+ENCODETOUNI %RESULTS%
+IF RESULTS == "100"
+	변경장비箇所 = -1
+	VARSET 변경予定장비, -1
+	CALL 장비변경時스테이터스更新(LOCAL:10)
+	CALL PUEQ_SET(-1);PUEQ
+	RETURN 0
+ELSEIF RESULTS == "200"
+	FOR LOCAL , 0 , 7
+		SIF 변경予定장비:LOCAL != -1
+			CALL 장비변경 , LOCAL:10 , LOCAL , 변경予定장비:LOCAL
+	NEXT
+	GOTO RESET
+ELSEIF RESULTS == "300"
+	CALL 全장비해제(LOCAL:10)
+	GOTO RESET
+ELSEIF RESULTS == "400"
+	CLEARLINE LINECOUNT - LINE
+	CALL 장비등록 , LOCAL:10
+	GOTO PRINTLOOP
+ELSEIF RESULTS == "500"
+	CLEARLINE LINECOUNT - LINE
+	IF FLAG:장비화면생략スイッチ == 0
+		FLAG:장비화면생략スイッチ = 1
+	ELSEIF FLAG:장비화면생략スイッチ == 1
+		FLAG:장비화면생략スイッチ = 2
+	ELSEIF FLAG:장비화면생략スイッチ == 2
+		FLAG:장비화면생략スイッチ = 0
+	ELSE
+		FLAG:장비화면생략スイッチ = 0
+	ENDIF
+	GOTO PRINTLOOP
+ELSEIF RANGE(TOINT(RESULTS) , 401 , 406)
+	LOCAL = TOINT(RESULTS) - 401
+	LOCAL = 3100 + LOCAL * 7
+	FOR LCOUNT , 0 , 7
+		;CALLFORM 장비조건_{CFLAG:(LOCAL:10):(LOCAL + LCOUNT)},LOCAL:10
+		CALL 장비可能確認,LOCAL:10,CFLAG:(LOCAL:10):(LOCAL + LCOUNT),LCOUNT
+		IF EQUIP:(LOCAL:10):GET_EQUIP(LCOUNT) == CFLAG:(LOCAL:10):(LOCAL + LCOUNT)
+			변경予定장비:LCOUNT = -1
+		ELSEIF RESULT && (CFLAG:(LOCAL:10):(LOCAL + LCOUNT) == 0 || ITEM:(CFLAG:(LOCAL:10):(LOCAL + LCOUNT)))
+			변경予定장비:LCOUNT = CFLAG:(LOCAL:10):(LOCAL + LCOUNT)
+		ELSE
+			PRINTFORMW %GET_EQUIP(LCOUNT)%장비がセットできませんでした
+		ENDIF
+	NEXT
+	CALL 장비변경時스테이터스更新 , LOCAL:10
+	RESULT = 0
+	GOTO PRINTLOOP
+ELSEIF RESULTS == "1001" && LOCAL:1 > 0
+	변경장비箇所 = -1
+	LOCAL:1 -= 1
+	LOCAL:10 = Q:(LOCAL:1)
+	GOTO RESET
+ELSEIF RESULTS == "1003" && LOCAL:1 < FINDELEMENT(Q, -1) -1
+	변경장비箇所 = -1
+	LOCAL:1 += 1
+	LOCAL:10 = Q:(LOCAL:1)
+	GOTO RESET
+ELSEIF RANGE(TOINT(RESULTS) , 50 , 56)
+	변경장비箇所 = TOINT(RESULTS) - 50
+	CALL STATUS_WINDOW_EQUIP_ITEM_LIST , LOCAL:10 , 0 , 0 , 변경장비箇所 , "リスト作成"
+	GOTO PRINTLOOP
+
+;ELSEIF RANGE(TOINT(RESULTS) , 2000 , 5499) && FINDELEMENT(아이템リスト , TOINT(RESULTS)) > -1
+ELSEIF RESULT == 1 && RANGE(RESULT:1 , 97 , 97 + 19) && 아이템リスト:(아이템リストページ * 20 + RESULT:1 - 97) > -1
+	;변경予定장비:변경장비箇所 = TOINT(RESULTS)
+	변경予定장비:변경장비箇所 = 아이템リスト:(아이템リストページ * 20 + RESULT:1 - 97)
+	CALL 장비변경時스테이터스更新 , LOCAL:10
+	
+	GOTO PRINTLOOP
+ELSEIF RESULTS == "57" && TALENT:(LOCAL:10):건슬링거 > 0 && EQUIP:(LOCAL:10):총 > 0
+	CALL EQUIP_SPECIAL_BULLET, LOCAL:10
+	GOTO RESET
+ELSEIF RESULTS == "<"
+	아이템リストページ = LIMIT(아이템リストページ-1 , 0 , (FINDELEMENT(아이템リスト , -1)-1) / 20)
+	GOTO PRINTLOOP
+ELSEIF RESULTS == ">"
+	아이템リストページ = LIMIT(아이템リストページ+1 , 0 , (FINDELEMENT(아이템リスト , -1)-1) / 20)
+	GOTO PRINTLOOP
+ELSEIF RESULTS == "장비상세선택" && 변경장비箇所 >= 0
+	CALL EQUIP_DETAIL_ITEM_LIST, 변경장비箇所, LOCAL:10
+	SIF RESULT != 100
+		변경予定장비:변경장비箇所 = RESULT
+	CALL 장비변경時스테이터스更新 , LOCAL:10
+	GOTO PRINTLOOP
+ELSEIF RESULTS == "+" || RESULTS == "-"
+	CALL STATUS_WINDOW_EQUIP_DATA , , , , , @"표시변경%RESULTS%"
+	GOTO PRINTLOOP
+ELSEIF RESULTS == "≫"
+	FLAG:ウィンドウ내성표시설정 = ++FLAG:ウィンドウ내성표시설정 % 3
+	GOTO PRINTLOOP
+ELSEIF RESULTS == "≪"
+	FLAG:ウィンドウ내성표시설정 = (FLAG:ウィンドウ내성표시설정 + 2) % 3
+	GOTO PRINTLOOP
+ELSEIF RESULTS == "정렬조건변경"
+	CALL CHANGE_CONDITION_EQUIP_SORT
+	CALL EQUIP_SORT , LOCAL:10 , 1
+	GOTO PRINTLOOP
+ELSE
+	GOTO INPUTS_LOOP
+ENDIF
+
+;=========================================
+$PRINT_ELIST
+CUSTOMDRAWLINE =
+PRINTFORML %NAME:(LOCAL:10)%
+PRINTL
+CALL PRINT_EQUIPLIST,LOCAL:10
+IF FLAG:カスタムゲーム화면
+	IF TALENT:(LOCAL:10):건슬링거 && EQUIP:(LOCAL:10):총
+		PRINTL 　[7][특수탄변경]
+	ELSE
+		PRINTL 　[-][----------]
+	ENDIF
+ELSE
+	IF TALENT:(LOCAL:10):건슬링거 && EQUIP:(LOCAL:10):총
+		PRINTL [7][특수탄변경]
+	ELSE
+		PRINTL [-][----------]
+	ENDIF
+ENDIF
+DRAWLINE
+SIF FLAG:カスタムゲーム화면
+	PRINT 　
+PRINTL [300] 모든장비제외
+DRAWLINE
+
+PRINTFORMLC \@(LOCAL:1 == 0) ? %" " * 16% # [1001]前のキャラ\@
+PRINTLC [100] 취소　　[200]장비변경종료　　
+PRINTFORMLC \@(LOCAL:1 == A-1) ? %" " * 16% # [1003]次のキャラ\@
+$INPUT_LOOP2
+INPUT
+
+IF RESULT == 100
+	RESTART
+ELSEIF RESULT == 200
+	CALL PUEQ_SET(-1);PUEQ
+	RETURN 0
+ELSEIF RESULT == 300
+	CALL 全장비해제(LOCAL:10)
+	GOTO PRINT_ELIST
+ELSEIF RESULT == 1001 && LOCAL:1 > 0
+	LOCAL:1 -= 1
+	LOCAL:10 = Q:(LOCAL:1)
+	GOTO PRINT_ELIST
+ELSEIF RESULT == 1003 && LOCAL:1 < A-1
+	LOCAL:1 += 1
+	LOCAL:10 = Q:(LOCAL:1)
+	GOTO PRINT_ELIST
+ELSEIF RESULT < 0 || RESULT >= 8
+	GOTO INPUT_LOOP2
+ENDIF
+IF RESULT == 7 && TALENT:(LOCAL:10):건슬링거 && EQUIP:(LOCAL:10):총
+	CALL EQUIP_SPECIAL_BULLET,LOCAL:10
+	GOTO PRINT_ELIST
+ELSEIF RESULT == 7
+	GOTO INPUT_LOOP2
+ENDIF
+LOCAL:11 = RESULT
+CALL EQUIP_CHANGE, LOCAL:11, LOCAL:10
+SIF RESULT == 0
+	GOTO PRINT_ELIST
+CALL PUEQ_SET(-1);PUEQ
+RETURN 1
+
+;多分こんなノリ
+;ARG:0…장비カテゴリ(0.검/1.총/2.머리/3.몸통/4.팔/5.발/6.악세사리)
+;ARG:1…キャラ登録番号
+;ARG:2…呼び元(0.장비변경/1.스테이터스화면)
+@EQUIP_CHANGE, ARG, ARG:1, ARG:2
+#DIM 아이템확인표시
+#DIM 元전투능력, 8
+#DIM L_COUNT
+#DIM LLINE
+#DIM LPAGE
+#DIM LREDRAW
+#DIM LSIZE
+#LOCALSIZE 2
+;---- EDIT 003 ADD START -------------------------
+#DIM L_NG
+;---- EDIT 003 ADD END   -------------------------
+
+CALL STATUS_WINDOW_EQUIP_ITEM_LIST(ARG:1, 0, 0, ARG:0, "リスト作成")
+ARRAYREMOVE 아이템リスト, 0, 1
+LLINE = LINECOUNT
+LPAGE = 0
+LREDRAW = CURRENTREDRAW()
+SIF LREDRAW != 2
+	REDRAW 2
+LSIZE = FINDELEMENT(아이템リスト, -1)
+ARRAYSORT 아이템リスト, FORWARD, 0, LSIZE
+
+$PRINT_EMLIST
+CLEARLINE LINECOUNT - LLINE
+;---- EDIT 003 ADD START -------------------------
+L_NG=0
+CUSTOMDRAWLINE =
+PRINTFORM 세트할 장비품을 선택해 주십시오 (현재의 화면 모드:\@ !FLAG:아이템리스트화면모드설정 ? 보통 # 간이 리스트 \@) 
+PRINTFORML ＜page.{LPAGE + 1}/{(LSIZE - 1) / リスト표시数() + 1}＞
+DRAWLINE
+;---- EDIT 003 ADD END   -------------------------
+
+CALL PRINT_EQUIPMENTLIST2(ARG:0, ARG:1, LPAGE, LSIZE)
+IF LPAGE == (LSIZE - 1) / リスト표시数()
+	IF FLAG:아이템리스트화면모드설정
+		PRINTFORM \@ LINECOUNT - LLINE < 4 + リスト표시数() ? %"\n" * MAX(0, 4 + リスト표시数() + LLINE - LINECOUNT)% # \@
+	ELSE
+		LOCAL:1 = LSIZE % リスト표시数()
+		LOCAL = (リスト표시数() / PRINTCPERLINE()) + ((リスト표시数() % PRINTCPERLINE()) != 0)
+		LOCAL -= (LOCAL:1 / PRINTCPERLINE()) + ((LOCAL:1 % PRINTCPERLINE()) != 0)
+		PRINTFORM %"\n" * MAX(0, LOCAL)%
+	ENDIF
+ENDIF
+DRAWLINE
+PRINTL [0] 제외
+;---- EDIT 003 MOD START -------------------------
+PRINTFORMLC \@ LPAGE <= 0 ? %" " * 16% # [1007]이전 페이지 \@
+IF !ARG:2
+	PRINTFORMLC [1000] 취소
+	PRINTFORMLC [1001] 장비변경
+ELSE
+	PRINTFORMLC [1000] 종료
+	PRINTFORMLC 
+ENDIF
+PRINTFORMLC \@ LPAGE >= (LSIZE - 1) / リスト표시数() ? %" " * 16% # [1009]다음 페이지 \@
+PRINTFORMLC [1002] 화면모드변경(\@ FLAG:아이템리스트화면모드설정 ? 보통 # 간이 리스트 \@)
+PRINTL
+;---- EDIT 003 MOD END   -------------------------
+
+
+$INPUT_LOOP3
+INPUT
+
+IF RESULT == 1000
+	GOTO END_FUNC
+ELSEIF RESULT == 1001
+	SIF LREDRAW != 2
+		REDRAW LREDRAW
+	RETURN 1
+;---- EDIT 003 ADD START -------------------------
+ELSEIF RESULT == 1002
+	CALL EQ_화면모드전환
+	CLEARLINE 1
+	GOTO PRINT_EMLIST
+;---- EDIT 003 ADD END   -------------------------
+ELSEIF RESULT == 1007 && LPAGE > 0
+	LPAGE--
+	GOTO PRINT_EMLIST
+ELSEIF RESULT == 1009 && LPAGE < (LSIZE - 1) / リスト표시数()
+	LPAGE++
+	GOTO PRINT_EMLIST
+ELSEIF RESULT == 0
+	;총の場合、특수탄を外す
+	IF GET_EQUIP(ARG) == "총"
+		FOR LOCAL,1,8
+			LOCALS = 특수탄{LOCAL}
+			EQUIP:(ARG:1):LOCALS = 0
+		NEXT
+	ENDIF
+	;外した장비の소지数を増加
+	SIF (EQUIP:(ARG:1):GET_EQUIP(ARG)) != 0 && (EQUIP:(ARG:1):GET_EQUIP(ARG)) != [[아이템:생득무기]]
+		ITEM:(EQUIP:(ARG:1):GET_EQUIP(ARG)) += 1
+	EQUIP:(ARG:1):GET_EQUIP(ARG) = 0
+	;장비箇所が"검"で대상キャラが생득무기소지조건を満たす場合、장비を「생득무기」に변경
+	SIF ARG == 0 && 생득무기소지(ARG:1)
+		EQUIP:(ARG:1):GET_EQUIP(ARG) = [[아이템:생득무기]]
+	
+	CALL SYNC_STATUS,ARG:1
+	GOTO END_FUNC
+ENDIF
+LOCAL = RESULT
+
+
+IF 마정장비(LOCAL)
+	CALLFORM 장비조건_마정장비,ARG:1,LOCAL - 2450 - 450*ARG
+	IF LOCAL == 1000
+		GOTO END_FUNC
+	ELSEIF LOCAL < 2000+ARG*500 || LOCAL >= 2000+(ARG+1)*500 || RESULT == 0 || ITEM:(LOCAL) <= 0
+		;---- EDIT 003 MOD START -------------------------
+;		GOTO INPUT_LOOP3
+		L_NG=1
+		;---- EDIT 003 MOD END   -------------------------
+	ENDIF
+ELSE
+	TRYCCALLFORM 장비조건_{LOCAL},ARG:1
+		IF LOCAL == 1000
+			GOTO END_FUNC
+		ELSEIF LOCAL < 2000+ARG*500 || LOCAL >= 2000+(ARG+1)*500 || RESULT == 0 || ITEM:(LOCAL) <= 0
+			;---- EDIT 003 MOD START -------------------------
+;			GOTO INPUT_LOOP3
+			L_NG=1
+			;---- EDIT 003 MOD END   -------------------------
+		ENDIF
+	CATCH
+		;---- EDIT 003 MOD START -------------------------
+;		GOTO INPUT_LOOP3
+		L_NG=1
+		;---- EDIT 003 MOD END   -------------------------
+	ENDCATCH
+ENDIF
+
+;---- EDIT 003 ADD START -------------------------
+IF L_NG
+	L_NG=0
+
+	;- 장비中の장비は許可
+	IF EQUIP:(ARG:1):GET_EQUIP(ARG) == LOCAL
+	ELSE
+		CLEARLINE 1
+		REUSELASTLINE （입력値 {LOCAL} は範囲外、または個数0の아이템です）
+		GOTO INPUT_LOOP3
+	ENDIF
+
+ENDIF
+;---- EDIT 003 ADD END   -------------------------
+$PRINT_STATUS
+IF 아이템확인표시
+	IF EQUIP:(ARG:1):GET_EQUIP(ARG) > 0
+		CALL 장비설명,EQUIP:(ARG:1):GET_EQUIP(ARG),ARG:1
+		PRINTL
+		CUSTOMDRAWLINE ↓
+		PRINTL
+	ENDIF
+	CALL 장비설명,LOCAL,ARG:1
+ELSE
+	FOR L_COUNT,0, FLAG:相性数
+		CALLF 장비변경時相性(L_COUNT, 1, MAXBASE:(ARG:1):GET_TYPE(L_COUNT))
+	NEXT
+	FOR L_COUNT,0,FLAG:전투능력数+2
+		元전투능력:L_COUNT = MAXBASE:(ARG:1):GET_BATTLESTATUS(L_COUNT)
+	NEXT
+	DRAWLINE
+	PRINTFORML \@ EQUIP:(ARG:1):GET_EQUIP(ARG) == 0 ? %AUTO_SPLIT("素손_ＥＭＰＴＹ" , "_" , GET_EQUIP(ARG) != "검" )% # %ITEMNAME:(EQUIP:(ARG:1):GET_EQUIP(ARG))% \@ → %ITEMNAME:LOCAL%
+	DRAWLINE
+	SWAP EQUIP:(ARG:1):GET_EQUIP(ARG), LOCAL
+	CALL SYNC_STATUS, ARG:1
+	FOR L_COUNT,0,FLAG:전투능력数 + 2
+		CALLF 장비변경時스테이터스変化値(L_COUNT, 1, MAXBASE:(ARG:1):GET_BATTLESTATUS(L_COUNT) - 元전투능력:L_COUNT)
+	NEXT
+	U = ARG:1
+	CALL SHOW_INFO_NAME
+	CALL SHOW_INFO_PAGE_2, 1
+	SWAP EQUIP:(ARG:1):GET_EQUIP(ARG), LOCAL
+	CALL SYNC_STATUS, ARG:1
+ENDIF
+PRINTFORML [0] 장비를 변경한다　[1] %\@아이템확인표시 ? 스테이터스확인 # 아이템확인 \@% [9] 취소
+CALL INPUTINT, 0, 1, 9
+
+SELECTCASE RESULT
+	CASE 0
+		
+	CASE 1
+		INVERTBIT 아이템확인표시, 0
+		GOTO PRINT_STATUS
+	CASE 9
+		GOTO PRINT_EMLIST
+ENDSELECT
+
+CALL 장비변경,ARG:1,ARG,LOCAL
+;총の場合、특수탄を外すかを판정
+IF GET_EQUIP(ARG) == "총" && EQUIP:(ARG:1):총 > 0
+	CALLFORM 특수탄창_{EQUIP:(ARG:1):총},ARG:1
+	LOCAL:1 = RESULT
+	FOR LOCAL,1,8
+		LOCALS = 특수탄{LOCAL}
+		SIF LOCAL > LOCAL:1
+			EQUIP:(ARG:1):LOCALS = 0
+		SIF EQUIP:(ARG:1):LOCALS == 0
+			CONTINUE
+		CALLFORM 장비조건_{EQUIP:(ARG:1):LOCALS},ARG:1
+		SIF RESULT == 0
+			EQUIP:(ARG:1):LOCALS = 0
+	NEXT
+ENDIF
+$END_FUNC
+SIF LREDRAW != 2
+	REDRAW LREDRAW
+RETURN 0
+
+
+@PRINT_EQUIPLIST,ARG
+#DIM LCOUNT
+;1行눈に레벨・속성を표시
+CALL PRINT_BASE_STATUS,ARG
+
+IF FLAG:カスタムゲーム화면
+	DRAWLINE
+	PRINTFORML 　ＨＰ[{BASE:ARG:ＨＰ,5}/{MAXBASE:ARG:ＨＰ,5}]　　ＭＰ[{BASE:ARG:ＭＰ,5}/{MAXBASE:ARG:ＭＰ,5}]　　\@MAXBASE:ARG:CP>0?ＣＰ:{MAXBASE:ARG:CP,3}#\@
+	DRAWLINE
+	PRINTFORM 　통상공격：%GET_TYPE(ABL:ARG:공격상성)% {ABL:ARG:최저공격횟수}-{ABL:ARG:최대공격횟수} 회　사거리
+	IF ABL:ARG:사거리 == 1
+		PRINT Ｓ
+	ELSEIF ABL:ARG:사거리 == 2
+		PRINT Ｍ
+	ELSEIF ABL:ARG:사거리 == 3
+		PRINT Ｌ
+	ENDIF
+	PRINTFORML 　%GET_SPHERE(ABL:ARG:공격범위)%
+
+	SIF ABL:ARG:추가효과 > 0
+		PRINTFORML 　　　　추가효과:%GET_STATE(ABL:ARG:추가효과), 6, LEFT%　추가효과상성:%GET_TYPE(ABL:ARG:추가효과상성)%
+	
+	;인간ならばここに총공격の性能と총공격힘・총명중を2行つかって표시
+	IF EQUIP:ARG:총 > 0
+		DRAWLINE
+		PRINTFORML 　총：공격력 {MAXBASE:ARG:총공격}　명중 {MAXBASE:ARG:총명중}
+		PRINT 　　　　
+		IF 마정장비(EQUIP:ARG:총)
+			CALLFORM 최저공격횟수_마정장비,EQUIP:ARG:총 - 2900
+			PRINTFORM 공격횟수 {RESULT}-
+			CALLFORM 최대공격횟수_마정장비,EQUIP:ARG:총 - 2900
+			PRINTFORM {RESULT} 회
+			CALLFORM 사거리_마정장비,EQUIP:ARG:총 - 2900
+			PRINTFORM 　사거리
+			IF RESULT == 1
+				PRINT Ｓ
+			ELSEIF RESULT == 2
+				PRINT Ｍ
+			ELSEIF RESULT == 3
+				PRINT Ｌ
+			ENDIF
+			CALLFORM 공격범위_마정장비,EQUIP:ARG:총 - 2900
+		ELSE
+			CALLFORM 최저공격횟수_{EQUIP:ARG:총},ARG
+			PRINTFORM 공격횟수 {RESULT}-
+			CALLFORM 최대공격횟수_{EQUIP:ARG:총},ARG
+			PRINTFORM {RESULT} 회
+			CALLFORM 사거리_{EQUIP:ARG:총},ARG
+			PRINTFORM 　사거리
+			IF RESULT == 1
+				PRINT Ｓ
+			ELSEIF RESULT == 2
+				PRINT Ｍ
+			ELSEIF RESULT == 3
+				PRINT Ｌ
+			ENDIF
+			CALLFORM 공격범위_{EQUIP:ARG:총},ARG
+		ENDIF
+		PRINTFORM 　%GET_SPHERE(RESULT),4,LEFT%
+		PRINTL
+	ENDIF
+	DRAWLINE
+	;5～10行눈に기본能力値と전투能力値を표시
+	FOR LCOUNT, 0, 6
+		PRINTFORM %GET_BASESTATUS(LCOUNT+1),5%{MAXBASE:ARG:(GET_BASESTATUS(LCOUNT+1)),5}({BASE:ARG:(GET_BASESTATUS(LCOUNT+1)),5})　　　　　　　　
+		PRINTFORM %GET_BATTLESTATUS(LCOUNT),10,LEFT% 
+		PRINTFORML {MAXBASE:ARG:(GET_BATTLESTATUS(LCOUNT)),6}
+	NEXT
+	DRAWLINE
+	;11、12行눈に被공격상성と継承可能표시
+	PRINTL  전투相性
+	LOCAL:1 = GETCOLOR()
+	;現在の色を退避しておく（적の스테이터스を표시した時など）
+	FOR LOCAL,0, FLAG:相性数
+		SIF FLAG:カスタムゲーム화면 && LOCAL % 6 == 0
+			PRINT 　 
+		CALL SET_AISYOU_COLOR, MAXBASE:ARG:(GET_TYPE(LOCAL))
+		PRINTFORM %GET_TYPE(LOCAL) %\@(MAXBASE:ARG:(GET_TYPE(LOCAL)) < 0) ? 흡 # 　\@
+		PRINTFORM \@ ((MAXBASE:ARG:(GET_TYPE(LOCAL)) != 999)) ? {ABS(MAXBASE:ARG:(GET_TYPE(LOCAL))),4}％ # %" " *2%반사 \@　
+		;PRINTFORM {ABS(MAXBASE:U:(GET_TYPE(LOCAL)),4}％
+		SIF LOCAL % 6 == 5
+			PRINTL
+	NEXT
+	;色を戻す
+	SETCOLOR LOCAL:1
+	DRAWLINE
+	;장비が可能でないキャラ
+	IF ABL:ARG:종족 > 0 && ABL:ARG:종족 < 46 && ABL:ARG:종족 != 36 && SKILL_EQUIPTHEORY_IS_HAVE_SKILL(ARG) == 0
+		PRINT  [PLUG-IN] 
+		IF EQUIP:ARG:악세사리 == 0
+			SETCOLOR 0x404040
+			PRINTFORML ＥＭＰＴＹ
+			RESETCOLOR
+		ELSE
+			PRINTFORML 　%PLUGINNAME(EQUIP:ARG:악세사리)%
+		ENDIF
+	ELSE
+		FOR LOCAL,0,7
+			SIF FLAG:カスタムゲーム화면
+				PRINT 　
+			PRINTFORM [{LOCAL}]%"[" + GET_EQUIP(LOCAL) + "]",14,LEFT%
+			IF (EQUIP:ARG:(GET_EQUIP(LOCAL))) == 0
+				SETCOLOR 0x404040
+				PRINTFORML ＥＭＰＴＹ
+				RESETCOLOR
+			ELSE
+				IF 개조장비(EQUIP:ARG:(GET_EQUIP(LOCAL)))
+					PRINTFORML %개조장비명칭(개조장비番号(EQUIP:ARG:(GET_EQUIP(LOCAL))))%
+					
+					
+				ELSEIF 마정장비(EQUIP:ARG:(GET_EQUIP(LOCAL)))
+					;---- EDIT 004 MOD START -------------------------
+	;				PRINTFORML %STR:(DC:(EQUIP:ARG:(GET_EQUIP(LOCAL)) - 2450 - LOCAL*450):49+100)%
+					PRINTFORML %EQ_GETNAME_마정장비_CHARA(ARG, LOCAL)%
+					;---- EDIT 004 MOD END   -------------------------
+				ELSE
+					PRINTFORML %ITEMNAME:(EQUIP:ARG:(GET_EQUIP(LOCAL)))%
+				ENDIF
+			ENDIF
+		NEXT
+	ENDIF
+ELSE
+	PRINTFORML ＨＰ[{BASE:ARG:ＨＰ,4}/{MAXBASE:ARG:ＨＰ,4}]　　ＭＰ[{BASE:ARG:ＭＰ,4}/{MAXBASE:ARG:ＭＰ,4}]　　\@MAXBASE:ARG:CP>0?ＣＰ:{MAXBASE:ARG:CP,3}#\@
+	;4行目に통상공격の性能を表示
+	PRINTFORM 통상공격：%GET_TYPE(ABL:ARG:공격상성),6,LEFT%　{ABL:ARG:최저공격횟수,2}-{ABL:ARG:최대공격횟수,2}회　사거리:
+	IF ABL:ARG:사거리 == 1
+		PRINT Ｓ
+	ELSEIF ABL:ARG:사거리 == 2
+		PRINT Ｍ
+	ELSEIF ABL:ARG:사거리 == 3
+		PRINT Ｌ
+	ENDIF
+	PRINTFORML  %GET_SPHERE(ABL:ARG:공격범위),4,LEFT%
+	;인간ならばここに총공격の性能と총공격힘・총명중を2行つかって표시
+	IF EQUIP:ARG:총 > 0
+		DRAWLINE
+		PRINTFORML 총：공격 {MAXBASE:ARG:총공격,4} 명중 {MAXBASE:ARG:총명중}
+		IF 마정장비(EQUIP:ARG:총)
+			CALLFORM 최저공격횟수_마정장비,EQUIP:ARG:총 - 2900
+			PRINTFORM 공격횟수 {RESULT,2}-
+			CALLFORM 최대공격횟수_마정장비,EQUIP:ARG:총 - 2900
+			PRINTFORM {RESULT,2}
+			CALLFORM 사거리_마정장비,EQUIP:ARG:총 - 2900
+			PRINTFORM 　　사거리：
+			IF RESULT == 1
+				PRINT Ｓ
+			ELSEIF RESULT == 2
+				PRINT Ｍ
+			ELSEIF RESULT == 3
+				PRINT Ｌ
+			ENDIF
+			CALLFORM 공격범위_마정장비,EQUIP:ARG:총 - 2900
+		ELSE
+			CALLFORM 최저공격횟수_{EQUIP:ARG:총},ARG
+			PRINTFORM 공격횟수 {RESULT,2}-
+			CALLFORM 최대공격횟수_{EQUIP:ARG:총},ARG
+			PRINTFORM {RESULT,2}
+			CALLFORM 사거리_{EQUIP:ARG:총},ARG
+			PRINTFORM 　　사거리：{RESULT,2}
+			CALLFORM 공격범위_{EQUIP:ARG:총},ARG
+		ENDIF
+		PRINTFORM 　　%GET_SPHERE(RESULT),4,LEFT%
+		PRINTL
+	ENDIF
+	DRAWLINE
+	;5～10行눈に기본能力値と전투能力値を표시
+	FOR LCOUNT, 0, 6
+		PRINTFORM %GET_BASESTATUS(LCOUNT+1),4%{MAXBASE:ARG:(GET_BASESTATUS(LCOUNT+1)),4}({BASE:ARG:(GET_BASESTATUS(LCOUNT+1)),4})　　　　　　　　
+		PRINTFORM %GET_BATTLESTATUS(LCOUNT),8,LEFT% 
+		PRINTFORML {MAXBASE:ARG:(GET_BATTLESTATUS(LCOUNT)),5}
+	NEXT
+	DRAWLINE
+	;11、12行눈に被공격상성と継承可能표시
+	PRINTL 전투상성
+	FOR LOCAL,0,FLAG:相性数
+			PRINTFORM %GET_TYPE(LOCAL) %\@(MAXBASE:ARG:(GET_TYPE(LOCAL)) < 0) ? 흡 # 　\@
+			PRINTFORM \@ ((MAXBASE:ARG:(GET_TYPE(LOCAL)) != 999)) ? {ABS(MAXBASE:ARG:(GET_TYPE(LOCAL))),4}％ # %" " *2%반사 \@　
+			;PRINTFORM {ABS(MAXBASE:ARG:(GET_TYPE(LOCAL)),4}％
+		SIF LOCAL % 6 == 5
+			PRINTL
+	NEXT
+	DRAWLINE
+	;장비が可能でないキャラ
+	IF ABL:ARG:종족 > 0 && ABL:ARG:종족 < 46 && ABL:ARG:종족 != 36 && SKILL_EQUIPTHEORY_IS_HAVE_SKILL(ARG) == 0
+		PRINT  [PLUG-IN] 
+		IF EQUIP:ARG:악세사리 == 0
+			SETCOLOR 0x404040
+			PRINTFORML ＥＭＰＴＹ
+			RESETCOLOR
+		ELSE
+			PRINTFORML %PLUGINNAME(EQUIP:ARG:악세사리)%
+		ENDIF
+	ELSE
+		FOR LOCAL,0,7
+			PRINTFORM [{LOCAL}]%"[" + GET_EQUIP(LOCAL) + "]",14,LEFT%
+			IF (EQUIP:ARG:(GET_EQUIP(LOCAL))) == 0
+				SETCOLOR 0x404040
+				PRINTFORML ＥＭＰＴＹ
+				RESETCOLOR
+			ELSE
+				IF 개조장비(EQUIP:ARG:(GET_EQUIP(LOCAL)))
+					PRINTFORML %개조장비명칭(개조장비番号(EQUIP:ARG:(GET_EQUIP(LOCAL))))%
+				ELSEIF 마정장비(EQUIP:ARG:(GET_EQUIP(LOCAL)))
+					;---- EDIT 004 MOD START -------------------------
+	;				PRINTFORML %STR:(DC:(EQUIP:ARG:(GET_EQUIP(LOCAL)) - 2450 - LOCAL*450):49+100)%
+					PRINTFORML %EQ_GETNAME_마정장비_CHARA(ARG, LOCAL)%
+					;---- EDIT 004 MOD END   -------------------------
+				ELSE
+					PRINTFORML %ITEMNAME:(EQUIP:ARG:(GET_EQUIP(LOCAL)))%
+				ENDIF
+			ENDIF
+		NEXT
+	ENDIF
+ENDIF
+
+;---- EDIT 003 DEL START -------------------------
+;;장비できる아이템を표시する
+;@PRINT_EQUIPMENTLIST, ARG, ARG:1
+;#LOCALSIZE 1
+;FOR LOCAL,2000+ARG*500,2000+(ARG+1)*500
+;	SIF ITEMPRICE:LOCAL == 0
+;		CONTINUE
+;	SIF ITEM:LOCAL == 0
+;		CONTINUE
+;	IF 마정장비(LOCAL)
+;		CALLFORM 장비조건_마정장비,ARG:1,LOCAL - 2450 - ARG*450
+;		SIF RESULT == 1
+;			PRINTFORMC [{LOCAL}] %STR:(DC:(LOCAL - 2450 - ARG*450):49+100),20,LEFT% × {ITEM:LOCAL,3} 
+;	ELSE
+;		CALLFORM 장비조건_{LOCAL},ARG:1
+;		SIF RESULT == 1
+;			PRINTFORMC [{LOCAL}] %ITEMNAME:LOCAL,20,LEFT% × {ITEM:LOCAL,3} 
+;	ENDIF
+;NEXT
+;PRINTL
+;DRAWLINE
+;---- EDIT 003 DEL END ---------------------------
+;---- EDIT 003 ADD START -------------------------
+;=================================================
+;   sub PRINT_EQUIPMENTLIST
+;=================================================
+;   표시:장비可能아이템
+;-------------------------------------------------
+; Input:
+;  ARG:0				아이템種別
+;  ARG:1				キャラ
+;-------------------------------------------------
+@PRINT_EQUIPMENTLIST(ARG, ARG:1)
+#LOCALSIZE 1
+#DIM L_J
+#DIM L_TMP
+#DIM L_MODE
+
+;- モード(0:通常 1:簡易リスト)
+L_MODE = FLAG:아이템리스트화면모드설정
+
+;- 簡易リスト時
+IF L_MODE
+
+	;- 장비箇所で分岐
+	SELECTCASE ARG
+		;- 0:검
+		CASE 0
+
+			;- 표시:장비可能아이템(무기)(リスト形式:ヘッダ)
+			CALL PRINT_EQUIPMENTLIST_TYPELIST_ARMS_HEADER
+
+			FOR LOCAL,2000+ARG*500,2000+(ARG+1)*500
+				SIF ITEMPRICE:LOCAL == 0
+					CONTINUE
+				IF ITEM:LOCAL == 0
+					;- 장비中の장비以外は非표시
+					SIF !(EQUIP:(ARG:1):(GET_EQUIP(ARG)) == LOCAL)
+						CONTINUE
+				ELSE
+					RESULT = 0
+					TRYCALLFORM 최대소지수_{COUNT_ITEMMAX(LOCAL)}
+					SIF RESULT > 0 && ITEM:LOCAL > RESULT
+						ITEM:LOCAL = RESULT
+				ENDIF
+				;- 표시:장비可能아이템(무기)(リスト形式:行가운位)
+				CALL PRINT_EQUIPMENTLIST_TYPELIST_ARMS_LINE(LOCAL, ARG:1)
+
+			NEXT
+		;- 1:총
+		CASE 1
+
+			;- 표시:장비可能아이템(총)(リスト形式:ヘッダ)
+			CALL PRINT_EQUIPMENTLIST_TYPELIST_GUN_HEADER
+
+			FOR LOCAL,2000+ARG*500,2000+(ARG+1)*500
+				SIF ITEMPRICE:LOCAL == 0
+					CONTINUE
+				IF ITEM:LOCAL == 0
+					;- 장비中の장비以外は非표시
+					SIF !(EQUIP:(ARG:1):(GET_EQUIP(ARG)) == LOCAL)
+						CONTINUE
+				ELSE
+					RESULT = 0
+					TRYCALLFORM 최대소지수_{COUNT_ITEMMAX(LOCAL)}
+					SIF RESULT > 0 && ITEM:LOCAL > RESULT
+						ITEM:LOCAL = RESULT
+				ENDIF
+				;- 표시:장비可能아이템(총)(リスト形式:行가운位)
+				CALL PRINT_EQUIPMENTLIST_TYPELIST_GUN_LINE(LOCAL, ARG:1)
+
+			NEXT
+		;- 2-6:防具
+		CASE 2 TO 6
+
+			;- 표시:장비可能아이템(防具)(リスト形式:ヘッダ)
+			CALL PRINT_EQUIPMENTLIST_TYPELIST_PROTECTOR_HEADER
+
+			FOR LOCAL,2000+ARG*500,2000+(ARG+1)*500
+				SIF ITEMPRICE:LOCAL == 0
+					CONTINUE
+				IF ITEM:LOCAL == 0
+					;- 장비中の장비以外は非표시
+					SIF !(EQUIP:(ARG:1):(GET_EQUIP(ARG)) == LOCAL)
+						CONTINUE
+				ELSE
+					RESULT = 0
+					TRYCALLFORM 최대소지수_{COUNT_ITEMMAX(LOCAL)}
+					SIF RESULT > 0 && ITEM:LOCAL > RESULT
+						ITEM:LOCAL = RESULT
+				ENDIF
+				;- 표시:장비可能아이템(防具)(リスト形式:行가운位)
+				CALL PRINT_EQUIPMENTLIST_TYPELIST_PROTECTOR_LINE(LOCAL, ARG:1)
+
+			NEXT
+
+		;上記以外
+		CASEELSE
+			;- 通常出힘
+			L_MODE = 0
+	ENDSELECT
+ENDIF
+
+;- 通常出힘時
+IF !L_MODE
+	FOR LOCAL,2000+ARG*500,2000+(ARG+1)*500
+		SIF ITEMPRICE:LOCAL == 0
+			CONTINUE
+		SIF ITEM:LOCAL == 0
+			CONTINUE
+		RESULT = 0
+		TRYCALLFORM 최대소지수_{COUNT_ITEMMAX(LOCAL)}
+		SIF RESULT > 0 && ITEM:LOCAL > RESULT
+			ITEM:LOCAL = RESULT
+		IF 개조장비(LOCAL)
+			;PRINTFORML %개조장비명칭(개조장비番号(EQUIP:ARG:(GET_EQUIP(LOCAL)))%
+			PRINTFORML [{LOCAL}] %개조장비명칭(개조장비番号(LOCAL)), 20, LEFT% × {ITEM:LOCAL,3} 
+		ELSEIF 마정장비(LOCAL)
+			CALLFORM 장비조건_마정장비,ARG:1,LOCAL - 2450 - ARG*450
+			SIF RESULT == 1
+				;---- EDIT 004 MOD START -------------------------
+;				PRINTFORMC [{LOCAL}] %STR:(DC:(LOCAL - 2450 - ARG*450):49+100),20,LEFT% × {ITEM:LOCAL,3} 
+				PRINTFORML [{LOCAL}] %EQ_GETNAME_마정장비_ITEM(LOCAL), 20, LEFT% × {ITEM:LOCAL,3} 
+				;---- EDIT 004 MOD END   -------------------------
+		ELSE
+			CALLFORM 장비조건_{LOCAL},ARG:1
+			SIF RESULT == 1
+				PRINTFORMC [{LOCAL}] %ITEMNAME:LOCAL,20,LEFT% × {ITEM:LOCAL,3} 
+		ENDIF
+	NEXT
+	PRINTL
+ENDIF
+
+DRAWLINE
+
+@PRINT_EQUIPMENTLIST2(ARG:0, ARG:1, ARG:2, ARG:3)
+#DIMS CONST CATEGORY = "ARMS", "GUN", "PROTECTOR"
+IF FLAG:아이템리스트화면모드설정 && INRANGE(ARG:0, 0, 6)
+	CALLFORM PRINT_EQUIPMENTLIST_TYPELIST_%CATEGORY:MIN(ARG:0, 2)%_HEADER
+	FOR LOCAL:1, ARG:2 * リスト표시数(), MIN((ARG:2 + 1) * リスト표시数(), ARG:3)
+		LOCAL = 아이템リスト:(LOCAL:1)
+		CALLFORM PRINT_EQUIPMENTLIST_TYPELIST_%CATEGORY:MIN(ARG:0, 2)%_LINE(LOCAL, ARG:1)
+	NEXT
+ELSE
+	FOR LOCAL:1, ARG:2 * リスト표시数(), MIN((ARG:2 + 1) * リスト표시数(), ARG:3)
+		LOCAL = 아이템リスト:(LOCAL:1)
+		IF 개조장비(LOCAL)
+			PRINTFORMLC [{LOCAL}] %개조장비명칭(개조장비番号(LOCAL)), 20, LEFT% × {ITEM:LOCAL, 3} 
+		ELSE
+			LOCALS '= \@ 마정장비(LOCAL) ? %EQ_GETNAME_마정장비_ITEM(LOCAL)% # %ITEMNAME:LOCAL% \@
+			PRINTFORMLC [{LOCAL}] %LOCALS, 20, LEFT% × {ITEM:LOCAL, 3} 
+		ENDIF
+	NEXT
+	PRINTFORM \@ LINEISEMPTY() ? # \n \@
+ENDIF
+RETURN RESULT
+
+;=================================================
+;   sub PRINT_EQUIPMENTLIST_TYPELIST_ARMS_HEADER
+;=================================================
+;   표시:장비可能아이템(무기)(リスト形式:ヘッダ)
+;-------------------------------------------------
+@PRINT_EQUIPMENTLIST_TYPELIST_ARMS_HEADER
+
+;-----------------------------
+;- ヘッダ
+;-----------------------------
+PRINTFORM %" " * 6% %"",20,LEFT% %" "*6%|공격|명중|방어|회피|마법위력|마법효과|
+PRINTFORM 공격횟수|상성|사거리|범위
+PRINTL
+
+
+;=================================================
+;   sub PRINT_EQUIPMENTLIST_TYPELIST_ARMS_LINE
+;=================================================
+;   표시:장비可能아이템(무기)(リスト形式:行가운位)
+;-------------------------------------------------
+; Input:
+;  ARG:0				아이템번호
+;  ARG:1				キャラ
+;-------------------------------------------------
+@PRINT_EQUIPMENTLIST_TYPELIST_ARMS_LINE(ARG:0, ARG:1)
+#DIM L_J
+#DIM L_ID
+#DIM L_마정ID
+#DIM L_TMP
+#DIM L_POINT
+
+L_ID = ARG:0
+
+;-----------------------------
+;- 行
+;-----------------------------
+
+IF 마정장비(L_ID)
+	;- EQ:장비箇所(마정장비)
+	L_POINT = EQ_장비箇所_마정장비(L_ID)
+
+	;- EQ:아이템ID取得(마정장비)
+	L_마정ID = EQ_GETID_마정장비(L_ID)
+
+	;- CHK
+	CALLFORM 장비조건_마정장비,ARG:1,L_마정ID
+	SIF RESULT != 1
+		RETURN
+
+	;- 장비中の場合は水色
+	SIF EQUIP:(ARG:1):(GET_EQUIP(L_POINT)) == L_ID
+		SETCOLOR 0x66FFFF
+
+	PRINTFORM [{L_ID,4}] %EQ_GETNAME_마정장비(L_마정ID),20,LEFT% × {ITEM:L_ID,3}
+	RESETCOLOR
+	PRINTFORM |
+
+	FOR L_J,0,FLAG:전투능력数
+		L_TMP = STRLENS(GET_BATTLESTATUS(L_J))
+		CALLFORM 전투능력수정_마정장비,L_J,L_마정ID
+		IF RESULT == 0
+			SETCOLOR 0x404040
+		ELSEIF RESULT < 0
+			SETCOLOR 0xEE1010
+		ENDIF
+		PRINTFORM {RESULT,L_TMP}
+		RESETCOLOR
+		PRINTFORM |
+	NEXT
+
+	CALLFORM 최저공격횟수_마정장비,L_마정ID
+	PRINTFORM {RESULT,2} - 
+	CALLFORM 최대공격횟수_마정장비,L_마정ID
+	PRINTFORM {RESULT,2} 
+	PRINTFORM |
+	CALLFORM 공격상성_마정장비,L_마정ID
+	PRINTFORM %GET_TYPE(RESULT),4%
+	PRINTFORM |
+	CALLFORM 사거리_마정장비,L_마정ID
+	PRINTFORM  %EQ_사거리명칭(RESULT)% 
+	PRINTFORM |
+
+	CALLFORM 공격범위_마정장비,L_마정ID
+	PRINTFORM %GET_SPHERE(RESULT)%
+
+ELSE
+
+	CALLFORM 장비箇所_{L_ID}
+	L_POINT = RESULT
+
+	;- CHK
+	CALLFORM 장비조건_{L_ID},ARG:1
+	SIF RESULT != 1
+		RETURN
+
+	;- 장비中の場合は水色
+	SIF EQUIP:(ARG:1):(GET_EQUIP(L_POINT)) == L_ID
+		SETCOLOR 0x66FFFF
+	IF 개조장비(L_ID)
+		PRINTFORM [{L_ID,4}] %개조장비명칭(개조장비番号(L_ID)),20,LEFT% × {ITEM:L_ID,3}
+	ELSE
+		PRINTFORM [{L_ID,4}] %ITEMNAME:L_ID,20,LEFT% × {ITEM:L_ID,3}
+	ENDIF
+	RESETCOLOR
+	PRINTFORM |
+
+	FOR L_J,0,FLAG:전투능력数
+		L_TMP = STRLENS(GET_BATTLESTATUS(L_J))
+		CALLFORM 전투능력수정_{L_ID},L_J,ARG:1
+		IF RESULT == 0
+			SETCOLOR 0x404040
+		ELSEIF RESULT < 0
+			SETCOLOR 0xEE1010
+		ENDIF
+		PRINTFORM {RESULT,L_TMP}
+		RESETCOLOR
+		PRINTFORM |
+	NEXT
+
+	CALLFORM 최저공격횟수_{L_ID},ARG:1
+	PRINTFORM {RESULT,2} - 
+	CALLFORM 최대공격횟수_{L_ID},ARG:1
+	PRINTFORM {RESULT,2} 
+	PRINTFORM |
+	CALLFORM 공격상성_{L_ID},ARG:1
+	PRINTFORM %GET_TYPE(RESULT),4%
+	PRINTFORM |
+	CALLFORM 사거리_{L_ID},ARG:1
+	PRINTFORM  %EQ_사거리명칭(RESULT)% 
+	PRINTFORM |
+	CALLFORM 공격범위_{L_ID},ARG:1
+	PRINTFORM %GET_SPHERE(RESULT)%
+
+ENDIF
+PRINTL
+
+;=================================================
+;   sub PRINT_EQUIPMENTLIST_TYPELIST_GUN_HEADER
+;=================================================
+;   표시:장비可能아이템(총)(リスト形式:ヘッダ)
+;-------------------------------------------------
+@PRINT_EQUIPMENTLIST_TYPELIST_GUN_HEADER
+
+;-----------------------------
+;- ヘッダ
+;-----------------------------
+PRINTFORM %" " * 6% %"",20,LEFT% %" "*6%|총공격|총명중|
+PRINTFORM 공격횟수|상성|탄창|사거리|범위
+PRINTL
+
+
+;=================================================
+;   sub PRINT_EQUIPMENTLIST_TYPELIST_GUN_LINE
+;=================================================
+;   표시:장비可能아이템(총)(リスト形式:行가운位)
+;-------------------------------------------------
+; Input:
+;  ARG:0				아이템번호
+;  ARG:1				キャラ
+;-------------------------------------------------
+@PRINT_EQUIPMENTLIST_TYPELIST_GUN_LINE(ARG:0, ARG:1)
+#DIM L_J
+#DIM L_ID
+#DIM L_TMP
+#DIM L_POINT
+#DIM L_마정ID
+
+L_ID = ARG:0
+
+;-----------------------------
+;- 行
+;-----------------------------
+
+IF 마정장비(L_ID)
+
+	;- EQ:장비箇所(마정장비)
+	L_POINT = EQ_장비箇所_마정장비(L_ID)
+
+	;- EQ:아이템ID取得(마정장비)
+	L_마정ID = EQ_GETID_마정장비(L_ID)
+
+	;- CHK
+	CALLFORM 장비조건_마정장비,ARG:1,L_마정ID
+	SIF RESULT != 1
+		RETURN
+
+	;- 장비中の場合は水色
+	SIF EQUIP:(ARG:1):(GET_EQUIP(L_POINT)) == L_ID
+		SETCOLOR 0x66FFFF
+
+	PRINTFORM [{L_ID,4}] %EQ_GETNAME_마정장비(L_마정ID),20,LEFT% × {ITEM:L_ID,3}
+	RESETCOLOR
+	PRINTFORM |
+
+	;-----------------------------
+	;- ※ 残りの항목は마정장비の총が추가されてから作成
+	;-----------------------------
+
+ELSE
+
+	CALLFORM 장비箇所_{L_ID}
+	L_POINT = RESULT
+
+	;- CHK
+	CALLFORM 장비조건_{L_ID},ARG:1
+	SIF RESULT != 1
+		RETURN
+
+	;- 장비中の場合は水色
+	SIF EQUIP:(ARG:1):(GET_EQUIP(L_POINT)) == L_ID
+		SETCOLOR 0x66FFFF
+
+	IF 개조장비(L_ID)
+		PRINTFORM [{L_ID,4}] %개조장비명칭(개조장비番号(L_ID)),20,LEFT% × {ITEM:L_ID,3}
+	ELSE
+		PRINTFORM [{L_ID,4}] %ITEMNAME:L_ID,20,LEFT% × {ITEM:L_ID,3}
+	ENDIF
+	RESETCOLOR
+	PRINTFORM |
+
+	CALLFORM 총공격_{L_ID},ARG:1
+	PRINTFORM {RESULT,6}
+	PRINTFORM |
+	CALLFORM 총명중_{L_ID},ARG:1
+	PRINTFORM {RESULT,6}
+	PRINTFORM |
+
+
+	CALLFORM 최저공격횟수_{L_ID},ARG:1
+	PRINTFORM {RESULT,2} - 
+	CALLFORM 최대공격횟수_{L_ID},ARG:1
+	PRINTFORM {RESULT,2} 
+	PRINTFORM |
+	CALLFORM 공격상성_{L_ID},ARG:1
+	PRINTFORM %GET_TYPE(RESULT),4%
+	PRINTFORM |
+	CALLFORM 특수탄창_{L_ID},ARG:1
+	PRINTFORM {RESULT,4}
+	PRINTFORM |
+
+	CALLFORM 사거리_{L_ID},ARG:1
+	PRINTFORM  %EQ_사거리명칭(RESULT)% 
+	PRINTFORM |
+	CALLFORM 공격범위_{L_ID},ARG:1
+	PRINTFORM %GET_SPHERE(RESULT)%
+	RESULT:1 = RESULT
+	RESULT = 0
+	TRYCALLFORM GUN_RANDOMTARGET_{L_ID}
+	SIF RESULT == 1
+		PRINTFORM （랜덤）
+ENDIF
+PRINTL
+
+
+;=================================================
+;   sub PRINT_EQUIPMENTLIST_TYPELIST_PROTECTOR_HEADER
+;=================================================
+;   표시:장비可能아이템(防具)(リスト形式:ヘッダ)
+;-------------------------------------------------
+@PRINT_EQUIPMENTLIST_TYPELIST_PROTECTOR_HEADER
+
+;-----------------------------
+;- ヘッダ
+;-----------------------------
+PRINTFORM %" " * 6% %"",20,LEFT% %" "*6%|공격|명중|방어|회피|마법위력|마법효과|
+PRINTFORM 방어상성
+PRINTL
+
+;=================================================
+;   sub PRINT_EQUIPMENTLIST_TYPELIST_PROTECTOR_LINE
+;=================================================
+;   표시:장비可能아이템(防具)(リスト形式:行가운位)
+;-------------------------------------------------
+; Input:
+;  ARG:0				아이템번호
+;  ARG:1				キャラ
+;-------------------------------------------------
+@PRINT_EQUIPMENTLIST_TYPELIST_PROTECTOR_LINE(ARG:0, ARG:1)
+#DIM L_J
+#DIM L_ID
+#DIM L_TMP
+#DIM L_POINT
+#DIM L_마정ID
+#DIM L_HIT
+
+L_ID = ARG:0
+L_HIT=0
+
+;-----------------------------
+;- 行
+;-----------------------------
+
+IF 마정장비(L_ID)
+
+	;- EQ:장비箇所(마정장비)
+	L_POINT = EQ_장비箇所_마정장비(L_ID)
+
+	;- EQ:아이템ID取得(마정장비)
+	L_마정ID = EQ_GETID_마정장비(L_ID)
+
+	;- CHK
+	CALLFORM 장비조건_마정장비,ARG:1,L_마정ID
+	SIF RESULT != 1
+		RETURN
+
+	;- 장비中の場合は水色
+	SIF EQUIP:(ARG:1):(GET_EQUIP(L_POINT)) == L_ID
+		SETCOLOR 0x66FFFF
+
+	PRINTFORM [{L_ID,4}] %EQ_GETNAME_마정장비(L_마정ID),20,LEFT% × {ITEM:L_ID,3}
+	RESETCOLOR
+	PRINTFORM |
+
+	;-----------------------------
+	;- ※ 残りの항목は마정장비の防具が추가されてから作成
+	;-----------------------------
+
+ELSE
+
+	CALLFORM 장비箇所_{L_ID}
+	L_POINT = RESULT
+
+	;- CHK
+	CALLFORM 장비조건_{L_ID},ARG:1
+	SIF RESULT != 1
+		RETURN
+
+	;- 장비中の場合は水色
+	SIF EQUIP:(ARG:1):(GET_EQUIP(L_POINT)) == L_ID
+		SETCOLOR 0x66FFFF
+	
+	IF 개조장비(L_ID)
+		PRINTFORM [{L_ID,4}] %개조장비명칭(개조장비番号(L_ID)),20,LEFT% × {ITEM:L_ID,3}
+	ELSE
+		PRINTFORM [{L_ID,4}] %ITEMNAME:L_ID,20,LEFT% × {ITEM:L_ID,3}
+	ENDIF
+	RESETCOLOR
+	PRINTFORM |
+
+	FOR L_J,0,FLAG:전투능력数
+		L_TMP = STRLENS(GET_BATTLESTATUS(L_J))
+		CALLFORM 전투능력수정_{L_ID},L_J,ARG:1
+		IF RESULT == 0
+			SETCOLOR 0x404040
+		ELSEIF RESULT < 0
+			SETCOLOR 0xEE1010
+		ENDIF
+		PRINTFORM {RESULT,L_TMP}
+		RESETCOLOR
+		PRINTFORM |
+	NEXT
+
+	FOR L_J,0,FLAG:相性数
+		CALLFORM 방어상성_{L_ID},L_J,ARG:1
+		IF RESULT != 100
+			SIF L_HIT
+				PRINT 、
+			L_HIT ++
+
+			;표시打ち切り
+			IF L_HIT > 2
+				PRINT (他)
+				BREAK
+			ENDIF
+			CALL SET_AISYOU_COLOR, RESULT
+			;내성の場合は白표시
+			SIF 0 < RESULT && RESULT < 100
+				RESETCOLOR
+			PRINTFORM %GET_TYPE(L_J),4,LEFT%
+			SELECTCASE RESULT
+				CASE 0
+				CASE 999
+					PRINT 반사
+				CASEELSE
+					PRINTFORM  %\@(RESULT < 0) ? 흡 # 　\@%{ABS(RESULT),3}
+			ENDSELECT
+			RESETCOLOR
+		ENDIF
+	NEXT
+
+ENDIF
+PRINTL
+
+
+
+;---- EDIT 003 ADD END ---------------------------
+
+
+
+@장비변경,ARG,ARG:1,ARG:2
+
+SIF EQUIP:ARG:(GET_EQUIP(ARG:1)) >= 2000 && EQUIP:ARG:(GET_EQUIP(ARG:1)) != [[아이템:생득무기]]
+	ITEM:(EQUIP:ARG:(GET_EQUIP(ARG:1))) += 1
+SIF ARG:2 != [[아이템:생득무기]]
+	ITEM:(ARG:2) -= 1
+SIF ARG:2 == 0 && GET_EQUIP(ARG:1) == "검" && 생득무기소지(ARG)
+	ARG:2 = [[아이템:생득무기]]
+EQUIP:ARG:(GET_EQUIP(ARG:1)) = ARG:2
+CALL SYNC_STATUS,ARG
+
+
+@장비설명,ARG,ARG:1 = -1, ARG:2 = -1
+IF 마정장비(ARG)
+	;---- EDIT 004 DEL START -------------------------
+;	FOR LOCAL,0,7
+;		IF ARG < 2500 + LOCAL*500
+;			LOCAL:10 = LOCAL
+;			BREAK
+;		ENDIF
+;	NEXT
+;	LOCAL:2 = ARG - 2450 - LOCAL:10*450
+	;---- EDIT 004 DEL END   -------------------------
+	;---- EDIT 004 ADD START -------------------------
+	;- EQ:아이템ID取得(마정장비)
+	LOCAL:2 = EQ_GETID_마정장비(ARG)
+	;---- EDIT 004 ADD END   -------------------------
+
+	;---- EDIT 004 MOD START -------------------------
+;	PRINTFORML %STR:(DC:(LOCAL:2):49+100)%
+	CUSTOMDRAWLINE =
+	PRINTL
+	PRINTFORML %EQ_GETNAME_마정장비(LOCAL:2)%
+	;---- EDIT 004 MOD END   -------------------------
+	TRYCALLFORM 장비해설_마정장비,LOCAL:2
+	PRINTL
+	FOR LOCAL,1,FLAG:기본능력수
+		IF GET_BASESTATUS_NUM("속도") > LOCAL
+			PRINTFORM %GET_BASESTATUS(LOCAL),4,LEFT% 
+		ELSE
+			PRINTFORM %GET_BASESTATUS(LOCAL),8,LEFT% 
+		ENDIF
+		CALLFORM 기본능력수정_마정장비,LOCAL,LOCAL:2
+		IF RESULT == 0
+			SETCOLOR 0x404040
+		ELSEIF RESULT < 0
+			SETCOLOR 0xEE1010
+		ENDIF
+		PRINTFORM {RESULT,4}　
+		RESETCOLOR
+		PRINTFORM
+	NEXT
+	PRINTL 
+	FOR LOCAL,0,FLAG:전투능력数
+		PRINTFORM %GET_BATTLESTATUS(LOCAL),4,LEFT% 
+		CALLFORM 전투능력수정_마정장비,LOCAL,LOCAL:2
+		IF RESULT == 0
+			SETCOLOR 0x404040
+		ELSEIF RESULT < 0
+			SETCOLOR 0xEE1010
+		ENDIF
+		PRINTFORM {RESULT,4}　
+		RESETCOLOR
+	NEXT
+	PRINTFORML %LOCALS%
+	CALLFORM 장비箇所_마정장비,LOCAL:2
+	IF RESULT == 0 || RESULT == 1
+		PRINTL
+		IF RESULT == 1
+			CALLFORM 총공격_마정장비,LOCAL:2
+			PRINTFORM 　공격：{RESULT}　　
+			CALLFORM 총명중_마정장비,LOCAL:2
+			PRINTFORM 명중：{RESULT}　　
+		ENDIF
+		PRINT 공격횟수：
+		CALLFORM 최저공격횟수_마정장비,LOCAL:2
+		PRINTFORM {RESULT}-
+		CALLFORM 최대공격횟수_마정장비,LOCAL:2
+		PRINTFORM {RESULT}
+		PRINT 　　　상성：
+		CALLFORM 공격상성_마정장비,LOCAL:2
+		PRINTFORM %GET_TYPE(RESULT),4%
+		PRINT 　　　사거리：
+		CALLFORM 사거리_마정장비,LOCAL:2
+		;---- EDIT 004 DEL START -------------------------
+;		IF RESULT == 1
+;			PRINT Ｓ
+;		ELSEIF RESULT == 2
+;			PRINT Ｍ
+;		ELSEIF RESULT == 3
+;			PRINT Ｌ
+;		ENDIF
+		;---- EDIT 004 DEL END   -------------------------
+		;---- EDIT 004 ADD START -------------------------
+		PRINTFORM %EQ_사거리명칭(RESULT)%
+		;---- EDIT 004 ADD END   -------------------------
+		CALLFORM 공격범위_마정장비,LOCAL:2
+		PRINTFORM 　　　대상：%GET_SPHERE(RESULT)%
+		PRINTL
+		PRINTL
+	ENDIF
+	SIF ARG:1 >= 0 && (TALENT:(ARG:1):페르소나구사자 || ABL:(ARG:1):종족 == 36)
+		SETCOLOR COLOR("gray")
+	PRINTL 방어상성
+	FOR LOCAL,0,FLAG:相性数
+		SIF ARG:1 >= 0 && (TALENT:(ARG:1):페르소나구사자 || ABL:(ARG:1):종족 == 36)
+			SETCOLOR COLOR("gray")
+		PRINTFORM %GET_TYPE(LOCAL),4,LEFT%
+		CALLFORM 방어상성_마정장비,LOCAL,LOCAL:2
+		CALL SET_AISYOU_COLOR, RESULT
+		SIF ARG:1 >= 0 && (TALENT:(ARG:1):페르소나구사자 || ABL:(ARG:1):종족 == 36)
+			SETCOLOR COLOR("gray")
+		IF RESULT == 999
+			PRINT 　반사　
+		ELSE
+			PRINTFORM  %\@(RESULT < 0) ? 흡 # 　\@%{ABS(RESULT),3}　
+		ENDIF
+		RESETCOLOR
+		IF LOCAL%6 == 5
+			CALL SHOW_AISYOU_COLOR_LIST, LOCAL/6 * 2
+			PRINT 　
+			CALL SHOW_AISYOU_COLOR_LIST, LOCAL/6 * 2 + 1
+			PRINTL 
+		ENDIF
+	NEXT
+	PRINTL
+	TRYCCALLFORM バステ내성_마정장비,0,LOCAL:2
+		SIF ARG:1 >= 0 && (TALENT:(ARG:1):페르소나구사자 || ABL:(ARG:1):종족 == 36)
+			SETCOLOR COLOR("gray")
+		PRINTL 배드스테이터스：
+		LOCAL:3 = 0
+		FOR LOCAL,0,FLAG:ステート数
+			TRYCCALLFORM バステ내성_마정장비,LOCAL,LOCAL:2
+				SIF RESULT == 0
+					CONTINUE
+				PRINTFORMLC %GET_STATE(LOCAL),8,LEFT% {100-RESULT}％　
+				SIF (LOCAL:3++ % PRINTCPERLINE()) == PRINTCPERLINE() - 1
+					PRINTL 
+			CATCH
+			ENDCATCH
+		NEXT
+		
+		RESETCOLOR
+		PRINTL
+	CATCH
+	ENDCATCH
+	
+	;마정장비추가스킬
+	TRYCCALLFORM 장비추가스킬_마정장비,0,LOCAL:2
+		IF RESULT > 0
+			CALLFORM SKILL_NAME_{RESULT},ARG:1
+			PRINTL 
+			PRINTFORM  추가스킬：[%RESULTS%]
+		ENDIF
+		TRYCCALLFORM 장비추가스킬_마정장비,1,LOCAL:2
+			IF RESULT > 0
+				CALLFORM SKILL_NAME_{RESULT},ARG:1
+				PRINTFORM  [%RESULTS%]
+			ENDIF
+			TRYCCALLFORM 장비추가스킬_마정장비,2,LOCAL:2
+				IF RESULT > 0
+					CALLFORM SKILL_NAME_{RESULT},ARG:1
+					PRINTFORM  [%RESULTS%]
+				ENDIF
+			CATCH
+			ENDCATCH
+		CATCH
+		ENDCATCH
+		PRINTL 
+	CATCH
+	ENDCATCH
+
+	TRYCALLFORM 장비조건설명_마정장비,LOCAL:2,-1
+	DRAWLINE
+ELSE
+	PRINTFORML \@RANGE(ARG, 8000, 8500) ? %PLUGINNAME(ARG)%#%ITEMNAME:ARG%\@
+	TRYCALLFORM 장비해설_{ARG}
+	FOR LOCAL,1,FLAG:기본능력수
+		IF GET_BASESTATUS_NUM("속도") > LOCAL
+			PRINTFORM %GET_BASESTATUS(LOCAL),4,LEFT% 
+		ELSE
+			PRINTFORM %GET_BASESTATUS(LOCAL),8,LEFT% 
+		ENDIF
+		CALLFORM 기본능력수정_{ARG},LOCAL,ARG:1
+		IF RESULT == 0
+			SETCOLOR 0x404040
+		ELSEIF RESULT < 0
+			SETCOLOR 0xEE1010
+		ENDIF
+		PRINTFORM {RESULT,4}　
+		RESETCOLOR
+	NEXT
+	PRINTL
+	FOR LOCAL,0,FLAG:전투능력数
+		PRINTFORM %GET_BATTLESTATUS(LOCAL),4,LEFT% 
+		CALLFORM 전투능력수정_{ARG},LOCAL,ARG:1
+		IF RESULT == 0
+			SETCOLOR 0x404040
+		ELSEIF RESULT < 0
+			SETCOLOR 0xEE1010
+		ENDIF
+		PRINTFORM {RESULT,4}　
+		RESETCOLOR
+	NEXT
+
+	PRINTL
+	CALLFORM 장비箇所_{ARG}
+	IF RESULT == 0 || RESULT == 1
+		PRINTL
+		IF RESULT == 1
+			CALLFORM 총공격_{ARG},ARG:1
+			PRINTFORM 　공격：{RESULT}　　
+			CALLFORM 총명중_{ARG},ARG:1
+			PRINTFORM 명중：{RESULT}　　
+		ENDIF
+		PRINT 공격횟수：
+		CALLFORM 최저공격횟수_{ARG},ARG:1
+		PRINTFORM {RESULT}-
+		CALLFORM 최대공격횟수_{ARG},ARG:1
+		PRINTFORM {RESULT}
+		PRINT 　　　상성：
+		CALLFORM 공격상성_{ARG},ARG:1
+		PRINTFORM %GET_TYPE(RESULT),4%
+		PRINT 　　　사거리：
+		CALLFORM 사거리_{ARG},ARG:1
+		;---- EDIT 004 DEL START -------------------------
+;		IF RESULT == 1
+;			PRINT Ｓ
+;		ELSEIF RESULT == 2
+;			PRINT Ｍ
+;		ELSEIF RESULT == 3
+;			PRINT Ｌ
+;		ENDIF
+		;---- EDIT 004 DEL END   -------------------------
+		;---- EDIT 004 ADD START -------------------------
+		PRINTFORM %EQ_사거리명칭(RESULT)%
+		;---- EDIT 004 ADD END   -------------------------
+		CALLFORM 공격범위_{ARG},ARG:1
+		PRINTFORM 　　　대상：%GET_SPHERE(RESULT)%
+		RESULT:1 = RESULT
+		RESULT = 0
+		TRYCALLFORM GUN_RANDOMTARGET_{ARG}
+		SIF RESULT == 1
+			PRINTFORM （랜덤）
+		PRINTL
+		PRINTL
+	ENDIF
+	SIF ARG:1 >= 0 && (TALENT:(ARG:1):페르소나구사자 || ABL:(ARG:1):종족 == 36)
+		SETCOLOR COLOR("gray")
+	PRINTL 방어상성：
+	FOR LOCAL,0,FLAG:相性数
+		SIF ARG:1 >= 0 && (TALENT:(ARG:1):페르소나구사자 || ABL:(ARG:1):종족 == 36)
+			SETCOLOR COLOR("gray")
+		PRINTFORM %GET_TYPE(LOCAL),4,LEFT%
+		CALLFORM 방어상성_{ARG},LOCAL,ARG:1
+		CALL SET_AISYOU_COLOR, RESULT
+		SIF ARG:1 >= 0 && (TALENT:(ARG:1):페르소나구사자 || ABL:(ARG:1):종족 == 36)
+			SETCOLOR COLOR("gray")
+		IF RESULT == 999
+			PRINT 　반사　
+		ELSE
+			PRINTFORM  %\@(RESULT < 0) ? 흡 # 　\@%{ABS(RESULT),3}　
+		ENDIF
+		RESETCOLOR
+		IF LOCAL%6 == 5
+			CALL SHOW_AISYOU_COLOR_LIST, LOCAL/6 * 2
+			PRINT 　
+			CALL SHOW_AISYOU_COLOR_LIST, LOCAL/6 * 2 + 1
+			PRINTL 
+		ENDIF
+	NEXT
+	PRINTL
+	TRYCCALLFORM バステ내성_{ARG},0,ARG:1
+		SIF ARG:1 >= 0 && (TALENT:(ARG:1):페르소나구사자 || ABL:(ARG:1):종족 == 36)
+			SETCOLOR COLOR("gray")
+		PRINTL 배드스테이터스：
+		LOCAL:3 = 0
+		FOR LOCAL,1,FLAG:ステート数
+			TRYCCALLFORM バステ내성_{ARG},LOCAL,ARG:1
+				SIF RESULT == 0
+					CONTINUE
+				PRINTFORMLC %GET_STATE(LOCAL),8,LEFT% {100+RESULT}％　
+				SIF (LOCAL:3++ % PRINTCPERLINE()) == PRINTCPERLINE() - 1
+					PRINTL 
+			CATCH
+			ENDCATCH
+		NEXT
+		RESETCOLOR
+		PRINTL
+	CATCH
+	ENDCATCH
+	IF ARG > 1999 && ARG < 2500
+		TRYCCALLFORM 검타입_{ARG}
+			PRINT 종별：
+			SELECTCASE RESULT
+				CASE 1
+					PRINTL 도검
+				CASE 2
+					PRINTL 레이피어
+				CASE 3
+					PRINTL 활
+				CASE 4
+					PRINTL 검
+				CASE 5
+					PRINTL 창
+				CASE 6
+					PRINTL 부・둔기
+				CASE 7
+					PRINTL 채찍
+				CASE 8
+					PRINTL 투구
+				CASE 9
+					PRINTL 지팡이・제사도구
+				CASE 10
+					PRINTL 곤
+				CASE 11
+					PRINTL 권투구
+				CASEELSE
+					PRINTL 그 외
+			ENDSELECT
+		CATCH
+			PRINTL 종별：그 외
+		ENDCATCH
+	ENDIF
+	TRYCCALLFORM 총타입_{ARG}
+		PRINT 종별：
+		SELECTCASE RESULT
+			CASE 1
+				PRINT 핸드건
+			CASE 2
+				PRINT 샷건
+			CASE 3
+				PRINT 머신건
+			CASE 4
+				PRINT 라이플
+			CASE 5
+				PRINT 그밖의 총
+		ENDSELECT
+		CALLFORM 특수탄창_{ARG},ARG:1
+		PRINTFORML 　　특수탄창:{RESULT}
+	CATCH
+	ENDCATCH
+	
+	TRYCCALLFORM 장비추가스킬_{ARG},0,ARG:1
+		IF RESULT > 0
+			CALLFORM SKILL_NAME_{RESULT},ARG:1
+			PRINTL 
+			PRINTFORM  추가스킬：[%RESULTS%]
+		ENDIF
+		TRYCCALLFORM 장비추가스킬_{ARG},1,ARG:1
+			IF RESULT > 0
+				CALLFORM SKILL_NAME_{RESULT},ARG:1
+				PRINTFORM  [%RESULTS%]
+			ENDIF
+			TRYCCALLFORM 장비추가스킬_{ARG},2,ARG:1
+				IF RESULT > 0
+					CALLFORM SKILL_NAME_{RESULT},ARG:1
+					PRINTFORM  [%RESULTS%]
+				ENDIF
+				; XCOM 모드 추가보정
+				TRYCCALLFORM 장비추가스킬_{ARG},3,ARG:1
+					IF RESULT > 0
+						CALLFORM SKILL_NAME_{RESULT},ARG:1
+						PRINTFORM  [%RESULTS%]
+					ENDIF
+					TRYCCALLFORM 장비추가스킬_{ARG},4,ARG:1
+						IF RESULT > 0
+							CALLFORM SKILL_NAME_{RESULT},ARG:1
+							PRINTFORM  [%RESULTS%]
+						ENDIF
+						TRYCCALLFORM 장비추가스킬_{ARG},5,ARG:1
+						IF RESULT > 0
+							CALLFORM SKILL_NAME_{RESULT},ARG:1
+							PRINTFORM  [%RESULTS%]
+						ENDIF
+							TRYCCALLFORM 장비추가스킬_{ARG},6,ARG:1
+							IF RESULT > 0
+								CALLFORM SKILL_NAME_{RESULT},ARG:1
+								PRINTFORM  [%RESULTS%]
+							ENDIF
+								TRYCCALLFORM 장비추가스킬_{ARG},7,ARG:1
+								IF RESULT > 0
+									CALLFORM SKILL_NAME_{RESULT},ARG:1
+									PRINTFORM  [%RESULTS%]
+								ENDIF
+									TRYCCALLFORM 장비추가스킬_{ARG},8,ARG:1
+									IF RESULT > 0
+										CALLFORM SKILL_NAME_{RESULT},ARG:1
+										PRINTFORM  [%RESULTS%]
+									ENDIF
+										TRYCCALLFORM 장비추가스킬_{ARG},9,ARG:1
+										IF RESULT > 0
+											CALLFORM SKILL_NAME_{RESULT},ARG:1
+											PRINTFORM  [%RESULTS%]
+										ENDIF
+											TRYCCALLFORM 장비추가스킬_{ARG},10,ARG:1
+											IF RESULT > 0
+												CALLFORM SKILL_NAME_{RESULT},ARG:1
+												PRINTFORM  [%RESULTS%]
+											ENDIF
+												TRYCCALLFORM 장비추가스킬_{ARG},11,ARG:1
+												IF RESULT > 0
+													CALLFORM SKILL_NAME_{RESULT},ARG:1
+													PRINTFORM  [%RESULTS%]
+												ENDIF
+												CATCH
+												ENDCATCH
+											CATCH
+											ENDCATCH
+										CATCH
+										ENDCATCH
+									CATCH
+									ENDCATCH
+								CATCH
+								ENDCATCH
+							CATCH
+							ENDCATCH
+						CATCH
+						ENDCATCH
+					CATCH
+					ENDCATCH
+				CATCH
+				ENDCATCH
+			CATCH
+			ENDCATCH
+		CATCH
+		ENDCATCH
+		PRINTL 
+	CATCH
+	ENDCATCH
+	;---- EDIT 002 ADD START -------------------------
+	IF RANGE(ARG, 8000, 8500)
+		CALLFORM 필요레벨_{ARG}
+		PRINTFORM 필요레벨 {RESULT}　
+		CALLFORM 증가CP_{ARG}
+		PRINTFORML 　　　　ＣＰ보정 \@RESULT < 0 ?－#＋\@{ABS(RESULT)}\%
+	ENDIF
+	;---- EDIT 002 ADD END   -------------------------
+	TRYCALLFORM 장비조건설명_{ARG}
+	DRAWLINE
+ENDIF
+;장비해설終わり
+@장비변경時스테이터스更新 , ARG , ARGS
+#DIM 元전투능력 , 8
+IF ARGS == "소거"
+	FOR LOCAL , 0 , 18
+		SIF LOCAL < 8
+			CALLF 장비변경時스테이터스変化値(LOCAL , 1 , 0)
+	NEXT
+	VARSET LOCAL , 0
+	RETURN 0
+ENDIF
+
+FOR LOCAL , 0 , FLAG:전투능력数 + 2
+	元전투능력:LOCAL = MAXBASE:ARG:GET_BATTLESTATUS(LOCAL)
+NEXT
+;장비を변경予定の장비と入れ替え
+FOR LOCAL , 0 , 7
+	SIF 변경予定장비:LOCAL != -1
+		SWAP EQUIP:ARG:GET_EQUIP(LOCAL) , 변경予定장비:LOCAL
+NEXT
+CALL SYNC_STATUS , ARG
+FOR LOCAL , 0 , FLAG:전투능력数 + 2
+	CALLF 장비변경時스테이터스変化値(LOCAL, 1, MAXBASE:ARG:GET_BATTLESTATUS(LOCAL) - 元전투능력:LOCAL)
+NEXT
+FOR LOCAL,0, FLAG:相性数
+	CALLF 장비변경時相性(LOCAL, 1, MAXBASE:ARG:GET_TYPE(LOCAL))
+NEXT
+FOR LOCAL,0, FLAG:ステート数
+	CALLF 장비변경時バステ내성(LOCAL, 1, MAXBASE:ARG:GET_STATE(LOCAL))
+NEXT
+FOR LOCAL , 0 , 7
+	SIF 변경予定장비:LOCAL != -1
+		SWAP EQUIP:ARG:GET_EQUIP(LOCAL) , 변경予定장비:LOCAL
+NEXT
+CALL SYNC_STATUS , ARG
+RETURN 1
+
+@장비변경時스테이터스変化値, ARG , ARG:1 , ARG:2
+#FUNCTION
+#LOCALSIZE 8
+IF ARG:1
+	LOCAL:ARG = ARG:2
+ELSE
+	RETURNF LOCAL:ARG
+ENDIF
+@장비변경時相性, ARG, ARG:1, ARG:2
+#FUNCTION
+#LOCALSIZE 18
+IF ARG:1
+	LOCAL:ARG = ARG:2
+ELSE
+	RETURNF LOCAL:ARG
+ENDIF
+@장비변경時バステ내성, ARG, ARG:1, ARG:2
+#FUNCTION
+#LOCALSIZE 21
+IF ARG:1
+	LOCAL:ARG = ARG:2
+ELSE
+	RETURNF LOCAL:ARG
+ENDIF
+;============================================================================
+;특수탄の장비
+;============================================================================
+@EQUIP_SPECIAL_BULLET,ARG
+DRAWLINE
+
+CALLFORM 특수탄창_{EQUIP:ARG:총},ARG
+LOCAL:1 = RESULT 
+FOR LOCAL,1,9
+	SIF LOCAL == 5
+		PRINTL
+	SIF LOCAL:1 < LOCAL
+		BREAK
+	LOCALS = 특수탄{LOCAL}
+	IF EQUIP:ARG:LOCALS == 0
+		
+		PRINTFORM [{LOCAL}] 
+		SETCOLOR 0x404040
+		PRINT ＥＭＰＴＹ　　　 
+		RESETCOLOR
+		CONTINUE
+	ENDIF
+	PRINTFORM [{LOCAL}] %ITEMNAME:(EQUIP:ARG:LOCALS),16,LEFT% 
+	
+NEXT
+PRINTL
+DRAWLINE
+PRINTL [0]돌아간다
+
+$INPUT_LOOP
+INPUT
+IF RESULT == 0
+	RETURN 0
+ELSEIF RESULT < 1 || RESULT > LOCAL:1
+	GOTO INPUT_LOOP
+ENDIF
+LOCALS:2 = 특수탄{RESULT}
+
+$PRINT_BLIST
+CALL PRINT_EQUIPMENTLIST,7,ARG
+
+PRINTL [0] 장착을 해제한다
+PRINTL [1000] 취소
+
+
+$INPUT_LOOP3
+INPUT
+
+IF RESULT == 1000
+	RESTART
+ELSEIF RESULT == 0
+	EQUIP:ARG:(LOCALS:2) = 0
+	RESTART
+ELSEIF RESULT < 5500 || RESULT > 5999 || ITEM:RESULT < 1
+	GOTO INPUT_LOOP3
+ENDIF
+LOCAL:12 = RESULT
+
+TRYCCALLFORM 장비조건_{LOCAL:12},ARG
+CATCH
+	GOTO INPUT_LOOP3
+ENDCATCH
+
+CALLFORM 장비해설_{LOCAL:12}
+
+PRINT 좋습니까？　
+CALL INPUT_YN,"Yes","No",2
+
+SELECTCASE RESULT
+	CASE 0
+
+	CASE 1
+		GOTO PRINT_BLIST
+ENDSELECT
+
+EQUIP:ARG:(LOCALS:2) = LOCAL:12
+
+RESTART
+
+;---- EDIT 002 ADD START -------------------------
+;=================================================================
+;プラグインソフト
+;=================================================================
+@EQUIP_PLUGIN_SOFT
+#LOCALSIZE 4
+#DIM LINE, 3
+LINE = LINECOUNT
+$START
+CLEARLINE LINECOUNT-LINE
+CALL INPUT_CHARA_LIST, "플러그인 소프트를 변경하고 싶은 캐릭터를 선택하십시오", "LIST_PLUGIN_SOFT"
+SIF RESULT == 1000
+	RETURN 0
+LOCAL:1 = FINDELEMENT(Q, RESULT)
+LINE:1 = LINECOUNT
+$PRINT_PLIST
+CLEARLINE LINECOUNT-LINE:1
+LOCAL = Q:(LOCAL:1)
+DRAWLINE
+PRINTFORML %NAME:LOCAL%
+DRAWLINE
+CALL PRINT_EQUIPLIST, LOCAL
+DRAWLINE
+PRINTL [300] 소프트변경 [301] 소프트해제
+DRAWLINE
+PRINTFORMLC \@(LOCAL:1 == 0) ? %" " * 16% # [1001]이전 캐릭터\@
+PRINTLC [100] 취소 [200] 종료　　　 
+PRINTFORMLC \@(Q:(LOCAL:1+1) == -1) ? %" " * 16% # [1003]다음 캐릭터\@
+$INPUT_LOOP
+INPUT
+SELECTCASE RESULT
+	CASE 100
+		GOTO START
+	CASE 200
+		RETURN 0
+	CASE 300
+		CALL CHANGE_PLUGIN_SOFT, LOCAL
+		GOTO PRINT_PLIST
+	CASE 301
+		EQUIP:LOCAL:악세사리 = 0
+		CALL SYNC_STATUS, LOCAL
+		GOTO PRINT_PLIST
+	CASE 1001
+		IF LOCAL:1 > 0
+			LOCAL:1--
+			GOTO PRINT_PLIST
+		ENDIF
+	CASE 1003
+		IF Q:(LOCAL:1+1) >= 0
+			LOCAL:1++
+			GOTO PRINT_PLIST
+		ENDIF
+	CASEELSE
+		CLEARLINE 1
+		GOTO INPUT_LOOP
+ENDSELECT
+@CHANGE_PLUGIN_SOFT, ARG
+#DIM LINE, 1
+#LOCALSIZE 2
+LINE = LINECOUNT
+$CHOICE
+CLEARLINE LINECOUNT-LINE
+DRAWLINE
+PRINTL 플러그인 변경
+LOCAL:1 = 0
+;ソフト一覧
+FOR LOCAL, 8000, 8500
+	SIF !ITEM:(LOCAL)
+		CONTINUE
+	CALLFORM 필요레벨_{LOCAL}
+	SIF RESULT > BASE:ARG:LV
+		SETCOLOR COLOR("gray")
+	CALLFORM 장비조건_{LOCAL}, ARG
+	SIF !RESULT
+		SETCOLOR COLOR("gray")
+	PRINTFORM [{LOCAL-8000,3}] %PLUGINNAME(LOCAL), 24, LEFT%
+	SIF LOCAL:1 % 4 == 3
+		PRINTL 
+	LOCAL:1++
+	RESETCOLOR
+NEXT
+SIF LINEISEMPTY() == 0
+	PRINTL 
+PRINTL [999] 취소
+$INPUT_LOOP2
+INPUT
+SIF RESULT == 999
+	RETURN 0
+LOCAL = RESULT+8000
+IF !RANGE(LOCAL, 8000, 8500) || !ITEM:(LOCAL)
+	GOTO INPUT_LOOP2
+ENDIF
+IF EQUIP:ARG:악세사리 > 0
+	CALL 장비설명, EQUIP:ARG:악세사리, ARG
+	PRINTL
+	CUSTOMDRAWLINE ↓
+	PRINTL
+ENDIF
+CALL 장비설명, LOCAL, ARG
+CALLFORM 필요레벨_{LOCAL}
+IF RESULT > BASE:ARG:LV
+	PRINTFORMW 셋트에 필요한 레벨이 부족합니다
+	GOTO CHOICE
+ENDIF
+CALLFORM 장비조건_{LOCAL}, ARG
+IF !RESULT
+	PRINTFORMW 셋트에 필요한 조건을 만족하지 못했습니다
+	GOTO CHOICE
+ENDIF
+SIF !RESULT
+	SETCOLOR COLOR("gray")
+PRINTL 소프트를 변경해도 좋습니까？
+CALL INPUT_YN
+SIF RESULT == 1
+	GOTO CHOICE
+PRINTFORMW %NAME:ARG%에게 %조사처리(PLUGINNAME(LOCAL),"를")% 셋트했습니다
+EQUIP:ARG:악세사리 = LOCAL
+CALL SYNC_STATUS, ARG
+RETURN 1
+
+@LIST_PLUGIN_SOFT(ARG:0)
+SIF !GET_DEVIL(ARG:0)
+	RETURN 0
+SIF CFLAG:(ARG:0):この場に居ないフラグ == 1
+	RETURN 0
+SIF CFLAG:(ARG:0):필터링フラグ
+	RETURN 0
+RETURN 1
+;---- EDIT 002 ADD END   -------------------------
+
+;============================================================================
+;장비品の표시(스테이터스화면)
+;ARGが偽の時、장비변경出来ない
+;============================================================================
+@PRINT_EQUIP, ARG = 0
+FOR LOCAL,0,7
+	SIF FLAG:カスタムゲーム화면
+		PRINT 　
+	PRINTFORM \@ARG ? [{50+LOCAL}]#\@%"[" + GET_EQUIP(LOCAL) + "]",14,LEFT%
+	IF (EQUIP:U:(GET_EQUIP(LOCAL))) == 0
+		SETCOLOR 0x404040
+		PRINTFORML ＥＭＰＴＹ
+		RESETCOLOR
+	ELSE
+		IF 개조장비(EQUIP:U:(GET_EQUIP(LOCAL)))
+			PRINTFORML %개조장비명칭(개조장비番号(EQUIP:U:(GET_EQUIP(LOCAL))))%
+		ELSEIF 마정장비(EQUIP:U:(GET_EQUIP(LOCAL)))
+			;---- EDIT 004 MOD START -------------------------
+;			PRINTFORML %STR:(DC:(EQUIP:U:(GET_EQUIP(LOCAL)) - 2450 - LOCAL*450):49+100)%
+			PRINTFORML %EQ_GETNAME_마정장비_CHARA(U, LOCAL)%
+			;---- EDIT 004 MOD END   -------------------------
+		ELSE
+			PRINTFORML %ITEMNAME:(EQUIP:U:(GET_EQUIP(LOCAL)))%
+		ENDIF
+	ENDIF
+NEXT
+IF ARG
+	IF FLAG:カスタムゲーム화면
+		IF TALENT:U:건슬링거 && EQUIP:U:총
+			PRINTL 　[57][특수탄변경]
+		ELSE
+			PRINTL 　[--][----------]
+		ENDIF
+	ELSE
+		IF TALENT:U:건슬링거 && EQUIP:U:총
+			PRINTL [57][특수탄변경]
+		ELSE
+			PRINTL [--][----------]
+		ENDIF
+	ENDIF
+ENDIF
+DRAWLINE
+@PRINT_PLUGIN
+PRINTFORM \@FLAG:SHOPコマンド == [[SHOP:셋업]]?[50]#\@[PLUG-IN]　
+IF EQUIP:U:악세사리
+	PRINTFORML [%PLUGINNAME(EQUIP:U:악세사리)%]
+ELSE
+	PRINTL [----------]
+ENDIF
+DRAWLINE
+;============================================================================
+;전투개시시효과
+;============================================================================
+@전투개시시효과
+FOR LOCAL,0,CHARANUM
+	FOR LOCAL:1,0,7
+		IF EQUIP:LOCAL:GET_EQUIP(LOCAL:1) > 0
+			TRYCCALLFORM 마정장비_{EQUIP:LOCAL:GET_EQUIP(LOCAL:1)}
+
+			CATCH
+				TRYCALLFORM 전투개시시효과_{EQUIP:LOCAL:GET_EQUIP(LOCAL:1)},LOCAL
+			ENDCATCH
+		ENDIF
+	NEXT
+NEXT
+
+;============================================================================
+;全장비해제
+;ARG:0に대상者の登録番号(間違うとやばそうなので、생략時は엘라ー出す)
+;============================================================================
+@全장비해제(ARG:0 = -1)
+#DIM LCOUNT
+IF ARG:0<0
+	PRINTL ERROR 캐릭터 등록번호가 지정되지않아 모든 장비를 해제합니다！
+	RETURN
+ENDIF
+
+;장비があれば해제して、아이템欄の分を１個増やす
+FOR LCOUNT, 0, 8
+	;생득무기の場合は飛ばす
+	SIF LCOUNT == 0 && EQUIP:ARG:검 == [[아이템:생득무기]]
+		CONTINUE
+	SIF (EQUIP:(ARG:0):GET_EQUIP(LCOUNT)) != 0
+		ITEM:(EQUIP:(ARG:0):GET_EQUIP(LCOUNT)) += 1
+	EQUIP:(ARG:0):GET_EQUIP(LCOUNT) = 0	
+NEXT
+
+;특수탄の해제。장비しても아이템が減るわけではないので、해제の時も増やさない
+FOR LCOUNT, 0, 8
+	LOCALS = 특수탄{LCOUNT + 1}
+	EQUIP:(ARG:0):LOCALS = 0
+NEXT
+
+SIF 생득무기소지(ARG)
+	EQUIP:ARG:검 = [[아이템:생득무기]]
+;스테이터스に反映?
+CALL SYNC_STATUS,ARG:0
+RETURN
+
+;============================================================================
+;생득무기소지
+;ARGのキャラが생득무기소지の조건を満たしているかどうか판정
+;============================================================================
+;---- EDIT 006 MOD START -------------------------
+@생득무기소지,ARG
+#FUNCTION
+SIF NO:ARG == [[キャラ:유리아]] || NO:ARG == [[キャラ:에레지]] ||  NO:ARG == [[キャラ:젯트]] || (ABL:ARG:종족 == 36 &&( TALENT:ARG:갈퀴 || TALENT:ARG:날개 ||  TALENT:ARG:갈퀴발 ||  TALENT:ARG:꼬리 ||  TALENT:ARG:부리 ||  TALENT:ARG:촉수 ||  TALENT:ARG:짐승 ||  TALENT:ARG:새 ||  TALENT:ARG:파충류 ||  TALENT:ARG:물고기))
+	RETURNF 1
+RETURNF 0
+;---- EDIT 006 MOD END   -------------------------
+
+;============================================================================
+;@EQUIP_PROPERTY
+;장비品の性能を取得する
+;마정무기等による呼び出す関数の違いなどもここにまとめて記述する
+;============================================================================
+@EQUIP_PROPERTY , ARG , ARGS , ARG:1 , ARG:2 = -1
+RESULTS =
+RESULT = 0
+IF 마정장비(ARG)
+	ARG = EQ_GETID_마정장비(ARG)
+	SELECTCASE ARGS
+		CASE "기본능력수정" , "전투능력수정" , "총공격" , "총명중" , "방어상성" , "バステ내성"
+			TRYCALLFORM %ARGS%_마정장비 , ARG:1 , ARG
+		CASE "최저공격횟수" , "최대공격횟수" , "공격상성" , "사거리" , "공격범위" , "추가효과" , "추가효과상성"
+			TRYCALLFORM %ARGS%_마정장비 , ARG
+		CASEELSE
+	ENDSELECT
+ELSE
+	
+	SELECTCASE ARGS
+		CASE "장비箇所" , "구입조건" , "장비조건설명" , "필요레벨"
+			TRYCALLFORM %ARGS%_{ARG}
+		CASE "기본능력수정" , "전투능력수정" , "방어상성" , "バステ내성"
+			TRYCALLFORM %ARGS%_{ARG} , ARG:1 , ARG:2
+			
+			SIF ARGS == "전투능력수정"
+				CALL 장비강화_전개, ARG:2, ARG, ARGS ,GET_BATTLESTATUS(ARG:1), RESULT
+			SIF ARGS == "방어상성"
+				CALL 장비강화_전개, ARG:2, ARG, ARGS ,GET_TYPE(ARG:1), RESULT
+		CASEELSE
+			TRYCCALLFORM %ARGS%_{ARG} , ARG:2
+			CATCH
+				RETURN 0
+			ENDCATCH
+			CALL 장비강화_전개, ARG:2, ARG, "전투능력수정" ,ARGS, RESULT
+	ENDSELECT
+ENDIF
+RETURN RESULT
+
+;============================================================================
+;@EQUIP_SORT , ARG = -1(장비するキャラ) , ARG:1 (ソート開始位置(素손などを省くため))
+;あらかじめ설정済みのソート조건に応じて장비品のリストをソートする
+;아이템リストに장비品のリストを作成した上で実行する事
+;============================================================================
+@EQUIP_SORT , ARG = -1 , ARG:1
+SIF ソート조건 == ""
+	ソート조건 = 아이템번호
+FOR LOCAL:2 , 2 , -1 , -1
+	;조건によって、아이템リストの数値を色々변경
+	IF ソート조건:(LOCAL:2) != ""
+		FOR LOCAL , ARG:1 , FINDELEMENT(아이템リスト , -1)
+			IF ソート조건:(LOCAL:2) == "아이템번호"
+			ELSEIF ソート조건:(LOCAL:2) == "합계능력値" || RANGE(GET_BATTLESTATUS_NUM(ソート조건:(LOCAL:2)) , 1 , 6 )
+				IF ソート조건:(LOCAL:2) == "합계능력値"
+					LOCAL:3 = 1 , 9
+				ELSE
+					LOCAL:3 = GET_BATTLESTATUS_NUM(ソート조건:(LOCAL:2))
+					LOCAL:4 = LOCAL:3 + 1
+					;총なら명중と공격を変換
+					IF GROUPMATCH(ソート조건:(LOCAL:2) , "공격" , "명중")
+						TRYCALLFORM 장비箇所_{아이템リスト:LOCAL % 10000}
+						IF RESULT == GET_EQUIPNUM("총")
+							LOCAL:3 += 6
+							LOCAL:4 += 6
+						ENDIF
+					ENDIF
+				ENDIF
+				FOR LOCAL:1 , LOCAL:3 , LOCAL:4
+					;CALL EQUIP_PROPERTY , 아이템リスト:LOCAL % 10000 , "전투능력수정" , LOCAL:1 , ARG
+					IF GET_BATTLESTATUS(LOCAL:1) == "총공격"
+						CALL EQUIP_PROPERTY , MODULO(아이템リスト:LOCAL , 10000) , "총공격" , LOCAL:1 , ARG
+					ELSEIF GET_BATTLESTATUS(LOCAL:1) == "총명중"
+						CALL EQUIP_PROPERTY , MODULO(아이템リスト:LOCAL , 10000) , "총명중" , LOCAL:1 , ARG
+					ELSE
+						CALL EQUIP_PROPERTY , MODULO(아이템リスト:LOCAL , 10000) , "전투능력수정" , LOCAL:1 , ARG
+					ENDIF
+					아이템リスト:LOCAL += RESULT * 10000
+				NEXT
+				
+			ELSEIF RANGE(GET_TYPE_NUM(ソート조건:(LOCAL:2)) , 0 , FLAG:相性数 )
+				CALLFORM EQUIP_PROPERTY , MODULO(아이템リスト:LOCAL , 10000) , "방어상성" , GET_TYPE_NUM(ソート조건:(LOCAL:2)) , ARG
+				SELECTCASE RESULT
+					CASE 999
+						아이템リスト:LOCAL += 999 * 10000
+					CASEELSE
+						아이템リスト:LOCAL += (500 - RESULT) * 10000
+				ENDSELECT
+			ELSEIF ソート조건:(LOCAL:2) == "가격"
+				아이템リスト:LOCAL += ITEMPRICE:(아이템リスト:LOCAL) * 10000
+			ELSEIF ソート조건:(LOCAL:2) == "필요레벨"
+				CALL EQUIP_PROPERTY , MODULO(아이템リスト:LOCAL , 10000) , "필요레벨" , , ARG
+				아이템リスト:LOCAL += RESULT * 10000
+				
+			ENDIF
+		NEXT
+		SELECTCASE ソート조건:(LOCAL:2)
+			CASE "아이템번호"
+				ARRAYSORT 아이템リスト , FORWARD , ARG:1 , MAX(0 , FINDELEMENT(아이템リスト , -1) - ARG:1)
+			CASEELSE
+				ARRAYSORT 아이템リスト , BACK , ARG:1 , MAX(0 , FINDELEMENT(아이템リスト , -1) - ARG:1)
+		ENDSELECT
+		FOR LOCAL , 0 , FINDELEMENT(아이템リスト , -1)
+			아이템リスト:LOCAL = MODULO(아이템リスト:LOCAL , 10000)
+		NEXT
+	ENDIF
+NEXT
+
+;============================================================================
+;@CHANGE_CONDITION_EQUIP_SORT , ARG = -1(장비するキャラ) , ARG:1 (ソート開始位置(素손などを省くため))
+;EQUIP_SORT内で사용するソート조건を변경する関数
+;============================================================================
+@CHANGE_CONDITION_EQUIP_SORT
+#DIM LINE
+
+CUSTOMDRAWLINE =
+PRINTL □정렬조건변경□
+PRINTL
+PRINTL
+LINE = LINECOUNT
+LOCAL:1 = 0
+LOCALS = 未설정_아이템번호_가격_필요레벨_사거리（未）__합계능력値_공격_명중_방어_회피_마법위력_마법효과_
+LOCALS += "검격_비구_타격_전술_화염_빙결_전격_충격_신경_정신_파마_주살_지변_수격_질풍_중력_핵열_만능_"
+$PRINT
+FOR LOCAL , 0 , 3
+	SIF LOCAL:1 == LOCAL
+		SETCOLOR COLOR("パ緑")
+	PRINTBUTTON @"　[조건{LOCAL+1}]%ソート조건:LOCAL,16,LEFT%　" , @"조건{LOCAL+1}"
+	RESETCOLOR
+NEXT
+PRINTL
+PRINTL
+FOR LOCAL , 0 , STRCOUNT(LOCALS , "_")
+	LOCALS:1 = [%AUTO_SPLIT(LOCALS , "_" , LOCAL)%]
+	PRINTBUTTON @"　%LOCALS:1 , 18 , LEFT%　" , AUTO_SPLIT(LOCALS , "_" , LOCAL)
+	SIF LOCAL % 6 == 5
+		PRINTL
+NEXT
+PRINTL
+
+CUSTOMDRAWLINE =
+PRINTL [100]돌아간다
+$INPUTS_LOOP
+INPUTS
+IF RESULTS == "100"
+	RETURN 0
+ELSEIF GROUPMATCH(RESULTS , "조건1" , "조건2" , "조건3")
+	LOCAL:1 = TOINT(SUBSTRINGU(RESULTS, 2)) - 1
+ELSEIF AUTO_SPLIT_NUM(LOCALS , "_" , RESULTS) != -1
+	ソート조건:(LOCAL:1) = %RESULTS%
+ELSE
+	GOTO INPUTS_LOOP
+ENDIF
+CLEARLINE LINECOUNT - LINE
+GOTO PRINT
+
+;============================================================================
+;============================================================================
+@MODULO , ARG , ARG:1
+#FUNCTION
+SIF ARG % ARG:1 < 0
+	RETURNF ARG % ARG:1 + ARG:1
+RETURNF ARG % ARG:1

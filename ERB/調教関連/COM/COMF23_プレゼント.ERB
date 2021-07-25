@@ -1,0 +1,230 @@
+﻿;-------------------------------------------------
+;프레젠트
+;コミュ니케ション系コマンド、레벨3
+;-------------------------------------------------
+;2021/4/8　NEO
+;はるかむかしから受け継がれてきた「外界のお酒」をmegatenナイズする
+;ついでに、CSTRで独自のプレゼントを可能にする
+;-------------------------------------------------
+;　0：スマイル
+;　1：量産ネクタール（ギリシャ神話における神の飲み物。「nektar：nek（死）＋tar（打ち勝つ効能）」。花の蜜。まあスポドリ、エナドリみたいなもんだたぶん）
+;　2：日用品
+;　3：악세사리
+;　4：옷
+;　5：疑似ソーマ（インド神話における神の飲み物。マッカ交換で買えるエリクサーのようなものだが、ここでは味を追求したものとする）
+;　6：好物１。値段などをCSVで設定できる。
+;　7：好物２。同上。
+;-------------------------------------------------
+;========================================
+;好物（独自プレゼント）
+;========================================
+;好物は「CSTR,プレゼント用好物,ちくわぶ_500_なめこ_1000」という具合に、CSVに記述する
+;また、2種類までしか認識できない（それ以上でもいいけどひとまず）
+;値段に応じた効果を持ち、애정경험、好感度の効果が高め（ただし費用対効果は良くない）
+;プレゼント用好物を"_"で分割した配列「LOCALS」に、名前１、値段１、名前２、値段２を代入し使用する。
+;-------------------------------------------------
+
+
+@ACT_COM23
+PRINTL 프레젠트
+
+PRINTFORML 무엇을 선물합니까？
+PRINTFORML [0] 스마일（공짜）
+SIF MONEY >= 500
+	PRINTFORML [1] 술(￥1000)
+SIF MONEY >= 1500
+	PRINTFORML [2] 일용품(￥2500)
+SIF MONEY >= 4000
+	PRINTFORML [3] 악세사리(￥10000)
+SIF MONEY >= 10000
+	PRINTFORML [4] 옷(￥25000)
+SIF MONEY >= 50000
+	PRINTFORML [5] 이계의 술(￥150000)
+
+VARSET LOCALS
+SPLIT CSTR:プレゼント用好物, "_", LOCALS
+;好物１の名前が設定されていなければなにもしない
+IF LOCALS:0 != ""
+	;値段1を数字としてとれるかチェック
+	IF ISNUMERIC(LOCALS:1) == 1
+		;数字に変換し、資金が一定以上なら表示
+		SIF MONEY >= TOINT(LOCALS:1)
+			PRINTFORML [6] %LOCALS:0%(￥%LOCALS:1%)
+	ENDIF
+ENDIF
+
+;好物２の名前が設定されていなければなにもしない
+IF LOCALS:2 != ""
+	;値段2を数字としてとれるかチェック
+	IF ISNUMERIC(LOCALS:3) == 1
+		;数字に変換し、資金が一定以上なら表示
+		SIF MONEY >= TOINT(LOCALS:3)
+			PRINTFORML [7] %LOCALS:2%(￥%LOCALS:3%)
+	ENDIF
+ENDIF
+
+PRINTFORML [100] 역시 그만둔다
+
+INPUT
+IF RESULT != 100 && (RESULT < 0 || RESULT > 6)
+	RESTART
+ELSEIF RESULT == 1 && MONEY < 1000
+	RESTART
+ELSEIF RESULT == 2 && MONEY < 2500
+	RESTART
+ELSEIF RESULT == 3 && MONEY < 10000
+	RESTART
+ELSEIF RESULT == 4 && MONEY < 25000
+	RESTART
+ELSEIF RESULT == 5 && MONEY < 150000
+	RESTART
+ELSEIF RESULT == 6  && MONEY < TOINT(LOCALS:1)
+	RESTART
+ELSEIF RESULT == 7  && MONEY < TOINT(LOCALS:3)
+	RESTART
+ELSEIF RESULT == 0
+	;花を프레젠트
+	TFLAG:17 = 0
+ELSEIF RESULT == 1
+	;酒を프레젠트
+	TFLAG:17 = 1
+	MONEY -= 1000
+ELSEIF RESULT == 2
+	;日用品を프레젠트
+	TFLAG:17 = 2
+	MONEY -= 2500
+ELSEIF RESULT == 3
+	;악세사리を프레젠트
+	TFLAG:17 = 3
+	MONEY -= 10000
+ELSEIF RESULT == 4
+	;옷を프레젠트
+	TFLAG:17 = 4
+	MONEY -= 25000
+ELSEIF RESULT == 5
+	;凄い酒を프레젠트
+	TFLAG:17 = 5
+	MONEY -= 150000
+ELSEIF RESULT == 6
+	;好物1をプレゼント
+	TFLAG:17 = 6
+	;ここに来れる時点でLOCALは型変換できる
+	LOCAL = TOINT(LOCALS:1)
+	MONEY -= LOCAL
+ELSEIF RESULT == 7
+	;好物2をプレゼント
+	TFLAG:17 = 7
+	;ここに来れる時点でLOCALは型変換できる
+	LOCAL = TOINT(LOCALS:3)
+	MONEY -= LOCAL
+ELSEIF RESULT >= 100
+	PRINTFORMW 선물을 주는 것을 정지하겠습니다
+	RETURN 0
+ENDIF
+
+TSTR:0 = 프레젠트
+;CALL KOJO_MESSAGE_COM
+
+;-------------------------------------------------
+;ソース추가処理
+;-------------------------------------------------
+;소비체력、기력
+DOWNBASE:TARGET:체력 += 10
+DOWNBASE:TARGET:기력 += 20
+
+IF TFLAG:17 == 0
+	SOURCE:TARGET:복종 = 1000
+	SOURCE:TARGET:일탈 = 100
+ELSEIF TFLAG:17 == 1
+	SOURCE:TARGET:복종 = 1500
+	SOURCE:TARGET:일탈 = 150
+ELSEIF TFLAG:17 == 2
+	SOURCE:TARGET:복종 = 2500
+	SOURCE:TARGET:일탈 = 250
+ELSEIF TFLAG:17 == 3
+	SOURCE:TARGET:복종 = 3500
+	SOURCE:TARGET:일탈 = 350
+ELSEIF TFLAG:17 == 4
+	SOURCE:TARGET:복종 = 5000
+	SOURCE:TARGET:일탈 = 500
+ELSEIF TFLAG:17 == 5
+	SOURCE:TARGET:복종 = 7000
+	SOURCE:TARGET:일탈 = 700
+ENDIF
+
+;独自プレゼント用：分ける意味はあまりないが、違うシステムなので分けておく
+;15万円でスマイルから恭順+6000＝25円ごとに恭順1、逸脱はその10分の1の加算
+;愛情経験側がプラスされるので値段対効果はやや低く設定し、限界は疑似ソーマと同量まで
+;LOCAL＝好物の値段は上で変換済み
+IF TFLAG:17 == 6 || TFLAG:17 == 7
+	SOURCE:TARGET:복종 = 1000 + (LOCAL / 30)
+	SOURCE:TARGET:일탈 = 100 + (LOCAL / 300)
+	SIF SOURCE:TARGET:복종 >= 7000
+		SOURCE:TARGET:복종 = 7000
+	SIF SOURCE:TARGET:일탈 >= 700
+		SOURCE:TARGET:일탈 = 700
+ENDIF
+
+
+;애정경험
+IF (TALENT:3 == 1 || TALENT:6 == 1) && ASSIPLAY == 0 && TFLAG:17 > 0
+	A = TFLAG:17
+	
+	;好物をプレゼントした場合、値段に応じた愛情経験がつく
+	;同額帯のアイテムを贈るより愛情経験の増え方が大きく、また、天井が高い。
+	;15万の疑似ソーマで+5になるので、そのくらいのお値段にはする
+	IF 0
+	ELSEIF LOCAL < 1000
+		A = 2
+	ELSEIF LOCAL < 2500
+		A = 3
+	ELSEIF LOCAL < 10000
+		A = 4
+	ELSEIF LOCAL < 25000
+		A = 5
+	ELSEIF LOCAL < 150000
+		A = 6
+	ELSE
+		A = 2 + (LOCAL / 30000)
+	ENDIF
+
+	;一発で30増えるのもどうかと思うが、90万円はさすがに一回のコマンドじゃブッ飛ばしたくない
+	SIF A > 30
+		A = 30
+
+	;おまじない
+	SIF A < 1
+		A = 1
+
+;	PRINTS EXPNAME:23
+;	PRINTVL +A
+	CALL ADDS_EXP("애정경험", A, TARGET)
+;	PRINTFORML 애정경험(주인)＋１
+	CALL ADDS_EXP("애정경험", 1, MASTER)
+ENDIF
+
+;의존도ベクトル
+TFLAG:33 = 4
+
+;依存度補正値
+IF (TALENT:3 == 1 || TALENT:6 == 1) && ASSIPLAY == 0
+	A = TFLAG:17
+	;好物の場合、金額で補正する
+	;LOCAL＝好物の値段は上で変換済み
+	SIF TFLAG:17 == 6 || TFLAG:17 == 7
+		A = 2 + (LOCAL / 30000)
+
+	SIF A > 15
+		A = 15
+
+	TFLAG:30 += A
+ENDIF
+
+RETURN 1
+
+;===================================================
+;조교타입
+;===================================================
+@COMTYPE_23
+RETURN COMTYPE("커뮤계")
+

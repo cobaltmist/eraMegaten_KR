@@ -1,0 +1,160 @@
+﻿;-------------------------------------------------
+;손가락삽입
+;애무계コマンド、레벨1
+;-------------------------------------------------
+@JUMP_COM3
+;-------------------------------------------------
+;特殊派生処理
+;-------------------------------------------------
+;非처녀で전회の조교が손가락삽입かつプ레이ヤの기교３이상だとＧ스팟자극に
+IF PREVCOM == 3 || PREVCOM == 503
+	CALL COM_ABLE_COMMON, 503
+	SIF RESULT == 1
+		RETURN 503
+ENDIF
+
+;非처녀で전회の조교がGスポットならさらにＧ스팟자극に
+;IF PREVCOM == 503 && TALENT:0 == 0 && TALENT:1 == 0
+;	CALL COM_ABLE_COMMON, 503
+;	SIF RESULT == 1
+;		JUMP COM503
+;ENDIF
+RETURN -1
+@ACT_COM3
+
+
+
+PRINTL 손가락삽입
+TSTR:0 = 손가락삽입
+;CALL KOJO_MESSAGE_COM
+
+;V경험を伴うコマンドのフラグ(처녀膜재생対応)
+SIF TALENT:0 == 0 && TALENT:1 == 0
+	TFLAG:19 = 1
+
+;조교者→조교대상
+TFLAG:28 = 2
+;-------------------------------------------------
+;ソース추가処理
+;-------------------------------------------------
+;소비체력、기력
+DOWNBASE:TARGET:체력 += 30
+DOWNBASE:TARGET:기력 += 80
+
+
+IF TALENT:0 == 0 && TALENT:1 == 0
+	SOURCE:1 = 120
+	SOURCE:TARGET:아픔 = 15
+	SOURCE:TARGET:노출 = 10
+	SOURCE:TARGET:일탈 = 20
+	SOURCE:TARGET:반감 = 20
+;V경험が0の時はV경험を伴わない物に派生
+;V의 구슬は入らないが、쾌Vが高いと慣らしてあるため처녀상실時に影響
+ELSE
+	SIF PALAM:1 < 100
+		SOURCE:1 = 60
+	SOURCE:TARGET:아픔 = 10
+	SOURCE:TARGET:노출 = 30
+	SOURCE:TARGET:일탈 = 30
+	SOURCE:TARGET:반감 = 30
+ENDIF
+
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;억압、저항持ちには、억울ソース추가
+IF TALENT:32 || TALENT:34
+	SOURCE:TARGET:울굴 += 20
+	;처녀
+	SIF TALENT:0
+		SOURCE:TARGET:울굴 += 10
+ENDIF
+
+;Vへの고통は先に処理しておく
+;EXP:Ｖ경험をみる（처녀の반감は別途処理済みなので생략）
+IF EXP:0 < EXPLV:1
+	TIMES SOURCE:TARGET:아픔 , 2.50
+ELSEIF EXP:0 < EXPLV:2
+	TIMES SOURCE:TARGET:아픔 , 0.80
+	TIMES SOURCE:TARGET:반감 , 1.20
+ELSEIF EXP:0 < EXPLV:3
+	TIMES SOURCE:TARGET:아픔 , 0.40
+ELSEIF EXP:0 < EXPLV:4
+	TIMES SOURCE:TARGET:아픔 , 0.10
+ELSEIF EXP:0 < EXPLV:5
+	TIMES SOURCE:TARGET:아픔 , 0.00
+ELSEIF EXP:0 >= EXPLV:5
+	TIMES SOURCE:TARGET:아픔 , 0.00
+ENDIF
+
+;PALAM:윤활をみる
+IF PALAM:4 < PALAMLV:1
+	TIMES SOURCE:TARGET:아픔 , 1.20
+	TIMES SOURCE:TARGET:반감 , 1.50
+ELSEIF PALAM:4 < PALAMLV:2
+	TIMES SOURCE:TARGET:아픔 , 0.70
+	TIMES SOURCE:TARGET:반감 , 1.20
+ELSEIF PALAM:4 < PALAMLV:3
+	TIMES SOURCE:TARGET:아픔 , 0.40
+ELSEIF PALAM:4 < PALAMLV:4
+	TIMES SOURCE:TARGET:아픔 , 0.10
+ELSEIF PALAM:4 >= PALAMLV:4
+	TIMES SOURCE:TARGET:아픔 , 0.10
+ENDIF
+
+;-------------------------------------------------
+;불결の処理
+;-------------------------------------------------
+;奴隷の질내⇔조교者の指の불결が移動
+IF TEQUIP:PLAYER:손 == 401 || TEQUIP:PLAYER:손 == 404 || TEQUIP:PLAYER:손 == 405 || TEQUIP:PLAYER:손 == 407 || TEQUIP:PLAYER:손 == 412 || TEQUIP:PLAYER:손 == 414
+	CALL MOVE_STAIN("질내", TARGET, "장갑", PLAYER)
+ELSE
+	CALL MOVE_STAIN("질내", TARGET, "손", PLAYER)
+ENDIF
+
+;-------------------------------------------------
+;吸精処理
+;-------------------------------------------------
+IF CFLAG:PLAYER:ＭＡＧ非被흡수 == 0
+	LOCAL = (RAND:4+1) * BASE:LV
+	CALL DRAIN_MAG,PLAYER,LOCAL,TARGET
+ELSEIF CFLAG:TARGET:ＭＡＧ非被흡수 == 0
+	LOCAL = (RAND:4+1) * BASE:LV
+	CALL DRAIN_MAG,TARGET,LOCAL,PLAYER
+ENDIF
+
+;-------------------------------------------------
+;경험の処理
+;-------------------------------------------------
+;V경험
+SIF TALENT:0 == 0 && TALENT:1 == 0
+	CALL ADDS_EXP("Ｖ경험", 1, TARGET)
+
+;레즈경험
+A = 1
+IF IS_LESBIAN(TARGET,PLAYER)
+	CALL ADDS_EXP("레즈경험", A, TARGET)
+	CALL ADDS_EXP("레즈경험", A, PLAYER)
+ELSEIF IS_GAY(TARGET,PLAYER)
+	CALL ADDS_EXP("ＢＬ경험", A, TARGET)
+	CALL ADDS_EXP("ＢＬ경험", A, PLAYER)
+ENDIF
+
+;의존도ベクトル
+IF TALENT:0
+	TFLAG:33 = 3
+ELSE
+	TFLAG:33 = 1
+ENDIF
+
+
+RETURN 1
+
+
+;===================================================
+;조교타입
+;===================================================
+@COMTYPE_3
+RETURN COMTYPE("애무계")
+

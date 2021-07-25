@@ -1,0 +1,176 @@
+﻿;-------------------------------------------------
+;가슴자위
+;애무계コマンド、레벨3
+;-------------------------------------------------
+@JUMP_COM10
+;-------------------------------------------------
+;特殊派生処理
+;-------------------------------------------------
+;前コマンドが기승위か기승위애널で조교者が同じ場合は기승유방자위にジャンプ
+IF ((PREVCOM == 66 && TFLAG:60) || TFLAG:60 == 4) && TFLAG:전회の조교者 == PLAYER
+	CALL COM_ABLE_COMMON, 505
+	SIF RESULT
+		RETURN 505
+ELSEIF ((PREVCOM == 67 && TFLAG:60) || TFLAG:60 == 10) && TFLAG:전회の조교者 == PLAYER
+	CALL COM_ABLE_COMMON, 512
+	SIF RESULT
+		RETURN 512
+ENDIF
+RETURN -1
+
+@ACT_COM10
+
+SIF TEQUIP:28
+	PRINT 공개
+PRINTL 가슴자위
+
+;조교대상→조교대상
+TFLAG:28 = 4
+
+TSTR:0 = 가슴자위
+;CALL KOJO_MESSAGE_COM
+
+;-------------------------------------------------
+;ソース추가処理
+;-------------------------------------------------
+;소비체력、기력
+DOWNBASE:TARGET:체력 += 5
+DOWNBASE:TARGET:기력 += 50
+
+SOURCE:TARGET:쾌Ｂ = 50
+SOURCE:TARGET:성행위 = 40
+SOURCE:TARGET:무서움 = 100
+SOURCE:TARGET:중독충족 = 100
+SOURCE:TARGET:노출 = 200
+SOURCE:TARGET:굴종 = 400
+SOURCE:TARGET:일탈 = 150
+SOURCE:TARGET:반감 = 150
+IF TEQUIP:28
+	SOURCE:TARGET:액체 = 50
+	SOURCE:TARGET:일탈 += 100
+ENDIF
+
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;억압、저항持ちには、억울ソース추가
+SIF TALENT:32 || TALENT:34
+	SOURCE:TARGET:울굴 += 150
+
+;중독による중독충족のソースは先に処理しておく
+;자위중독を見る
+SIF ABL:15 == 0
+	TIMES SOURCE:TARGET:중독충족 , 0.00
+SIF ABL:15 == 1
+	TIMES SOURCE:TARGET:중독충족 , 0.30
+SIF ABL:15 == 2
+	TIMES SOURCE:TARGET:중독충족 , 0.60
+SIF ABL:15 == 3
+	TIMES SOURCE:TARGET:중독충족 , 0.90
+SIF ABL:15 == 4
+	TIMES SOURCE:TARGET:중독충족 , 1.20
+SIF ABL:15 == 5
+	TIMES SOURCE:TARGET:중독충족 , 1.50
+SIF ABL:15 == 6
+	TIMES SOURCE:TARGET:중독충족 , 1.80
+SIF ABL:15 == 7
+	TIMES SOURCE:TARGET:중독충족 , 2.10
+SIF ABL:15 == 8
+	TIMES SOURCE:TARGET:중독충족 , 2.40
+SIF ABL:15 == 9
+	TIMES SOURCE:TARGET:중독충족 , 3.00
+SIF ABL:15 >= 10
+	TIMES SOURCE:TARGET:중독충족 , 5.00
+
+
+;-------------------------------------------------
+;불결の処理
+;-------------------------------------------------
+;奴隷の指⇔奴隷のＢの불결が移動
+CALL MOVE_STAIN("손", TARGET, "가슴", TARGET)
+
+;-------------------------------------------------
+;경험の処理
+;-------------------------------------------------
+;ビデオ촬영時は경험にプラス
+IF TEQUIP:28
+	CALL ADDS_EXP("자위경험", 2, TARGET)
+	;PRINTL 자위경험＋２
+	CALL ADDS_EXP("조교자위경험", 2, TARGET)
+	;PRINTL 조교자위경험＋２
+ELSE
+	CALL ADDS_EXP("자위경험", 1, TARGET)
+	;PRINTL 자위경험＋１
+	CALL ADDS_EXP("조교자위경험", 1, TARGET)
+	;PRINTL 조교자위경험＋１
+ENDIF
+IF TEQUIP:28
+	CALL ADDS_ABNORMAL_EXP("공개자위", TARGET)
+;	EXP:50 += 1
+;	PRINTL 이상경험＋１
+ENDIF
+
+A = 3
+IF IS_LESBIAN(TARGET,PLAYER)
+	CALL ADDS_EXP("레즈경험", A, TARGET)
+	CALL ADDS_EXP("레즈경험", A, PLAYER)
+ELSEIF IS_GAY(TARGET,PLAYER)
+	CALL ADDS_EXP("ＢＬ경험", A, TARGET)
+	CALL ADDS_EXP("ＢＬ경험", A, PLAYER)
+ENDIF
+
+;의존도ベクトル
+TFLAG:33 = 3
+
+;의존도보정値(복종で1、예속で2）
+IF TALENT:5 && ASSIPLAY == 0
+	TFLAG:30 += 1
+ELSEIF TALENT:8 && ASSIPLAY == 0
+	TFLAG:30 += 2
+ENDIF
+
+
+RETURN 1
+;-------------------------------------------------
+;実行판정処理
+;-------------------------------------------------
+@COM_ORDER_10, ARG, ARG:1
+IF TEQUIP:ARG:음문발동
+	CALL ADD_COM_ORDER, "판정無視", "음문 발동중"
+	RETURN 0
+ENDIF
+
+CALL ADD_COM_ORDER, "ABL", "욕망", 3, ARG, ARG:1
+CALL ADD_COM_ORDER, "ABL", "노출증", 4, ARG, ARG:1
+CALL ADD_COM_ORDER, "ABL", "자위중독", 3, ARG, ARG:1
+CALL ADD_COM_ORDER, "MARK", "쾌락각인", 3, ARG, ARG:1
+
+
+CALL ADD_COM_ORDER, "PALAM", "욕정", 3, ARG, ARG:1
+
+CALL ADD_COM_ORDER, "TALENT", "자제심", -5, ARG, ARG:1
+CALL ADD_COM_ORDER, "TALENT", "부끄럼쟁이", -5, ARG, ARG:1
+CALL ADD_COM_ORDER, "TALENT", "부끄럼없음", 2, ARG, ARG:1
+CALL ADD_COM_ORDER, "TALENT", "자위하기쉬움", 5, ARG, ARG:1
+CALL ADD_COM_ORDER, "TALENT", "쾌감에솔직", 5, ARG, ARG:1
+SIF !TALENT:ARG:음란 && !TALENT:ARG:창부
+	CALL ADD_COM_ORDER, "TALENT", "쾌감을부정", -1, ARG, ARG:1
+SIF TEQUIP:ARG:미약
+	CALL ADD_COM_ORDER, "EXTRA", "미약", 8, ARG, ARG:1
+SIF TEQUIP:ARG:비디오카메라
+	CALL ADD_COM_ORDER, "EXTRA", "비디오카메라", -10, ARG, ARG:1
+CALL ADD_COM_ORDER, "RELATION", , , ARG, ARG:1
+	
+;-------------------------------------------------
+;実行値
+;난이도上昇 공개で+10
+;-------------------------------------------------
+@COM_ORDER_NUM_10
+RETURN 33
+
+;===================================================
+;조교타입
+;===================================================
+@COMTYPE_10
+RETURN COMTYPE("애무계")

@@ -1,0 +1,610 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:AUTO_RECOVER.ERB
+;	Facility	:오토리커버。
+;
+;	Licence		:。
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		20XX/XX/XX		----					新規作成
+;	002		2011/11/20		旅人					마법での상태이상회복が기능していないのを수정
+;			2011/11/21		旅人					上記수정の不具合を수정
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+
+
+;오토리커버
+;配置中の동료마의ＨＰを마법・아이템を사용して自動회복する
+;原作の挙動は知らない
+
+;未完成部分
+;・ソースきたない
+;・ＣＯＭＰ内の동료마의마법をどうするか
+;
+
+@AUTO_RECOVER
+IF GETBIT(FLAG:오토리커버설정1, 3) == 1
+	PRINTL 오토리커버 합니까？
+	CALL INPUT_YN, "YES", "NO"
+	SIF RESULT == 1
+		RETURN 1
+ENDIF
+;バステ・死亡회복
+IF GETBIT(FLAG:오토리커버설정1, 1) == 1 || GETBIT(FLAG:오토리커버설정1, 2) == 1
+	;LOCAL 마법と아이템のうち、どちらか片方を試したか
+	LOCAL = 0
+	RESULT = 2
+	WHILE 1
+		;회복が필요한대상がいないなら종료
+		IF RESULT == 0
+			BREAK
+		;MP、아이템切れなどで회복できなかった
+		ELSEIF RESULT == 1
+			;もう片方も試してみる、両方やってみてだめだったら종료
+			IF LOCAL == 1
+				BREAK
+			ELSE
+				LOCAL = 1
+			ENDIF
+		;회복を実行した
+		ELSE
+			LOCAL = 0
+		ENDIF
+		;마법と아이템のうち、コンフィグで설정したほうから試してみる。片方試した後だったらもう片方を。
+		IF (GETBIT(FLAG:오토리커버설정1, 0) == 0 && LOCAL == 0) || (GETBIT(FLAG:오토리커버설정1, 0) == 1 && LOCAL == 1)
+			CALL AUTO_RECOVER_MAGIC_STATE
+		ELSE
+			CALL AUTO_RECOVER_ITEM_STATE
+		ENDIF
+	WEND
+ENDIF
+;HP회복
+IF GETBIT(FLAG:오토리커버설정1, 0) == 0
+	CALL AUTO_RECOVER_MAGIC_HP
+	SIF RESULT == 1
+		CALL AUTO_RECOVER_ITEM_HP
+ELSE
+	CALL AUTO_RECOVER_ITEM_HP
+	SIF RESULT == 1
+		CALL AUTO_RECOVER_MAGIC_HP
+ENDIF
+PRINTW 오토리커버 종료
+
+
+;LOCAL:1 회복대상포지션
+;LOCAL:5 사용キャラ번호
+;LOCAL:6 사용스킬번호
+;LOCAL:7 効率
+;LOCAL:8 회복대상ステート
+;LOCAL:11 사용스킬効果범위 1~6 19で아군전체
+;---- EDIT 002 DEL START -------------------------
+;;RESULT= 0:회복대상なし 1:회복不能 2:회복した
+;---- EDIT 002 DEL END ---------------------------
+@AUTO_RECOVER_MAGIC_STATE
+#DIM LCOUNT,3
+;마법で회복
+;회복대상を配置中メンバー全員から
+LOCAL:1 = -1
+LOCAL:5 = -1
+LOCAL:7 = 0
+FOR LCOUNT, 0, 6
+	LOCALS = 포지션{LCOUNT+1}
+	LOCAL = FLAG:LOCALS
+	;EMPTY
+	IF LOCAL < 0
+		CONTINUE
+	;회복불필요한らとばす
+	ELSEIF CFLAG:LOCAL:ステート == 0
+		CONTINUE
+	;死亡
+	ELSEIF GET_STATE(CFLAG:LOCAL:ステート) == "DYING"
+		SIF GETBIT(FLAG:오토리커버설정1, 2) == 0
+			CONTINUE
+	;それ以外のバステ
+	ELSE
+		SIF GETBIT(FLAG:오토리커버설정1, 1) == 0
+			CONTINUE
+	ENDIF
+	LOCAL:1 = LCOUNT+1
+	LOCAL:8 = CFLAG:LOCAL:ステート
+	BREAK
+NEXT
+IF LOCAL:1 == -1
+	;회복필요メンバーがいないので종료
+	RETURN 0
+ENDIF
+;　사용者を配置中メンバー全員から
+;　　最もMP効率のいい손段を選択
+FOR LCOUNT, 0, 6
+	LOCALS = 포지션{LCOUNT+1}
+	LOCAL = FLAG:LOCALS
+	;EMPTY
+	SIF LOCAL < 0
+		CONTINUE
+	;命令ならとばす
+	CALL INPUTABLE_CHARA, LOCAL
+	SIF RESULT == 0
+		CONTINUE
+	;MPが설정より少ないならとばす
+	SIF BASE:(LOCAL):ＭＰ <= 0
+		CONTINUE
+	SIF MAXBASE:(LOCAL):ＭＰ <= 0
+		CONTINUE
+	SIF (BASE:(LOCAL):ＭＰ * 100 / MAXBASE:(LOCAL):ＭＰ) <= PART_VAR_READ(FLAG:오토리커버설정3, 3, 0)
+		CONTINUE
+	;全습득済み스킬の中から회복마법選ぶ
+	FOR LCOUNT:1, 1, FLAG:스킬数+1
+		LOCALS = 스킬{LCOUNT:1}
+		IF ABL:(LOCAL):LOCALS > 0
+			;非전투時に使えない場合無視
+			TRYCCALLFORM SKILL_ACTIONABLE_FIELD_{ABL:(LOCAL):LOCALS}
+				SIF RESULT == 0
+					CONTINUE
+				;特技の場合無視
+				CALLFORM SKILL_DECIDE_TYPE_{ABL:(LOCAL):LOCALS}
+				SIF RESULT != 2
+					CONTINUE
+				;---- EDIT 002 DEL START -------------------------
+				;;회복마법でない場合無視
+				;CALLFORM SKILL_EFECT_{ABL:(LOCAL):LOCALS}
+				;SIF RESULT != 2
+				;	CONTINUE
+				;---- EDIT 002 DEL END ---------------------------
+				;---- EDIT 002 ADD START -------------------------
+				;상태회복마법でない場合無視
+				CALLFORM SKILL_EFECT_{ABL:(LOCAL):LOCALS}
+				SIF RESULT != 5
+					CONTINUE
+				;---- EDIT 002 ADD END ---------------------------
+				;発動가능？（MP、CLOSE等）
+				CALL CHECK_ACTIONABLE, LOCAL, ABL:(LOCAL):LOCALS
+				SIF RESULT == 0
+					CONTINUE
+				;회복대상のステートを治せるか
+				RESULT = 0
+				TRYCALLFORM SKILL_CURE_STATE_{ABL:(LOCAL):LOCALS}, LOCAL:8
+				SIF RESULT == 0
+					CONTINUE
+				;소비MP취득
+				CALLFORM SKILL_COST_{ABL:(LOCAL):LOCALS}
+				LOCAL:3 = RESULT
+				CALLFORM SKILL_SPHERE_{ABL:(LOCAL):LOCALS}
+				;---- EDIT 002 ADD START -------------------------
+				;特定の스킬はオートからは除外
+				SELECTCASE ABL:(LOCAL):LOCALS
+					;- 流石にこれは任意사용の方が良い気がする
+					CASE [[스킬:리캄도라]]
+						CONTINUE
+				ENDSELECT
+				;---- EDIT 002 ADD END ---------------------------
+
+				;1명なら대상の포지션번호を
+				IF RESULT == 1
+					;---- EDIT 002 DEL START -------------------------
+					;LOCAL:10 = LOCAL:1
+					;---- EDIT 002 DEL END ---------------------------
+					;---- EDIT 002 ADD START -------------------------
+					;特定の스킬のみ、"사용스킬効果범위"を個別に変換
+					;(@ACTION_FIELD_X内の処理が、통상の상태회복と違う為)
+					SELECTCASE ABL:(LOCAL):LOCALS
+						CASE [[스킬:리캄]]
+							LOCAL:10 = POS(LOCAL:1)
+						CASE [[스킬:사마리캄]]
+							LOCAL:10 = POS(LOCAL:1)
+						;上記以外
+						CASEELSE
+							;대상の포지션번호を
+							LOCAL:10 = LOCAL:1
+					ENDSELECT
+					;---- EDIT 002 ADD END ---------------------------
+				;전체
+				ELSEIF RESULT == 3
+					LOCAL:10 = 19
+					;何人治せるかかぞえる
+					LOCAL:4 = 0
+					;---- EDIT 002 MOD START -------------------------
+					;FOR LCOUNT:2, 1, 6
+					FOR LCOUNT:2, 1, 7
+					;---- EDIT 002 MOD END ---------------------------
+						LOCALS:1 = 포지션{LCOUNT:2}
+						LOCAL:2 = FLAG:(LOCALS:1)
+						;EMPTY
+						SIF LOCAL:2 < 0
+							CONTINUE
+						;회복불필요한らスルー
+						SIF CFLAG:(LOCAL:2):ステート == 0
+							CONTINUE
+						CALLFORM SKILL_CURE_STATE_{ABL:(LOCAL):LOCALS}, CFLAG:(LOCAL:2):ステート
+						SIF RESULT == 0
+							CONTINUE
+						LOCAL:4 += 1
+					NEXT
+					;최저一人はいるはず
+					LOCAL:3 /= LOCAL:4
+				;例外
+				ELSE
+					CONTINUE
+				ENDIF
+				;もっとも効率がよい(소비MP÷회복人数が少ない)ものを깨달음えておく
+				;---- EDIT 002 MOD START -------------------------
+				;IF LOCAL:7 > LOCAL:3
+				IF LOCAL:7 < LOCAL:3
+				;---- EDIT 002 MOD END ---------------------------
+					LOCAL:5 = LOCAL
+					LOCAL:6 = ABL:(LOCAL):LOCALS
+					LOCAL:7 = LOCAL:3
+					LOCAL:11 = LOCAL:10
+				ENDIF
+;---- EDIT 002 ADD START ------------------------- 디버그용
+;				PRINTFORML デバッグ ABL:(LOCAL):LOCALS:{ABL:(LOCAL):LOCALS} LOCAL:8:{LOCAL:8} GET_STATE(LOCAL:8):%GET_STATE(LOCAL:8)%
+;				PRINTFORML デバッグ LOCAL:7:{LOCAL:7} LOCAL:3:{LOCAL:3}
+;---- EDIT 002 ADD END ---------------------------
+			CATCH
+				;未実装は無視
+				CONTINUE
+			ENDCATCH
+		ENDIF
+	NEXT
+NEXT
+;誰も회복使えないなら종료
+IF LOCAL:5 == -1
+	RETURN 1
+ENDIF
+
+SETCOLOR 0x33ffcc
+PRINTFORML ┏>CHARA━━━━━━━━━━┓　┏>ACT━━━━━━━━━━━━━━━━━━┓
+PRINTFORM ┃[{CFLAG:(LOCAL:5):포지션,2}] %CALLNAME:(LOCAL:5),21,LEFT%┃　┃
+CALLFORM SKILL_NAME_{LOCAL:6}, LOCAL:5
+PRINTFORML %RESULTS,40,LEFT%┃
+PRINTFORMW ┗━━━━━━━━━━━━━┛　┗━━━━━━━━━━━━━━━━━━━━┛
+RESETCOLOR
+;もっとも効率がよい(소비MP÷회복人数が少ない)もので회복実行
+CALL PAY_COST, LOCAL:5, LOCAL:6
+CALLFORM ACTION_FIELD_{LOCAL:6}, LOCAL:5, LOCAL:11
+;---- EDIT 002 DE; START -------------------------
+;RETURN 2
+;---- EDIT 002 DE; END ---------------------------
+;---- EDIT 002 ADD START -------------------------
+;最初に戻る
+RESTART
+;---- EDIT 002 ADD END ---------------------------
+
+
+
+@AUTO_RECOVER_ITEM_STATE
+#DIM LCOUNT
+;LOCAL:1 회복대상포지션
+;LOCAL:5 사용아이템번호
+;LOCAL:8 회복대상ステート
+;LOCAL:9 スルーされたキャラがいるか
+LOCAL:1 = -1
+LOCAL:9 = 0
+FOR LCOUNT, 0, 6
+	LOCALS = 포지션{LCOUNT+1}
+	LOCAL = FLAG:LOCALS
+	;EMPTY
+	IF LOCAL < 0
+		CONTINUE
+	;회복불필요한らとばす
+	ELSEIF CFLAG:LOCAL:ステート == 0
+		CONTINUE
+	;死亡
+	ELSEIF GET_STATE(CFLAG:LOCAL:ステート) == "DYING"
+		SIF GETBIT(FLAG:오토리커버설정1, 2) == 0
+			CONTINUE
+		IF ITEM:[[아이템:도반옥]] > PART_VAR_READ(FLAG:오토리커버설정2, 2, 6)
+			;도반옥は控えにも使えるので포지션번호ではなくキャラ번호で
+			CALLFORM ACTION_FIELD_{[[아이템:도반옥]]+2000},0, LOCAL
+			RETURN 2
+		ENDIF
+		IF ITEM:[[아이템:반혼향]] > PART_VAR_READ(FLAG:오토리커버설정2, 2, 7)
+			CALLFORM ACTION_FIELD_{[[아이템:반혼향]]+2000},0, LOCAL
+			RETURN 2
+		ENDIF
+	;それ以外のバステ
+	ELSE
+		SIF GETBIT(FLAG:오토리커버설정1, 1) == 0
+			CONTINUE
+		SELECTCASE GET_STATE(CFLAG:LOCAL:ステート)
+			CASE "POISON"
+				IF ITEM:[[아이템:디스포이즌]] > PART_VAR_READ(FLAG:오토리커버설정2, 2, 4)
+					CALLFORM ACTION_FIELD_{[[아이템:디스포이즌]]+2000},0, LCOUNT+1
+					RETURN 2
+				ENDIF
+			CASE "PALYZE"
+				IF ITEM:[[아이템:디스패라이즈]] > PART_VAR_READ(FLAG:오토리커버설정2, 2, 4)
+					CALLFORM ACTION_FIELD_{[[아이템:디스패라이즈]]+2000},0, LCOUNT+1
+					RETURN 2
+				ENDIF
+			CASE "CHARM"
+				IF ITEM:[[아이템:디스챰]] > PART_VAR_READ(FLAG:오토리커버설정2, 2, 4)
+					CALLFORM ACTION_FIELD_{[[아이템:디스챰]]+2000},0, LCOUNT+1
+					RETURN 2
+				ENDIF
+			CASE "STONE"
+				IF ITEM:[[아이템:디스톤]] > PART_VAR_READ(FLAG:오토리커버설정2, 2, 4)
+					CALLFORM ACTION_FIELD_{[[아이템:디스톤]]+2000},0, LCOUNT+1
+					RETURN 2
+				ENDIF
+			CASE "CLOSE"
+				IF ITEM:[[아이템:디스클로즈]] > PART_VAR_READ(FLAG:오토리커버설정2, 2, 4)
+					CALLFORM ACTION_FIELD_{[[아이템:디스클로즈]]+2000},0, LCOUNT+1
+					RETURN 2
+				ENDIF
+			CASE "HAPPY", "BIND", "PANIC", "SLEEP"
+				IF ITEM:[[아이템:이와쿠라의물]] > PART_VAR_READ(FLAG:오토리커버설정2, 2, 5)
+					CALLFORM ACTION_FIELD_{[[아이템:이와쿠라의물]]+2000},0, LCOUNT+1
+					RETURN 2
+				ENDIF
+			CASEELSE
+		ENDSELECT
+	ENDIF
+	;회복できなかったフラグ
+	LOCAL:9 = 1
+NEXT
+;회복できなかったキャラが一人でもいる
+IF LOCAL:9 == 1
+	RETURN 1
+;全員회복不要
+ELSE
+	RETURN 0
+ENDIF
+
+@AUTO_RECOVER_ITEM_HP
+#DIM LCOUNT
+;最も（회복量÷値段）が高い아이템で회복
+;LOCAL:1 회복대상포지션
+;LOCAL:5 사용아이템번호
+;LOCAL:6 効率
+;LOCAL:8 회복대상데미지
+LOCAL:1 = -1
+FOR LCOUNT, 0, 6
+	LOCALS = 포지션{LCOUNT+1}
+	LOCAL = FLAG:LOCALS
+	;EMPTY
+	SIF LOCAL < 0
+		CONTINUE
+	;회복불필요한らとばす
+	SIF BASE:LOCAL:ＨＰ * 100 / MAXBASE:LOCAL:ＨＰ >= PART_VAR_READ(FLAG:오토리커버설정3, 3, 1)
+		CONTINUE
+	;死亡はとばす
+	SIF GET_STATE(CFLAG:LOCAL:ステート) == "DYING"
+		CONTINUE
+	LOCAL:1 = LCOUNT+1
+	LOCAL:8 = MAXBASE:(LOCAL):ＨＰ - BASE:(LOCAL):ＨＰ
+	BREAK
+NEXT
+IF LOCAL:1 == -1
+	;회복필요メンバーがいないので종료
+;	PRINTFORML DEBUG:회복필요メンバーがいないので종료
+	RETURN 0
+ENDIF
+;PRINTFORML DEBUG:회복대상포지션:{LOCAL:1}
+LOCAL:5 = -1
+LOCAL:6 = 0
+;외상약
+;持ってる？
+IF ITEM:[[아이템:외상약]] > PART_VAR_READ(FLAG:오토리커버설정2, 2, 0)
+	;회복量:30
+	;コスト（￥換算）:50
+	LOCAL:7 = MIN(30, LOCAL:8) * 10000 / 50
+	;効率最高なら등록
+	IF LOCAL:6 < LOCAL:7
+		LOCAL:5 = [[아이템:외상약]]
+		LOCAL:6 = LOCAL:7
+	ENDIF
+ENDIF
+
+;마석
+IF ITEM:[[아이템:마석]] > PART_VAR_READ(FLAG:오토리커버설정2, 2, 1)
+	;회복量:25%
+	;コスト（￥換算）:500
+	LOCAL:7 = MIN(MAXBASE:(LOCAL):ＨＰ/4, LOCAL:8) * 10000 / 500
+	;効率最高なら등록
+	IF LOCAL:6 < LOCAL:7
+		LOCAL:5 = [[아이템:마석]]
+		LOCAL:6 = LOCAL:7
+	ENDIF
+ENDIF
+
+;우황단
+IF ITEM:[[아이템:우황단]] > PART_VAR_READ(FLAG:오토리커버설정2, 2, 2)
+	;회복量:200
+	;コスト（￥換算）:2000
+	LOCAL:7 = MIN(200, LOCAL:8) * 10000 / 2000
+	;効率最高なら등록
+	IF LOCAL:6 < LOCAL:7
+		LOCAL:5 = [[아이템:우황단]]
+		LOCAL:6 = LOCAL:7
+	ENDIF
+ENDIF
+
+;보옥
+IF ITEM:[[아이템:보옥]] > PART_VAR_READ(FLAG:오토리커버설정2, 2, 3)
+	;회복量:100%
+	;コスト（￥換算）:10000
+	LOCAL:7 = LOCAL:8 * 10000 / 10000
+	;効率最高なら등록
+	IF LOCAL:6 < LOCAL:7
+		LOCAL:5 = [[아이템:보옥]]
+		LOCAL:6 = LOCAL:7
+	ENDIF
+ENDIF
+
+IF LOCAL:5 == -1
+;	PRINTFORML DEBUG:사용가능아이템がないので종료
+	RETURN 1
+ENDIF
+
+;最も（회복量÷値段）が高い아이템で회복
+CALLFORM ACTION_FIELD_{LOCAL:5+2000},0, LOCAL:1
+;最初に戻る
+RESTART
+
+;LOCAL:1 회복대상포지션
+;LOCAL:5 사용キャラ번호
+;LOCAL:6 사용스킬번호
+;LOCAL:7 効率
+;LOCAL:8 회복대상데미지
+;LOCAL:11 사용스킬効果범위 1~6 19で아군전체
+@AUTO_RECOVER_MAGIC_HP
+#DIM LCOUNT, 3
+;마법で회복
+;회복대상を配置中メンバー全員から
+LOCAL:1 = -1
+LOCAL:5 = -1
+LOCAL:7 = 0
+FOR LCOUNT, 0, 6
+	LOCALS = 포지션{LCOUNT+1}
+	LOCAL = FLAG:LOCALS
+	;EMPTY
+	SIF LOCAL < 0
+		CONTINUE
+	;회복불필요한らとばす
+	SIF BASE:LOCAL:ＨＰ * 100 / MAXBASE:LOCAL:ＨＰ >= PART_VAR_READ(FLAG:오토리커버설정3, 3, 1)
+		CONTINUE
+	;死亡はとばす
+	SIF GET_STATE(CFLAG:LOCAL:ステート) == "DYING"
+		CONTINUE
+	LOCAL:1 = LCOUNT+1
+	LOCAL:8 = MAXBASE:(LOCAL):ＨＰ - BASE:(LOCAL):ＨＰ
+	BREAK
+NEXT
+IF LOCAL:1 == -1
+	;회복필요メンバーがいないので종료
+;	PRINTFORML DEBUG:회복필요メンバーがいないので종료
+	RETURN 0
+ENDIF
+;PRINTFORML DEBUG:회복대상포지션:{LOCAL:1}
+;　사용者を配置中メンバー全員から
+;　　最もMP効率のいい손段を選択
+FOR LCOUNT, 0, 6
+	LOCALS = 포지션{LCOUNT+1}
+	LOCAL = FLAG:LOCALS
+	;EMPTY
+	SIF LOCAL < 0
+		CONTINUE
+	;命令ならとばす
+	CALL INPUTABLE_CHARA, LOCAL
+	SIF RESULT == 0
+		CONTINUE
+	;MPが설정より少ないならとばす
+	SIF BASE:(LOCAL):ＭＰ == 0 
+		CONTINUE
+	SIF MAXBASE:(LOCAL):ＭＰ <= 0
+		CONTINUE
+	SIF (BASE:(LOCAL):ＭＰ * 100 / MAXBASE:(LOCAL):ＭＰ) <= PART_VAR_READ(FLAG:오토리커버설정3, 3, 0)
+		CONTINUE
+	;全습득済み스킬の中から회복마법選ぶ
+	FOR LCOUNT:1, 1, FLAG:스킬数+1
+		LOCALS = 스킬{LCOUNT:1}
+		IF ABL:(LOCAL):LOCALS > 0
+			;非전투時に使えない場合無視
+			TRYCCALLFORM SKILL_ACTIONABLE_FIELD_{ABL:(LOCAL):LOCALS}
+				SIF RESULT == 0
+					CONTINUE
+				;特技の場合無視
+				CALLFORM SKILL_DECIDE_TYPE_{ABL:(LOCAL):LOCALS}
+				SIF RESULT != 2
+					CONTINUE
+				;회복마법でない場合無視
+				CALLFORM SKILL_EFECT_{ABL:(LOCAL):LOCALS}
+				SIF RESULT != 2
+					CONTINUE
+				;発動가능？（MP、CLOSE等）
+				CALL CHECK_ACTIONABLE, LOCAL, ABL:(LOCAL):LOCALS
+				SIF RESULT == 0
+					CONTINUE
+				;위력と소비MP취득
+				CALLFORM SKILL_POWER_{ABL:(LOCAL):LOCALS}
+				LOCAL:3 = RESULT
+				CALLFORM SKILL_COST_{ABL:(LOCAL):LOCALS}
+				LOCAL:4 = RESULT
+				;コピペ
+				CALLFORM SKILL_NAME_{ABL:(LOCAL):LOCALS}
+				SELECTCASE RESULTS
+					CASE "디아", "디아라마"
+						;회복量OR데미지の小さい方を회복量とする
+						LOCAL:3 = MIN((LOCAL:3 * (BASE:(LOCAL):16/4+(BASE:(LOCAL):15 / 8+10)) /50), LOCAL:8)
+						LOCAL:10 = LOCAL:1
+					CASE "디아라한"
+						LOCAL:3 = LOCAL:8
+						LOCAL:10 = LOCAL:1
+					CASE "메・디아", "메・디아라마"
+						LOCAL:3 = LOCAL:3 * (BASE:(LOCAL):16/4+(BASE:(LOCAL):15 / 8+10)) /50
+						LOCAL:9 = 0
+						FOR LCOUNT:2, 1, 6
+							LOCALS:1 = 포지션{LCOUNT:2}
+							LOCAL:2 = FLAG:(LOCALS:1)
+							;死んでるならスルー
+							SIF LOCAL:2 == -1
+								CONTINUE
+							SIF GET_STATE(CFLAG:(LOCAL:2):ステート) == "DYING"
+								CONTINUE
+							;회복불필요한らスルー
+							SIF BASE:(LOCAL:2):ＨＰ >= MAXBASE:(LOCAL:2):ＨＰ
+								CONTINUE
+							;회복量OR데미지の小さい方を회복量とする
+							LOCAL:9 += MIN(LOCAL:3, MAXBASE:(LOCAL:2):ＨＰ - BASE:(LOCAL:2):ＨＰ)
+						NEXT
+						;회복量の합계
+						LOCAL:3 = LOCAL:9
+						LOCAL:10 = 19
+					CASE "메・디아라한"
+						LOCAL:9 = 0
+						FOR LCOUNT:2, 1, 6
+							LOCALS:1 = 포지션{LCOUNT:2}
+							LOCAL:2 = FLAG:(LOCALS:1)
+							;死んでるならスルー
+							SIF LOCAL:2 == -1
+								CONTINUE
+							SIF GET_STATE(CFLAG:(LOCAL:2):ステート) == "DYING"
+								CONTINUE
+							;회복불필요한らスルー
+							SIF BASE:(LOCAL:2):ＨＰ >= MAXBASE:(LOCAL:2):ＨＰ
+								CONTINUE
+							;데미지を회복量とする
+							LOCAL:9 += MAXBASE:(LOCAL:2):ＨＰ - BASE:(LOCAL:2):ＨＰ
+						NEXT
+						;회복量の합계
+						LOCAL:3 = LOCAL:9
+						LOCAL:10 = 19
+					CASEELSE
+						CONTINUE
+				ENDSELECT
+				LOCAL:3 *= 100
+				LOCAL:3 = LOCAL:3 / LOCAL:4
+				;もっとも効率がよい(회복量÷소비MPが多い)ものを깨달음えておく
+				IF LOCAL:7 < LOCAL:3
+					LOCAL:5 = LOCAL
+					LOCAL:6 = ABL:(LOCAL):LOCALS
+					LOCAL:7 = LOCAL:3
+					LOCAL:11 = LOCAL:10
+				ENDIF
+			CATCH
+				;未実装は無視
+				CONTINUE
+			ENDCATCH
+		ENDIF
+	NEXT
+NEXT
+;誰も회복使えないなら종료
+IF LOCAL:5 == -1
+;	PRINTFORML DEBUG:회복実行가능メンバーがいないので종료
+	RETURN 1
+ENDIF
+;PRINTFORML DEBUG:사용스킬번호：{LOCAL:6} 사용者キャラ번호：{LOCAL:5} 効率：{LOCAL:7} 대상：{LOCAL:11}
+
+SETCOLOR 0x33ffcc
+PRINTFORML ┏>CHARA━━━━━━━━━━┓　┏>ACT━━━━━━━━━━━━━━━━━━┓
+PRINTFORM ┃[{CFLAG:(LOCAL:5):포지션,2}] %CALLNAME:(LOCAL:5),21,LEFT%┃　┃
+CALLFORM SKILL_NAME_{LOCAL:6}, LOCAL:5
+PRINTFORML %RESULTS,40,LEFT%┃
+PRINTFORMW ┗━━━━━━━━━━━━━┛　┗━━━━━━━━━━━━━━━━━━━━┛
+RESETCOLOR
+;もっとも効率がよい(회복量÷소비MPが多い)もので회복実行
+CALL PAY_COST, LOCAL:5, LOCAL:6
+CALLFORM ACTION_FIELD_{LOCAL:6}, LOCAL:5, LOCAL:11
+;最初に戻る
+RESTART

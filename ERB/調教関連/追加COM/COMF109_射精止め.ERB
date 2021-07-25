@@ -1,0 +1,149 @@
+﻿;--------------------------------------------------
+;사정멈추기
+;--------------------------------------------------
+@CHECK_COM_ABLE109
+
+;해제はいつでも가능
+SIF TEQUIP:42
+	RETURN 1
+
+;오나홀実行中はダメ
+SIF TEQUIP:12
+	RETURN 0
+
+;촉수조교中はダメ
+SIF TEQUIP:25
+	RETURN 0
+
+;촉수조교中はダメ
+SIF TEQUIP:12
+	RETURN 0
+
+;아이템を持っているか、아이템なし설정でないとダメ
+SIF !EXIST_ITEM(28)
+	RETURN 0
+
+
+;소인체형持ちは、双方が조교者と조교대상ならOK
+;それ以外の場合は主人が금단의지식持ちじゃないとダメ
+SIF TALENT:142 && (TALENT:MASTER:144 == 0 && TALENT:PLAYER:142 == 0)
+	RETURN 0
+
+SIF !USE_PENIS(TARGET)
+	RETURN 0
+
+;ASSIの場合、기교3이상じゃないと使えない。
+IF ASSIPLAY
+	SIF ABL:ASSI:2 < 3
+		RETURN 0
+ENDIF
+;새댁플레이中はダメ
+SIF TEQUIP:33
+	RETURN 0
+RETURN 1
+
+@ACT_COM109
+PRINTL 사정멈추기
+TSTR:0 = 사정멈추기
+;CALL KOJO_MESSAGE_COM
+
+;리본の着脱
+IF TEQUIP:42
+	TEQUIP:42 = 0
+ELSE
+	TEQUIP:42 = 1
+ENDIF
+
+;-------------------------------------------------
+;ソースの計算
+;-------------------------------------------------
+DOWNBASE:0 += 10
+DOWNBASE:1 += 100
+
+SOURCE:쾌Ｃ = 50
+SOURCE:노출 = 100
+SOURCE:아픔 = 100
+SOURCE:굴종 = 250
+SOURCE:일탈 = 500
+
+;PALAM:Ｃ감각をみる
+IF PALAM:0 < PALAMLV:1
+	SOURCE:아픔 += 100
+ELSEIF PALAM:0 < PALAMLV:2
+	SOURCE:아픔 += 110
+ELSEIF PALAM:0 < PALAMLV:3
+	SOURCE:아픔 += 120
+ELSEIF PALAM:0 < PALAMLV:4
+	SOURCE:아픔 += 130
+ELSE
+	SOURCE:아픔 += 140
+ENDIF
+
+;PALAM:욕정をみる
+IF PALAM:13 < PALAMLV:1
+	SOURCE:욕정 = 100
+ELSEIF PALAM:13 < PALAMLV:2
+	SOURCE:욕정 = 110
+ELSEIF PALAM:13 < PALAMLV:3
+	SOURCE:욕정 = 120
+ELSEIF PALAM:13 < PALAMLV:4
+	SOURCE:욕정 = 130
+ELSE
+	SOURCE:욕정 = 140
+ENDIF
+
+;ABL:마조끼をみる
+IF ABL:마조끼 == 0
+	TIMES SOURCE:욕정 , 0.80
+ELSEIF ABL:마조끼 == 1
+	TIMES SOURCE:욕정 , 1.00
+ELSEIF ABL:마조끼 == 2
+	TIMES SOURCE:욕정 , 1.30
+ELSEIF ABL:마조끼 == 3
+	TIMES SOURCE:욕정 , 1.60
+ELSEIF ABL:마조끼 == 4
+	TIMES SOURCE:욕정 , 2.00
+ELSE
+	TIMES SOURCE:욕정 , 3.00
+ENDIF
+
+;도착적
+SIF TALENT:도착적
+	TIMES SOURCE:욕정 , 2.00
+;조교者が새드、ドＳ、새드끼3이상
+SIF TALENT:PLAYER:새드 || ABL:PLAYER:새드끼 > 2
+	TIMES SOURCE:욕정 , 1.20
+
+RETURN 1
+
+;--------------------------------------------------
+;사정멈추기
+;--------------------------------------------------
+@EQUIP_COM109
+PRINTL ＜사정억제중＞
+
+DOWNBASE:0 += 5
+DOWNBASE:1 += 15
+
+SOURCE:아픔 += 20
+
+;--------------------------------------------------
+;조교時메시지
+;--------------------------------------------------
+@MESSAGE_COM109
+PRINTL 
+;装着時
+IF TEQUIP:42
+	PRINTFORML %CALLNAME:TARGET%의 페니스의 근원에、프릴이 달린 귀여운 리본을 바짝 묶었다
+	PRINTL 조여져 혈류가 몰려、귀두가 검붉게 부풀어있다…
+;해제時
+ELSE
+	PRINTFORML %타겟을()% 괴롭히는 리본을 스르륵 풀어주었다…
+ENDIF
+
+;===================================================
+;조교타입
+;===================================================
+@COMTYPE_109
+RETURN COMTYPE("도구계")
+

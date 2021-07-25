@@ -1,0 +1,92 @@
+﻿;-------------------------------------------------
+;젖스팽킹
+;SM系コマンド、레벨1
+;-------------------------------------------------
+@ACT_COM101
+PRINTL 젖스팽킹
+TSTR:0 = 젖스팽킹
+;CALL KOJO_MESSAGE_COM
+
+;조교者→조교대상
+TFLAG:28 = 2
+;-------------------------------------------------
+;ソース추가処理
+;-------------------------------------------------
+;소비체력、기력
+DOWNBASE:TARGET:체력 += 50
+DOWNBASE:TARGET:기력 += 30
+
+SOURCE:TARGET:아픔 = 450
+SOURCE:TARGET:무서움 = 400
+SOURCE:TARGET:일탈 = 50
+SOURCE:TARGET:반감 = 300
+
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;마조끼に応じて쾌Bのソースを추가する
+SOURCE:TARGET:쾌Ｂ += 100*ABL:9
+
+
+;고통のパラメータによる고통のソース증가は先に処理しておく
+IF PALAM:10 < PALAMLV:1
+	TIMES SOURCE:TARGET:아픔 , 1.00
+ELSEIF PALAM:10 < PALAMLV:2
+	TIMES SOURCE:TARGET:아픔 , 1.50
+ELSEIF PALAM:10 < PALAMLV:3
+	TIMES SOURCE:TARGET:아픔 , 2.00
+ELSEIF PALAM:10 < PALAMLV:4
+	TIMES SOURCE:TARGET:아픔 , 2.50
+ELSEIF PALAM:10 >= PALAMLV:4
+	TIMES SOURCE:TARGET:아픔 , 3.00
+ENDIF
+
+;-------------------------------------------------
+;불결の処理
+;-------------------------------------------------
+;奴隷のＢ⇔조교者の指の불결が移動
+CALL MOVE_STAIN("가슴", TARGET, "손", PLAYER)
+
+;-------------------------------------------------
+;吸精処理
+;-------------------------------------------------
+IF CFLAG:PLAYER:ＭＡＧ非被흡수 == 0
+	LOCAL = (RAND:2+1) * BASE:LV
+	CALL DRAIN_MAG,PLAYER,LOCAL,TARGET
+ELSEIF CFLAG:TARGET:ＭＡＧ非被흡수 == 0
+	LOCAL = (RAND:2+1) * BASE:LV
+	CALL DRAIN_MAG,TARGET,LOCAL,PLAYER
+ENDIF
+
+;-------------------------------------------------
+;경험の処理
+;-------------------------------------------------
+A = 2
+IF IS_LESBIAN(TARGET,PLAYER)
+	CALL ADDS_EXP("레즈경험", A, TARGET)
+	CALL ADDS_EXP("레즈경험", A, PLAYER)
+ELSEIF IS_GAY(TARGET,PLAYER)
+	CALL ADDS_EXP("ＢＬ경험", A, TARGET)
+	CALL ADDS_EXP("ＢＬ경험", A, PLAYER)
+ENDIF
+
+;의존도ベクトル
+TFLAG:33 = 3
+
+;의존도보정値(복종で1、예속で2）
+IF TALENT:5 && ASSIPLAY == 0
+	TFLAG:30 += 1
+ELSEIF TALENT:8 && ASSIPLAY == 0
+	TFLAG:30 += 2
+ENDIF
+
+RETURN 1
+
+;===================================================
+;조교타입
+;===================================================
+@COMTYPE_101
+RETURN COMTYPE("ＳＭ계")
+
+

@@ -1,0 +1,307 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		2011/03/25		UNP						매각・함락조건표시の作成
+;	002		2013/11/24		ひみつ					요리2+가창2の판정を수정
+;	003		2018/08/08		JK好き					MASTERの売却・助手表示を非表示＆함락条件表示修正
+;	004		2021/03/09		JK好き					恋慕と信頼の同時所持中の表示を調整
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+
+;============================================================================
+;ネタバレっぽい要素を스테이터스화면に표시する
+;============================================================================
+
+;============================================================================
+; 표시를위한 범용 함수
+; 조건에 부합하는 경우와 그렇지 않은 경우로 색을 변화
+; 원래 표시 여부의 체크를 포함하여 통합
+; ARGS:0 표시 문자열, ARG:0 달성 조건, ARG:1  0=통상 1=경험 등 한 번 넘으면 만회가 붙지 않는 물건
+;
+; 반환 값 달성 조건을 충족하는 경우 1, 그렇지 않으면 0
+; 표시시
+;============================================================================
+@SPOILER_PRINT_FLAG( ARGS:0, ARG:0, ARG:1=0)
+#FUNCTION
+#LOCALSIZE 10
+
+LOCAL:0 = GETCOLOR()
+LOCAL:1 = 0xFFFFFF
+LOCAL:2 = 0x444444
+LOCAL:3 = 0xFFFF00
+LOCAL:4 = 0x440000
+	
+;달성조건によって色を変える
+IF ARG:0
+	;달성
+	SETCOLOR LOCAL:(ARG:1 * 2 + 1)
+	LOCAL:9 = 1
+ELSE
+	;未달성
+	SETCOLOR LOCAL:(ARG:1 * 2 + 2)
+	LOCAL:9 = 0
+ENDIF
+PRINTFORM %ARGS:0% 
+SETCOLOR LOCAL:0
+RETURNF LOCAL:9
+
+;============================================================================
+;매각조건の달성状況표시
+;TALENTに대상캐릭터が설정されている前提
+;============================================================================
+@SPOILER_PRINT_SELL
+#LOCALSIZE 5
+
+IF CFLAG:매각가능 < 2 && TARGET != MASTER
+	;매각조건の표시
+	IF CFLAG:매각가능 == 0
+		;기초조건
+		PRINT 매각조건： 
+		LOCAL:0 = SPOILER_PRINT_FLAG("순종+욕망6 ", (ABL:순종+ABL:욕망)>=6, 0)
+		LOCAL:1 = 1
+		IF ((TALENT:반항적 && TALENT:복종 == 0 && TALENT:예속 == 0) || TALENT:꿋꿋함)
+			LOCAL:0 = SPOILER_PRINT_FLAG("순종4 ", (ABL:순종>=4), 0) && LOCAL:0
+			LOCAL:1 += 1
+		ENDIF
+		IF (TALENT:자제심 || TALENT:억압 || TALENT:저항)
+			LOCAL:0 = SPOILER_PRINT_FLAG("욕망4 ", (ABL:욕망>=4), 0) && LOCAL:0
+			LOCAL:1 += 1
+		ENDIF
+		
+		;IF LOCAL:0
+		;	CALLF SPOILER_PRINT_FLAG("(OK)",1)
+		;ELSE
+		;	CALLF SPOILER_PRINT_FLAG(@"({LOCAL:0}/{LOCAL:1})",0)
+		;ENDIF
+		
+		PRINTL
+		;추가조건
+		PRINT 추가조건： 
+		LOCAL:2 =0
+		LOCAL:2 += SPOILER_PRINT_FLAG("감각합계8 ",  ABL:3+ABL:4+ABL:5+ABL:6 >= 8)
+		LOCAL:2 += SPOILER_PRINT_FLAG("감각합계13 ",  ABL:3+ABL:4+ABL:5+ABL:6 >= 13)
+		LOCAL:2 += SPOILER_PRINT_FLAG("순종4 ",  ABL:순종 >= 4)
+		LOCAL:2 += SPOILER_PRINT_FLAG("욕망4 ",  ABL:욕망 >= 4)
+		LOCAL:2 += SPOILER_PRINT_FLAG("기교2+봉사정신2 ", ABL:기교 >= 2 && ABL:봉사정신 >= 2)
+		LOCAL:2 += SPOILER_PRINT_FLAG("기교4+봉사정신4 ", ABL:기교 >= 4 && ABL:봉사정신 >= 4)
+		LOCAL:2 += SPOILER_PRINT_FLAG("노출3+자위중독 ",  ABL:노출증 >= 3 && ABL:자위중독)
+		PRINTL
+		PRINT 　　　　　 
+		LOCAL:2 += SPOILER_PRINT_FLAG("마조끼3 ",  ABL:마조끼 >= 3)
+		LOCAL:2 += SPOILER_PRINT_FLAG("정액중독 ",  ABL:정액중독)
+		LOCAL:2 += SPOILER_PRINT_FLAG("수간중독 ",  ABL:수간중독)
+		LOCAL:2 += SPOILER_PRINT_FLAG("촉수중독 ",  ABL:촉수중독)
+		LOCAL:2 += SPOILER_PRINT_FLAG("윤간중독 ",  ABL:윤간중독)
+		LOCAL:2 += SPOILER_PRINT_FLAG("키스중독 ",  ABL:키스중독)
+		PRINTL
+		PRINT 　　　　　 
+		;実際の판정はＢＬ끼3+레즈중독でもいいけど、それは珍しい状況なので表記としてはこうする
+		IF IS_MALE(TARGET)
+			LOCAL:2 += SPOILER_PRINT_FLAG("ＢＬ끼3+중독",  (ABL:레즈끼 >= 3 && ABL:레즈중독) || (ABL:ＢＬ끼 >= 3 && ABL:ＢＬ중독))
+		ELSE
+			LOCAL:2 += SPOILER_PRINT_FLAG("레즈끼3+중독",  (ABL:레즈끼 >= 3 && ABL:레즈중독) || (ABL:ＢＬ끼 >= 3 && ABL:ＢＬ중독))
+		ENDIF
+		LOCAL:2 += SPOILER_PRINT_FLAG("요리2+가창2 ",  ABL:요리기능 >= 2 && ABL:가창기능 >= 2)
+		LOCAL:2 += SPOILER_PRINT_FLAG("굴복3+쾌락3 ",  MARK:굴복각인 >= 3 && MARK:쾌락각인 >= 3)
+		LOCAL:2 += SPOILER_PRINT_FLAG("굴복3+고통3 ",  MARK:굴복각인 >= 3 && MARK:고통각인 >= 3)
+		
+		LOCAL:3 = MIN(6,CSVBASE(NO:TARGET,GETNUM(BASE,"LV"),0)/10 + (ABL:종족 == 0))
+		IF LOCAL:2 > LOCAL:3
+			CALLF SPOILER_PRINT_FLAG("(OK)",1)
+		ELSE
+			CALLF SPOILER_PRINT_FLAG(@"({LOCAL:2}/{LOCAL:3+1})",0)
+		ENDIF
+		PRINTL
+	ENDIF
+
+	;조수조건の표시
+	;実판정は소질남자を見ているけど、後々のためIS_MALEを使う
+	PRINT 조수조건： 
+	LOCAL:3 = SPOILER_PRINT_FLAG(@"매각가능 ", CFLAG:매각가능==1)
+	
+	LOCAL:3  = ABL:0+ABL:1+ABL:2+(IS_MALE(TARGET) ? ABL:ＢＬ끼 # ABL:레즈끼)
+	LOCALS = (OK)
+	SIF LOCAL:3<12
+		LOCALS = ({LOCAL:3}/12)
+	
+	;リアル
+	IF IS_MALE(TARGET)
+		CALLF SPOILER_PRINT_FLAG(@"순종+욕망+기교+ＢＬ끼 %LOCALS%", LOCAL:3>=12)
+	ELSE
+		CALLF SPOILER_PRINT_FLAG(@"순종+욕망+기교+레즈끼 %LOCALS%", LOCAL:3>=12)
+	ENDIF
+	
+	PRINTL
+	DRAWLINE
+ELSE
+ENDIF
+RETURN
+
+;============================================================================
+;함락조건の달성状況표시
+;TALENTに대상캐릭터が설정されている前提
+;의존도の달성状況だけは서드아이が無いとわからないようにした
+;（조건表を見る代わりというつもりなので、攻略を有利になってしまうと良くないので）
+;이상경험を少なく保つなど、一度超えると元に戻せない高難度조건は色を変えて표시。赤字があると달성不可
+;함락はさせられるけど上位に行けない場合も色変えた方がいいかも
+;============================================================================
+@SPOILER_PRINT_FALLTALENT
+#LOCALSIZE 1
+
+	;동성愛の경험処理は現在の性別と関係してないけど、表記としてはわかりやすいようにこうしておく
+	IF IS_MALE(TARGET)
+		LOCALS = ＢＬ
+	ELSE
+		LOCALS = 레즈
+	ENDIF
+
+IF 함락() == 0 && TARGET == MASTER
+	PRINT 음란조건： 
+	;主人の음란：욕망3이상+CVAB감각합계10이상+절정경험50이상+매춘경험50이상or변기경험50이상
+	CALLF SPOILER_PRINT_FLAG("욕망3 ", ABL:욕망 >= 3)
+	CALLF SPOILER_PRINT_FLAG("감각합계10이상 ", ABL:3+ABL:4+ABL:5+ABL:6 >= 10)
+	CALLF SPOILER_PRINT_FLAG("절정경험50 ", EXP:절정경험 >= 50)
+	PRINT 　　　　　 
+	CALLF SPOILER_PRINT_FLAG(@"(매춘경험50이상 또는 변기경험50이상)", (EXP:매춘경험 >= 50)||(EXP:변기경험 >= 50))
+	PRINTL
+	DRAWLINE
+ELSEIF 함락() == 1 && TARGET == MASTER
+	PRINT 창부조건： 
+	;主人の창부：음란、욕망5이상+CVAB감각합계20이상+절정경험200이상+매춘경험100이상or변기경험100이상
+	CALLF SPOILER_PRINT_FLAG("욕망5 ", ABL:욕망 >= 5)
+	CALLF SPOILER_PRINT_FLAG("감각합계20이상 ", ABL:3+ABL:4+ABL:5+ABL:6 >= 20)
+	CALLF SPOILER_PRINT_FLAG("반발각인0 ", MARK:반발각인 == 0)
+	CALLF SPOILER_PRINT_FLAG("절정경험200 ", EXP:절정경험 >= 200)
+	PRINT 　　　　　 
+	CALLF SPOILER_PRINT_FLAG(@"(매춘경험100이상 또는 변기경험100이상)", (EXP:매춘경험 >= 100)||(EXP:변기경험 >= 100))
+	PRINTL
+	DRAWLINE
+ELSEIF 함락() == 0
+	;함락소질がない상태（３通りの취득조건を표시）
+	;연모
+	PRINT 연모조건： 
+	CALLF SPOILER_PRINT_FLAG("순종3 ", ABL:순종 >= 3)
+	CALLF SPOILER_PRINT_FLAG("봉사정신3 ", ABL:봉사정신 >= 3)
+	CALLF SPOILER_PRINT_FLAG("굴복각인3 ", MARK:굴복각인 == 3)
+	CALLF SPOILER_PRINT_FLAG("반발각인0 ", MARK:반발각인 == 0)
+	CALLF SPOILER_PRINT_FLAG("봉사쾌락경험200 ", EXP:봉사쾌락경험 >= 200)
+	CALLF SPOILER_PRINT_FLAG("획득한이상경험2미만", EXP:이상경험 - CFLAG:초기이상경험 < 2, 1)
+	IF (TALENT:MASTER:깨달음)
+		LOCAL:0 = SPOILER_PRINT_FLAG("의존도1000이상", CFLAG:의존도 >= 1000)
+	ELSE
+		PRINT 의존도1000이상?
+	ENDIF
+	PRINTL
+	;음란
+	;@EVENTCHECK_Tのコメントには동성愛경험2000というのがあるけど実装されていない
+	PRINT 음란조건： 
+	CALLF SPOILER_PRINT_FLAG("욕망3 ", ABL:욕망 >= 3)
+	CALLF SPOILER_PRINT_FLAG("쾌락각인3 ", MARK:쾌락각인 == 3)
+	CALLF SPOILER_PRINT_FLAG("굴복각인3 ", MARK:굴복각인 == 3)
+	CALLF SPOILER_PRINT_FLAG("반발각인0 ", MARK:반발각인 == 0)
+	CALLF SPOILER_PRINT_FLAG("감각합계10이상 ", ABL:3+ABL:4+ABL:5+ABL:6 >= 10)
+	CALLF SPOILER_PRINT_FLAG("절정경험50 ", EXP:절정경험 >= 50)
+	PRINTL
+	PRINT 　　　　　 
+	CALLF SPOILER_PRINT_FLAG(@"(이상경험3이상 또는  이상경험1이상+%LOCALS%경험1000)", (EXP:이상경험 >= 3)||(EXP:이상경험 >= 1 && (EXP:40 >= 1000 || EXP:41 >= 1000)))
+	PRINTL
+	;복종
+	PRINT 복종조건： 
+	CALLF SPOILER_PRINT_FLAG("순종3 ", ABL:순종 >= 3)
+	CALLF SPOILER_PRINT_FLAG("마조끼3 ", ABL:마조끼 >= 3)
+	CALLF SPOILER_PRINT_FLAG("굴복각인3 ", MARK:굴복각인 == 3)
+	CALLF SPOILER_PRINT_FLAG("반발각인0 ", MARK:반발각인 == 0)
+	CALLF SPOILER_PRINT_FLAG("감각합계10미만 ", ABL:3+ABL:4+ABL:5+ABL:6 < 10, 1)
+	CALLF SPOILER_PRINT_FLAG("고통쾌락경험+긴박경험200이상 ", EXP:고통쾌락경험+EXP:긴박경험 >= 200)
+	PRINTL
+	PRINT 　　　　　 
+	CALLF SPOILER_PRINT_FLAG("이상경험2이상", EXP:이상경험 >= 2)	
+	IF (TALENT:MASTER:깨달음)
+		CALLF SPOILER_PRINT_FLAG("의존도-1000이하", -CFLAG:의존도 >= 1000)
+	ELSE
+		PRINT 의존도1000이하?
+	ENDIF
+	PRINTL
+	IF FLAG:신뢰系함락설정 == 1
+		;신뢰
+		PRINT 신뢰조건： 
+		CALLF SPOILER_PRINT_FLAG("미조교 ", CFLAG:被조교횟수 <= 0, 1)
+		CALLF SPOILER_PRINT_FLAG("미조교시함락OP ", IS_HUMAN(TARGET) && FLAG:미조교시함락 > 0 || FLAG:미조교시함락 == 2)
+		CALLF SPOILER_PRINT_FLAG("주인과 동성 ", IS_LESBIAN(TARGET,MASTER) || IS_GAY(TARGET,MASTER))
+		IF (TALENT:MASTER:깨달음)
+			LOCAL:0 = 10000 + (ABS(ABL:TARGET:속성LD - ABL:MASTER:속성LD) + ABS(ABL:TARGET:속성LC - ABL:MASTER:속성LC)) * 5000
+			LOCAL:0 *= 2
+			LOCALS = {LOCAL:0}
+			CALLF SPOILER_PRINT_FLAG(@"충성도%LOCALS%이상", (BASE:충성도 - MAXBASE:충성도) >= LOCAL:0)
+		ELSE
+			PRINT 충성도일정이상
+		ENDIF
+		PRINTL
+	ENDIF
+	DRAWLINE
+ELSEIF 함락() == 1
+	;上位함락소질への조건표시
+	IF TALENT:연모
+		PRINT 친애조건： 
+		CALLF SPOILER_PRINT_FLAG("순종5 ", ABL:순종 >= 5)
+		CALLF SPOILER_PRINT_FLAG("봉사정신5 ", ABL:봉사정신 >= 5)
+		CALLF SPOILER_PRINT_FLAG("반발각인0 ", MARK:반발각인 == 0)
+		CALLF SPOILER_PRINT_FLAG("애정경험200 ", EXP:애정경험 >= 200)
+		CALLF SPOILER_PRINT_FLAG("봉사쾌락경험400 ", EXP:봉사쾌락경험 >= 400)
+		CALLF SPOILER_PRINT_FLAG("획득한이상경험5미만", EXP:이상경험- CFLAG:초기이상경험 < 5, 1)
+		IF (TALENT:MASTER:깨달음)
+			CALLF SPOILER_PRINT_FLAG("의존도3000이상", CFLAG:의존도 >= 3000)
+		ELSE
+			PRINT 의존도3000이상?
+		ENDIF
+		PRINTL
+		DRAWLINE
+	ELSEIF TALENT:음란
+		PRINT 창부조건： 
+		CALLF SPOILER_PRINT_FLAG("욕망5 ", ABL:욕망 >= 5)
+		CALLF SPOILER_PRINT_FLAG("감각합계20이상 ", ABL:3+ABL:4+ABL:5+ABL:6 >= 20)
+		CALLF SPOILER_PRINT_FLAG("반발각인0 ", MARK:반발각인 == 0)
+		CALLF SPOILER_PRINT_FLAG("절정경험200 ", EXP:절정경험 >= 200)
+		PRINTL
+		PRINT 　　　　　 
+		CALLF SPOILER_PRINT_FLAG(@"(이상경험6이상、이상경험4이상+%LOCALS%2000、이상경험3이상+%LOCALS%경험3000　중 하나)", (EXP:이상경험 >= 6)||(EXP:이상경험 >= 4 && (EXP:40 >= 2000 || EXP:41 >= 2000))||(EXP:이상경험 >= 3 && (EXP:40 >= 3000 || EXP:41 >= 3000)) )
+		PRINTL
+		DRAWLINE
+	ELSEIF TALENT:복종
+		;@EVENTCHECK_Tのコメントには레즈경험또는ＢＬ경험1500미만というのあるけど実装されていない
+		PRINT 예속조건： 
+		CALLF SPOILER_PRINT_FLAG("순종5 ", ABL:순종 >= 5)
+		CALLF SPOILER_PRINT_FLAG("마조끼5 ", ABL:마조끼 >= 5)
+		CALLF SPOILER_PRINT_FLAG("감각합계15미만 ", ABL:3+ABL:4+ABL:5+ABL:6 < 15, 1)
+		CALLF SPOILER_PRINT_FLAG("반발각인0 ", MARK:반발각인 == 0)
+		CALLF SPOILER_PRINT_FLAG("고통쾌락경험+긴박경험500이상 ", EXP:고통쾌락경험+EXP:긴박경험 >= 500)
+		PRINTL
+		PRINT 　　　　　 
+		CALLF SPOILER_PRINT_FLAG("이상경험5이상", EXP:이상경험 >= 5)	
+		IF (TALENT:MASTER:깨달음)
+			CALLF SPOILER_PRINT_FLAG("의존도-3000이하", -CFLAG:의존도 >= 3000)
+		ELSE
+			PRINT 의존도3000이하?
+		ENDIF
+		PRINTL
+		DRAWLINE
+	ENDIF
+ENDIF
+IF TALENT:신뢰
+	PRINT 동료조건： 
+	CALLF SPOILER_PRINT_FLAG("미조교 ", CFLAG:被조교횟수 <= 0, 1)
+	CALLF SPOILER_PRINT_FLAG("미조교時함락OP ", IS_HUMAN(TARGET) && FLAG:미조교시함락 > 0 || FLAG:미조교시함락 == 2)
+	CALLF SPOILER_PRINT_FLAG("주인과동성 ", IS_LESBIAN(TARGET,MASTER) || IS_GAY(TARGET,MASTER))
+	IF (TALENT:MASTER:깨달음)
+		LOCAL:0 = 10000 + (ABS(ABL:TARGET:속성LD - ABL:MASTER:속성LD) + ABS(ABL:TARGET:속성LC - ABL:MASTER:속성LC)) * 5000
+		LOCAL:0 *= 4
+		LOCALS = {LOCAL:0}
+			CALLF SPOILER_PRINT_FLAG(@"충성도%LOCALS%이상", (BASE:충성도 - MAXBASE:충성도) >= LOCAL:0)
+	ELSE
+		PRINT 충성도일정이상
+	ENDIF
+	PRINTL
+	DRAWLINE
+ENDIF
+RETURN
