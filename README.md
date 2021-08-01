@@ -14,21 +14,21 @@
 
 현재 적용되지 않은 구상업데이트 (완벽하게 적은게 아님에 주의):
    
-eraMegaten_KOJO_1234 앨리스 구상 버그수정 (및 이하 수정)
-eraMegaten_KOJO_1220 사흉 구상 버그수정 (및 이하 수정)
-eraMegaten_KOJO_1213 레뷰 구상 수정 (및 이하 2.01 수정)
-eraMegaten_KOJO_1200 다크서머너 0.7 구상 (약 2000줄정도 가필됨)
-eraMegaten_KOJO_1184 사토리 1.3 구상 (약 2000줄정도 가필됨)
-eraMegaten_KOJO_1183 메리 ver3 이식본
-eraMegaten_KOJO_1183 1155 후카 구상 (이전 readme 상으로 972부터 미이식 추정)
+eraMegaten_KOJO_1234 앨리스 구상 버그수정 (및 이하 수정)  
+eraMegaten_KOJO_1220 사흉 구상 버그수정 (및 이하 수정)  
+eraMegaten_KOJO_1213 레뷰 구상 수정 (및 이하 2.01 수정)  
+eraMegaten_KOJO_1200 다크서머너 0.7 구상 (약 2000줄정도 가필됨)  
+eraMegaten_KOJO_1184 사토리 1.3 구상 (약 2000줄정도 가필됨)  
+eraMegaten_KOJO_1183 메리 ver3 이식본  
+eraMegaten_KOJO_1183 1155 후카 구상 (이전 readme 상으로 972부터 미이식 추정)  
 
 그외 eraMegaten_KOJO_1046 부터 업데이트된 구상
 
 이전에 적용되지 않은 구상은 다음과 같음 (rev 128 readme 첨부)
 
-eraMegaten_KOJO_960 치에 구상
-eraMegaten_KOJO_996 범용소녀 구상
-eraMegaten_KOJO_972 후카 구상
+eraMegaten_KOJO_960 치에 구상  
+eraMegaten_KOJO_996 범용소녀 구상  
+eraMegaten_KOJO_972 후카 구상  
 
 
 
