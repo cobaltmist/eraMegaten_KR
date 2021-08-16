@@ -28,9 +28,9 @@ IF ARG:1 >= 0
 	;링케이지の場合は기본的に참가者取れないと思うので、단독링케이지の値を표시
 	LOCAL:3 = CFLAG:(ARG:1):단독링케이지
 	CFLAG:(ARG:1):단독링케이지 = 1
-	;ターゲットが影響する스킬は표시詐欺だけど손抜きで。포지션が絡むので、必ずいるMASTERを指定
-	LOCAL:4 = CFLAG:(ARG:1):ターゲット
-	CFLAG:(ARG:1):ターゲット = CFLAG:MASTER:포지션
+	;타겟が影響する스킬は표시詐欺だけど손抜きで。포지션が絡むので、必ずいるMASTERを指定
+	LOCAL:4 = CFLAG:(ARG:1):타겟
+	CFLAG:(ARG:1):타겟 = CFLAG:MASTER:포지션
 	FOR LOCAL:0, 1, 6	;これも표시詐欺だけど손抜きで。全部自分
 		LOCAL:(LOCAL:0 + 4) = CFLAG:(ARG:1):@"링케이지참가자{LOCAL:0}"
 		CFLAG:(ARG:1):@"링케이지참가자{LOCAL:0}" = ARG:1
@@ -112,7 +112,7 @@ ENDCATCH
 ;キャラ情報渡された場合はここで各情報を戻す
 IF ARG:1 >= 0
 	CFLAG:(ARG:1):단독링케이지 = LOCAL:3
-	CFLAG:(ARG:1):ターゲット     = LOCAL:4
+	CFLAG:(ARG:1):타겟     = LOCAL:4
 	FOR LOCAL:0, 1, 6
 		CFLAG:(ARG:1):@"링케이지참가자{LOCAL:0}" = LOCAL:(4 + LOCAL:0)
 	NEXT
@@ -358,7 +358,7 @@ SIF (TALENT:(ARG:0):임신 == 0 || TALENT:(ARG:0):붕괴) && BASE:(ARG:0):충성
 ;임신消えたりで面倒
 SIF ((TALENT:(ARG:0):임신 && CFLAG:(ARG:0):출산予定日 - 2 <= DAY) || TALENT:(ARG:0):육아중) && FLAG:출산기능ONOFF == 1
 	RETURN 0
-SIF CFLAG:(ARG:0):노역フラグ == 3
+SIF CFLAG:(ARG:0):노역플래그 == 3
 	RETURN 0
 SIF CFLAG:(ARG:0):この場に居ないフラグ == 1
 	RETURN 0
@@ -390,7 +390,7 @@ CLEARLINE LINECOUNT - LINE
 
 VARSET S,-1
 LOCAL:7 = 0
-FOR LOCAL,1,FLAG:이능자스킬数+1
+FOR LOCAL,1,FLAG:이능자스킬수+1
 	SIF ABL:(LOCAL:1):("스킬" + TOSTR(LOCAL)) == 0
 		CONTINUE
 	;랭크0は弾く
@@ -420,7 +420,7 @@ $PRINT_SKILLLIST
 DRAWLINE
 PRINTFORML □%CALLNAME:(LOCAL:1)%의스킬：
 ; IF TALENT:(LOCAL:1):인수라 || TALENT:(LOCAL:1):달인
-; 	FOR LOCAL,1,FLAG:이능자스킬数+1
+; 	FOR LOCAL,1,FLAG:이능자스킬수+1
 	FOR LOCAL,1,CHARA_SKILLCOUNT(LOCAL:1)+1
 		SIF S:LOCAL == -1
 			SETCOLOR 0x404040
@@ -462,7 +462,7 @@ PRINTFORML □%CALLNAME:(LOCAL:1)%의스킬：
 		RESETCOLOR
 	NEXT
 ;ELSE
-; 	FOR LOCAL,1,FLAG:스킬数+1
+; 	FOR LOCAL,1,FLAG:스킬수+1
 ; 		SIF S:LOCAL == -1
 ; 			SETCOLOR 0x404040
 ; 		IF GETBIT(FLAG:커스텀게임화면,1)
@@ -513,7 +513,7 @@ IF RESULT == 0
 ELSEIF RESULT == 99
 	CALL SKILL_ROCK_SETTING, LOCAL:1
 	GOTO INPUT_LOOP
-ELSEIF RESULT < 0 || RESULT > FLAG:이능자스킬数+1 || S:RESULT == -1
+ELSEIF RESULT < 0 || RESULT > FLAG:이능자스킬수+1 || S:RESULT == -1
 	GOTO INPUT_LOOP_2
 ENDIF
 
@@ -545,8 +545,8 @@ IF ABLE_MAKESKILLCARD(S:(LOCAL:2))
 ENDIF
 PRINTFORML 현재、다음과 같은 방법으로 스킬카드를 작성할 수 있습니다　충성도{BASE:(LOCAL:1):충성도,6}
 DRAWLINE
-SIF BASE:(LOCAL:1):충성도 >= (4+CFLAG:(LOCAL:1):스킬抽出횟수)*250
-	PRINTFORML [1] 스킬추출 (충성도가 {(2+CFLAG:(LOCAL:1):스킬抽出횟수)*250} 감소하고、대상이 스킬을 잊습니다)
+SIF BASE:(LOCAL:1):충성도 >= (4+CFLAG:(LOCAL:1):스킬추출횟수)*250
+	PRINTFORML [1] 스킬추출 (충성도가 {(2+CFLAG:(LOCAL:1):스킬추출횟수)*250} 감소하고、대상이 스킬을 잊습니다)
 SIF BASE:(LOCAL:1):충성도 >= 500
 	PRINTL [2] 스킬카드화 (악마는 삭제됩니다)
 SIF TALENT:(LOCAL:1):임신 && TALENT:(LOCAL:1):붕괴 == 0
@@ -557,16 +557,16 @@ $INPUT_LOOP_3
 INPUT
 IF RESULT == 0
 	GOTO PRINT_SKILLLIST
-ELSEIF RESULT == 1 && BASE:(LOCAL:1):충성도 >= (4+CFLAG:(LOCAL:1):스킬抽出횟수)*250
+ELSEIF RESULT == 1 && BASE:(LOCAL:1):충성도 >= (4+CFLAG:(LOCAL:1):스킬추출횟수)*250
 	PRINTFORML %CALLNAME:(LOCAL:1)%에게서 스킬카드를 추출합니다。좋습니까
 	CALL INPUT_YN
 	SIF RESULT == 1
 		GOTO PRINT_SKILLLIST
 	CALLFORM SKILL_NAME_{S:(LOCAL:2)}
 	PRINTFORMW %CALLNAME:(LOCAL:1)%에게서、%RESULTS%의 스킬카드를 추출했다
-	BASE:(LOCAL:1):충성도 -= (2+CFLAG:(LOCAL:1):스킬抽出횟수)*250
+	BASE:(LOCAL:1):충성도 -= (2+CFLAG:(LOCAL:1):스킬추출횟수)*250
 	ABL:(LOCAL:1):("스킬"+TOSTR(LOCAL:2)) = 0
-	CFLAG:(LOCAL:1):스킬抽出횟수 += 1
+	CFLAG:(LOCAL:1):스킬추출횟수 += 1
 	ITEM:(10000+S:(LOCAL:2)) += 1
 	;장비지식스킬が削除대상で장비지식스킬系をまったく소지していない場合は장비を해제する
 	CALL SKILL_EQUIPTHEORY_DEL_SKILL, LOCAL:1, LOCAL:2
@@ -615,7 +615,7 @@ ELSEIF RESULT == 3 && TALENT:(LOCAL:1):임신 && TALENT:(LOCAL:1):붕괴 == 0
 ;	LOCAL:3 = TARGET
 ;	TARGET = LOCAL:2
 	TALENT:(LOCAL:1):153 = 0
-	CFLAG:(LOCAL:1):発情임신 = 0
+	CFLAG:(LOCAL:1):발정임신 = 0
 	;임신이벤트で減った체력の최대値が회복（少なめ）
 	CFLAG:(LOCAL:1):今回受胎人数 = 0
 	
