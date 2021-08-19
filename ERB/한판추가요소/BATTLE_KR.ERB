@@ -1,0 +1,100 @@
+﻿;===================================================================
+;강제백어택판정을 위한 추가함수
+;===================================================================
+
+@BATTLE_START_SP, SP_OPTION
+; SP_OPTION : 기습판정
+; 0:기존대로 확률처리, 1:강제백어택
+#DIM SP_OPTION
+
+IF MATCH(FLAG, -1, GETNUM(FLAG, "포지션7"), GETNUM(FLAG, "포지션16")+1) == 10
+	PRINTW 적이 배치되지 않은 상태로 전투가 개시되었습니다
+	PRINTW 에러를 회피하기 위해 전투 처리를 중단하고 종료합니다
+	PRINTW 이 에러가 발생한 이벤트 혹은 던전과 계층의 보고를 부탁합니다
+	RETURN 0
+ENDIF
+CALL REFRESH_FORMATION
+CALL REFRESH_BATTLE
+
+;ウィンドウ型메시지のスキップフラグ折り
+FLAG:ウィンドウ메시지スキップ = 0
+
+CALLFORM EVENT_BATTLE_START
+SIF FLAG:선제기습취소 == 0
+	CALL CHECK_SURPRISEATTACK_SP, SP_OPTION
+CALL BATTLE_MAIN
+
+;===================================================================
+;先制不意打ち背後공격판정의 개조판
+; SP_OPTION : 기습판정
+; 0:기존대로 확률처리, 1:강제백어택
+;===================================================================
+@CHECK_SURPRISEATTACK_SP, SP_OPTION
+#LOCALSIZE 4
+#DIM SP_OPTION
+IF SP_OPTION == 0
+	LOCAL:1 = 0
+	;プ레이ヤー側の판정値
+	LOCAL:3 = 0
+	;人数
+	LOCAL:2 = 0
+	;적側の판정値
+	FOR LOCAL,1,7
+		LOCALS = 포지션{LOCAL}
+		SIF FLAG:LOCALS < 0
+			CONTINUE
+		LOCAL:1 += (BASE:(FLAG:LOCALS):(GET_BASESTATUS(5)) + BASE:(FLAG:LOCALS):(GET_BASESTATUS(6)))
+		LOCAL:3 += 1
+	NEXT
+	LOCAL:1 /= LOCAL:3
+	LOCAL:3 = 0
+	FOR LOCAL,7,17
+		LOCALS = 포지션{LOCAL}
+		SIF FLAG:LOCALS < 0
+			CONTINUE
+		LOCAL:2 += (BASE:(FLAG:LOCALS):(GET_BASESTATUS(5)))
+		LOCAL:3 += 1
+	NEXT
+	LOCAL:2 /= LOCAL:3
+
+	IF RAND:100 + LOCAL:1 + (EQUIP:MASTER:("Mr.서프라이즈") && NUM_SUMMONER()) * 20 > RAND:100 + LOCAL:2
+		SIF RAND:100 < MAX(5,10 + LOCAL:1 - LOCAL:2) + (EQUIP:MASTER:("Mr.서프라이즈") && NUM_SUMMONER()) * 20
+			FLAG:선제공격플래그 = 1
+	ELSE
+		SELECTCASE RAND:100
+			CASE IS < MAX(5,8 + LOCAL:2 -LOCAL:1) + (FLAG:月齢 == 0 || FLAG:月齢 == 8 ? 15 # 0) + (DA:(FLAG:現X):(FLAG:現Y) % 10 == -1) * 10
+				FLAG:백어택플래그 = 1
+				FLAG:기습플래그 = 1
+				IF EQUIP:MASTER:하쿠타로우 == 0 || NUM_SUMMONER() == 0
+					FOR LOCAL,1,7
+						LOCALS = 포지션{LOCAL}保存
+						LOCALS:1 = 포지션{LOCAL}
+						FLAG:LOCALS = FLAG:(LOCALS:1)
+					NEXT
+					CALL CHANGE_POS,1,6
+					CALL CHANGE_POS,2,5
+					CALL CHANGE_POS,3,4
+				ENDIF
+			CASE IS < MAX(5,25 + LOCAL:2 -LOCAL:1) + (FLAG:月齢 == 0 || FLAG:月齢 == 8 ? 30 # 0) + (DA:(FLAG:現X):(FLAG:現Y) % 10 == -1) * 20
+				FLAG:기습플래그 = 1
+		ENDSELECT
+	ENDIF
+ELSEIF SP_OPTION == 1
+	FLAG:백어택플래그 = 1
+	FLAG:기습플래그 = 1
+ENDIF
+
+SIF ASSI > 0 && (FLAG:선제공격플래그 + FLAG:기습플래그 < 1)
+	CALL SUPORT(1, 0)
+
+
+;===================================
+;메세지박스 형태로 출력
+;SIZE:박스의 크기
+;LINE:출력할 문자열의 줄수
+;INDENT:박스간의 개행 여부, 기본은 개행한다
+;===================================
+; @MESSAGE_BOX_KR, SIZE, LINE, INDENT = 0 
+
+
+; PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
