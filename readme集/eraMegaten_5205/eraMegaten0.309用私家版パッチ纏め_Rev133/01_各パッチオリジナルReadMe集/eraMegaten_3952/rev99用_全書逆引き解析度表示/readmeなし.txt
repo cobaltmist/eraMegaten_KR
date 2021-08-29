@@ -1,9 +1,0 @@
-http://jbbs.shitaraba.net/bbs/read.cgi/otaku/16783/1479563839/276
-y‘ÎÛŠÂ‹«z
-0.309{C³6{_Rev90{_Rev99
-yƒtƒ@ƒCƒ‹–¼Ìz
-rev99—p_‘S‘‹tˆø‚«‰ğÍ“x•\¦.zip
-yƒtƒ@ƒCƒ‹“à—ez
-‹tˆø‚«ƒŠƒXƒg‚É‰ğÍ“x‚Æ«•Ê‚ğ•\¦
-yƒtƒ@ƒCƒ‹URLz
-ttp://ux.getuploader.com/eraMegaten/download/3952/eraMegaten_3952.zip
