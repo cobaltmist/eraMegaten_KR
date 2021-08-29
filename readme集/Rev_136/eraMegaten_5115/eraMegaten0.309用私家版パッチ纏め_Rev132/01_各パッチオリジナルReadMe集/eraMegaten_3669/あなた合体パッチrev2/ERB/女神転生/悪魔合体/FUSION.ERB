@@ -1,0 +1,1358 @@
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:FUSION.ERB
+;	Facility	:悪魔合体のベースとなる処理群
+;
+;	Licence		:ライセンスフリー。
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		20XX/XX/XX		----					新規作成
+;	002		2011/01/28		P						ジェンダーフリーの処理を追加
+;	003		2011/02/03		名無し					手紙システムで汎用だけでなく個人口上にも対応
+;	004		2011/02/05		Rsp暇人					重複習得可能スキルは複数スキル継承するように変更
+;	005		2011/02/16		Ｎ鳥					ストレージ機能に対応・継承方式変更
+;	006		2011/02/22		Rsp暇人					特殊合体時用処理を呼び出すタイミングを追加
+;	007		2011/03/08		P						造魔強化合体が実行不能なときでも表示されていた場合があったのを修正。また判定を変更
+;	008		2011/05/19		P						コーディング処理を追加。コーディングのためにCHARANUMを全部回す処理が出来たので、シフターイケニエの判定を統合
+;	009		2011/06/13		名無し					3身合体の素材スキル表示にミスがあったのを修正
+;	010		2012/01/06		TR						悪魔ストレージを邪教の館から呼び出せるように、ボタンの数字表記を右揃えで整列
+;	011		2013/01/12		ネトリス				合体用ソフトクイック設定を追加
+;	012		2012/01/16		TR						「ラジエルの書」適用時に一部悪魔の素質や変異先を変更する処理を追記
+;	013		2013/12/02		ひみつ					リスト表示数設定と合体用ソフトクイック設定(改)を追加。スキル属性表示の適用範囲拡大。
+;													合体でデビルシフターや喰奴が作られた場合の処理を追加。チラつき抑止。
+;													スキル属性表示にキャラ情報を渡すように
+;	014		2015/01/01		セーロGUN				館内変身悪魔変更コマンドから戦闘用素質が複合したデビルシフターを弾く処理を追加
+;
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+@SHOPCOMABLE_120
+RESULTS = 邪教の館
+RETURN 1
+
+
+
+@SHOP_COM_120
+#LOCALSIZE 10
+;---- EDIT 008 ADD START -------------------------
+VARSET LOCAL
+;---- EDIT 008 ADD END   -------------------------
+;---- EDIT 010 MOD START -------------------------
+CUSTOMDRAWLINE =
+PRINTL [ 1]２身合体
+PRINTL [ 2]３身合体
+SIF ITEM:ドリー・カドモン > 0
+	PRINTL [ 3]造魔作成
+SIF NUM_ZOUMA() > 0 && NUM_FUSIONABLE() > 0
+	PRINTL [ 4]造魔強化合体
+;メアリが居る場合は必要な造魔の数に+1
+SIF NUM_ZOUMA() > (GETCHARA(4509) > -1) ? 1 # 0
+	PRINTL [ 5]造魔初期化
+SIF ITEM:無銘の刀
+	PRINTL [ 6]魔晶武具作成
+FOR LOCAL,2000,VARSIZE("ITEM")
+	IF 魔晶装備(LOCAL)
+		IF ITEM:LOCAL > 0
+			PRINTL [7]魔晶武具素材化
+			LOCAL:3 = 1
+			BREAK
+		ENDIF
+	ELSE
+	ENDIF
+NEXT
+
+PRINTL [ 8]スキルカード作成
+;---- EDIT 008 MOD START -------------------------
+FOR LOCAL,0,CHARANUM
+	SIF 契約(LOCAL) > 0 && ABL:LOCAL:種族 > 0 && ABL:LOCAL:種族 < 45
+		LOCAL:4 = 1
+	SIF TALENT:LOCAL:デビルシフター
+		LOCAL:5 = 1
+	IF FLAG:(NO:LOCAL + 20000) == 1000
+		IF ABL:LOCAL:コーディング > 0 && ITEM:(ABL:LOCAL:コーディング) == 0
+			LOCAL:6 = 1
+		ELSEIF CSVABL(NO:LOCAL, GETNUM(ABL, "コーディング") ,0) > 0 && ITEM:(CSVABL(NO:LOCAL, GETNUM(ABL, "コーディング"), 0)) == 0
+			LOCAL:6 = 1
+		ENDIF
+	ENDIF
+NEXT
+SIF LOCAL:4 == 1
+	PRINTL [ 9]イケニエ合体
+;---- EDIT 010 MOD END   -------------------------
+PRINTL [10]悪魔全書
+SIF LOCAL:5 == 1
+	PRINTL [11]変身悪魔変更
+SIF LOCAL:6 == 1
+	PRINTL [12] コーディング
+;---- EDIT 008 MOD END   -------------------------
+;---- EDIT 010 ADD START -------------------------
+PRINTL [13]悪魔ストレージ
+;---- EDIT 010 ADD END ---------------------------
+;---- EDIT WITH YOU ADD START -------------------------
+SIF TALENT:MASTER:144
+	PRINTL [14]あなた合体
+;---- EDIT WITH YOU ADD END ---------------------------
+CUSTOMDRAWLINE =
+PRINTL [ 0]戻る
+
+$INPUT_LOOP
+INPUT
+IF RESULT == 1
+	CALL FUSION_DOUBLE
+ELSEIF RESULT == 2
+	CALL FUSION_DOUBLE,3
+ELSEIF RESULT == 3 && ITEM:ドリー・カドモン > 0
+	CALL MAKE_ZOUMA
+ELSEIF RESULT == 4 && NUM_ZOUMA() > 0 && NUM_FUSIONABLE() > 0
+	CALL FUSION_ZOUMA
+ELSEIF RESULT == 5 && NUM_ZOUMA() > (GETCHARA(4509) > -1) ? 1 # 0
+	CALL DEL_ZOUMA
+ELSEIF RESULT == 6 && (ITEM:無銘の刀)
+	CALL MAKE_MASHO
+ELSEIF RESULT == 7 && LOCAL:3
+	CALL DEL_MASHO
+ELSEIF RESULT == 8
+	CALL MAKE_SKILLCARD
+ELSEIF RESULT == 9 && LOCAL:4
+	CALL FUSION_SACRIFICE
+ELSEIF RESULT == 10
+	CALL DEVIL_COMPENDIUM
+ELSEIF RESULT == 0
+	RETURN 0
+ELSEIF RESULT == 11 && LOCAL:5
+	CALL CHANGE_LINK
+;---- EDIT 008 ADD START -------------------------
+ELSEIF RESULT == 12 && LOCAL:6
+;---- EDIT 008 ADD END   -------------------------
+	CALL CODING
+;---- EDIT 010 ADD START -------------------------
+ELSEIF RESULT == 13
+	CALL DEVIL_STORAGE
+;---- EDIT 010 ADD END ---------------------------
+;---- EDIT WITH YOU ADD START -------------------------
+ELSEIF RESULT == 14
+	CALL FUSION_WITH_YOU
+;---- EDIT WITH YOU ADD END ---------------------------
+ELSE
+	GOTO INPUT_LOOP
+ENDIF
+;末尾キャラがフィルタリングフラグを持っていない場合（新キャラを作った場合）ソート実行
+;IF !CFLAG:(CHARANUM-1):フィルタリングフラグ
+;	FOR LOCAL:10, 0, CHARANUM - 1
+;		IF CFLAG:(LOCAL:10):フィルタリングフラグ
+;			FOR LOCAL:11, LOCAL:10, CHARANUM
+;				SIF CFLAG:(LOCAL:11):フィルタリングフラグ
+;					CONTINUE
+;				SIF TARGET == LOCAL:11
+;					TARGET = LOCAL:10
+;				SWAPCHARA LOCAL:10, LOCAL:11
+;				BREAK
+;			NEXT
+;		ENDIF
+;	NEXT
+;	;一応ポジション復帰
+;	CALL REFRESH_POS
+;ENDIF
+RESTART
+;================================================================
+;２身合体
+;================================================================
+@FUSION_DOUBLE, ARG = 2, ARG:1 = 0
+;ARG:1 探索中フラグ
+#DIM LLINE
+#DIM LREDRAW
+#DIM LLOCK
+#DIM PCOUNT, 2
+#DIM SKILLCOLOR,1
+#DIM 素材 , 4
+#DIM 完成品 , 1
+#DIM レベル不足合体 , 1
+
+LREDRAW = LLOCK ? LREDRAW # CURRENTREDRAW()
+SIF !LLOCK
+	REDRAW 2
+LLOCK = 1
+
+;素材:1、完成品　一体目と２体目の登録番号
+素材:1 = -1
+素材:2 = -1
+素材:3 = -1
+FLAG:合体人数 = ARG
+$START_FUSION
+FLAG:合体予定悪魔1 = 素材:1
+FLAG:合体予定悪魔2 = 素材:2
+LOCAL:6 = 0
+LOCAL:9 = 0
+
+;キャラリストを表示
+
+P = 0
+;表示させるキャラを抽出（Q:*に表示するキャラの登録番号、LOCAL:5に人数）
+VARSET Q, -1
+A = 0
+REPEAT CHARANUM
+	SIF 契約(COUNT) > 0
+		CONTINUE
+;	SIF ABL:COUNT:種族 == 0 || ABL:COUNT:種族 > 44
+;		CONTINUE
+	SIF (ABL:COUNT:種族 == 0 && NO:COUNT != 4552)|| NO:COUNT == 4509
+		CONTINUE
+	SIF COUNT == 素材:1 || COUNT == 素材:2
+		CONTINUE
+	SIF CFLAG:COUNT:労役フラグ == 3
+		CONTINUE
+	SIF CFLAG:COUNT:合体不可
+		CONTINUE
+	SIF CFLAG:COUNT:この場に居ないフラグ == 1
+		CONTINUE
+	SIF FLAG:二身合体時男女表示 == 1 && TALENT:COUNT:オトコ
+		CONTINUE
+	SIF FLAG:二身合体時男女表示 == 2 && !TALENT:COUNT:オトコ
+		CONTINUE
+	IF 素材:1 > -1 && FLAG:合体人数 == 2
+		;特殊合体が設定されている組み合わせは性別が違ってもおｋ
+		CALL FUSION_SPECIAL,素材:1 , COUNT
+		SIF RESULT > 0
+			GOTO FUSION_CHECK_OK
+	ELSEIF 素材:2 > -1 && FLAG:合体人数 == 3
+		;特殊合体が設定されている組み合わせは性別が違ってもおｋ
+		CALL FUSION_SPECIAL,素材:1 , 素材:2 , COUNT
+		SIF RESULT > 0
+			GOTO FUSION_CHECK_OK
+	ENDIF
+	IF 素材:1 > -1
+		;ジェンダーフリーの条件を追加
+		;それ以外は性別が同じ悪魔でないとダメ
+		SIF TALENT:(素材:1):オトコ == TALENT:(COUNT):オトコ || EQUIP:MASTER:ジェンダーフリー == 1
+			GOTO FUSION_CHECK_OK
+		;---- EDIT 006 ADD END   -------------------------
+		CONTINUE
+	ENDIF
+	$FUSION_CHECK_OK
+	Q:A = COUNT
+	A += 1
+REND
+LOCAL:5 = A
+
+$PRINT_LIST
+DRAWLINE
+PRINTFORML 合体させたい悪魔を選んでください　＜page.{P + 1}＞　%NAME:MASTER% LV:{BASE:MASTER:LV,3}
+DRAWLINE
+CALL SHOW_CHARA_LIST
+DRAWLINE
+PRINTFORMLC \@(P <= 0) ? %" " * 16% # [1001]前のページ\@
+PRINTLC [1000]戻る
+PRINTFORMLC \@(P >= (LOCAL:5 - 1) / リスト表示数()) ? %" " * 16% # [1009]次のページ\@
+	LOCAL:11 = 0
+	FOR COUNT, 500, 600
+		IF ITEM:COUNT
+			IF SOFT_IS_FUSIONSOFT(COUNT, ARG:1)
+				LOCAL:11 = 1
+				BREAK
+			ENDIF
+		ENDIF
+	NEXT
+IF ARG:1 == 0
+	SIF LOCAL:11
+		;PRINTLC [1010]インストールソフト変更
+		PRINTLC [1010]合体ソフト変更
+ELSE
+	SIF LOCAL:11
+		PRINTLC [1010]コンバータ変更
+ENDIF
+PRINTL 
+SIF !FLAG:二身合体時男女表示
+	SETCOLOR COLOR("aqua")
+PRINTLC [1011] 男女両方
+RESETCOLOR
+SIF FLAG:二身合体時男女表示 == 1
+	SETCOLOR COLOR("aqua")
+PRINTLC [1012] 女のみ
+RESETCOLOR
+SIF FLAG:二身合体時男女表示 == 2
+	SETCOLOR COLOR("aqua")
+PRINTLC [1013] 男のみ
+RESETCOLOR
+
+;SIF GETBIT(FLAG:合体用ソフトクイック設定, 6) == 1
+;	CALL 合体用ソフトクイック設定_FUSION
+;==合体用ソフトクイック設定 その１ =========================Start
+PRINTL 
+FOR PCOUNT, 500, 600
+	IF SOFT_IS_FUSIONSOFT(PCOUNT, ARG:1) && FSQS_BIT(PCOUNT)
+		SETCOLOR EQUIP:MASTER:(ITEMNAME:PCOUNT) ? GETCOLOR() # COLOR("gray")
+		PRINTFORMLC [{1000 + PCOUNT}] %ITEMNAME:PCOUNT%
+		RESETCOLOR
+	ENDIF
+NEXT
+;===========================================================End
+IF 素材:1 > -1
+	PRINTL 
+	PRINTFORML １体目:%CALLNAME:(素材:1)%
+ENDIF
+SIF 素材:2 > -1
+	PRINTFORML ２体目:%CALLNAME:(素材:2)%
+
+$INPUT_LOOP_1
+INPUT
+IF RESULT == 1000
+	IF 素材:2 > -1
+		素材:2 = -1
+		GOTO START_FUSION
+	ELSEIF 素材:1 > -1
+		素材:1 = -1
+		GOTO START_FUSION
+	ELSE
+		REDRAW LREDRAW
+		LLOCK = 0
+		RETURN 0
+	ENDIF
+ELSEIF RESULT == 1001
+	IF P > 0
+		P -= 1
+		GOTO PRINT_LIST
+	ELSE
+		GOTO INPUT_LOOP_1
+	ENDIF
+ELSEIF RESULT == 1009
+	LOCAL = (LOCAL:5 - 1) / リスト表示数()
+	IF P < LOCAL
+		P += 1
+		GOTO PRINT_LIST
+	ELSE
+		GOTO INPUT_LOOP_1
+	ENDIF
+ELSEIF RESULT == 1010 && LOCAL:11
+	;CALL SETUP_SOFT, 500, ARG:1, ARG:1
+	CALL SETUP_SOFT, 500, 1, ARG:1
+	GOTO PRINT_LIST
+ELSEIF RESULT == 1011 || RESULT == 1012 || RESULT == 1013
+	FLAG:二身合体時男女表示 = RESULT - 1011
+	GOTO START_FUSION
+
+;ELSEIF GETBIT(FLAG:合体用ソフトクイック設定, 6) == 1 && (RESULT == 1020 || RESULT == 1021 || RESULT == 1022 || RESULT == 1023 || RESULT == 1024 || RESULT == 1025)
+;	SELECTCASE RESULT
+;		CASE 1020
+;			IF EQUIP:MASTER:アルバート == 1
+;				EQUIP:MASTER:アルバート = 0
+;			ELSEIF EQUIP:MASTER:アルバート == 0 && FLAG:ＣＯＭＰ容量-NUM_NAKAMA()-ソフト容量() >= SOFT_SIZE(500)
+;				EQUIP:MASTER:アルバート = 1
+;			ENDIF
+;		CASE 1021
+;			IF EQUIP:MASTER:パラケルスス == 1
+;				EQUIP:MASTER:パラケルスス = 0
+;			ELSEIF EQUIP:MASTER:パラケルスス == 0 && FLAG:ＣＯＭＰ容量-NUM_NAKAMA()-ソフト容量() >= SOFT_SIZE(534)
+;				EQUIP:MASTER:パラケルスス = 1
+;			ENDIF
+;		CASE 1022
+;			IF EQUIP:MASTER:ラプラス == 1
+;				EQUIP:MASTER:ラプラス = 0
+;			ELSEIF EQUIP:MASTER:ラプラス == 0 && FLAG:ＣＯＭＰ容量-NUM_NAKAMA()-ソフト容量() >= SOFT_SIZE(536)
+;				EQUIP:MASTER:ラプラス = 1
+;			ENDIF
+;		CASE 1023
+;			IF EQUIP:MASTER:コペルニクス == 1
+;				EQUIP:MASTER:コペルニクス = 0
+;			ELSEIF EQUIP:MASTER:コペルニクス == 0 && FLAG:ＣＯＭＰ容量-NUM_NAKAMA()-ソフト容量() >= SOFT_SIZE(537)
+;				EQUIP:MASTER:コペルニクス = 1
+;			ENDIF
+;		CASE 1024
+;			IF EQUIP:MASTER:ゴエティア == 1
+;				EQUIP:MASTER:ゴエティア = 0
+;			ELSEIF EQUIP:MASTER:ゴエティア == 0
+;				EQUIP:MASTER:ゴエティア = 1
+;			ENDIF
+;		CASE 1025
+;			IF EQUIP:MASTER:ラジエルの書 == 1
+;				EQUIP:MASTER:ラジエルの書 = 0
+;			ELSEIF EQUIP:MASTER:ラジエルの書 == 0
+;				EQUIP:MASTER:ラジエルの書 = 1
+;			ENDIF
+;	ENDSELECT
+;	GOTO PRINT_LIST
+
+;==合体用ソフトクイック設定 その２ =========================Start
+ELSEIF INRANGE(RESULT, 1500, 1599) && SOFT_IS_FUSIONSOFT(RESULT - 1000, ARG:1) && FSQS_BIT(RESULT - 1000)
+	IF EQUIP:MASTER:(ITEMNAME:(RESULT - 1000))
+		EQUIP:MASTER:(ITEMNAME:(RESULT - 1000)) = 0
+	ELSEIF FLAG:ＣＯＭＰ容量 - NUM_NAKAMA() - ソフト容量() >= SOFT_SIZE(RESULT - 1000)
+		EQUIP:MASTER:(ITEMNAME:(RESULT - 1000)) = 1
+	ENDIF
+	GOTO PRINT_LIST
+;===========================================================End
+
+ELSEIF RESULT < 0 || RESULT >= CHARANUM || MATCH(Q,RESULT,0) == 0
+	GOTO INPUT_LOOP_1
+ENDIF
+
+IF 素材:2 > 0
+	素材:3 = RESULT
+ELSEIF 素材:1 > 0
+	素材:2 = RESULT
+ELSE
+	素材:1 = RESULT
+ENDIF
+
+IF 素材:(FLAG:合体人数) > 0
+	;合体人数が2なら素材:3 = -1なので投げてＯＫ
+	CALL RESULT_FUSION,素材:1,素材:2,素材:3
+	IF RESULT == 0
+		素材:(FLAG:合体人数) = -1
+		GOTO START_FUSION
+	ENDIF
+	完成品 = CHARANUM
+	LOCAL:4 = RESULT
+	SIF CSVCFLAG(LOCAL:4 , GETNUM(CFLAG,"１体のみ"),0) && FINDCHARA(NO,LOCAL:4) > -1
+		LOCAL:9 = 1
+	;合体結果の悪魔が既に仲魔(未契約かつＣＯＭＰに居る)である場合
+	SIF FINDCHARA_NO_C(LOCAL:4) > -1
+		LOCAL:6 = 1
+	
+	;一旦合体結果の悪魔をキャラ登録
+	IF FLAG:合体人数 == 2
+		CALL ADD_NEW_COMPANION,LOCAL:4,MAX(100 , (BASE:(素材:1):忠誠度 + BASE:(素材:2):忠誠度)/2), -1
+	ELSE
+		CALL ADD_NEW_COMPANION,LOCAL:4,MAX(100 , (BASE:(素材:1):忠誠度 + BASE:(素材:2):忠誠度 + BASE:(素材:3):忠誠度)/3), -1
+	ENDIF
+	;なんらかの理由でキャラ登録できない場合
+	IF RESULT == 0
+		PRINTW キャラ登録が不可能なので合体処理を中断します
+		REDRAW LREDRAW
+		LLOCK = 0
+		RETURN 0
+	ENDIF
+	;---- EDIT 006 ADD START -------------------------
+	;特殊合体時専用処理があれば呼び出し
+	TRYCALLFORM FUSION_SPECIAL_PROCESS_{LOCAL:4}, 完成品, 素材:1, 素材:2 , 素材:3
+	;---- EDIT 006 ADD END -------------------------
+	;スキル継承
+	CALL SUCCESS_SKILL,完成品,素材:1,素材:2,素材:3,0
+	;邪教の館なら更に素質のないスキルも継承
+	SIF FLAG:ショップコマンド == [[ショップ:邪教の館]]
+		CALL SUCCESS_SKILL,完成品,素材:1,素材:2,素材:3,1
+	;邪教の館なら更に素質も継承
+	SIF FLAG:ショップコマンド == [[ショップ:邪教の館]]
+		CALL SUCCESS_TALENT,完成品,素材:1,素材:2,素材:3
+	;---- EDIT 011 ADD START ----------------------
+	;ラジエルの書装備中なら一部素質やランクアップ先を変化
+	SIF EQUIP:MASTER:ラジエルの書 && EXTRACHECK_DEVIL_CHILDREN(NO:完成品)
+		CALL EXTRA_DEVIL_CHILDREN , 完成品
+	;---- EDIT 011 ADD END ------------------------
+	;ステータス強化
+	CALL FUSION_ENHANCE_STATUS,完成品,素材:1,素材:2,素材:3
+	;調教効果による能力アップ
+	;BASE:(完成品):力 +=   ((ABL:(素材:1):欲望+1) + (ABL:(素材:2):欲望+1))/4
+	;BASE:(完成品):知恵 += ((ABL:(素材:1):技巧+1) + (ABL:(素材:2):技巧+1))/4
+	;BASE:(完成品):魔力 += ((ABL:(素材:1):欲望+1) + (ABL:(素材:2):欲望+1))/4
+	;BASE:(完成品):耐力 += ((ABL:(素材:1):従順+1) + (ABL:(素材:2):従順+1))/4
+	;BASE:(完成品):速さ += ((ABL:(素材:1):技巧+1) + (ABL:(素材:2):技巧+1))/4
+	;BASE:(完成品):運 +=   ((ABL:(素材:1):従順+1) + (ABL:(素材:2):従順+1))/4
+	;----- 変身する悪魔向けというか主に東方ＭＯＤ用 はじめ -----
+	IF TALENT:完成品:デビルシフター || TALENT:完成品:喰奴
+		FOR PCOUNT, 1, FLAG:スキル数 + 1
+			ABL:完成品:@"人間時スキル{PCOUNT}" = ABL:完成品:@"スキル{PCOUNT}"
+		NEXT
+	ENDIF
+	;----- 変身する悪魔向けというか主に東方ＭＯＤ用 おわり -----
+	CALL SYNC_STATUS,完成品
+	
+	
+	;表示用に忠誠度を変更しておく
+	;BASE:(完成品):忠誠度 = MAX(100,(BASE:(素材:1):忠誠度+BASE:(素材:2):忠誠度)/2)
+	レベル不足合体 = 0
+	IF (BASE:(完成品):LV > BASE:MASTER:LV) && (EQUIP:MASTER:スティーブン == 0)
+		IF BASE:完成品:忠誠度 >= POWER(BASE:(完成品):LV - (BASE:MASTER:LV + FLAG:経験ED数) , 2)*500
+			レベル不足合体 = 1
+			BASE:完成品:忠誠度 -= POWER(BASE:(完成品):LV - (BASE:MASTER:LV + FLAG:経験ED数) , 2)*500
+		ELSE
+		ENDIF
+	ENDIF
+	
+	CUSTOMDRAWLINE =
+	;合体結果のステータスを表示
+	U = 完成品
+	;ステータス表示
+	LOCAL:10 = 2
+	LLINE = LINECOUNT
+	$PRINT_STATUS
+	CLEARLINE LINECOUNT - LLINE
+	PRINTFORM %種族名(U)%　　
+	PRINTFORML %CALLNAME:U%　　
+	RESETCOLOR
+	FLAG:二身合体表示 = 1
+	CALLFORM SHOW_INFO_PAGE_{LOCAL:10}
+	IF LOCAL:10 == 2
+		PRINTFORML 所持スキル(合体後:%CALLNAME:(完成品)%)
+		FOR PCOUNT,1,FLAG:スキル数+1
+			IF ABL:(完成品):@"スキル{PCOUNT}"
+				PRINTFORM 　[{PCOUNT,2}]
+				SKILLCOLOR = 0
+				SIF GROUPMATCH(ABL:(完成品):@"スキル{PCOUNT}", ABL:(素材:1):スキル1, ABL:(素材:1):スキル2, ABL:(素材:1):スキル3, ABL:(素材:1):スキル4, ABL:(素材:1):スキル5, ABL:(素材:1):スキル6, ABL:(素材:1):スキル7, ABL:(素材:1):スキル8)
+					SKILLCOLOR |= 1
+				SIF GROUPMATCH(ABL:(完成品):@"スキル{PCOUNT}", ABL:(素材:2):スキル1, ABL:(素材:2):スキル2, ABL:(素材:2):スキル3, ABL:(素材:2):スキル4, ABL:(素材:2):スキル5, ABL:(素材:2):スキル6, ABL:(素材:2):スキル7, ABL:(素材:2):スキル8)
+					SKILLCOLOR |= 2
+				SIF 素材:3 > 0 && GROUPMATCH(ABL:(完成品):@"スキル{PCOUNT}", ABL:(素材:3):スキル1, ABL:(素材:3):スキル2, ABL:(素材:3):スキル3, ABL:(素材:3):スキル4, ABL:(素材:3):スキル5, ABL:(素材:3):スキル6, ABL:(素材:3):スキル7, ABL:(素材:3):スキル8)
+					SKILLCOLOR |= 2
+				IF SKILLCOLOR == 3
+					SETCOLOR 0xff69b4
+				ELSEIF SKILLCOLOR == 2
+					SETCOLOR 0x00ff00
+				ELSEIF SKILLCOLOR == 1
+					SETCOLOR COLOR("aqua")
+				ENDIF
+				SIF GROUPMATCH(ABL:(完成品):@"スキル{PCOUNT}", CSVABL(NO:(完成品), GETNUM(ABL, "スキル1"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "スキル2"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "スキル3"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "スキル4"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "スキル5"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "スキル6"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "スキル7"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "スキル8"), 0))
+					RESETCOLOR
+				CALLFORM SKILL_NAME_{ABL:(完成品):@"スキル{PCOUNT}"},完成品
+				PRINTFORM %RESULTS,20,LEFT%
+			ENDIF
+			RESETCOLOR
+			SIF PCOUNT % 4 == 0
+				PRINTL
+		NEXT
+		PCOUNT:1 = 0
+		FOR PCOUNT,1,21
+			IF ABL:(完成品):@"習得スキル{PCOUNT}" > 0
+				IF PCOUNT:1 == 0
+					PCOUNT:1 = PCOUNT
+				ELSE
+					SIF ABL:(完成品):@"習得LV{PCOUNT:1}" > ABL:(完成品):@"習得LV{PCOUNT}"
+						PCOUNT:1 = PCOUNT
+				ENDIF
+			ENDIF
+		NEXT
+		IF PCOUNT:1 > 0
+			IF ABL:(完成品):@"習得LV{PCOUNT:1}" > (BASE:(完成品):LV)+5
+				SETCOLOR 0x666666
+				PRINTFORML    NEXT[????????]  習得LV {ABL:(完成品):@"習得LV{PCOUNT:1}"}
+				RESETCOLOR
+			ELSE
+				CALLFORM SKILL_NAME_{ABL:(完成品):@"習得スキル{PCOUNT:1}"},完成品
+				SETCOLOR 0x666666
+				PRINTFORML    NEXT[%RESULTS%]  習得LV {ABL:(完成品):@"習得LV{PCOUNT:1}"}
+				RESETCOLOR
+			ENDIF
+		ENDIF
+		DRAWLINE
+		PRINTFORML 所持スキル(一匹目:%CALLNAME:(素材:1)%)
+		FOR PCOUNT,1,FLAG:スキル数+1
+			IF ABL:(素材:1):@"スキル{PCOUNT}"
+				PRINTFORM 　[{PCOUNT+10,2}]
+				SKILLCOLOR = 0
+				SIF GROUPMATCH(ABL:(素材:1):@"スキル{PCOUNT}", ABL:(完成品):スキル1, ABL:(完成品):スキル2, ABL:(完成品):スキル3, ABL:(完成品):スキル4, ABL:(完成品):スキル5, ABL:(完成品):スキル6, ABL:(完成品):スキル7, ABL:(完成品):スキル8)
+					SKILLCOLOR |= 1
+				SIF GROUPMATCH(ABL:(素材:1):@"スキル{PCOUNT}", ABL:(素材:2):スキル1, ABL:(素材:2):スキル2, ABL:(素材:2):スキル3, ABL:(素材:2):スキル4, ABL:(素材:2):スキル5, ABL:(素材:2):スキル6, ABL:(素材:2):スキル7, ABL:(素材:2):スキル8)
+					SKILLCOLOR |= 2
+				SIF 素材:3 > 0 && GROUPMATCH(ABL:(素材:1):@"スキル{PCOUNT}", ABL:(素材:3):スキル1, ABL:(素材:3):スキル2, ABL:(素材:3):スキル3, ABL:(素材:3):スキル4, ABL:(素材:3):スキル5, ABL:(素材:3):スキル6, ABL:(素材:3):スキル7, ABL:(素材:3):スキル8)
+					SKILLCOLOR |= 2
+				IF SKILLCOLOR == 3
+					SETCOLOR 0xff69b4
+				ELSEIF SKILLCOLOR == 1
+					SETCOLOR COLOR("aqua")
+				ELSE
+					SETCOLOR COLOR("gray")
+				ENDIF
+				SIF GROUPMATCH(ABL:(素材:1):@"スキル{PCOUNT}", CSVABL(NO:(完成品), GETNUM(ABL, "スキル1"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "スキル2"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "スキル3"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "スキル4"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "スキル5"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "スキル6"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "スキル7"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "スキル8"), 0))
+					RESETCOLOR
+				CALLFORM SKILL_NAME_{ABL:(素材:1):@"スキル{PCOUNT}"},素材:1
+				PRINTFORM %RESULTS,20,LEFT%
+			ENDIF
+			RESETCOLOR
+			SIF PCOUNT % 4 == 0
+				PRINTL
+		NEXT
+		DRAWLINE
+		PRINTFORML 所持スキル(二匹目:%CALLNAME:(素材:2)%)
+		FOR PCOUNT,1,FLAG:スキル数+1
+			IF ABL:(素材:2):@"スキル{PCOUNT}"
+				PRINTFORM 　[{PCOUNT+20,2}]
+				SKILLCOLOR = 0
+				SIF GROUPMATCH(ABL:(素材:2):@"スキル{PCOUNT}", ABL:(完成品):スキル1, ABL:(完成品):スキル2, ABL:(完成品):スキル3, ABL:(完成品):スキル4, ABL:(完成品):スキル5, ABL:(完成品):スキル6, ABL:(完成品):スキル7, ABL:(完成品):スキル8)
+					SKILLCOLOR |= 1
+				SIF GROUPMATCH(ABL:(素材:2):@"スキル{PCOUNT}", ABL:(素材:1):スキル1, ABL:(素材:1):スキル2, ABL:(素材:1):スキル3, ABL:(素材:1):スキル4, ABL:(素材:1):スキル5, ABL:(素材:1):スキル6, ABL:(素材:1):スキル7, ABL:(素材:1):スキル8)
+					SKILLCOLOR |= 2
+				SIF 素材:3 > 0 && GROUPMATCH(ABL:(素材:2):@"スキル{PCOUNT}", ABL:(素材:3):スキル1, ABL:(素材:3):スキル2, ABL:(素材:3):スキル3, ABL:(素材:3):スキル4, ABL:(素材:3):スキル5, ABL:(素材:3):スキル6, ABL:(素材:3):スキル7, ABL:(素材:3):スキル8)
+					SKILLCOLOR |= 2
+				IF SKILLCOLOR == 3
+					SETCOLOR 0xff69b4
+				ELSEIF SKILLCOLOR == 1
+					SETCOLOR 0x00ff00
+				ELSE
+					SETCOLOR COLOR("gray")
+				ENDIF
+				SIF GROUPMATCH(ABL:(素材:2):@"スキル{PCOUNT}", CSVABL(NO:(完成品), GETNUM(ABL, "スキル1"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "スキル2"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "スキル3"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "スキル4"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "スキル5"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "スキル6"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "スキル7"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "スキル8"), 0))
+					RESETCOLOR
+				CALLFORM SKILL_NAME_{ABL:(素材:2):@"スキル{PCOUNT}"},素材:2
+				PRINTFORM %RESULTS,20,LEFT%
+			ENDIF
+			RESETCOLOR
+			SIF PCOUNT % 4 == 0
+				PRINTL
+		NEXT
+		IF 素材:3 > 0
+			DRAWLINE
+			PRINTFORML 所持スキル(三匹目:%CALLNAME:(素材:3)%)
+			FOR PCOUNT,1,FLAG:スキル数+1
+				IF ABL:(素材:3):@"スキル{PCOUNT}"
+					PRINTFORM 　[{PCOUNT+30,2}]
+					SKILLCOLOR = 0
+					SIF GROUPMATCH(ABL:(素材:3):@"スキル{PCOUNT}", ABL:(完成品):スキル1, ABL:(完成品):スキル2, ABL:(完成品):スキル3, ABL:(完成品):スキル4, ABL:(完成品):スキル5, ABL:(完成品):スキル6, ABL:(完成品):スキル7, ABL:(完成品):スキル8)
+						SKILLCOLOR |= 1
+					SIF GROUPMATCH(ABL:(素材:3):@"スキル{PCOUNT}", ABL:(素材:1):スキル1, ABL:(素材:1):スキル2, ABL:(素材:1):スキル3, ABL:(素材:1):スキル4, ABL:(素材:1):スキル5, ABL:(素材:1):スキル6, ABL:(素材:1):スキル7, ABL:(素材:1):スキル8)
+						SKILLCOLOR |= 2
+					SIF 素材:3 > 0 && GROUPMATCH(ABL:(素材:3):@"スキル{PCOUNT}", ABL:(素材:2):スキル1, ABL:(素材:2):スキル2, ABL:(素材:2):スキル3, ABL:(素材:2):スキル4, ABL:(素材:2):スキル5, ABL:(素材:2):スキル6, ABL:(素材:2):スキル7, ABL:(素材:2):スキル8)
+						SKILLCOLOR |= 2
+					IF SKILLCOLOR == 3
+						SETCOLOR 0xff69b4
+					ELSEIF SKILLCOLOR == 1
+						SETCOLOR 0x00ff00
+					ELSE
+						SETCOLOR COLOR("gray")
+					ENDIF
+					SIF GROUPMATCH(ABL:(素材:3):@"スキル{PCOUNT}", CSVABL(NO:(完成品), GETNUM(ABL, "スキル1"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "スキル2"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "スキル3"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "スキル4"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "スキル5"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "スキル6"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "スキル7"), 0), CSVABL(NO:(完成品), GETNUM(ABL, "スキル8"), 0))
+						RESETCOLOR
+					CALLFORM SKILL_NAME_{ABL:(素材:3):@"スキル{PCOUNT}"},素材:2
+					PRINTFORM %RESULTS,20,LEFT%
+				ENDIF
+				RESETCOLOR
+				SIF PCOUNT % 4 == 0
+					PRINTL
+			NEXT
+		ENDIF
+	ENDIF
+	FLAG:二身合体表示 = 0
+	PRINTFORM %"\n" * MAX(0, (ARG == 3 ? 41 # 37) - LINECOUNT + LLINE)%
+	CUSTOMDRAWLINE =
+	IF LOCAL:9 == 1
+		IF FLAG:ショップコマンド != [[ショップ:邪教の館]]
+			PRINTW 残念だがこの悪魔は２体以上仲魔にできん
+		ELSE
+			PRINTW ２体以上仲魔にできない悪魔です
+		ENDIF
+		DELCHARA 完成品
+		
+		RESTART
+		
+	ENDIF
+	
+	IF LOCAL:6 == 1 && FLAG:ショップコマンド != [[ショップ:邪教の館]]
+		PRINTW ＣＯＭＰ内に同じ悪魔が居ます
+		DELCHARA 完成品
+		RESTART
+		
+	ENDIF
+	;合体結果の悪魔のレベル>主人のレベルだった場合駄目
+	;スティーブン
+	IF (BASE:(完成品):LV > BASE:MASTER:LV + FLAG:経験ED数) && (EQUIP:MASTER:スティーブン == 0) && レベル不足合体 == 0
+		IF FLAG:ショップコマンド != [[ショップ:探索]]
+			PRINTW 残念だが……お前のレベルでは扱えん
+		ELSE
+			PRINTW レベルが足りません
+		ENDIF
+		DELCHARA 完成品
+		RESTART
+	ENDIF
+	
+	;ステータスの表示切替用
+	PRINTFORMLC \@ LOCAL:10 == 2 ? [1007]前のページ # %" " * 16% \@
+	PRINTFORMLC \@ U != 完成品 && FLAG:合体人数 == 3 && PRINTCPERLINE() < 4 ? [1012]合体後の悪魔 # %" " * 18% \@
+	PRINTFORMLC \@ LOCAL:10 == 1 ? [1009]次のページ # %" " * 16% \@
+	PRINTL 
+	PRINTFORMLC \@ U != 素材:1 ? [1010]一匹目の悪魔 # %" " * 18% \@
+	PRINTFORMLC \@ U != 素材:2 ? [1011]二匹目の悪魔 # %" " * 18% \@
+	SIF FLAG:合体人数 == 3
+		PRINTFORMLC \@ U != 素材:3 ? [1013]三匹目の悪魔 # %" " * 18% \@
+	SIF FLAG:合体人数 != 3 || PRINTCPERLINE() > 3
+		PRINTFORMLC \@ U != 完成品 ? [1012]合体後の悪魔 # %" " * 18% \@
+	PRINTL
+	
+	;合体するかどうか　→　合体実行（実際には既に終わっている）
+	IF レベル不足合体
+		PRINTL レベルが不足していますが、忠誠度を消費して作成しますか？ [0]Yes [9]No
+	ELSE
+		PRINTL この悪魔でよろしいですか？ [0]Yes [9]No
+	ENDIF
+	$INPUT_LOOP
+	INPUT
+	IF RESULT == 1007 && LOCAL:10 == 2
+		LOCAL:10 = 1
+		GOTO PRINT_STATUS
+	ELSEIF RESULT == 1009 && LOCAL:10 == 1
+		LOCAL:10 = 2
+		GOTO PRINT_STATUS
+	ELSEIF RESULT == 1010 && U != 素材:1
+		U = 素材:1
+		GOTO PRINT_STATUS
+	ELSEIF RESULT == 1011 && U != 素材:2
+		U = 素材:2
+		GOTO PRINT_STATUS
+	ELSEIF RESULT == 1013 && U != 素材:3 && 素材:3 > 0
+		U = 素材:3
+		GOTO PRINT_STATUS
+	ELSEIF RESULT == 1012 && U != 完成品
+		U = 完成品
+		GOTO PRINT_STATUS
+	ELSEIF RESULT <= 8 && RESULT > 0
+		IF ABL:(完成品):@"スキル{RESULT}" > 0
+			SIF FLAG:スキル属性表示設定 == 1
+				CALL SKILL_EXPLAIN_PERFORMANCE, ABL:完成品:@"スキル{RESULT}", 完成品
+			TRYCALLFORM SKILL_EXPLAIN_{ABL:完成品:@"スキル{RESULT}"}
+			WAIT
+			GOTO PRINT_STATUS
+		ELSE
+			GOTO INPUT_LOOP
+		ENDIF
+	ELSEIF RESULT <= 18 && RESULT > 10
+		IF ABL:(素材:1):@"スキル{(RESULT-10)}" > 0
+			SIF FLAG:スキル属性表示設定 == 1
+				CALL SKILL_EXPLAIN_PERFORMANCE, ABL:(素材:1):@"スキル{RESULT - 10}", 素材:1
+			TRYCALLFORM SKILL_EXPLAIN_{ABL:(素材:1):@"スキル{(RESULT - 10)}"}
+			WAIT
+			GOTO PRINT_STATUS
+		ELSE
+			GOTO INPUT_LOOP
+		ENDIF
+	ELSEIF RESULT <= 28 && RESULT > 20
+		IF ABL:(素材:2):@"スキル{RESULT-20}" > 0
+			SIF FLAG:スキル属性表示設定 == 1
+				CALL SKILL_EXPLAIN_PERFORMANCE, ABL:(素材:2):@"スキル{RESULT - 20}", 素材:2
+			TRYCALLFORM SKILL_EXPLAIN_{ABL:(素材:2):@"スキル{(RESULT - 20)}"}
+			WAIT
+			GOTO PRINT_STATUS
+		ELSE
+			GOTO INPUT_LOOP
+		ENDIF
+	ELSEIF RESULT <= 38 && RESULT > 30 && 素材:3 > 0
+		IF ABL:(素材:3):@"スキル{RESULT-30}" > 0
+			SIF FLAG:スキル属性表示設定 == 1
+				CALL SKILL_EXPLAIN_PERFORMANCE, ABL:(素材:3):@"スキル{RESULT - 30}", 素材:3
+			TRYCALLFORM SKILL_EXPLAIN_{ABL:(素材:3):@"スキル{(RESULT - 30)}"}
+			WAIT
+			GOTO PRINT_STATUS
+		ELSE
+			GOTO INPUT_LOOP
+		ENDIF
+	ELSEIF RESULT == 9
+		DELCHARA 完成品
+		RESTART
+	ELSEIF RESULT == 0
+	ELSE
+		GOTO INPUT_LOOP
+	ENDIF
+	
+	;作成時のセリフを表示
+	IF FLAG:ショップコマンド == [[ショップ:探索]]
+		; 合体事故発生チェック
+		IF FUSION_ACCIDENT_CHECK(1)
+			CALL FUSION_ACCIDENT,完成品,素材:1,素材:2,素材:3
+			PRINTFORMW 合体事故が発生
+			PRINTFORMW 予定とは違う悪魔 \@CSTR:(完成品):種族名 != "" ? %CSTR:(完成品):種族名% # %STR:(ABL:(完成品):種族)% \@%CALLNAME:完成品%が作成されました
+		ELSE
+			PRINTFORML 新たな召喚プログラムを作成
+			PRINTFORMW \@CSTR:(完成品):種族名 != "" ? %CSTR:(完成品):種族名% # %STR:(ABL:(完成品):種族)% \@%CALLNAME:完成品%が召喚可能になりました
+		ENDIF
+	ELSE
+		; 合体事故発生チェック
+		IF FUSION_ACCIDENT_CHECK(0)
+			CALL FUSION_ACCIDENT,完成品,素材:1,素材:2,素材:3
+			PRINTFORMW 合体事故が発生
+			PRINTFORMW 予定とは違う悪魔 \@CSTR:(完成品):種族名 != "" ? %CSTR:(完成品):種族名% # %STR:(ABL:(完成品):種族)% \@%CALLNAME:完成品%が作成されました
+		ELSE
+		ENDIF
+		TRYCCALLFORM FUSION_MESSAGE_K{NO:(完成品)},完成品
+		CATCH
+			TRYCALLFORM FUSION_MESSAGE_PUB{ABL:(完成品):会話タイプ},完成品
+		ENDCATCH
+	ENDIF
+	IF FLAG:ショップコマンド == [[ショップ:邪教の館]]
+		LOCAL:8 = 素材:1
+		;忠誠度の高い方の手紙を選択
+		SIF BASE:(LOCAL:8):忠誠度 < BASE:(素材:2):忠誠度
+			LOCAL:8 = 素材:2
+		SIF 素材:3 > -1 && BASE:(LOCAL:8):忠誠度 < BASE:(素材:3):忠誠度
+			LOCAL:8 = 素材:3
+		CALL FUSION_LETTER,LOCAL:8,0
+	ENDIF
+	;ここに忠誠度による素質変化とか予定
+	;フライデー
+	;CALL MAKE_TALENT,完成品,(BASE:(素材:1):忠誠度+BASE:(素材:2):忠誠度)/10
+	;BASE:(完成品):忠誠度 = MIN((BASE:(素材:1):忠誠度+BASE:(素材:2):忠誠度) / 2 , (RESULT*10 + (BASE:(素材:1):忠誠度+BASE:(素材:2):忠誠度)%10)/2)
+	SIF EQUIP:MASTER:フライデー == 1 && BASE:(完成品):忠誠度 < 1000
+		BASE:(完成品):忠誠度 = 1000
+	
+	;LOCAL:7 ABL引き継ぎレベル
+	LOCAL:7 = ABL引き継ぎチェック(素材:1,素材:2)
+	IF BASE:(完成品):忠誠度 >= 200 && LOCAL:7 >= 1
+		PRINTL 忠誠度を消費することで、調教に関する能力を継承することができます
+		
+		PRINTL [0] 引き継がない
+		LOCAL:7 = ABL引き継ぎチェック(素材:1,素材:2)
+		SIF BASE:(完成品):忠誠度 >= 200 && LOCAL:7 >= 1
+			PRINTL [1] LV1まで継承  -  消費忠誠度 200
+		SIF BASE:(完成品):忠誠度 >= 500 && LOCAL:7 >= 2
+			PRINTL [2] LV2まで継承  -  消費忠誠度 500
+		SIF BASE:(完成品):忠誠度 >= 1000 && LOCAL:7 >= 3
+			PRINTL [3] LV3まで継承  -  消費忠誠度 1000
+		SIF BASE:(完成品):忠誠度 >= 3000 && LOCAL:7 >= 4
+			PRINTL [4] LV4まで継承  -  消費忠誠度 3000
+		SIF BASE:(完成品):忠誠度 >= 5000 && LOCAL:7 >= 5
+			PRINTL [5] LV5まで継承  -  消費忠誠度 5000
+		
+		$INPUT_LOOP_ABL
+		INPUT
+		IF RESULT == 0
+			LOCAL:7 = 0
+		ELSEIF RESULT == 1 && BASE:(完成品):忠誠度 >= 200
+			LOCAL:7 = 1
+			BASE:(完成品):忠誠度 -= 200
+		ELSEIF RESULT == 2 && BASE:(完成品):忠誠度 >= 500
+			LOCAL:7 = 2
+			BASE:(完成品):忠誠度 -= 500
+		ELSEIF RESULT == 3 && BASE:(完成品):忠誠度 >= 1000
+			LOCAL:7 = 3
+			BASE:(完成品):忠誠度 -= 1000
+		ELSEIF RESULT == 4 && BASE:(完成品):忠誠度 >= 3000
+			LOCAL:7 = 4
+			BASE:(完成品):忠誠度 -= 3000
+		ELSEIF RESULT == 5 && BASE:(完成品):忠誠度 >= 5000
+			LOCAL:7 = 5
+			BASE:(完成品):忠誠度 -= 5000
+		ELSE
+			GOTO INPUT_LOOP_ABL
+		ENDIF
+		;調教効果の引き継ぎ
+		IF 素材:3 > 0
+			FOR LOCAL,0,26
+				ABL:(完成品):LOCAL = MAX(MIN(LOCAL:7 , MAX(ABL:(素材:1):LOCAL , ABL:(素材:2):LOCAL , ABL:(素材:3):LOCAL)) , ABL:(完成品):LOCAL)
+			NEXT
+		ELSE
+			FOR LOCAL,0,26
+				ABL:(完成品):LOCAL = MAX(MIN(LOCAL:7 , MAX(ABL:(素材:1):LOCAL , ABL:(素材:2):LOCAL)) , ABL:(完成品):LOCAL)
+			NEXT
+		ENDIF
+	ENDIF
+	MAXBASE:(完成品):忠誠度 = BASE:(完成品):忠誠度
+
+	PRINTFORMW %種族名(完成品)% %CALLNAME:(完成品)%が仲魔になった。
+	
+	;悪魔解析度が100未満なら100に。
+	SIF FLAG:(20000+NO:(完成品)) < 100
+		FLAG:(20000+NO:(完成品)) = 100
+	;ハッピーバースデーの能力低下はここでやる
+	IF EQUIP:MASTER:ハッピーバースデー && NUM_SUMMONER()
+		LOCAL:7 = BASE:(完成品):LV
+		BASE:(完成品):LV = 1
+		BASE:(完成品):ＥＸＰ = 0
+		BASE:(完成品):ＭＡＧ = 0
+		REPEAT 6
+			BASE:(完成品):GET_BASESTATUS(COUNT + 1) = 3
+		REND
+	ENDIF
+	CALL SYNC_STATUS,完成品
+	CALL HEALTH_CHARA,完成品
+
+	CALL CHECK_LEVEL_UP,完成品
+	;ＭＡＧ継承
+;	CALL CONTROL_MAG,完成品,((BASE:(素材:1):ＭＡＧ + BASE:(素材:2):ＭＡＧ) + CFLAG:(素材:1):強化使用ＭＡＧ + CFLAG:(素材:2):強化使用ＭＡＧ)
+	CALL CONTROL_MAG,完成品,((BASE:(素材:1):ＭＡＧ) + CFLAG:(素材:1):強化使用ＭＡＧ) + ((BASE:(素材:2):ＭＡＧ) + CFLAG:(素材:2):強化使用ＭＡＧ)
+	SIF 素材:3 > 0
+		CALL CONTROL_MAG,完成品, ((BASE:(素材:3):ＭＡＧ) + CFLAG:(素材:3):強化使用ＭＡＧ)
+	SIF BASE:(完成品):ＭＡＧ > MAXBASE:(完成品):ＭＡＧ
+		BASE:(完成品):ＭＡＧ = MAXBASE:(完成品):ＭＡＧ
+	;合体素材の悪魔を消去
+	;素材にした悪魔が瀕死だと主人がDARKに傾く
+	SIF GET_STATE(CFLAG:(素材:1):ステート) == "DYING"
+		CALL INCREASE_LD,-7
+	SIF GET_STATE(CFLAG:(素材:2):ステート) == "DYING"
+		CALL INCREASE_LD,-7
+	SIF 素材:3 > 0 && GET_STATE(CFLAG:(素材:3):ステート) == "DYING"
+		CALL INCREASE_LD,-7
+	;素材にした悪魔の反発刻印によってDARKに傾く
+	CALL INCREASE_LD,-3*(MARK:(素材:1):反発刻印 + MARK:(素材:2):反発刻印)
+	SIF 素材:3 > 0
+		CALL INCREASE_LD,-3*(MARK:(素材:3):反発刻印)
+	IF 素材:3 > 0
+		FOR LOCAL, CHARANUM-1 , 0 , -1
+			SIF MATCH(素材 , LOCAL)
+				CALL キャラ削除, LOCAL
+		NEXT
+	ELSE
+		CALL キャラ削除, MAX(素材:1,素材:2)
+		CALL キャラ削除, MIN(素材:1,素材:2)
+	ENDIF
+	SIF FLAG:ＣＯＭＰ容量 < NUM_NAKAMA() + ソフト容量() || LOCAL:6 || ABL:(完成品 - FLAG:合体人数):種族 < 1 || ABL:(完成品 - FLAG:合体人数):種族 > 45 || CFLAG:(完成品 - FLAG:合体人数):容量未使用
+		CFLAG:(完成品 - FLAG:合体人数):所属ＣＯＭＰ = -1
+	FLAG:合体予定悪魔1 = -1
+	FLAG:合体予定悪魔2 = -1
+	LLOCK = 0
+	REDRAW LREDRAW
+	RETURN 0
+;ELSE
+;	素材:1 = RESULT
+ENDIF
+
+GOTO START_FUSION
+
+
+;=====================================================
+;スキル継承
+;=====================================================
+@SUCCESS_SKILL,ARG,ARG:1,ARG:2,ARG:3 = -1,ARG:4 = 0
+#DIM CHARA , 1
+#DIM カウント , 1
+#DIM SKILL
+;ARG = 合体後悪魔
+;ARG:1 = 合体前悪魔Ａ
+;ARG:2 = 同Ｂ
+;ARG:3 = 同Ｃ
+;ARG:4 = 真の時、邪教の館での合体扱いとなる
+;LOCAL = 継承スキル(仮)
+;LOCAL:1 = 優先度
+;LOCAL:3 = LOCALのスキルの優先度（保存用）
+;LOCALS:1 = 継承するスキル枠
+
+;ARGの空いているスキル枠を参照する
+;空いていなければRETURN 0
+FOR LOCAL:2,1,FLAG:スキル数+1
+	LOCALS = スキル{LOCAL:2}
+	IF ABL:ARG:LOCALS == 0
+		LOCALS:1 = %LOCALS%
+		BREAK
+	ENDIF
+	SIF LOCAL:2 == FLAG:スキル数
+		RETURN 0
+NEXT
+
+;ARG:1とARG:2のスキルの中から継承可能かつ持っていないスキルをピックアップ。
+;見つけた場合、LOCALに放り込む。
+;LOCALが埋まっている場合は、優先度がより高ければLOCALに上書き。
+
+LOCAL = 0
+
+FOR カウント , 1 , (ARG:3 > -1 ? 4 # 3)
+	CHARA = ARG:カウント
+	FOR LOCAL:2,1,FLAG:スキル数+1
+		SKILL = ABL:(CHARA):@"スキル{LOCAL:2}"
+		;未修得なら次へ
+		SIF SKILL == 0
+			CONTINUE
+		TRYCCALLFORM 継承不能_{SKILL}
+			SIF RESULT
+				CONTINUE
+		CATCH
+		ENDCATCH
+		;条件無視スキルは判定しない
+		TRYCCALLFORM 継承条件無視_{SKILL}
+		CATCH
+			;継承タイプ読み込み、ARGが継承できるタイプでなければ次へ
+			CALLFORM SKILL_SUCCESSION_TYPE_{SKILL}
+			;SIF TALENT:ARG:(320+RESULT) == 0 || RESULT == 22
+			;一般の範囲外のスキルを弾く・邪教の館でないときは自動効果と継承タイプを持っているスキルのみを引き継ぐ
+			SIF !RANGE(RESULT, 0, 22) || (TALENT:ARG:GET_SUCCESSION(RESULT) == 0 && RESULT != 22 && ARG:4 == 0)
+				CONTINUE
+		ENDCATCH
+		;継承必要部位読み込み、邪教の館でなくARGが持ってなければ次へ
+		CALLFORM 継承部位_{SKILL},ARG
+		SIF RESULT == 0 && ARG:4 == 0
+			CONTINUE
+		;既に習得しているスキルかつ、重複習得数（通常１）以上になるならば次へ
+		IF CHECK_SKILL(ARG,SKILL)
+			TRYCCALLFORM 重複習得数_{SKILL}
+				SIF HAVE_SKILL_OVERLAP(ARG,SKILL) + 1 > RESULT
+					CONTINUE
+			CATCH
+				CONTINUE
+			ENDCATCH
+		ENDIF
+		
+		IF LOCAL == 0
+			LOCAL = SKILL
+			TRYCCALLFORM SKILL_RANK_{SKILL}
+				LOCAL:3 = RESULT
+			CATCH
+				LOCAL:3 = 0
+			ENDCATCH
+		ENDIF
+		
+		TRYCCALLFORM SKILL_RANK_{SKILL}
+			LOCAL:1 = RESULT
+		CATCH
+			LOCAL:1 = 0
+		ENDCATCH
+		
+		IF LOCAL:1 > LOCAL:3
+			LOCAL = SKILL
+			LOCAL:3 = LOCAL:1
+		ENDIF
+	NEXT
+NEXT
+
+
+;この時点でLOCALが0＝継承できるスキルが無いのでRETURN
+SIF LOCAL == 0
+	RETURN 0
+
+;全部捜査したらLOCAL:1のスキル枠に習得させる。
+ABL:ARG:(LOCALS:1) = LOCAL
+
+RESTART
+
+;========================================
+;合体時の能力強化処理
+;========================================
+@FUSION_ENHANCE_STATUS,ARG,ARG:1,ARG:2,ARG:3 = -1
+#DIM CHARA , 1
+#DIM 経験値 , 3
+#DIM カウント , 1
+VARSET 経験値
+
+
+FOR カウント , 0 , (ARG:3 > -1 ? 3 # 2)
+	CHARA = ARG:(カウント+1)
+	LOCAL = CFLAG:CHARA:初期LV
+	LOCAL:1 = BASE:CHARA:ＥＸＰ - LOCAL * (LOCAL-1) * (LOCAL +1) * 5 / 3
+	SIF BASE:ARG:LV > LOCAL
+		LOCAL:1 /= ((BASE:ARG:LV - LOCAL)/4+1)
+	SIF BASE:ARG:LV < LOCAL
+		LOCAL:1 *= POWER(2,(BASE:ARG:LV - LOCAL)/4)
+	経験値:カウント = LOCAL:1
+NEXT
+
+;;LOCAL = CSVBASE(NO:(ARG:1),(GETNUM(BASE,"LV")),0)
+;LOCAL = CFLAG:(ARG:1):初期LV
+;LOCAL:1 = BASE:(ARG:1):ＥＸＰ - LOCAL * (LOCAL-1) * (LOCAL +1) * 5 / 3
+;SIF BASE:ARG:LV > LOCAL
+;	LOCAL:1 /= ((BASE:ARG:LV - LOCAL)/4+1)
+;SIF BASE:ARG:LV < LOCAL
+;	LOCAL:1 *= POWER(2,(BASE:ARG:LV - LOCAL)/4)
+;LOCAL:2 = LOCAL:1
+;
+;LOCAL = CFLAG:(ARG:2):初期LV
+;LOCAL:1 = BASE:(ARG:2):ＥＸＰ - LOCAL * (LOCAL-1) * (LOCAL +1) * 5 / 3
+;SIF BASE:ARG:LV > LOCAL
+;	LOCAL:1 /= ((BASE:ARG:LV - LOCAL)/4+1)
+;SIF BASE:ARG:LV < LOCAL
+;	LOCAL:1 *= POWER(2,(BASE:ARG:LV - LOCAL)/4)
+
+IF ARG:3 > -1
+	TIMES 経験値:0,0.5
+	TIMES 経験値:1,0.5
+	TIMES 経験値:2,0.5
+ELSE
+	TIMES 経験値:0,0.7
+	TIMES 経験値:1,0.7
+ENDIF
+IF FLAG:ショップコマンド != [[ショップ:邪教の館]]
+	BASE:ARG:ＥＸＰ += SUMARRAY(経験値)/2
+ELSE
+	BASE:ARG:ＥＸＰ += SUMARRAY(経験値)
+ENDIF
+
+;CFLAG:ARG:能力強化回数 = CFLAG:(ARG:1):能力強化回数
+;FOR LOCAL,1,7
+;	LOCALS = %GET_BASESTATUS(LOCAL)%強化回数
+;	LOCAL:1 = BASE:(ARG:1):LOCALS - CSVBASE(NO:(ARG:1),(GETNUM(BASE,LOCALS)),0)
+;	LOCAL:2 = BASE:(ARG:2):LOCALS - CSVBASE(NO:(ARG:2),(GETNUM(BASE,LOCALS)),0)
+;	
+;	CFLAG:ARG:LOCALS += CFLAG:(ARG:1):LOCALS
+;NEXT
+
+;========================================
+;デビルシフター用、邪教の館内変身悪魔変更
+;========================================
+@CHANGE_LINK
+
+P = 0
+;表示させるキャラを抽出（Q:*に表示するキャラの登録番号、LOCAL:2に人数）
+VARSET Q, -1
+A = 0
+REPEAT CHARANUM
+	;人間・造間・半魔は無理
+	SIF TALENT:COUNT:デビルシフター == 0
+		CONTINUE
+	SIF CFLAG:COUNT:この場に居ないフラグ == 1
+		CONTINUE
+	SIF CFLAG:COUNT:PTフラグ == 0
+		CONTINUE
+	;デビルシフター以外の戦闘系素質持ってたらアウト
+	SIF TALENT:COUNT:ガンスリンガー || TALENT:COUNT:サクセサー || TALENT:COUNT:異能者 || TALENT:COUNT:ペルソナ使い || TALENT:COUNT:達人
+		CONTINUE
+	Q:A = COUNT
+	A += 1
+REND
+LOCAL:5 = A
+
+
+$PRINT_LIST
+DRAWLINE
+PRINTFORML 誰を変更する？
+DRAWLINE
+CALL SHOW_CHARA_LIST
+DRAWLINE
+PRINTFORMLC \@(P <= 0) ? %" " * 16% # [1007]前のページ\@
+PRINTLC [1000]戻る
+PRINTFORMLC \@(P >= (LOCAL:5 - 1) / リスト表示数()) ? %" " * 16% # [1009]次のページ\@
+$INPUT_LOOP_1
+INPUT
+IF RESULT == 1000
+	RETURN 0
+ELSEIF RESULT == 1007
+	IF P > 0
+		P -= 1
+		GOTO PRINT_LIST
+	ELSE
+		GOTO INPUT_LOOP_1
+	ENDIF
+ELSEIF RESULT == 1009
+	LOCAL = (LOCAL:5 - 1) / リスト表示数()
+	IF P < LOCAL
+		P += 1
+		GOTO PRINT_LIST
+	ELSE
+		GOTO INPUT_LOOP_1
+	ENDIF
+ELSEIF RESULT < 0 || RESULT >= CHARANUM || MATCH(Q,RESULT) == 0
+	GOTO INPUT_LOOP_1
+ENDIF
+
+CALL ACTION_2311,RESULT
+
+;========================================
+;ABL引き継ぎ時に、そもそもそのレベルのABLが存在するかを調べる
+;========================================
+@ABL引き継ぎチェック(ARG,ARG:1,ARG:2 = -1)
+#FUNCTION
+LOCAL:1 = 0
+IF ARG:2 < 1
+	FOR LOCAL,0,26
+		LOCAL:1 = MAX(ABL:ARG:LOCAL , ABL:(ARG:1):LOCAL , LOCAL:1)
+	NEXT
+ELSE
+	FOR LOCAL,0,26
+		LOCAL:1 = MAX(ABL:ARG:LOCAL , ABL:(ARG:1):LOCAL, ABL:(ARG:2):LOCAL , LOCAL:1)
+	NEXT
+ENDIF
+
+RETURNF LOCAL:1
+
+;========================================
+;手紙システム
+;	ARG:1（0:通常合体　1:魔晶武具　2:スキルカード　3:造魔作成　4:造魔強化　5:造魔初期化 6:イケニエ）
+;========================================
+@FUSION_LETTER,ARG,ARG:1
+
+PRINTL 手紙があります。読みますか？		
+
+CALL INPUT_YN,"Yes","NO"
+IF RESULT == 0
+	TRYCCALLFORM FUSION_LETTER_MESSAGE_K{NO:ARG},ARG,ARG:1
+	CATCH
+		TRYCCALLFORM FUSION_LETTER_MESSAGE_PUB{ABL:(ARG):会話タイプ},ARG,ARG:1
+		CATCH
+			PRINTFORMW %CALLNAME:(ARG)%からの手紙だ。
+			CALL FUSION_LETTER_MESSAGE_PUB,ARG,ARG:1
+		ENDCATCH
+	ENDCATCH
+ENDIF
+
+;=====================================================
+;素質継承
+;=====================================================
+@SUCCESS_TALENT,ARG,ARG:1,ARG:2,ARG:3 = -1
+#DIM CHARA , 1
+#DIM カウント , 1
+CALL SUCCESS_TALENT_CHECK, "処女", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "臆病", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "気丈", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "反抗的", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "素直", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "大人しい", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "プライド高い", "プライド低い" ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "生意気", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "ツンデレ", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "自制心", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "無関心", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "感情乏しい", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "好奇心", "保守的" ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "楽観的", "悲観的" ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "一線越えない", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "目立ちたがり", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "貞操観念", "貞操無頓着" ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "抑圧", "解放" ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "抵抗", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "恥じらい", "恥薄い" ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "献身的", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "小悪魔", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "狂気", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "幼稚", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "痛みに強い", "痛みに弱い" ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "濡れにくい", "濡れやすい" ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "習得早い", "習得遅い" ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "針さばき", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "薬毒耐性", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "おもらし癖", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "自慰しやすい", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "汚臭敏感", "汚臭鈍感" ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "汚れ無視", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "快感に素直", "快感の否定" ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "中毒しやすい", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "倒錯的", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "両刀", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "男嫌い", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "女嫌い", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "Ｃ敏感", "Ｃ鈍感" ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "Ｖ敏感", "Ｖ鈍感" ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "Ａ敏感", "Ａ鈍感" ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "Ｂ敏感", "Ｂ鈍感" ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "魅力", ,ARG,ARG:1,ARG:2,ARG:3
+CALL SUCCESS_TALENT_CHECK, "魅惑", ,ARG,ARG:1,ARG:2,ARG:3
+;胸・体格・性別・ふたなりはお薬で弄くれるのでとりあえず無し
+
+
+
+
+;=====================================================
+;素質継承チェック
+;=====================================================
+@SUCCESS_TALENT_CHECK,ARGS,ARGS:1 = "",ARG,ARG:1,ARG:2,ARG:3 = -1
+#LOCALSIZE 3
+;ARGS 継承チェックを行う素質
+;ARGS:1 その相反する素質
+LOCAL:1 = 0
+;LOCAL:2 素質ポイントを2倍にするキャラ
+;LOCAL:2 = 1
+;FOR LOCAL , 2 , (ARG:3 > 0 ? 4 # 3)
+;	IF ABS(ABL:ARG:種族 - ABL:(ARG:(LOCAL:2)):種族) == ABS(ABL:ARG:種族 - ABL:(ARG:(LOCAL)):種族)
+;		;同じ場合はCSV番号の若い方
+;		SIF NO:(ARG:(LOCAL:2)) > NO:(ARG:(LOCAL))
+;			LOCAL:2 = LOCAL
+;	ELSEIF ABS(ABL:ARG:種族 - ABL:(ARG:(LOCAL:2)):種族) > ABS(ABL:ARG:種族 - ABL:(ARG:(LOCAL)):種族)
+;		;種族番号が近いキャラ優先
+;		LOCAL:2 = LOCAL
+;	ENDIF
+;NEXT
+
+
+IF TALENT:ARG:ARGS
+	;ARGSを所持している場合
+	;相反する素質が指定されていれば、持っている素材悪魔の数を数える
+	IF ARGS:1 != ""
+		FOR LOCAL , 1 , (ARG:3 > 0 ? 4 # 3)
+			SIF TALENT:(ARG:LOCAL):(ARGS:1)
+				LOCAL:1 ++
+			SIF TALENT:(ARG:LOCAL):(ARGS)
+				LOCAL:1 --
+		NEXT
+		;１Ｐ以上で打ち消し
+		SIF LOCAL:1 >= 1
+			TALENT:ARG:ARGS = 0
+		;２Ｐ以上で相反する素質を継承
+		SIF LOCAL:1 >= 2
+			TALENT:ARG:(ARGS:1) = 1
+	ELSE
+		RETURN 0
+	ENDIF
+ELSEIF ARGS:1 != "" && TALENT:ARG:(ARGS:1)
+	;ARGS:1を所持している場合
+	;相反する素質が指定されていれば、持っている素材悪魔の数を数える
+	FOR LOCAL , 1 , (ARG:3 > 0 ? 4 # 3)
+		SIF TALENT:(ARG:LOCAL):(ARGS)
+			LOCAL:1 ++
+		SIF TALENT:(ARG:LOCAL):(ARGS:1)
+			LOCAL:1 --
+	NEXT
+		;１Ｐ以上で打ち消し
+	SIF LOCAL:1 >= 1
+		TALENT:ARG:(ARGS:1) = 0
+		;２Ｐ以上で相反する素質を継承
+	SIF LOCAL:1 >= 2
+		TALENT:ARG:(ARGS) = 1
+ELSE
+	;どちらも持っていない場合
+	;素質:ARGSを所持している素材悪魔を数える
+	;相反する素質がある場合はその素質を持つ悪魔の数だけ減算
+	FOR LOCAL , 1 , (ARG:3 > 0 ? 4 # 3)
+		SIF TALENT:(ARG:LOCAL):(ARGS)
+			LOCAL:1 ++
+		SIF ARGS:1 != "" && TALENT:(ARG:LOCAL):(ARGS:1)
+			LOCAL:1 --
+	NEXT
+	;２Ｐ(相反する素質がある素質なら１Ｐ)以上で継承
+	IF LOCAL:1 >= 2 || (ARGS:1 != "" && LOCAL:1 >= 1)
+		TALENT:ARG:(ARGS) = 1
+	;－１Ｐ以下なら相反する素質を継承
+	ELSEIF LOCAL:1 <= -1
+		TALENT:ARG:(ARGS:1) = 1
+	ENDIF
+ENDIF
+
+;=====================================================
+;合体事故発生チェック
+;ARG = ダンジョンかどうか
+;=====================================================
+@FUSION_ACCIDENT_CHECK(ARG = 0)
+#FUNCTION
+
+; 合体事故確率初期値設定
+LOCAL = 0
+
+; アルバートを装備している場合、必ず0。
+; ただし、アルバートとコペルニクスを同時にONしていると相殺される
+IF EQUIP:MASTER:アルバート == 0 || EQUIP:MASTER:コペルニクス == 1
+	
+	; 月齢をチェックして、基本確率を算出
+	SELECTCASE FLAG:月齢
+		; 新月は1%
+		CASE 0
+			LOCAL = 1
+		; 満月は4%
+		CASE 8
+			LOCAL = 4
+		; その他は2%
+		CASEELSE
+			LOCAL = 2
+	ENDSELECT
+	
+	; 探索中なら3倍
+	SIF ARG == 1
+		LOCAL = LOCAL * 3
+	
+	; コペルニクス装備してて、アルバート装備してないならさらに5倍
+	SIF EQUIP:MASTER:コペルニクス == 1 && EQUIP:MASTER:アルバート == 0
+		LOCAL = LOCAL * 5
+ENDIF
+
+IF LOCAL == 0
+	RETURNF 0
+ELSEIF RAND:100 < LOCAL
+	RETURNF 1
+ENDIF
+
+RETURNF 0
+
+;@合体用ソフトクイック設定_FUSION
+;#LOCALSIZE 6
+;#LOCALSSIZE 6
+;PRINTL 
+;LOCAL = 150
+;LOCAL:1 = 184
+;LOCAL:2 = 186
+;LOCAL:3 = 187
+;LOCAL:4 = 190
+;LOCAL:5 = 192
+;LOCALS = [1020] アルバート
+;LOCALS:1 = [1021] パラケルスス
+;LOCALS:2 = [1022] ラプラス
+;LOCALS:3 = [1023] コペルニクス
+;LOCALS:4 = [1024] ゴエティア
+;LOCALS:5 = [1025] ラジエルの書
+;
+;REPEAT 6
+;	RESETCOLOR
+;	SIF GETBIT(FLAG:合体用ソフトクイック設定, COUNT) == 0
+;		CONTINUE
+;	SIF EQUIP:MASTER:(LOCAL:COUNT) == 0
+;		SETCOLOR COLOR("灰色")
+;	PRINTFORMLC %LOCALS:COUNT%
+;REND
+;RESETCOLOR
+;
