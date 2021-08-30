@@ -1,11 +1,11 @@
 ﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
 ;	Edit	Date			Author					Reason
 ;	001		20XX/XX/XX		----					新規作成
-;	002		2020/05/31		Jガン					ボイコット판정の計算式を変えて구상が出やすいように
+;	002		2020/05/31		Jガン					보이콧판정の計算式を変えて구상が出やすいように
 ;	003		2021/01/04		Jガン					링케이지참가자も구상が出せるように
 ;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
 
-@전투行動対応충성도上昇,ARG
+@전투행동대응충성도상승,ARG
 	#DIMS CONST COLOUR = "붕괴","우애","영맹","우둔","교만","교활","냉정","잔학","현명","좀비","천사","타천사","허심"
 	#DIM LOYALTY,1
 	#DIM MOTIVE,1
@@ -37,7 +37,9 @@
 		ENDIF
 		;메시지呼び出し
 		$RISE_SKIPPED_OFF
-		CALL 구상呼び出し , "BATTLE_MESSAGE" , FLAG:行動順1 , FLAG:行動順1 , MOTIVE
+		SWAP TARGET,FLAG:行動順1
+		CALL 구상呼び出し , "BATTLE_MESSAGE" , TARGET , TARGET , MOTIVE
+		SWAP TARGET,FLAG:行動順1
 		;충성도増減
 		TCVAR:ARG:획득충성도 = MAX(0,TCVAR:ARG:획득충성도+LOYALTY)
 		
@@ -70,24 +72,24 @@
 		;인스톨소프트《블랙컴퍼니》は충성도上昇を阻害
 		SIF EQUIP:MASTER:블랙컴퍼니 == 1 && LOYALTY > 0
 			LOYALTY *= TALENT:ARG:허심 ? -1 # -5
-		;ボイコット판정
+		;보이콧판정
 		CFLAG:ARG:ボイコットフラグ = 0
 		IF LOYALTY <= 0 && IS_HUMAN(ARG) == 0
-			;충성도上昇がない場合はボイコット판정
-			IF MOTIVE != 0
-				CALL ボイコット판정, ARG
-				CALL 구상呼び出し , "BATTLE_BOYCOTT_MESSAGE" , FLAG:行動順1 , FLAG:行動順1 , MOTIVE
-			ENDIF
+			;충성도上昇がない場合は보이콧판정
+			SIF MOTIVE != 0
+				CALL 보이콧판정, ARG
 			;스킬コストに応じてペナルティ설정
 			CALLFORM SKILL_COST_{CFLAG:ARG:입력행동},ARG
 			LOYALTY -= MAX(1,RESULT) * (TALENT:ARG:허심 ? 1 # 5)
 		ENDIF
+		SWAP TARGET,FLAG:行動順1
 		IF CFLAG:ARG:ボイコットフラグ == 1
-			CALL 구상呼び出し , "BATTLE_BOYCOTT_MESSAGE" , FLAG:行動順1 , FLAG:行動順1 , MOTIVE
+			CALL 구상呼び出し , "BATTLE_BOYCOTT_MESSAGE" , TARGET , TARGET , MOTIVE
 		ELSE
 			;충성도上昇に伴う메시지
-			CALL 구상呼び出し , "BATTLE_MESSAGE" , FLAG:行動順1 , FLAG:行動順1 , MOTIVE
+			CALL 구상呼び出し , "BATTLE_MESSAGE" , TARGET , TARGET , MOTIVE
 		ENDIF
+		SWAP TARGET,FLAG:行動順1
 		;난이도[EASY]이상で기력値増減
 		SIF FLAG:전투시보이콧설정 > 1
 			BASE:ARG:기력 = LIMIT(BASE:ARG:기력+LOYALTY,0,MAXBASE:ARG:기력)
