@@ -30,7 +30,7 @@
 VARSET SWITCH,0
 SIF ASSI < 1
 	RETURN -1
-SIF EQUIP:ASSI:악세사리 != 5204
+SIF EQUIP:ASSI:악세사리 != 5204 && EQUIP:ASSI:악세사리 != 8103
 	RETURN -1
 SIF NO:ASSI == [[キャラ:미이나]]
 	SWITCH = 1
@@ -286,6 +286,9 @@ ELSEIF LOCAL:1 == 3
 			;死亡している
 			CASE 10
 				LOCAL:10 += 1
+			;他の状態異常
+			CASE 11
+				LOCAL:7 += 1
 		ENDSELECT
 		LOCAL:6 += 1
 	NEXT
@@ -561,6 +564,14 @@ ELSEIF LOCAL:1 == 3
 							PRINTFORML %CALLNAME:ASSI%「%CSTR:ASSI:12%, 제 목소리가 들리시나요!?」
 							PRINTFORMW %CALLNAME:ASSI%「누가 %CSTR:ASSI:12%의 매료를 치료해주세요!」
 						ENDIF
+					ENDIF
+				ENDCATCH
+			;その他のバステ
+			ELSEIF RESULT == 11
+				TRYCCALLFORM BATTLE_NAVI_K{NO:ASSI}(21, LOCAL:3, LOCAL:4, LOCAL:5, LOCAL:7, LOCAL:8, LOCAL:9, LOCAL:10, LOCAL:12)
+				CATCH
+					IF LOCAL:12 == NO:MASTER
+						PRINTFORML %CALLNAME:ASSI%「%CSTR:ASSI:12%、괜찮습니까？」
 					ELSE
 						IF SWITCH == 1
 							PRINTFORMW %CALLNAME:ASSI%『%조사처리(CALLNAME:(LOCAL:12),"가")% 매료됐습니다、아군에 피해가 나오기 전에 치료해주세요！』
@@ -630,9 +641,9 @@ ELSEIF LOCAL:1 == 3
 					ENDIF
 				ELSE
 					IF RAND:2 == 1
-					PRINTFORMW %CALLNAME:ASSI%「적 남은 수 {LOCAL:4}, 힘내주세요!」
+						PRINTFORMW %CALLNAME:ASSI%「적 남은 수 {LOCAL:4}, 힘내주세요!」
 					ELSE
-					PRINTFORMW %CALLNAME:ASSI%「적 세력 아직 건재, 방심하지 말아주세요!」
+						PRINTFORMW %CALLNAME:ASSI%「적 세력 아직 건재, 방심하지 말아주세요!」
 					ENDIF
 				ENDIF
 			ENDCATCH
@@ -678,6 +689,9 @@ RETURN 0
 	;HPが50%を切ったら報告
 	ELSEIF (BASE:(LOCAL:1):ＨＰ * 100 / MAXBASE:(LOCAL:1):ＨＰ) < 50
 		RETURN 1
+	;それ以外のバステなら報告
+	ELSEIF CFLAG:(LOCAL:1):ステート > 0
+		RETURN 11
 	;特に報告することなし
 	ELSE
 		RETURN 0
