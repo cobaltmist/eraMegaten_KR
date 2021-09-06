@@ -116,21 +116,13 @@ RETURN 0
 IF CFLAG:(ARG):PT플래그
 	;LOCAL:9に대상者、ARGに사용者、PT플래그 == 2はPTにいる仲間、PT플래그 == 1はPTにいない仲間、PT플래그 == 0は적
 	FOR LOCAL:9, 0, CHARANUM
-		;古い판정
-		;SIF CFLAG:ARG:PT플래그 == 0 && CFLAG:(LOCAL:9):PT플래그 > 0
-		;	CONTINUE
-		;SIF CFLAG:ARG:PT플래그 == 2 && CFLAG:(LOCAL:9):PT플래그 == 0
-		;	CONTINUE
-		;SIF CFLAG:(LOCAL:9):PT플래그 == 1 && ABL:(LOCAL:9):종족 == 0
-		;	CONTINUE
-		;SIF CFLAG:(LOCAL:9):この場に居ないフラグ || TALENT:(LOCAL:9):비전투원
-		;	CONTINUE
 
 		;사용者はスルー
 		SIF (LOCAL:9) == ARG
 			CONTINUE
-		;PTに居ない인간は無理
-		SIF CFLAG:(LOCAL:9):PT플래그 == 1 && (ABL:(LOCAL:9):종족 == 0 || ABL:(LOCAL:9):종족 > 45)
+		;PTに居ない人間は除外
+		;SIF CFLAG:(LOCAL:9):PT플래그 == 1 && (ABL:(LOCAL:9):종족 == 0 || ABL:(LOCAL:9):종족 > 45)
+		SIF CFLAG:(LOCAL:9):PT플래그 == 1 && ABL:(LOCAL:9):종족 == 0
 			CONTINUE
 		;렌탈中は排除
 		SIF CFLAG:(LOCAL:9):노역플래그 == 3
@@ -142,10 +134,10 @@ IF CFLAG:(ARG):PT플래그
 			CONTINUE
 		SIF CFLAG:(LOCAL:9):この場に居ないフラグ == 1
 			CONTINUE
+		;敵は除外
 		SIF CFLAG:(LOCAL:9):PT플래그 == 0
 			CONTINUE
 
-		
 		IF CFLAG:(LOCAL:9):ステート == GET_STATE_NUM("DYING")
 			CFLAG:(LOCAL:9):ステート = 0
 			CFLAG:(LOCAL:9):ステート経過ターン = 0
@@ -155,20 +147,12 @@ IF CFLAG:(ARG):PT플래그
 			CALL ALL_CURE_STATE, ARG, (LOCAL:9), 1
 			CALL ALL_HEAL, ARG, (LOCAL:9), 1
 		ENDIF
-		;PRINTFORM 　　TARGET:[{CPOS(LOCAL:9),2}] %CALLNAME:(LOCAL:9),20,LEFT%　>>>>>>　
-		;회복量
-		;LOCAL = MAXBASE:(LOCAL:9):ＨＰ
-		;PRINTFORMW {LOCAL}회복
-		;CALL VAR_HP,LOCAL:9,LOCAL,3
-		;CFLAG:(LOCAL:9):ステート = 0
 	NEXT
 ;적が使った場合
 ELSE
 	FOR LOCAL:9,7,17
 LOCAL:8 = POS(LOCAL:9)
-;LOCAL:7 = POS(ARG)
-
-		;사용者はスルー
+		;使用者は除外
 		SIF LOCAL:8 == ARG
 			CONTINUE
 		SIF LOCAL:8 < 0
@@ -200,19 +184,19 @@ ENDIF
 ;CALL PAY_COST,ARG,419
 
 FOR LOCAL:9,0,CHARANUM
-	;古い판정
-	;SIF CFLAG:(LOCAL:9):PT플래그 == 0
-	;	CONTINUE
-	;사용者はスルー
+	;使用者は除外
 	SIF (LOCAL:9) == ARG
 		CONTINUE
-	;PTに居ない인간は無理
-	SIF CFLAG:(LOCAL:9):PT플래그 == 1 && (ABL:(LOCAL:9):종족 == 0 || ABL:(LOCAL:9):종족 > 45)
+	;PTに居ない人間は除外
+;	SIF CFLAG:(LOCAL:9):PT플래그 == 1 && (ABL:(LOCAL:9):종족 == 0 || ABL:(LOCAL:9):종족 > 45)
+	SIF CFLAG:(LOCAL:9):PT플래그 == 1 && ABL:(LOCAL:9):종족 == 0
 		CONTINUE
+	;レンタル中は除外
 	SIF CFLAG:(LOCAL:9):노역플래그 == 3
 		CONTINUE
 	SIF TALENT:(LOCAL:9):비전투원
 		CONTINUE
+	;ＣＯＭＰにもPTにもいない悪魔を除外
 	SIF CFLAG:(LOCAL:9):所属ＣＯＭＰ == -1 && CFLAG:(LOCAL:9):PT플래그 != 2
 		CONTINUE
 	SIF CFLAG:(LOCAL:9):この場に居ないフラグ == 1
@@ -227,12 +211,6 @@ FOR LOCAL:9,0,CHARANUM
 		CALL ALL_CURE_STATE, ARG, (LOCAL:9) , 1
 		CALL ALL_HEAL, ARG, (LOCAL:9), 1
 	ENDIF
-	;PRINTFORM 　　TARGET:[{CPOS(LOCAL:9),2}] %CALLNAME:(LOCAL:9),20,LEFT%　>>>>>>　
-	;회복量
-	;LOCAL = MAXBASE:(LOCAL:9):ＨＰ
-	;PRINTFORML {LOCAL}회복
-	;CALL VAR_HP,LOCAL:9,LOCAL,3
-	;CFLAG:(LOCAL:9):ステート = 0
 NEXT
 CALL DEAD_CHARA,ARG
 WAIT

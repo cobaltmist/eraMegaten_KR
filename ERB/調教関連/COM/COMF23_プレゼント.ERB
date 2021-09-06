@@ -2,9 +2,9 @@
 ;프레젠트
 ;コミュ니케ション系コマンド、레벨3
 ;-------------------------------------------------
-;2021/4/8　NEO
-;はるかむかしから受け継がれてきた「外界のお酒」をmegatenナイズする
-;ついでに、CSTRで独自のプレゼントを可能にする
+;2021/4/8　NEO		はるかむかしから受け継がれてきた「外界のお酒」をmegatenナイズする
+;					ついでに、CSTRで独自のプレゼントを可能にする
+;2021/4/8　NEO		あとからCSVに追加されたプレゼントを読み込む処理を実装、あともしかしたらコレ無定義でも[6]押したらなんかしてなかった？
 ;-------------------------------------------------
 ;　0：スマイル
 ;　1：量産ネクタール（ギリシャ神話における神の飲み物。「nektar：nek（死）＋tar（打ち勝つ効能）」。花の蜜。まあスポドリ、エナドリみたいなもんだたぶん）
@@ -41,8 +41,18 @@ SIF MONEY >= 10000
 SIF MONEY >= 50000
 	PRINTFORML [5] 이계의 술(￥150000)
 
+
+;独自プレゼントがキャラに設定されていない場合、CSVへ探しに行く
+IF CSTR:TARGET:プレゼント用好物 == ""
+	IF EXISTCSV(NO:TARGET,0)
+		SIF CSVCSTR(NO:TARGET, GETNUM(CSTR, "プレゼント用好物"),0) != ""
+			CSTR:TARGET:プレゼント用好物 = %CSVCSTR(NO:TARGET, GETNUM(CSTR, "プレゼント用好物"),0)%
+	ENDIF
+ENDIF
+
+
 VARSET LOCALS
-SPLIT CSTR:プレゼント用好物, "_", LOCALS
+SPLIT CSTR:TARGET:プレゼント用好物, "_", LOCALS
 ;好物１の名前が設定されていなければなにもしない
 IF LOCALS:0 != ""
 	;値段1を数字としてとれるかチェック
@@ -66,7 +76,7 @@ ENDIF
 PRINTFORML [100] 역시 그만둔다
 
 INPUT
-IF RESULT != 100 && (RESULT < 0 || RESULT > 6)
+IF RESULT != 100 && (RESULT < 0 || RESULT > 8)
 	RESTART
 ELSEIF RESULT == 1 && MONEY < 1000
 	RESTART
@@ -78,9 +88,9 @@ ELSEIF RESULT == 4 && MONEY < 25000
 	RESTART
 ELSEIF RESULT == 5 && MONEY < 150000
 	RESTART
-ELSEIF RESULT == 6  && MONEY < TOINT(LOCALS:1)
+ELSEIF RESULT == 6  && (LOCALS:1 == "" || MONEY < TOINT(LOCALS:1))
 	RESTART
-ELSEIF RESULT == 7  && MONEY < TOINT(LOCALS:3)
+ELSEIF RESULT == 7  && (LOCALS:2 == "" || MONEY < TOINT(LOCALS:3))
 	RESTART
 ELSEIF RESULT == 0
 	;花を프레젠트
@@ -102,7 +112,7 @@ ELSEIF RESULT == 4
 	TFLAG:17 = 4
 	MONEY -= 25000
 ELSEIF RESULT == 5
-	;凄い酒を프레젠트
+	;疑似ソーマ프레젠트
 	TFLAG:17 = 5
 	MONEY -= 150000
 ELSEIF RESULT == 6
