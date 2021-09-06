@@ -13,7 +13,7 @@
 현재 이식상황
 -------------
 
-현재 패치 이식상황 : era Megaten_5604 (Rev 137 통합패치) 까지
+현재 패치 이식상황 : eraMegaten_5604 (Rev 137 통합패치) + eraMegaten_5633 까지
 
 현재 구상 이식상황 : eraMegaten_KOJO_1235 까지
 
