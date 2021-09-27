@@ -45,7 +45,8 @@ SIF ARG != MASTER
 ;SIF ARG == MASTER || NO:ARG == 3501 || NO:ARG == 3502
 SIF ARG == MASTER || NO:ARG == 3501 || NO:ARG == 3502 || (NO:ARG > 4900 && NO:ARG < 4921)
 	LOCALS = %LOCALS%_프로필
-SIF ARG == MASTER
+; 한판 추가요소 : 인수라 칭호 설정
+SIF ARG == MASTER || TALENT:ARG:인수라
 	LOCALS = %LOCALS%_칭호
 
 ;外見・쓰리사이즈설정が有効
@@ -77,7 +78,15 @@ IF LOCALS == "얼굴그래픽"
 PRINTFORML {ARG}
 	CALL 顔グラ변경2,ARG
 ELSE
-	CALLFORM NAME_CHANGE_%LOCALS%,ARG
+; edit 한판 추가요소 : 인수라 칭호 시작
+	IF LOCALS == "칭호" && TALENT:ARG:인수라
+	;인수라의 칭호변경
+		CALLFORM NAME_CHANGE_HITOSURA,ARG
+	ELSE
+	;그 외
+		CALLFORM NAME_CHANGE_%LOCALS%,ARG
+	ENDIF
+; edit 한판 추가요소 : 인수라 칭호 끝
 	IF RESULTS == "설정せず"
 		PRINTFORMW %LOCALS%를 설정하지 못했습니다
 	ELSEIF LOCALS == "신장" || LOCALS == "쓰리사이즈"
@@ -395,6 +404,76 @@ LOOP !RANGE(RESULT,0,68) || EQUALCHECK_STR(RESULTS:RESULT,"????")
 CSTR:ARG:종족명 = %RESULTS:RESULT%
 VARSET RESULTS
 RESULTS = %CSTR:ARG:종족명%
+
+;한판 추가요소 : 인수라 칭호 시작
+
+;====================================================
+;인수라 칭호설정
+;====================================================
+@NAME_CHANGE_HITOSURA,ARG
+VARSET RESULTS,"????"
+
+;이미 지정돼있는 칭호
+RESULTS:0  = %종족명(ARG)%
+
+;●1개이하
+RESULTS:1  = \@ MAGATAMA_HOWMANY() >= 1  ? 마인  # %RESULTS:1%  \@
+
+;●2개~3개
+RESULTS:2  = \@ MAGATAMA_HOWMANY() >= 2 && ABL:ARG:속성LC == 1   ? 신병  # %RESULTS:2%  \@
+RESULTS:3  = \@ MAGATAMA_HOWMANY() >= 2 && ABL:ARG:속성LC == 2   ? 귀중  # %RESULTS:3%  \@
+RESULTS:4  = \@ MAGATAMA_HOWMANY() >= 2 && ABL:ARG:속성LC == 3   ? 마도  # %RESULTS:4%  \@
+
+;●4개~5개
+RESULTS:5  = \@ MAGATAMA_HOWMANY() >= 4 && ABL:ARG:속성LC == 1   ? 성마  # %RESULTS:5%  \@
+RESULTS:6  = \@ MAGATAMA_HOWMANY() >= 4 && ABL:ARG:속성LC == 2   ? 업귀  # %RESULTS:6%  \@
+RESULTS:7  = \@ MAGATAMA_HOWMANY() >= 4 && ABL:ARG:속성LC == 3   ? 마투사  # %RESULTS:7%  \@
+
+;●6개~11개
+RESULTS:8  = \@ BASE:ARG:LV >= 25 && MAGATAMA_HOWMANY() >= 8 && ABL:ARG:속성LC == 1   ? 마교황  # %RESULTS:8%  \@
+RESULTS:9  = \@ BASE:ARG:LV >= 25 && MAGATAMA_HOWMANY() >= 8 && ABL:ARG:속성LC == 2   ? 수라한  # %RESULTS:9%  \@
+RESULTS:10  = \@ BASE:ARG:LV >= 25 && MAGATAMA_HOWMANY() >= 8 && ABL:ARG:속성LC == 3   ? 마군장  # %RESULTS:10%  \@
+
+;●11개~24개
+RESULTS:11  = \@ BASE:ARG:LV >= 40 && MAGATAMA_HOWMANY() >= 16 && ABL:ARG:속성LC == 1   ? 신령  # %RESULTS:11%  \@
+RESULTS:12  = \@ BASE:ARG:LV >= 40 && MAGATAMA_HOWMANY() >= 16 && ABL:ARG:속성LC == 2   ? 수라왕  # %RESULTS:12%  \@
+RESULTS:13  = \@ BASE:ARG:LV >= 40 && MAGATAMA_HOWMANY() >= 16 && ABL:ARG:속성LC == 3   ? 마제  # %RESULTS:13%  \@
+
+;●25개
+RESULTS:14  = \@ BASE:ARG:LV >= 80 && MAGATAMA_HOWMANY() >= 25 && ABL:ARG:속성LC == 3   ? 혼돈왕  # %RESULTS:14%  \@
+
+;リスト표시
+CUSTOMDRAWLINE =
+FOR LOCAL,0,15
+	SIF (LOCAL == 1 || LOCAL == 2 || LOCAL == 14) || LOCAL%3 == 2
+		PRINTL
+	PRINTFORMLC [{LOCAL,2}]%RESULTS:LOCAL%
+NEXT
+PRINTL
+DRAWLINE
+DO 
+	INPUT
+LOOP !RANGE(RESULT,0,14) || EQUALCHECK_STR(RESULTS:RESULT,"????")
+CSTR:ARG:종족명 = %RESULTS:RESULT%
+VARSET RESULTS
+RESULTS = %CSTR:ARG:종족명%
+
+;=======================================================================
+;마가타마 소지 개수 검사함수
+;※총 25개
+;=======================================================================
+@MAGATAMA_HOWMANY
+#FUNCTION
+#DIM DYNAMIC NUMCOUNT = 0 ;현재 소지개수
+#LOCALSIZE 1
+#LOCALSSIZE 2
+FOR LOCAL,8200,8225
+	SIF ITEM:LOCAL > 0
+		NUMCOUNT = NUMCOUNT + 1
+NEXT
+RETURNF NUMCOUNT
+
+;한판 추가요소 : 인수라 칭호 끝
 
 ;以下外見설정　色や머리카락형태には부족があると思われるので、知識のある方追加お願いします
 ;====================================================
