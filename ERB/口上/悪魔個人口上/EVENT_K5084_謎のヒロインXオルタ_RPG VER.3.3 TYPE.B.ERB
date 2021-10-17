@@ -1,0 +1,642 @@
+﻿;-------------------------------------------------
+;謎のヒロインXオルタ口上
+;現状は戦闘口上だけ
+;調教口上誰か作ってくれないかなーﾁﾗｯﾁﾗｯと浅い期待をしながら調教口上を作る準備だけはしておく
+;-------------------------------------------------
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:EVENT_K5084_ASSI.ERB
+;	Facility	:회화타입：助手時口上
+;
+;	Modification Data:
+;	Edit	Date			Author					Reason
+;	001		2021/05/17		しゃけ					新規作成　戦闘口上のみ
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;ライセンスについて
+;	・基本項目(許可する項目を"○"に、許可しない項目を"×"に変更してください。)
+;	+----+----+-------------------------------+
+;	|番号|許可|ライセンス内容                 |
+;	+----+----+-------------------------------+
+;	|   1| ○ | 処理上のバグ修正              |
+;	+----+----+-------------------------------+
+;	|   2| ○ | 口上の誤字・脱字の修正        |
+;	+----+----+-------------------------------+
+;	|   3| ○ | 口上まとめへの収録            |
+;	+----+----+-------------------------------+
+;	|   4| ○ | 口上の新規追加                |
+;	+----+----+-------------------------------+
+;	|   5| ○ | 既存口上の改変                |
+;	+----+----+-------------------------------+
+;	|   6| ▲ | 改変した口上の自由な再配布    |
+;	+----+----+-------------------------------+
+;	|   7| X | 口上内容の転載                |
+;	+----+----+-------------------------------+
+
+@BATTLE_EVENT_K5084, ARG, ARG:1, ARG:2
+;■台詞の行数を増やしたいときは
+;			LOCALS:10 = 一行目
+;			LOCALS:11 = 二行目
+;			LOCALS:12 = 三行目
+;			LOCALS:13 = 四行目
+;			LOCALS:14 = 五行目
+;と増やしていく
+SIF ARG < 0 && NO:ARG != 5084
+	RETURN 0
+VARSET LOCALS
+VARSET KSTR
+
+SELECTCASE TFLAG:전투이벤트
+	;COOP発動 ARGは発動者
+	CASE 1
+		SELECTCASE RAND:3
+			CASE 0
+				LOCALS:10 = 崩しましたので、後はお願いします
+			CASE 1
+				LOCALS:10 = アタック、チャーンス
+			CASE 2
+				LOCALS:10 = ボコボコタイムのお時間です
+		ENDSELECT
+	;COOP参加
+	CASE 2
+		;主人がCOOP発動
+		IF FLAG:行動順1 != -1 && FLAG:行動順1 == MASTER
+			SELECTCASE RAND:3
+				CASE 0
+					LOCALS:10 = マスターさんに続きます
+				CASE 1
+					LOCALS:10 = あ、もう追撃の時間ですか
+				CASE 2
+					LOCALS:10 = 後ろから失礼しまーす
+			ENDSELECT
+		;それ以外
+		ELSE
+			SELECTCASE RAND:3
+				CASE 0
+					IF FLAG:行動順1 != -1
+						IF NO:(FLAG:行動順1) == 5085
+							LOCALS:10 = Xさん、派手に動きすぎですよ
+						ELSEIF NO:(FLAG:行動順1) == [[キャラ:빨강세이버]]
+							LOCALS:10 = ネロさん、背中は任せてください
+						ELSEIF NO:(FLAG:行動順1) == [[キャラ:파랑세이버]]
+							LOCALS:10 = アルトリアさんの後に続きます
+						ELSE
+							LOCALS:10 = %CALLNAME:(FLAG:行動順1)%さんに続きます
+						ENDIF
+					ELSE
+						IF RAND:2
+							LOCALS:10 = 袋叩きの時間ですね
+						ELSE
+							LOCALS:10 = 横から失礼しまーす
+						ENDIF
+					ENDIF
+				CASE 1
+					LOCALS:10 = 袋叩きの時間ですね
+				CASE 2
+					LOCALS:10 = 横から失礼しまーす
+			ENDSELECT
+		ENDIF
+	;被召喚時
+	CASE 3
+		SELECTCASE RAND:2
+			CASE 0
+				KSTR:(K++) = すいません、ちょっとおやつタイムがまだ終わってなくて……
+				KSTR:(K++) = あ、やっぱりダメですか？
+			CASE 1
+				LOCALS:10 = あぁ、はやく帰りたいな……
+		ENDSELECT
+	;공격　ARGが攻撃をする仲魔、ARG:1が敵、ARG:2がダメージ量
+	CASE 11
+		CALLFORM SKILL_TYPE_{CFLAG:ARG:입력행동}
+		LOCAL = MAXBASE:(ARG:1):GET_TYPE(RESULT)
+		;相手が死んだ
+		IF BASE:(ARG:1):ＨＰ <= 0
+			SELECTCASE RAND:2
+				CASE 0
+					LOCALS:10 = はい、次行きましょう
+				CASE 1
+					LOCALS:10 = 滅びましたか
+			ENDSELECT
+		;弱点をついた。つまりCOOP
+		ELSEIF LOCAL > 100 && LOCAL < 999
+			IF CFLAG:(ARG:1):방어플래그
+				LOCALS:10 = むっ、崩せませんでしたか
+			ELSE
+				;こっちはCOOP発動に回すためにカット
+				RETURN 0
+			ENDIF
+		;大ダメージ
+		ELSEIF 데미지割合(ARG:1, ARG:2) > 50
+			LOCALS:10 = 終わりが見えてきました
+		ELSEIF 데미지割合(ARG:1, ARG:2) > 25
+			LOCALS:10 = そこそこですね
+		ELSEIF 데미지割合(ARG:1, ARG:2) > 0
+			LOCALS:10 = あれ、硬い……
+		;無効された
+		ELSEIF 데미지割合(ARG:1, ARG:2) <= 0
+			LOCALS:10 = 無効化されたようです
+		ENDIF
+	;被ダメージ
+	;ARGが攻撃を受ける仲魔、ARG:1が敵、ARG:2がダメージ量
+	CASE 12
+		;死んだ
+		IF BASE:ARG:ＨＰ <= 0
+			SELECTCASE RAND:2
+				CASE 0
+					LOCALS:10 = 地に塗まみれるのも……悪くない……
+				CASE 1
+					LOCALS:10 = おなかが……へりました……
+			ENDSELECT
+		;大ダメージ
+		ELSEIF 데미지割合(ARG, ARG:2) > 50 || 現HP割合(ARG) < 25
+			SELECTCASE RAND:2
+				CASE 0
+					LOCALS:10 = ひゃうっ！
+				CASE 1
+					LOCALS:10 = いたいよう……
+			ENDSELECT
+		;무효
+		ELSEIF ARG:2 == 0
+			SELECTCASE RAND:2
+				CASE 0
+					LOCALS:10 = 蚊に刺される感触以下ですね
+				CASE 1
+					LOCALS:10 = 暗黒卿は　あいてのこうげきを　ふせいだ　！
+			ENDSELECT
+		;흡수
+		ELSEIF ARG:2 < 0
+			SELECTCASE RAND:2
+				CASE 0
+					LOCALS:10 = 暗黒卿となれば相手の攻撃を吸収できるんですよ
+					LOCALS:11 = ごめんなさい、嘘です
+				CASE 1
+					LOCALS:10 = あ、ごちそうさまでした
+			ENDSELECT
+		ELSE
+			SELECTCASE RAND:3
+				CASE 0
+					LOCALS:10 = あいたっ
+				CASE 1
+					LOCALS:10 = ひゃっ
+				CASE 2
+					LOCALS:10 = うぐぐ……
+			ENDSELECT
+		ENDIF
+	;ARGが攻撃をする仲魔、ARG:1が攻撃された敵数、ARG:2が無効数(回避も含む)
+	CASE 13
+		;全弾命中した
+		IF ARG:2 == 0
+			LOCALS:10 = 余裕ですね
+		;普通
+		ELSEIF ARG:2 < ARG:1
+			LOCALS:10 = む、次は全部当ててみましょう
+		;全弾回避された
+		ELSEIF ARG:2 == ARG:1
+			SELECTCASE RAND:3
+				CASE 0
+					LOCALS:10 = あっ……
+				CASE 1
+					LOCALS:10 = 全部避けられるとは、この暗黒卿の目をもってしても読めませんでした……！
+					LOCALS:11 = ……とりあえずそれっぽい事を言っておけば、格は維持されるかな、と
+				CASE 2
+					LOCALS:10 = すいません、早く終わらせたいので避けないでください
+			ENDSELECT
+		ENDIF
+	;範囲攻撃で敵を撃破した
+	;ARGが攻撃をする仲魔、ARG:1が攻撃された敵数、ARG:2が撃破数
+	CASE 14
+		;全員撃破
+		IF ARG:2 == ARG:1
+			LOCAL = RAND:3
+			SELECTCASE LOCAL
+				CASE 0
+					LOCALS:10 = あ、殲滅しちゃいましたね
+				CASE 1
+					LOCALS:10 = まぁ、こんなものでしょう
+				CASE 2
+					LOCALS:10 = %CSTR:ARG:一人称%の勝ちです
+					LOCALS:11 = なぜ負けてしまったのか、来世までに考え直してきてください
+			ENDSELECT
+		ELSE
+			LOCALS:10 = む、取りこぼしがあったようです
+		ENDIF
+	;反射された
+	CASE 15
+		LOCALS:10 = あー……
+	;反射した
+	CASE 16
+		LOCALS:10 = くらえー、あんこくぅりふれくたー
+		LOCALS:11 = ……いえ、普通に反射しただけで別にそんな代物はありませんよ
+	;回避された
+	CASE 17
+		SELECTCASE RAND:3
+			CASE 0
+				LOCALS:10 = あー、避けられました
+			CASE 1
+				LOCALS:10 = 私の懇親という程でもないかもしれない攻撃が……
+			CASE 2
+				LOCALS:10 = むむむっ……
+		ENDSELECT
+	;回避した
+	CASE 18
+		SELECTCASE RAND:3
+			CASE 0
+				LOCALS:10 = 暗黒卿はバレットタイムめいた動きで避けることもできるんですよ
+			CASE 1
+				LOCALS:10 = 危機管理機能見てから回避余裕でした
+			CASE 2
+				LOCALS:10 = ひよこまんじゅう並みに甘いですね
+		ENDSELECT
+	;反撃スキル発動した
+	CASE 20
+			LOCALS:10 = あ、お返しです
+	CASE 22
+		SELECTCASE GET_STATE(CFLAG:ARG:ステート)
+			CASE "HAPPY"
+				LOCALS:10 = おぉ……なんだかわかりませんが、胸がポカポカします
+			CASE "SHOCK"
+				LOCALS:10 = あばばば……
+			CASE "FREEZE"
+				LOCALS:10 = ぶるぶる……こ、こたつ……こたつはどこですか……？
+			CASE "BIND", "PALYZE"
+				LOCALS:10 = あ、あの、すいません、身体が動かないんですが……
+			CASE "PANIC"
+				LOCALS:10 = %CSTR:ARG:一人称%の和菓子を食べたのは……あなたですか……！
+			CASE "SLEEP"
+				LOCALS:10 = ふぁ……おやすみなさい……
+			CASE "CLOSE"
+				LOCALS:10 = あ、なんか魔法が封じられました
+			CASE "POISON"
+				LOCALS:10 = 気分が悪いので病欠します……
+			CASE "BOMB"
+				LOCALS:10 = 頭の中に爆弾があるってこんな気分なんでしょうか
+			CASE "CHARM"
+				KSTR:(K++) = えっ……%CSTR:ARG:一人称%に高級和菓子を餌付けしてくれるんですか……_PH_
+			CASE "CURSE"
+				LOCALS:10 = ついに邪聖剣ネクロカリバーの呪いが発動して───
+				LOCALS:11 = あ、違いましたか
+			CASE "FLY"
+				LOCALS:10 = ﾌﾞｰﾝﾌﾞｰﾝﾌﾞｰﾝ
+				LOCALS:11 = 実は蠅のサイズになったら相対的に和菓子のサイズが大きくなって
+				LOCALS:12 = 結果的にお得になったりするのでは……？
+			CASE "STONE"
+				LOCALS:10 = あんこくきょう　は　＊いしのなかにいる＊
+			CASE "FLAME"
+				LOCALS:10 = あーちーちーあーちー
+				LOCALS:11 = 燃えてるんでーすーがー
+			CASE "SLIP"
+				LOCALS:10 = おぁっと。 すいません、転んだのでスカートの中を覗こうとかしないでくださいね
+			CASE "BRAND"
+				LOCALS:10 = 聖痕ってなんか特別な響きを感じますよね
+				LOCALS:11 = 今付けられたのはあんまり嬉しくない代物ですが
+			;その他の状態異常
+			;CASEELSE
+		ENDSELECT
+	;食いしばり等で耐えた
+	CASE 25
+		LOCALS:10 = うぐぐ……まだです、まだ立てますよ……
+	;バトルに勝利した
+	CASE 90
+		SELECTCASE RAND:3
+			CASE 0
+				LOCALS:10 = 終わりましたね。 とりあえず移動する前に糖分補給させてください、マスターさん
+			CASE 1
+				LOCALS:10 = 一応ヒロインですし、これくらい当然です
+			CASE 3
+				LOCALS:10 = ……ふぅ
+		ENDSELECT
+	;レベルアップした
+	CASE 91
+		SELECTCASE RAND:3
+			CASE 0
+				LOCALS:10 = あ、レベルアップしたみたいです
+			CASE 1
+				LOCALS:10 = 少し身体が大きくなったような……
+				LOCALS:11 = 気のせいとか言わないでください
+			CASE 2 
+				LOCALS:10 = まぁ、成長期ですから
+				LOCALS:11 = サーヴァントは成長しないとかいうのは一旦忘れてください
+		ENDSELECT
+	;逃走に成功した
+	CASE 92
+		SELECTCASE RAND:3
+			CASE 0
+				LOCALS:10 = てったーい
+			CASE 1
+				LOCALS:10 = すいません、先を急いでいるので
+			CASE 2
+				LOCALS:10 = お前たちに名乗る名などなーい
+				LOCALS:11 = という訳で、またどこかで
+		ENDSELECT
+	;逃走に失敗した
+	CASE 93
+			LOCALS:10 = あ、すいません、躓きました
+	;戦闘開始時
+	CASE 94
+		IF FLAG:선제공격플래그
+			LOCALS:10 = よし、速攻で終わらせましょう
+		ELSEIF 現HP割合(ARG) < 25
+			;瀕死
+			LOCALS:10 = すいません、先におやつを食べてからでも……
+			LOCALS:11 = ダメですか、そうですか
+		ELSE
+			LOCALS:10 = はぁ……もう帰りたい
+		ENDIF
+	;バックアタックを受けた
+	CASE 95
+		IF 現HP割合(ARG) < 25
+			;瀕死
+			LOCALS:10 = あの、せめておやつを食べてから……
+			LOCALS:11 = 問答無用ですか、そうですか
+		ELSE
+			LOCALS:10 = あ、背後取られました
+		ENDIF
+	;敵の先制攻撃を受けた
+	CASE 96
+		IF 現HP割合(ARG) < 25
+			;瀕死
+			LOCALS:10 = すいません、先におやつを食べてからでも……
+			LOCALS:11 = ダメですか、そうですか
+		ELSE
+			LOCALS:10 = 先手を取られても暗黒卿は平然といるものです
+			LOCALS:11 = ごめんなさい、ちょっと不安になってます
+		ENDIF
+	CASE 100
+		IF 0
+		;スキル分岐
+		;ELSEIF CFLAG:(FLAG:行動順1):입력행동 == [[스킬:○○]]
+		ELSE
+			SELECTCASE RAND:2
+				CASE 0
+					LOCALS:10 = 合わせます
+				CASE 1
+					LOCALS:10 = とりあえず合わせますね
+			ENDSELECT
+		ENDIF
+ENDSELECT
+SIF !(LOCALS:10 == "")
+	CALL MESSAGE_B2(CALLNAME:ARG,0, LOCALS:10, LOCALS:11, LOCALS:12, LOCALS:13, LOCALS:14)
+
+
+@BATTLE_MESSAGE_K5084,ARG,ARG:1 = 0
+;■台詞の行数を増やしたいときは
+;			LOCALS:10 = 一行目
+;			LOCALS:11 = 二行目
+;			LOCALS:12 = 三行目
+;			LOCALS:13 = 四行目
+;			LOCALS:14 = 五行目
+;と増やしていく
+VARSET LOCALS
+;使用したスキルの名前をLOCALSに代入
+CALLFORM SKILL_NAME_{CFLAG:ARG:입력행동},ARG
+LOCALS = %RESULTS%
+;FLAG:ARG:타겟
+
+;崩壊してる場合は口上表示しないようにもできる
+;SIF TALENT:ARG:9
+;	RETURN 0
+
+CALLFORM SKILL_EFECT_{CFLAG:ARG:입력행동}
+;コメントアウトしやすいように
+IF 1 == 0
+;-------------------------------------------------
+;状態異常時
+;-------------------------------------------------
+;魅了時
+ELSEIF CFLAG:ARG:ステート == GET_STATE_NUM("CHARM")
+	;행동불능（ムラムラしている）
+	IF CFLAG:ARG:입력행동 == 2314
+		LOCALS:10 = 和菓子…和菓子は、どこに…？
+	ELSE
+		LOCALS:10 = 和菓子っ！！
+	ENDIF
+;混乱時
+ELSEIF CFLAG:ARG:ステート == GET_STATE_NUM("PANIC")
+	;금전뿌리기
+	IF CFLAG:ARG:입력행동 == 2315
+		LOCALS:10 = マスターさんのお金で和菓子を買っても文句はでないでしょう……
+	;행동불능（ぼんやりしている）
+	ELSEIF CFLAG:ARG:입력행동 == 2314
+		SELECTCASE RAND:2
+			CASE 0
+				LOCALS:10 = あれは…和菓子かな……？ いや、和菓子はもっと…バァーッとした色合いだったような……
+			CASE 1
+				LOCALS:10 = 新作の和菓子……！？ ……ごくりっ…
+		ENDSELECT
+	ELSE
+		LOCALS:10 = どいてください！ 私の和菓子です！！
+	ENDIF
+;-------------------------------------------------
+;特定スキル
+;-------------------------------------------------
+;これは通常攻撃
+ELSEIF CFLAG:ARG:입력행동 == 0
+	SELECTCASE RAND:3
+		CASE 0
+			LOCALS:10 = ふっ！
+		CASE 1
+			LOCALS:10 = くらえっ
+		CASE 2
+			LOCALS:10 = 沈め
+	ENDSELECT
+;ELSEIF CFLAG:ARG:입력행동 == (スキル番号)
+;	LOCALS:10 = 
+;;섹시댄스
+;ELSEIF CFLAG:ARG:입력행동 == 1212
+;	LOCALS:10 = 
+;;캔디보이스
+;ELSEIF CFLAG:ARG:입력행동 == 1213
+;	LOCALS:10 = 
+;;파이널누드
+;ELSEIF CFLAG:ARG:입력행동 == 1214
+;	LOCALS:10 = 
+;-------------------------------------------------
+;총공격（特殊弾丸含む）
+;-------------------------------------------------
+;ELSEIF RANGE(CFLAG:ARG:입력행동,2101, 2200)
+;	;GUN
+;	IF CFLAG:ARG:입력행동 == 2101
+;		LOCALS:10 = 
+;	;그외（特殊弾丸）
+;	ELSE
+;		LOCALS:10 = 
+;	ENDIF
+;-------------------------------------------------
+;基本行動
+;-------------------------------------------------
+ELSEIF RANGE(CFLAG:ARG:입력행동,2301, 2400)
+	;ＣＨＡＮＧＥ
+	IF CFLAG:ARG:입력행동 == 2301
+		LOCALS:10 = 移動しますね
+	ELSE
+		;LOCALS:10 = 
+	ENDIF
+;-------------------------------------------------
+;アイテム
+;-------------------------------------------------
+ELSEIF RANGE(CFLAG:ARG:입력행동,3001, 3500)
+	;LOCALS:10 = 
+;-------------------------------------------------
+;リンケージ
+;-------------------------------------------------
+ELSEIF RANGE(CFLAG:ARG:입력행동,4000, 5000)
+	;;메시아라이저
+	;IF CFLAG:ARG:입력행동 == 4160
+	;	LOCALS:10 = 
+	;;Lヒートライザ
+	;ELSEIF CFLAG:ARG:입력행동 == 4200
+	;	LOCALS:10 = 
+	;;사망유희
+	;ELSEIF CFLAG:ARG:입력행동 == 4800
+	;	LOCALS:10 = 
+	;ELSE
+	;	LOCALS:10 = 
+	;ENDIF
+;-------------------------------------------------
+;汎用スキル
+;-------------------------------------------------
+;검격
+ELSEIF RANGE(CFLAG:ARG:입력행동,1, 99)
+	IF CFLAG:ARG:입력행동 == [[스킬:낭아천주참]]
+		LOCALS:10 = ずばばーっと、いきますよ
+	ELSE
+		LOCALS:10 = 斬り捨てます
+	ENDIF
+;비구
+;ELSEIF RANGE(CFLAG:ARG:입력행동,101, 199)
+;	LOCALS:10 = 
+;타격
+;ELSEIF RANGE(CFLAG:ARG:입력행동,201, 299)
+;	LOCALS:10 = 
+;전술
+;ELSEIF RANGE(CFLAG:ARG:입력행동,301, 400)
+;	;噛み付き系
+;	IF RANGE(CFLAG:ARG:입력행동,321, 326)
+;		LOCALS:10 = 
+;	;그외
+;	ELSE
+;		LOCALS:10 = 
+;	ENDIF
+;회복
+;ELSEIF RANGE(CFLAG:ARG:입력행동,401, 499)
+;	;全体回復
+;	IF CFLAG:ARG:타겟 > 6
+;		LOCALS:10 = 
+;	ELSE
+;		LOCALS:10 = 
+;	ENDIF
+;지원
+ELSEIF RANGE(CFLAG:ARG:입력행동,501, 599)
+	;強化系
+	;IF RANGE(CFLAG:ARG:입력행동,501, 505) || CFLAG:ARG:입력행동 == 558
+	;	LOCALS:10 = 
+	;弱体系
+	;ELSEIF RANGE(CFLAG:ARG:입력행동,506, 509) || CFLAG:ARG:입력행동 == 541 || CFLAG:ARG:입력행동 == 556
+	;	LOCALS:10 = 
+	;도발
+	;ELSEIF CFLAG:ARG:입력행동 == 515
+	;	LOCALS:10 = 
+	IF CFLAG:ARG:입력행동 == [[스킬:기합]]
+		LOCALS:10 = 少し本腰を入れます
+	;ELSEIF CFLAG:ARG:입력행동 == [[스킬:컨센트레이트]]
+	;	LOCALS:10 = 
+	;그외
+	;ELSE
+	;	LOCALS:10 = 
+	ENDIF
+;방어
+;ELSEIF RANGE(CFLAG:ARG:입력행동,601, 699)
+;	LOCALS:10 = 
+;화염
+;ELSEIF RANGE(CFLAG:ARG:입력행동,701, 799)
+;	LOCALS:10 =
+;빙결
+;ELSEIF RANGE(CFLAG:ARG:입력행동,801, 899)
+;	LOCALS:10 = 
+;전격
+ELSEIF RANGE(CFLAG:ARG:입력행동,901, 999)
+	LOCALS:10 = 暗黒卿の電撃パワーは結構痛いですよ
+;충격
+;ELSEIF RANGE(CFLAG:ARG:입력행동,1001, 1099)
+;	LOCALS:10 = 
+;;신경
+;ELSEIF RANGE(CFLAG:ARG:입력행동,1101, 1199)
+;	LOCALS:10 = 
+;;정신
+;ELSEIF RANGE(CFLAG:ARG:입력행동,1201, 1299)
+;	LOCALS:10 = 
+;;파마
+;ELSEIF RANGE(CFLAG:ARG:입력행동,1301, 1399)
+;	LOCALS:10 = 
+;;주살
+;ELSEIF RANGE(CFLAG:ARG:입력행동,1401, 1499)
+;	LOCALS:10 = 
+;;지변
+;ELSEIF RANGE(CFLAG:ARG:입력행동,1501, 1599)
+;	LOCALS:10 = 
+;;수격
+;ELSEIF RANGE(CFLAG:ARG:입력행동,1601, 1699)
+;	LOCALS:10 = 
+;;질풍
+;ELSEIF RANGE(CFLAG:ARG:입력행동,1701, 1799)
+;	LOCALS:10 = 
+;;중력
+ELSEIF RANGE(CFLAG:ARG:입력행동,1801, 1899)
+	LOCALS:10 = 押し潰します
+;핵열
+;ELSEIF RANGE(CFLAG:ARG:입력행동,1901, 1999)
+;	LOCALS:10 =
+;만능
+ELSEIF RANGE(CFLAG:ARG:입력행동,2001, 2099)
+	;自爆系
+	IF RANGE(CFLAG:ARG:입력행동,2005, 2007)
+		;LOCALS:10 = 
+	ELSE
+		;LOCALS:10 = 
+	ENDIF
+;魔法少女系
+ELSEIF RANGE(CFLAG:ARG:입력행동,2989, 2999)
+	;LOCALS:10 = 
+;-------------------------------------------------
+;그외
+;-------------------------------------------------
+ELSEIF CFLAG:ARG:입력행동 == PU_SKILLNUM_GET(ARG,"ノウブル・ファンタズム")
+	LOCALS:10 = オルトリアクター、オーバードライブ。ここからは手加減なしです
+ELSEIF CFLAG:ARG:입력행동 == PU_SKILLNUM_GET(ARG,"黒龍双剋勝利剣")
+	IF SKILLGAGE_H_GET(ARG,PU_SKILLNUM_GET(ARG,"黒龍双剋勝利剣")) == 0
+		LOCALS:10 = オルトリアクター臨界突破。我が暗黒の光芒で、素粒子に帰れ！
+	ELSEIF SKILLGAGE_H_GET(ARG,PU_SKILLNUM_GET(ARG,"黒龍双剋勝利剣")) == 9
+		LOCALS:10 = 　ｸ ﾛ ｽ・ｶ ﾘ ﾊﾞ ｰ
+		LOCALS:11 = 『黒龍双剋勝利剣』ッ─────！！！！
+	ENDIF
+ELSEIF CFLAG:ARG:입력행동 == PU_SKILLNUM_GET(ARG,"∞黒餡子")
+	LOCALS:10 = 少し待ってください、今食べ終えますので……もぐもぐ……
+ELSEIF CFLAG:ARG:입력행동 == PU_SKILLNUM_GET(ARG,"直感")
+	LOCALS:10 = 見える……私にも、敵の動きが見えます……
+ELSEIF CFLAG:ARG:입력행동 == PU_SKILLNUM_GET(ARG,"刹那無影剣")
+	LOCALS:10 = 我が剣閃───見切れるものなら見切ってみせろ
+	LOCALS:11 = ちなみに怠けたいが末に磨きぬいた剣技ですので、これに負けたら恥ずかしいですよ
+ELSEIF CFLAG:ARG:입력행동 == PU_SKILLNUM_GET(ARG,"王の見えざる手")
+	LOCALS:10 = 暗黒卿たる者、戦局の流れを掴むのは容易い事です
+	LOCALS:11 = それはそれとして一人囮になってもらいます
+ENDIF
+;-------------------------------------------------
+;真・그외
+;-------------------------------------------------
+IF LOCALS:10 == ""
+	;必ず何か喋る
+	SELECTCASE RAND:5
+		CASE 0
+			LOCALS:10 = これでいいですか？
+		CASE 1
+			LOCALS:10 = いきます
+		CASE 2
+			LOCALS:10 = はい
+		CASE 3
+			LOCALS:10 = 了承
+		CASE 4
+			LOCALS:10 = ではそれで
+	ENDSELECT
+ENDIF
+
+SIF !(LOCALS:10 == "")
+	CALL MESSAGE_B2(CALLNAME:ARG,1, LOCALS:10, LOCALS:11, LOCALS:12, LOCALS:13, LOCALS:14)
