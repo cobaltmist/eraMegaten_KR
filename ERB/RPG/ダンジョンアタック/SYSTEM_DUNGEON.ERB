@@ -86,10 +86,10 @@ RESULT:1 = 2
 RESULTS = 탐색
 ;---- EDIT 041 MOD START   -------------------------
 ;なんかの不손際で0未満なら0に
-SIF FLAG:던전탐색済み < 0
-	FLAG:던전탐색済み = 0
+SIF FLAG:던전탐색완료 < 0
+	FLAG:던전탐색완료 = 0
 ;一日一回、もしくはマスターが절륜、수수께끼의매력、금단의지식ないし레벨50以上なら二回、레벨100以上なら三回まで
-SIF FLAG:던전탐색済み >= 1+(TALENT:MASTER:절륜 || TALENT:MASTER:수수께끼의매력 || TALENT:MASTER:금단의지식 || BASE:MASTER:LV >= 50)+(BASE:MASTER:LV >= 100)
+SIF FLAG:던전탐색완료 >= 1+(TALENT:MASTER:절륜 || TALENT:MASTER:수수께끼의매력 || TALENT:MASTER:금단의지식 || BASE:MASTER:LV >= 50)+(BASE:MASTER:LV >= 100)
 	RETURN 0
 ;---- EDIT 041 MOD END   -------------------------
 ;당신が臨月だと不可
@@ -120,21 +120,21 @@ CALL SHOW_DUNGEONLIST
 SIF RESULT == -1
 	RETURN 0
 LOCAL = RESULT
-FLAG:現던전 = LOCAL
+FLAG:현던전 = LOCAL
 FLAG:MAG소비율 = 100
-FLAG:月齢進行率 = 100
+FLAG:월령진행률 = 100
 ;에스트마の効果リセット挟みませてもらいます
 CALL ENCOUNTER_CHANGER
-;スタート地点を呼び出し(現M、現X、現Yにそれぞれ代入)
-CALLFORM START_DUNGEON_{FLAG:現던전}
+;スタート地点を呼び出し(현M、현X、현Yにそれぞれ代入)
+CALLFORM START_DUNGEON_{FLAG:현던전}
 ;現在のフ로어데이터を読み込み
-CALL MAKE_FLOOR, FLAG:現던전
+CALL MAKE_FLOOR, FLAG:현던전
 CALL AUTOMAP
 ;---- EDIT 041 MOD START   -------------------------
-FLAG:던전탐색済み += 1
+FLAG:던전탐색완료 += 1
 ;---- EDIT 041 MOD END   -------------------------
 ;던전開始時の이벤트
-TRYCALLFORM EVENT_DUNGEON_START_{FLAG:現던전}
+TRYCALLFORM EVENT_DUNGEON_START_{FLAG:현던전}
 FLAG:도주불가플래그 = 0
 FLAG:회화불능플래그 = 0
 FLAG:선제기습취소 = 0
@@ -165,7 +165,7 @@ NEXT
 ;---- EDIT 002 ADD START -------------------------
 ;ここに来れないASSI及び健在でないASSIを排除する
 IF FLAG:던전내조교 == 1
-	FLAG:던전내조교조수退避 = ASSI
+	FLAG:던전내조교조수대피 = ASSI
 	SIF ASSI >= 0 && ABL:ASSI:종족 == 0 && CFLAG:ASSI:PT플래그 == 1
 		ASSI = -1
 	SIF ASSI >= 0 && GET_STATE(CFLAG:ASSI:ステート) != "GOOD"
@@ -179,8 +179,8 @@ SIF FLAG:던전내조교 == 1
 FLAG:탈출 = 0
 ;---- EDIT 003 ADD START -------------------------
 ;日付변경時の処理に移動
-;SIF FLAG:트리슈の泉이용횟수 > 0
-;	FLAG:트리슈の泉이용횟수 = 1
+;SIF FLAG:트리슈의샘이용횟수 > 0
+;	FLAG:트리슈의샘이용횟수 = 1
 ;SIF FLAG:트리슈조교 == -1
 ;	FLAG:트리슈조교 = -2
 ;---- EDIT 003 ADD START -------------------------
@@ -382,7 +382,7 @@ ENDIF
 @GET_FLOOR_ANALYZE_T, ARG, ARG:1
 #FUNCTION
 ;RETURNF DA:ARG:(ARG:1+100)
-RETURNF DPOINT("GET" , , ARG , ARG:1 , FLAG:現M , @"던전%TOSTR(FLAG:現던전 , "00")%")
+RETURNF DPOINT("GET" , , ARG , ARG:1 , FLAG:현M , @"던전%TOSTR(FLAG:현던전 , "00")%")
 
 ;=====================================================================
 ;フ로어のANALYZE情報設置
@@ -407,9 +407,9 @@ RETURN 0
 ;던전ごとのフ로어데이터を取りに行く
 CALLFORM MAKE_FLOOR_{ARG}
 ;フ로어の기본데이터を체크し、なければセット
-;CALL SET_FLOOR_ANALYZE_DEFAULT, ARG, FLAG:現M
+;CALL SET_FLOOR_ANALYZE_DEFAULT, ARG, FLAG:현M
 ;現在の던전の現在のフ로어のアナライズ情報を取得する
-;CALL SET_FLOOR_ANALYZE_T, ARG, FLAG:現M
+;CALL SET_FLOOR_ANALYZE_T, ARG, FLAG:현M
 ;---- D3D 054 START (ADD) ------------------------------
 ;SIF EQUIP:MASTER:モノスコープ
 SIF D3D_WORP == 0
@@ -424,14 +424,14 @@ D3D_WORP = 0
 ;=====================================================================
 @FLOOR_ANALYZE, ARG = -1, ARG:1 = -1, ARG:2 = -1, ARG:3 = -1, ARG:4 = -1
 #LOCALSIZE 2
-ARG = ARG == -1 ? FLAG:現M # ARG
+ARG = ARG == -1 ? FLAG:현M # ARG
 ARG:1 = ARG:1 == -1 ? 0 # ARG:1
 ARG:2 = ARG:2 == -1 ? FLAG:최대X # ARG:2
 ARG:3 = ARG:3 == -1 ? 0 # ARG:3
 ARG:4 = ARG:4 == -1 ? FLAG:최대Y # ARG:4
 FOR LOCAL:1, ARG:3, ARG:4
 	FOR LOCAL, ARG:1, ARG:2
-		CALL SET_FLOOR_ANALYZE, 2, FLAG:現던전, ARG, LOCAL, LOCAL:1
+		CALL SET_FLOOR_ANALYZE, 2, FLAG:현던전, ARG, LOCAL, LOCAL:1
 	NEXT
 NEXT
 ;=====================================================================
@@ -442,23 +442,23 @@ NEXT
 #LOCALSSIZE 1
 #DIM 改行フラグ, 1
 CUSTOMDRAWLINE =
-CALLFORM FLOORNAME_{FLAG:現던전}
+CALLFORM FLOORNAME_{FLAG:현던전}
 ;ALIGNMENT RIGHT
 IF FLAG:커스텀게임화면
-	PRINTFORML   ￥{MONEY,9}    ＣＯＭＰ용량： {NUM_NAKAMA() + ソフト용량()}/{FLAG:ＣＯＭＰ용량}사용중
+	PRINTFORML   ￥{MONEY,9}    ＣＯＭＰ용량： {NUM_NAKAMA() + 소프트용량()}/{FLAG:ＣＯＭＰ용량}사용중
 	SIF DELE_MAG_INCHARGE > 0
 		PRINTFORML MAG위임: {BASE:DELE_MAG_INCHARGE:ＭＡＧ,9}
 	PRINTFORM MAG:{BASE:MASTER:ＭＡＧ,9}    
 ELSE
-	PRINTFORML   ￥{MONEY,8}    ＣＯＭＰ용량： {NUM_NAKAMA() + ソフト용량()}/{FLAG:ＣＯＭＰ용량}사용중
+	PRINTFORML   ￥{MONEY,8}    ＣＯＭＰ용량： {NUM_NAKAMA() + 소프트용량()}/{FLAG:ＣＯＭＰ용량}사용중
 	SIF DELE_MAG_INCHARGE > 0
 		PRINTFORML MAG위임: {BASE:DELE_MAG_INCHARGE:ＭＡＧ,8}
 	PRINTFORM MAG:{BASE:MASTER:ＭＡＧ,8}    
 ENDIF
-IF FLAG:月齢 != 0 && FLAG:月齢 != 8
-	PRINTFORML {FLAG:月齢}/8 \@ FLAG:月齢ベクトル == 0 ? ＹＯＵＮＧ # ＯＬＤ \@ ＭＯＯＮ
+IF FLAG:월령 != 0 && FLAG:월령 != 8
+	PRINTFORML {FLAG:월령}/8 \@ FLAG:월령벡터 == 0 ? ＹＯＵＮＧ # ＯＬＤ \@ ＭＯＯＮ
 ELSE
-	PRINTFORML \@ FLAG:月齢 == 8 ? ＦＵＬＬ ＭＯＯＮ # ＮＥＷ ＭＯＯＮ\@
+	PRINTFORML \@ FLAG:월령 == 8 ? ＦＵＬＬ ＭＯＯＮ # ＮＥＷ ＭＯＯＮ\@
 ENDIF
 ;---- D3D 054 START (ADD) ------------------------------
 IF D3D_ACTIVE
@@ -475,27 +475,27 @@ IF FLAG:최대Y < 18
 	NEXT
 ENDIF
 
-;CALLFORM GET_DUNGEON_NAME_{FLAG:現던전}
-CALLF DPOINT( , , 0 , 0 , FLAG:現M , @"던전%TOSTR(FLAG:現던전,"00")%")
-FOR LOCAL:1, MAX(0, FLAG:現Y - 9 - MAX(0, ((FLAG:現Y+9)-FLAG:최대Y))), MIN(FLAG:現Y+9+MAX(0, 9-FLAG:現Y), FLAG:최대Y)
-;FOR LOCAL:1, MAX(0, FLAG:現Y-20), MIN(FLAG:現Y+20, FLAG:최대Y)
-	FOR LOCAL, MAX(0, FLAG:現X - 15 - MAX(0, ((FLAG:現X+15)-FLAG:최대X))), MIN(FLAG:現X+15+MAX(0, 15-FLAG:現X), FLAG:최대X)
-		IF FLAG:現X == LOCAL && FLAG:現Y == LOCAL:1
+;CALLFORM GET_DUNGEON_NAME_{FLAG:현던전}
+CALLF DPOINT( , , 0 , 0 , FLAG:현M , @"던전%TOSTR(FLAG:현던전,"00")%")
+FOR LOCAL:1, MAX(0, FLAG:현Y - 9 - MAX(0, ((FLAG:현Y+9)-FLAG:최대Y))), MIN(FLAG:현Y+9+MAX(0, 9-FLAG:현Y), FLAG:최대Y)
+;FOR LOCAL:1, MAX(0, FLAG:현Y-20), MIN(FLAG:현Y+20, FLAG:최대Y)
+	FOR LOCAL, MAX(0, FLAG:현X - 15 - MAX(0, ((FLAG:현X+15)-FLAG:최대X))), MIN(FLAG:현X+15+MAX(0, 15-FLAG:현X), FLAG:최대X)
+		IF FLAG:현X == LOCAL && FLAG:현Y == LOCAL:1
 			SETCOLOR 0x33ffcc
 			PRINT ＠
 			RESETCOLOR
 			CONTINUE
 		ENDIF
-		IF DA:(FLAG:現X):(FLAG:現Y) % 10 == -1 && !((EQUIP:MASTER:다크스캐너 || EQUIP:MASTER:허니・비) && NUM_SUMMONER() ) && FLAG:라이트마 == 0
+		IF DA:(FLAG:현X):(FLAG:현Y) % 10 == -1 && !((EQUIP:MASTER:다크스캐너 || EQUIP:MASTER:허니・비) && NUM_SUMMONER() ) && FLAG:라이트마 == 0
 			SETCOLOR 0x333344
-			IF ABS(LOCAL-FLAG:現X)+ABS(LOCAL:1-FLAG:現Y) > 1
+			IF ABS(LOCAL-FLAG:현X)+ABS(LOCAL:1-FLAG:현Y) > 1
 				PRINT ？
 				RESETCOLOR
 				CONTINUE
 			ENDIF
 		ENDIF
 		IF DPOINT( , , LOCAL , LOCAL:1) > 0
-			CALL DG_GET_TILE(LOCAL, LOCAL:1, FLAG:現M, FLAG:現던전)
+			CALL DG_GET_TILE(LOCAL, LOCAL:1, FLAG:현M, FLAG:현던전)
 			PRINTFORM %RESULTS%
 		ELSE
 			PRINT 　
@@ -517,11 +517,11 @@ $D3D_SHOW_FLOOR_FINISH
 ;---- EDIT 004 DEL START -------------------------
 ;IF EQUIP:MASTER:에너미소나  && NUM_SUMMONER()
 ;;	IF FLAG:エンカウント変動 == 1
-;;		PRINTFORML 조우율：{(FLAG:인카운터율)/2}％   
+;;		PRINTFORML 조우율：{(FLAG:인카운트율)/2}％   
 ;;	ELSEIF FLAG:エンカウント変動 == 2
-;;		PRINTFORML 조우율：{(FLAG:인카운터율)*2}％   
+;;		PRINTFORML 조우율：{(FLAG:인카운트율)*2}％   
 ;;	ELSE
-;		PRINTFORML 조우율：{FLAG:인카운터율}％   
+;		PRINTFORML 조우율：{FLAG:인카운트율}％   
 ;;	ENDIF
 ;ENDIF
 ;---- EDIT 004 DEL END ---------------------------
@@ -531,7 +531,7 @@ $D3D_SHOW_FLOOR_FINISH
 LOCALS = 
 
 IF EQUIP:MASTER:에너미소나  && NUM_SUMMONER()
-	PRINTFORM 조우율：{FLAG:인카운터율, 3}％   
+	PRINTFORM 조우율：{FLAG:인카운트율, 3}％   
 	改行フラグ = 1
 ENDIF
 IF EQUIP:MASTER:캡스・락  && NUM_SUMMONER()
@@ -591,7 +591,7 @@ SELECTCASE FLAG:던전내조작설정
 		PRINTBUTTON "[m]ＭＡＧＩＣ","m"
 		PRINT     
 		PRINTBUTTON "[f]ＦＯＲＭ　　　","f"
-		SIF FLAG:ムフフ전개
+		SIF FLAG:무후후전개
 			PRINTBUTTON "[*]" + ハート() , "*"
 		PRINTL
 		;---- D3D 054 START (MOD) ------------------------------
@@ -680,7 +680,7 @@ SELECTCASE FLAG:던전내조작설정
 		PRINTBUTTON "[2]ＭＡＧＩＣ","2"
 		PRINT     
 		PRINTBUTTON "[6]ＦＯＲＭ　　　","6"
-		SIF FLAG:ムフフ전개
+		SIF FLAG:무후후전개
 			PRINTBUTTON "[9]" + ハート() , "9"
 		PRINTL
 		;---- D3D 054 START (MOD) ------------------------------
@@ -757,7 +757,7 @@ ENDSELECT
 ;終了조건が満たされるまで処理を繰り返す
 
 WHILE 1 == 1
-	FLAG:ウィンドウ메시지スキップ = 0
+	FLAG:윈도우메시지스킵 = 0
 	CALL REFRESH_FORMATION
 	$PRINT
 	SIF FLAG:던전내조교 == 1
@@ -766,19 +766,19 @@ WHILE 1 == 1
 	IF FLAG:탈출
 		;마그네타이트 소모 담당 초기화
 		DELE_MAG_INCHARGE = 0
-		TRYCALLFORM EVENT_DUNGEON_END_{FLAG:現던전}
+		TRYCALLFORM EVENT_DUNGEON_END_{FLAG:현던전}
 		FLAG:탈출스킬금지 = 0
 		BREAK
 	ENDIF
 	REDRAW 0
 	;조우율を読みこみ
-	CALLFORM ENCOUNT_RATE_{FLAG:現던전}
-	;FLAG:인카운터율 = FLAG:인카운터율 * (100 + FLAG:인카운터율보정) / 100
+	CALLFORM ENCOUNT_RATE_{FLAG:현던전}
+	;FLAG:인카운트율 = FLAG:인카운트율 * (100 + FLAG:인카운트율보정) / 100
 	;던전を描画
 	CALL SHOW_FLOOR
 	;現パーティ描画
 	CALL SHOW_NOW_FORMATION_P,0,2,,2
-	FLAG:コマンド표시行数 = LINECOUNT
+	FLAG:커맨드표시행수 = LINECOUNT
 	;コマンド표시
 	CALL SHOW_DUNGEON_COMMAND
 	
@@ -807,7 +807,7 @@ WHILE 1 == 1
 						CASE 3
 							D3D_TOWALK = 4
 					ENDSELECT
-					CALL D3D_GET_FRONT_COORD(FLAG:現X,FLAG:現Y)
+					CALL D3D_GET_FRONT_COORD(FLAG:현X,FLAG:현Y)
 				ELSEIF RESULTS == "7" || RESULTS == "q"
 					SELECTCASE D3D_PLAYER_DIRECTION
 						CASE 0
@@ -819,7 +819,7 @@ WHILE 1 == 1
 						CASE 3
 							D3D_TOWALK = 2
 					ENDSELECT
-					CALL D3D_GET_LEFT_COORD(FLAG:現X,FLAG:現Y)
+					CALL D3D_GET_LEFT_COORD(FLAG:현X,FLAG:현Y)
 				ELSEIF RESULTS == "9" || RESULTS == "e"
 					SELECTCASE D3D_PLAYER_DIRECTION
 						CASE 0
@@ -831,7 +831,7 @@ WHILE 1 == 1
 						CASE 3
 							D3D_TOWALK = 8
 					ENDSELECT
-					CALL D3D_GET_RIGHT_COORD(FLAG:現X,FLAG:現Y)
+					CALL D3D_GET_RIGHT_COORD(FLAG:현X,FLAG:현Y)
 				ELSEIF RESULTS == "0" || RESULTS == "x"
 					SELECTCASE D3D_PLAYER_DIRECTION
 						CASE 0
@@ -843,7 +843,7 @@ WHILE 1 == 1
 						CASE 3
 							D3D_TOWALK = 6
 					ENDSELECT
-					CALL D3D_GET_BEHIND_COORD(FLAG:現X,FLAG:現Y)
+					CALL D3D_GET_BEHIND_COORD(FLAG:현X,FLAG:현Y)
 				ENDIF
 				D3D_LOCALCOORD:0 = RESULT:0,RESULT:1
 				;ここから一般化コードにしてもいいかな
@@ -853,8 +853,8 @@ WHILE 1 == 1
 						CLEARLINE 1
 						GOTO PRINT
 					ENDIF
-					CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, D3D_LOCALCOORD:0, D3D_LOCALCOORD:1)
-					CALLFORM CAN_ENTER_{FLAG:現던전},D3D_LOCALCOORD:0,D3D_LOCALCOORD:1
+					CALL SET_FLOOR_ANALYZE(2, FLAG:현던전, FLAG:현M, D3D_LOCALCOORD:0, D3D_LOCALCOORD:1)
+					CALLFORM CAN_ENTER_{FLAG:현던전},D3D_LOCALCOORD:0,D3D_LOCALCOORD:1
 					IF RESULT == 0
 						CLEARLINE 1
 						GOTO PRINT
@@ -869,8 +869,8 @@ WHILE 1 == 1
 						GOTO PRINT
 					ENDIF
 					;壁とかだったら進めない
-					CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, D3D_LOCALCOORD:0, D3D_LOCALCOORD:1)
-					CALLFORM CAN_ENTER_{FLAG:現던전},D3D_LOCALCOORD:0,D3D_LOCALCOORD:1
+					CALL SET_FLOOR_ANALYZE(2, FLAG:현던전, FLAG:현M, D3D_LOCALCOORD:0, D3D_LOCALCOORD:1)
+					CALLFORM CAN_ENTER_{FLAG:현던전},D3D_LOCALCOORD:0,D3D_LOCALCOORD:1
 					IF RESULT == 0
 						CLEARLINE 1
 						GOTO PRINT
@@ -881,10 +881,10 @@ WHILE 1 == 1
 						CALL WALK_DUNGEON,D3D_TOWALK
 						RESTART
 					ENDIF
-					CALL D3D_GET_FRONT_COORD(FLAG:現X,FLAG:現Y)
+					CALL D3D_GET_FRONT_COORD(FLAG:현X,FLAG:현Y)
 					CALL D3D_GET_FRONT_COORD(RESULT:0,RESULT:1)
 					D3D_LOCALCOORD:0 = RESULT:0,RESULT:1
-					CALLFORM CAN_ENTER_{FLAG:現던전},D3D_LOCALCOORD:0,D3D_LOCALCOORD:1
+					CALLFORM CAN_ENTER_{FLAG:현던전},D3D_LOCALCOORD:0,D3D_LOCALCOORD:1
 					IF RESULT == 0
 						;2マス目が壁とかだったら歩く
 						CALL WALK_DUNGEON,D3D_TOWALK
@@ -893,7 +893,7 @@ WHILE 1 == 1
 						IF RESULT == 0
 							CALL WALK_DUNGEON,D3D_TOWALK
 						ELSE
-							CALL SET_FLOOR_ANALYZE(2,FLAG:現던전, FLAG:現M, D3D_LOCALCOORD:0, D3D_LOCALCOORD:1)
+							CALL SET_FLOOR_ANALYZE(2,FLAG:현던전, FLAG:현M, D3D_LOCALCOORD:0, D3D_LOCALCOORD:1)
 							;それ以外の時に初めて走る
 							CALL RUN_DUNGEON,D3D_TOWALK
 						ENDIF
@@ -932,7 +932,7 @@ WHILE 1 == 1
 		CASE 0
 			SELECTCASE RESULTS
 				CASE "5"
-					SELECTCASE DA:(FLAG:現X):(FLAG:現Y)
+					SELECTCASE DA:(FLAG:현X):(FLAG:현Y)
 						CASE -9
 							CALL DUNGEON_TERMINAL
 						CASE -19
@@ -940,18 +940,18 @@ WHILE 1 == 1
 						CASE -29
 							CALL DUNGEON_ELEVATOR
 						CASEELSE
-							CALLFORM EVENT_CHECK_DUNGEON_{FLAG:現던전}
+							CALLFORM EVENT_CHECK_DUNGEON_{FLAG:현던전}
 					ENDSELECT
 				CASE "8"
 					;ラン란다ンジョンの판정
 					IF GETBIT(FLAG:232,0) == 0
 						;歩いて탐색
-						IF !RANGE(FLAG:現Y-1, 0, FLAG:최대Y-1)
+						IF !RANGE(FLAG:현Y-1, 0, FLAG:최대Y-1)
 							CLEARLINE 1
 							GOTO PRINT
 						ENDIF
-						CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, FLAG:現X, FLAG:現Y-1)
-						CALLFORM CAN_ENTER_{FLAG:現던전},FLAG:現X,FLAG:現Y-1
+						CALL SET_FLOOR_ANALYZE(2, FLAG:현던전, FLAG:현M, FLAG:현X, FLAG:현Y-1)
+						CALLFORM CAN_ENTER_{FLAG:현던전},FLAG:현X,FLAG:현Y-1
 						IF RESULT == 0
 							CLEARLINE 1
 							GOTO PRINT
@@ -961,25 +961,25 @@ WHILE 1 == 1
 						;走って탐색
 						;１マス눈の侵入可能판정開始
 						;マップ端っこなら進めない
-						IF !RANGE(FLAG:現Y-1, 0, FLAG:최대Y-1)
+						IF !RANGE(FLAG:현Y-1, 0, FLAG:최대Y-1)
 							CLEARLINE 1
 							GOTO PRINT
 						ENDIF
 						;壁とかだったら進めない
-						CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, FLAG:現X, FLAG:現Y-1)
-						CALLFORM CAN_ENTER_{FLAG:現던전},FLAG:現X,FLAG:現Y-1
+						CALL SET_FLOOR_ANALYZE(2, FLAG:현던전, FLAG:현M, FLAG:현X, FLAG:현Y-1)
+						CALLFORM CAN_ENTER_{FLAG:현던전},FLAG:현X,FLAG:현Y-1
 						IF RESULT == 0
 							CLEARLINE 1
 							GOTO PRINT
 						ENDIF
 						;1マス눈は侵入可能
 						;ついで2マス눈の侵入可能판정開始						
-						IF !RANGE(FLAG:現Y-2, 0, FLAG:최대Y-1)
+						IF !RANGE(FLAG:현Y-2, 0, FLAG:최대Y-1)
 							;2マス눈がマップ端っこなら歩く
 							CALL WALK_DUNGEON,8
 							RESTART
 						ENDIF
-						CALLFORM CAN_ENTER_{FLAG:現던전},FLAG:現X,FLAG:現Y-2
+						CALLFORM CAN_ENTER_{FLAG:현던전},FLAG:현X,FLAG:현Y-2
 						IF RESULT == 0
 							;2マス눈が壁とかだったら歩く
 							CALL WALK_DUNGEON,8
@@ -988,7 +988,7 @@ WHILE 1 == 1
 							IF RESULT == 0
 							CALL WALK_DUNGEON,8
 							ELSE
-							CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, FLAG:現X, FLAG:現Y-2)
+							CALL SET_FLOOR_ANALYZE(2, FLAG:현던전, FLAG:현M, FLAG:현X, FLAG:현Y-2)
 							;それ以外の時に初めて走る
 							CALL RUN_DUNGEON,8
 							ENDIF
@@ -998,12 +998,12 @@ WHILE 1 == 1
 					;ラン란다ンジョンの판정
 					IF GETBIT(FLAG:232,0) == 0
 						;歩いて탐색
-						IF !RANGE(FLAG:現X-1, 0, FLAG:최대X-1)
+						IF !RANGE(FLAG:현X-1, 0, FLAG:최대X-1)
 							CLEARLINE 1
 							GOTO PRINT
 						ENDIF
-						CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, FLAG:現X-1, FLAG:現Y)
-						CALLFORM CAN_ENTER_{FLAG:現던전},FLAG:現X-1,FLAG:現Y
+						CALL SET_FLOOR_ANALYZE(2, FLAG:현던전, FLAG:현M, FLAG:현X-1, FLAG:현Y)
+						CALLFORM CAN_ENTER_{FLAG:현던전},FLAG:현X-1,FLAG:현Y
 						IF RESULT == 0
 							CLEARLINE 1
 							GOTO PRINT
@@ -1013,25 +1013,25 @@ WHILE 1 == 1
 						;走って탐색
 						;１マス눈の侵入可能판정開始
 						;マップ端っこなら進めない
-						IF !RANGE(FLAG:現X-1, 0, FLAG:최대X-1)
+						IF !RANGE(FLAG:현X-1, 0, FLAG:최대X-1)
 							CLEARLINE 1
 							GOTO PRINT
 						ENDIF
 						;壁とかだったら進めない
-						CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, FLAG:現X-1, FLAG:現Y)
-						CALLFORM CAN_ENTER_{FLAG:現던전},FLAG:現X-1,FLAG:現Y
+						CALL SET_FLOOR_ANALYZE(2, FLAG:현던전, FLAG:현M, FLAG:현X-1, FLAG:현Y)
+						CALLFORM CAN_ENTER_{FLAG:현던전},FLAG:현X-1,FLAG:현Y
 						IF RESULT == 0
 							CLEARLINE 1
 							GOTO PRINT
 						ENDIF
 						;1マス눈は侵入可能
 						;ついで2マス눈の侵入可能판정開始
-						IF !RANGE(FLAG:現X-2, 0, FLAG:최대X-1)
+						IF !RANGE(FLAG:현X-2, 0, FLAG:최대X-1)
 							;2マス눈がマップ端っこなら歩く
 							CALL WALK_DUNGEON,4
 							RESTART
 						ENDIF
-						CALLFORM CAN_ENTER_{FLAG:現던전},FLAG:現X-2,FLAG:現Y
+						CALLFORM CAN_ENTER_{FLAG:현던전},FLAG:현X-2,FLAG:현Y
 						IF RESULT == 0
 							;2マス눈が壁とかだったら歩く
 							CALL WALK_DUNGEON,4
@@ -1040,7 +1040,7 @@ WHILE 1 == 1
 							IF RESULT == 0
 							CALL WALK_DUNGEON,4
 							ELSE
-							CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, FLAG:現X-2, FLAG:現Y)
+							CALL SET_FLOOR_ANALYZE(2, FLAG:현던전, FLAG:현M, FLAG:현X-2, FLAG:현Y)
 							;それ以外の時に初めて走る
 							CALL RUN_DUNGEON,4
 							ENDIF
@@ -1050,12 +1050,12 @@ WHILE 1 == 1
 					;ラン란다ンジョンの판정
 					IF GETBIT(FLAG:232,0) == 0
 						;歩いて탐색
-						IF !RANGE(FLAG:現X+1, 0, FLAG:최대X-1)
+						IF !RANGE(FLAG:현X+1, 0, FLAG:최대X-1)
 							CLEARLINE 1
 							GOTO PRINT
 						ENDIF
-						CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, FLAG:現X+1, FLAG:現Y)
-						CALLFORM CAN_ENTER_{FLAG:現던전},FLAG:現X+1,FLAG:現Y
+						CALL SET_FLOOR_ANALYZE(2, FLAG:현던전, FLAG:현M, FLAG:현X+1, FLAG:현Y)
+						CALLFORM CAN_ENTER_{FLAG:현던전},FLAG:현X+1,FLAG:현Y
 						IF RESULT == 0
 							CLEARLINE 1
 							GOTO PRINT
@@ -1065,25 +1065,25 @@ WHILE 1 == 1
 						;走って탐색
 						;１マス눈の侵入可能판정開始
 						;マップ端っこなら進めない
-						IF !RANGE(FLAG:現X+1, 0, FLAG:최대X-1)
+						IF !RANGE(FLAG:현X+1, 0, FLAG:최대X-1)
 							CLEARLINE 1
 							GOTO PRINT
 						ENDIF
 						;壁とかだったら進めない
-						CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, FLAG:現X+1, FLAG:現Y)
-						CALLFORM CAN_ENTER_{FLAG:現던전},FLAG:現X+1,FLAG:現Y
+						CALL SET_FLOOR_ANALYZE(2, FLAG:현던전, FLAG:현M, FLAG:현X+1, FLAG:현Y)
+						CALLFORM CAN_ENTER_{FLAG:현던전},FLAG:현X+1,FLAG:현Y
 						IF RESULT == 0
 							CLEARLINE 1
 							GOTO PRINT
 						ENDIF
 						;1マス눈は侵入可能
 						;ついで2マス눈の侵入可能판정開始
-						IF !RANGE(FLAG:現X+2, 0, FLAG:최대X-1)
+						IF !RANGE(FLAG:현X+2, 0, FLAG:최대X-1)
 							;2マス눈がマップ端っこなら歩く
 							CALL WALK_DUNGEON,6
 							RESTART
 						ENDIF
-						CALLFORM CAN_ENTER_{FLAG:現던전},FLAG:現X+2,FLAG:現Y
+						CALLFORM CAN_ENTER_{FLAG:현던전},FLAG:현X+2,FLAG:현Y
 						IF RESULT == 0
 							;2マス눈が壁とかだったら歩く
 							CALL WALK_DUNGEON,6
@@ -1093,7 +1093,7 @@ WHILE 1 == 1
 							CALL WALK_DUNGEON,6
 							ELSE
 							;それ以外の時に初めて走る
-							CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, FLAG:現X+2, FLAG:現Y)
+							CALL SET_FLOOR_ANALYZE(2, FLAG:현던전, FLAG:현M, FLAG:현X+2, FLAG:현Y)
 							CALL RUN_DUNGEON,6
 							ENDIF
 						ENDIF
@@ -1102,12 +1102,12 @@ WHILE 1 == 1
 					;ラン란다ンジョンの판정
 					IF GETBIT(FLAG:232,0) == 0
 						;歩いて탐색
-						IF !RANGE(FLAG:現Y+1, 0, FLAG:최대Y-1)
+						IF !RANGE(FLAG:현Y+1, 0, FLAG:최대Y-1)
 							CLEARLINE 1
 							GOTO PRINT
 						ENDIF
-						CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, FLAG:現X, FLAG:現Y+1)
-						CALLFORM CAN_ENTER_{FLAG:現던전},FLAG:現X,FLAG:現Y+1
+						CALL SET_FLOOR_ANALYZE(2, FLAG:현던전, FLAG:현M, FLAG:현X, FLAG:현Y+1)
+						CALLFORM CAN_ENTER_{FLAG:현던전},FLAG:현X,FLAG:현Y+1
 						IF RESULT == 0
 							CLEARLINE 1
 							GOTO PRINT
@@ -1117,25 +1117,25 @@ WHILE 1 == 1
 						;走って탐색
 						;１マス눈の侵入可能판정開始
 						;マップ端っこなら進めない
-						IF !RANGE(FLAG:現Y+1, 0, FLAG:최대Y-1)
+						IF !RANGE(FLAG:현Y+1, 0, FLAG:최대Y-1)
 							CLEARLINE 1
 							GOTO PRINT
 						ENDIF
 						;壁とかだったら進めない
-						CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, FLAG:現X, FLAG:現Y+1)
-						CALLFORM CAN_ENTER_{FLAG:現던전},FLAG:現X,FLAG:現Y+1
+						CALL SET_FLOOR_ANALYZE(2, FLAG:현던전, FLAG:현M, FLAG:현X, FLAG:현Y+1)
+						CALLFORM CAN_ENTER_{FLAG:현던전},FLAG:현X,FLAG:현Y+1
 						IF RESULT == 0
 							CLEARLINE 1
 							GOTO PRINT
 						ENDIF
 						;1マス눈は侵入可能
 						;ついで2マス눈の侵入可能판정開始
-						IF !RANGE(FLAG:現Y+2, 0, FLAG:최대Y-1)
+						IF !RANGE(FLAG:현Y+2, 0, FLAG:최대Y-1)
 							;2マス눈がマップ端っこなら歩く
 							CALL WALK_DUNGEON,2
 							RESTART
 						ENDIF
-						CALLFORM CAN_ENTER_{FLAG:現던전},FLAG:現X,FLAG:現Y+2
+						CALLFORM CAN_ENTER_{FLAG:현던전},FLAG:현X,FLAG:현Y+2
 						IF RESULT == 0
 							;2マス눈が壁とかだったら歩く
 							CALL WALK_DUNGEON,2
@@ -1145,7 +1145,7 @@ WHILE 1 == 1
 							CALL WALK_DUNGEON,2
 							ELSE
 							;それ以外の時に初めて走る
-							CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, FLAG:現X, FLAG:現Y+2)
+							CALL SET_FLOOR_ANALYZE(2, FLAG:현던전, FLAG:현M, FLAG:현X, FLAG:현Y+2)
 							CALL RUN_DUNGEON,2
 							ENDIF
 						ENDIF
@@ -1216,7 +1216,7 @@ WHILE 1 == 1
 		CASE 1
 			SELECTCASE RESULTS
 				CASE "f"
-					SELECTCASE DA:(FLAG:現X):(FLAG:現Y)
+					SELECTCASE DA:(FLAG:현X):(FLAG:현Y)
 						CASE -9
 							CALL DUNGEON_TERMINAL
 						CASE -19
@@ -1224,18 +1224,18 @@ WHILE 1 == 1
 						CASE -29
 							CALL DUNGEON_ELEVATOR
 						CASEELSE
-							CALLFORM EVENT_CHECK_DUNGEON_{FLAG:現던전}
+							CALLFORM EVENT_CHECK_DUNGEON_{FLAG:현던전}
 					ENDSELECT
 				CASE "w"
 					;ラン란다ンジョンの판정
 					IF GETBIT(FLAG:232,0) == 0
 						;歩いて탐색
-						IF !RANGE(FLAG:現Y-1, 0, FLAG:최대Y-1)
+						IF !RANGE(FLAG:현Y-1, 0, FLAG:최대Y-1)
 							CLEARLINE 1
 							GOTO PRINT
 						ENDIF
-						CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, FLAG:現X, FLAG:現Y-1)
-						CALLFORM CAN_ENTER_{FLAG:現던전},FLAG:現X,FLAG:現Y-1
+						CALL SET_FLOOR_ANALYZE(2, FLAG:현던전, FLAG:현M, FLAG:현X, FLAG:현Y-1)
+						CALLFORM CAN_ENTER_{FLAG:현던전},FLAG:현X,FLAG:현Y-1
 						IF RESULT == 0
 							CLEARLINE 1
 							GOTO PRINT
@@ -1245,25 +1245,25 @@ WHILE 1 == 1
 						;走って탐색
 						;１マス눈の侵入可能판정開始
 						;マップ端っこなら進めない
-						IF !RANGE(FLAG:現Y-1, 0, FLAG:최대Y-1)
+						IF !RANGE(FLAG:현Y-1, 0, FLAG:최대Y-1)
 							CLEARLINE 1
 							GOTO PRINT
 						ENDIF
 						;壁とかだったら進めない
-						CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, FLAG:現X, FLAG:現Y-1)
-						CALLFORM CAN_ENTER_{FLAG:現던전},FLAG:現X,FLAG:現Y-1
+						CALL SET_FLOOR_ANALYZE(2, FLAG:현던전, FLAG:현M, FLAG:현X, FLAG:현Y-1)
+						CALLFORM CAN_ENTER_{FLAG:현던전},FLAG:현X,FLAG:현Y-1
 						IF RESULT == 0
 							CLEARLINE 1
 							GOTO PRINT
 						ENDIF
 						;1マス눈は侵入可能
 						;ついで2マス눈の侵入可能판정開始						
-						IF !RANGE(FLAG:現Y-2, 0, FLAG:최대Y-1)
+						IF !RANGE(FLAG:현Y-2, 0, FLAG:최대Y-1)
 							;2マス눈がマップ端っこなら歩く
 							CALL WALK_DUNGEON,8
 							RESTART
 						ENDIF
-						CALLFORM CAN_ENTER_{FLAG:現던전},FLAG:現X,FLAG:現Y-2
+						CALLFORM CAN_ENTER_{FLAG:현던전},FLAG:현X,FLAG:현Y-2
 						IF RESULT == 0
 							;2マス눈が壁とかだったら歩く
 							CALL WALK_DUNGEON,8
@@ -1272,7 +1272,7 @@ WHILE 1 == 1
 							IF RESULT == 0
 							CALL WALK_DUNGEON,8
 							ELSE
-							CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, FLAG:現X, FLAG:現Y-2)
+							CALL SET_FLOOR_ANALYZE(2, FLAG:현던전, FLAG:현M, FLAG:현X, FLAG:현Y-2)
 							;それ以外の時に初めて走る
 							CALL RUN_DUNGEON,8
 							ENDIF
@@ -1282,12 +1282,12 @@ WHILE 1 == 1
 					;ラン란다ンジョンの판정
 					IF GETBIT(FLAG:232,0) == 0
 						;歩いて탐색
-						IF !RANGE(FLAG:現X-1, 0, FLAG:최대X-1)
+						IF !RANGE(FLAG:현X-1, 0, FLAG:최대X-1)
 							CLEARLINE 1
 							GOTO PRINT
 						ENDIF
-						CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, FLAG:現X-1, FLAG:現Y)
-						CALLFORM CAN_ENTER_{FLAG:現던전},FLAG:現X-1,FLAG:現Y
+						CALL SET_FLOOR_ANALYZE(2, FLAG:현던전, FLAG:현M, FLAG:현X-1, FLAG:현Y)
+						CALLFORM CAN_ENTER_{FLAG:현던전},FLAG:현X-1,FLAG:현Y
 						IF RESULT == 0
 							CLEARLINE 1
 							GOTO PRINT
@@ -1297,25 +1297,25 @@ WHILE 1 == 1
 						;走って탐색
 						;１マス눈の侵入可能판정開始
 						;マップ端っこなら進めない
-						IF !RANGE(FLAG:現X-1, 0, FLAG:최대X-1)
+						IF !RANGE(FLAG:현X-1, 0, FLAG:최대X-1)
 							CLEARLINE 1
 							GOTO PRINT
 						ENDIF
 						;壁とかだったら進めない
-						CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, FLAG:現X-1, FLAG:現Y)
-						CALLFORM CAN_ENTER_{FLAG:現던전},FLAG:現X-1,FLAG:現Y
+						CALL SET_FLOOR_ANALYZE(2, FLAG:현던전, FLAG:현M, FLAG:현X-1, FLAG:현Y)
+						CALLFORM CAN_ENTER_{FLAG:현던전},FLAG:현X-1,FLAG:현Y
 						IF RESULT == 0
 							CLEARLINE 1
 							GOTO PRINT
 						ENDIF
 						;1マス눈は侵入可能
 						;ついで2マス눈の侵入可能판정開始
-						IF !RANGE(FLAG:現X-2, 0, FLAG:최대X-1)
+						IF !RANGE(FLAG:현X-2, 0, FLAG:최대X-1)
 							;2マス눈がマップ端っこなら歩く
 							CALL WALK_DUNGEON,4
 							RESTART
 						ENDIF
-						CALLFORM CAN_ENTER_{FLAG:現던전},FLAG:現X-2,FLAG:現Y
+						CALLFORM CAN_ENTER_{FLAG:현던전},FLAG:현X-2,FLAG:현Y
 						IF RESULT == 0
 							;2マス눈が壁とかだったら歩く
 							CALL WALK_DUNGEON,4
@@ -1324,7 +1324,7 @@ WHILE 1 == 1
 							IF RESULT == 0
 							CALL WALK_DUNGEON,4
 							ELSE
-							CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, FLAG:現X-2, FLAG:現Y)
+							CALL SET_FLOOR_ANALYZE(2, FLAG:현던전, FLAG:현M, FLAG:현X-2, FLAG:현Y)
 							;それ以外の時に初めて走る
 							CALL RUN_DUNGEON,4
 							ENDIF
@@ -1334,12 +1334,12 @@ WHILE 1 == 1
 					;ラン란다ンジョンの판정
 					IF GETBIT(FLAG:232,0) == 0
 						;歩いて탐색
-						IF !RANGE(FLAG:現X+1, 0, FLAG:최대X-1)
+						IF !RANGE(FLAG:현X+1, 0, FLAG:최대X-1)
 							CLEARLINE 1
 							GOTO PRINT
 						ENDIF
-						CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, FLAG:現X+1, FLAG:現Y)
-						CALLFORM CAN_ENTER_{FLAG:現던전},FLAG:現X+1,FLAG:現Y
+						CALL SET_FLOOR_ANALYZE(2, FLAG:현던전, FLAG:현M, FLAG:현X+1, FLAG:현Y)
+						CALLFORM CAN_ENTER_{FLAG:현던전},FLAG:현X+1,FLAG:현Y
 						IF RESULT == 0
 							CLEARLINE 1
 							GOTO PRINT
@@ -1349,25 +1349,25 @@ WHILE 1 == 1
 						;走って탐색
 						;１マス눈の侵入可能판정開始
 						;マップ端っこなら進めない
-						IF !RANGE(FLAG:現X+1, 0, FLAG:최대X-1)
+						IF !RANGE(FLAG:현X+1, 0, FLAG:최대X-1)
 							CLEARLINE 1
 							GOTO PRINT
 						ENDIF
 						;壁とかだったら進めない
-						CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, FLAG:現X+1, FLAG:現Y)
-						CALLFORM CAN_ENTER_{FLAG:現던전},FLAG:現X+1,FLAG:現Y
+						CALL SET_FLOOR_ANALYZE(2, FLAG:현던전, FLAG:현M, FLAG:현X+1, FLAG:현Y)
+						CALLFORM CAN_ENTER_{FLAG:현던전},FLAG:현X+1,FLAG:현Y
 						IF RESULT == 0
 							CLEARLINE 1
 							GOTO PRINT
 						ENDIF
 						;1マス눈は侵入可能
 						;ついで2マス눈の侵入可能판정開始
-						IF !RANGE(FLAG:現X+2, 0, FLAG:최대X-1)
+						IF !RANGE(FLAG:현X+2, 0, FLAG:최대X-1)
 							;2マス눈がマップ端っこなら歩く
 							CALL WALK_DUNGEON,6
 							RESTART
 						ENDIF
-						CALLFORM CAN_ENTER_{FLAG:現던전},FLAG:現X+2,FLAG:現Y
+						CALLFORM CAN_ENTER_{FLAG:현던전},FLAG:현X+2,FLAG:현Y
 						IF RESULT == 0
 							;2マス눈が壁とかだったら歩く
 							CALL WALK_DUNGEON,6
@@ -1377,7 +1377,7 @@ WHILE 1 == 1
 							CALL WALK_DUNGEON,6
 							ELSE
 							;それ以外の時に初めて走る
-							CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, FLAG:現X+2, FLAG:現Y)
+							CALL SET_FLOOR_ANALYZE(2, FLAG:현던전, FLAG:현M, FLAG:현X+2, FLAG:현Y)
 							CALL RUN_DUNGEON,6
 							ENDIF
 						ENDIF
@@ -1386,12 +1386,12 @@ WHILE 1 == 1
 					;ラン란다ンジョンの판정
 					IF GETBIT(FLAG:232,0) == 0
 						;歩いて탐색
-						IF !RANGE(FLAG:現Y+1, 0, FLAG:최대Y-1)
+						IF !RANGE(FLAG:현Y+1, 0, FLAG:최대Y-1)
 							CLEARLINE 1
 							GOTO PRINT
 						ENDIF
-						CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, FLAG:現X, FLAG:現Y+1)
-						CALLFORM CAN_ENTER_{FLAG:現던전},FLAG:現X,FLAG:現Y+1
+						CALL SET_FLOOR_ANALYZE(2, FLAG:현던전, FLAG:현M, FLAG:현X, FLAG:현Y+1)
+						CALLFORM CAN_ENTER_{FLAG:현던전},FLAG:현X,FLAG:현Y+1
 						IF RESULT == 0
 							CLEARLINE 1
 							GOTO PRINT
@@ -1401,25 +1401,25 @@ WHILE 1 == 1
 						;走って탐색
 						;１マス눈の侵入可能판정開始
 						;マップ端っこなら進めない
-						IF !RANGE(FLAG:現Y+1, 0, FLAG:최대Y-1)
+						IF !RANGE(FLAG:현Y+1, 0, FLAG:최대Y-1)
 							CLEARLINE 1
 							GOTO PRINT
 						ENDIF
 						;壁とかだったら進めない
-						CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, FLAG:現X, FLAG:現Y+1)
-						CALLFORM CAN_ENTER_{FLAG:現던전},FLAG:現X,FLAG:現Y+1
+						CALL SET_FLOOR_ANALYZE(2, FLAG:현던전, FLAG:현M, FLAG:현X, FLAG:현Y+1)
+						CALLFORM CAN_ENTER_{FLAG:현던전},FLAG:현X,FLAG:현Y+1
 						IF RESULT == 0
 							CLEARLINE 1
 							GOTO PRINT
 						ENDIF
 						;1マス눈は侵入可能
 						;ついで2マス눈の侵入可能판정開始
-						IF !RANGE(FLAG:現Y+2, 0, FLAG:최대Y-1)
+						IF !RANGE(FLAG:현Y+2, 0, FLAG:최대Y-1)
 							;2マス눈がマップ端っこなら歩く
 							CALL WALK_DUNGEON,2
 							RESTART
 						ENDIF
-						CALLFORM CAN_ENTER_{FLAG:現던전},FLAG:現X,FLAG:現Y+2
+						CALLFORM CAN_ENTER_{FLAG:현던전},FLAG:현X,FLAG:현Y+2
 						IF RESULT == 0
 							;2マス눈が壁とかだったら歩く
 							CALL WALK_DUNGEON,2
@@ -1429,7 +1429,7 @@ WHILE 1 == 1
 							CALL WALK_DUNGEON,2
 							ELSE
 							;それ以外の時に初めて走る
-							CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, FLAG:現X, FLAG:現Y+2)
+							CALL SET_FLOOR_ANALYZE(2, FLAG:현던전, FLAG:현M, FLAG:현X, FLAG:현Y+2)
 							CALL RUN_DUNGEON,2
 							ENDIF
 						ENDIF
@@ -1533,13 +1533,13 @@ RETURN 1
 LOCAL = 0
 SELECTCASE ARG
 	CASE 8
-		FLAG:現Y -= 1
+		FLAG:현Y -= 1
 	CASE 4
-		FLAG:現X -= 1
+		FLAG:현X -= 1
 	CASE 6
-		FLAG:現X += 1
+		FLAG:현X += 1
 	CASE 2
-		FLAG:現Y += 1
+		FLAG:현Y += 1
 ENDSELECT
 
 ;ＭＡＧ소비
@@ -1566,7 +1566,7 @@ FOR LOCAL,1,7
 	LOCALS = 포지션{LOCAL}
 	IF FLAG:LOCALS > -1
 		LOCAL:1 = FLAG:LOCALS
-		IF FLAG:ムフフ전개
+		IF FLAG:무후후전개
 	
 			;一歩ごとに체력が5회복する（최대値は기력の現在値）
 			SIF BASE:(LOCAL:1):체력 < BASE:(LOCAL:1):기력
@@ -1635,64 +1635,64 @@ FOR LOCAL,1,7
 				RESETCOLOR
 			ENDIF
 
-			;당신押し倒され이벤트　仲魔が発情상태の時に指定확률で당신を押し倒す
-			;설정と조건に該当したら FLAG:押し倒され이벤트, 40 を立てて本処理を実行
+			;당신밀려넘어짐이벤트　仲魔が発情상태の時に指定확률で당신を押し倒す
+			;설정と조건に該当したら FLAG:밀려넘어짐이벤트, 40 を立てて本処理を実行
 			;↓はテスト用、これにすると押し倒し祭り
-			;IF GETBIT(FLAG:押し倒され이벤트,0) && RAND:100 < FLAG:押し倒され이벤트発生率 && CFLAG:(LOCAL:1):던전内発情 == 0
-			IF GETBIT(FLAG:押し倒され이벤트,0) && RAND:100 < FLAG:押し倒され이벤트発生率 && CFLAG:(LOCAL:1):던전内発情
-				CLEARBIT FLAG:押し倒され이벤트, 40
+			;IF GETBIT(FLAG:밀려넘어짐이벤트,0) && RAND:100 < FLAG:밀려넘어짐이벤트발생률 && CFLAG:(LOCAL:1):던전内発情 == 0
+			IF GETBIT(FLAG:밀려넘어짐이벤트,0) && RAND:100 < FLAG:밀려넘어짐이벤트발생률 && CFLAG:(LOCAL:1):던전内発情
+				CLEARBIT FLAG:밀려넘어짐이벤트, 40
 				;女 → 男
-				IF     GETBIT(FLAG:押し倒され이벤트,1)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 0 &&TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				IF     GETBIT(FLAG:밀려넘어짐이벤트,1)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 0 &&TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;双女→ 男
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,2)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 1 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,2)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 1 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;男 → 男
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,3)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,3)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;男娘→ 男 
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,4)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 1 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,4)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 1 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;女 → 女
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,5)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 0 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 0 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,5)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 0 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 0 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;双女→ 女
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,6)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 1 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 0 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,6)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 1 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 0 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;男 → 女
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,7)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 0 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,7)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 0 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;男娘→ 女
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,8)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 1 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 0 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,8)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 1 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 0 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;女 →男娘
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,9)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 0 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 1
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,9)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 0 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 1
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;双女→男娘
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,10) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 1 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 1
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,10) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 1 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 1
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;男 →男娘 
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,11) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 1
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,11) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 1
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;男娘→男娘
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,12) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 1 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 1
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,12) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 1 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 1
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;女 →双女 
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,13) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 0 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 1 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,13) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 0 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 1 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;双女→双女
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,14) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 1 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 1 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,14) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 1 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 1 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;男 →双女 
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,15) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 1 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,15) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 1 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;男娘→双女
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,16) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 1 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 1 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,16) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 1 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 1 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				ELSE
-					CLEARBIT FLAG:押し倒され이벤트, 40
+					CLEARBIT FLAG:밀려넘어짐이벤트, 40
 				ENDIF
-				IF GETBIT(FLAG:押し倒され이벤트, 40)
+				IF GETBIT(FLAG:밀려넘어짐이벤트, 40)
 					SETCOLOR COLOR("pink")
 					PRINTFORMW 욕정을 참을 수 없어진 %조사처리(CALLNAME:(LOCAL:1),"는")% %조사처리(CALLNAME:MASTER,"를")% 밀어 넘어뜨리고 덮쳤다！
 					RESETCOLOR
@@ -1707,24 +1707,24 @@ FOR LOCAL,1,7
 
 		IF CFLAG:(LOCAL:1):ステート > 0
 			;기력0と発情しているときは、ステート経過ターンが増えない
-			SIF !(FLAG:ムフフ전개 && (BASE:(ARG:1):기력 == 0 || 위험일(LOCAL:1) >= 2))
-				CFLAG:(LOCAL:1):ステート経過ターン += FLAG:未遭遇歩数/2
+			SIF !(FLAG:무후후전개 && (BASE:(ARG:1):기력 == 0 || 위험일(LOCAL:1) >= 2))
+				CFLAG:(LOCAL:1):ステート経過ターン += FLAG:미조우걸음수/2
 			;バッド스테이터스・セービング
 			CALL BADSTATUS_SAVING,LOCAL:1
 			;毒なら데미지
-			SIF CFLAG:(LOCAL:1):ステート == GET_STATE_NUM("POISON") && FLAG:未遭遇歩数 % 4 == 0
+			SIF CFLAG:(LOCAL:1):ステート == GET_STATE_NUM("POISON") && FLAG:미조우걸음수 % 4 == 0
 				CALL VAR_HP,LOCAL:1,-MAX(MAXBASE:(LOCAL:1):ＭＰ/16,1),3
 			;麻痺ならMP減少
-			SIF CFLAG:(LOCAL:1):ステート == GET_STATE_NUM("PALYZE") && FLAG:未遭遇歩数 % 4 == 0
+			SIF CFLAG:(LOCAL:1):ステート == GET_STATE_NUM("PALYZE") && FLAG:미조우걸음수 % 4 == 0
 				CALL VAR_MP,LOCAL:1,-MAX(MAXBASE:(LOCAL:1):ＭＰ/16,1),3
-			CFLAG:(LOCAL:1):ステート経過ターン -= FLAG:未遭遇歩数/2
+			CFLAG:(LOCAL:1):ステート経過ターン -= FLAG:미조우걸음수/2
 		ENDIF
 	ENDIF
 NEXT
 
 LOCAL = 0
 ;移動後の던전이벤트呼び出し
-SELECTCASE DA:(FLAG:現X):(FLAG:現Y)
+SELECTCASE DA:(FLAG:현X):(FLAG:현Y)
 	CASE -9
 		CALL DUNGEON_TERMINAL
 	CASE -19
@@ -1732,14 +1732,14 @@ SELECTCASE DA:(FLAG:現X):(FLAG:現Y)
 	CASE -29
 		CALL DUNGEON_ELEVATOR
 	CASEELSE
-		CALLFORM EVENT_ENTER_DUNGEON_{FLAG:現던전},ARG
+		CALLFORM EVENT_ENTER_DUNGEON_{FLAG:현던전},ARG
 ENDSELECT
-SIF RESULT || FLAG:エンカウントしない || FLAG:탈출
+SIF RESULT || FLAG:인카운트하지않는다 || FLAG:탈출
 	LOCAL = 1
 
 ;遭遇체크
 IF LOCAL == 0
-	LOCAL:3 = FLAG:인카운터율보정 + 100
+	LOCAL:3 = FLAG:인카운트율보정 + 100
 	SIF EQUIP:MASTER:에너미호이호이 && NUM_SUMMONER()
 		LOCAL:3 *= 2
 	SIF EQUIP:MASTER:에너미바이바이 && NUM_SUMMONER()
@@ -1750,7 +1750,7 @@ IF LOCAL == 0
 ;---- EDIT 042 ADD END -------------------------
 	$ENCOUNT_START
 	SIF RAND:100 <= LOCAL:3
-		CALLFORM CHECK_ENCOUNT_{FLAG:現던전}
+		CALLFORM CHECK_ENCOUNT_{FLAG:현던전}
 	IF RESULT == 1
 		LOCAL:1 = 1
 ;---- EDIT 004 MOD START -------------------------
@@ -1790,7 +1790,7 @@ IF LOCAL == 0
 ;---- EDIT 004 ADD END ---------------------------
 			NEXT
 		ENDIF
-		FLAG:未遭遇歩数 = 0
+		FLAG:미조우걸음수 = 0
 		IF LOCAL:1 > 0
 			PRINTW 악마와 조우했다！
 			CALL BATTLE_START
@@ -1854,25 +1854,25 @@ ENDSELECT
 ;y軸移動 2,8の時の通路체크
 IF ARG == 2 || ARG == 8
 	;x-1側の체크 !DA DA !DAでAND
-	SIF DA:(FLAG:現X-1):(FLAG:現Y) % 10 == 0 && DA:(FLAG:現X-1):(FLAG:現Y+LOCAL:2-2) % 10 != 0 && DA:(FLAG:現X-1):(FLAG:現Y+LOCAL:2+LOCAL:2-4) % 10 == 0
+	SIF DA:(FLAG:현X-1):(FLAG:현Y) % 10 == 0 && DA:(FLAG:현X-1):(FLAG:현Y+LOCAL:2-2) % 10 != 0 && DA:(FLAG:현X-1):(FLAG:현Y+LOCAL:2+LOCAL:2-4) % 10 == 0
 		RETURN 0
 	;x+1側の체크
-	SIF DA:(FLAG:現X+1):(FLAG:現Y) % 10 == 0 && DA:(FLAG:現X+1):(FLAG:現Y+LOCAL:2-2) % 10 != 0 && DA:(FLAG:現X+1):(FLAG:現Y+LOCAL:2+LOCAL:2-4) % 10 == 0
+	SIF DA:(FLAG:현X+1):(FLAG:현Y) % 10 == 0 && DA:(FLAG:현X+1):(FLAG:현Y+LOCAL:2-2) % 10 != 0 && DA:(FLAG:현X+1):(FLAG:현Y+LOCAL:2+LOCAL:2-4) % 10 == 0
 		RETURN 0		
 ENDIF
 
 ;x軸移動 4,6の時の通路체크
 IF ARG == 4 || ARG == 6
 	;y-1側の체크 !DA DA !DAでAND
-	SIF DA:(FLAG:現X):(FLAG:現Y-1) % 10 == 0 && DA:(FLAG:現X+LOCAL:1-2):(FLAG:現Y-1) % 10 != 0 && DA:(FLAG:現X+LOCAL:1+LOCAL:1-4):(FLAG:現Y-1) % 10 == 0
+	SIF DA:(FLAG:현X):(FLAG:현Y-1) % 10 == 0 && DA:(FLAG:현X+LOCAL:1-2):(FLAG:현Y-1) % 10 != 0 && DA:(FLAG:현X+LOCAL:1+LOCAL:1-4):(FLAG:현Y-1) % 10 == 0
 		RETURN 0
 	;y+1側の체크
-	SIF DA:(FLAG:現X):(FLAG:現Y+1) % 10 == 0 && DA:(FLAG:現X+LOCAL:1-2):(FLAG:現Y+1) % 10 != 0 && DA:(FLAG:現X+LOCAL:1+LOCAL:1-4):(FLAG:現Y+1) % 10 == 0
+	SIF DA:(FLAG:현X):(FLAG:현Y+1) % 10 == 0 && DA:(FLAG:현X+LOCAL:1-2):(FLAG:현Y+1) % 10 != 0 && DA:(FLAG:현X+LOCAL:1+LOCAL:1-4):(FLAG:현Y+1) % 10 == 0
 		RETURN 0		
 ENDIF
 
 ;移動先のマスが両方とも1であれば1を返す
-SIF DA:(FLAG:現X+LOCAL:1-2):(FLAG:現Y+LOCAL:2-2) % 10 == 1 && DA:(FLAG:現X+LOCAL:1+LOCAL:1-4):(FLAG:現Y+LOCAL:2+LOCAL:2-4) % 10 == 1 
+SIF DA:(FLAG:현X+LOCAL:1-2):(FLAG:현Y+LOCAL:2-2) % 10 == 1 && DA:(FLAG:현X+LOCAL:1+LOCAL:1-4):(FLAG:현Y+LOCAL:2+LOCAL:2-4) % 10 == 1 
 	RETURN 1
 RETURN 0
 
@@ -1892,13 +1892,13 @@ LOCAL = 0
 LOCAL:99 = 0
 SELECTCASE ARG
 	CASE 8
-		FLAG:現Y -= 1
+		FLAG:현Y -= 1
 	CASE 4
-		FLAG:現X -= 1
+		FLAG:현X -= 1
 	CASE 6
-		FLAG:現X += 1
+		FLAG:현X += 1
 	CASE 2
-		FLAG:現Y += 1
+		FLAG:현Y += 1
 ENDSELECT
 
 ;ＭＡＧ소비
@@ -1926,7 +1926,7 @@ FOR LOCAL,1,7
 	LOCALS = 포지션{LOCAL}
 	IF FLAG:LOCALS > -1
 		LOCAL:1 = FLAG:LOCALS
-		IF FLAG:ムフフ전개
+		IF FLAG:무후후전개
 	
 			;一歩ごとに체력が5회복する（최대値は기력の現在値）
 			SIF BASE:(LOCAL:1):체력 < BASE:(LOCAL:1):기력
@@ -1995,64 +1995,64 @@ FOR LOCAL,1,7
 				RESETCOLOR
 			ENDIF
 
-			;당신押し倒され이벤트　仲魔が発情상태の時に指定확률で당신を押し倒す
-			;설정と조건に該当したら FLAG:押し倒され이벤트, 40 を立てて本処理を実行
+			;당신밀려넘어짐이벤트　仲魔が発情상태の時に指定확률で당신を押し倒す
+			;설정と조건に該当したら FLAG:밀려넘어짐이벤트, 40 を立てて本処理を実行
 			;↓はテスト用、これにすると押し倒し祭り
-			;IF GETBIT(FLAG:押し倒され이벤트,0) && RAND:100 < FLAG:押し倒され이벤트発生率 && CFLAG:(LOCAL:1):던전内発情 == 0
-			IF GETBIT(FLAG:押し倒され이벤트,0) && RAND:100 < FLAG:押し倒され이벤트発生率 && CFLAG:(LOCAL:1):던전内発情
-				CLEARBIT FLAG:押し倒され이벤트, 40
+			;IF GETBIT(FLAG:밀려넘어짐이벤트,0) && RAND:100 < FLAG:밀려넘어짐이벤트발생률 && CFLAG:(LOCAL:1):던전内発情 == 0
+			IF GETBIT(FLAG:밀려넘어짐이벤트,0) && RAND:100 < FLAG:밀려넘어짐이벤트발생률 && CFLAG:(LOCAL:1):던전内発情
+				CLEARBIT FLAG:밀려넘어짐이벤트, 40
 				;女 → 男
-				IF     GETBIT(FLAG:押し倒され이벤트,1)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 0 &&TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				IF     GETBIT(FLAG:밀려넘어짐이벤트,1)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 0 &&TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;双女→ 男
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,2)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 1 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,2)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 1 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;男 → 男
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,3)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,3)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;男娘→ 男 
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,4)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 1 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,4)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 1 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;女 → 女
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,5)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 0 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 0 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,5)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 0 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 0 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;双女→ 女
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,6)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 1 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 0 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,6)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 1 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 0 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;男 → 女
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,7)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 0 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,7)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 0 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;男娘→ 女
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,8)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 1 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 0 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,8)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 1 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 0 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;女 →男娘
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,9)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 0 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 1
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,9)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 0 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 1
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;双女→男娘
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,10) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 1 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 1
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,10) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 1 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 1
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;男 →男娘 
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,11) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 1
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,11) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 1
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;男娘→男娘
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,12) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 1 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 1
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,12) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 1 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 1
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;女 →双女 
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,13) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 0 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 1 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,13) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 0 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 1 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;双女→双女
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,14) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 1 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 1 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,14) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 1 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 1 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;男 →双女 
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,15) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 1 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,15) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 1 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;男娘→双女
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,16) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 1 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 1 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,16) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 1 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 1 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				ELSE
-					CLEARBIT FLAG:押し倒され이벤트, 40
+					CLEARBIT FLAG:밀려넘어짐이벤트, 40
 				ENDIF
-				IF GETBIT(FLAG:押し倒され이벤트, 40)
+				IF GETBIT(FLAG:밀려넘어짐이벤트, 40)
 					SETCOLOR COLOR("pink")
 					PRINTFORMW 욕정을 참을 수 없어진 %조사처리(CALLNAME:(LOCAL:1),"는")% %조사처리(CALLNAME:MASTER,"를")% 밀어 넘어뜨리고 덮쳤다！
 					RESETCOLOR
@@ -2067,17 +2067,17 @@ FOR LOCAL,1,7
 
 		IF CFLAG:(LOCAL:1):ステート > 0
 			;기력0と発情しているときは、ステート経過ターンが増えない
-			SIF !(FLAG:ムフフ전개 && (BASE:(ARG:1):기력 == 0 || 위험일(LOCAL:1) >= 2))
-				CFLAG:(LOCAL:1):ステート経過ターン += FLAG:未遭遇歩数/2
+			SIF !(FLAG:무후후전개 && (BASE:(ARG:1):기력 == 0 || 위험일(LOCAL:1) >= 2))
+				CFLAG:(LOCAL:1):ステート経過ターン += FLAG:미조우걸음수/2
 			;バッド스테이터스・セービング
 			CALL BADSTATUS_SAVING,LOCAL:1
 			;毒なら데미지
-			SIF CFLAG:(LOCAL:1):ステート == GET_STATE_NUM("POISON") && FLAG:未遭遇歩数 % 4 == 0
+			SIF CFLAG:(LOCAL:1):ステート == GET_STATE_NUM("POISON") && FLAG:미조우걸음수 % 4 == 0
 				CALL VAR_HP,LOCAL:1,-MAX(MAXBASE:(LOCAL:1):ＭＰ/16,1),3
 			;麻痺ならMP減少
-			SIF CFLAG:(LOCAL:1):ステート == GET_STATE_NUM("PALYZE") && FLAG:未遭遇歩数 % 4 == 0
+			SIF CFLAG:(LOCAL:1):ステート == GET_STATE_NUM("PALYZE") && FLAG:미조우걸음수 % 4 == 0
 				CALL VAR_MP,LOCAL:1,-MAX(MAXBASE:(LOCAL:1):ＭＰ/16,1),3
-			CFLAG:(LOCAL:1):ステート経過ターン -= FLAG:未遭遇歩数/2
+			CFLAG:(LOCAL:1):ステート経過ターン -= FLAG:미조우걸음수/2
 		ENDIF
 	ENDIF
 NEXT
@@ -2085,7 +2085,7 @@ NEXT
 
 ;移動後の던전이벤트呼び出し
 LOCAL = 0
-SELECTCASE DA:(FLAG:現X):(FLAG:現Y)
+SELECTCASE DA:(FLAG:현X):(FLAG:현Y)
 	CASE -9
 		CALL DUNGEON_TERMINAL
 	CASE -19
@@ -2093,18 +2093,18 @@ SELECTCASE DA:(FLAG:現X):(FLAG:現Y)
 	CASE -29
 		CALL DUNGEON_ELEVATOR
 	CASEELSE
-		CALLFORM EVENT_ENTER_DUNGEON_{FLAG:現던전},ARG
+		CALLFORM EVENT_ENTER_DUNGEON_{FLAG:현던전},ARG
 ENDSELECT
 
 ;遭遇체크を行うかどうか
 LOCAL = 0
-SIF RESULT || FLAG:エンカウントしない || FLAG:탈출
+SIF RESULT || FLAG:인카운트하지않는다 || FLAG:탈출
 	LOCAL = 1
 
 ;遭遇체크
 ;遭遇したら２マス눈の移動はキャンセル
 IF LOCAL == 0
-	LOCAL:3 = FLAG:인카운터율보정 + 100
+	LOCAL:3 = FLAG:인카운트율보정 + 100
 	SIF EQUIP:MASTER:에너미호이호이 && NUM_SUMMONER()
 		LOCAL:3 *= 2
 	SIF EQUIP:MASTER:에너미바이바이 && NUM_SUMMONER()
@@ -2115,7 +2115,7 @@ IF LOCAL == 0
 ;---- EDIT 042 ADD END -------------------------
 	$ENCOUNT_START1
 	SIF RAND:100 <= LOCAL:3
-		CALLFORM CHECK_ENCOUNT_{FLAG:現던전}
+		CALLFORM CHECK_ENCOUNT_{FLAG:현던전}
 	IF RESULT == 1
 		LOCAL:1 = 1
 ;---- EDIT 004 MOD START -------------------------
@@ -2155,7 +2155,7 @@ IF LOCAL == 0
 ;---- EDIT 004 ADD END ---------------------------
 			NEXT
 		ENDIF
-		FLAG:未遭遇歩数 = 0
+		FLAG:미조우걸음수 = 0
 		IF LOCAL:1 > 0
 			LOCAL:99 = 1
 			PRINTW 악마와 조우했다！
@@ -2167,7 +2167,7 @@ IF LOCAL == 0
 		GOTO ENCOUNT_START1
 ENDIF
 
-;月齢の変化とオートマップ
+;월령の変化とオートマップ
 CALL MOVE_MOON
 CALL AUTOMAP
 
@@ -2176,7 +2176,7 @@ CALL AUTOMAP
 SIF LOCAL:99 == 1
 	RETURN 1
 
-;FORCEMOVEを呼び出した場合はRUN中断フラグがオンになっているので、その場合は0に戻して２回눈の移動はしない
+;FORCEMOVEを呼び出した場合はRUN중단フラグがオンになっているので、その場合は0に戻して２回눈の移動はしない
 IF GETBIT(FLAG:233,0) == 1
 	CLEARBIT FLAG:233,0
 	RETURN 1
@@ -2184,13 +2184,13 @@ ENDIF
 
 SELECTCASE ARG
 	CASE 8
-		FLAG:現Y -= 1
+		FLAG:현Y -= 1
 	CASE 4
-		FLAG:現X -= 1
+		FLAG:현X -= 1
 	CASE 6
-		FLAG:現X += 1
+		FLAG:현X += 1
 	CASE 2
-		FLAG:現Y += 1
+		FLAG:현Y += 1
 ENDSELECT
 
 ;ＭＡＧ소비
@@ -2218,7 +2218,7 @@ FOR LOCAL,1,7
 	LOCALS = 포지션{LOCAL}
 	IF FLAG:LOCALS > -1
 		LOCAL:1 = FLAG:LOCALS
-		IF FLAG:ムフフ전개
+		IF FLAG:무후후전개
 	
 			;一歩ごとに체력が5회복する（최대値は기력の現在値）
 			SIF BASE:(LOCAL:1):체력 < BASE:(LOCAL:1):기력
@@ -2287,64 +2287,64 @@ FOR LOCAL,1,7
 				RESETCOLOR
 			ENDIF
 
-			;당신押し倒され이벤트　仲魔が発情상태の時に指定확률で당신を押し倒す
-			;설정と조건に該当したら FLAG:押し倒され이벤트, 40 を立てて本処理を実行
+			;당신밀려넘어짐이벤트　仲魔が発情상태の時に指定확률で당신を押し倒す
+			;설정と조건に該当したら FLAG:밀려넘어짐이벤트, 40 を立てて本処理を実行
 			;↓はテスト用、これにすると押し倒し祭り
-			;IF GETBIT(FLAG:押し倒され이벤트,0) && RAND:100 < FLAG:押し倒され이벤트発生率 && CFLAG:(LOCAL:1):던전内発情 == 0
-			IF GETBIT(FLAG:押し倒され이벤트,0) && RAND:100 < FLAG:押し倒され이벤트発生率 && CFLAG:(LOCAL:1):던전内発情
-				CLEARBIT FLAG:押し倒され이벤트, 40
+			;IF GETBIT(FLAG:밀려넘어짐이벤트,0) && RAND:100 < FLAG:밀려넘어짐이벤트발생률 && CFLAG:(LOCAL:1):던전内発情 == 0
+			IF GETBIT(FLAG:밀려넘어짐이벤트,0) && RAND:100 < FLAG:밀려넘어짐이벤트발생률 && CFLAG:(LOCAL:1):던전内発情
+				CLEARBIT FLAG:밀려넘어짐이벤트, 40
 				;女 → 男
-				IF     GETBIT(FLAG:押し倒され이벤트,1)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 0 &&TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				IF     GETBIT(FLAG:밀려넘어짐이벤트,1)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 0 &&TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;双女→ 男
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,2)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 1 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,2)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 1 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;男 → 男
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,3)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,3)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;男娘→ 男 
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,4)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 1 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,4)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 1 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;女 → 女
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,5)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 0 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 0 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,5)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 0 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 0 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;双女→ 女
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,6)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 1 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 0 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,6)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 1 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 0 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;男 → 女
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,7)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 0 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,7)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 0 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;男娘→ 女
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,8)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 1 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 0 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,8)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 1 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 0 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;女 →男娘
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,9)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 0 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 1
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,9)  && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 0 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 1
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;双女→男娘
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,10) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 1 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 1
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,10) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 1 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 1
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;男 →男娘 
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,11) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 1
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,11) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 0 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 1
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;男娘→男娘
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,12) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 1 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 1
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,12) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 1 && TALENT:(MASTER):남자 == 1 && TALENT:(MASTER):오토코노코 == 1
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;女 →双女 
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,13) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 0 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 1 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,13) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 0 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 1 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;双女→双女
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,14) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 1 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 1 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,14) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 0 && TALENT:(LOCAL:1):후타나리 == 1 && TALENT:(LOCAL:1):처녀 == 0 && TALENT:(LOCAL:1):재생처녀 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 1 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;男 →双女 
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,15) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 1 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,15) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 0 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 1 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				;男娘→双女
-				ELSEIF GETBIT(FLAG:押し倒され이벤트,16) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 1 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 1 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
-					SETBIT FLAG:押し倒され이벤트, 40
+				ELSEIF GETBIT(FLAG:밀려넘어짐이벤트,16) && LOCAL:1 != MASTER && TALENT:(LOCAL:1):남자 == 1 && TALENT:(LOCAL:1):오토코노코 == 1 && TALENT:(MASTER):남자 == 0 && TALENT:(MASTER):후타나리 == 1 &&TALENT:(MASTER):처녀 == 0 && TALENT:(MASTER):재생처녀 == 0
+					SETBIT FLAG:밀려넘어짐이벤트, 40
 				ELSE
-					CLEARBIT FLAG:押し倒され이벤트, 40
+					CLEARBIT FLAG:밀려넘어짐이벤트, 40
 				ENDIF
-				IF GETBIT(FLAG:押し倒され이벤트, 40)
+				IF GETBIT(FLAG:밀려넘어짐이벤트, 40)
 					SETCOLOR COLOR("pink")
 					PRINTFORMW 욕정을 참을 수 없어진 %조사처리(CALLNAME:(LOCAL:1),"는")% %조사처리(CALLNAME:MASTER,"를")% 밀어 넘어뜨리고 덮쳤다！
 					RESETCOLOR
@@ -2359,24 +2359,24 @@ FOR LOCAL,1,7
 
 		IF CFLAG:(LOCAL:1):ステート > 0
 			;기력0と発情しているときは、ステート経過ターンが増えない
-			SIF !(FLAG:ムフフ전개 && (BASE:(ARG:1):기력 == 0 || 위험일(LOCAL:1) >= 2))
-				CFLAG:(LOCAL:1):ステート経過ターン += FLAG:未遭遇歩数/2
+			SIF !(FLAG:무후후전개 && (BASE:(ARG:1):기력 == 0 || 위험일(LOCAL:1) >= 2))
+				CFLAG:(LOCAL:1):ステート経過ターン += FLAG:미조우걸음수/2
 			;バッド스테이터스・セービング
 			CALL BADSTATUS_SAVING,LOCAL:1
 			;毒なら데미지
-			SIF CFLAG:(LOCAL:1):ステート == GET_STATE_NUM("POISON") && FLAG:未遭遇歩数 % 4 == 0
+			SIF CFLAG:(LOCAL:1):ステート == GET_STATE_NUM("POISON") && FLAG:미조우걸음수 % 4 == 0
 				CALL VAR_HP,LOCAL:1,-MAX(MAXBASE:(LOCAL:1):ＭＰ/16,1),3
 			;麻痺ならMP減少
-			SIF CFLAG:(LOCAL:1):ステート == GET_STATE_NUM("PALYZE") && FLAG:未遭遇歩数 % 4 == 0
+			SIF CFLAG:(LOCAL:1):ステート == GET_STATE_NUM("PALYZE") && FLAG:미조우걸음수 % 4 == 0
 				CALL VAR_MP,LOCAL:1,-MAX(MAXBASE:(LOCAL:1):ＭＰ/16,1),3
-			CFLAG:(LOCAL:1):ステート経過ターン -= FLAG:未遭遇歩数/2
+			CFLAG:(LOCAL:1):ステート経過ターン -= FLAG:미조우걸음수/2
 		ENDIF
 	ENDIF
 NEXT
 
 LOCAL = 0
 ;移動後の던전이벤트呼び出し
-SELECTCASE DA:(FLAG:現X):(FLAG:現Y)
+SELECTCASE DA:(FLAG:현X):(FLAG:현Y)
 	CASE -9
 		CALL DUNGEON_TERMINAL
 	CASE -19
@@ -2384,16 +2384,16 @@ SELECTCASE DA:(FLAG:現X):(FLAG:現Y)
 	CASE -29
 		CALL DUNGEON_ELEVATOR
 	CASEELSE
-		CALLFORM EVENT_ENTER_DUNGEON_{FLAG:現던전},ARG
+		CALLFORM EVENT_ENTER_DUNGEON_{FLAG:현던전},ARG
 ENDSELECT
 
 ;遭遇체크を行うかどうか
-SIF RESULT || FLAG:エンカウントしない || FLAG:탈출
+SIF RESULT || FLAG:인카운트하지않는다 || FLAG:탈출
 	LOCAL = 1
 
 ;遭遇체크
 IF LOCAL == 0
-	LOCAL:3 = FLAG:인카운터율보정 + 100
+	LOCAL:3 = FLAG:인카운트율보정 + 100
 	SIF EQUIP:MASTER:에너미호이호이 && NUM_SUMMONER()
 		LOCAL:3 *= 2
 	SIF EQUIP:MASTER:에너미바이바이 && NUM_SUMMONER()
@@ -2404,7 +2404,7 @@ IF LOCAL == 0
 ;---- EDIT 042 ADD END -------------------------
 	$ENCOUNT_START2
 	SIF RAND:100 <= LOCAL:3
-		CALLFORM CHECK_ENCOUNT_{FLAG:現던전}
+		CALLFORM CHECK_ENCOUNT_{FLAG:현던전}
 	IF RESULT == 1
 		LOCAL:1 = 1
 ;---- EDIT 004 MOD START -------------------------
@@ -2444,7 +2444,7 @@ IF LOCAL == 0
 ;---- EDIT 004 ADD END ---------------------------
 			NEXT
 		ENDIF
-		FLAG:未遭遇歩数 = 0
+		FLAG:미조우걸음수 = 0
 		IF LOCAL:1 > 0
 			PRINTW 악마와 조우했다！
 			CALL BATTLE_START
@@ -2455,7 +2455,7 @@ IF LOCAL == 0
 		GOTO ENCOUNT_START2
 ENDIF
 
-;月齢の変化とオートマップ
+;월령の変化とオートマップ
 CALL MOVE_MOON
 CALL AUTOMAP
 
@@ -2466,127 +2466,127 @@ RETURN 1
 ;オートマッピング登録処理
 ;=====================================================================
 @AUTOMAP
-IF DA:(FLAG:現X):(FLAG:現Y) == -1 && (EQUIP:MASTER:다크스캐너 == 0 || NUM_SUMMONER() == 0) && FLAG:라이트마 == 0
-	;CALL SET_FLOOR_ANALYZE(MAX(GET_FLOOR_ANALYZE_T(FLAG:現X+1, FLAG:現Y) ,1), FLAG:現던전, FLAG:現M, FLAG:現X+1, FLAG:現Y)
-	;CALL SET_FLOOR_ANALYZE(MAX(GET_FLOOR_ANALYZE_T(FLAG:現X-1, FLAG:現Y) ,1), FLAG:現던전, FLAG:現M, FLAG:現X-1, FLAG:現Y)
-	;CALL SET_FLOOR_ANALYZE(MAX(GET_FLOOR_ANALYZE_T(FLAG:現X, FLAG:現Y+1) ,1), FLAG:現던전, FLAG:現M, FLAG:現X, FLAG:現Y+1)
-	;CALL SET_FLOOR_ANALYZE(MAX(GET_FLOOR_ANALYZE_T(FLAG:現X, FLAG:現Y-1) ,1), FLAG:現던전, FLAG:現M, FLAG:現X, FLAG:現Y-1)
-	;TA:((FLAG:現M*100+FLAG:現던전)):(FLAG:現X+1):(FLAG:現Y) = MAX(TA:((FLAG:現M*100+FLAG:現던전)):(FLAG:現X+1):(FLAG:現Y), 1)
-	;TA:((FLAG:現M*100+FLAG:現던전)):(FLAG:現X-1):(FLAG:現Y) = MAX(TA:((FLAG:現M*100+FLAG:現던전)):(FLAG:現X-1):(FLAG:現Y), 1)
-	;TA:((FLAG:現M*100+FLAG:現던전)):(FLAG:現X):(FLAG:現Y+1) = MAX(TA:((FLAG:現M*100+FLAG:現던전)):(FLAG:現X):(FLAG:現Y+1), 1)
-	;TA:((FLAG:現M*100+FLAG:現던전)):(FLAG:現X):(FLAG:現Y-1) = MAX(TA:((FLAG:現M*100+FLAG:現던전)):(FLAG:現X):(FLAG:現Y-1), 1)
+IF DA:(FLAG:현X):(FLAG:현Y) == -1 && (EQUIP:MASTER:다크스캐너 == 0 || NUM_SUMMONER() == 0) && FLAG:라이트마 == 0
+	;CALL SET_FLOOR_ANALYZE(MAX(GET_FLOOR_ANALYZE_T(FLAG:현X+1, FLAG:현Y) ,1), FLAG:현던전, FLAG:현M, FLAG:현X+1, FLAG:현Y)
+	;CALL SET_FLOOR_ANALYZE(MAX(GET_FLOOR_ANALYZE_T(FLAG:현X-1, FLAG:현Y) ,1), FLAG:현던전, FLAG:현M, FLAG:현X-1, FLAG:현Y)
+	;CALL SET_FLOOR_ANALYZE(MAX(GET_FLOOR_ANALYZE_T(FLAG:현X, FLAG:현Y+1) ,1), FLAG:현던전, FLAG:현M, FLAG:현X, FLAG:현Y+1)
+	;CALL SET_FLOOR_ANALYZE(MAX(GET_FLOOR_ANALYZE_T(FLAG:현X, FLAG:현Y-1) ,1), FLAG:현던전, FLAG:현M, FLAG:현X, FLAG:현Y-1)
+	;TA:((FLAG:현M*100+FLAG:현던전)):(FLAG:현X+1):(FLAG:현Y) = MAX(TA:((FLAG:현M*100+FLAG:현던전)):(FLAG:현X+1):(FLAG:현Y), 1)
+	;TA:((FLAG:현M*100+FLAG:현던전)):(FLAG:현X-1):(FLAG:현Y) = MAX(TA:((FLAG:현M*100+FLAG:현던전)):(FLAG:현X-1):(FLAG:현Y), 1)
+	;TA:((FLAG:현M*100+FLAG:현던전)):(FLAG:현X):(FLAG:현Y+1) = MAX(TA:((FLAG:현M*100+FLAG:현던전)):(FLAG:현X):(FLAG:현Y+1), 1)
+	;TA:((FLAG:현M*100+FLAG:현던전)):(FLAG:현X):(FLAG:현Y-1) = MAX(TA:((FLAG:현M*100+FLAG:현던전)):(FLAG:현X):(FLAG:현Y-1), 1)
 	GOTO DARK
 ENDIF
-;CALLFORM GET_DUNGEON_NAME_{FLAG:現던전}
-;CALLF DPOINT( , , 0 , 0 , FLAG:現M , RESULTS)
-CALLF DPOINT( , , 0 , 0 , FLAG:現M , @"던전%TOSTR(FLAG:現던전,"00")%")
+;CALLFORM GET_DUNGEON_NAME_{FLAG:현던전}
+;CALLF DPOINT( , , 0 , 0 , FLAG:현M , RESULTS)
+CALLF DPOINT( , , 0 , 0 , FLAG:현M , @"던전%TOSTR(FLAG:현던전,"00")%")
 
 FOR LOCAL,0,5
-	SIF (FLAG:現X+LOCAL-2) < 0 || (FLAG:現X+LOCAL-2) >= FLAG:최대X
+	SIF (FLAG:현X+LOCAL-2) < 0 || (FLAG:현X+LOCAL-2) >= FLAG:최대X
 		CONTINUE
 	FOR LOCAL:1,0,5
-		SIF (FLAG:現Y+LOCAL:1-2) < 0 || (FLAG:現Y+LOCAL:1-2) >= FLAG:최대Y
+		SIF (FLAG:현Y+LOCAL:1-2) < 0 || (FLAG:현Y+LOCAL:1-2) >= FLAG:최대Y
 			CONTINUE
-		;IF TA:((FLAG:現M*100+FLAG:現던전)):(FLAG:現X+LOCAL-2):(FLAG:現Y+LOCAL:1-2) == 0
-		;IF GET_FLOOR_ANALYZE_T(FLAG:現X+LOCAL-2, FLAG:現Y+LOCAL:1-2) == 0
-		IF DPOINT( , , (FLAG:現X+LOCAL-2) , (FLAG:現Y+LOCAL:1-2)) == 0
+		;IF TA:((FLAG:현M*100+FLAG:현던전)):(FLAG:현X+LOCAL-2):(FLAG:현Y+LOCAL:1-2) == 0
+		;IF GET_FLOOR_ANALYZE_T(FLAG:현X+LOCAL-2, FLAG:현Y+LOCAL:1-2) == 0
+		IF DPOINT( , , (FLAG:현X+LOCAL-2) , (FLAG:현Y+LOCAL:1-2)) == 0
 			SELECTCASE LOCAL
 				CASE 0
 					SELECTCASE LOCAL:1
 						CASE 0
-							CALL CAN_SEE_THROUGH,(FLAG:現X-1),(FLAG:現Y-1)
+							CALL CAN_SEE_THROUGH,(FLAG:현X-1),(FLAG:현Y-1)
 							SIF RESULT == 0
 								CONTINUE
-							;SIF DA:(FLAG:現X-1):(FLAG:現Y-1) % 10 == 0 || DA:(FLAG:現X-1):(FLAG:現Y-1) % 10 == 2
+							;SIF DA:(FLAG:현X-1):(FLAG:현Y-1) % 10 == 0 || DA:(FLAG:현X-1):(FLAG:현Y-1) % 10 == 2
 								;CONTINUE
 ;						CASE 1
-;							SIF (DA:(FLAG:現X-1):(FLAG:現Y-1) % 10 == 0 || DA:(FLAG:現X-1):(FLAG:現Y-1) % 10 == 2) && (DA:(FLAG:現X-1):(FLAG:現Y) == 0 || DA:(FLAG:現X-1):(FLAG:現Y) == 2)
+;							SIF (DA:(FLAG:현X-1):(FLAG:현Y-1) % 10 == 0 || DA:(FLAG:현X-1):(FLAG:현Y-1) % 10 == 2) && (DA:(FLAG:현X-1):(FLAG:현Y) == 0 || DA:(FLAG:현X-1):(FLAG:현Y) == 2)
 ;								CONTINUE
 						CASE 1,2,3
-							CALL CAN_SEE_THROUGH,(FLAG:現X-1),(FLAG:現Y)
+							CALL CAN_SEE_THROUGH,(FLAG:현X-1),(FLAG:현Y)
 							SIF RESULT == 0
 								CONTINUE
-						;	SIF (DA:(FLAG:現X-1):(FLAG:現Y) % 10 == 0 || DA:(FLAG:現X-1):(FLAG:現Y) % 10 == 2)
+						;	SIF (DA:(FLAG:현X-1):(FLAG:현Y) % 10 == 0 || DA:(FLAG:현X-1):(FLAG:현Y) % 10 == 2)
 						;		CONTINUE
 ;						CASE 3
-;							SIF (DA:(FLAG:現X-1):(FLAG:現Y+1) == 0 || DA:(FLAG:現X-1):(FLAG:現Y+1) == 2) && (DA:(FLAG:現X-1):(FLAG:現Y) == 0 || DA:(FLAG:現X-1):(FLAG:現Y) == 2)
+;							SIF (DA:(FLAG:현X-1):(FLAG:현Y+1) == 0 || DA:(FLAG:현X-1):(FLAG:현Y+1) == 2) && (DA:(FLAG:현X-1):(FLAG:현Y) == 0 || DA:(FLAG:현X-1):(FLAG:현Y) == 2)
 ;								CONTINUE
 						CASE 4
-							CALL CAN_SEE_THROUGH,(FLAG:現X-1),(FLAG:現Y+1)
+							CALL CAN_SEE_THROUGH,(FLAG:현X-1),(FLAG:현Y+1)
 							SIF RESULT == 0
 								CONTINUE
-;							SIF DA:(FLAG:現X-1):(FLAG:現Y+1) % 10 == 0 || DA:(FLAG:現X-1):(FLAG:現Y+1) % 10 == 2
+;							SIF DA:(FLAG:현X-1):(FLAG:현Y+1) % 10 == 0 || DA:(FLAG:현X-1):(FLAG:현Y+1) % 10 == 2
 ;								CONTINUE
 						
 					ENDSELECT
 				CASE 1,2,3
 					SELECTCASE LOCAL:1
 						CASE 0
-							CALL CAN_SEE_THROUGH,(FLAG:現X),(FLAG:現Y-1)
+							CALL CAN_SEE_THROUGH,(FLAG:현X),(FLAG:현Y-1)
 							SIF RESULT == 0
 								CONTINUE
-;							SIF (DA:(FLAG:現X-1):(FLAG:現Y-1) == 0 || DA:(FLAG:現X-1):(FLAG:現Y-1) == 2) && (DA:(FLAG:現X):(FLAG:現Y-1) == 0 || DA:(FLAG:現X):(FLAG:現Y-1) == 2)
-						;	SIF (DA:(FLAG:現X):(FLAG:現Y-1) % 10 == 0 || DA:(FLAG:現X):(FLAG:現Y-1) % 10 == 2)
+;							SIF (DA:(FLAG:현X-1):(FLAG:현Y-1) == 0 || DA:(FLAG:현X-1):(FLAG:현Y-1) == 2) && (DA:(FLAG:현X):(FLAG:현Y-1) == 0 || DA:(FLAG:현X):(FLAG:현Y-1) == 2)
+						;	SIF (DA:(FLAG:현X):(FLAG:현Y-1) % 10 == 0 || DA:(FLAG:현X):(FLAG:현Y-1) % 10 == 2)
 						;		CONTINUE
 						CASE 4
-;							SIF (DA:(FLAG:現X-1):(FLAG:現Y+1) == 0 || DA:(FLAG:現X-1):(FLAG:現Y+1) == 2) && (DA:(FLAG:現X):(FLAG:現Y+1) == 0 || DA:(FLAG:現X):(FLAG:現Y+1) == 2)
-							CALL CAN_SEE_THROUGH,(FLAG:現X),(FLAG:現Y+1)
+;							SIF (DA:(FLAG:현X-1):(FLAG:현Y+1) == 0 || DA:(FLAG:현X-1):(FLAG:현Y+1) == 2) && (DA:(FLAG:현X):(FLAG:현Y+1) == 0 || DA:(FLAG:현X):(FLAG:현Y+1) == 2)
+							CALL CAN_SEE_THROUGH,(FLAG:현X),(FLAG:현Y+1)
 							SIF RESULT == 0
 								CONTINUE
-;							SIF (DA:(FLAG:現X):(FLAG:現Y+1) % 10 == 0 || DA:(FLAG:現X):(FLAG:現Y+1) % 10 == 2)
+;							SIF (DA:(FLAG:현X):(FLAG:현Y+1) % 10 == 0 || DA:(FLAG:현X):(FLAG:현Y+1) % 10 == 2)
 ;								CONTINUE
 					ENDSELECT
 ;				CASE 2
 ;					SELECTCASE LOCAL:1
 ;						CASE 0
-;							SIF (DA:(FLAG:現X):(FLAG:現Y-1) == 0 || DA:(FLAG:現X):(FLAG:現Y-1) == 2)
+;							SIF (DA:(FLAG:현X):(FLAG:현Y-1) == 0 || DA:(FLAG:현X):(FLAG:현Y-1) == 2)
 ;								CONTINUE
 ;						CASE 4
-;							SIF (DA:(FLAG:現X):(FLAG:現Y+1) == 0 || DA:(FLAG:現X):(FLAG:現Y+1) == 2)
+;							SIF (DA:(FLAG:현X):(FLAG:현Y+1) == 0 || DA:(FLAG:현X):(FLAG:현Y+1) == 2)
 ;								CONTINUE
 ;					ENDSELECT
 ;				CASE 3
 ;					SELECTCASE LOCAL:1
 ;						CASE 0
-;							SIF (DA:(FLAG:現X+1):(FLAG:現Y-1) == 0 || DA:(FLAG:現X+1):(FLAG:現Y-1) == 2) && (DA:(FLAG:現X):(FLAG:現Y-1) == 0 || DA:(FLAG:現X):(FLAG:現Y-1) == 2)
+;							SIF (DA:(FLAG:현X+1):(FLAG:현Y-1) == 0 || DA:(FLAG:현X+1):(FLAG:현Y-1) == 2) && (DA:(FLAG:현X):(FLAG:현Y-1) == 0 || DA:(FLAG:현X):(FLAG:현Y-1) == 2)
 ;								CONTINUE
 ;						CASE 4
-;							SIF (DA:(FLAG:現X+1):(FLAG:現Y+1) == 0 || DA:(FLAG:現X+1):(FLAG:現Y+1) == 2) && (DA:(FLAG:現X):(FLAG:現Y+1) == 0 || DA:(FLAG:現X):(FLAG:現Y+1) == 2)
+;							SIF (DA:(FLAG:현X+1):(FLAG:현Y+1) == 0 || DA:(FLAG:현X+1):(FLAG:현Y+1) == 2) && (DA:(FLAG:현X):(FLAG:현Y+1) == 0 || DA:(FLAG:현X):(FLAG:현Y+1) == 2)
 ;								CONTINUE
 ;					ENDSELECT
 				CASE 4
 					SELECTCASE LOCAL:1
 						CASE 0
-							CALL CAN_SEE_THROUGH,(FLAG:現X+1),(FLAG:現Y-1)
+							CALL CAN_SEE_THROUGH,(FLAG:현X+1),(FLAG:현Y-1)
 							SIF RESULT == 0
 								CONTINUE
-							;SIF DA:(FLAG:現X+1):(FLAG:現Y-1) % 10 == 0 || DA:(FLAG:現X+1):(FLAG:現Y-1) % 10 == 2
+							;SIF DA:(FLAG:현X+1):(FLAG:현Y-1) % 10 == 0 || DA:(FLAG:현X+1):(FLAG:현Y-1) % 10 == 2
 							;	CONTINUE
 ;						CASE 1
-;							SIF (DA:(FLAG:現X+1):(FLAG:現Y-1) == 0 || DA:(FLAG:現X+1):(FLAG:現Y-1) == 2) && (DA:(FLAG:現X+1):(FLAG:現Y) == 0 || DA:(FLAG:現X+1):(FLAG:現Y) == 2)
+;							SIF (DA:(FLAG:현X+1):(FLAG:현Y-1) == 0 || DA:(FLAG:현X+1):(FLAG:현Y-1) == 2) && (DA:(FLAG:현X+1):(FLAG:현Y) == 0 || DA:(FLAG:현X+1):(FLAG:현Y) == 2)
 ;								CONTINUE
 						CASE 1,2,3
-							CALL CAN_SEE_THROUGH,(FLAG:現X+1),(FLAG:現Y)
+							CALL CAN_SEE_THROUGH,(FLAG:현X+1),(FLAG:현Y)
 							SIF RESULT == 0
 								CONTINUE
-							;SIF (DA:(FLAG:現X+1):(FLAG:現Y) % 10 == 0 || DA:(FLAG:現X+1):(FLAG:現Y) % 10 == 2)
+							;SIF (DA:(FLAG:현X+1):(FLAG:현Y) % 10 == 0 || DA:(FLAG:현X+1):(FLAG:현Y) % 10 == 2)
 							;	CONTINUE
 ;						CASE 3
-;							SIF (DA:(FLAG:現X+1):(FLAG:現Y+1) == 0 || DA:(FLAG:現X+1):(FLAG:現Y+1) == 2) && (DA:(FLAG:現X+1):(FLAG:現Y) == 0 || DA:(FLAG:現X+1):(FLAG:現Y) == 2)
+;							SIF (DA:(FLAG:현X+1):(FLAG:현Y+1) == 0 || DA:(FLAG:현X+1):(FLAG:현Y+1) == 2) && (DA:(FLAG:현X+1):(FLAG:현Y) == 0 || DA:(FLAG:현X+1):(FLAG:현Y) == 2)
 ;								CONTINUE
 						CASE 4
-							CALL CAN_SEE_THROUGH,(FLAG:現X+1),(FLAG:現Y+1)
+							CALL CAN_SEE_THROUGH,(FLAG:현X+1),(FLAG:현Y+1)
 							SIF RESULT == 0
 								CONTINUE
-						;	SIF DA:(FLAG:現X+1):(FLAG:現Y+1) % 10 == 0 || DA:(FLAG:現X+1):(FLAG:現Y+1) % 10 == 2
+						;	SIF DA:(FLAG:현X+1):(FLAG:현Y+1) % 10 == 0 || DA:(FLAG:현X+1):(FLAG:현Y+1) % 10 == 2
 						;		CONTINUE
 						
 					ENDSELECT
 				
 			ENDSELECT
-			;TA:(FLAG:現M*100+FLAG:現던전):(FLAG:現X+LOCAL-2):(FLAG:現Y+LOCAL:1-2) = 1
+			;TA:(FLAG:현M*100+FLAG:현던전):(FLAG:현X+LOCAL-2):(FLAG:현Y+LOCAL:1-2) = 1
 			
-			;CALL SET_FLOOR_ANALYZE(1, FLAG:現던전, FLAG:現M, FLAG:現X+LOCAL-2, FLAG:現Y+LOCAL:1-2)
+			;CALL SET_FLOOR_ANALYZE(1, FLAG:현던전, FLAG:현M, FLAG:현X+LOCAL-2, FLAG:현Y+LOCAL:1-2)
 			CALLF DPOINT( "=" , 1)
 			;SIF DPOINT( "=" , 1)
 			;	CONTINUE
@@ -2595,14 +2595,14 @@ FOR LOCAL,0,5
 	NEXT
 NEXT
 $DARK
-;CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, FLAG:現X, FLAG:現Y)
-CALLF DPOINT( "=" , 2 , FLAG:現X , FLAG:現Y)
+;CALL SET_FLOOR_ANALYZE(2, FLAG:현던전, FLAG:현M, FLAG:현X, FLAG:현Y)
+CALLF DPOINT( "=" , 2 , FLAG:현X , FLAG:현Y)
 
 ;=====================================================================
 ;タイルの向こう側を토오루過出来るかの処理
 ;=====================================================================
 @CAN_SEE_THROUGH,ARG,ARG:1
-TRYCCALLFORM CAN_SEE_THROUGH_{FLAG:現던전}_{DA:ARG:(ARG:1)%10},DA:ARG:(ARG:1),ARG,ARG:1
+TRYCCALLFORM CAN_SEE_THROUGH_{FLAG:현던전}_{DA:ARG:(ARG:1)%10},DA:ARG:(ARG:1),ARG,ARG:1
 	RETURN RESULT
 CATCH
 	SIF DA:ARG:(ARG:1) % 10 == 0 || DA:ARG:(ARG:1) % 10 == 2
@@ -2623,10 +2623,10 @@ PRINTL [2] 동료마 삭제
 SIF NUM_SUMMONER()
 	PRINTL [3] ２신 합체
 IF FLAG:DEBUG
-	SIF FLAG:現던전 != [[던전:타르타로스]]
+	SIF FLAG:현던전 != [[던전:타르타로스]]
 		PRINTL [4] 맵 이동
 ELSE
-	SIF EQUIP:MASTER:허니・비 && NUM_SUMMONER() && FLAG:現던전 != [[던전:타르타로스]]
+	SIF EQUIP:MASTER:허니・비 && NUM_SUMMONER() && FLAG:현던전 != [[던전:타르타로스]]
 		PRINTL [4] 맵 표시
 ENDIF
 SIF SOFT_ON("ＤＤＭ")
@@ -2656,7 +2656,7 @@ SIF LOCAL:1
 	PRINTL [13] 곡옥(플러그인)변경
 SIF SOFT_ON("우파니샤드",3);054
 	PRINTL [14] 식노 스킬 변경
-SIF FLAG:레벨アップ時インターフェース설정 == 3
+SIF FLAG:레벨업시인터페이스설정 == 3
 	PRINTL [20] 성장비율설정
 ;---- EDIT LINKUI ADD START ---------------------------
 PRINTL [30] 링케이지 목록
@@ -2736,7 +2736,7 @@ ELSEIF RESULT == 3 && NUM_SUMMONER()
 	;	CALL REFRESH_POS
 	;ENDIF
 	
-ELSEIF RESULT == 4 && ((EQUIP:MASTER:허니・비 && NUM_SUMMONER()) || FLAG:DEBUG) && FLAG:現던전 != [[던전:타르타로스]]
+ELSEIF RESULT == 4 && ((EQUIP:MASTER:허니・비 && NUM_SUMMONER()) || FLAG:DEBUG) && FLAG:현던전 != [[던전:타르타로스]]
 	CALL HONEY_BEE
 ELSEIF RESULT == 7 && SOFT_ON("ＤＤＭ")
 	CALL COMP_DDM
@@ -2786,7 +2786,7 @@ ELSEIF RESULT == 10
 			;以降は데이터呼び出し時に生成をする
 			SIF GLOBAL == 0
 				GLOBAL = RAND:10000 + 1
-			FLAG:一時세이브管理 = GLOBAL
+			FLAG:임시세이브관리 = GLOBAL
 			GLOBAL:1 = GLOBAL:1 % 10 + 10
 			SAVEGLOBAL
 			SAVEDATA 400, DISP_SAVETEXT()
@@ -2848,7 +2848,7 @@ ELSEIF RESULT == 13
 	ENDIF
 ELSEIF RESULT == 14 && SOFT_ON("우파니샤드",3);054
 	CALL SET_KARMANS_SKILL
-ELSEIF RESULT == 20 && FLAG:레벨アップ時インターフェース설정 == 3
+ELSEIF RESULT == 20 && FLAG:레벨업시인터페이스설정 == 3
 		SWAP LOCAL,FLAG:SHOP커맨드
 		FLAG:SHOP커맨드 = 40032
 		CALL LVUP_AUTOIF2_SETUP
@@ -3260,7 +3260,7 @@ DRAWLINE
 GOTO PRINT_SKILLLIST
 
 ;=====================================================================
-;ムフフ전개時用コマンド
+;무후후전개時用コマンド
 ;=====================================================================
 @DUNGEON_MUFUFU,ARG
 DRAWLINE
@@ -3469,7 +3469,7 @@ ELSEIF RESULT == 4
 		PRINTFORMW 결계석을 가지고 있지 않으며、안전한 장소도 아닙니다
 		RESTART
 	;탐색횟수が一日に可能な횟수に余裕がなければダメ
-	ELSEIF (FLAG:던전탐색済み) >= 1+(TALENT:MASTER:절륜 || TALENT:MASTER:수수께끼의매력 || TALENT:MASTER:금단의지식 || BASE:MASTER:LV >= 50)+(BASE:MASTER:LV >= 100)
+	ELSEIF (FLAG:던전탐색완료) >= 1+(TALENT:MASTER:절륜 || TALENT:MASTER:수수께끼의매력 || TALENT:MASTER:금단의지식 || BASE:MASTER:LV >= 50)+(BASE:MASTER:LV >= 100)
 		PRINTFORMW 탐색중에는 조교를 행할 여유가 없습니다
 		RESTART
 	ENDIF
@@ -3517,7 +3517,7 @@ ELSEIF RESULT == 4
 		ENDIF
 		FLAG:던전내조교 = 1
 		TARGET = LOCAL
-		FLAG:던전탐색済み += 1
+		FLAG:던전탐색완료 += 1
 		SIF (FLAG:조교난이도 > 1) || (FLAG:MAG소비율 > 0 && FLAG:조교난이도 == 1)
 			ITEM:결계석 -= 1
 	ENDIF
@@ -3549,7 +3549,7 @@ ENDIF
 VARSET RESULT
 VARSET ENEMY, -1
 ;最初に종족数を取得
-TRYCCALLFORM CLASS_NUM_{FLAG:現던전}
+TRYCCALLFORM CLASS_NUM_{FLAG:현던전}
 	CLASS_NUM = RESULT
 CATCH
 	;一応、定義ファイルがない場合、디폴트の数値を代入
@@ -3563,14 +3563,14 @@ CATCH
 	ENDSELECT
 ENDCATCH
 ;적の総数を取得
-TRYCCALLFORM ENEMY_NUM_{FLAG:現던전}, CLASS_NUM
+TRYCCALLFORM ENEMY_NUM_{FLAG:현던전}, CLASS_NUM
 	ENEMY_NUM = LIMIT(RESULT, CLASS_NUM, 10)
 CATCH
 	ENEMY_NUM = LIMIT(RESULT, CLASS_NUM*2, CLASS_NUM*4)
 ENDCATCH
 LOCAL = 0
 ;組み合わせ配置なら、それに
-TRYCCALLFORM CALLFORM ENEMYSET_{FLAG:現던전}, CLASS_NUM
+TRYCCALLFORM CALLFORM ENEMYSET_{FLAG:현던전}, CLASS_NUM
 	FOR LOCAL, 0, CLASS_NUM+1
 		ENEMY:LOCAL = RESULT:(LOCAL*2)
 		ENEMYLV:LOCAL = RESULT:(LOCAL*2+1)
@@ -3580,7 +3580,7 @@ CATCH
 ;---- EDIT 053 MOD --- LOCAL:1を使って無限ループ対策、1000回繰り返すと出るように
 	LOCAL:1 = 0
 	WHILE LOCAL < CLASS_NUM && LOCAL:1 < 1000
-		CALLFORM ENEMY_{FLAG:現던전}, CLASS_NUM
+		CALLFORM ENEMY_{FLAG:현던전}, CLASS_NUM
 		;同一の적が来ないようにする
 		SIF MATCH(ENEMY, RESULT)
 			CONTINUE
@@ -3608,11 +3608,11 @@ FOR LOCAL, 0, ENEMY_NUM
 	LOCAL:2 = LOCAL < CLASS_NUM ? LOCAL # RAND:CLASS_NUM
 	CALL SET_ENEMY, LOCAL:1, ENEMY:(LOCAL:2), ENEMYLV:(LOCAL:2)
 	;ここで스테이터스変化させる場合の関数を呼ぶ
-	TRYCALLFORM SET_ENEMY_STATUS_{FLAG:現던전}, CHARANUM - 1
+	TRYCALLFORM SET_ENEMY_STATUS_{FLAG:현던전}, CHARANUM - 1
 NEXT
 ;미타마코이코이
 IF EQUIP:MASTER:미타마코이코이 && 10 > LOCAL && GET_SUMMONER_MLV() > 2 && RAND:100 < GET_SUMMONER_MLV() - 2
-	CALLFORM ENEMY_{FLAG:現던전}, CLASS_NUM
+	CALLFORM ENEMY_{FLAG:현던전}, CLASS_NUM
 	FOR LOCAL:1,7,17
 		SIF POS(LOCAL:1) >= 0
 			CONTINUE
@@ -3687,7 +3687,7 @@ IF RESULT == 0
 	IF RESULT == 0
 		PRINTFORMW %조사처리(ITEMNAME:ARG,"를")% {ARG:1}개 손에 넣었다
 		CALL GET_ITEM,ARG,ARG:1
-		DA:(FLAG:現X):(FLAG:現Y) = 1
+		DA:(FLAG:현X):(FLAG:현Y) = 1
 		IF ARG:4 >= 0
 			SETBIT 던전フラグ:(ARG:2):(ARG:3), ARG:4
 		ELSE
@@ -3713,7 +3713,7 @@ IF RESULT == 0
 	IF ARG == 0
 		PRINTFORMW ￥{ARG:1} 손에 넣었다
 		MONEY += ARG:1
-		DA:(FLAG:現X):(FLAG:現Y) = 1
+		DA:(FLAG:현X):(FLAG:현Y) = 1
 		IF ARG:4 >= 0
 			SETBIT 던전フラグ:(ARG:2):(ARG:3), ARG:4
 		ELSE
@@ -3723,7 +3723,7 @@ IF RESULT == 0
 	ELSE
 		PRINTFORMW {ARG:1}마카를 손에 넣었다
 		MONEY:1 += ARG:1
-		DA:(FLAG:現X):(FLAG:現Y) = 1
+		DA:(FLAG:현X):(FLAG:현Y) = 1
 		IF ARG:4 >= 0
 			SETBIT 던전フラグ:(ARG:2):(ARG:3), ARG:4
 		ELSE
@@ -3739,14 +3739,14 @@ ENDIF
 ;=====================================================================
 ;魔法の箱
 ;=====================================================================
-@MAGIC_BOX, 月齢조건 , 当たり아이템, 外れ아이템, ARG:1 , ARG:2, ARG:3, ARG:4 = -1
-#DIM 月齢조건
+@MAGIC_BOX, 월령조건 , 当たり아이템, 外れ아이템, ARG:1 , ARG:2, ARG:3, ARG:4 = -1
+#DIM 월령조건
 #DIM 当たり아이템
 #DIM 外れ아이템
 #LOCALSIZE 1
 PRINTL 마법의 상자가 있다 
 CALL INPUT_YN,"연다","열지 않는다"
-IF FLAG:月齢 != 月齢조건
+IF FLAG:월령 != 월령조건
 	SWAP 当たり아이템 , 外れ아이템
 ENDIF
 IF RESULT == 0
@@ -3754,7 +3754,7 @@ IF RESULT == 0
 	IF RESULT == 0
 		PRINTFORMW %조사처리(ITEMNAME:当たり아이템,"를")% {ARG:1}개 손에 넣었다
 		CALL GET_ITEM, 当たり아이템, ARG:1
-		DA:(FLAG:現X):(FLAG:現Y) = 1
+		DA:(FLAG:현X):(FLAG:현Y) = 1
 		IF ARG:4 >= 0
 			SETBIT 던전フラグ:(ARG:2):(ARG:3), ARG:4
 		ELSE
@@ -3779,7 +3779,7 @@ CALL INPUT_YN,"연다","열지 않는다"
 IF RESULT == 0
 	PRINTFORMW {ARG:1}ＭＡＧ를 손에 넣었다
 	CALL CONTROL_MAG,MASTER,ARG:1
-	DA:(FLAG:現X):(FLAG:現Y) = 1
+	DA:(FLAG:현X):(FLAG:현Y) = 1
 	IF ARG:4 >= 0
 		SETBIT 던전フラグ:(ARG:2):(ARG:3), ARG:4
 	ELSE
@@ -3804,7 +3804,7 @@ CALL INPUT_YN,"연다","열지 않는다"
 
 IF RESULT == 0
 	PRINTFORMW 함정이다！
-	DA:(FLAG:現X):(FLAG:現Y) = 1
+	DA:(FLAG:현X):(FLAG:현Y) = 1
 	IF ARG:4 >= 0
 		SETBIT 던전フラグ:(ARG:2):(ARG:3), ARG:4
 	ELSE
@@ -3841,7 +3841,7 @@ IF RESULT == 0
 			NEXT
 			PRINTFORMW %CALLNAME:MASTER% 일행은 데미지를 받았다
 		CASEELSE
-			SIF GETNUM(BASE,ARGS) == -1 || GET_STATE_NUM(ARGS) < 0 || GET_STATE_NUM(ARGS) > FLAG:ステート数
+			SIF GETNUM(BASE,ARGS) == -1 || GET_STATE_NUM(ARGS) < 0 || GET_STATE_NUM(ARGS) > FLAG:스테이터스수
 				RETURN 1
 			LOCAL:1 = RAND:2
 			FOR LOCAL,1,7
@@ -3888,13 +3888,13 @@ PRINTL 올라가는 계단이 있다. 올라가겠습니까?
 CALL INPUT_YN,"Yes","No"
 
 IF RESULT == 0
-	FLAG:現M = ARG
-	FLAG:現X = ARG:1
-	FLAG:現Y = ARG:2
+	FLAG:현M = ARG
+	FLAG:현X = ARG:1
+	FLAG:현Y = ARG:2
 	;에스트마の効果リセット挟みませてもらいます
 	;CALL ENCOUNTER_CHANGER
 	;現在のフ로어데이터を読み込み
-	CALL MAKE_FLOOR, FLAG:現던전
+	CALL MAKE_FLOOR, FLAG:현던전
 	CALL AUTOMAP
 	RETURN 1
 ELSEIF RESULT == 1
@@ -3909,14 +3909,14 @@ PRINTL 올라가는 계단이 있다. 올라가겠습니까?
 CALL INPUT_YN,"Yes","No"
 
 IF RESULT == 0
-	FLAG:現M = ARG
+	FLAG:현M = ARG
 	;에스트마の効果リセット挟みませてもらいます
 	;CALL ENCOUNTER_CHANGER
 	;現在のフ로어데이터を読み込み
-	CALL MAKE_FLOOR, FLAG:現던전
+	CALL MAKE_FLOOR, FLAG:현던전
 	;座標移動
-	FLAG:現X = SEARCH_ID(ARG:1) /100
-	FLAG:現Y = SEARCH_ID(ARG:1) %100
+	FLAG:현X = SEARCH_ID(ARG:1) /100
+	FLAG:현Y = SEARCH_ID(ARG:1) %100
 	CALL AUTOMAP
 	RETURN 1
 ELSEIF RESULT == 1
@@ -3931,13 +3931,13 @@ PRINTL 내려가는 계단이 있다. 내려가겠습니까?
 CALL INPUT_YN,"Yes","No"
 
 IF RESULT == 0
-	FLAG:現M = ARG
-	FLAG:現X = ARG:1
-	FLAG:現Y = ARG:2
+	FLAG:현M = ARG
+	FLAG:현X = ARG:1
+	FLAG:현Y = ARG:2
 	;에스트마の効果リセット挟みませてもらいます
 	;CALL ENCOUNTER_CHANGER
 	;現在のフ로어데이터を読み込み
-	CALL MAKE_FLOOR, FLAG:現던전
+	CALL MAKE_FLOOR, FLAG:현던전
 	CALL AUTOMAP
 	RETURN 1
 ELSEIF RESULT == 1
@@ -3952,14 +3952,14 @@ PRINTL 내려가는 계단이 있다. 내려가겠습니까?
 CALL INPUT_YN,"Yes","No"
 
 IF RESULT == 0
-	FLAG:現M = ARG
+	FLAG:현M = ARG
 	;에스트마の効果リセット挟みませてもらいます
 	;CALL ENCOUNTER_CHANGER
 	;現在のフ로어데이터を読み込み
-	CALL MAKE_FLOOR, FLAG:現던전
+	CALL MAKE_FLOOR, FLAG:현던전
 	;座標移動
-	FLAG:現X = SEARCH_ID(ARG:1) /100
-	FLAG:現Y = SEARCH_ID(ARG:1) %100
+	FLAG:현X = SEARCH_ID(ARG:1) /100
+	FLAG:현Y = SEARCH_ID(ARG:1) %100
 	CALL AUTOMAP
 	RETURN 1
 ELSEIF RESULT == 1
@@ -3971,42 +3971,42 @@ ENDIF
 ;=====================================================================
 @DUNGEON_WORP,ARG,ARG:1,ARG:2
 ;---- D3D 054 START (ADD) ------------------------------
-SIF FLAG:現M == ARG
+SIF FLAG:현M == ARG
 	D3D_WORP = 1
 ;---- D3D 054 END   (ADD) ------------------------------
-FLAG:現M = ARG
-FLAG:現X = ARG:1
-FLAG:現Y = ARG:2
+FLAG:현M = ARG
+FLAG:현X = ARG:1
+FLAG:현Y = ARG:2
 ;現在のフ로어데이터を読み込み
-CALL MAKE_FLOOR, FLAG:現던전
+CALL MAKE_FLOOR, FLAG:현던전
 CALL AUTOMAP
-;ラン란다ンジョン用のRUN中断フラグ立て
+;ラン란다ンジョン用のRUN중단フラグ立て
 SIF GETBIT(FLAG:232,0) == 1
 	SETBIT FLAG:233,0
 ;移動後の던전이벤트呼び出し
-CALLFORM EVENT_ENTER_DUNGEON_{FLAG:現던전},0
+CALLFORM EVENT_ENTER_DUNGEON_{FLAG:현던전},0
 
 ;=====================================================================
 ;特定のマップの特定の座標へ移動_ID
 ;=====================================================================
 @DUNGEON_WORP_ID,ARG,ARG:1,ARG:2 = 0
 ;---- D3D 054 START (ADD) ------------------------------
-SIF FLAG:現M == ARG
+SIF FLAG:현M == ARG
 	D3D_WORP = 1
 ;---- D3D 054 END   (ADD) ------------------------------
-FLAG:現M = ARG
-;ラン란다ンジョン用のRUN中断フラグ立て
+FLAG:현M = ARG
+;ラン란다ンジョン用のRUN중단フラグ立て
 SIF GETBIT(FLAG:232,0) == 1
 	SETBIT FLAG:233,0
 ;現在のフ로어데이터を読み込み
-CALL MAKE_FLOOR, FLAG:現던전
+CALL MAKE_FLOOR, FLAG:현던전
 	;座標移動
-	FLAG:現X = SEARCH_ID(ARG:1) /100
-	FLAG:現Y = SEARCH_ID(ARG:1) %100
+	FLAG:현X = SEARCH_ID(ARG:1) /100
+	FLAG:현Y = SEARCH_ID(ARG:1) %100
 	CALL AUTOMAP
 ;ARG:2 == 1 でなければ移動後の던전이벤트呼び出し
 SIF ARG:2 == 0
-	CALLFORM EVENT_ENTER_DUNGEON_{FLAG:現던전},0
+	CALLFORM EVENT_ENTER_DUNGEON_{FLAG:현던전},0
 	RETURN 1
 
 ;=====================================================================
@@ -4021,7 +4021,7 @@ SIF ARG:2 == 0
 @DUNGEON_TERMINAL
 	CUSTOMDRAWLINE =
 	PRINTL ＞터미널이 있다。
-	CALLFORM GET_DUNGEON_NAME_{FLAG:現던전}
+	CALLFORM GET_DUNGEON_NAME_{FLAG:현던전}
 	PRINTFORMW 목소리：이곳은 %RESULTS% 터미널입니다
 	PRINTFORML 용무는 무엇입니까
 	PRINTL [1] 세이브
@@ -4086,22 +4086,22 @@ CUSTOMDRAWLINE =
 PRINTL ＞엘레베이터가 있다.
 VARSET RESULT, -1
 VARSET RESULTS
-LOCAL:1 = FLAG:現M
-CALLFORM DUNGEON_ELEVATOR_{FLAG:現던전}, ARG
+LOCAL:1 = FLAG:현M
+CALLFORM DUNGEON_ELEVATOR_{FLAG:현던전}, ARG
 LOCAL:2 = RESULT
 FOR LOCAL, 0, 25
 	IF RESULT:LOCAL >= 0 && RESULT:LOCAL != LOCAL:1
 		PRINTFORM [{LOCAL}] 
 		IF !STRLENS(RESULTS:LOCAL)
-			FLAG:現M = RESULT:LOCAL
-			CALLFORM FLOORNAME_{FLAG:現던전}
+			FLAG:현M = RESULT:LOCAL
+			CALLFORM FLOORNAME_{FLAG:현던전}
 			RESULT = LOCAL:2
 		ELSE
 			PRINTFORML %RESULTS:LOCAL%
 		ENDIF
 	ENDIF
 NEXT
-FLAG:現M = LOCAL:1
+FLAG:현M = LOCAL:1
 ARRAYSHIFT RESULT, 1, 0
 PRINTL [100] 타지 않는다
 $INPUT_LOOP
@@ -4156,7 +4156,7 @@ ENDIF
 ;기본가격は악마の基礎매각額と同じ
 기본가격 = BASE:MASTER:LV * (5 + BASE:MASTER:LV / 2) * 5 / 4
 ;이용횟수に応じて増加
-FOR LOCAL, 1, FLAG:트리슈の泉이용횟수
+FOR LOCAL, 1, FLAG:트리슈의샘이용횟수
 	기본가격 = 기본가격 * 150 / 100
 NEXT
 CUSTOMDRAWLINE = 
@@ -4171,7 +4171,7 @@ ELSEIF FLAG:트리슈조교 == -2
 	PRINTL 
 	PRINTL 회복엘프:
 	PRINTW 「여기는, 회복의 샘입니다~」
-ELSEIF FLAG:트리슈の泉이용횟수
+ELSEIF FLAG:트리슈의샘이용횟수
 	PRINTW ＞회복의 샘이다
 	PRINTL 
 	PRINTL 트리슈:
@@ -4191,7 +4191,7 @@ ELSE
 	PRINTW 「너희들의 소중한 Memory의 Save도 해준다고」
 	PRINTW 「물론 공짜는 아니야. 저쪽 세상은 Give and take!」
 	PRINTW 「돈만 있으면 몇번이던 Recover and Save!」
-	FLAG:트리슈の泉이용횟수 = 1
+	FLAG:트리슈의샘이용횟수 = 1
 ENDIF
 IF FLAG:트리슈조교 == -2
 	PRINTL 「뭘 하겠습니까~」
@@ -4313,7 +4313,7 @@ IF RESULT == 0
 				FOR LOCAL, 0, CHARANUM
 					CALL HEALTH_CHARA, LOCAL
 				NEXT
-				FLAG:트리슈の泉이용횟수 += 1
+				FLAG:트리슈의샘이용횟수 += 1
 			ELSE
 				IF FLAG:트리슈조교 == -2
 					PRINTL 회복엘프:
@@ -4364,7 +4364,7 @@ ELSEIF RESULT == 1
 				PRINTW 「그리고 Memory를 Save！」
 			ENDIF
 			MONEY:1 -= LOCAL:1
-			FLAG:트리슈の泉이용횟수 += 1
+			FLAG:트리슈의샘이용횟수 += 1
 			CALL TITLE_SAVEGAME
 		ELSE
 			IF FLAG:트리슈조교 == -2
@@ -4831,8 +4831,8 @@ ENDIF
 ;=====================================================================
 @DUNGEON_DOOR,ARG
 IF ARG > 0
-	;TA:(FLAG:現M*100+FLAG:現던전):(FLAG:現X):(FLAG:現Y) = 2
-	CALL SET_FLOOR_ANALYZE(2, FLAG:現던전, FLAG:現M, FLAG:現X, FLAG:現Y)
+	;TA:(FLAG:현M*100+FLAG:현던전):(FLAG:현X):(FLAG:현Y) = 2
+	CALL SET_FLOOR_ANALYZE(2, FLAG:현던전, FLAG:현M, FLAG:현X, FLAG:현Y)
 	CALL WALK_DUNGEON,ARG
 ENDIF
 
@@ -5166,10 +5166,10 @@ RETURNF LOCAL*100+LOCAL:1
 
 ;===================================================================
 ;에스트마・리베라마等の効힘
-;　COMPの기능でデフォで인카운터율変動とかあるといいかも
+;　COMPの기능でデフォで인카운트율変動とかあるといいかも
 ;===================================================================
 @ENCOUNTER_CHANGER
-	FLAG:인카운터율보정 = 0
+	FLAG:인카운트율보정 = 0
 	FLAG:에스트마 = 0
 	FLAG:라이트마 = 0
 	FLAG:리프트마 = 0
@@ -5177,40 +5177,40 @@ RETURN 1
 
 
 ;===================================================================
-;月齢変化
+;월령変化
 ;===================================================================
 @MOON
-IF FLAG:月齢ベクトル == 0
-	FLAG:月齢 ++
+IF FLAG:월령벡터 == 0
+	FLAG:월령 ++
 ELSE
-	FLAG:月齢 --
+	FLAG:월령 --
 ENDIF
-SIF FLAG:月齢 > 8
-	FLAG:月齢 = 8
-SIF FLAG:月齢 < 0
-	FLAG:月齢 = 0
-SIF FLAG:月齢 == 8
-	FLAG:月齢ベクトル = 1
-SIF FLAG:月齢 == 0
-	FLAG:月齢ベクトル = 0
+SIF FLAG:월령 > 8
+	FLAG:월령 = 8
+SIF FLAG:월령 < 0
+	FLAG:월령 = 0
+SIF FLAG:월령 == 8
+	FLAG:월령벡터 = 1
+SIF FLAG:월령 == 0
+	FLAG:월령벡터 = 0
 
-IF FLAG:月齢 == 0 && FLAG:SHOP커맨드 == 101
-	SIF FLAG:인카운터율보정 || FLAG:에스트마
+IF FLAG:월령 == 0 && FLAG:SHOP커맨드 == 101
+	SIF FLAG:인카운트율보정 || FLAG:에스트마
 		PRINTW 적의 기색이 원래대로 돌아왔다。
-	FLAG:인카운터율보정 = 0
+	FLAG:인카운트율보정 = 0
 	FLAG:에스트마 = 0
 	FLAG:라이트마 = 0
 	FLAG:리프트마 = 0
 	CALL 酔い깨달음まし()
-	TRYCALLFORM EVENT_NEWMOON_DUNGEON{FLAG:現던전}
+	TRYCALLFORM EVENT_NEWMOON_DUNGEON{FLAG:현던전}
 ENDIF
 
 ;===================================================================
-;月齢歩き
+;월령歩き
 ;===================================================================
 @MOVE_MOON,ARG
 LOCAL += 1
-IF LOCAL >= 16 * FLAG:月齢進行率 / 100
+IF LOCAL >= 16 * FLAG:월령진행률 / 100
 	LOCAL = 0
 	CALL MOON
 ENDIF
@@ -5265,7 +5265,7 @@ SIF CFLAG:ARG:所属ＣＯＭＰ == -1
 RETURN 1
 
 @UP_PRINT_COMP_DDM
-PRINTFORML 자택서버에 전송시킬 악마를 선택해주세요　\@ A > リスト표시数() ? ＜page.{P + 1}/{A / リスト표시数() + 1}＞ # \@　ＣＯＭＰ：{NUM_NAKAMA()+ソフト용량()}/{FLAG:ＣＯＭＰ용량}
+PRINTFORML 자택서버에 전송시킬 악마를 선택해주세요　\@ A > リスト표시数() ? ＜page.{P + 1}/{A / リスト표시数() + 1}＞ # \@　ＣＯＭＰ：{NUM_NAKAMA()+소프트용량()}/{FLAG:ＣＯＭＰ용량}
 
 
 ;---- EDIT 021 ADD START -------------------------
