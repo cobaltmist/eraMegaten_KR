@@ -15,7 +15,7 @@
 ;	005		2011/02/04		P						던전내조교終了時にABL체크に飛ぶように
 ;	006		2011/02/06		Rsp暇人					ターン終了時に酔い깨달음まし処理を추가
 ;	007		2011/04/24		P						ゲーム開始時にPALAMLV10~13を定義するように
-;	008		2012/12/02		ネトリス				던전から帰還したときに『CFLAG:던전内発情用욕정치』を０にするように변경
+;	008		2012/12/02		ネトリス				던전から帰還したときに『CFLAG:던전내발정용욕정치』を０にするように변경
 ;													던전から帰還したときに불결もリセット
 ;	009		2013/01/07		TR						エン디무ング日数制限をENDING.ERBで個別処理するように
 ;	010		2014/10/21		ネトリス				デビオク処理を추가
@@ -132,8 +132,8 @@ FLAG:전투난이도 = 2
 CALL SET_DIFFICULT
 CALL SELECT_COLOSSEUM_RANDOMBATTLE
 CALL SET_MASTER
-CFLAG:MASTER:娘の父親の固有번호娘 = -1
-CFLAG:MASTER:娘の産みの親の固有번호娘 = -1
+CFLAG:MASTER:딸의부친고유번호딸 = -1
+CFLAG:MASTER:딸의친부모고유번호딸 = -1
 ;主人の経験値、マグネタイトの초기化
 BASE:MASTER:ＥＸＰ = 200
 BASE:MASTER:ＭＡＧ = 3000
@@ -836,14 +836,14 @@ IF FLAG:던전내조교 == 1
 ENDIF
 
 ;던전内で発情した場合ココで治す
-CVARSET CFLAG , GETNUM(CFLAG , "던전内発情") , 0
-CVARSET CFLAG , GETNUM(CFLAG , "던전内発情用욕정치") , 0
+CVARSET CFLAG , GETNUM(CFLAG , "던전내발정") , 0
+CVARSET CFLAG , GETNUM(CFLAG , "던전내발정용욕정치") , 0
 ;불결も落とす
 FOR LCOUNT, 0, CHARANUM
 	RESET_STAIN LCOUNT
 ;---- EDIT 019 ADD -------------------------------
 	SIF LCOUNT > 0
-		CLEARBIT CFLAG:LCOUNT:교류済フラグ,1
+		CLEARBIT CFLAG:LCOUNT:교류끝플래그,1
 NEXT
 
 ;---- EDIT 018 ADD -------------------------------
@@ -861,12 +861,12 @@ IF TIME == 3
 	;렌탈
 	FOR LOCAL,0,CHARANUM
 		;---- EDIT 018 ADD -------------------------------
-		CFLAG:LOCAL:교류済フラグ = 0
+		CFLAG:LOCAL:교류끝플래그 = 0
 		
 		;---- EDIT 002 ADD START -------------------------
 		;新規作成
 		;オフの日は先に進まない
-		SIF GETBIT(CFLAG:LOCAL:シフト설정, DAY%7)
+		SIF GETBIT(CFLAG:LOCAL:시프트설정, DAY%7)
 			CONTINUE
 		;---- EDIT 002 ADD END ---------------------------
 		SIF CFLAG:LOCAL:노역플래그 == 1
@@ -891,11 +891,11 @@ IF TIME == 3
 		;체력500未満で점포노역しているキャラは外す
 		IF BASE:LCOUNT:체력 < 500 && CFLAG:LCOUNT:노역플래그 > 9 && CFLAG:LCOUNT:노역플래그 != 3
 			CFLAG:LCOUNT:노역플래그 = 0
-			IF CFLAG:LCOUNT:劇場出演順番 != 0
-				DE:(49+(CFLAG:LCOUNT:劇場出演順番)):(CFLAG:LCOUNT:노역점포-1) = -1
-				DE:(59+(CFLAG:LCOUNT:劇場出演順番)):(CFLAG:LCOUNT:노역점포-1) = -1
+			IF CFLAG:LCOUNT:극장출연순서 != 0
+				DE:(49+(CFLAG:LCOUNT:극장출연순서)):(CFLAG:LCOUNT:노역점포-1) = -1
+				DE:(59+(CFLAG:LCOUNT:극장출연순서)):(CFLAG:LCOUNT:노역점포-1) = -1
 				CFLAG:LCOUNT:노역플래그 = 0
-				CFLAG:LCOUNT:劇場出演順番 = 0
+				CFLAG:LCOUNT:극장출연순서 = 0
 				CFLAG:LCOUNT:노역점포 = 0
 			ENDIF
 		ENDIF
@@ -910,21 +910,21 @@ IF TIME == 3
 	;NTR이벤트呼び出し
 	IF FLAG:ＮＴＲ기능
 		FOR LOCAL,1,CHARANUM
-			SIF CFLAG:LOCAL:この場に居ないフラグ == 1
+			SIF CFLAG:LOCAL:이자리에없는플래그 == 1
 				CONTINUE
 			IF CFLAG:LOCAL:構ったフラグ == 0
-				CFLAG:LOCAL:放置日数 ++
+				CFLAG:LOCAL:방치일수 ++
 				IF CDFLAG:LOCAL:캐릭터간호감도:100 > 0
-					CDFLAG:LOCAL:캐릭터간호감도:100 -= CFLAG:LOCAL:放置日数*2
+					CDFLAG:LOCAL:캐릭터간호감도:100 -= CFLAG:LOCAL:방치일수*2
 					SIF CDFLAG:LOCAL:캐릭터간호감도:100 < 0
 						CDFLAG:LOCAL:캐릭터간호감도:100 = 0
 				ELSE
-					CDFLAG:LOCAL:캐릭터간호감도:100 += CFLAG:LOCAL:放置日数*2
+					CDFLAG:LOCAL:캐릭터간호감도:100 += CFLAG:LOCAL:방치일수*2
 					SIF CDFLAG:LOCAL:캐릭터간호감도:100 > 0
 						CDFLAG:LOCAL:캐릭터간호감도:100 = 0
 				ENDIF
 			ELSE
-				CFLAG:LOCAL:放置日数 = 0
+				CFLAG:LOCAL:방치일수 = 0
 				CFLAG:LOCAL:構ったフラグ = 0
 			ENDIF
 			CALL NTR_CHECK , LOCAL , 1
@@ -943,12 +943,12 @@ IF TIME == 3
 	;ハードＮＴＲペナルティ
 	IF FLAG:ＮＴＲ하드모드
 		FOR LOCAL,1,CHARANUM
-			IF CFLAG:LOCAL:現ＮＴＲ進行度 > 9 && (TALENT:LOCAL:ＮＴＲ == 1 || TALENT:LOCAL:ＮＴＲ == 3)
+			IF CFLAG:LOCAL:현ＮＴＲ진행도 > 9 && (TALENT:LOCAL:ＮＴＲ == 1 || TALENT:LOCAL:ＮＴＲ == 3)
 				DRAWLINE
 				IF TALENT:LOCAL:ＮＴＲ == 1
-					PRINTFORMW %조사처리(CALLNAME:LOCAL,"는")% %조사처리(NTRNAME(CFLAG:LOCAL:함락キャラ),"가")% 아닌 다른 사람에게 안기는 데에 거부감을 느끼는 것 같다.
+					PRINTFORMW %조사처리(CALLNAME:LOCAL,"는")% %조사처리(NTRNAME(CFLAG:LOCAL:함락캐릭터),"가")% 아닌 다른 사람에게 안기는 데에 거부감을 느끼는 것 같다.
 				ELSEIF TALENT:LOCAL:ＮＴＲ == 3
-					PRINTFORMW %조사처리(CALLNAME:LOCAL,"는")% %NTRNAME(CFLAG:LOCAL:함락キャラ)%한테 %CALLNAME:MASTER%에게 몸을 허락하지 말라고 명령받은 것 같다.
+					PRINTFORMW %조사처리(CALLNAME:LOCAL,"는")% %NTRNAME(CFLAG:LOCAL:함락캐릭터)%한테 %CALLNAME:MASTER%에게 몸을 허락하지 말라고 명령받은 것 같다.
 				ENDIF
 				PRINTFORMW 
 				IF TALENT:LOCAL:34 == 0
@@ -967,10 +967,10 @@ IF TIME == 3
 					PRINTFORMW 굴복의 구슬이 0이 되었다.
 					PRINTFORMW %CALLNAME:LOCAL%의 반발각인이 3이 되었다.
 				ENDIF
-				JUEL:LOCAL:부정 += CFLAG:LOCAL:現ＮＴＲ進行度 * 50
-				PRINTFORMW 부정의 구슬 + {CFLAG:LOCAL:現ＮＴＲ進行度 * 50}
+				JUEL:LOCAL:부정 += CFLAG:LOCAL:현ＮＴＲ진행도 * 50
+				PRINTFORMW 부정의 구슬 + {CFLAG:LOCAL:현ＮＴＲ진행도 * 50}
 				DRAWLINE
-			ELSEIF CFLAG:LOCAL:現ＮＴＲ進行度 > 9 &&TALENT:LOCAL:ＮＴＲ == 2
+			ELSEIF CFLAG:LOCAL:현ＮＴＲ진행도 > 9 &&TALENT:LOCAL:ＮＴＲ == 2
 				IF TALENT:LOCAL:즉각함락 == 0
 					TALENT:LOCAL:즉각함락 = 1
 					DRAWLINE
