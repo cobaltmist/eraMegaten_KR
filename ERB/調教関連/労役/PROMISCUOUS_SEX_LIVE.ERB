@@ -11,8 +11,8 @@
 ;	00x		2011/02/03	????	実行のY/N
 ;	00x		2021/02/09	????	乱交ライブでMAG・EXP取得
 ;	010		2021/05/28	ういろ	βver:乱交ライブ参加「あなた」参加の復活。制限箇所を一時的にコメントアウト。※制限の理由は何だったんろう？
-;	011		2021/05/28	ういろ	βver:乱交ライブ撮影制限緩和。カメラ向けるだけなら誰でも可能な為、特定の性格以外、촬영기능=0、売却不可でも可能にした。
-;===================================================
+;	011		2021/05/28	ういろ	βver:乱交ライブ撮影制限緩和。カメラ向けるだけなら誰でも可能な為、特定の性格以外、撮影技能=0、売却不可でも可能にした。
+;=============================================================================
 
 @CASTING_SEX_LIVE(ARG)
 ;「あなた」制限を解除(Edit:010)
@@ -37,7 +37,7 @@ SIF ARG != MASTER && CFLAG:ARG:매각가능 < 2
 
 SIF BASE:ARG:체력 < 800
 	RETURN 0
-	
+
 RETURN 1
 
 @CASTING_Photographer(ARG)
@@ -51,10 +51,29 @@ SIF CFLAG:ARG:노역플래그 > 0
 
 SIF CFLAG:ARG:이자리에없는플래그 == 1
 	RETURN 0
-SIF CFLAG:ARG:매각가능 < 2 && ARG != MASTER
+
+;「売却」制限を解除。人間なら特定の性格以外撮影できるようにした(Edit:011)
+;SIF ARG != MASTER && CFLAG:ARG:매각가능 < 2
+;	RETURN 0
+
+;「撮影」制限を解除。人間なら特定の性格以外撮影できるようにした(Edit:011)
+;SIF ABL:ARG:촬영기능 == 0
+;	RETURN 0
+
+;種族「0：人間」のみ。人間なら特定の性格以外撮影できるようにした(Edit:011)
+SIF ABL:ARG:종족 != 0
 	RETURN 0
-SIF ABL:ARG:촬영기능 == 0
+
+;以下の特定の性格は撮影できない(Edit:011)
+SIF TALENT:(ARG):정조관념 == 1
 	RETURN 0
+SIF TALENT:(ARG):저항 == 1
+	RETURN 0
+SIF TALENT:(ARG):일선을넘지않음 == 1
+	RETURN 0
+SIF TALENT:(ARG):쾌감을부정 == 1
+	RETURN 0
+
 SIF BASE:ARG:체력 < 800
 	RETURN 0
 RETURN 1
@@ -85,19 +104,19 @@ RETURN ARG , 1
 
 @PROMISCUOUS_SEX_LIVE
 ;#DIM LCOUNT
-#DIM 出演者
+#DIM 출연자
 #DIM 촬영자 = -1
-#DIM 総行為数
-#DIM 報酬
-#DIM EXP計算用
+#DIM 총행위수
+#DIM 보수
+#DIM EXP계산용
 
 $PRINT_LIST
-;사용する一時変数の초기化
-;いくつかの一文字関数が초기化されていなかったのはミスってことでいいよね？
-;出演者
+;使用する一時変数の初期化
+;いくつかの一文字関数が初期化されていなかったのはミスってことでいいよね？
+;출연자
 ;A = 0
 B = 0
-;総行為数
+;총행위수
 ;C = 0
 D = 0
 E = 0
@@ -110,16 +129,16 @@ J = 0
 P = 0
 Q = 0
 R = 0
-;報酬
+;보수
 ;S = 0
 ;倍率
 V = 0
 Z = 0
 
-総行為数 = 0
-報酬 = 0
-;乱交라이브で歌う奴隷を選択
-;PRINTL 乱交라이브を行う奴隷を選択してください
+총행위수 = 0
+보수 = 0
+;乱交ライブで歌う奴隷を選択
+;PRINTL 乱交ライブを行う奴隷を選択してください
 CALL INPUT_CHARA_LIST("난교 라이브를 실시할 노예를 선택해 주세요", "CASTING_SEX_LIVE", "", "", "MODECHANGE_SEX_LIVE")
 
 IF RESULT == 1000
@@ -166,11 +185,11 @@ IF RESULT == 1000
 ;	A = RESULT
 ENDIF
 
-	出演者 = RESULT
-;	PRINTFORML 出演者は%CALLNAME:出演者%です
+출연자 = RESULT
+;PRINTFORML 출연자は%CALLNAME:출연자%です
 
 $INPUT_LOOP_3
-IF CFLAG:出演者:자궁내피임결계
+IF CFLAG:출연자:자궁내피임결계
 	PRINTL <피임결계유효>
 	J = 1
 ELSEIF FLAG:포장마차차금 == 1 || MONEY < 2000
@@ -237,8 +256,8 @@ IF (ITEM:비디오카메라 > 0 && ITEM:비디오테이프 > 0) || NOITEM != 0
 	ELSEIF RESULT == 999
 		;PRINTFORML 라이브촬영なし
 		촬영자 = -1
-	ELSEIF RESULT == 出演者
-		PRINTFORMW 촬영자は出演者以外の者を選んでください
+	ELSEIF RESULT == 출연자
+		PRINTFORMW 촬영자は출연자以外の者を選んでください
 		GOTO INPUT_LOOP_4
 	ELSE
 		촬영자 = RESULT
@@ -248,344 +267,344 @@ IF (ITEM:비디오카메라 > 0 && ITEM:비디오테이프 > 0) || NOITEM != 0
 	ENDIF
 ENDIF
 
-PRINTFORML 출연자：%CALLNAME:出演者%
+PRINTFORML 출연자：%CALLNAME:출연자%
 IF 촬영자 > -1
 	PRINTFORML 촬영자：%CALLNAME:촬영자%
 ENDIF
 
 ;行為内容の算出。避妊処理はしないものの、バランスを取るために창관から流用
 ;ABL:순종をみる
-IF ABL:出演者:순종 == 0
+IF ABL:출연자:순종 == 0
 	P = 0
-ELSEIF ABL:出演者:순종 == 1
+ELSEIF ABL:출연자:순종 == 1
 	P = 1
-ELSEIF ABL:出演者:순종 == 2
+ELSEIF ABL:출연자:순종 == 2
 	P = 2
-ELSEIF ABL:出演者:순종 == 3
+ELSEIF ABL:출연자:순종 == 3
 	P = 3
-ELSEIF ABL:出演者:순종 == 4
+ELSEIF ABL:출연자:순종 == 4
 	P = 4
-ELSEIF ABL:出演者:순종 == 5
+ELSEIF ABL:출연자:순종 == 5
 	P = 5
-ELSEIF ABL:出演者:순종 == 6
+ELSEIF ABL:출연자:순종 == 6
 	P = 6
-ELSEIF ABL:出演者:순종 == 7
+ELSEIF ABL:출연자:순종 == 7
 	P = 7
-ELSEIF ABL:出演者:순종 == 8
+ELSEIF ABL:출연자:순종 == 8
 	P = 8
-ELSEIF ABL:出演者:순종 == 9
+ELSEIF ABL:출연자:순종 == 9
 	P = 9
 ELSE
 	P = 12
 ENDIF
 SIF P > 0
-	PRINTFORML 순종{ABL:出演者:순종}LV 행위수+{P}
-総行為数 += P
+	PRINTFORML 순종{ABL:출연자:순종}LV 행위수+{P}
+총행위수 += P
 
 ;ABL:욕망をみる
-IF ABL:出演者:욕망 == 0
+IF ABL:출연자:욕망 == 0
 	P = 1
-ELSEIF ABL:出演者:욕망 == 1
+ELSEIF ABL:출연자:욕망 == 1
 	P = 2
-ELSEIF ABL:出演者:욕망 == 2
+ELSEIF ABL:출연자:욕망 == 2
 	P = 3
-ELSEIF ABL:出演者:욕망 == 3
+ELSEIF ABL:출연자:욕망 == 3
 	P = 5
-ELSEIF ABL:出演者:욕망 == 4
+ELSEIF ABL:출연자:욕망 == 4
 	P = 7
-ELSEIF ABL:出演者:욕망 == 5
+ELSEIF ABL:출연자:욕망 == 5
 	P = 9
-ELSEIF ABL:出演者:욕망 == 6
+ELSEIF ABL:출연자:욕망 == 6
 	P = 11
-ELSEIF ABL:出演者:욕망 == 7
+ELSEIF ABL:출연자:욕망 == 7
 	P = 13
-ELSEIF ABL:出演者:욕망 == 8
+ELSEIF ABL:출연자:욕망 == 8
 	P = 15
-ELSEIF ABL:出演者:욕망 == 9
+ELSEIF ABL:출연자:욕망 == 9
 	P = 18
 ELSE
 	P = 20
 ENDIF
 SIF P > 0
-	PRINTFORML 욕망{ABL:出演者:욕망}LV 행위수+{P}
-総行為数 += P
+	PRINTFORML 욕망{ABL:출연자:욕망}LV 행위수+{P}
+총행위수 += P
 
 
 ;ABL:Ｖ감각をみる
-IF ABL:出演者:Ｖ감각 == 0
+IF ABL:출연자:Ｖ감각 == 0
 	P = 0
-ELSEIF ABL:出演者:Ｖ감각 == 1
+ELSEIF ABL:출연자:Ｖ감각 == 1
 	P = 1
-ELSEIF ABL:出演者:Ｖ감각 == 2
+ELSEIF ABL:출연자:Ｖ감각 == 2
 	P = 2
-ELSEIF ABL:出演者:Ｖ감각 == 3
+ELSEIF ABL:출연자:Ｖ감각 == 3
 	P = 2
-ELSEIF ABL:出演者:Ｖ감각 == 4
+ELSEIF ABL:출연자:Ｖ감각 == 4
 	P = 3
-ELSEIF ABL:出演者:Ｖ감각 == 5
+ELSEIF ABL:출연자:Ｖ감각 == 5
 	P = 3
-ELSEIF ABL:出演者:Ｖ감각 == 6
+ELSEIF ABL:출연자:Ｖ감각 == 6
 	P = 4
-ELSEIF ABL:出演者:Ｖ감각 == 7
+ELSEIF ABL:출연자:Ｖ감각 == 7
 	P = 4
-ELSEIF ABL:出演者:Ｖ감각 == 8
+ELSEIF ABL:출연자:Ｖ감각 == 8
 	P = 5
-ELSEIF ABL:出演者:Ｖ감각 == 9
+ELSEIF ABL:출연자:Ｖ감각 == 9
 	P = 5
 ELSE
 	P = 6
 ENDIF
 SIF P > 0
-	PRINTFORML Ｖ감각{ABL:出演者:Ｖ감각}LV 행위수+{P}
-総行為数 += P
+	PRINTFORML Ｖ감각{ABL:출연자:Ｖ감각}LV 행위수+{P}
+총행위수 += P
 
 
 ;ABL:Ａ감각をみる
-IF ABL:出演者:Ａ감각 == 0
+IF ABL:출연자:Ａ감각 == 0
 	P = 0
-ELSEIF ABL:出演者:Ａ감각 == 1
+ELSEIF ABL:출연자:Ａ감각 == 1
 	P = 1
-ELSEIF ABL:出演者:Ａ감각 == 2
+ELSEIF ABL:출연자:Ａ감각 == 2
 	P = 2
-ELSEIF ABL:出演者:Ａ감각 == 3
+ELSEIF ABL:출연자:Ａ감각 == 3
 	P = 2
-ELSEIF ABL:出演者:Ａ감각 == 4
+ELSEIF ABL:출연자:Ａ감각 == 4
 	P = 3
-ELSEIF ABL:出演者:Ａ감각 == 5
+ELSEIF ABL:출연자:Ａ감각 == 5
 	P = 3
-ELSEIF ABL:出演者:Ａ감각 == 6
+ELSEIF ABL:출연자:Ａ감각 == 6
 	P = 4
-ELSEIF ABL:出演者:Ａ감각 == 7
+ELSEIF ABL:출연자:Ａ감각 == 7
 	P = 4
-ELSEIF ABL:出演者:Ａ감각 == 8
+ELSEIF ABL:출연자:Ａ감각 == 8
 	P = 5
-ELSEIF ABL:出演者:Ａ감각 == 9
+ELSEIF ABL:출연자:Ａ감각 == 9
 	P = 5
 ELSE
 	P = 6
 ENDIF
 SIF P > 0
-	PRINTFORML Ａ감각{ABL:出演者:Ａ감각}LV 행위수+{P}
-総行為数 += P
+	PRINTFORML Ａ감각{ABL:출연자:Ａ감각}LV 행위수+{P}
+총행위수 += P
 
 
 ;ABL:봉사정신をみる
-IF ABL:出演者:봉사정신 == 0
+IF ABL:출연자:봉사정신 == 0
 	P = 0
-ELSEIF ABL:出演者:봉사정신 == 1
+ELSEIF ABL:출연자:봉사정신 == 1
 	P = 1
-ELSEIF ABL:出演者:봉사정신 == 2
+ELSEIF ABL:출연자:봉사정신 == 2
 	P = 2
-ELSEIF ABL:出演者:봉사정신 == 3
+ELSEIF ABL:출연자:봉사정신 == 3
 	P = 3
-ELSEIF ABL:出演者:봉사정신 == 4
+ELSEIF ABL:출연자:봉사정신 == 4
 	P = 4
-ELSEIF ABL:出演者:봉사정신 == 5
+ELSEIF ABL:출연자:봉사정신 == 5
 	P = 5
-ELSEIF ABL:出演者:봉사정신 == 6
+ELSEIF ABL:출연자:봉사정신 == 6
 	P = 6
-ELSEIF ABL:出演者:봉사정신 == 7
+ELSEIF ABL:출연자:봉사정신 == 7
 	P = 7
-ELSEIF ABL:出演者:봉사정신 == 8
+ELSEIF ABL:출연자:봉사정신 == 8
 	P = 8
-ELSEIF ABL:出演者:봉사정신 == 9
+ELSEIF ABL:출연자:봉사정신 == 9
 	P = 9
 ELSE
 	P = 12
 ENDIF
 SIF P > 0
-	PRINTFORML 봉사정신{ABL:出演者:봉사정신}LV 행위수+{P}
-総行為数 += P
+	PRINTFORML 봉사정신{ABL:출연자:봉사정신}LV 행위수+{P}
+총행위수 += P
 
 
 ;ABL:레즈끼をみる
-IF ABL:出演者:레즈끼 == 0
+IF ABL:출연자:레즈끼 == 0
 	P = 0
-ELSEIF ABL:出演者:레즈끼 == 1
+ELSEIF ABL:출연자:레즈끼 == 1
 	P = 1
-ELSEIF ABL:出演者:레즈끼 == 2
+ELSEIF ABL:출연자:레즈끼 == 2
 	P = 2
-ELSEIF ABL:出演者:레즈끼 == 3
+ELSEIF ABL:출연자:레즈끼 == 3
 	P = 2
-ELSEIF ABL:出演者:레즈끼 == 4
+ELSEIF ABL:출연자:레즈끼 == 4
 	P = 3
-ELSEIF ABL:出演者:레즈끼 == 5
+ELSEIF ABL:출연자:레즈끼 == 5
 	P = 3
-ELSEIF ABL:出演者:레즈끼 == 6
+ELSEIF ABL:출연자:레즈끼 == 6
 	P = 4
-ELSEIF ABL:出演者:레즈끼 == 7
+ELSEIF ABL:출연자:레즈끼 == 7
 	P = 4
-ELSEIF ABL:出演者:레즈끼 == 8
+ELSEIF ABL:출연자:레즈끼 == 8
 	P = 5
-ELSEIF ABL:出演者:레즈끼 == 9
+ELSEIF ABL:출연자:레즈끼 == 9
 	P = 5
 ELSE
 	P = 6
 ENDIF
 SIF P > 0
-	PRINTFORML 레즈끼{ABL:出演者:레즈끼}LV 행위수+{P}
-総行為数 += P
+	PRINTFORML 레즈끼{ABL:출연자:레즈끼}LV 행위수+{P}
+총행위수 += P
 
 
 ;ABL:정액중독をみる
-IF ABL:出演者:정액중독 == 0
+IF ABL:출연자:정액중독 == 0
 	P = 0
-ELSEIF ABL:出演者:정액중독 == 1
+ELSEIF ABL:출연자:정액중독 == 1
 	P = 1
-ELSEIF ABL:出演者:정액중독 == 2
+ELSEIF ABL:출연자:정액중독 == 2
 	P = 2
-ELSEIF ABL:出演者:정액중독 == 3
+ELSEIF ABL:출연자:정액중독 == 3
 	P = 3
-ELSEIF ABL:出演者:정액중독 == 4
+ELSEIF ABL:출연자:정액중독 == 4
 	P = 4
-ELSEIF ABL:出演者:정액중독 == 5
+ELSEIF ABL:출연자:정액중독 == 5
 	P = 5
-ELSEIF ABL:出演者:정액중독 == 6
+ELSEIF ABL:출연자:정액중독 == 6
 	P = 6
-ELSEIF ABL:出演者:정액중독 == 7
+ELSEIF ABL:출연자:정액중독 == 7
 	P = 7
-ELSEIF ABL:出演者:정액중독 == 8
+ELSEIF ABL:출연자:정액중독 == 8
 	P = 8
-ELSEIF ABL:出演者:정액중독 == 9
+ELSEIF ABL:출연자:정액중독 == 9
 	P = 9
 ELSE
 	P = 12
 ENDIF
 SIF P > 0
-	PRINTFORML 정액중독{ABL:出演者:정액중독}LV 행위수+{P}
-総行為数 += P
+	PRINTFORML 정액중독{ABL:출연자:정액중독}LV 행위수+{P}
+총행위수 += P
 
 ;ABL:레즈중독をみる
-IF ABL:出演者:레즈중독 == 0
+IF ABL:출연자:레즈중독 == 0
 	P = 0
-ELSEIF ABL:出演者:레즈중독 == 1
+ELSEIF ABL:출연자:레즈중독 == 1
 	P = 1
-ELSEIF ABL:出演者:레즈중독 == 2
+ELSEIF ABL:출연자:레즈중독 == 2
 	P = 2
-ELSEIF ABL:出演者:레즈중독 == 3
+ELSEIF ABL:출연자:레즈중독 == 3
 	P = 3
-ELSEIF ABL:出演者:레즈중독 == 4
+ELSEIF ABL:출연자:레즈중독 == 4
 	P = 4
-ELSEIF ABL:出演者:레즈중독 == 5
+ELSEIF ABL:출연자:레즈중독 == 5
 	P = 5
-ELSEIF ABL:出演者:레즈중독 == 6
+ELSEIF ABL:출연자:레즈중독 == 6
 	P = 6
-ELSEIF ABL:出演者:레즈중독 == 7
+ELSEIF ABL:출연자:레즈중독 == 7
 	P = 7
-ELSEIF ABL:出演者:레즈중독 == 8
+ELSEIF ABL:출연자:레즈중독 == 8
 	P = 8
-ELSEIF ABL:出演者:레즈중독 == 9
+ELSEIF ABL:출연자:레즈중독 == 9
 	P = 9
 ELSE
 	P = 12
 ENDIF
 SIF P > 0
-	PRINTFORML 레즈중독{ABL:出演者:레즈중독}LV 행위수+{P}
-総行為数 += P
+	PRINTFORML 레즈중독{ABL:출연자:레즈중독}LV 행위수+{P}
+총행위수 += P
 
 
 ;ABL:섹스중독をみる
-IF ABL:出演者:섹스중독 == 0
+IF ABL:출연자:섹스중독 == 0
 	P = 0
-ELSEIF ABL:出演者:섹스중독 == 1
+ELSEIF ABL:출연자:섹스중독 == 1
 	P = 1
-ELSEIF ABL:出演者:섹스중독 == 2
+ELSEIF ABL:출연자:섹스중독 == 2
 	P = 2
-ELSEIF ABL:出演者:섹스중독 == 3
+ELSEIF ABL:출연자:섹스중독 == 3
 	P = 3
-ELSEIF ABL:出演者:섹스중독 == 4
+ELSEIF ABL:출연자:섹스중독 == 4
 	P = 4
-ELSEIF ABL:出演者:섹스중독 == 5
+ELSEIF ABL:출연자:섹스중독 == 5
 	P = 5
-ELSEIF ABL:出演者:섹스중독 == 6
+ELSEIF ABL:출연자:섹스중독 == 6
 	P = 6
-ELSEIF ABL:出演者:섹스중독 == 7
+ELSEIF ABL:출연자:섹스중독 == 7
 	P = 7
-ELSEIF ABL:出演者:섹스중독 == 8
+ELSEIF ABL:출연자:섹스중독 == 8
 	P = 8
-ELSEIF ABL:出演者:섹스중독 == 9
+ELSEIF ABL:출연자:섹스중독 == 9
 	P = 9
 ELSE
 	P = 12
 ENDIF
 SIF P > 0
-	PRINTFORML 섹스중독{ABL:出演者:섹스중독}LV 행위수+{P}
-総行為数 += P
+	PRINTFORML 섹스중독{ABL:출연자:섹스중독}LV 행위수+{P}
+총행위수 += P
 
 
 ;ABL:ＢＬ끼をみる
-IF ABL:出演者:ＢＬ끼 == 0
+IF ABL:출연자:ＢＬ끼 == 0
 	P = 0
-ELSEIF ABL:出演者:ＢＬ끼 == 1
+ELSEIF ABL:출연자:ＢＬ끼 == 1
 	P = 1
-ELSEIF ABL:出演者:ＢＬ끼 == 2
+ELSEIF ABL:출연자:ＢＬ끼 == 2
 	P = 2
-ELSEIF ABL:出演者:ＢＬ끼 == 3
+ELSEIF ABL:출연자:ＢＬ끼 == 3
 	P = 2
-ELSEIF ABL:出演者:ＢＬ끼 == 4
+ELSEIF ABL:출연자:ＢＬ끼 == 4
 	P = 3
-ELSEIF ABL:出演者:ＢＬ끼 == 5
+ELSEIF ABL:출연자:ＢＬ끼 == 5
 	P = 3
-ELSEIF ABL:出演者:ＢＬ끼 == 6
+ELSEIF ABL:출연자:ＢＬ끼 == 6
 	P = 4
-ELSEIF ABL:出演者:ＢＬ끼 == 7
+ELSEIF ABL:출연자:ＢＬ끼 == 7
 	P = 4
-ELSEIF ABL:出演者:ＢＬ끼 == 8
+ELSEIF ABL:출연자:ＢＬ끼 == 8
 	P = 5
-ELSEIF ABL:出演者:ＢＬ끼 == 9
+ELSEIF ABL:출연자:ＢＬ끼 == 9
 	P = 5
 ELSE
 	P = 6
 ENDIF
 SIF P > 0
-	PRINTFORML ＢＬ끼{ABL:出演者:ＢＬ끼}LV 행위수+{P}
-総行為数 += P
+	PRINTFORML ＢＬ끼{ABL:출연자:ＢＬ끼}LV 행위수+{P}
+총행위수 += P
 
 ;ABL:ＢＬ중독をみる
-IF ABL:出演者:ＢＬ중독 == 0
+IF ABL:출연자:ＢＬ중독 == 0
 	P = 0
-ELSEIF ABL:出演者:ＢＬ중독 == 1
+ELSEIF ABL:출연자:ＢＬ중독 == 1
 	P = 1
-ELSEIF ABL:出演者:ＢＬ중독 == 2
+ELSEIF ABL:출연자:ＢＬ중독 == 2
 	P = 2
-ELSEIF ABL:出演者:ＢＬ중독 == 3
+ELSEIF ABL:출연자:ＢＬ중독 == 3
 	P = 3
-ELSEIF ABL:出演者:ＢＬ중독 == 4
+ELSEIF ABL:출연자:ＢＬ중독 == 4
 	P = 4
-ELSEIF ABL:出演者:ＢＬ중독 == 5
+ELSEIF ABL:출연자:ＢＬ중독 == 5
 	P = 5
-ELSEIF ABL:出演者:ＢＬ중독 == 6
+ELSEIF ABL:출연자:ＢＬ중독 == 6
 	P = 6
-ELSEIF ABL:出演者:ＢＬ중독 == 7
+ELSEIF ABL:출연자:ＢＬ중독 == 7
 	P = 7
-ELSEIF ABL:出演者:ＢＬ중독 == 8
+ELSEIF ABL:출연자:ＢＬ중독 == 8
 	P = 8
-ELSEIF ABL:出演者:ＢＬ중독 == 9
+ELSEIF ABL:출연자:ＢＬ중독 == 9
 	P = 9
 ELSE
 	P = 12
 ENDIF
 SIF P > 0
-	PRINTFORML ＢＬ중독{ABL:出演者:ＢＬ중독}LV 행위수+{P}
-総行為数 += P
+	PRINTFORML ＢＬ중독{ABL:출연자:ＢＬ중독}LV 행위수+{P}
+총행위수 += P
 
 
-SIF 総行為数 > 0
-	PRINTFORML 총행위수：{総行為数}
-;報酬の計算
-;S = 総行為数 * 500
-;S = 総行為数 * 100
-報酬 = 総行為数 * 100
+SIF 총행위수 > 0
+	PRINTFORML 총행위수：{총행위수}
+;보수の計算
+;S = 총행위수 * 500
+;S = 총행위수 * 100
+보수 = 총행위수 * 100
 
 ;素質による매각額보정値計算
 ;TALENT:처녀をみる
-IF TALENT:出演者:처녀
+IF TALENT:출연자:처녀
 	F = 100
 	V += 100
 	PRINTFORML %TALENTNAME:0% ＋{F}％
 ENDIF
 ;TALENT:재생처녀をみる
-IF TALENT:出演者:재생처녀
+IF TALENT:출연자:재생처녀
 	F = 20
 	V += 20
 	PRINTFORML %TALENTNAME:1% ＋{F}％
@@ -594,506 +613,504 @@ ENDIF
 ;素質による増減
 ;함락素質
 ;연모
-IF TALENT:出演者:연모
+IF TALENT:출연자:연모
 	F = 50
 	V -= 50
 	PRINTFORML %TALENTNAME:3% －{F}％
 ENDIF
 ;음란
-IF TALENT:出演者:음란
+IF TALENT:출연자:음란
 	F = 50
 	V += 50
 	PRINTFORML %TALENTNAME:4% ＋{F}％
 ENDIF
 ;복종
-IF TALENT:出演者:복종
+IF TALENT:출연자:복종
 	F = 30
 	V += 30
 	PRINTFORML %TALENTNAME:5% ＋{F}％
 ENDIF
 ;친애
-IF TALENT:出演者:친애
+IF TALENT:출연자:친애
 	F = 80
 	V -= 80
 	PRINTFORML %TALENTNAME:6% －{F}％
 ENDIF
 ;창부
-IF TALENT:出演者:창부
+IF TALENT:출연자:창부
 	F = 100
 	V += 100
 	PRINTFORML %TALENTNAME:7% ＋{F}％
 ENDIF
 ;예속
-IF TALENT:出演者:예속
+IF TALENT:출연자:예속
 	F = 60
 	V += 60
 	PRINTFORML %TALENTNAME:8% ＋{F}％
 ENDIF
 
-
-
 ;그외素質
 ;겁쟁이
-IF TALENT:出演者:겁쟁이
+IF TALENT:출연자:겁쟁이
 	F = 20
 	V -= 20
 	PRINTFORML %TALENTNAME:10% －{F}％
 ENDIF
 ;반항적
-IF TALENT:出演者:반항적
+IF TALENT:출연자:반항적
 	F = 20
 	V += 20
 	PRINTFORML %TALENTNAME:11% ＋{F}％
 ENDIF
 ;꿋꿋함
-IF TALENT:出演者:꿋꿋함
+IF TALENT:출연자:꿋꿋함
 	F = 40
 	V += 40
 	PRINTFORML %TALENTNAME:12% ＋{F}％
 ENDIF
 ;솔직함
-IF TALENT:出演者:솔직함
+IF TALENT:출연자:솔직함
 	F = 20
 	V -= 20
 	PRINTFORML %TALENTNAME:13% －{F}％
 ENDIF
 ;얌전함
-IF TALENT:出演者:얌전함
+IF TALENT:출연자:얌전함
 	F = 20
 	V -= 20
 	PRINTFORML %TALENTNAME:14% －{F}％
 ENDIF
 ;프라이드높음
-IF TALENT:出演者:프라이드높음
+IF TALENT:출연자:프라이드높음
 	F = 20
 	V += 20
 	PRINTFORML %TALENTNAME:15% ＋{F}％
 ENDIF
 ;건방짐
-IF TALENT:出演者:건방짐
+IF TALENT:출연자:건방짐
 	F = 20
 	V += 20
 	PRINTFORML %TALENTNAME:16% ＋{F}％
 ENDIF
 ;프라이드낮음
-IF TALENT:出演者:프라이드낮음
+IF TALENT:출연자:프라이드낮음
 	F = 20
 	V -= 20
 	PRINTFORML %TALENTNAME:17% －{F}％
 ENDIF
 ;츤데레
-IF TALENT:出演者:츤데레
+IF TALENT:출연자:츤데레
 	F = 20
 	V += 20
 	PRINTFORML %TALENTNAME:18% ＋{F}％
 ENDIF
 ;자제심
-IF TALENT:出演者:자제심
+IF TALENT:출연자:자제심
 	F = 20
 	V += 20
 	PRINTFORML %TALENTNAME:20% ＋{F}％
 ENDIF
 ;무관심
-IF TALENT:出演者:무관심
+IF TALENT:출연자:무관심
 	F = 20
 	V -= 20
 	PRINTFORML %TALENTNAME:21% －{F}％
 ENDIF
 ;감정결핍
-IF TALENT:出演者:감정결핍
+IF TALENT:출연자:감정결핍
 	F = 20
 	V -= 20
 	PRINTFORML %TALENTNAME:22% －{F}％
 ENDIF
 ;호기심
-IF TALENT:出演者:호기심
+IF TALENT:출연자:호기심
 	F = 10
 	V += 10
 	PRINTFORML %TALENTNAME:23% ＋{F}％
 ENDIF
 ;보수적
-IF TALENT:出演者:보수적
+IF TALENT:출연자:보수적
 	F = 10
 	V += 10
 	PRINTFORML %TALENTNAME:24% ＋{F}％
 ENDIF
 ;일선을넘지않음
-IF TALENT:出演者:일선을넘지않음
+IF TALENT:출연자:일선을넘지않음
 	F = 30
 	V += 30
 	PRINTFORML %TALENTNAME:27% ＋{F}％
 ENDIF
 ;눈에띄고싶어함
-IF TALENT:出演者:눈에띄고싶어함
+IF TALENT:출연자:눈에띄고싶어함
 	F = 10
 	V += 10
 	PRINTFORML %TALENTNAME:28% ＋{F}％
 ENDIF
 ;정조관념
-IF TALENT:出演者:정조관념
+IF TALENT:출연자:정조관념
 	F = 20
 	V += 20
 	PRINTFORML %TALENTNAME:30% ＋{F}％
 ENDIF
 ;정조관결여
-IF TALENT:出演者:정조관결여
+IF TALENT:출연자:정조관결여
 	F = 20
 	V -= 20
 	PRINTFORML %TALENTNAME:31% －{F}％
 ENDIF
 ;해방
-IF TALENT:出演者:해방
+IF TALENT:출연자:해방
 	F = 10
 	V += 10
 	PRINTFORML %TALENTNAME:33% ＋{F}％
 ENDIF
 ;부끄럼쟁이
-IF TALENT:出演者:부끄럼쟁이
+IF TALENT:출연자:부끄럼쟁이
 	F = 10
 	V += 10
 	PRINTFORML %TALENTNAME:35% ＋{F}％
 ENDIF
 ;부끄럼없음
-IF TALENT:出演者:부끄럼없음
+IF TALENT:출연자:부끄럼없음
 	F = 10
 	V -= 10
 	PRINTFORML %TALENTNAME:36% －{F}％
 ENDIF
 ;아픔에약함
-IF TALENT:出演者:아픔에약함
+IF TALENT:출연자:아픔에약함
 	F = 20
 	V -= 20
 	PRINTFORML %TALENTNAME:40% －{F}％
 ENDIF
 ;아픔에강함
-IF TALENT:出演者:아픔에강함
+IF TALENT:출연자:아픔에강함
 	F = 20
 	V += 20
 	PRINTFORML %TALENTNAME:41% ＋{F}％
 ENDIF
 ;젖기쉬움
-IF TALENT:出演者:젖기쉬움
+IF TALENT:출연자:젖기쉬움
 	F = 10
 	V += 10
 	PRINTFORML %TALENTNAME:42% ＋{F}％
 ENDIF
 ;젖기어려움
-IF TALENT:出演者:젖기어려움
+IF TALENT:출연자:젖기어려움
 	F = 10
 	V -= 10
 	PRINTFORML %TALENTNAME:43% －{F}％
 ENDIF
 ;습득빠름
-IF TALENT:出演者:습득빠름
+IF TALENT:출연자:습득빠름
 	F = 10
 	V += 10
 	PRINTFORML %TALENTNAME:50% ＋{F}％
 ENDIF
 ;습득느림
-IF TALENT:出演者:습득느림
+IF TALENT:출연자:습득느림
 	F = 10
 	V -= 10
 	PRINTFORML %TALENTNAME:51% －{F}％
 ENDIF
 ;혀놀림
-IF TALENT:出演者:혀놀림
+IF TALENT:출연자:혀놀림
 	F = 30
 	V += 30
 	PRINTFORML %TALENTNAME:52% ＋{F}％
 ENDIF
 ;약독내성
-IF TALENT:出演者:약독내성
+IF TALENT:출연자:약독내성
 	F = 20
 	V -= 20
 	PRINTFORML %TALENTNAME:56% －{F}％
 ENDIF
 ;오줌싸개버릇
-IF TALENT:出演者:오줌싸개버릇
+IF TALENT:출연자:오줌싸개버릇
 	F = 10
 	V += 10
 	PRINTFORML %TALENTNAME:57% ＋{F}％
 ENDIF
 ;자위하기쉬움
-IF TALENT:出演者:자위하기쉬움
+IF TALENT:출연자:자위하기쉬움
 	F = 10
 	V += 10
 	PRINTFORML %TALENTNAME:60% ＋{F}％
 ENDIF
 ;악취둔감
-IF TALENT:出演者:악취둔감
+IF TALENT:출연자:악취둔감
 	F = 20
 	V -= 20
 	PRINTFORML %TALENTNAME:61% －{F}％
 ENDIF
 ;악취민감
-IF TALENT:出演者:악취민감
+IF TALENT:출연자:악취민감
 	F = 20
 	V += 20
 	PRINTFORML %TALENTNAME:62% ＋{F}％
 ENDIF
 ;헌신적
-IF TALENT:出演者:헌신적
+IF TALENT:출연자:헌신적
 	F = 30
 	V += 30
 	PRINTFORML %TALENTNAME:63% ＋{F}％
 ENDIF
 ;쾌감에솔직
-IF TALENT:出演者:쾌감에솔직
+IF TALENT:출연자:쾌감에솔직
 	F = 30
 	V -= 30
 	PRINTFORML %TALENTNAME:70% －{F}％
 ENDIF
 ;쾌감을부정
-IF TALENT:出演者:쾌감을부정
+IF TALENT:출연자:쾌감을부정
 	F = 30
 	V += 30
 	PRINTFORML %TALENTNAME:71% ＋{F}％
 ENDIF
 ;즉각함락
-IF TALENT:出演者:즉각함락
+IF TALENT:출연자:즉각함락
 	F = 50
 	V -= 50
 	PRINTFORML %TALENTNAME:73% －{F}％
 ENDIF
 ;자위광
-IF TALENT:出演者:자위광
+IF TALENT:출연자:자위광
 	F = 20
 	V += 20
 	PRINTFORML %TALENTNAME:74% ＋{F}％
 ENDIF
 ;섹스광
-IF TALENT:出演者:섹스광
+IF TALENT:출연자:섹스광
 	F = 30
 	V += 30
 	PRINTFORML %TALENTNAME:75% ＋{F}％
 ENDIF
 ;애널광
-IF TALENT:出演者:애널광
+IF TALENT:출연자:애널광
 	F = 20
 	V += 20
 	PRINTFORML %TALENTNAME:76% ＋{F}％
 ENDIF
 ;음유
-IF TALENT:出演者:음유
+IF TALENT:출연자:음유
 	F = 30
 	V += 30
 	PRINTFORML %TALENTNAME:77% ＋{F}％
 ENDIF
 ;도착적
-IF TALENT:出演者:도착적
+IF TALENT:출연자:도착적
 	F = 10
 	V += 10
 	PRINTFORML %TALENTNAME:80% ＋{F}％
 ENDIF
 ;남성혐오
-IF TALENT:出演者:남성혐오
+IF TALENT:출연자:남성혐오
 	F = 10
 	V -= 10
 	PRINTFORML %TALENTNAME:82% －{F}％
 ENDIF
 ;새드
-IF TALENT:出演者:새드
+IF TALENT:출연자:새드
 	F = 30
 	V += 30
 	PRINTFORML %TALENTNAME:83% ＋{F}％
 ENDIF
 ;마조
-IF TALENT:出演者:마조
+IF TALENT:출연자:마조
 	F = 40
 	V += 40
 	PRINTFORML %TALENTNAME:84% ＋{F}％
 ENDIF
 ;망신
-IF TALENT:出演者:망신
+IF TALENT:출연자:망신
 	F = 30
 	V += 30
 	PRINTFORML %TALENTNAME:86% ＋{F}％
 ENDIF
 ;여성혐오
-IF TALENT:出演者:여성혐오
+IF TALENT:출연자:여성혐오
 	F = 10
 	V -= 10
 	PRINTFORML %TALENTNAME:88% －{F}％
 ENDIF
 ;소악마
-IF TALENT:出演者:소악마
+IF TALENT:출연자:소악마
 	F = 20
 	V += 20
 	PRINTFORML %TALENTNAME:87% ＋{F}％
 ENDIF
 ;요호
-IF TALENT:出演者:요호
+IF TALENT:출연자:요호
 	F = 20
 	V += 20
 	PRINTFORML %TALENTNAME:91% ＋{F}％
 ENDIF
 ;매력
-IF TALENT:出演者:매력
+IF TALENT:출연자:매력
 	F = 20
 	V += 20
 	PRINTFORML %TALENTNAME:92% ＋{F}％
 ENDIF
 ;수수께끼의매력
-IF TALENT:出演者:수수께끼의매력
+IF TALENT:출연자:수수께끼의매력
 	F = 100
 	V += 100
 	PRINTFORML %TALENTNAME:94% ＋{F}％
 ENDIF
 ;Ｃ둔감（감각が4以上なら無効）
-IF TALENT:出演者:Ｃ둔감 && ABL:出演者:Ｃ감각 < 4
+IF TALENT:출연자:Ｃ둔감 && ABL:출연자:Ｃ감각 < 4
 	F = 30
 	V -= 30
 	PRINTFORML %TALENTNAME:101% －{F}％
 ENDIF
 ;Ｃ민감（감각が3未満なら無効）
-IF TALENT:出演者:Ｃ민감 && ABL:出演者:Ｃ감각 >= 3
+IF TALENT:출연자:Ｃ민감 && ABL:출연자:Ｃ감각 >= 3
 	F = 30
 	V += 30
 	PRINTFORML %TALENTNAME:102% ＋{F}％
 ENDIF
 ;Ｖ둔감（감각が4以上なら無効）
-IF TALENT:出演者:Ｖ둔감 && ABL:出演者:Ｖ감각 < 4
+IF TALENT:출연자:Ｖ둔감 && ABL:출연자:Ｖ감각 < 4
 	F = 30
 	V -= 30
 	PRINTFORML %TALENTNAME:103% －{F}％
 ENDIF
 ;Ｖ민감（감각が3未満なら無効）
-IF TALENT:出演者:Ｖ민감 && ABL:出演者:Ｖ감각 >= 3
+IF TALENT:출연자:Ｖ민감 && ABL:출연자:Ｖ감각 >= 3
 	F = 30
 	V += 30
 	PRINTFORML %TALENTNAME:104% ＋{F}％
 ENDIF
 ;Ａ둔감（감각が4以上なら無効）
-IF TALENT:出演者:Ａ둔감 && ABL:出演者:Ａ감각 < 4
+IF TALENT:출연자:Ａ둔감 && ABL:출연자:Ａ감각 < 4
 	F = 30
 	V -= 30
 	PRINTFORML %TALENTNAME:105% －{F}％
 ENDIF
 ;Ａ민감（감각が3未満なら無効）
-IF TALENT:出演者:Ａ민감 && ABL:出演者:Ａ감각 >= 3
+IF TALENT:출연자:Ａ민감 && ABL:출연자:Ａ감각 >= 3
 	F = 30
 	V += 30
 	PRINTFORML %TALENTNAME:106% ＋{F}％
 ENDIF
 ;Ｂ둔감（감각が4以上なら無効）
-IF TALENT:出演者:Ｂ둔감 && ABL:出演者:Ｂ감각 < 4
+IF TALENT:출연자:Ｂ둔감 && ABL:출연자:Ｂ감각 < 4
 	F = 30
 	V -= 30
 	PRINTFORML %TALENTNAME:107% －{F}％
 ENDIF
 ;Ｂ민감（감각が3未満なら無効）
-IF TALENT:出演者:Ｂ민감 && ABL:出演者:Ｂ감각 >= 3
+IF TALENT:출연자:Ｂ민감 && ABL:출연자:Ｂ감각 >= 3
 	F = 30
 	V += 30
 	PRINTFORML %TALENTNAME:108% ＋{F}％
 ENDIF
 ;빈유
-IF TALENT:出演者:빈유
+IF TALENT:출연자:빈유
 	F = 20
 	V -= 20
 	PRINTFORML %TALENTNAME:109% －{F}％
 ENDIF
 ;절벽
-IF TALENT:出演者:절벽
+IF TALENT:출연자:절벽
 	F = 10
 	V += 10
 	PRINTFORML %TALENTNAME:110% ＋{F}％
 ENDIF
 ;거유
-IF TALENT:出演者:거유
+IF TALENT:출연자:거유
 	F = 20
 	V += 20
 	PRINTFORML %TALENTNAME:111% ＋{F}％
 ENDIF
 ;폭유
-IF TALENT:出演者:폭유 || TALENT:出演者:마유
+IF TALENT:출연자:폭유 || TALENT:출연자:마유
 	F = 10
 	V += 10
 	PRINTFORML %TALENTNAME:112% ＋{F}％
 ENDIF
 ;남자でないなら有効
-IF !TALENT:出演者:남자
+IF !TALENT:출연자:남자
 	;小尻
-	IF TALENT:出演者:小尻
+	IF TALENT:출연자:小尻
 		F = 10
 		V -= 10
 		PRINTFORML %TALENTNAME:121% －{F}％
 	ENDIF
 	;巨尻
-	IF TALENT:出演者:巨尻
+	IF TALENT:출연자:巨尻
 		F = 20
 		V += 20
 		PRINTFORML %TALENTNAME:123% ＋{F}％
 	ENDIF
 	;爆尻
-	IF TALENT:出演者:爆尻
+	IF TALENT:출연자:爆尻
 		F = 10
 		V += 10
 		PRINTFORML %TALENTNAME:124% ＋{F}％
 	ENDIF
 ENDIF
 ;회복빠름
-IF TALENT:出演者:회복빠름
+IF TALENT:출연자:회복빠름
 	F = 20
 	V += 20
 	PRINTFORML %TALENTNAME:130% ＋{F}％
 ENDIF
 ;회복느림
-IF TALENT:出演者:회복느림
+IF TALENT:출연자:회복느림
 	F = 20
 	V -= 20
 	PRINTFORML %TALENTNAME:131% －{F}％
 ENDIF
 ;흡혈귀
-IF TALENT:出演者:흡혈귀
+IF TALENT:출연자:흡혈귀
 	F = 30
 	V += 30
 	PRINTFORML %TALENTNAME:132% ＋{F}％
 ENDIF
 ;동물귀
-IF TALENT:出演者:동물귀
+IF TALENT:출연자:동물귀
 	F = 20
 	V += 20
 	PRINTFORML %TALENTNAME:143% ＋{F}％
 ENDIF
 ;인기
-IF TALENT:出演者:인기
+IF TALENT:출연자:인기
 	F = 50
 	V += 50
 	PRINTFORML %TALENTNAME:145% ＋{F}％
 ENDIF
 ;봉래인
-IF TALENT:出演者:봉래인
+IF TALENT:출연자:봉래인
 	F = 70
 	V += 70
 	PRINTFORML %TALENTNAME:147% ＋{F}％
 ENDIF
 ;모유체질
-IF TALENT:出演者:모유체질
+IF TALENT:출연자:모유체질
 	F = 20
 	V += 20
 	PRINTFORML %TALENTNAME:149% ＋{F}％
 ENDIF
 
-;붕괴,광기,임신は報酬をかなり低くする（순종によって、80％まで회복）
-IF TALENT:出演者:붕괴 || TALENT:出演者:광기 || TALENT:出演者:임신
+;붕괴,광기,임신は보수をかなり低くする（순종によって、80％まで회복）
+IF TALENT:출연자:붕괴 || TALENT:출연자:광기 || TALENT:출연자:임신
 PRINTL 
-	IF TALENT:出演者:붕괴
-		報酬 *= ABL:出演者:순종
-		TIMES 報酬 , 0.08
-		Z = ABL:出演者:순종
+	IF TALENT:출연자:붕괴
+		보수 *= ABL:출연자:순종
+		TIMES 보수 , 0.08
+		Z = ABL:출연자:순종
 		Z *= 8
 		PRINTFORML %TALENTNAME:9% ×{Z}％
-	ELSEIF TALENT:出演者:광기
-		報酬 *= ABL:出演者:순종
-		TIMES 報酬 , 0.08
-		Z = ABL:出演者:순종
+	ELSEIF TALENT:출연자:광기
+		보수 *= ABL:출연자:순종
+		TIMES 보수 , 0.08
+		Z = ABL:출연자:순종
 		Z *= 8
 		PRINTFORML %TALENTNAME:141% ×{Z}％
-	ELSEIF TALENT:出演者:임신
-		報酬 *= ABL:出演者:순종
-		TIMES 報酬 , 0.08
-		Z = ABL:出演者:순종
+	ELSEIF TALENT:출연자:임신
+		보수 *= ABL:출연자:순종
+		TIMES 보수 , 0.08
+		Z = ABL:출연자:순종
 		Z *= 8
 		PRINTFORML %TALENTNAME:153% ×{Z}％
 	ENDIF
@@ -1105,40 +1122,40 @@ SIF V <= 0
 	V = 1
 
 PRINTFORML 최종배율 {V}％
-EXP計算用 = V
+EXP계산용 = V
 SIF 촬영자 > -1
-	EXP計算用 -= 150+ABL:촬영자:촬영기능*10
+	EXP계산용 -= 150+ABL:촬영자:촬영기능*10
 
 ;보정値の適用
-報酬 *= V
-報酬 /= 100
+보수 *= V
+보수 /= 100
 
 ;難易度処理
 ;EASY
 IF FLAG:조교난이도 == 1
 	PRINTFORML 難易度:EASY ×120％
-	TIMES 報酬 , 1.20
+	TIMES 보수 , 1.20
 ;NORMAL
 ELSEIF FLAG:조교난이도 == 2
-	TIMES 報酬 , 1.00
+	TIMES 보수 , 1.00
 ;HARD
 ELSEIF FLAG:조교난이도 == 3
 	PRINTFORML 難易度:HARD ×80％
-	TIMES 報酬 , 0.80
+	TIMES 보수 , 0.80
 ENDIF
 
-;소비増加分の報酬UP
+;소비増加分の보수UP
 PRINTFORML 추가보정 ×150％
-TIMES 報酬 , 1.50
+TIMES 보수 , 1.50
 
 ;乱交라이브を実行するか？
-IF 報酬 > 0
-	PRINTFORMW 이윤은 ￥{報酬} 정도로 전망됩니다
+IF 보수 > 0
+	PRINTFORMW 이윤은 ￥{보수} 정도로 전망됩니다
 ELSE
 	PRINTFORMW 이윤이 남지 않기 때문에 난교 라이브를 중지합니다
 	RETURN 0
 ENDIF
-PRINTFORML %CALLNAME:A%의 난교 라이브를 실행하겠습니까?
+PRINTFORML %CALLNAME:출연자%의 난교 라이브를 실행하겠습니까?
 
 ;---- EDIT INPUT_YN추가対応(2011/02/03) MOD START -------------------------
 CALL INPUT_YN,"실행한다","그만둔다"
@@ -1151,13 +1168,13 @@ ENDIF
 SIF 촬영자 >= -1
 	ITEM:비디오테이프 -= 1
 
-IF J > 0 && CFLAG:出演者:자궁내피임결계 == 0
+IF J > 0 && CFLAG:출연자:자궁내피임결계 == 0
 	PRINTL 피임도구 비용으로 ￥2000을 사용했습니다
 	MONEY -= 2000
-	CFLAG:出演者:자궁내피임결계 = 1
+	CFLAG:출연자:자궁내피임결계 = 1
 ENDIF
 
-PRINTFORML %CALLNAME:A%의 난교 라이브를 실시했습니다
+PRINTFORML %CALLNAME:출연자%의 난교 라이브를 실시했습니다
 
 
 ;이벤트구상호출
@@ -1165,13 +1182,13 @@ U = 0
 ;修正するファイルが増えてしまう為ここだけI使わせて
 I = -1
 IF ASSI >= 0
-	SIF ASSI == 出演者
+	SIF ASSI == 출연자
 		U = 1
 ENDIF
 SIF 촬영자 > -1
 	I = 촬영자
 T = TARGET
-TARGET = 出演者
+TARGET = 출연자
 TFLAG:13 = 21
 ;미조교함락フラグを折る
 CFLAG:피조교횟수 += 1
@@ -1179,75 +1196,75 @@ CALL KOJO_MESSAGE_EVENT
 TARGET = T
 
 SIF U
-	ASSI = 出演者
+	ASSI = 출연자
 
 ;奴隷の경험、능력処理
-IF ABL:出演者:가창기능 == 0
+IF ABL:출연자:가창기능 == 0
 	R = 8
 	Q = 5
-ELSEIF ABL:出演者:가창기능 == 1
+ELSEIF ABL:출연자:가창기능 == 1
 	R = 50
 	Q = 5
-ELSEIF ABL:出演者:가창기능 == 2
+ELSEIF ABL:출연자:가창기능 == 2
 	R = 300
 	Q = 5
-ELSEIF ABL:出演者:가창기능 == 3
+ELSEIF ABL:출연자:가창기능 == 3
 	R = 900
 	Q = 5
-ELSEIF ABL:出演者:가창기능 == 4
+ELSEIF ABL:출연자:가창기능 == 4
 	R = 2400
 	Q = 10
-ELSEIF ABL:出演者:가창기능 == 5
+ELSEIF ABL:출연자:가창기능 == 5
 	R = 3000
 	Q = 20
-ELSEIF ABL:出演者:가창기능 == 6
+ELSEIF ABL:출연자:가창기능 == 6
 	R = 3500
 	Q = 30
-ELSEIF ABL:出演者:가창기능 == 7
+ELSEIF ABL:출연자:가창기능 == 7
 	R = 4000
 	Q = 40
-ELSEIF ABL:出演者:가창기능 == 8
+ELSEIF ABL:출연자:가창기능 == 8
 	R = 4500
 	Q = 50
-ELSEIF ABL:出演者:가창기능 == 9
+ELSEIF ABL:출연자:가창기능 == 9
 	R = 5000
 	Q = 60
-ELSEIF ABL:出演者:가창기능 >= 10
+ELSEIF ABL:출연자:가창기능 >= 10
 	R = 6000
 	Q = 80
 ENDIF
-EXP:出演者:가창경험 += Q
-JUEL:出演者:습득 += R
+EXP:출연자:가창경험 += Q
+JUEL:출연자:습득 += R
 
-;소비を少し増加その分報酬UP
-;BASE:出演者:체력 -= 30*総行為数
-BASE:出演者:체력 -= 45*総行為数
+;소비を少し増加その分보수UP
+;BASE:출연자:체력 -= 30*총행위수
+BASE:출연자:체력 -= 45*총행위수
 
 ;스트레스치の付加
 ;3歩進んで1歩下がる謎の処理
-;CFLAG:出演者:스트레스치 -= 1
-;CFLAG:出演者:스트레스치 += 3
-CFLAG:出演者:스트레스치 += 5
+;CFLAG:출연자:스트레스치 -= 1
+;CFLAG:출연자:스트레스치 += 3
+CFLAG:출연자:스트레스치 += 5
 
 ;経験、珠の加算処理
-B = 総行為数/2
+B = 총행위수/2
 ;VとAのプレイ差
 ;남자はAのみ
-IF TALENT:出演者:남자
-	D = ABL:出演者:Ａ감각
+IF TALENT:출연자:남자
+	D = ABL:출연자:Ａ감각
 	E = 0
 	F = B
-ELSEIF ABL:出演者:Ｖ감각 > ABL:出演者:Ａ감각
-	D = ABL:出演者:Ｖ감각-ABL:出演者:Ａ감각
+ELSEIF ABL:출연자:Ｖ감각 > ABL:출연자:Ａ감각
+	D = ABL:출연자:Ｖ감각-ABL:출연자:Ａ감각
 	E = B+D/2
 	F = B-D/2
 ELSEIF B > 1
-	D = ABL:出演者:Ａ감각-ABL:出演者:Ｖ감각
+	D = ABL:출연자:Ａ감각-ABL:출연자:Ｖ감각
 	E = B-D/2
 	F = B+D/2
 ENDIF
 ;奴隷が처녀の場合
-IF EXP:出演者:Ｖ경험 == 0 && TALENT:出演者:처녀
+IF EXP:출연자:Ｖ경험 == 0 && TALENT:출연자:처녀
 	E += 5
 	G = 20
 ENDIF
@@ -1255,38 +1272,38 @@ SIF E < 0
 	E = 0
 SIF F < 0
 	F = 0
-EXP:出演者:Ｖ경험 += E
-EXP:出演者:Ａ경험 += F
-EXP:出演者:절정경험 += (E+F)/3
+EXP:출연자:Ｖ경험 += E
+EXP:출연자:Ａ경험 += F
+EXP:출연자:절정경험 += (E+F)/3
 ;후타나리か남자
-;SIF TALENT:出演者:139 || TALENT:出演者:140
-SIF HAVE_PENIS(出演者)
-	EXP:出演者:사정경험 += (E+F)/3
-EXP:出演者:성교경험 += (E+F)
+;SIF TALENT:출연자:139 || TALENT:출연자:140
+SIF HAVE_PENIS(출연자)
+	EXP:출연자:사정경험 += (E+F)/3
+EXP:출연자:성교경험 += (E+F)
 ;질사경험
-IF CFLAG:出演者:자궁내피임결계 == 0
-	EXP:出演者:질사경험 += E
-	CFLAG:出演者:고객의질내사정에의한임신판정 += E
+IF CFLAG:출연자:자궁내피임결계 == 0
+	EXP:출연자:질사경험 += E
+	CFLAG:출연자:고객의질내사정에의한임신판정 += E
 ENDIF
-EXP:出演者:정액경험 += B*5
-JUEL:出演者:쾌Ｖ += E*50
-JUEL:出演者:쾌Ａ += F*50
-JUEL:出演者:욕정 += (E+F)*30
+EXP:출연자:정액경험 += B*5
+JUEL:출연자:쾌Ｖ += E*50
+JUEL:출연자:쾌Ａ += F*50
+JUEL:출연자:욕정 += (E+F)*30
 ;습득だと二重取りになってしまうので굴복に변경
-;JUEL:出演者:습득 += (E+F)*20
-JUEL:出演者:굴복 += (E+F)*20
+;JUEL:출연자:습득 += (E+F)*20
+JUEL:출연자:굴복 += (E+F)*20
 ;표시だけで고통が入ってなかった
-SIF ABL:出演者:마조끼 >= ABL:出演者:새드끼
-	JUEL:出演者:고통 += B*50
+SIF ABL:출연자:마조끼 >= ABL:출연자:새드끼
+	JUEL:출연자:고통 += B*50
 ;스트레스で부정少量増加
-JUEL:出演者:부정 += (E+F+G)*100/(ABL:出演者:순종) + (CFLAG:出演者:스트레스치)*10
+JUEL:출연자:부정 += (E+F+G)*100/(ABL:출연자:순종) + (CFLAG:출연자:스트레스치)*10
 
 IF 촬영자 >= 0
 	PRINTFORML %CALLNAME:촬영자%의 촬영경험＋１０
 	EXP:촬영자:촬영경험 += 10
 ENDIF
 
-PRINTFORML 【%CALLNAME:出演者%의 경험과 구슬】
+PRINTFORML 【%CALLNAME:출연자%의 경험과 구슬】
 
 ;経験표시は一括で行う
 ;Ｖ경험
@@ -1299,7 +1316,7 @@ SIF F > 0
 SIF E > 0 || F > 0
 	PRINTFORML %EXPNAME:2%＋{(E+F)/3}
 ;사정경험
-SIF HAVE_PENIS(出演者) && (E > 0 || F > 0)
+SIF HAVE_PENIS(출연자) && (E > 0 || F > 0)
 	PRINTFORML %EXPNAME:3%＋{(E+F)/3}
 ;성교경험
 SIF E > 0 || F > 0
@@ -1311,18 +1328,18 @@ SIF E > 0
 PRINTFORML %EXPNAME:20%＋{B*5}
 ;애정경험・・・そんなわけない
 ;PRINTFORML %EXPNAME:23%＋3
-IF TALENT:出演者:처녀 && B > 1
+IF TALENT:출연자:처녀 && B > 1
 	PRINTFORML 처녀상실
 ;	PRINTFORML %EXPNAME:50%＋3
-;	EXP:出演者:50 += 3
-	CALL ADDS_ABNORMAL_EXP , "처녀상실（난교라이브）" , 出演者
+;	EXP:출연자:50 += 3
+	CALL ADDS_ABNORMAL_EXP , "처녀상실（난교라이브）" , 출연자
 	SIF 촬영자
-		CALL ADDS_ABNORMAL_EXP , "처녀상실（촬영）" , 出演者
-	CALL SHOW_ABNORMAL_EXP , 出演者
-	TALENT:出演者:처녀 = 0
-ELSEIF TALENT:出演者:재생처녀 && B > 1
+		CALL ADDS_ABNORMAL_EXP , "처녀상실（촬영）" , 출연자
+	CALL SHOW_ABNORMAL_EXP , 출연자
+	TALENT:출연자:처녀 = 0
+ELSEIF TALENT:출연자:재생처녀 && B > 1
 	PRINTFORML 재생처녀상실
-	TALENT:出演者:재생처녀 = 0
+	TALENT:출연자:재생처녀 = 0
 ENDIF
 PRINTFORML %EXPNAME:64%＋{Q}
 ;珠표시も同様
@@ -1335,17 +1352,17 @@ SIF F > 0
 PRINTFORML %PALAMNAME:6%의 구슬＋{B*30}
 PRINTFORML %PALAMNAME:7%의 구슬＋{B*20}
 PRINTFORML %PALAMNAME:8%의 구슬＋{R}
-SIF ABL:出演者:마조끼 >= ABL:出演者:새드끼
+SIF ABL:출연자:마조끼 >= ABL:출연자:새드끼
 	PRINTFORML %PALAMNAME:10%의 구슬＋{B*50}
 ;스트레스で부정少量増加
-;PRINTFORML %PALAMNAME:100%의 구슬＋{(E+F+G)*100/ABL:出演者:순종}
-PRINTFORML %PALAMNAME:100%의 구슬＋{(E+F+G)*100/(ABL:出演者:순종) + (CFLAG:出演者:스트레스치)*10}
+;PRINTFORML %PALAMNAME:100%의 구슬＋{(E+F+G)*100/ABL:출연자:순종}
+PRINTFORML %PALAMNAME:100%의 구슬＋{(E+F+G)*100/(ABL:출연자:순종) + (CFLAG:출연자:스트레스치)*10}
 
 ;자궁현재용량加算
-IF TALENT:出演者:오토코노코
-	CFLAG:(出演者):자궁현재용량 += F * 10
-ELSEIF !IS_MALE(出演者)
-	CFLAG:(出演者):자궁현재용량 += E * 10
+IF TALENT:출연자:오토코노코
+	CFLAG:(출연자):자궁현재용량 += F * 10
+ELSEIF !IS_MALE(출연자)
+	CFLAG:(출연자):자궁현재용량 += E * 10
 ENDIF
 
 ;-------- EDIT 乱交ライブでMAG・EXP取得(2021/02/09) MOD START ----------------------
@@ -1353,21 +1370,21 @@ ENDIF
 ;MAG加算（娼館と異なり奉仕系プレイを行わないので得られる量は減らし、体力が0を下回っても気絶しなかったので0.6倍化してみる）
 ;娼館のように体力減少計算にLOSEBASE使っても同じだった
 IF E + F > 0
-	PRINTFORML ＭＡＧ＋{((E * 2 + F * 2) * MAXBASE:出演者:LV) * (1 + (出演者 == MASTER) * 4 + MAX(TALENT:出演者:영매체질 * 9 - !TALENT:出演者:비전투원 * 5, 0)) / 10 * 3 / 5}
-	CALL CONTROL_MAG, 出演者, ((E * 2 + F * 2) * MAXBASE:出演者:LV) * (1 + (出演者 == MASTER) * 4 + MAX(TALENT:出演者:영매체질 * 9 - !TALENT:出演者:비전투원 * 5, 0)) / 10 * 3 / 5
+	PRINTFORML ＭＡＧ＋{((E * 2 + F * 2) * MAXBASE:출연자:LV) * (1 + (출연자 == MASTER) * 4 + MAX(TALENT:출연자:영매체질 * 9 - !TALENT:출연자:비전투원 * 5, 0)) / 10 * 3 / 5}
+	CALL CONTROL_MAG, 출연자, ((E * 2 + F * 2) * MAXBASE:출연자:LV) * (1 + (출연자 == MASTER) * 4 + MAX(TALENT:출연자:영매체질 * 9 - !TALENT:출연자:비전투원 * 5, 0)) / 10 * 3 / 5
 ENDIF
 ;経験値加算（当然非戦闘員のみ、同上の理由から0.6倍）
-IF TALENT:出演者:비전투원
-	PRINTFORML ＥＸＰ＋{EXP計算用 * (100 + 総行為数) / 100 * (1 + BASE:出演者:LV / 5) * 3 / 5}
-	BASE:出演者:ＥＸＰ += EXP計算用 * (100 + 総行為数) / 100 * (1 + BASE:出演者:LV / 5) * 3 / 5
+IF TALENT:출연자:비전투원
+	PRINTFORML ＥＸＰ＋{EXP계산용 * (100 + 총행위수) / 100 * (1 + BASE:출연자:LV / 5) * 3 / 5}
+	BASE:출연자:ＥＸＰ += EXP계산용 * (100 + 총행위수) / 100 * (1 + BASE:출연자:LV / 5) * 3 / 5
 	;レベルアップ判定
-	CALL CHECK_LEVEL_UP, 出演者
+	CALL CHECK_LEVEL_UP, 출연자
 ENDIF
 ;-------- EDIT 乱交ライブでMAG・EXP取得(2021/02/09) MOD END ------------------------
 
 ;最後に金額の加算
-PRINTFORMW %CALLNAME:出演者%의 난교라이브로￥{報酬}을 얻었습니다
-MONEY += 報酬
+PRINTFORMW %CALLNAME:출연자%의 난교라이브로￥{보수}을 얻었습니다
+MONEY += 보수
 DRAWLINE
 ;휴식플래그を立てる
 FLAG:휴식플래그 = 1

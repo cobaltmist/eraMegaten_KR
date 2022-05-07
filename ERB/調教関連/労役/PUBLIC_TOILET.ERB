@@ -26,30 +26,31 @@
 ;	007		2020/05/19		がめら					NTR好感度処理をCDFLAGに변경
 ;	008		2020/07/29		Jガン					변기を選んだ時のエ라を수정（140行あたり）
 ;	009		2021/04/27		JK好き					公衆便所で多胎OP時でも妊娠するように修正
+;	010		2021/11/07		JK好き					『同性客』『獣姦』時にレズ経験・獣姦経験が表示されなかったのを修正　異常経験の加算処理を整理
 ;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
 ;공중변소に필요한処理置き場
 @MANAGEMENT_PUBLIC_TOILET, ARG
-;화조ンタ類
+;カウンタ類
 #DIM POT
 #DIM CHARA
 #DIM USER
 #DIM DISPOSE
 
 ;그외ローカル変数
-#DIM 변기_設置数
-#DIM 변기_嬢눈当ての客
+#DIM 변기_설치수
+#DIM 便器_嬢目当ての客
 #DIM 변기_集まった客
 #DIM 변기_店内の客
 
-#DIM 변기_客溢れフラグ
-#DIM 변기_客毎입횟수
-#DIM 변기_客毎Ｖ횟수
-#DIM 변기_客毎질내사정횟수
-#DIM 변기_客毎Ａ횟수
+#DIM 변기_고객넘침플래그
+#DIM 변기_고객입횟수
+#DIM 변기_고객Ｖ횟수
+#DIM 변기_고객질내사정횟수
+#DIM 변기_고객Ａ횟수
 #DIM 변기_만족도
-#DIM 변기_変動計算用
-#DIM 변기_総売上
-#DIM 변기_성공度集計
+#DIM 변기_변동계산용
+#DIM 변기_총매출
+#DIM 변기_성공도집계
 
 #DIM 변기_使われた변기数
 #DIM 변기_NTR客フラグ
@@ -60,9 +61,9 @@
 
 변기_集まった客 = 0
 변기_店内の客 = 0
-변기_客溢れフラグ= 0
-변기_総売上 = 0
-변기_성공度集計 = 0
+변기_고객넘침플래그= 0
+변기_총매출 = 0
+변기_성공도집계 = 0
 변기_使われた변기数 = 0
 
 
@@ -71,15 +72,15 @@
 ;-----------------------------
 ;변기を数えつつ、「C」に변기のキャラ번호を격납
 VARSET C , -1
-변기_設置数 = 0
+변기_설치수 = 0
 FOR CHARA,0, CHARANUM
 	IF CFLAG:CHARA:노역플래그 == 10 + ARG
-		C:변기_設置数 = CHARA
-		변기_設置数 += 1
+		C:변기_설치수 = CHARA
+		변기_설치수 += 1
 	ENDIF
 NEXT
 ;設置してなければ종료
-IF 변기_設置数 == 0
+IF 변기_설치수 == 0
 	PRINTW 육변기를 한 명도 배치하지 않았기 때문에 이용자가 아무도 오지 않았다.
 	GOTO TOILET_END
 ENDIF
@@ -88,20 +89,20 @@ ENDIF
 ;변기へ客を並べる
 ;-----------------------------
 ;변기嬢の集客힘
-변기_嬢눈当ての客 = 0
-FOR POT, 0, 변기_設置数
+便器_嬢目当ての客 = 0
+FOR POT, 0, 변기_설치수
 	CHARA = C:POT
 	;사용예정인수　인기の 約1/25
 	CFLAG:CHARA:변기사용예정인수 = CFLAG:CHARA:변기인기 * (80 + RAND:11) / 2125
-	변기_嬢눈当ての客 += CFLAG:CHARA:변기사용예정인수
+	便器_嬢目当ての客 += CFLAG:CHARA:변기사용예정인수
 NEXT
-변기_集まった客 = 변기_嬢눈当ての客
+변기_集まった客 = 便器_嬢目当ての客
 
 ;予約で埋まったかな？
 IF 변기_集まった客 > 점포("규모", ARG)
 	;店に入れないから帰る
 	변기_店内の客 = 0
-	FOR POT, 0, 변기_設置数
+	FOR POT, 0, 변기_설치수
 		CHARA = C:POT
 		CFLAG:CHARA:변기사용예정인수 = CFLAG:CHARA:변기사용예정인수 * 점포("규모", ARG) / 변기_集まった客
 		변기_店内の客 += CFLAG:CHARA:변기사용예정인수
@@ -116,17 +117,17 @@ ENDIF
 ;便所せまいよ再체크
 IF 변기_集まった客 > 점포("규모", ARG)
 	변기_店内の客 = 점포("규모", ARG)
-	변기_客溢れフラグ= 1
+	변기_고객넘침플래그= 1
 ELSE
 	변기_店内の客 = 변기_集まった客
 ENDIF
-;(C:변기_設置数)に看板변기を記録
-C:변기_設置数 = 看板변기(ARG)
+;(C:변기_설치수)に간판변기を記録
+C:변기_설치수 = 간판변기(ARG)
 ;フリーのお客を랜덤に割り振る
-IF 변기_店内の客 > 변기_嬢눈当ての客
-	FOR USER, 0, 변기_店内の客 - 변기_嬢눈当ての客
-		;看板변기は2倍の抽選機会
-		CHARA = C:(RAND:(변기_設置数 + 1))
+IF 변기_店内の客 > 便器_嬢目当ての客
+	FOR USER, 0, 변기_店内の客 - 便器_嬢目当ての客
+		;간판변기は2倍の抽選機会
+		CHARA = C:(RAND:(변기_설치수 + 1))
 		CFLAG:CHARA:변기사용예정인수 += 1
 	NEXT
 ENDIF
@@ -135,7 +136,7 @@ ENDIF
 ;-----------------------------
 ;변기毎の計算
 ;-----------------------------
-FOR POT, 0, 변기_設置数
+FOR POT, 0, 변기_설치수
 	CHARA = C:POT
 
 	;미조교함락フラグを折る
@@ -191,56 +192,56 @@ FOR POT, 0, 변기_設置数
 		;-----------------------------
 		;フェラ
 		;-----------------------------
-		변기_客毎입횟수 = 0
+		변기_고객입횟수 = 0
 		IF CFLAG:CHARA:개별성적서비스& 8
-			변기_유혹度保存 = 변기유혹度(CHARA, 변기_NTR客フラグ)
+			변기_유혹度保存 = 변기유혹도(CHARA, 변기_NTR客フラグ)
 			FOR DISPOSE, 0, 1 + (변기_유혹度保存 + RAND:변기_유혹度保存) / 20
-				IF 변기_유혹度保存 / 2 + RAND:변기_유혹度保存 >= CFLAG:CHARA:펠라가격 * (40 + 변기_客毎입횟수 * 60)
+				IF 변기_유혹度保存 / 2 + RAND:변기_유혹度保存 >= CFLAG:CHARA:펠라가격 * (40 + 변기_고객입횟수 * 60)
 					;とりあえず횟수増える
 					CFLAG:CHARA:펠라횟수 += 1
-					변기_客毎입횟수 += 1
+					변기_고객입횟수 += 1
 				ELSE
 					BREAK
 				ENDIF
 			NEXT
 			;フェラのソースをまとめて추가
-			SOURCE:CHARA:정애 = 100 * 변기_客毎입횟수
-			SOURCE:CHARA:성행위 = 300 * 변기_客毎입횟수
-			SOURCE:CHARA:달성 = 150 * 변기_客毎입횟수
-			SOURCE:CHARA:굴종 = 700 * 변기_客毎입횟수
-			SOURCE:CHARA:일탈 = 200 * 변기_客毎입횟수
-			SOURCE:CHARA:반감 = 200 * 변기_客毎입횟수
+			SOURCE:CHARA:정애 = 100 * 변기_고객입횟수
+			SOURCE:CHARA:성행위 = 300 * 변기_고객입횟수
+			SOURCE:CHARA:달성 = 150 * 변기_고객입횟수
+			SOURCE:CHARA:굴종 = 700 * 변기_고객입횟수
+			SOURCE:CHARA:일탈 = 200 * 변기_고객입횟수
+			SOURCE:CHARA:반감 = 200 * 변기_고객입횟수
 			CALL SOURCE_MANAGEMENT_CHECK, CHARA
 			CALL CUP_MANAGEMENT_T, CHARA
-			IF 변기_客毎입횟수
+			IF 변기_고객입횟수
 				변기_マネジメント数 += 1
-				CALL フェラ_변기_MANAGEMENT, CHARA
+				CALL 펠라_변기_MANAGEMENT, CHARA
 				변기_만족도 += RESULT
 			ENDIF
 		ENDIF
 		;-----------------------------
 		;Ｖ
 		;-----------------------------
-		변기_客毎Ｖ횟수 = 0
-		변기_客毎질내사정횟수 = 0
+		변기_고객Ｖ횟수 = 0
+		변기_고객질내사정횟수 = 0
 		IF TALENT:CHARA:남자 == 0 && CFLAG:CHARA:개별성적서비스 & 16
-			변기_유혹度保存 = 변기유혹度(CHARA, 변기_NTR客フラグ)
-			CALL 本番_변기_MANAGEMENT_SOURCE, CHARA
+			변기_유혹度保存 = 변기유혹도(CHARA, 변기_NTR客フラグ)
+			CALL 본방_변기_MANAGEMENT_SOURCE, CHARA
 			FOR DISPOSE, 0, 1 + (변기_유혹度保存 + RAND:변기_유혹度保存) / 20
-				IF 변기_유혹度保存 / 2 + RAND:변기_유혹度保存 >= CFLAG:CHARA:섹스가격 * (20 + 변기_客毎Ｖ횟수 * 30) + TALENT:CHARA:처녀 * (CFLAG:CHARA:처녀가격 - 25) + TALENT:CHARA:재생처녀 * (CFLAG:CHARA:처녀가격 * 2 - 5)
-					CALL 本番_변기_MANAGEMENT_FOR, CHARA
+				IF 변기_유혹度保存 / 2 + RAND:변기_유혹度保存 >= CFLAG:CHARA:섹스가격 * (20 + 변기_고객Ｖ횟수 * 30) + TALENT:CHARA:처녀 * (CFLAG:CHARA:처녀가격 - 25) + TALENT:CHARA:재생처녀 * (CFLAG:CHARA:처녀가격 * 2 - 5)
+					CALL 본방_변기_MANAGEMENT_FOR, CHARA
 					;키스경험処理：適当に랜덤で
 					SIF RAND:4 == 0
 						TCVAR:CHARA:획득키스경험 += 1
-					변기_客毎Ｖ횟수 += 1
+					변기_고객Ｖ횟수 += 1
 					;卵子
 					IF CFLAG:CHARA:개별성적서비스& 64
-						IF 변기_유혹度保存 / 2 + RAND:변기_유혹度保存 >= CFLAG:CHARA:질내사정가격 * (1 + 변기_客毎질내사정횟수 * 6)
+						IF 변기_유혹度保存 / 2 + RAND:변기_유혹度保存 >= CFLAG:CHARA:질내사정가격 * (1 + 변기_고객질내사정횟수 * 6)
 							;とりあえず횟수増える
 							CFLAG:CHARA:질내사정횟수 += 1
 							SIF TALENT:CHARA:임신 == 0
 								CALL SAMEN_SHOOT_SOURCE_MANAGEMENT, CHARA
-							변기_客毎질내사정횟수 += 1
+							변기_고객질내사정횟수 += 1
 						ENDIF
 					ENDIF
 				ELSE
@@ -248,10 +249,10 @@ FOR POT, 0, 변기_設置数
 				ENDIF
 			NEXT
 			;本番のソースの残りを추가
-			SOURCE:CHARA:정애 += 150 * 변기_客毎Ｖ횟수
-			SOURCE:CHARA:중독충족 += 150 * 변기_客毎Ｖ횟수
-			SOURCE:CHARA:노출 += 70 * 변기_客毎Ｖ횟수
-			SOURCE:CHARA:반감 += 300 * 변기_客毎Ｖ횟수
+			SOURCE:CHARA:정애 += 150 * 변기_고객Ｖ횟수
+			SOURCE:CHARA:중독충족 += 150 * 변기_고객Ｖ횟수
+			SOURCE:CHARA:노출 += 70 * 변기_고객Ｖ횟수
+			SOURCE:CHARA:반감 += 300 * 변기_고객Ｖ횟수
 			;섹스중독を見る
 			IF ABL:CHARA:섹스중독 == 1
 				TIMES SOURCE:CHARA:중독충족 , 0.00
@@ -276,14 +277,14 @@ FOR POT, 0, 변기_設置数
 			ENDIF
 			CALL SOURCE_MANAGEMENT_CHECK, CHARA
 			CALL CUP_MANAGEMENT_T, CHARA
-			IF 변기_客毎Ｖ횟수
+			IF 변기_고객Ｖ횟수
 				변기_マネジメント数 += 1
-				CALL 本番_변기_MANAGEMENT, CHARA
+				CALL 본방_변기_MANAGEMENT, CHARA
 				변기_만족도 += RESULT
 			ENDIF
-			IF 변기_客毎질내사정횟수
+			IF 변기_고객질내사정횟수
 				변기_マネジメント数 += 1
-				CALL 中出し_변기_MANAGEMENT, CHARA
+				CALL 질내사정_변기_MANAGEMENT, CHARA
 				변기_만족도 += RESULT
 				DEBUGPRINTFORML 질내사정만족도{RESULT}
 				CFLAG:(ARG):자궁현재용량 += RESULT / 10
@@ -292,27 +293,27 @@ FOR POT, 0, 변기_設置数
 		;-----------------------------
 		;Ａ
 		;-----------------------------
-		변기_客毎Ａ횟수 = 0
+		변기_고객Ａ횟수 = 0
 		IF CFLAG:CHARA:개별성적서비스 & 32
-			변기_유혹度保存 = 변기유혹度(CHARA, 변기_NTR客フラグ)
+			변기_유혹度保存 = 변기유혹도(CHARA, 변기_NTR客フラグ)
 			CALL 애널_변기_MANAGEMENT_SOURCE, CHARA
 			FOR DISPOSE, 0, 1 + (변기_유혹度保存 + RAND:변기_유혹度保存) / 20
-				IF 변기_유혹度保存 / 2 + RAND:변기_유혹度保存 >= CFLAG:CHARA:애널가격 * (20 + 변기_客毎Ａ횟수 * 30)
+				IF 변기_유혹度保存 / 2 + RAND:변기_유혹度保存 >= CFLAG:CHARA:애널가격 * (20 + 변기_고객Ａ횟수 * 30)
 					CALL 애널_변기_MANAGEMENT_FOR, CHARA
 					;키스경험処理：適当に랜덤で
 					SIF RAND:4 == 0
 						TCVAR:CHARA:획득키스경험 += 1
-					변기_客毎Ａ횟수 += 1
+					변기_고객Ａ횟수 += 1
 				ELSE
 					BREAK
 				ENDIF
 			NEXT
 			;애널のソースの残りを추가
-			SOURCE:CHARA:정애 += 100 * 변기_客毎Ａ횟수
-			SOURCE:CHARA:중독충족 += 200 * 변기_客毎Ａ횟수
-			SOURCE:CHARA:노출 += 60 * 변기_客毎Ａ횟수
-			SOURCE:CHARA:일탈 += 200 * 변기_客毎Ａ횟수
-			SOURCE:CHARA:반감 += 500 * 변기_客毎Ａ횟수
+			SOURCE:CHARA:정애 += 100 * 변기_고객Ａ횟수
+			SOURCE:CHARA:중독충족 += 200 * 변기_고객Ａ횟수
+			SOURCE:CHARA:노출 += 60 * 변기_고객Ａ횟수
+			SOURCE:CHARA:일탈 += 200 * 변기_고객Ａ횟수
+			SOURCE:CHARA:반감 += 500 * 변기_고객Ａ횟수
 			;섹스중독を見る
 			IF ABL:CHARA:섹스중독 == 1
 				TIMES SOURCE:CHARA:중독충족 , 0.00
@@ -337,7 +338,7 @@ FOR POT, 0, 변기_設置数
 			ENDIF
 			CALL SOURCE_MANAGEMENT_CHECK, CHARA
 			CALL CUP_MANAGEMENT_T, CHARA
-			IF 변기_客毎Ａ횟수
+			IF 변기_고객Ａ횟수
 				변기_マネジメント数 += 1
 				CALL 애널_변기_MANAGEMENT, CHARA
 				변기_만족도 += RESULT
@@ -367,7 +368,7 @@ FOR POT, 0, 변기_設置数
 		;성공度
 		CFLAG:CHARA:노역성공도 = 변기_만족도 / 변기_マネジメント数
 		변기_使われた변기数 += 1
-		변기_성공度集計 += CFLAG:CHARA:노역성공도
+		변기_성공도집계 += CFLAG:CHARA:노역성공도
 
 		;메시지표시
 		CALL WORK_MESSAGE_TOILET, CHARA
@@ -480,32 +481,32 @@ FOR POT, 0, 변기_設置数
 			CFLAG:CHARA:개별매상 += CFLAG:CHARA:처녀가격
 
 		;MAG증가処理
-		변기_変動計算用 = CFLAG:CHARA:펠라횟수 * 2 + CFLAG:CHARA:본방횟수 / 2 + CFLAG:CHARA:애널횟수 * 4 + CFLAG:CHARA:질내사정횟수 * 6
-		변기_変動計算用 *= MAXBASE:CHARA:LV / 5 + 1  
-		변기_変動計算用 *= 1 + (CHARA == MASTER) + MAX(0, TALENT:CHARA:영매체질 * 9 - !TALENT:CHARA:비전투원 * 4)
-		PRINTFORML ＭＡＧ + {변기_変動計算用}
-		CALL CONTROL_MAG, CHARA, 변기_変動計算用
+		변기_변동계산용 = CFLAG:CHARA:펠라횟수 * 2 + CFLAG:CHARA:본방횟수 / 2 + CFLAG:CHARA:애널횟수 * 4 + CFLAG:CHARA:질내사정횟수 * 6
+		변기_변동계산용 *= MAXBASE:CHARA:LV / 5 + 1  
+		변기_변동계산용 *= 1 + (CHARA == MASTER) + MAX(0, TALENT:CHARA:영매체질 * 9 - !TALENT:CHARA:비전투원 * 4)
+		PRINTFORML ＭＡＧ + {변기_변동계산용}
+		CALL CONTROL_MAG, CHARA, 변기_변동계산용
 
 		;체력の소비
-		변기_変動計算用 = CFLAG:CHARA:펠라횟수 * 10 + CFLAG:CHARA:본방횟수 * 15 + CFLAG:CHARA:애널횟수 * 25 + CFLAG:CHARA:질내사정횟수 * 5
-		PRINTFORML 체력 - {변기_変動計算用}
-		BASE:CHARA:체력 -= 변기_変動計算用
+		변기_변동계산용 = CFLAG:CHARA:펠라횟수 * 10 + CFLAG:CHARA:본방횟수 * 15 + CFLAG:CHARA:애널횟수 * 25 + CFLAG:CHARA:질내사정횟수 * 5
+		PRINTFORML 체력 - {변기_변동계산용}
+		BASE:CHARA:체력 -= 변기_변동계산용
 
 		;스트레스증가
 		IF CHARA != MASTER
-			변기_変動計算用 = CFLAG:CHARA:펠라횟수 + CFLAG:CHARA:본방횟수 * 2 + CFLAG:CHARA:애널횟수 * 2 + CFLAG:CHARA:질내사정횟수 * 5
-			변기_変動計算用 *= MAX(0, 3  - 함락(CHARA) * 2)
-			변기_変動計算用 /= 1 + ABL:CHARA:순종 + ABL:CHARA:욕망 + ABL:CHARA:봉사정신 +  ABL:CHARA:마조끼
-			CFLAG:CHARA:스트레스증가치 = 변기_変動計算用
-			PRINTFORML 스트레스 + {변기_変動計算用}
-			CFLAG:CHARA:스트레스치 += 변기_変動計算用
+			변기_변동계산용 = CFLAG:CHARA:펠라횟수 + CFLAG:CHARA:본방횟수 * 2 + CFLAG:CHARA:애널횟수 * 2 + CFLAG:CHARA:질내사정횟수 * 5
+			변기_변동계산용 *= MAX(0, 3  - 함락(CHARA) * 2)
+			변기_변동계산용 /= 1 + ABL:CHARA:순종 + ABL:CHARA:욕망 + ABL:CHARA:봉사정신 +  ABL:CHARA:마조끼
+			CFLAG:CHARA:스트레스증가치 = 변기_변동계산용
+			PRINTFORML 스트레스 + {변기_변동계산용}
+			CFLAG:CHARA:스트레스치 += 변기_변동계산용
 		ENDIF
 
 		;비전투원は경험値획득
 		IF TALENT:CHARA:비전투원
-			변기_変動計算用 = CFLAG:CHARA:개별매상 * (1 + BASE:CHARA:LV / 5)
-			PRINTFORML EXP： +{변기_変動計算用}
-			BASE:CHARA:ＥＸＰ += 변기_変動計算用
+			변기_변동계산용 = CFLAG:CHARA:개별매상 * (1 + BASE:CHARA:LV / 5)
+			PRINTFORML EXP： +{변기_변동계산용}
+			BASE:CHARA:ＥＸＰ += 변기_변동계산용
 			;레벨업판정
 			CALL CHECK_LEVEL_UP, CHARA
 		ENDIF
@@ -539,7 +540,7 @@ FOR POT, 0, 변기_設置数
 		PRINTFORML 매상：{CFLAG:CHARA:개별매상}
 		CALL 帳簿閲覧_노역, CHARA, CFLAG:CHARA:개별매상, CFLAG:CHARA:변기사용예정인수, 3
 
-		변기_総売上 += CFLAG:CHARA:개별매상
+		변기_총매출 += CFLAG:CHARA:개별매상
 		SIF CHARA == MASTER
 			CALL EVENTCHECK_M
 
@@ -559,11 +560,11 @@ FOR POT, 0, 변기_設置数
 
 		;客がつかなかった場合の
 		;ソース
-		변기_変動計算用 = MAX(1, CFLAG:CHARA:변기사용예정인수)
-		SOURCE:CHARA:굴종 = 700 * 변기_変動計算用
-		SOURCE:CHARA:노출 = 70 * 변기_変動計算用
-		SOURCE:CHARA:일탈 = 200 * 변기_変動計算用
-		SOURCE:CHARA:반감 = 200 * 변기_変動計算用 * (TALENT:CHARA:처녀 ? 3 # 1)
+		변기_변동계산용 = MAX(1, CFLAG:CHARA:변기사용예정인수)
+		SOURCE:CHARA:굴종 = 700 * 변기_변동계산용
+		SOURCE:CHARA:노출 = 70 * 변기_변동계산용
+		SOURCE:CHARA:일탈 = 200 * 변기_변동계산용
+		SOURCE:CHARA:반감 = 200 * 변기_변동계산용 * (TALENT:CHARA:처녀 ? 3 # 1)
 		CALL SOURCE_MANAGEMENT_CHECK, CHARA
 		CALL CUP_MANAGEMENT_T, CHARA
 
@@ -572,12 +573,12 @@ FOR POT, 0, 변기_設置数
 
 		;스트레스증가
 		IF CHARA != MASTER
-			변기_変動計算用 = 2
-			변기_変動計算用 *= MAX(0, 3  - 함락(CHARA) * 2)
-			변기_変動計算用 /= 1 + ABL:CHARA:순종 + ABL:CHARA:욕망 + ABL:CHARA:봉사정신 +  ABL:CHARA:마조끼
-			CFLAG:CHARA:스트레스증가치 = 변기_変動計算用
-			PRINTFORML 스트레스 + {변기_変動計算用}
-			CFLAG:CHARA:스트레스치 += 변기_変動計算用
+			변기_변동계산용 = 2
+			변기_변동계산용 *= MAX(0, 3  - 함락(CHARA) * 2)
+			변기_변동계산용 /= 1 + ABL:CHARA:순종 + ABL:CHARA:욕망 + ABL:CHARA:봉사정신 +  ABL:CHARA:마조끼
+			CFLAG:CHARA:스트레스증가치 = 변기_변동계산용
+			PRINTFORML 스트레스 + {변기_변동계산용}
+			CFLAG:CHARA:스트레스치 += 변기_변동계산용
 		ENDIF
 	ENDIF
 
@@ -594,34 +595,34 @@ NEXT
 ;-----------------------------
 
 ;平均の인기
-변기_성공度集計 /= MAX(1, 변기_使われた변기数)
+변기_성공도집계 /= MAX(1, 변기_使われた변기数)
 
 
 $TOILET_END
 PRINTFORML %SAVESTR:(20+ARG)%
-IF 변기_성공度集計 > 0
-	PRINTFORML 이용자 만족도 {변기_성공度集計}％
-	IF 변기_성공度集計 > 29
-		PRINTFORML 평판 {점포("인기", ARG)} + {변기_성공度集計 / 5  - 6}
+IF 변기_성공도집계 > 0
+	PRINTFORML 이용자 만족도 {변기_성공도집계}％
+	IF 변기_성공도집계 > 29
+		PRINTFORML 평판 {점포("인기", ARG)} + {변기_성공도집계 / 5  - 6}
 	ELSE
-		PRINTFORML 평판 {점포("인기", ARG)} - {-변기_성공度集計 / 5 + 6}
+		PRINTFORML 평판 {점포("인기", ARG)} - {-변기_성공도집계 / 5 + 6}
 	ENDIF
-	CALL 점포演算("인기", ARG, 변기_성공度集計 / 5 - 6, "+")
+	CALL 점포연산("인기", ARG, 변기_성공도집계 / 5 - 6, "+")
 	PRINTFORML 내객수：{변기_集まった客}명 ／ 이용가능인원：{점포("규모", ARG)}명
-	IF 변기_客溢れフラグ== 1
+	IF 변기_고객넘침플래그== 1
 		PRINTFORML 변소의 수용 인원보다 많은 방문자가 나타나서 변기를 이용하지 못한 손님으로부터 불평이 일었다….
 		PRINTFORML 평판 - {점포("인기", ARG) / 10}
-		CALL 점포演算("인기", ARG, 점포("인기", ARG) / 10, "-")
+		CALL 점포연산("인기", ARG, 점포("인기", ARG) / 10, "-")
 	ENDIF
 ENDIF
 SIF 변기_使われた변기数 == 0
 	PRINTFORML 이 날 변기는 한 번도 이용되지 않았다.
-PRINTFORML 수입 합계 : {변기_総売上}마카
-MONEY:1 += 변기_総売上
+PRINTFORML 수입 합계 : {변기_총매출}마카
+MONEY:1 += 변기_총매출
 
-변기_変動計算用 = 500 + 점포("규모", ARG) * 50 + 접객인수(ARG) * 200
-PRINTFORML 유지비：￥{변기_変動計算用}
-MONEY -= 변기_変動計算用
+변기_변동계산용 = 500 + 점포("규모", ARG) * 50 + 접객인수(ARG) * 200
+PRINTFORML 유지비：￥{변기_변동계산용}
+MONEY -= 변기_변동계산용
 
 WAIT
 
@@ -715,7 +716,7 @@ ENDIF
 ;サービスの処理
 ;=============================================
 ;フェラ
-@フェラ_변기_MANAGEMENT, ARG
+@펠라_변기_MANAGEMENT, ARG
 #DIM L_만족도
 
 ;만족도판정
@@ -778,7 +779,7 @@ RETURN L_만족도
 
 
 ;本番
-@本番_변기_MANAGEMENT_SOURCE,ARG
+@본방_변기_MANAGEMENT_SOURCE,ARG
 ;ソースによる加算量の체크
 SOURCE:ARG:쾌Ｖ = 400
 SOURCE:ARG:정애 = 150
@@ -818,8 +819,8 @@ CALL SOURCE_MANAGEMENT_CHECK_QUICK,ARG
 ;CUPに上昇ソースが帰ってくる
 SOURCE:ARG:쾌Ｖ = CUP:ARG:쾌Ｖ
 
-@本番_변기_MANAGEMENT_FOR,ARG
-#DIM L_아픔ソース
+@본방_변기_MANAGEMENT_FOR,ARG
+#DIM L_아픔SOURCE
 #DIM L_쾌Ｖ
 #DIM L_Ｖ절정
 
@@ -827,7 +828,7 @@ SOURCE:ARG:쾌Ｖ = CUP:ARG:쾌Ｖ
 ;とりあえず횟수増える
 CFLAG:ARG:본방횟수 += 1
 ;아픔ソース
-L_아픔ソース = 400
+L_아픔SOURCE = 400
 ;억압、저항持ちには、억울ソース추가
 SIF TALENT:ARG:억압 || TALENT:ARG:저항
 	SOURCE:ARG:울굴 += 300
@@ -838,13 +839,13 @@ SIF TALENT:ARG:30 && 함락(ARG) == 0
 
 ;처녀だった場合は、고통のソースと반발のソースを추가する
 IF TALENT:ARG:처녀 == 1
-	L_아픔ソース += 2000
+	L_아픔SOURCE += 2000
 	SOURCE:ARG:반감 += 3000
 ENDIF
 
 ;재생처녀だった場合は、고통のソースと반발のソースを추가する
 IF TALENT:ARG:재생처녀 == 1
-	L_아픔ソース += 500
+	L_아픔SOURCE += 500
 	SOURCE:ARG:반감 += 1000
 ENDIF
 
@@ -855,28 +856,28 @@ CALL 처녀상실, ARG
 ;Vへの고통は先に処理しておく
 ;EXP:ARG:Ｖ경험をみる（처녀の반감は別途処理済みなので생략）
 IF EXP:ARG:Ｖ경험 < EXPLV:1
-	TIMES L_아픔ソース , 2.50
+	TIMES L_아픔SOURCE , 2.50
 ELSEIF EXP:ARG:Ｖ경험 < EXPLV:2
-	TIMES L_아픔ソース , 0.80
+	TIMES L_아픔SOURCE , 0.80
 	SOURCE:ARG:반감 += 60
 ELSEIF EXP:ARG:Ｖ경험 < EXPLV:3
-	TIMES L_아픔ソース , 0.40
+	TIMES L_아픔SOURCE , 0.40
 ELSEIF EXP:ARG:Ｖ경험 < EXPLV:4
-	TIMES L_아픔ソース , 0.10
+	TIMES L_아픔SOURCE , 0.10
 ELSEIF EXP:ARG:Ｖ경험 >= EXPLV:4
-	TIMES L_아픔ソース , 0.00
+	TIMES L_아픔SOURCE , 0.00
 ENDIF
 
 ;PALAM:ARG:윤활をみる
 IF PALAM:ARG:윤활 < PALAMLV:2
-	TIMES L_아픔ソース , 0.70
+	TIMES L_아픔SOURCE , 0.70
 	SOURCE:ARG:반감 += 60
 ELSEIF PALAM:ARG:윤활 < PALAMLV:3
-	TIMES L_아픔ソース , 0.40
+	TIMES L_아픔SOURCE , 0.40
 ELSEIF PALAM:ARG:윤활 < PALAMLV:4
-	TIMES L_아픔ソース , 0.10
+	TIMES L_아픔SOURCE , 0.10
 ELSEIF PALAM:ARG:윤활 >= PALAMLV:4
-	TIMES L_아픔ソース , 0.10
+	TIMES L_아픔SOURCE , 0.10
 ENDIF
 
 ;PALAM:ARG:욕정をみる
@@ -895,8 +896,8 @@ ENDIF
 
 ;ソース加算・쾌感・욕정・액체
 ;아픔ソースを他のPALAM加算のため放り込んでおく
-SOURCE:ARG:아픔 += L_아픔ソース
-L_아픔ソース = L_아픔ソース * B / 400
+SOURCE:ARG:아픔 += L_아픔SOURCE
+L_아픔SOURCE = L_아픔SOURCE * B / 400
 PALAM:ARG:쾌Ｖ += L_쾌Ｖ
 IF L_쾌Ｖ > 100
 ;쾌감을부정は、쾌ソースの数値に応じて、억울증가（음란、창부で무효）
@@ -911,7 +912,7 @@ IF L_쾌Ｖ > 100
 		PALAM:ARG:윤활 += L_쾌Ｖ / 5
 	ENDIF
 ENDIF
-PALAM:ARG:욕정 += CUP:ARG:욕정 + L_아픔ソース
+PALAM:ARG:욕정 += CUP:ARG:욕정 + L_아픔SOURCE
 PALAM:ARG:윤활 += CUP:ARG:윤활
 
 ;절정処理
@@ -936,7 +937,7 @@ ENDIF
 
 EX:ARG:1 += L_Ｖ절정
 
-@本番_변기_MANAGEMENT,ARG
+@본방_변기_MANAGEMENT,ARG
 #DIM L_만족도
 ;만족도판정
 ;まず성공度を計算
@@ -999,7 +1000,7 @@ ENDIF
 RETURN L_만족도
 
 ;中出し
-@中出し_변기_MANAGEMENT,ARG
+@질내사정_변기_MANAGEMENT,ARG
 #DIM L_만족도
 ;만족도판정
 ;まず성공度を計算
@@ -1105,13 +1106,13 @@ CALL SOURCE_MANAGEMENT_CHECK_QUICK,ARG
 SOURCE:ARG:쾌Ａ = CUP:ARG:쾌Ａ
 
 @애널_변기_MANAGEMENT_FOR,ARG
-#DIM L_아픔ソース
+#DIM L_아픔SOURCE
 #DIM L_쾌Ａ
 #DIM L_Ａ절정
 ;とりあえず횟수増える
 CFLAG:ARG:애널횟수 += 1
 ;아픔ソース
-L_아픔ソース = 800
+L_아픔SOURCE = 800
 ;-------------------------------------------------
 ;特殊ソース処理
 ;-------------------------------------------------
@@ -1122,36 +1123,36 @@ SIF TALENT:ARG:억압 || TALENT:ARG:저항
 ;Aへの고통は先に処理しておく
 ;EXP:ARG:Ａ경험をみる
 IF EXP:ARG:Ａ경험 < EXPLV:1
-	TIMES L_아픔ソース , 3.00
+	TIMES L_아픔SOURCE , 3.00
 	SOURCE:ARG:반감 += 1000
 ELSEIF EXP:ARG:Ａ경험 < EXPLV:2
-	TIMES L_아픔ソース , 1.20
+	TIMES L_아픔SOURCE , 1.20
 	SOURCE:ARG:반감 += 500
 ELSEIF EXP:ARG:Ａ경험 < EXPLV:3
-	TIMES L_아픔ソース , 0.80
+	TIMES L_아픔SOURCE , 0.80
 	SOURCE:ARG:반감 += 250
 ELSEIF EXP:ARG:Ａ경험 < EXPLV:4
-	TIMES L_아픔ソース , 0.60
+	TIMES L_아픔SOURCE , 0.60
 	SOURCE:ARG:반감 += 100
 ELSEIF EXP:ARG:Ａ경험 < EXPLV:5
-	TIMES L_아픔ソース , 0.40
+	TIMES L_아픔SOURCE , 0.40
 ELSEIF EXP:ARG:Ａ경험 >= EXPLV:5
-	TIMES L_아픔ソース , 0.20
+	TIMES L_아픔SOURCE , 0.20
 ENDIF
 
 ;PALAM:ARG:윤활をみる
 IF PALAM:ARG:윤활 < PALAMLV:1
-	TIMES L_아픔ソース , 1.20
+	TIMES L_아픔SOURCE , 1.20
 	SOURCE:ARG:반감 += 500
 ELSEIF PALAM:ARG:윤활 < PALAMLV:2
-	TIMES L_아픔ソース , 1.00
+	TIMES L_아픔SOURCE , 1.00
 	SOURCE:ARG:반감 += 250
 ELSEIF PALAM:ARG:윤활 < PALAMLV:3
-	TIMES L_아픔ソース , 0.60
+	TIMES L_아픔SOURCE , 0.60
 ELSEIF PALAM:ARG:윤활 < PALAMLV:4
-	TIMES L_아픔ソース , 0.30
+	TIMES L_아픔SOURCE , 0.30
 ELSEIF PALAM:ARG:윤활 >= PALAMLV:4
-	TIMES L_아픔ソース , 0.20
+	TIMES L_아픔SOURCE , 0.20
 ENDIF
 
 ;PALAM:ARG:욕정をみる
@@ -1171,8 +1172,8 @@ ENDIF
 
 ;ソース加算・쾌感・욕정・액체
 ;아픔ソースを他のPALAM加算のため放り込んでおく
-SOURCE:ARG:아픔 += L_아픔ソース
-L_아픔ソース = L_아픔ソース * B / 800
+SOURCE:ARG:아픔 += L_아픔SOURCE
+L_아픔SOURCE = L_아픔SOURCE * B / 800
 PALAM:ARG:쾌Ａ += L_쾌Ａ
 IF L_쾌Ａ > 100
 	;쾌감을부정は、쾌ソースの数値に応じて、억울증가（음란、창부で無効）
@@ -1188,7 +1189,7 @@ IF L_쾌Ａ > 100
 	ENDIF
 ENDIF
 
-PALAM:ARG:욕정 += CUP:ARG:욕정 + L_아픔ソース
+PALAM:ARG:욕정 += CUP:ARG:욕정 + L_아픔SOURCE
 PALAM:ARG:윤활 += CUP:ARG:윤활
 
 ;절정処理
@@ -1280,7 +1281,7 @@ RETURN L_만족도
 ;================================================
 ;FUNCTION
 ;================================================
-@看板변기(ARG)
+@간판변기(ARG)
 #FUNCTION
 #DIM CHARA
 #DIM DRAW
@@ -1297,65 +1298,65 @@ FOR CHARA,0,CHARANUM
 NEXT
 RETURNF DRAW
 
-@변기유혹度(CHARA, F_NTR)
+@변기유혹도(CHARA, F_NTR)
 #FUNCTION
 #DIM CHARA
-#DIM L_유혹度
+#DIM L_유혹도
 #DIM F_NTR
 
 ;ふつう전라なので복장は無し
-L_유혹度 = 50
+L_유혹도 = 50
 
 ;순종で추가
-L_유혹度 += ABL:CHARA:순종 * 4
+L_유혹도 += ABL:CHARA:순종 * 4
 ;봉사정신で추가
-L_유혹度 += ABL:CHARA:봉사정신 * 3
+L_유혹도 += ABL:CHARA:봉사정신 * 3
 ;정액중독で추가
-L_유혹度 += ABL:CHARA:정액중독 * 5
+L_유혹도 += ABL:CHARA:정액중독 * 5
 ;発情で추가
 SIF 위험일(CHARA) > 1
-	L_유혹度 += 10
+	L_유혹도 += 10
 ;PALAM・굴복で추가
-L_유혹度 += PALAMLV_F(CHARA, "굴복")*3
+L_유혹도 += PALAMLV_F(CHARA, "굴복")*3
 ;PALAM・욕망で추가
-L_유혹度 += PALAMLV_F(CHARA, "욕정")*1
+L_유혹도 += PALAMLV_F(CHARA, "욕정")*1
 ;PALAM・윤활で추가
-L_유혹度 += PALAMLV_F(CHARA, "윤활")*1
+L_유혹도 += PALAMLV_F(CHARA, "윤활")*1
 
 
 ;음란・창부で추가
 SIF TALENT:CHARA:음란
-	TIMES L_유혹度 , 1.30
+	TIMES L_유혹도 , 1.30
 SIF TALENT:CHARA:창부
-	TIMES L_유혹度 , 1.60
+	TIMES L_유혹도 , 1.60
 
 ;복종・예속で추가
 SIF TALENT:CHARA:복종
-	TIMES L_유혹度 , 2.00
+	TIMES L_유혹도 , 2.00
 SIF TALENT:CHARA:예속
-	TIMES L_유혹度 , 2.50
+	TIMES L_유혹도 , 2.50
 
 ;NTR체크
 IF F_NTR
 	IF F_NTR >= 3
 		SIF TALENT:CHARA:연모
-			TIMES L_유혹度 , 2.00
+			TIMES L_유혹도 , 2.00
 		SIF TALENT:CHARA:친애
-			TIMES L_유혹度 , 5.00
+			TIMES L_유혹도 , 5.00
 	ELSE
 		SIF TALENT:CHARA:연모
-			TIMES L_유혹度 , 0.50
+			TIMES L_유혹도 , 0.50
 		SIF TALENT:CHARA:친애
-			TIMES L_유혹度 , 0.20
+			TIMES L_유혹도 , 0.20
 	ENDIF
 ENDIF
 
-SIF CFLAG:CHARA:인계횟수 && FLAG:5 != 9 && DAY < 51
-	L_유혹度 = L_유혹度 * DAY / 100
+SIF CFLAG:CHARA:인계횟수 && FLAG:게임모드 != 9 && DAY < 51
+	L_유혹도 = L_유혹도 * DAY / 100
 
 
 
-RETURNF L_유혹度
+RETURNF L_유혹도
 
 ;=====================================================
 ;메시지を표시
@@ -1569,7 +1570,9 @@ VARSET LOCAL,0
 ;공중변소ＮＴＲ이벤트がOFFの場合は何もせず戻る
 ;専有奴隷の개목걸이を장비している場合は何もせず戻る
 ;남자は弾く
-SIF !GETBIT(FLAG:ＮＴＲ기능 , 4) || (CFLAG:ARG:그외 == 1116 || CFLAG:ARG:그외2 == 1116 || CFLAG:ARG:그외3 == 1116 || CFLAG:ARG:그외4 == 1116 || CFLAG:ARG:그외5 == 1116 || CFLAG:ARG:그외6 == 1116) || TALENT:ARG:남자 == 1
+; 그외 확장패치 주석처리
+; SIF !GETBIT(FLAG:ＮＴＲ기능 , 4) || (CFLAG:ARG:그외 == 1116 || CFLAG:ARG:그외2 == 1116 || CFLAG:ARG:그외3 == 1116 || CFLAG:ARG:그외4 == 1116 || CFLAG:ARG:그외5 == 1116 || CFLAG:ARG:그외6 == 1116) || TALENT:ARG:남자 == 1
+SIF !GETBIT(FLAG:ＮＴＲ기능 , 4) || (CFLAG:ARG:그외 == 1116 || CFLAG:ARG:그외2 == 1116 || CFLAG:ARG:그외3 == 1116) || TALENT:ARG:남자 == 1
 	RETURN
 ;NTR好き客からの声掛けられ확률산출
 LOCAL:2 = LIMIT(CFLAG:ARG:방치일수 * 2, 0, 30) + TALENT:ARG:인기 * 10
@@ -1932,26 +1935,16 @@ ENDIF
 IF CFLAG:ARG:처녀상실플래그
 	CFLAG:ARG:처녀상실플래그 = 0
 	TALENT:ARG:처녀 = 0
-	;SETCOLOR COLOR("red")
-	;PRINTFORML 이상경험획득　【＋２】　처녀상실（ＮＴＲ）
-	;RESETCOLOR
-	;EXP:ARG:이상경험 += 2
-	;SETBIT CFLAG:ARG:이상경험기록 , 35
 	CALL ADDS_ABNORMAL_EXP, "처녀상실（변기）" , ARG
-	CALL SHOW_ABNORMAL_EXP, ARG
+;	CALL SHOW_ABNORMAL_EXP, ARG
 ELSEIF TALENT:ARG:재생처녀
 	PRINTFORML 재생처녀 상실
 	TALENT:ARG:재생처녀 = 0
 ENDIF
 ;확장첫경험時の메시지표시および이상경험加算
 IF TCVAR:ARG:획득Ｖ확장경험 && (EXP:ARG:Ｖ확장경험 == 0 || EXP:ARG:Ａ확장경험 == 0)
-	;SETCOLOR COLOR("red")
-	;PRINTFORML 이상경험획득　【＋１】　확장첫경험
-	;RESETCOLOR
-	;EXP:ARG:이상경험 += 1
-	;SETBIT CFLAG:ARG:이상경험기록 , 13
 	CALL ADDS_ABNORMAL_EXP, "확장첫경험" , ARG
-	CALL SHOW_ABNORMAL_EXP, ARG
+;	CALL SHOW_ABNORMAL_EXP, ARG
 ENDIF
 
 

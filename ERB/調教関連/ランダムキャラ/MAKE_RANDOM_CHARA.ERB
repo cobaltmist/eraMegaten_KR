@@ -2,11 +2,12 @@
 ;랜덤キャラ作成
 ;引数は타입, LV, 性別
 ;-------------------------------------------
-;2019/07/26　JK好き　마유に暫定対応
-;2020/03/20　っとっとき　랜덤악마リンク対応。尻소질に対応。계승타입もテキトーに부여させるように対応
-;2020/09/05　っとっとき　一部の処理を別の処理からも사용できるように処理を分割
-;2020/09/12　名無し　排他소질の체크漏れ追記、不具合수정
-;2021/01/05　名無し　ロール外の調整処理を추가
+;2019/07/26　JK好き　魔乳に暫定対応
+;2020/03/20　っとっとき　ランダム悪魔リンク対応。尻素質に対応。継承タイプもテキトーに付与させるように対応
+;2020/09/05　っとっとき　一部の処理を別の処理からも使用できるように処理を分割
+;2020/09/12　名無し　排他素質のチェック漏れ追記、不具合修正
+;2021/01/05　名無し　ロール外の調整処理を追加
+;2021/12/30　名無し　妊娠しやすい/しにくい 排他処理に追加
 @MAKE_RANDOM_CHARA, ARG = -1, ARG:1 = 5, ARG:2 = -1
 #DIM CHARA, 1
 #DIM TYPE, 1
@@ -96,7 +97,7 @@ BASE:CHARA:LV = ARG:1
 BASE:CHARA:ＥＸＰ = 5*(ARG:1-1)*(ARG:1+1)*(ARG:1)/3
 ;ステ합계基準値
 LOCAL:1 = ARG:1 * 3 / 2 + 18
-CALLFORM RANDOMCHARA_{ARG}, "초기스테이터스比率", CHARA
+CALLFORM RANDOMCHARA_{ARG}, "초기스테이터스비율", CHARA
 LOCAL:2 = SUMARRAY(RESULT, 0, 6)
 LOCAL:3 = 0
 FOR LOCAL, 0, 6
@@ -277,7 +278,7 @@ FOR LOCAL, 0, 3
 	LOCAL:(LOCAL+3) = RESULT:LOCAL
 NEXT
 VARSET RESULT
-CALLFORM RANDOMCHARA_{ARG}, "除外소질", CHARA
+CALLFORM RANDOMCHARA_{ARG}, "제외소질", CHARA
 LOCAL:1 = 0
 ;소질は랜덤で5%の확률로発現
 FOR LOCAL, 10, 137
@@ -375,7 +376,7 @@ ENDIF
 ;-------------------------
 ;スキル習得に影響を与えない為にここに
 SIF EXTRA強化(3) == 0 && TALENT:CHARA:달인 == 0
-	CALL ロール内필터ー ,CHARA
+	CALL 역할내필터 ,CHARA
 ;-------------------
 ;계승타입
 ;-------------------
@@ -399,16 +400,16 @@ ENDIF
 ;-------------------
 ;体型・가슴・形質
 ;-------------------
-CALLFORM RANDOMCHARA_{ARG}, "가슴サイズ", CHARA
+CALLFORM RANDOMCHARA_{ARG}, "가슴사이즈", CHARA
 CALLFORM RANDOMTALENT_BODY_B, CHARA, RESULT
 
 CALLFORM RANDOMCHARA_{ARG}, "尻", CHARA
 CALLFORM RANDOMTALENT_BODY_H, CHARA, RESULT
 
-CALLFORM RANDOMCHARA_{ARG}, "体型", CHARA
+CALLFORM RANDOMCHARA_{ARG}, "체형", CHARA
 CALLFORM RANDOMTALENT_BODY_W, CHARA, RESULT
 
-CALLFORM RANDOMCHARA_{ARG}, "肉体部位", CHARA
+CALLFORM RANDOMCHARA_{ARG}, "육체부위", CHARA
 IF RESULT == 0
 	TALENT:CHARA:머리 = 1
 	TALENT:CHARA:눈 = 1
@@ -473,7 +474,8 @@ FOR LOCAL, 0, 12
 	CFLAG:CHARA:("초기"+GET_CLOTHESNAME(LOCAL)) = RESULT
 NEXT
 ;-------------------------
-;とりあえず악마汎用구상を사용しています
+;口上タイプ決定
+;とりあえず悪魔汎用口上を使用しています
 ;-------------------------
 CALLFORM RANDOMCHARA_{ARG}, "회화타입", CHARA
 CALLFORM RANDOM_KOJO_TYPE, CHARA, RESULT
@@ -483,7 +485,7 @@ CALLFORM RANDOM_KOJO_TYPE, CHARA, RESULT
 ;-------------------------
 CALLFORM RANDOMCHARA_{ARG}, "이름", CHARA
 NAME:CHARA = %RESULTS%
-CALLFORM RANDOMCHARA_{ARG}, "愛称", CHARA
+CALLFORM RANDOMCHARA_{ARG}, "애칭", CHARA
 CALLNAME:CHARA = %RESULTS%
 CALLFORM RANDOMCHARA_{ARG}, "일인칭", CHARA
 CSTR:CHARA:일인칭 = %RESULTS%
@@ -626,6 +628,15 @@ IF TALENT:ARG:젖기쉬움 == 1 && TALENT:ARG:젖기어려움 == 1
 	ELSE
 		TALENT:ARG:젖기쉬움 = 0
 		TALENT:ARG:젖기어려움 = 1
+	ENDIF
+ENDIF
+IF TALENT:ARG:임신하기쉬움 == 1 && TALENT:ARG:임신하기어려움 == 1
+	IF RAND:2 == 0
+		TALENT:ARG:임신하기쉬움 = 1
+		TALENT:ARG:임신하기어려움 = 0
+	ELSE
+		TALENT:ARG:임신하기쉬움 = 0
+		TALENT:ARG:임신하기어려움 = 1
 	ENDIF
 ENDIF
 IF TALENT:ARG:습득빠름 == 1 && TALENT:ARG:습득느림 == 1
@@ -870,11 +881,11 @@ ENDIF
 ;시아크の処理からパク…参考に作成
 ;악마リンクと言いつつ페르소나にも사용
 @RANDAM_LINKS, ARG
-#DIM 악마テーブル, 1000
+#DIM 악마테이블, 1000
 #DIM MAXLEVEL, 1
 #DIM TABLE_NUM, 1
 #DIM LCOUNT
-VARSET 악마テーブル
+VARSET 악마테이블
 LOCAL   = 0
 LOCAL:1 = 0 ;레어악마数카운트
 
@@ -928,7 +939,7 @@ FOR LCOUNT, 1, 1800
 	;특수합체만、합체조건있음、전서소환불가は弾く
 	SIF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "특수합체만")) || CSVCFLAG(LCOUNT, GETNUM(CFLAG, "합체조건있음")) || CSVCFLAG(LCOUNT, GETNUM(CFLAG, "전서소환불가"))
 		CONTINUE
-	악마テーブル:LOCAL = LCOUNT
+	악마테이블:LOCAL = LCOUNT
 	LOCAL ++
 NEXT
 ;레어악마処理
@@ -953,7 +964,7 @@ IF GETBIT(FLAG:EXTRA이벤트설정, 0) > 0
 		;解析率が50미만の악마は除外
 		SIF FLAG:(LCOUNT+20000) < 500
 			CONTINUE
-		악마テーブル:LOCAL = LCOUNT
+		악마테이블:LOCAL = LCOUNT
 		LOCAL ++
 		LOCAL:1 ++
 	NEXT
@@ -968,12 +979,12 @@ ENDIF
 ;랜덤テーブルない場合
 IF LOCAL == 0 || LOCAL == LOCAL:1
 	TABLE_NUM = 6
-	악마テーブル:0 = [[キャラ:픽시]]
-	악마テーブル:1 = [[キャラ:하피]]
-	악마テーブル:2 = [[キャラ:아프사라스]]
-	악마テーブル:3 = [[キャラ:노커]]
-	악마テーブル:4 = [[キャラ:춍춍]]
-	악마テーブル:5 = [[キャラ:아귀]]
+	악마테이블:0 = [[キャラ:픽시]]
+	악마테이블:1 = [[キャラ:하피]]
+	악마테이블:2 = [[キャラ:아프사라스]]
+	악마테이블:3 = [[キャラ:노커]]
+	악마테이블:4 = [[キャラ:춍춍]]
+	악마테이블:5 = [[キャラ:아귀]]
 	LOCAL:1 = 0
 ELSE
 	TABLE_NUM = LOCAL
@@ -981,14 +992,14 @@ ENDIF
 
 ;랜덤テーブルから산출して返却、레벨はＣＳＶの데이터のまま
 LOCAL = RAND:TABLE_NUM
-RETURN 악마テーブル:LOCAL, CSVBASE(악마テーブル:LOCAL, GETNUM(BASE, "LV"))
+RETURN 악마테이블:LOCAL, CSVBASE(악마테이블:LOCAL, GETNUM(BASE, "LV"))
 
 ;--------------------------------------
-;ロール内필터ー
+;역할내필터
 ;--------------------------------------
 ;ロール外が無허가であり、元々달인ではない場合、ロール内に調整する
 ;なるべくメンテナンスの횟수を減らすため、今後の확장を見越したセーフティも
-@ロール内필터ー, ARG
+@역할내필터, ARG
 ;이능자の特殊枠は달인としてだいたい通し
 IF TALENT:ARG:이능자 && (TALENT:ARG:석세서 || TALENT:ARG:건슬링거 || TALENT:ARG:아이템숙련)
 	TALENT:ARG:달인 = 1

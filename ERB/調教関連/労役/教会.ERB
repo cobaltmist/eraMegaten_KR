@@ -9,20 +9,22 @@
 ;
 ;	Edit	Date			Author					Reason
 ;	001		2014/09/17		----					ネトリス
-;	002		2014/12/28		----					질혼치の変動が正しく行われていなかったのを修正、など
+;	002		2014/12/28		----					秩混値の変動が正しく行われていなかったのを修正、など
 ;	003		2014/04/22								L教会の報酬に女性テンプルナイト追加
 ;	004		2021/04/27		JK好き					協会で多胎OP時でも妊娠するように修正
+;	005		2021/09/30		JK好き					勧誘時のレイアウト調整
+;	006		2022/01/07		JK好き					属性変動が機能していなかった問題を修正
 ;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
 ;教会
 ;それぞれの教会の対応したアライメント調整をする
 ;メシア教会ならＬ、ガイア教会はＣ、教会はＮに寄っていく
-;収入はなく유지비がかかる（유지비は高めでもいいかも）
-;[[점포:선전フラグ]]:ARG を 敬拝値 として使う
-;敬拝値は教会で봉사活動をすることで得られ、個々の教会で独自に管理する
-;敬拝値を소비する事でそれぞれの教会に対応した仲魔と交換する事が出来る
+;収入はなく維持費がかかる（維持費は高めでもいいかも）
+;[[점포:선전플래그]]:ARG を 경배치 として使う
+;경배치は教会で奉仕活動をすることで得られ、個々の教会で独自に管理する
+;경배치を消費する事でそれぞれの教会に対応した仲魔と交換する事が出来る
 ;
 ;==========================================================
-;ARRANGE_CHARA_COMMODITY_MANAGEMENT_教会
+;ARRANGE_CHARA_COMMODITY_MANAGEMENT_교회
 ; 봉사活動個別설정
 ; 초기설정は祈り
 ;<引数>
@@ -30,7 +32,7 @@
 ;<戻り値>
 ;	なし
 ;========================================================
-@ARRANGE_CHARA_COMMODITY_MANAGEMENT_教会,ARG
+@ARRANGE_CHARA_COMMODITY_MANAGEMENT_교회,ARG
 #DIM LCOUNT
 
 P = 0
@@ -112,14 +114,14 @@ GOTO INPUT_LOOP_2
 
 
 ;==========================================================
-;@EXTEND_MANAGEMENT_教会
+;@EXTEND_MANAGEMENT_교회
 ; 教会の규모확장処理
 ;<引数>
 ;	ARG = 점포番号
 ;<戻り値>
 ;	なし
 ;==========================================================
-@EXTEND_MANAGEMENT_教会, ARG
+@EXTEND_MANAGEMENT_교회, ARG
 PRINTFORML 현재, 이 교회의 레벨은 {점포("규모", ARG)}입니다.
 
 LOCAL = 5000 * 점포("규모", ARG)
@@ -136,51 +138,51 @@ ENDIF
 CALL INPUT_YN, "YES", "NO"
 SIF RESULT == 1
 	RETURN 0
-CALL 점포演算("규모", ARG,1, "+")
+CALL 점포연산("규모", ARG,1, "+")
 MONEY -= LOCAL
 
 ;==========================================================
-;MANAGEMENT_教会
+;MANAGEMENT_교회
 ; 教会での活動処理
 ;
 ;<引数>
 ;	ARG = 점포番号
 ;<사용変数>
-;	속성変動値   = 各活動で変動した数値の保管
-;	配置人数     = 教会に配置しているキャラの人数
-;	최대参拝人数 = 現在の教会규모での최대参拝人数、최대値は教会に改装규모による
-;	参拝人数     = 相손にする人数
-;	教会규모     = 参拝人数と속성変動値の底上げに影響する
-;	敬拝値       = [[점포:인기]]:ARG に収める数値をまとめて保管する
+;	속성변동치   = 各活動で変動した数値の保管
+;	배치인수     = 教会に配置しているキャラの人数
+;	최대참배인수 = 現在の교회규모での최대참배인수、最大値は教会に改装規模による
+;	참배인수     = 相手にする人数
+;	교회규모     = 참배인수と속성변동치の底上げに影響する
+;	경배치       = [[점포:인기]]:ARG に収める数値をまとめて保管する
 ;<戻り値>
 ;	なし
 ;========================================================
-@MANAGEMENT_教会, ARG
-#DIM 속성変動値
-#DIM 配置人数
-#DIM 최대参拝人数
-#DIM 参拝人数
-#DIM 教会규모
-#DIM 敬拝値
+@MANAGEMENT_교회, ARG
+#DIM 속성변동치
+#DIM 배치인수
+#DIM 최대참배인수
+#DIM 참배인수
+#DIM 교회규모
+#DIM 경배치
 #DIM 입봉사횟수
 #DIM Ｖ봉사횟수
 #DIM Ａ봉사횟수
 
 
 ;教会の改装레벨を保存
-教会규모 = 점포("규모", ARG)
-;최대参拝人数の설정
-SELECTCASE 教会규모
+교회규모 = 점포("규모", ARG)
+;최대참배인수の설정
+SELECTCASE 교회규모
 	CASE 1
-		최대参拝人数 = 5
+		최대참배인수 = 5
 	CASE 2
-		최대参拝人数 = 10
+		최대참배인수 = 10
 	CASE 3
-		최대参拝人数 = 20
+		최대참배인수 = 20
 	CASE 4
-		최대参拝人数 = 40
+		최대참배인수 = 40
 	CASE 5
-		최대参拝人数 = 80
+		최대참배인수 = 80
 ENDSELECT
 
 ;配置されているキャラがいるか체크
@@ -189,10 +191,10 @@ FOR LOCAL, 0, CHARANUM
 	;配置されていないキャラを弾く
 	SIF CFLAG:LOCAL:노역플래그 != 10+ARG
 		CONTINUE
-	配置人数 += 1
+	배치인수 += 1
 NEXT
 ;誰も配置されていない場合は戻る
-SIF 配置人数 == 0
+SIF 배치인수 == 0
 	RETURN
 
 ;活動処理
@@ -213,8 +215,8 @@ FOR LOCAL, 0, CHARANUM
 		CASE 1
 			PRINTFORMW %조사처리(CALLNAME:LOCAL,"가")% 기도를 바치고 있다
 			;祈りでの変化は0～1(MAX0～4)
-			속성変動値 = RAND:(2+教会규모/2)
-			敬拝値 += 1
+			속성변동치 = RAND:(2+교회규모/2)
+			경배치 += 1
 			;이벤트구상
 			T = TARGET
 			TARGET = LOCAL
@@ -224,13 +226,13 @@ FOR LOCAL, 0, CHARANUM
 		;입봉사
 		CASE 2
 			;봉사する人数を決める
-			参拝人数 = RAND:최대参拝人数
-			;参拝人数が0の場合はお祈りをする
-			IF 参拝人数 == 0
+			참배인수 = RAND:최대참배인수
+			;참배인수が0の場合はお祈りをする
+			IF 참배인수 == 0
 				PRINTFORMW 참배자가 없었기 때문에, %조사처리(CALLNAME:LOCAL,"는")% 하루종일 기도하였다
 				;祈りでの変化は0～1(MAX0～4)
-				속성変動値 = RAND:(2+教会규모/2)
-				敬拝値 += 1
+				속성변동치 = RAND:(2+교회규모/2)
+				경배치 += 1
 				;이벤트구상
 				T = TARGET
 				TARGET = LOCAL
@@ -244,27 +246,27 @@ FOR LOCAL, 0, CHARANUM
 			SELECTCASE 점포("종류",ARG)
 				;メシア教会
 				CASE 13
-					SELECTCASE RAND:(2+教会규모)
+					SELECTCASE RAND:(2+교회규모)
 						CASE 1
-							PRINTFORML %조사처리(CALLNAME:LOCAL,"는")% {参拝人数}명의 메시아교 신자들의 페니스에 정중한 봉사를 하였다
+							PRINTFORML %조사처리(CALLNAME:LOCAL,"는")% {참배인수}명의 메시아교 신자들의 페니스에 정중한 봉사를 하였다
 						CASEELSE
-							PRINTFORML %조사처리(CALLNAME:LOCAL,"는")% 방문한 {参拝人数}명의 신자에게 입으로 봉사했다
+							PRINTFORML %조사처리(CALLNAME:LOCAL,"는")% 방문한 {참배인수}명의 신자에게 입으로 봉사했다
 					ENDSELECT
 				;가이아教会
 				CASE 14
 					SELECTCASE RAND:2
 						CASE 1
-							PRINTFORML %조사처리(CALLNAME:LOCAL,"는")% {参拝人数}명의 가이아교 신자들의 페니스에 정중한 봉사를 하였다
+							PRINTFORML %조사처리(CALLNAME:LOCAL,"는")% {참배인수}명의 가이아교 신자들의 페니스에 정중한 봉사를 하였다
 						CASEELSE
-							PRINTFORML %조사처리(CALLNAME:LOCAL,"는")% 방문한 {参拝人数}명의 신자에게 입으로 봉사했다
+							PRINTFORML %조사처리(CALLNAME:LOCAL,"는")% 방문한 {참배인수}명의 신자에게 입으로 봉사했다
 					ENDSELECT
 				;教会
 				CASE 15
 					SELECTCASE RAND:2
 						CASE 1
-							PRINTFORML %조사처리(CALLNAME:LOCAL,"는")% 미사로 방문한 {参拝人数}명의 신자들의 페니스에 정중한 봉사를 하였다
+							PRINTFORML %조사처리(CALLNAME:LOCAL,"는")% 미사로 방문한 {참배인수}명의 신자들의 페니스에 정중한 봉사를 하였다
 						CASEELSE
-							PRINTFORML %조사처리(CALLNAME:LOCAL,"는")% 방문한 {参拝人数}명의 신자에게 입으로 봉사했다
+							PRINTFORML %조사처리(CALLNAME:LOCAL,"는")% 방문한 {참배인수}명의 신자에게 입으로 봉사했다
 					ENDSELECT
 			ENDSELECT
 			;이벤트구상
@@ -274,31 +276,31 @@ FOR LOCAL, 0, CHARANUM
 			CALL KOJO_MESSAGE_EVENT
 			TARGET = T
 			;취득경험計算
-			TCVAR:LOCAL:획득펠라경험 = 参拝人数
-			;TCVAR:LOCAL:획득봉사쾌락경험 = 参拝人数
+			TCVAR:LOCAL:획득펠라경험 = 참배인수
+			;TCVAR:LOCAL:획득봉사쾌락경험 = 참배인수
 			;혀놀림がある場合は정액경험にボーナス
-			LOCAL:1 = 参拝人数
+			LOCAL:1 = 참배인수
 			SIF TALENT:LOCAL:혀놀림
 				LOCAL:1 += 1 + LOCAL:1 / 2
 			TCVAR:LOCAL:획득정액경험 = LOCAL:1
 			;崇拝値は1+획득정액경험
-			敬拝値 += 1 + TCVAR:LOCAL:획득정액경험
+			경배치 += 1 + TCVAR:LOCAL:획득정액경험
 			;획득경험표시
 			CALL SHOW_ADD_EXP, LOCAL
 			
 			;입봉사での変化は0～2(MAX0～7)
-			속성変動値 = RAND:(3+教会규모)
+			속성변동치 = RAND:(3+교회규모)
 
 		;性봉사
 		CASE 3
 			;봉사する人数を決める
-			参拝人数 = RAND:최대参拝人数
-			;参拝人数が0の場合はお祈りをする
-			IF 参拝人数 == 0
+			참배인수 = RAND:최대참배인수
+			;참배인수が0の場合はお祈りをする
+			IF 참배인수 == 0
 				PRINTFORMW 참배자가 없었기 때문에, %조사처리(CALLNAME:LOCAL,"는")% 하루종일 기도하였다
 				;祈りでの変化は0～1(MAX0～4)
-				속성変動値 = RAND:(2+教会규모/2)
-				敬拝値 += 1
+				속성변동치 = RAND:(2+교회규모/2)
+				경배치 += 1
 				;이벤트구상
 				T = TARGET
 				TARGET = LOCAL
@@ -314,25 +316,25 @@ FOR LOCAL, 0, CHARANUM
 				CASE 13
 					SELECTCASE RAND:2
 						CASE 1
-							PRINTFORML %조사처리(CALLNAME:LOCAL,"는")% {参拝人数}명의 메시아교 신자에게 몸으로 봉사했다
+							PRINTFORML %조사처리(CALLNAME:LOCAL,"는")% {참배인수}명의 메시아교 신자에게 몸으로 봉사했다
 						CASEELSE
-							PRINTFORML %조사처리(CALLNAME:LOCAL,"는")% 방문한 {参拝人数}명의 참배자에게 몸을 사용하여 봉사했다
+							PRINTFORML %조사처리(CALLNAME:LOCAL,"는")% 방문한 {참배인수}명의 참배자에게 몸을 사용하여 봉사했다
 					ENDSELECT
 				;가이아教会
 				CASE 14
 					SELECTCASE RAND:2
 						CASE 1
-							PRINTFORML %조사처리(CALLNAME:LOCAL,"는")% {参拝人数}명의 가이아교 신자에게 몸으로 봉사했다
+							PRINTFORML %조사처리(CALLNAME:LOCAL,"는")% {참배인수}명의 가이아교 신자에게 몸으로 봉사했다
 						CASEELSE
-							PRINTFORML %조사처리(CALLNAME:LOCAL,"는")% 방문한 {参拝人数}명의 참배자에게 몸을 사용하여 봉사했다
+							PRINTFORML %조사처리(CALLNAME:LOCAL,"는")% 방문한 {참배인수}명의 참배자에게 몸을 사용하여 봉사했다
 					ENDSELECT
 				;教会
 				CASE 15
 					SELECTCASE RAND:2
 						CASE 1
-							PRINTFORML %조사처리(CALLNAME:LOCAL,"는")% 미사로 방문한 {参拝人数}명의 신자에게 자신의 몸으로 봉사했다
+							PRINTFORML %조사처리(CALLNAME:LOCAL,"는")% 미사로 방문한 {참배인수}명의 신자에게 자신의 몸으로 봉사했다
 						CASEELSE
-							PRINTFORML %조사처리(CALLNAME:LOCAL,"는")% 방문한 {参拝人数}명의 참배자에게 몸을 사용하여 봉사했다
+							PRINTFORML %조사처리(CALLNAME:LOCAL,"는")% 방문한 {참배인수}명의 참배자에게 몸을 사용하여 봉사했다
 					ENDSELECT
 			ENDSELECT
 			
@@ -344,7 +346,7 @@ FOR LOCAL, 0, CHARANUM
 			TARGET = T
 			;취득경험計算
 			;とりあえず一人に付き一発にしておく
-			FOR LOCAL:1, 0, 参拝人数
+			FOR LOCAL:1, 0, 참배인수
 				SELECTCASE RAND:3
 					CASE 1
 						입봉사횟수 ++
@@ -366,10 +368,10 @@ FOR LOCAL, 0, CHARANUM
 			TCVAR:LOCAL:획득정액경험 += 입봉사횟수 + Ｖ봉사횟수 + Ａ봉사횟수
 			TCVAR:LOCAL:획득성교경험 += Ｖ봉사횟수 + Ａ봉사횟수
 			TCVAR:LOCAL:획득질사경험 += Ｖ봉사횟수
-			敬拝値 += 1 + 입봉사횟수 + 2*(Ｖ봉사횟수 + Ａ봉사횟수)
+			경배치 += 1 + 입봉사횟수 + 2*(Ｖ봉사횟수 + Ａ봉사횟수)
 			IF TALENT:LOCAL:혀놀림
 				TCVAR:LOCAL:획득정액경험 += 입봉사횟수 / 2
-				敬拝値 += 입봉사횟수 / 2
+				경배치 += 입봉사횟수 / 2
 			ENDIF
 			;妊娠用, SHOW_ADD_EXPの前に置かないと獲得膣射経験が0になる
 			IF CFLAG:LOCAL:자궁내피임결계 == 0
@@ -378,18 +380,18 @@ FOR LOCAL, 0, CHARANUM
 				IF TALENT:LOCAL:오토코노코
 					CFLAG:(LOCAL):자궁현재용량 += Ａ봉사횟수 * 5
 				ELSEIF !IS_MALE(LOCAL)
-					CFLAG:(LOCAL):자궁현재용량 += Ｖ봉사횟수  * 5
+					CFLAG:(LOCAL):자궁현재용량 += Ｖ봉사횟수 * 5
 				ENDIF
 				
 			ENDIF
 			;獲得経験表示
 			CALL SHOW_ADD_EXP, LOCAL
 			;체력の소비
-			PRINTFORML 체력 - {参拝人数*10}
-			BASE:LOCAL:체력 -= 参拝人数*10
+			PRINTFORML 체력 - {참배인수*10}
+			BASE:LOCAL:체력 -= 참배인수*10
 
 			;性봉사での変化は1～4(MAX1～9)
-			속성変動値 = 1 + RAND:(4+教会규모)
+			속성변동치 = 1 + RAND:(4+교회규모)
 
 	ENDSELECT
 	$SKIP_1
@@ -405,7 +407,7 @@ FOR LOCAL, 0, CHARANUM
 				LOCAL:2 = 127
 		ENDSELECT
 		;キャラの속성値変動
-		CALL CHANGE_CHARA_LC, LOCAL, LOCAL:2, LOCAL:1
+		CALL CHANGE_CHARA_LC, LOCAL, LOCAL:2, 속성변동치
 		CALL SYNC_STATUS, LOCAL
 	ENDIF
 
@@ -413,19 +415,19 @@ FOR LOCAL, 0, CHARANUM
 	DRAWLINE
 
 NEXT
-PRINTFORML 유지비로 ￥{500 * 教会규모 + 配置人数 * 300}만큼 지불했습니다
-MONEY -= 500 * 教会규모 + 配置人数 * 300
-[[점포:인기]]:ARG += 敬拝値
+PRINTFORML 유지비로 ￥{500 * 교회규모 + 배치인수 * 300}만큼 지불했습니다
+MONEY -= 500 * 교회규모 + 배치인수 * 300
+[[점포:인기]]:ARG += 경배치
 ;==========================================================
-;@教会_敬拝値_交換
-; 敬拝値を交換するための処理
+;@교회_경배치_교환
+; 경배치を交換するための処理
 ;<引数>
 ;	ARG = 점포番号
 ;<戻り値>
 ;	なし
 ;==========================================================
-@教会_敬拝値_交換, ARG
-;소지敬拝値と値段を比べるため
+@교회_경배치_교환, ARG
+;소지경배치と値段を比べるため
 LOCAL:1 = 100
 LOCAL:2 = 500
 LOCAL:3 = 1000
@@ -438,7 +440,7 @@ PRINTFORML 권유할 자를 고르세요　　　경배치：{[[점포:인기]]:
 SELECTCASE 점포("종류",ARG)
 	;メシア教会
 	CASE 13
-		PRINTFORML [1] 광신자　　　　　　　　　100
+			PRINTFORML [1] 광신자　　　　　　　　　100
 		SIF 점포("규모",ARG) > 1
 			PRINTFORML [2] 부쳐　　　　　500
 		SIF 점포("규모",ARG) > 2
@@ -448,7 +450,7 @@ SELECTCASE 점포("종류",ARG)
 
 	;ガイア教会
 	CASE 14
-		PRINTFORML [1] 특공대　　　　　　100
+			PRINTFORML [1] 특공대　　　　　　100
 		SIF 점포("규모",ARG) > 1
 			PRINTFORML [2] 파계승　　　　500
 		SIF 점포("규모",ARG) > 2
@@ -459,7 +461,7 @@ SELECTCASE 점포("종류",ARG)
 			PRINTFORML [5] 가면성　　　5000
 	;教会
 	CASE 15
-		PRINTFORML [1] 야쿠자　　　　　　　100
+			PRINTFORML [1] 야쿠자　　　　　　　100
 		SIF 점포("규모",ARG) > 1
 			PRINTFORML [2] 펑크스　　　　　　500
 		SIF 점포("규모",ARG) > 2
@@ -489,7 +491,7 @@ ENDSELECT
 ;戻るを選択した場合
 IF RESULT == 100
 	RETURN
-;敬拝値が발りない場合はループ
+;경배치が발りない場合はループ
 ELSEIF LOCAL:RESULT > [[점포:인기]]:ARG
 	PRINTFORMW 경배치가 충분하지 않습니다
 	GOTO LOOP_1
@@ -566,7 +568,7 @@ SELECTCASE 점포("종류",ARG)
 
 ENDSELECT
 
-;敬拝値支払い
+;경배치支払い
 [[점포:인기]]:ARG -= LOCAL:RESULT
 
 
