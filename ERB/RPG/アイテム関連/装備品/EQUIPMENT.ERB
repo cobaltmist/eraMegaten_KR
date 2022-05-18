@@ -22,6 +22,8 @@
 ;	010		2019/07/02		JK好き					장비화면생략설정を調整
 ;	011		2019/12/25		Jガン					SKILL_NAMEの引数を正しいものに
 ;	012		2019/01/13		Jガン					「장비상세선택」選択時の処理を추가
+;	013		2021/06/23		lemukot					半魔あなたに対する生得武器の装備制限の緩和
+;	014		2021/09/16		JK好き					@全装備解除 特殊弾は解除されないように変更
 ;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
 ;===================================================================
 ;장비品の변경等
@@ -80,7 +82,7 @@ VARSET 아이템리스트 , -1
 SIF 변경장비부위 != -1
 	CALL STATUS_WINDOW_EQUIP_ITEM_LIST , LOCAL:10 , 0 , 0 , 변경장비부위 , "リスト作成"
 VARSET 변경예정장비 , -1
-CALL 장비변경時스테이터스更新 , LOCAL:10
+CALL 장비변경시스테이터스갱신 , LOCAL:10
 ;ここまでが変数など초기化処理
 CALL PUEQ_SET(LOCAL:10);PUEQ
 
@@ -136,15 +138,15 @@ IF FLAG:장비화면생략스위치 == 0
 						CASE 5
 							PRINTL 창
 						CASE 6
-							PRINTL 부・둔기
+							PRINTL 도끼・둔기
 						CASE 7
 							PRINTL 채찍
 						CASE 8
-							PRINTL 투구
+							PRINTL 투척
 						CASE 9
-							PRINTL 지팡이・제사도구
+							PRINTL 지팡이・제구
 						CASE 10
-							PRINTL 곤
+							PRINTL 곤봉
 						CASE 11
 							PRINTL 권투구
 						CASEELSE
@@ -167,7 +169,7 @@ IF FLAG:장비화면생략스위치 == 0
 			TRYCCALLFORM 장비해설_{변경예정장비:변경장비부위}
 			CATCH
 				PRINTL
-		ENDCATCH
+			ENDCATCH
 		ENDIF
 		IF 1999 < 변경예정장비:변경장비부위 && 2500 > 변경예정장비:변경장비부위
 			PRINT 종별：
@@ -184,15 +186,15 @@ IF FLAG:장비화면생략스위치 == 0
 						CASE 5
 							PRINTL 창
 						CASE 6
-							PRINTL 부・둔기
+							PRINTL 도끼・둔기
 						CASE 7
 							PRINTL 채찍
 						CASE 8
-							PRINTL 투구
+							PRINTL 투척
 						CASE 9
-							PRINTL 지팡이・제사도구
+							PRINTL 지팡이・제구
 						CASE 10
-							PRINTL 곤
+							PRINTL 곤봉
 						CASE 11
 							PRINTL 권투구
 						CASEELSE
@@ -223,7 +225,7 @@ ENCODETOUNI %RESULTS%
 IF RESULTS == "100"
 	변경장비부위 = -1
 	VARSET 변경예정장비, -1
-	CALL 장비변경時스테이터스更新(LOCAL:10)
+	CALL 장비변경시스테이터스갱신(LOCAL:10)
 	CALL PUEQ_SET(-1);PUEQ
 	RETURN 0
 ELSEIF RESULTS == "200"
@@ -233,7 +235,7 @@ ELSEIF RESULTS == "200"
 	NEXT
 	GOTO RESET
 ELSEIF RESULTS == "300"
-	CALL 全장비해제(LOCAL:10)
+	CALL 모든장비해제(LOCAL:10)
 	GOTO RESET
 ELSEIF RESULTS == "400"
 	CLEARLINE LINECOUNT - LINE
@@ -256,16 +258,16 @@ ELSEIF RANGE(TOINT(RESULTS) , 401 , 406)
 	LOCAL = 3100 + LOCAL * 7
 	FOR LCOUNT , 0 , 7
 		;CALLFORM 장비조건_{CFLAG:(LOCAL:10):(LOCAL + LCOUNT)},LOCAL:10
-		CALL 장비可能確認,LOCAL:10,CFLAG:(LOCAL:10):(LOCAL + LCOUNT),LCOUNT
+		CALL 장비가능확인,LOCAL:10,CFLAG:(LOCAL:10):(LOCAL + LCOUNT),LCOUNT
 		IF EQUIP:(LOCAL:10):GET_EQUIP(LCOUNT) == CFLAG:(LOCAL:10):(LOCAL + LCOUNT)
 			변경예정장비:LCOUNT = -1
 		ELSEIF RESULT && (CFLAG:(LOCAL:10):(LOCAL + LCOUNT) == 0 || ITEM:(CFLAG:(LOCAL:10):(LOCAL + LCOUNT)))
 			변경예정장비:LCOUNT = CFLAG:(LOCAL:10):(LOCAL + LCOUNT)
 		ELSE
-			PRINTFORMW %GET_EQUIP(LCOUNT)%장비がセットできませんでした
+			PRINTFORMW %GET_EQUIP(LCOUNT)%장비가 세팅되지 않았습니다
 		ENDIF
 	NEXT
-	CALL 장비변경時스테이터스更新 , LOCAL:10
+	CALL 장비변경시스테이터스갱신 , LOCAL:10
 	RESULT = 0
 	GOTO PRINTLOOP
 ELSEIF RESULTS == "1001" && LOCAL:1 > 0
@@ -287,7 +289,7 @@ ELSEIF RANGE(TOINT(RESULTS) , 50 , 56)
 ELSEIF RESULT == 1 && RANGE(RESULT:1 , 97 , 97 + 19) && 아이템리스트:(아이템리스트페이지 * 20 + RESULT:1 - 97) > -1
 	;변경예정장비:변경장비부위 = TOINT(RESULTS)
 	변경예정장비:변경장비부위 = 아이템리스트:(아이템리스트페이지 * 20 + RESULT:1 - 97)
-	CALL 장비변경時스테이터스更新 , LOCAL:10
+	CALL 장비변경시스테이터스갱신 , LOCAL:10
 	
 	GOTO PRINTLOOP
 ELSEIF RESULTS == "57" && TALENT:(LOCAL:10):건슬링거 > 0 && EQUIP:(LOCAL:10):총 > 0
@@ -303,10 +305,10 @@ ELSEIF RESULTS == "장비상세선택" && 변경장비부위 >= 0
 	CALL EQUIP_DETAIL_ITEM_LIST, 변경장비부위, LOCAL:10
 	SIF RESULT != 100
 		변경예정장비:변경장비부위 = RESULT
-	CALL 장비변경時스테이터스更新 , LOCAL:10
+	CALL 장비변경시스테이터스갱신 , LOCAL:10
 	GOTO PRINTLOOP
 ELSEIF RESULTS == "+" || RESULTS == "-"
-	CALL STATUS_WINDOW_EQUIP_DATA , , , , , @"표시변경%RESULTS%"
+	CALL STATUS_WINDOW_EQUIP_DATA , , , , , @"표시전환%RESULTS%"
 	GOTO PRINTLOOP
 ELSEIF RESULTS == "≫"
 	FLAG:윈도우내성표시설정 = ++FLAG:윈도우내성표시설정 % 3
@@ -359,7 +361,7 @@ ELSEIF RESULT == 200
 	CALL PUEQ_SET(-1);PUEQ
 	RETURN 0
 ELSEIF RESULT == 300
-	CALL 全장비해제(LOCAL:10)
+	CALL 모든장비해제(LOCAL:10)
 	GOTO PRINT_ELIST
 ELSEIF RESULT == 1001 && LOCAL:1 > 0
 	LOCAL:1 -= 1
@@ -546,18 +548,18 @@ IF 아이템확인표시
 	CALL 장비설명,LOCAL,ARG:1
 ELSE
 	FOR L_COUNT,0, FLAG:상성수
-		CALLF 장비변경時相性(L_COUNT, 1, MAXBASE:(ARG:1):GET_TYPE(L_COUNT))
+		CALLF 장비변경시상성(L_COUNT, 1, MAXBASE:(ARG:1):GET_TYPE(L_COUNT))
 	NEXT
 	FOR L_COUNT,0,FLAG:전투능력수+2
 		元전투능력:L_COUNT = MAXBASE:(ARG:1):GET_BATTLESTATUS(L_COUNT)
 	NEXT
 	DRAWLINE
-	PRINTFORML \@ EQUIP:(ARG:1):GET_EQUIP(ARG) == 0 ? %AUTO_SPLIT("素손_ＥＭＰＴＹ" , "_" , GET_EQUIP(ARG) != "검" )% # %ITEMNAME:(EQUIP:(ARG:1):GET_EQUIP(ARG))% \@ → %ITEMNAME:LOCAL%
+	PRINTFORML \@ EQUIP:(ARG:1):GET_EQUIP(ARG) == 0 ? %AUTO_SPLIT("맨손_ＥＭＰＴＹ" , "_" , GET_EQUIP(ARG) != "검" )% # %ITEMNAME:(EQUIP:(ARG:1):GET_EQUIP(ARG))% \@ → %ITEMNAME:LOCAL%
 	DRAWLINE
 	SWAP EQUIP:(ARG:1):GET_EQUIP(ARG), LOCAL
 	CALL SYNC_STATUS, ARG:1
 	FOR L_COUNT,0,FLAG:전투능력수 + 2
-		CALLF 장비변경時스테이터스変化値(L_COUNT, 1, MAXBASE:(ARG:1):GET_BATTLESTATUS(L_COUNT) - 元전투능력:L_COUNT)
+		CALLF 장비변경시스테이터스변화치(L_COUNT, 1, MAXBASE:(ARG:1):GET_BATTLESTATUS(L_COUNT) - 元전투능력:L_COUNT)
 	NEXT
 	U = ARG:1
 	CALL SHOW_INFO_NAME
@@ -670,7 +672,7 @@ IF FLAG:커스텀게임화면
 	NEXT
 	DRAWLINE
 	;11、12行눈に被공격상성と継承可能표시
-	PRINTL  전투相性
+	PRINTL  전투상성
 	LOCAL:1 = GETCOLOR()
 	;現在の色を退避しておく（적の스테이터스を표시した時など）
 	FOR LOCAL,0, FLAG:상성수
@@ -824,6 +826,9 @@ ENDIF
 ;		CONTINUE
 ;	SIF ITEM:LOCAL == 0
 ;		CONTINUE
+;	TRYCALLFORM 최대소지수_{COUNT_ITEMMAX(LOCAL)}
+;	SIF RESULT > 0 && ITEM:LOCAL > RESULT
+;		ITEM:LOCAL = RESULT
 ;	IF 마정장비(LOCAL)
 ;		CALLFORM 장비조건_마정장비,ARG:1,LOCAL - 2450 - ARG*450
 ;		SIF RESULT == 1
@@ -933,12 +938,12 @@ IF L_MODE
 
 		;上記以外
 		CASEELSE
-			;- 通常出힘
+			;- 通常出力
 			L_MODE = 0
 	ENDSELECT
 ENDIF
 
-;- 通常出힘時
+;- 通常出力時
 IF !L_MODE
 	FOR LOCAL,2000+ARG*500,2000+(ARG+1)*500
 		SIF ITEMPRICE:LOCAL == 0
@@ -1507,13 +1512,13 @@ IF 마정장비(ARG)
 		ENDIF
 	NEXT
 	PRINTL
-	TRYCCALLFORM バステ내성_마정장비,0,LOCAL:2
+	TRYCCALLFORM BS내성_마정장비,0,LOCAL:2
 		SIF ARG:1 >= 0 && (TALENT:(ARG:1):페르소나구사자 || ABL:(ARG:1):종족 == 36)
 			SETCOLOR COLOR("gray")
 		PRINTL 배드스테이터스：
 		LOCAL:3 = 0
 		FOR LOCAL,0,FLAG:상태이상수
-			TRYCCALLFORM バステ내성_마정장비,LOCAL,LOCAL:2
+			TRYCCALLFORM BS내성_마정장비,LOCAL,LOCAL:2
 				SIF RESULT == 0
 					CONTINUE
 				PRINTFORMLC %GET_STATE(LOCAL),8,LEFT% {100-RESULT}％　
@@ -1653,13 +1658,13 @@ ELSE
 		ENDIF
 	NEXT
 	PRINTL
-	TRYCCALLFORM バステ내성_{ARG},0,ARG:1
+	TRYCCALLFORM BS내성_{ARG},0,ARG:1
 		SIF ARG:1 >= 0 && (TALENT:(ARG:1):페르소나구사자 || ABL:(ARG:1):종족 == 36)
 			SETCOLOR COLOR("gray")
 		PRINTL 배드스테이터스：
 		LOCAL:3 = 0
 		FOR LOCAL,1,FLAG:상태이상수
-			TRYCCALLFORM バステ내성_{ARG},LOCAL,ARG:1
+			TRYCCALLFORM BS내성_{ARG},LOCAL,ARG:1
 				SIF RESULT == 0
 					CONTINUE
 				PRINTFORMLC %GET_STATE(LOCAL),8,LEFT% {100+RESULT}％　
@@ -1687,15 +1692,15 @@ ELSE
 				CASE 5
 					PRINTL 창
 				CASE 6
-					PRINTL 부・둔기
+					PRINTL 도끼・둔기
 				CASE 7
 					PRINTL 채찍
 				CASE 8
-					PRINTL 투구
+					PRINTL 투척
 				CASE 9
-					PRINTL 지팡이・제사도구
+					PRINTL 지팡이・제구
 				CASE 10
-					PRINTL 곤
+					PRINTL 곤봉
 				CASE 11
 					PRINTL 권투구
 				CASEELSE
@@ -1740,70 +1745,6 @@ ELSE
 					CALLFORM SKILL_NAME_{RESULT},ARG:1
 					PRINTFORM  [%RESULTS%]
 				ENDIF
-				; XCOM 모드 추가보정
-				TRYCCALLFORM 장비추가스킬_{ARG},3,ARG:1
-					IF RESULT > 0
-						CALLFORM SKILL_NAME_{RESULT},ARG:1
-						PRINTFORM  [%RESULTS%]
-					ENDIF
-					TRYCCALLFORM 장비추가스킬_{ARG},4,ARG:1
-						IF RESULT > 0
-							CALLFORM SKILL_NAME_{RESULT},ARG:1
-							PRINTFORM  [%RESULTS%]
-						ENDIF
-						TRYCCALLFORM 장비추가스킬_{ARG},5,ARG:1
-						IF RESULT > 0
-							CALLFORM SKILL_NAME_{RESULT},ARG:1
-							PRINTFORM  [%RESULTS%]
-						ENDIF
-							TRYCCALLFORM 장비추가스킬_{ARG},6,ARG:1
-							IF RESULT > 0
-								CALLFORM SKILL_NAME_{RESULT},ARG:1
-								PRINTFORM  [%RESULTS%]
-							ENDIF
-								TRYCCALLFORM 장비추가스킬_{ARG},7,ARG:1
-								IF RESULT > 0
-									CALLFORM SKILL_NAME_{RESULT},ARG:1
-									PRINTFORM  [%RESULTS%]
-								ENDIF
-									TRYCCALLFORM 장비추가스킬_{ARG},8,ARG:1
-									IF RESULT > 0
-										CALLFORM SKILL_NAME_{RESULT},ARG:1
-										PRINTFORM  [%RESULTS%]
-									ENDIF
-										TRYCCALLFORM 장비추가스킬_{ARG},9,ARG:1
-										IF RESULT > 0
-											CALLFORM SKILL_NAME_{RESULT},ARG:1
-											PRINTFORM  [%RESULTS%]
-										ENDIF
-											TRYCCALLFORM 장비추가스킬_{ARG},10,ARG:1
-											IF RESULT > 0
-												CALLFORM SKILL_NAME_{RESULT},ARG:1
-												PRINTFORM  [%RESULTS%]
-											ENDIF
-												TRYCCALLFORM 장비추가스킬_{ARG},11,ARG:1
-												IF RESULT > 0
-													CALLFORM SKILL_NAME_{RESULT},ARG:1
-													PRINTFORM  [%RESULTS%]
-												ENDIF
-												CATCH
-												ENDCATCH
-											CATCH
-											ENDCATCH
-										CATCH
-										ENDCATCH
-									CATCH
-									ENDCATCH
-								CATCH
-								ENDCATCH
-							CATCH
-							ENDCATCH
-						CATCH
-						ENDCATCH
-					CATCH
-					ENDCATCH
-				CATCH
-				ENDCATCH
 			CATCH
 			ENDCATCH
 		CATCH
@@ -1823,12 +1764,12 @@ ELSE
 	DRAWLINE
 ENDIF
 ;장비해설終わり
-@장비변경時스테이터스更新 , ARG , ARGS
+@장비변경시스테이터스갱신 , ARG , ARGS
 #DIM 元전투능력 , 8
 IF ARGS == "소거"
 	FOR LOCAL , 0 , 18
 		SIF LOCAL < 8
-			CALLF 장비변경時스테이터스変化値(LOCAL , 1 , 0)
+			CALLF 장비변경시스테이터스변화치(LOCAL , 1 , 0)
 	NEXT
 	VARSET LOCAL , 0
 	RETURN 0
@@ -1844,13 +1785,13 @@ FOR LOCAL , 0 , 7
 NEXT
 CALL SYNC_STATUS , ARG
 FOR LOCAL , 0 , FLAG:전투능력수 + 2
-	CALLF 장비변경時스테이터스変化値(LOCAL, 1, MAXBASE:ARG:GET_BATTLESTATUS(LOCAL) - 元전투능력:LOCAL)
+	CALLF 장비변경시스테이터스변화치(LOCAL, 1, MAXBASE:ARG:GET_BATTLESTATUS(LOCAL) - 元전투능력:LOCAL)
 NEXT
 FOR LOCAL,0, FLAG:상성수
-	CALLF 장비변경時相性(LOCAL, 1, MAXBASE:ARG:GET_TYPE(LOCAL))
+	CALLF 장비변경시상성(LOCAL, 1, MAXBASE:ARG:GET_TYPE(LOCAL))
 NEXT
 FOR LOCAL,0, FLAG:상태이상수
-	CALLF 장비변경時バステ내성(LOCAL, 1, MAXBASE:ARG:GET_STATE(LOCAL))
+	CALLF 장비변경시BS내성(LOCAL, 1, MAXBASE:ARG:GET_STATE(LOCAL))
 NEXT
 FOR LOCAL , 0 , 7
 	SIF 변경예정장비:LOCAL != -1
@@ -1859,7 +1800,7 @@ NEXT
 CALL SYNC_STATUS , ARG
 RETURN 1
 
-@장비변경時스테이터스変化値, ARG , ARG:1 , ARG:2
+@장비변경시스테이터스변화치, ARG , ARG:1 , ARG:2
 #FUNCTION
 #LOCALSIZE 8
 IF ARG:1
@@ -1867,7 +1808,7 @@ IF ARG:1
 ELSE
 	RETURNF LOCAL:ARG
 ENDIF
-@장비변경時相性, ARG, ARG:1, ARG:2
+@장비변경시상성, ARG, ARG:1, ARG:2
 #FUNCTION
 #LOCALSIZE 18
 IF ARG:1
@@ -1875,7 +1816,7 @@ IF ARG:1
 ELSE
 	RETURNF LOCAL:ARG
 ENDIF
-@장비변경時バステ내성, ARG, ARG:1, ARG:2
+@장비변경시BS내성, ARG, ARG:1, ARG:2
 #FUNCTION
 #LOCALSIZE 21
 IF ARG:1
@@ -2159,10 +2100,10 @@ FOR LOCAL,0,CHARANUM
 NEXT
 
 ;============================================================================
-;全장비해제
+;모든장비해제
 ;ARG:0に대상者の登録番号(間違うとやばそうなので、생략時は엘라ー出す)
 ;============================================================================
-@全장비해제(ARG:0 = -1)
+@모든장비해제(ARG:0 = -1)
 #DIM LCOUNT
 IF ARG:0<0
 	PRINTL ERROR 캐릭터 등록번호가 지정되지않아 모든 장비를 해제합니다！
@@ -2180,10 +2121,10 @@ FOR LCOUNT, 0, 8
 NEXT
 
 ;특수탄の해제。장비しても아이템が減るわけではないので、해제の時も増やさない
-FOR LCOUNT, 0, 8
-	LOCALS = 특수탄{LCOUNT + 1}
-	EQUIP:(ARG:0):LOCALS = 0
-NEXT
+; FOR LCOUNT, 0, 8
+; 	LOCALS = 특수탄{LCOUNT + 1}
+; 	EQUIP:(ARG:0):LOCALS = 0
+; NEXT
 
 SIF 생득무기소지(ARG)
 	EQUIP:ARG:검 = [[아이템:생득무기]]
@@ -2198,7 +2139,7 @@ RETURN
 ;---- EDIT 006 MOD START -------------------------
 @생득무기소지,ARG
 #FUNCTION
-SIF NO:ARG == [[キャラ:유리아]] || NO:ARG == [[キャラ:에레지]] ||  NO:ARG == [[キャラ:젯트]] || (ABL:ARG:종족 == 36 &&( TALENT:ARG:갈퀴 || TALENT:ARG:날개 ||  TALENT:ARG:갈퀴발 ||  TALENT:ARG:꼬리 ||  TALENT:ARG:부리 ||  TALENT:ARG:촉수 ||  TALENT:ARG:짐승 ||  TALENT:ARG:새 ||  TALENT:ARG:파충류 ||  TALENT:ARG:물고기))
+SIF NO:ARG == [[キャラ:유리아]] || NO:ARG == [[キャラ:에레지]] ||  NO:ARG == [[キャラ:젯트]] || (ABL:ARG:종족 == 36 &&( ARG == MASTER || TALENT:ARG:갈퀴 || TALENT:ARG:날개 ||  TALENT:ARG:갈퀴발 ||  TALENT:ARG:꼬리 ||  TALENT:ARG:부리 ||  TALENT:ARG:촉수 ||  TALENT:ARG:짐승 ||  TALENT:ARG:새 ||  TALENT:ARG:파충류 ||  TALENT:ARG:물고기))
 	RETURNF 1
 RETURNF 0
 ;---- EDIT 006 MOD END   -------------------------
@@ -2214,7 +2155,7 @@ RESULT = 0
 IF 마정장비(ARG)
 	ARG = EQ_GETID_마정장비(ARG)
 	SELECTCASE ARGS
-		CASE "기본능력수정" , "전투능력수정" , "총공격" , "총명중" , "방어상성" , "バステ내성"
+		CASE "기본능력수정" , "전투능력수정" , "총공격" , "총명중" , "방어상성" , "BS내성"
 			TRYCALLFORM %ARGS%_마정장비 , ARG:1 , ARG
 		CASE "최저공격횟수" , "최대공격횟수" , "공격상성" , "사거리" , "공격범위" , "추가효과" , "추가효과상성"
 			TRYCALLFORM %ARGS%_마정장비 , ARG
@@ -2225,7 +2166,7 @@ ELSE
 	SELECTCASE ARGS
 		CASE "장비부위" , "구입조건" , "장비조건설명" , "필요레벨"
 			TRYCALLFORM %ARGS%_{ARG}
-		CASE "기본능력수정" , "전투능력수정" , "방어상성" , "バステ내성"
+		CASE "기본능력수정" , "전투능력수정" , "방어상성" , "BS내성"
 			TRYCALLFORM %ARGS%_{ARG} , ARG:1 , ARG:2
 			
 			SIF ARGS == "전투능력수정"
@@ -2255,8 +2196,8 @@ FOR LOCAL:2 , 2 , -1 , -1
 	IF 정렬조건:(LOCAL:2) != ""
 		FOR LOCAL , ARG:1 , FINDELEMENT(아이템리스트 , -1)
 			IF 정렬조건:(LOCAL:2) == "아이템번호"
-			ELSEIF 정렬조건:(LOCAL:2) == "합계능력値" || RANGE(GET_BATTLESTATUS_NUM(정렬조건:(LOCAL:2)) , 1 , 6 )
-				IF 정렬조건:(LOCAL:2) == "합계능력値"
+			ELSEIF 정렬조건:(LOCAL:2) == "합계능력치" || RANGE(GET_BATTLESTATUS_NUM(정렬조건:(LOCAL:2)) , 1 , 6 )
+				IF 정렬조건:(LOCAL:2) == "합계능력치"
 					LOCAL:3 = 1 , 9
 				ELSE
 					LOCAL:3 = GET_BATTLESTATUS_NUM(정렬조건:(LOCAL:2))
@@ -2323,7 +2264,7 @@ PRINTL
 PRINTL
 LINE = LINECOUNT
 LOCAL:1 = 0
-LOCALS = 未설정_아이템번호_가격_필요레벨_사거리（未）__합계능력値_공격_명중_방어_회피_마법위력_마법효과_
+LOCALS = 미설정_아이템번호_가격_필요레벨_사거리（未）__합계능력치_공격_명중_방어_회피_마법위력_마법효과_
 LOCALS += "검격_비구_타격_전술_화염_빙결_전격_충격_신경_정신_파마_주살_지변_수격_질풍_중력_핵열_만능_"
 $PRINT
 FOR LOCAL , 0 , 3
