@@ -42,6 +42,8 @@
 ;	024		2021/03/05		JK好き					@TRANSFORMに進化時に信頼・相棒の함락履歴を保存するように追加　上位함락を確認したら下位함락の함락履歴を埋めるように修正
 ;	025		2021/04/07		Jガン					LEARN_SKILLにスキルロックの設定追加(「スキルロック」で検索すると変更場所がわかります)
 ;	026		2021/08/06		Musue					デビルシフターがレベルアップ時に人間時スキルを習得しないバグ修正
+;	027		2021/12/29		JK好き					@CHECK_LEVEL_UP_AUTO2 元非戦闘員が上昇率未設定のままだとエラー落ちする問題を修正
+;	028		2022/01/07		JK好き					@CHECK_LEVEL_UP_AUTO2 ステータス未設定の戦闘員がエラー落ちする問題を再修正
 ;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
 @GET_NEXT_EXP, ARG, ARG:1, ARG:2
 #FUNCTION
@@ -253,24 +255,24 @@ RETURNF 5 * ARG * (ARG+1) * (ARG+2) / 3 * (ARG:1 ? 5 # 4) / 4
 ;레벨アップ판정＆処理　新I/F
 ;===============================
 @CHECK_LEVEL_UP_NEW,ARG
-	#DIM 레벨上昇値,1
-	#DIM ボーナス포인트,1
-	#DIM 事前최대ＨＰ,1
-	#DIM 事前최대ＭＰ,1
-	ARRAYREMOVE ボーナス포인트,0,0
-	레벨上昇値 = 0
-	ボーナス포인트 = 0
-	事前최대ＨＰ = MAXBASE:ARG:ＨＰ
-	事前최대ＭＰ = MAXBASE:ARG:ＭＰ
+	#DIM レベル上昇値,1
+	#DIM ボーナスポイント,1
+	#DIM 事前最大ＨＰ,1
+	#DIM 事前最大ＭＰ,1
+	ARRAYREMOVE ボーナスポイント,0,0
+	レベル上昇値 = 0
+	ボーナスポイント = 0
+	事前最大ＨＰ = MAXBASE:ARG:ＨＰ
+	事前最大ＭＰ = MAXBASE:ARG:ＭＰ
 
-	WHILE BASE:ARG:ＥＸＰ >= GET_NEXT_EXP(BASE:ARG:LV+레벨上昇値, ABL:ARG:종족 != 0 && !함락(ARG))
-		SIF (BASE:ARG:LV + 레벨上昇値 ) % 2 == 1
-			ボーナス포인트 += 1
-		레벨上昇値 += 1
+	WHILE BASE:ARG:ＥＸＰ >= GET_NEXT_EXP(BASE:ARG:LV+レベル上昇値, ABL:ARG:종족 != 0 && !함락(ARG))
+		SIF (BASE:ARG:LV + レベル上昇値 ) % 2 == 1
+			ボーナスポイント += 1
+		レベル上昇値 += 1
 	WEND
-	ボーナス포인트 += 레벨上昇値
+	ボーナスポイント += レベル上昇値
 
-	SIF !ボーナス포인트
+	SIF !ボーナスポイント
 	RETURN 0
 	PRINTFORML %NAME:ARG%의 레벨이(가) 올랐다！
 	;---- EDIT 020 MOD START -------------------------
@@ -281,28 +283,28 @@ RETURNF 5 * ARG * (ARG+1) * (ARG+2) / 3 * (ARG:1 ? 5 # 4) / 4
 	SWAP ARG,TARGET
 	RESETCOLOR
 	;---- EDIT 020 MOD END ---------------------------
-	BASE:ARG:LV += 레벨上昇値
+	BASE:ARG:LV += レベル上昇値
 
 	;비전투원はここまで
-	IF TALENT:ARG:비전투원 && 레벨上昇値
+	IF TALENT:ARG:비전투원 && レベル上昇値
 	CALL SYNC_STATUS , ARG
 	RETURN 0
 	ENDIF
 
 	;레벨アップに伴う能力値ボーナス
-	CALL STATUS_BONUS(ARG,ボーナス포인트)
+	CALL STATUS_BONUS(ARG,ボーナスポイント)
 
 	;インストールソフト・악세사리等の特殊ボーナス
-	CALL LVUP_BOOSTER(ARG,ボーナス포인트)
-	CALL LVUP_BOOSTER_MAGATAMA(ARG,ボーナス포인트)
+	CALL LVUP_BOOSTER(ARG,ボーナスポイント)
+	CALL LVUP_BOOSTER_MAGATAMA(ARG,ボーナスポイント)
 
 	CALLFORM EVENT_LEVELUP,ARG,LOCAL:1
 	TRYCALLFORM EVENT_LEVELUP_{NO:ARG},LOCAL:1
 	CALL SYNC_STATUS,ARG
 
 	;増加分だけＨＰとＭＰが회복
-	CALL VAR_HP,ARG,MAXBASE:ARG:ＨＰ - 事前최대ＨＰ,3
-	CALL VAR_MP,ARG,MAXBASE:ARG:ＭＰ - 事前최대ＭＰ,3
+	CALL VAR_HP,ARG,MAXBASE:ARG:ＨＰ - 事前最大ＨＰ,3
+	CALL VAR_MP,ARG,MAXBASE:ARG:ＭＰ - 事前最大ＭＰ,3
 
 	;인간なら全회복
 	IF IS_HUMAN(ARG)
@@ -668,7 +670,9 @@ VARSET LOCAL
 		;DRAWLINE
 		;PRINTFORML %CALLNAME:ARG%に成長比率を설정しました
 		;DRAWLINE
-		LOCAL:2 = SUMARRAY(CFLAG:ARG:0,GETNUM(CFLAG,"힘상승률"),GETNUM(CFLAG,"운상승률")+1)
+		;---- EDIT 027 MOD START -------------------------
+		LOCAL:2 = MAX(SUMARRAY(CFLAG:ARG:0,GETNUM(CFLAG,"힘상승률"),GETNUM(CFLAG,"운상승률")+1), 1)
+		;---- EDIT 027 MOD END ---------------------------
 		FOR LCOUNT,0,6
 			LOCAL = CFLAG:ARG:(GETNUM(CFLAG,"힘상승률")+LCOUNT) * 1000 / LOCAL:2
 			;PRINTFORML %CFLAGNAME:((GETNUM(CFLAG,"힘상승률")+LCOUNT))% ... {LOCAL/10}.{LOCAL%10}\%
@@ -706,7 +710,7 @@ VARSET LOCAL
 			LOCAL:11 = LOCAL:10 - LOCAL
 			$AUTO_LEVELUP_LOOP
 			;ここに記述
-			SELECTCASE RAND:SUMARRAY(CFLAG:ARG:0,GETNUM(CFLAG,"힘상승률"),GETNUM(CFLAG,"운상승률")+1)
+			SELECTCASE RAND:(MAX(SUMARRAY(CFLAG:ARG:0,GETNUM(CFLAG,"힘상승률"),GETNUM(CFLAG,"운상승률")+1),1))
 			CASE IS < CFLAG:ARG:힘상승률
 				LOCAL:2++
 			CASE IS < SUMARRAY(CFLAG:ARG:0,GETNUM(CFLAG,"힘상승률"),GETNUM(CFLAG,"지상승률")+1)
@@ -1069,7 +1073,6 @@ IF RESULT == 1
 	ABL:ARG:변이레벨 = 0
 	ABL:ARG:변이 = 0
 ELSE
-	CALL CHECK_IMG_TRANSFORM,ARG,ARG:1
 	PRINTFORML %조사처리(CALLNAME:ARG,"는")% %조사처리(CSVNAME(ARG:1,0),"으로")% 다시 태어났다!
 	;명칭변경(변경されていない場合のみ)
 	NAME:ARG '= \@ NAME:ARG == CSVNAME(NO:ARG) ? %CSVNAME(ARG:1)% # %NAME:ARG% \@
