@@ -1,0 +1,139 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:マン分かアサシン専用5_諜報.ERB
+;	Facility	:
+;
+;	Licence		:ライセンスフリー
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	000		20XX/XX/XX		----					テンプレ
+;	001		2021/12/30		軽木					ハイ・アナライズをコピペして作成。
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;スキル名
+@SKILL_NAME_諜報,ARG
+RESULTS = 諜報
+
+;　命中
+@SKILL_HITRATE_諜報, ARG
+RETURN 0
+
+
+;　威力
+@SKILL_POWER_諜報, ARG
+RETURN 0
+
+;　最低攻撃回数
+@SKILL_MINATTACKNUMBER_諜報,ARG
+RETURN 0
+
+;　最大攻撃回数
+@SKILL_MAXATTACKNUMBER_諜報,ARG
+RETURN 0
+
+
+;　ＨＰ2を支払うかＭＰ3を支払うか
+@SKILL_COSTTYPE_諜報, ARG
+RETURN 3
+;消費なし＝1
+
+;　コストの量
+@SKILL_COST_諜報,ARG
+RETURN 14
+
+;　相性
+@SKILL_TYPE_諜報,ARG
+RETURN GET_TYPE_NUM("万能")
+
+
+;　1EXTRAか2MAGICか
+@SKILL_DECIDE_TYPE_諜報,ARG
+RETURN 1
+
+;　1物理ダメージで計算するか2魔法ダメージで計算するか
+@SKILL_DAMAGETYPE_諜報,ARG
+RETURN 0
+
+
+;　対象が1敵か2味方か3場全体か4特殊か
+@SKILL_TARGET_諜報,ARG
+RETURN 1
+
+;　射程
+@SKILL_RANGE_諜報,ARG
+RETURN 3
+
+;　範囲　1単体　21列　3全体　4　敵味方全体
+@SKILL_SPHERE_諜報,ARG
+RETURN 1
+
+;　 効果のタイプ　1攻撃、2回復、3状態変化、4特殊、5状態回復
+@SKILL_EFECT_諜報,ARG
+RETURN 4
+
+;;　口上の表示とそのタイプ
+;@SKILL_MESSAGE_諜報,ARG
+
+;戦闘時以外に使用できるか
+@SKILL_ACTIONABLE_FIELD_諜報, ARG = -1
+RETURN 0
+
+;====================================================
+;スキル及び行動の実行
+;====================================================
+@ACTION_諜報,ARG,ARG:1,SKILL_NUM
+#DIM SKILL_NUM
+
+LOCAL = POS(ARG:1)
+LOCAL:2 = RAND:100
+PRINT 　Analyzing
+LOCAL:3 = LIMIT((BASE:ARG:LV + (BASE:ARG:知恵 + BASE:ARG:運) * 2 - BASE:LOCAL:LV), 10, 95)
+PRINTFORM ({LOCAL:3}％).....
+IF LOCAL:2 < LOCAL:3
+	IF LOCAL:2 < BASE:ARG:運
+		LOCAL:4 = FLAG:(20000+NO:LOCAL) < 100 ? 200 # 150
+		PRINT Critical !!
+	ELSE
+		LOCAL:4 = FLAG:(20000+NO:LOCAL) < 100 ? 100 # 75
+		PRINT Success.
+	ENDIF
+ELSE
+	LOCAL:4 = FLAG:(20000+NO:LOCAL) < 100 ? 30 # 15
+	PRINT Partial.
+ENDIF
+;ボスの場合は解析度上昇量が半減する、民俗学持ちだとならない
+SIF CFLAG:LOCAL:ボスフラグ && !(HAVE_SKILL(ARG,[[スキル:民俗学]]))
+	LOCAL:4 /= 2
+
+PRINTL
+PRINTFORM 　%CALLNAME:(LOCAL)% 
+
+CALL INCREASE_ANALYZE, (NO:LOCAL), LOCAL:4
+
+CALL SKILLGAGE_F_ADD,ARG,PU_SKILLNUM_GET(ARG,"ノウブル・ファンタズム"),LOCAL:4
+
+
+;アンノウンフラグが解除される
+IF CFLAG:LOCAL:アンノウンフラグ == 1
+	CFLAG:LOCAL:アンノウンフラグ = 0
+	IF NAME:LOCAL == "？？？？"
+		NAME:LOCAL = %CSVNAME(NO:LOCAL,0)%
+		CALLNAME:LOCAL = %CSVCALLNAME(NO:LOCAL,0)%
+	ENDIF
+	PRINTFORM ＝＞　%CALLNAME:(LOCAL)% 
+ENDIF
+
+PRINTFORML Analyzed \@FLAG:(20000+NO:LOCAL) >= 1000 ? COMPLETE! # {FLAG:(20000+NO:LOCAL)/10}％ \@
+
+;====================================================
+;実行内容ここまで
+;====================================================
+
+;　説明文の表示
+@SKILL_EXPLAIN_諜報,ARG
+PRINTL 敵一体の解析度を上昇させ、自身のNPゲージを増加させる。
+
+;使用条件
+@SKILL_SPECIAL_ACTIONABLE_諜報,ARG
+RETURN 1

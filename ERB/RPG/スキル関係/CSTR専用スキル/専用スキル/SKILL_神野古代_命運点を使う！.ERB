@@ -1,0 +1,286 @@
+﻿
+;스킬명
+@SKILL_NAME_命運点を使う！,ARG
+RESULTS = 命運点を使う！
+
+;　명중
+@SKILL_HITRATE_命運点を使う！, ARG
+RETURN 0
+
+;　위력
+@SKILL_POWER_命運点を使う！, ARG
+RETURN 0
+
+;　최저공격횟수
+@SKILL_MINATTACKNUMBER_命運点を使う！,ARG
+RETURN 1
+
+;　최대공격횟수
+@SKILL_MAXATTACKNUMBER_命運点を使う！,ARG
+RETURN 1
+
+;　2 ＨＰ지불　3 ＭＰ지불
+@SKILL_COSTTYPE_命運点を使う！, ARG
+RETURN 1
+;소비없음＝1
+
+;　코스트량
+@SKILL_COST_命運点を使う！,ARG
+RETURN 0
+
+;　상성
+@SKILL_TYPE_命運点を使う！,ARG
+RETURN 17
+
+;　1 EXTRA　2 MAGIC
+@SKILL_DECIDE_TYPE_命運点を使う！, ARG
+RETURN 0
+;どちらでもない
+
+;　1 물리데미지로 계산　2 마법데미지로 계산
+@SKILL_DAMAGETYPE_命運点を使う！, ARG
+RETURN 0
+
+
+;　대상　1 적　2 아군　3 양쪽전체　4 특수
+@SKILL_TARGET_命運点を使う！
+RETURN 4
+
+;　사거리
+@SKILL_RANGE_命運点を使う！,ARG
+RETURN 1
+
+;　범위　1 1체　2 1열　3 전체　4 적아군전체
+@SKILL_SPHERE_命運点を使う！,ARG
+RETURN 1
+
+;　 효과타입　1 공격、2 회복、3 상태변화、4 특수、5 상태회복
+@SKILL_EFECT_命運点を使う！,ARG
+RETURN 4
+
+;　 특수처리 여부 및 처리내용
+@SKILL_SPECIALEFECT_命運点を使う！,ARG
+;ARG = 1인 경우는 처리 여부를 반환합니다
+SIF ARG == 1
+	RETURN 0
+;아래쪽에 특수처리를 기술합니다
+
+;속도보정
+@SKILL_SPEED_命運点を使う！, ARG = -1
+RETURN 3
+
+;전투시 이외에 사용 가능한가
+@SKILL_ACTIONABLE_FIELD_命運点を使う！
+RETURN 0
+
+
+
+;템플릿용、추가효과 시리즈
+;추가효과 스테이터스
+@SKILL_ADDTIONAL_STATE_命運点を使う！,ARG
+RETURN 0
+
+;추가효과 상성
+@SKILL_ADDTIONAL_TYPE_命運点を使う！,ARG
+RETURN 0
+
+;추가효과 기본부여확률
+@SKILL_ADDTIONAL_BASE_RATE_命運点を使う！,ARG
+RETURN 0
+
+;추가효과 부여확률상한
+@SKILL_ADDTIONAL_MAX_RATE_命運点を使う！,ARG
+RETURN 0
+
+
+
+;====================================================
+;스킬 및 행동의 실행
+;====================================================
+@ACTION_命運点を使う！, ARG, ARG:1, ARG:2
+#LOCALSIZE 1
+#DIM 命運点を使うスキル番号
+#DIM 命運点最大値
+#DIM 命運点のこり
+
+命運点を使うスキル番号 = PU_SKILLNUM_GET(ARG,"命運点を使う！")
+
+;命運点の最大値は運の値 / 10
+命運点最大値 = BASE:ABL:운 / 10
+
+;最大値は10（運100）
+SIF 命運点最大値 > 10
+	命運点最大値 = 10
+
+;現在の命運点の計算
+命運点のこり = 命運点最大値 - SKILLGAGE_F_GET(ARG,命運点を使うスキル番号)
+
+
+PRINTFORML ＞%CALLNAME:ARG%はサイコロを握った
+
+PRINTL 自分自身に対し――
+IF 命運点のこり > 0
+	PRINTL [0] バステ完全回避！　　（命運点-1）　即死・バッドステータスをそれぞれ一度だけ無効化する
+ELSE
+	SETCOLOR 0x333333
+	PRINTL [-] バステ完全回避！　　（命運点-1）　即死・バッドステータスをそれぞれ一度だけ無効化する
+	RESETCOLOR
+ENDIF
+IF 命運点のこり > 1
+	PRINTL [1] ダメージ判定倍化！　（命運点-2）　次の物理攻撃・魔法攻撃がそれぞれ強化される
+ELSE
+	SETCOLOR 0x333333
+	PRINTL [-] ダメージ判定倍化！　（命運点-2）　次の物理攻撃・魔法攻撃がそれぞれ強化される
+	RESETCOLOR
+ENDIF
+IF 命運点のこり > 2
+	PRINTL [2] 神威【因果応報】！！（命運点-3）　物理反射・魔法反射を同時に展開する（万能は防げない）
+ELSE
+	SETCOLOR 0x333333
+	PRINTL [-] 神威【因果応報】！！（命運点-3）　物理反射・魔法反射を同時に展開する（万能は防げない）
+	RESETCOLOR
+ENDIF
+
+PRINTL 
+PRINTL [100] 考え直す
+
+$MEIUNTEN_SENTAKU
+CALL INPUTINT, 0 , 1 , 2 , 100
+
+;バステ完全回避
+IF RESULT == 0 && 命運点のこり > 0
+	CFLAG:ARG:DYING무효화횟수 = 1
+	CFLAG:ARG:BS무효화횟수 = 1
+	
+	
+	SETCOLOR 0x33ffcc
+	PRINTFORML ┏>CHARA━━━━━━━━━━┓　┏>ACT━━━━━━━━━━━━━━━━━━┓
+	PRINTFORM ┃[{CPOS(ARG),2}] %CALLNAME:ARG,21,LEFT%┃　┃
+	PRINTL 命運点消費：即死・バステ完全回避！　　　┃
+	PRINTFORML ┗━━━━━━━━━━━━━┛　┗━━━━━━━━━━━━━━━━━━━━┛
+	PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+	PRINTFORML ┃%"準備万端！　ハマでもムドでも持ってこい！！",72,LEFT%┃
+	PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+	RESETCOLOR
+	PRINTFORML ＞%CALLNAME:ARG%は致命傷に備えた
+	
+	CALL SKILLGAGE_F_ADD, ARG, 命運点を使うスキル番号, 1
+
+;ダメージ判定倍化
+ELSEIF RESULT == 1 && 命運点のこり > 1
+	CFLAG:ARG:기합플래그 = 1
+	CFLAG:ARG:집중플래그 = 1
+
+	SETCOLOR 0x33ffcc
+	PRINTFORML ┏>CHARA━━━━━━━━━━┓　┏>ACT━━━━━━━━━━━━━━━━━━┓
+	PRINTFORM ┃[{CPOS(ARG),2}] %CALLNAME:ARG,21,LEFT%┃　┃
+	PRINTL 命運点消費：ダメージ判定倍化！　　　　　┃
+	PRINTFORML ┗━━━━━━━━━━━━━┛　┗━━━━━━━━━━━━━━━━━━━━┛
+	PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+	PRINTFORML ┃%"デカいの一発、叩きこむ！",72,LEFT%┃
+	PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+	RESETCOLOR
+	PRINTFORML ＞%CALLNAME:ARG%は集中し、気合を入れた
+
+	CALL SKILLGAGE_F_ADD, ARG, 命運点を使うスキル番号, 2
+
+;神威【因果応報】
+ELSEIF RESULT == 2 && 命運点のこり > 2
+	CFLAG:(FLAG:LOCALS):물리반사플래그 = 1
+	CFLAG:(FLAG:LOCALS):마법반사플래그 = 1
+
+	SETCOLOR 0x33ffcc
+	PRINTFORML ┏>CHARA━━━━━━━━━━┓　┏>ACT━━━━━━━━━━━━━━━━━━┓
+	PRINTFORM ┃[{CPOS(ARG),2}] %CALLNAME:ARG,21,LEFT%┃　┃
+	PRINTL 命運点消費：神威【因果応報】！　　　　　┃
+	PRINTFORML ┗━━━━━━━━━━━━━┛　┗━━━━━━━━━━━━━━━━━━━━┛
+	PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+	PRINTFORML ┃%"ボクの命運点をコストに神威を切ります！　【因果応報】！",72,LEFT%┃
+	PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+	RESETCOLOR
+	PRINTFORML ＞%CALLNAME:ARG%はカウンターの姿勢に入った
+
+	CALL SKILLGAGE_F_ADD, ARG, 命運点を使うスキル番号, 3
+	
+ELSEIF RESULT == 100
+	;PRINT 考え直す
+ELSE
+	GOTO MEIUNTEN_SENTAKU
+ENDIF
+
+WAIT
+
+
+
+;====================================================
+;실행내용 여기까지
+;====================================================
+
+;====================================================
+;追加コマンド(一番下)
+;====================================================
+@SKILL_SPECIAL_COMMAND_命運点を使う！,ARG,LOCAL,ARG:1
+#LOCALSIZE 1
+#DIM 命運点最大値
+#DIM 命運点を使うスキル番号
+命運点を使うスキル番号 = PU_SKILLNUM_GET(ARG,"命運点を使う！")
+
+;命運点の最大値は運の値 / 10
+命運点最大値 = BASE:ABL:운 / 10
+
+;最大値は10（運100）
+SIF 命運点最大値 > 10
+	命運点最大値 = 10
+
+PRINTFORML [{LOCAL}] 命運点を使う！　現在値：{命運点最大値-(SKILLGAGE_F_GET(ARG,命運点を使うスキル番号))}／{命運点最大値}
+C:LOCAL = 10000 + 命運点を使うスキル番号
+LOCAL += 1
+
+RETURN LOCAL
+
+;====================================================
+;コマンド実行
+;====================================================
+@INPUT_COM_命運点を使う！,ARG
+#LOCALSIZE 1
+#DIM 命運点を使うスキル番号
+命運点を使うスキル番号 = PU_SKILLNUM_GET(ARG,"命運点を使う！")
+
+
+LOCAL = CFLAG:ARG:입력행동
+CFLAG:ARG:입력행동 = 命運点を使うスキル番号
+SETCOLOR 0x33ffcc
+PRINTFORML ┏>CHARA━━━━━━━━━━┓　┏>ACT━━━━━━━━━━━━━━━━━━┓
+PRINTFORM ┃[{CPOS(ARG),2}] %CALLNAME:ARG,21,LEFT%┃　┃
+CALLFORM SKILL_NAME_{命運点を使うスキル番号},ARG
+PRINTFORML %RESULTS,40,LEFT%┃
+PRINTFORML ┗━━━━━━━━━━━━━┛　┗━━━━━━━━━━━━━━━━━━━━┛
+RESETCOLOR
+SWAP TARGET,ARG
+CALL ACTION_命運点を使う！,TARGET
+
+;口上は呼ばない
+;CALL 구상호출 , "BATTLE_MESSAGE" , TARGET , TARGET
+
+SWAP TARGET,ARG
+CFLAG:ARG:입력행동 = LOCAL
+RETURN -1
+
+;　 설명문 표시
+@SKILL_EXPLAIN_命運点を使う！,ARG
+PRINTL 類まれなる【運】を生かし、定められた運命を捻じ曲げる、神野古代の得意技。
+PRINTL 戦闘中、ターン開始前に命運点を消費し、特殊な行動を行える
+PRINTL 　最大命運点は【運/10】で求められる（MAX：10ポイント）
+PRINTL 　消費した命運点は拠点に帰還するまで回復しない
+
+
+;계승에 필요한 부위
+@계승부위_命運点を使う！,ARG
+RETURN 1
+;とくにない
+
+;사용조건
+@SKILL_SPECIAL_ACTIONABLE_命運点を使う！,ARG
+RETURN 0
+;とくにない
+

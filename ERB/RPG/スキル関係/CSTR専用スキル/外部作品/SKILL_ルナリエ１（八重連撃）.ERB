@@ -1,0 +1,393 @@
+﻿;専用スキル用のテンプレート
+;「八重連撃」を別の名前に置き換えてください
+
+;アクティブスキルに必須なものはそのままにしており
+;なくてもいいものはコメントアウトしております
+;必要だと思ったらコメントアウトを外して設定してください
+;スキルのテンプレートになっています
+
+;스킬명
+@SKILL_NAME_八重連撃,ARG
+#DIM 八連順番
+八連順番 = PU_SKILLNUM_GET(ARG,"八重連撃")
+IF SKILLGAGE_D_GET(ARG,八連順番) == 7
+	RESULTS = 終の槍・八重連撃
+ELSEIF SKILLGAGE_D_GET(ARG,八連順番) == 6
+	RESULTS = 漆伐・崩刃
+ELSEIF SKILLGAGE_D_GET(ARG,八連順番) == 5
+	RESULTS = 陸計・練気
+ELSEIF SKILLGAGE_D_GET(ARG,八連順番) == 4
+	RESULTS = 伍手・足払い
+ELSEIF SKILLGAGE_D_GET(ARG,八連順番) == 3
+	RESULTS = 四の撃
+ELSEIF SKILLGAGE_D_GET(ARG,八連順番) == 2
+	RESULTS = 三の撃
+ELSEIF SKILLGAGE_D_GET(ARG,八連順番) == 1
+	RESULTS = ニの撃
+ELSE
+	RESULTS = 一の撃
+ENDIF
+
+;　명중
+@SKILL_HITRATE_八重連撃, ARG
+RETURN 120
+
+;　위력
+;８連続で使った場合の平均威力は４３７位。
+@SKILL_POWER_八重連撃, ARG
+#DIM 八連順番
+八連順番 = PU_SKILLNUM_GET(ARG,"八重連撃")
+SIF SKILLGAGE_D_GET(ARG,八連順番) == 7
+	RETURN 900
+SIF SKILLGAGE_D_GET(ARG,八連順番) == 6
+	RETURN 600
+	;力崩し（ダウン）
+SIF SKILLGAGE_D_GET(ARG,八連順番) == 5
+	RETURN 500
+	;練気（吸収）
+SIF SKILLGAGE_D_GET(ARG,八連順番) == 4
+	RETURN 500
+	;足払い（スリップ）
+SIF SKILLGAGE_D_GET(ARG,八連順番) == 3
+	RETURN 400
+SIF SKILLGAGE_D_GET(ARG,八連順番) == 2
+	RETURN 300
+SIF SKILLGAGE_D_GET(ARG,八連順番) == 1
+	RETURN 200
+RETURN 100
+
+;;クリティカル率
+@SKILL_CRITICAL_RATE_八重連撃, ARG
+RETURN 10
+
+;;　吸収率
+@SKILL_HP_ABSORBER_八重連撃, ARG
+#DIM 八連順番
+八連順番 = PU_SKILLNUM_GET(ARG,"八重連撃")
+SIF SKILLGAGE_D_GET(ARG,八連順番) == 5
+	RETURN 50
+	;練気時吸収
+RETURN 0
+
+;　최저공격횟수
+@SKILL_MINATTACKNUMBER_八重連撃,ARG
+RETURN 1
+
+;　최대공격횟수
+@SKILL_MAXATTACKNUMBER_八重連撃,ARG
+RETURN 1
+
+;;一体辺りの最大ＨＩＴ数
+;;※ランダム攻撃系に使う
+;@SKILL_MAXATK_PER_八重連撃,ARG
+;RETURN 1
+
+;;一体辺りの最低ＨＩＴ数
+;;※ランダム攻撃系に使う
+;@SKILL_MINATK_PER_八重連撃,ARG
+;RETURN 1
+
+;　2 ＨＰ지불　3 ＭＰ지불
+@SKILL_COSTTYPE_八重連撃, ARG
+RETURN 3
+;소비없음＝1
+
+;　코스트량
+@SKILL_COST_八重連撃,ARG
+RETURN 36
+
+;　상성
+@SKILL_TYPE_八重連撃,ARG
+#LOCALSSIZE 5
+#LOCALSIZE 4
+SIF ARG < 0 || 스킬속성표시중
+	RETURN GET_TYPE_NUM("비구")
+SIF CFLAG:ARG:타겟 > 16 || CFLAG:ARG:타겟 < 1
+	RETURN GET_TYPE_NUM("비구")
+LOCAL = POS(CFLAG:ARG:타겟)
+SIF LOCAL < 0
+	RETURN GET_TYPE_NUM("비구")
+	
+LOCAL:2 = -300
+LOCALS = 飛具
+LOCALS:1 = 飛具
+LOCALS:2 = 戦技
+FOR LOCAL:1, 1, 3
+	;判定用に数値を仕舞う。反射は-200扱い
+	LOCAL:3 = MAXBASE:LOCAL:(LOCALS:(LOCAL:1)) == 999 ? -200 # MAXBASE:LOCAL:(LOCALS:(LOCAL:1))
+	LOCAL:3 = !(HAVE_SKILL(ARG,[[스킬:영세라이도우]]) || HAVE_SKILL(ARG,2947)) && CFLAG:LOCAL:(LOCALS:(LOCAL:1)+"무효화횟수") ? -5 # LOCAL:3
+	LOCAL:3 = CFLAG:LOCAL:(LOCALS:(LOCAL:1)+"가드킬") && LOCAL:3 < 100 ? 100 # LOCAL:3
+	SELECTCASE LOCAL:1
+		CASE 1
+			LOCAL:3 = CFLAG:LOCAL:물리반사플래그 ? -200 # LOCAL:3
+		CASE 1 TO 3
+			LOCAL:3 = CFLAG:LOCAL:마법반사플래그 ? -200 # LOCAL:3
+		CASEELSE
+	ENDSELECT
+	IF LOCAL:3 > LOCAL:2
+		LOCAL:2 = LOCAL:3
+		LOCALS = %LOCALS:(LOCAL:1)%
+	ENDIF
+NEXT
+RETURN GET_TYPE_NUM(LOCALS)
+
+;　1 EXTRA　2 MAGIC
+@SKILL_DECIDE_TYPE_八重連撃, ARG
+RETURN 1
+
+;　1 물리데미지로 계산　2 마법데미지로 계산
+@SKILL_DAMAGETYPE_八重連撃,ARG
+RETURN 1
+
+
+;　대상　1 적　2 아군　3 양쪽전체　4 특수
+@SKILL_TARGET_八重連撃,ARG
+RETURN 1
+
+;　사거리
+@SKILL_RANGE_八重連撃,ARG
+RETURN 3
+
+;　범위　1 1체　2 1열　3 전체　4 적아군전체
+@SKILL_SPHERE_八重連撃,ARG
+RETURN 1
+
+;　 효과타입　1 공격、2 회복、3 상태변화、4 특수、5 상태회복
+@SKILL_EFECT_八重連撃,ARG
+RETURN 1
+
+;　 특수처리 여부 및 처리내용
+;@SKILL_SPECIALEFECT_八重連撃,ARG
+;ARG = 1인 경우는 처리 여부를 반환합니다
+;SIF ARG == 1
+;	RETURN 0
+;아래쪽에 특수처리를 기술합니다
+
+;계승타입
+;@SKILL_SUCCESSION_TYPE_八重連撃,ARG
+;RETURN 23
+;검격
+
+;속도보정
+@SKILL_SPEED_八重連撃, ARG = -1
+RETURN 0
+
+;;　구상의 표시와 그 타입
+;@SKILL_MESSAGE_八重連撃,ARG
+
+
+;전투시 이외에 사용 가능한가
+@SKILL_ACTIONABLE_FIELD_八重連撃, ARG = -1
+RETURN 0
+
+;没
+;@SKILL_RANK_八重連撃
+;@SKILL_RANKUP_八重連撃
+;@계승불능_八重連撃
+
+;템플릿용、추가효과 시리즈
+;추가효과 스테이터스
+;伍手、足払いでスリップ
+@SKILL_ADDTIONAL_STATE_八重連撃,ARG
+#DIM 八連順番
+八連順番 = PU_SKILLNUM_GET(ARG,"八重連撃")
+SIF SKILLGAGE_D_GET(ARG,八連順番) == 4
+	RETURN GET_STATE_NUM("SLIP")
+RETURN 0
+
+;추가효과 상성
+@SKILL_ADDTIONAL_TYPE_八重連撃,ARG
+#DIM 八連順番
+八連順番 = PU_SKILLNUM_GET(ARG,"八重連撃")
+SIF SKILLGAGE_D_GET(ARG,八連順番) == 4
+	RETURN GET_TYPE_NUM("전술")
+RETURN 0
+
+;추가효과 기본부여확률
+@SKILL_ADDTIONAL_BASE_RATE_八重連撃,ARG
+#DIM 八連順番
+八連順番 = PU_SKILLNUM_GET(ARG,"八重連撃")
+SIF SKILLGAGE_D_GET(ARG,八連順番) == 4
+	RETURN 70
+RETURN 0
+
+;추가효과 부여확률상한
+@SKILL_ADDTIONAL_MAX_RATE_八重連撃,ARG
+#DIM 八連順番
+八連順番 = PU_SKILLNUM_GET(ARG,"八重連撃")
+SIF SKILLGAGE_D_GET(ARG,八連順番) == 4
+	RETURN 95
+RETURN 0
+
+;;拡散攻撃用追加処理
+;;ブレスなどの拡散攻撃に使う
+;@SKILL_SPREAD_八重連撃,ARG
+;RETURN 0
+
+;====================================================
+;トリガー発動条件
+;====================================================
+;@SKILL_TRIGGER_ACTIONABLE_八重連撃,ARG,ARG:1
+;RETURN 0
+
+;====================================================
+;カウンター発動条件
+;====================================================
+;@SKILL_COUNTER_ACTIONABLE_八重連撃,ARG,ARG:1
+;RETURN RESULT
+
+;====================================================
+;ヒット時ダメージ前処理
+;====================================================
+;@SKILL_HIT_EFFECT_八重連撃,ARG,ARG:1
+
+;====================================================
+;ダメージ発動時
+;====================================================
+;@SKILL_DAMAGE_EFFECT_八重連撃,ARG,ARG:1
+
+;====================================================
+;行動によるスキルゲージ操作
+;====================================================
+;@SKILLGAGE_CHARGE_八重連撃,ARG,ARG:1
+
+
+
+;====================================================
+;스킬 및 행동의 실행
+;====================================================
+@ACTION_八重連撃,ARG,ARG:1,SKILL_NUM
+#DIM SKILL_NUM
+#DIM 八連順番
+八連順番 = PU_SKILLNUM_GET(ARG,"八重連撃")
+CALL ATTACK_SINGLE,ARG,POS(ARG:1),SKILL_NUM;	1체攻撃
+
+IF SKILLGAGE_D_GET(ARG,八連順番) == 6
+	;漆伐中、敵全能力ダウン。
+	IF POS(ARG:1) > 0 && LOCAL:1 > BASE:POS(ARG:1):ＨＰ && GET_STATE(CFLAG:POS(ARG:1):상태이상) != "DYING"
+		CFLAG:POS(ARG:1):공격강화 = MAX(-16, CFLAG:POS(ARG:1):공격강화 - 4)
+		CFLAG:POS(ARG:1):마법위력강화 = MAX(-16, CFLAG:POS(ARG:1):마법위력강화 - 4)
+	PRINTFORML 　　敵の攻撃・魔法威力がダウン！
+	ENDIF
+ENDIF
+
+;＋２。ターンで１減衰するので、次のターンに＋１される。
+CALL SKILLGAGE_D_ADD,ARG,八連順番,2
+
+;７で起動した＝終の槍だった場合、Dゲージをクリアし０に。
+SIF SKILLGAGE_D_GET(ARG,八連順番) == 9
+	CALL SKILLGAGE_D_SET,ARG,八連順番,0
+
+
+;====================================================
+;실행내용 여기까지
+;====================================================
+
+;====================================================
+;전투중 이외에서의 실행
+;====================================================
+;@ACTION_FIELD_八重連撃,ARG,ARG:1,SKILL_NUM
+;#DIM SKILL_NUM
+
+;CALL HEAL_SINGLE,ARG,POS(ARG:1),SKILL_NUM	;1체回復
+;CALL HEAL_FIELD,ARG,ARG:1,SKILL_NUM		;範囲回復(列、전체)
+;CALL ALL_HEAL, POS(ARG:1), 0				;1체前回復
+
+;====================================================
+;실행내용 여기까지
+;====================================================
+
+;====================================================
+;追加コマンド(EXTRAの下)
+;====================================================
+;@SKILL_SPECIAL_COMMAND_EXTRA_八重連撃,ARG,LOCAL,SKILL_NUM
+;#DIM SKILL_NUM
+;#LOCALSIZE 1
+;PRINTFORML [{LOCAL}] 剣質変化
+;C:(LOCAL++) = 10000 + SKILL_NUM
+;RETURN LOCAL
+
+;====================================================
+;追加コマンド(MAGICの下、魔封だと消える)
+;====================================================
+;@SKILL_SPECIAL_COMMAND_MAGIC_八重連撃,ARG,LOCAL,SKILL_NUM
+;#DIM SKILL_NUM
+;#LOCALSIZE 1
+;PRINTFORML [{LOCAL}] 剣質変化
+;C:(LOCAL++) = 10000 + SKILL_NUM
+;RETURN LOCAL
+
+;====================================================
+;追加コマンド(一番下)
+;====================================================
+;@SKILL_SPECIAL_COMMAND_八重連撃,ARG,LOCAL,SKILL_NUM
+;#DIM SKILL_NUM
+;#LOCALSIZE 1
+;PRINTFORML [{LOCAL}] 剣質変化
+;C:(LOCAL++) = 10000 + SKILL_NUM
+;RETURN LOCAL
+
+;====================================================
+;コマンド実行
+;====================================================
+;@INPUT_COM_八重連撃,ARG
+;RETURN -1
+;-1 再びコマンド選択へ
+; 1 キャラ選択へ
+
+;====================================================
+;戦闘中スキルゲージの可視化
+;====================================================
+;@SKILLGAGE_DISPLAY_八重連撃,ARG
+;SKILL_NUM = PU_SKILLNUM_GET(ARG,"八重連撃")
+;SKILLGAGE_D_GET(ARG,SKILL_NUM)
+
+
+;　説明文の表示
+@SKILL_EXPLAIN_八重連撃,ARG
+PRINTL 『八重連撃』
+PRINTL 적 1체에 、戦技＋飛具の複合属性で小威力の物理攻撃を１回行う。
+PRINTL 追加効果：高命中・高必殺率。連続で使用すると段階的に威力が上がり、
+PRINTL 五撃目：SLIP　六撃目：HP吸収　七撃目：攻撃面低下の追加効果を持ち
+PRINTL 八撃目で最大威力となり、連続使用状況がリセットされる。
+PRINTL 連続で使用しない場合１つ前の段階に戻る。
+PRINTL 
+PRINTL 攻撃する毎に気を練り、威力を徐々に増大させていく連続技。
+PRINTL 槍騎士 ルナリエの槍術（CSTR専用）
+
+;没
+;@계승부위_八重連撃,ARG
+
+;사용조건
+@SKILL_SPECIAL_ACTIONABLE_八重連撃,ARG
+RETURN 1
+
+;타겟조건
+;↓のSKILL_T_RESERVEがRETURN 1 の時に使用する
+;@SKILL_SPECIAL_TARGET_八重連撃,USE_CHARA,ARG
+;#DIM USE_CHARA
+;RETURN 0
+
+;控えに使えるか
+;@SKILL_T_RESERVE_八重連撃,ARG
+;RETURN 0
+
+;어떤 배드스테이터스를 고칠수 있는가
+;@SKILL_CURE_STATE_八重連撃,USE_CHARA,ARG
+;#DIM USE_CHARA
+;SELECTCASE GET_STATE(ARG)
+;	CASE "HAPPY","CLOSE"
+;		RETURN 1
+;ENDSELECT
+;RETURN 0
+
+;この技を複数持てるか
+;@중복습득수_八重連撃,ARG
+;RETURN 1
+
+;スキル重複で役に立つ関数
+;HAVE_SKILL_OVERLAP(ARG,PU_SKILLNUM_GET(ARG,"八重連撃"))
+
+;スキルゲージで役に立つ関数
+;SKILLGAGE_H_GET(ARG,PU_SKILLNUM_GET(ARG,"八重連撃"))
+;CALL SKILLGAGE_H_SET,ARG,PU_SKILLNUM_GET(ARG,"八重連撃"),0
