@@ -1,9 +1,9 @@
-﻿;통상공격
-;스킬のテンプレートになっています
+﻿;通常攻撃
+;スキルのテンプレートになっています
 
 ;스킬명
 @SKILL_NAME_54,ARG
-RESULTS = 파사의 광인
+RESULTS = 파사의광인
 
 ;　명중
 @SKILL_HITRATE_54, ARG
@@ -25,7 +25,7 @@ SIF FLAG:확산플래그 == 1
 	RETURN 1
 RETURN 7
 
-;一体辺りの최대ＨＩＴ数
+;一体辺りの最大ＨＩＴ数
 @SKILL_MAXATK_PER_54,ARG
 CALL 상성소질체크, ARG, GET_TYPE_NUM("검격"), 1, 1
 SIF RESULT
@@ -123,12 +123,12 @@ RETURN 0
 ;====================================================
 @ACTION_54,ARG,ARG:1
 #LOCALSIZE 17
-#DIM 대상リスト , 16
-#DIM 공격済み횟수 , 17
-#DIM 최대1명공격횟수 , 17
-#DIM 대상人数
+#DIM 対象リスト , 16
+#DIM 攻撃済み回数 , 17
+#DIM 最大単体攻撃回数 , 17
+#DIM 対象人数
 #DIM ループ , 2
-VARSET 공격済み횟수 , 0
+VARSET 攻撃済み回数 , 0
 
 FLAG:확산플래그 = 0
 LOCAL:5 = 54
@@ -153,8 +153,8 @@ ELSEIF ARG:1 == 22
 	LOCAL:8 = 17
 ENDIF
 
-;各々の최대1명공격횟수を설정
-VARSET 최대1명공격횟수, -1
+;各々の最大単体攻撃回数を設定
+VARSET 最大単体攻撃回数, -1
 FOR ループ, LOCAL:7, LOCAL:8
 	SIF POS(ループ) == -1
 		CONTINUE
@@ -162,57 +162,57 @@ FOR ループ, LOCAL:7, LOCAL:8
 		CONTINUE
 	
 	TRYCCALLFORM SKILL_MAXATK_PER_{LOCAL:5},ARG
-		최대1명공격횟수:ループ = RESULT
-		;스킬に최저횟수の설정がある場合、최대횟수の調整を行う
+		最大単体攻撃回数:ループ = RESULT
+		;スキルに最低回数の設定がある場合、最大回数の調整を行う
 		TRYCCALLFORM SKILL_MINATK_PER_{LOCAL:5},ARG
-			최대1명공격횟수:ループ = RAND(RESULT, 최대1명공격횟수:ループ+1)
+			最大単体攻撃回数:ループ = RAND(RESULT, 最大単体攻撃回数:ループ+1)
 		CATCH
 		ENDCATCH
 	CATCH
 		CALLFORM SKILL_MAXATTACKNUMBER_{LOCAL:5},ARG
-		최대1명공격횟수:ループ = RESULT
+		最大単体攻撃回数:ループ = RESULT
 	ENDCATCH
 	
 NEXT
 
-;최대値が-1なら、공격が当たる조건を満たしたキャラが0なので関数を抜ける
-SIF MAXARRAY(최대1명공격횟수) == -1
+;最大値が-1なら、攻撃が当たる条件を満たしたキャラが0なので関数を抜ける
+SIF MAXARRAY(最大単体攻撃回数) == -1
 	RETURN 0
-;최대値が0なら、대상全員が0回になってしまったので1回を誰かに与える
-WHILE !MAXARRAY(최대1명공격횟수)
+;最大値が0なら、対象全員が0回になってしまったので1回を誰かに与える
+WHILE !MAXARRAY(最大単体攻撃回数)
 	ループ = RAND(LOCAL:7, LOCAL:8)
 	SIF POS(ループ) == -1
 		CONTINUE
 	SIF GET_STATE(CFLAG:POS(ループ):상태이상) == "DYING"
 		CONTINUE
-	최대1명공격횟수:ループ = 1
+	最大単体攻撃回数:ループ = 1
 WEND
 
-;공격횟수산출
+;攻撃回数算出
 CALLFORM SKILL_MAXATTACKNUMBER_{LOCAL:5},ARG
 LOCAL = RESULT + 1
 CALLFORM SKILL_MINATTACKNUMBER_{LOCAL:5},ARG
 LOCAL -= RESULT
 LOCAL:1 = RESULT + RAND:LOCAL
-;LOCAL:1 공격횟수
+;LOCAL:1 攻撃回数
 
 
 FLAG:확산플래그 = 1
 LOCAL = 0
-$대상リスト作成
-VARSET 대상リスト , 0
-대상人数 = 0
+$対象リスト作成
+VARSET 対象リスト , 0
+対象人数 = 0
 FOR ループ , LOCAL:7 , LOCAL:8
 	SIF POS(ループ) == -1
 		CONTINUE
 	SIF GET_STATE(CFLAG:POS(ループ):상태이상) == "DYING"
 		CONTINUE
-	SIF 공격済み횟수:ループ >= 최대1명공격횟수:ループ
+	SIF 攻撃済み回数:ループ >= 最大単体攻撃回数:ループ
 		CONTINUE
-	대상リスト:대상人数 = ループ
-	대상人数 ++
+	対象リスト:対象人数 = ループ
+	対象人数 ++
 NEXT
-IF 대상人数 == 0
+IF 対象人数 == 0
 	FLAG:확산플래그 = 0
 	RETURN 0
 ENDIF
@@ -223,36 +223,36 @@ SIF LOCAL
 FOR LOCAL,0,LOCAL:1
 
 	$IN_FOR
-	LOCAL:3 = 대상リスト:(RAND:대상人数)
+	LOCAL:3 = 対象リスト:(RAND:対象人数)
 	LOCAL:4 = POS(LOCAL:3)
 	LOCALS = 포지션{LOCAL:3}
 	SIF FLAG:LOCALS < 0
-		GOTO 대상リスト作成
+		GOTO 対象リスト作成
 	SIF GET_STATE(CFLAG:(FLAG:LOCALS):상태이상) == "DYING"
-		GOTO 대상リスト作成
-	SIF 공격済み횟수:(CPOS(FLAG:LOCALS)) >= 최대1명공격횟수:CPOS(FLAG:LOCALS)
-		GOTO 대상リスト作成
-	공격済み횟수:(CPOS(FLAG:LOCALS)) ++
+		GOTO 対象リスト作成
+	SIF 攻撃済み回数:(CPOS(FLAG:LOCALS)) >= 最大単体攻撃回数:CPOS(FLAG:LOCALS)
+		GOTO 対象リスト作成
+	攻撃済み回数:(CPOS(FLAG:LOCALS)) ++
 	
 	LOCAL:6 = BASE:(LOCAL:4):ＨＰ
 	CALL ATTACK_SINGLE,ARG,(LOCAL:4),54,1
 	IF LOCAL:4 > 0 && LOCAL:6 > BASE:(LOCAL:4):ＨＰ && GET_STATE(CFLAG:(LOCAL:4):상태이상) != "DYING"
 		IF RAND:5 == 0
 			CFLAG:(LOCAL:4):공격강화 = MAX(-16, CFLAG:(LOCAL:4):공격강화 - 4)
-			PRINTFORMW 　　TARGET:[{LOCAL:3,2}] %CALLNAME:(LOCAL:4),20,LEFT%　>>>>>>　공격력이 내려갔다!
+			PRINTFORMW 　　TARGET:[{LOCAL:3,2}] %CALLNAME:(LOCAL:4),20,LEFT%　>>>>>>　공격력이 내려갔다！
 		ELSEIF RAND:4 == 0
 			CFLAG:(LOCAL:4):마법효과강화 = MAX(-16, CFLAG:(LOCAL:4):마법효과강화 - 4)
-			PRINTFORMW 　　TARGET:[{LOCAL:3,2}] %CALLNAME:(LOCAL:4),20,LEFT%　>>>>>>　마법효과가 내려갔다!
+			PRINTFORMW 　　TARGET:[{LOCAL:3,2}] %CALLNAME:(LOCAL:4),20,LEFT%　>>>>>>　마법효과가 내려갔다！
 		ELSEIF RAND:3 == 0
 			CFLAG:(LOCAL:4):마법위력강화 = MAX(-16, CFLAG:(LOCAL:4):마법위력강화 - 4)
-			PRINTFORMW 　　TARGET:[{LOCAL:3,2}] %CALLNAME:(LOCAL:4),20,LEFT%　>>>>>>　마법위력이 내려갔다!
+			PRINTFORMW 　　TARGET:[{LOCAL:3,2}] %CALLNAME:(LOCAL:4),20,LEFT%　>>>>>>　마법위력이 내려갔다！
 		ELSEIF RAND:2 == 0
 			CFLAG:(LOCAL:4):방어강화 = MAX(-16, CFLAG:(LOCAL:4):방어강화 - 4)
-			PRINTFORMW 　　TARGET:[{LOCAL:3,2}] %CALLNAME:(LOCAL:4),20,LEFT%　>>>>>>　방어력력이 내려갔다!
+			PRINTFORMW 　　TARGET:[{LOCAL:3,2}] %CALLNAME:(LOCAL:4),20,LEFT%　>>>>>>　방어력이 내려갔다！
 		ELSE
 			CFLAG:(LOCAL:4):명중강화 = MAX(-16, CFLAG:(LOCAL:4):명중강화 - 4)
 			CFLAG:(LOCAL:4):회피강화 = MAX(-16, CFLAG:(LOCAL:4):회피강화 - 4)
-			PRINTFORMW 　　TARGET:[{LOCAL:3,2}] %CALLNAME:(LOCAL:4),20,LEFT%　>>>>>>　명중률・회피율이 내려갔다!
+			PRINTFORMW 　　TARGET:[{LOCAL:3,2}] %CALLNAME:(LOCAL:4),20,LEFT%　>>>>>>　명중・회피가 내려갔다！
 		ENDIF
 	ENDIF
 NEXT
@@ -265,15 +265,15 @@ FLAG:확산플래그 = 0
 
 ;　 설명문 표시
 @SKILL_EXPLAIN_54
-PRINTL [전열] 적 전열에 2～7회(1인 최대 2회、검격소질시 3회)
-PRINTL 검격속성 중 물리데미지. HIT한 적의 능력을 무작위로 감소시킨다.
+PRINTL 적 전열 복수를 2～7회 공격한다（1체 HIT　최대 2회、검격소질로 3회）
+PRINTL 히트할 때마다 랜덤으로 능력이 내려간다
 
 ;계승에 필요한 부위
 @계승부위_54,ARG
 SIF TALENT:ARG:무기
 	RETURN 1
 RETURN 0
-;무기
+;武器
 
 
 ;사용조건
