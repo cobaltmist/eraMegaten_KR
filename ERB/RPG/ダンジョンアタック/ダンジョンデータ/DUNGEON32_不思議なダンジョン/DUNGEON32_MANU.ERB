@@ -1,0 +1,930 @@
+﻿;---------------------------------------------------------------------------------------------------------------------------------
+;ダンジョン32　不思議なダンジョン
+;---------------------------------------------------------------------------------------------------------------------------------
+;ダンジョン概要
+;	トルネコや試練の不思議なダンジョンみたいに、入るたびに変化するタイプのダンジョンを作成します。
+;	同じ階でも階段を上り下りする度に再生成されて別のマップになる予定です。
+;	(Elonaの「子犬の洞窟」とかがイメージしやすい...かな？)
+
+;更新日時　　　更新者				更新内容
+;2021/09/01　　ロッド@カヤノソト	作成に着手
+;---------------------------------------------------------------------------------------------------------------------------------
+
+;=======================================================================
+;メニュー関連
+;	※めっちゃくちゃメニュー関連が長くて本処理が読めないため、当ファイルを作成してこちらに置きます。
+;=======================================================================
+;メインメニューを作成する関数
+@DUNGEON_32_MAINMANU
+;-------------
+;変数定義
+;-------------
+#DIM QUEST_DESIDED_FLG		;依頼選択済みフラグ(0:未決定 / 1:決定済み)　※依頼決定の箇所は二重ループの中であるため、ループを出るために用意したフラグです。
+
+;-------------
+;変数の初期化
+;-------------
+FLAG:현M = 0				;現階層
+FLAG:현X = 1				;現在地のX座標
+FLAG:현Y = 18				;現在地のY座標
+QUEST_DESIDED_FLG = 0		;依頼選択済みフラグ(0:未決定 / 1:決定済み)
+던전플래그:32:1 = 0	;挑戦中のダンジョンの大分類(0:ダンジョン設定なし / 1:占い師マリーの依頼によるランダム異界 / その他:未作成)
+
+;-------------
+;ここから本処理
+;-------------
+DRAWLINE
+PRINTFORML ともすれば平和であるように見えるこの世界の裏側では
+PRINTFORML 毎日のように異界の発生とサマナーによる悪魔退治のいたちごっこが続いている。
+PRINTFORML
+PRINTFORML 力を求めて　仲間探しの機会を求めて　あるいはひょっとしてロマンを求めて
+PRINTFORML あなたは異界巡りを行うことにした。
+PRINTFORML
+WHILE 1
+	;-------------
+	;メインメニュー
+	;-------------
+	CALL DUNGEON_32_CLEAR_FLAG		;各種フラグを初期化する
+	QUEST_DESIDED_FLG = 0			;依頼選択済みフラグを(0:未決定)にする
+	PRINTFORML [  1]占い師マリーの依頼を受ける(異界攻略)
+	IF 던전플래그:32:10 >= 1
+		;魔界探索・カギを使用した探索が解放済みである場合
+		PRINTFORML [  2]車いすの男の依頼を受ける(魔界探索)
+
+	ELSE
+		;その他の場合
+		PRINTFORML [  2]？？？？(未開放)
+	ENDIF
+	PRINTFORML [  3]秘境に挑戦する(大規模なダンジョン)　※作成中です。ごめんね！
+	PRINTFORML [ 98]最高記録
+	PRINTFORML [ 99]説明
+	PRINTFORML [100]やめる
+	$DUNGEON_32_MENU_TOP_INPUT_LOOP
+	INPUT
+	IF RESULT == 1
+		;-------------------------------------
+		;占い師マリーの依頼を受ける(異界攻略)
+		;-------------------------------------
+		;メニュー(占い師マリーの依頼)を表示する
+		CALL DUNGEON_32_MANU_MARRY
+		QUEST_DESIDED_FLG = RESULT
+
+		;依頼決定済みの場合、ループを終了する(メニュー画面が終了してダンジョンがスタートする)
+		IF QUEST_DESIDED_FLG == 1
+			BREAK
+		ENDIF
+
+	ELSEIF RESULT == 2
+		;-----------------------------------
+		;車いすの男の依頼を受ける(魔界探索)
+		;-----------------------------------
+		IF 던전플래그:32:10 >= 1
+			;魔界探索が解放済みである場合、メニュー(車いすの男の依頼)を表示する
+			CALL DUNGEON_32_MANU_STEAVEN
+			QUEST_DESIDED_FLG = RESULT
+
+		ELSE
+			;その他の場合(未開放なので入力に戻る)
+			GOTO DUNGEON_32_MENU_TOP_INPUT_LOOP
+
+		ENDIF
+
+		;依頼決定済みの場合、ループを終了する(ゲーム側ではメニュー画面が終了してダンジョンがスタートする)
+		IF QUEST_DESIDED_FLG == 1
+			BREAK
+		ENDIF
+
+	ELSEIF RESULT == 3
+		;---------------
+		;秘境に挑戦する
+		;---------------
+		DRAWLINE
+		PRINTFORML
+		PRINTFORMW 作成中です。ごめんね！
+		DRAWLINE
+
+	ELSEIF RESULT == 98
+		;---------------
+		;最高記録
+		;---------------
+		DRAWLINE
+		PRINTFORML
+		PRINTFORML 現在の最高記録はは以下の通り
+		PRINTFORML --------------------------
+		PRINTFORML あなたの記録(今周回/全周回)
+		PRINTFORML --------------------------
+		PRINTFORML 魔界探索：({던전플래그:32:21}階層 / {DUNGEON_32_DEPTH_REDORD:0}階層)　※全333階層
+		PRINTFORML
+		PRINTFORML
+		PRINTFORML
+		PRINTFORML
+		PRINTFORML
+		DRAWLINE
+		PRINTFORMW
+
+	ELSEIF RESULT == 99
+		;-------------
+		;説明
+		;-------------
+		;各メニューの説明を表示する
+		CALL DUNGEON_32_EXPLAIN
+
+	ELSEIF RESULT == 100
+		;-------------
+		;やめる
+		;-------------
+		DRAWLINE
+		PRINTFORML
+		PRINTFORMW あなたは異界巡りを中止して自宅へ帰還した。
+
+		;戦闘設定用の各種フラグをデフォルトに戻す
+		FLAG:회화불능플래그 = 0					;悪魔と会話可能
+		FLAG:악마해석률상승불가플래그 = 0		;悪魔解析率を上げられる
+		FLAG:RESULT스킵 = 0					;戦闘後のリザルト画面あり。経験値・MAGなどを得られる
+		FLAG:도주불가플래그 = 0					;戦闘から逃走可能
+
+		;ダンジョンを脱出する
+		FLAG:탈출 = 1
+		BREAK
+
+	ELSE
+		;入力ミスのためやり直し
+		GOTO DUNGEON_32_MENU_TOP_INPUT_LOOP
+	ENDIF
+WEND
+
+RETURN 1
+
+
+;メニュー・占い師マリーの依頼
+@DUNGEON_32_MANU_MARRY
+;-------------
+;変数定義
+;-------------
+#DIM SELECT_QUEST_NO		;選択した依頼の番号(依頼1～3のどれを選択したか)
+#DIM QUEST_DESIDED_FLG		;依頼選択済みフラグ(0:未決定 / 1:決定済み)　※依頼決定の箇所は二重ループの中であるため、ループを出るために用意したフラグです。
+
+;-------------
+;変数の初期化
+;-------------
+SELECT_QUEST_NO = 0			;選択した依頼(ダンジョンの危険度, 異界の発生場所)
+QUEST_DESIDED_FLG = 0		;依頼選択済みフラグ(0:未決定 / 1:決定済み)
+
+;-------------
+;本処理
+;-------------
+
+;--------------------------------------------------------------------------
+;最初のあいさつ。(初回、2回目など状況に応じてちょっぴりセリフを変更する)
+;--------------------------------------------------------------------------
+DRAWLINE
+SELECTCASE 던전플래그:32:0
+	CASE 0
+		;初回の場合
+		PRINTFORML あ～ら、いらっしゃい。
+		PRINTFORML ここでは異界事件の解決依頼を仲介しているわ。
+		PRINTFORML 
+		PRINTFORML ホントはあなたみたいなダークサマナーとは手を組まないんだけど
+		PRINTFORML 懇意にしていた葛葉が最近来なくってねぇ……
+		PRINTFORML 
+		PRINTFORML あいつのことだからそのうちひょっこり帰ってくるだろうとは思うけどね。
+		PRINTFORML 悪いけど、それまで悪魔退治に参加してちょうだいよ。
+		PRINTFORML ギャラははずむからね。
+		PRINTFORMW
+
+	CASE 1
+		;2回目の場合
+		PRINTFORML
+		PRINTFORML さっそくだけど、仕事がはいってるよ。
+		PRINTFORML もちろん、やってくれるわよね？
+		PRINTFORMW
+
+	CASE 2
+		;3回目の場合
+		PRINTFORML
+		PRINTFORML いいところへ来たね。
+		PRINTFORML 新しい仕事が入ってるよ。
+		PRINTFORMW
+
+	CASEELSE
+		;4回目以降の場合
+		PRINTFORML
+		PRINTFORML %CALLNAME:MASTER%さぁん、いるかい？
+		PRINTFORML また、新しい仕事が入ったのよ。
+		PRINTFORMW
+ENDSELECT
+
+;---------------------------------------
+;占い師マリーの依頼を自動生成する処理
+;---------------------------------------
+CALL DUNGEON_32_MAKE_QUEST
+
+;----------------
+;依頼の表示
+;----------------
+PRINTFORML 以下の依頼から選んで頂戴。
+PRINTFORML
+
+WHILE 1
+	PRINTFORML [  1]:%DUNGEON_32_DEVIL_LEVEL_NAME:(DUNGEON_32_QUEST_LIST:0:0)%%DUNGEON_32_PLACE_NAME:(DUNGEON_32_QUEST_LIST:0:1)%の異界
+	PRINTFORML [  2]:%DUNGEON_32_DEVIL_LEVEL_NAME:(DUNGEON_32_QUEST_LIST:1:0)%%DUNGEON_32_PLACE_NAME:(DUNGEON_32_QUEST_LIST:1:1)%の異界
+	PRINTFORML [  3]:%DUNGEON_32_DEVIL_LEVEL_NAME:(DUNGEON_32_QUEST_LIST:2:0)%%DUNGEON_32_PLACE_NAME:(DUNGEON_32_QUEST_LIST:2:1)%の異界
+	PRINTFORML [ 99]:もっと他の異界を紹介してくれ
+	PRINTFORML [100]やめる
+	$DUNGEON_32_QUEST_INPUT_LOOP
+	INPUT
+	IF 1 <= RESULT && RESULT <= 3
+		;選択された依頼の番号を記録する
+		SELECT_QUEST_NO = RESULT - 1
+		
+		;-----------------
+		;依頼内容を説明する
+		;-----------------
+		DRAWLINE
+		PRINTFORML
+		SELECTCASE DUNGEON_32_QUEST_LIST:SELECT_QUEST_NO:1
+			CASE 1
+				;ビルの場合
+				PRINTFORML 廃墟になった高層ビルをリフォームしようとしたら変なのに邪魔されたそうよ。
+				PRINTFORML さいわい怪我人は出てないけれど、ビルの上層部を占拠されて困っているらしいの。
+				PRINTFORML 高いところってオカルト話が付き物だからね。廃ビルは街中の霊峰になるのかしら。
+				PRINTFORML
+				PRINTFORML 妖精とか、あと羽根があるような悪魔が出たらしいわよ。
+
+			CASE 2
+				;病院の場合
+				PRINTFORML 病院の霊安室で死体が起き上がる事件が発生したそうよ。
+				PRINTFORML 医者や看護師が逃げ出して業務がストップしているみたいだし
+				PRINTFORML そういう意味でも解決を急ぐべきね。
+				PRINTFORML
+				PRINTFORML 悪霊や亡霊の類、いわゆる人間が道を外れてしまった類の悪魔が出るそうよ。
+				PRINTFORML ひょっとしたら死者を天に導いたり、出産に関係する悪魔が出るかもね。
+
+			CASE 3
+				;アパートの場合
+				PRINTFORML 何回もリフォームして、値下げもしたのに住民が逃げていくアパートがあるのよ。
+				PRINTFORML 夜中に足音がしたり、何かが蠢く影を見たりするらしいわ。行方不明になった人もいるとか。
+				PRINTFORML すっかり事故物件になっちゃって困っているそうよ。
+				PRINTFORML
+				PRINTFORML いたずら好きな妖精とか妖魔が住み着いちゃったのかしら。
+				PRINTFORML もしかしたら人攫いの鬼とかもいるかも。
+
+			CASE 4
+				;学校の場合
+				PRINTFORML あなたの学校には怪談とか七不思議ってあったかしら？
+				PRINTFORML 立地にもよるのだけど、子供たちの噂話が集まる場所って結構怖いのよ。
+				PRINTFORML 例えばこの町の小学校も霊地に位置していてね。
+				PRINTFORML 定期的にサマナーを派遣して　発生しつつある悪魔を蹴散らしているのよ。
+				PRINTFORML
+				PRINTFORML これまでの例だとウサギ小屋とかニワトリ小屋の動物が変異していたそうよ。
+				PRINTFORML 他には中庭の池に妖精がいたとか、小鬼が出たとかの例があったかしら？
+
+			CASE 5
+				;森の場合
+				PRINTFORML この町の中心部に古墳と、それを囲むお堀があるんだけどね
+				PRINTFORML そのあたり一帯が森になっているのよ。小さいけど長らく人の手が入っていない森よ。
+				PRINTFORML 葛葉が失踪した頃からこの森に強力な悪魔が出没するようになったそうなのよ。
+				PRINTFORML 市役所とかも近いからかなり問題になっているわ。
+				PRINTFORML
+				PRINTFORML いままではせいぜい妖精とか妖魔が顔を出す程度だったのだけれど
+				PRINTFORML 今ではとんでもない悪魔が出てくるそうよ。
+
+			CASE 6
+				;山の場合
+				PRINTFORML この町は盆地で町の外は山とか森になっているのよ。
+				PRINTFORML こういう地形って犯罪者が逃げ込みやすい場所があるとかで治安が悪いのが困りものね。
+				PRINTFORML 最近、明らかに様子がおかしい獣が山から下りてきて暴れたそうよ。悪いけど調査に行ってちょうだい。
+				PRINTFORML
+				PRINTFORML 山から下りてきたのは鳥獣の類だそうよ。
+				PRINTFORML あとなんかすごく大きな蛇を見たとかなんとか。
+
+			CASE 7
+				;神社の場合
+				PRINTFORML ちょっと遠方の神社で霊障が発生したそうよ。
+				PRINTFORML かなり強力な悪魔が出没しているらしく、神社の人たちから救援の依頼がきているわ。
+				PRINTFORML
+				PRINTFORML 恐ろしいことに神と呼ばれるモノばかり現れているそうよ。
+				PRINTFORML どちらかというと女神の方が多いらしいわね。
+
+			CASE 8
+				;警察署の場合
+				PRINTFORML 信じられないけど警察署で悪魔関連者によるの襲撃事件が発生しているそうよ。
+				PRINTFORML 警察から依頼は来ていないけれど、襲撃犯の中に賞金首がいるそうよ。
+				PRINTFORML ハントのついででもいいから助けに行ってやんなさいよ。
+				PRINTFORML 百地も大丈夫かしらね。
+				PRINTFORML
+				PRINTFORML 連絡だとゾンビだの天使だのが攻め寄せて大騒ぎだそうよ。
+				PRINTFORML それ以外だと警察犬が変異したものもあばれているとか。
+
+			CASE 9
+				;古墳の場合
+				PRINTFORML 古墳の発掘作業中に怪物の襲撃を受けたって連絡が入ったわ。
+				PRINTFORML 墓地に幽霊が出るのはたまにある話だけど、今回はそういうレベルじゃないらしいわ。
+				PRINTFORML そういえば古代の日本では魔法文明が栄えていて
+				PRINTFORML 王族は強力な異能者だったとかいうトンデモ説が提唱されていたわね。
+				PRINTFORML ……まさかね。
+				PRINTFORML
+				PRINTFORML 強大な鬼や大悪魔だのが出没しているそうよ。
+				PRINTFORML おまけに龍が出たとかなんとか。
+
+			CASE 10
+				;墓地の場合
+				PRINTFORML 墓地でゾンビ騒ぎが発生したそうよ。
+				PRINTFORML 普通は正しく弔った死者ならこの世に迷い出たりしないものなのにねぇ。
+				PRINTFORML よほど現世に未練があったのかしら。
+				PRINTFORML ダークサマナーあたりの仕業じゃないとよいのだけれど。
+				PRINTFORML
+				PRINTFORML 死後の人間が悪魔になった類の他にも
+				PRINTFORML 鬼やら精霊やらが出てくるそうよ。
+
+			CASE 11
+				;海岸の場合
+				PRINTFORML 夜の海辺に鬼火が浮かんでいるのが目撃されたそうよ。
+				PRINTFORML 異界化しているらしくて依頼が来ているわ。
+				PRINTFORML 人気の少ない海岸ってわりと頻繁に悪魔事件が発生するスポットなのよ。
+				PRINTFORML 海は昔から霊だの神だのに結び付けられてきたからかしらね。
+				PRINTFORML
+				PRINTFORML 過去の例だと妖魔の類に加えて海鳥が変異したものが見られたそうよ。
+				PRINTFORML たまに女神を見たって証言があるけどホントかしらね？
+
+			CASE 12
+				;地下水道の場合
+				PRINTFORML 地下水道で悪魔駆除の依頼が来ているわ。
+				PRINTFORML なぜかこの町の地下水道って頻繁に悪魔がたむろしているらしいわよ。
+				PRINTFORML ひょっとしたら、この町の地下に変なところへつながるゲートでもあったり
+				PRINTFORML ……なんてね。
+				PRINTFORML
+				PRINTFORML 地下水道では多種多様な悪魔が出没するらしいわ。
+				PRINTFORML 詳細は不明だけど、町の各所で見られる悪魔は地下水道でもみられるそうよ。
+
+			CASEELSE
+				;その他の場合(入力ミスなのでやり直し)
+				GOTO DUNGEON_32_QUEST_INPUT_LOOP
+
+		ENDSELECT
+
+		PRINTFORMW
+		PRINTFORML ホントにこの依頼を受けるかしら？
+		PRINTFORML [  0]:依頼を受ける
+		PRINTFORML [100]やめる
+		$DUNGEON_32_QUEST_YES_NO_INPUT_LOOP
+		INPUT
+		IF RESULT == 0
+			;--------------
+			;依頼を受ける
+			;--------------
+			던전플래그:32:1 = 1																					;挑戦中のダンジョンの大分類を指定(1:占い師マリーの依頼によるランダム異界)
+			던전플래그:32:2 = DUNGEON_32_IKAI_DEVIL_LEVEL_MIN:(DUNGEON_32_QUEST_LIST:SELECT_QUEST_NO:0)			;出現する悪魔の最低レベルを指定
+			던전플래그:32:3 = DUNGEON_32_IKAI_DEVIL_LEVEL_MAX:(DUNGEON_32_QUEST_LIST:SELECT_QUEST_NO:0)			;出現する悪魔の最高レベルを指定
+			던전플래그:32:4 = DUNGEON_32_QUEST_LIST:SELECT_QUEST_NO:1												;ダンジョンの種類を指定
+			던전플래그:32:7 = DUNGEON_32_QUEST_LIST:SELECT_QUEST_NO:0												;ダンジョンの危険度を指定
+			QUEST_DESIDED_FLG = 1																						;依頼選択済みフラグ(0:未決定 / 1:決定済み)　※「1:決定済み」の場合はメニューを終了してダンジョン探索を開始する。
+			던전플래그:32:5 = DUNGEON_32_QUEST_LIST:SELECT_QUEST_NO:2												;ダンジョンの深さを設定する。
+			던전플래그:32:5 = 2																					;ダンジョンの深さを設定する。
+			던전플래그:32:6 = DUNGEON_32_DUNGEON_DIRECTION:(DUNGEON_32_QUEST_LIST:SELECT_QUEST_NO:1)				;ダンジョンの方向を設定する(0:上に登る / 1:下に降りる)
+			던전플래그:32:8 = DUNGEON_32_IKAI_DEVIL_LEVEL_PLUS:(DUNGEON_32_QUEST_LIST:SELECT_QUEST_NO:0)			;出現する悪魔のレベルのプラス補正(5の場合、出現する悪魔のレベルを本来のレベル+5にする)
+			던전플래그:32:9 = 1																					;ボス出現フラグ(1:出現する)
+			던전플래그:32:12 = 0																					;カギの使用による異界・魔界への再挑戦であるか(0:カギ不使用)
+			IF 던전플래그:32:0 == 0
+				던전플래그:32:0 = 1																				;占い師マリーの依頼の進行度。「0:未挑戦」の場合は初回の依頼実行時に1にする。その後は依頼をクリアする度に+1　※会話が少し変化する程度であまり意味はないです。
+			ENDIF
+			DRAWLINE
+			BREAK
+
+		ELSEIF RESULT == 100
+			;--------------
+			;やめる
+			;--------------
+			DRAWLINE
+
+		ELSE
+			;------------------------
+			;入力ミスのためやり直し
+			;------------------------
+			GOTO DUNGEON_32_QUEST_YES_NO_INPUT_LOOP
+
+		ENDIF
+
+	ELSEIF RESULT == 99
+		;-----------------------------
+		;もっと他の異界を紹介してくれ
+		;-----------------------------
+		IF 던전플래그:32:11 == 0
+			;最初の1回目の発言の場合
+			DRAWLINE
+			PRINTFORML
+			PRINTFORML 無茶苦茶いうわねあなた！？
+			PRINTFORML
+			PRINTFORML ……はぁ、仕方ないわね。
+			PRINTFORML あくまで自己利益のために働くダークサマナーだものね。
+			PRINTFORML 世のため人のため、とはいかないわよね。
+			PRINTFORML
+			PRINTFORML はい、この中から選んで頂戴。
+			PRINTFORMW
+			DRAWLINE
+			던전플래그:32:11 = 1	;「もっと他の異界を紹介してくれ」を発言済みにする。
+		
+		ELSE
+			;2回目以降の発言の場合
+			DRAWLINE
+			PRINTFORML
+			PRINTFORML しょうがないわね。他所の街の事件をいくつか紹介するわ。
+			PRINTFORMW
+			DRAWLINE
+		ENDIF
+
+		;占い師マリーの依頼を再生成する
+		CALL DUNGEON_32_MAKE_QUEST
+
+	ELSEIF RESULT == 100
+		;---------
+		;やめる
+		;---------
+			DRAWLINE
+			PRINTFORML
+			PRINTFORML 平和な日常の裏で、悪魔関係の事件は頻繁に発生しているわ。
+			PRINTFORML これからも頼むわよ。
+			PRINTFORMW
+			DRAWLINE
+			;ダンジョン挑戦をなしに設定する
+			던전플래그:32:1 = 0						;挑戦中のダンジョンの大分類を指定(0:ダンジョン設定なし)
+			;メインメニューに戻る
+			BREAK
+
+	ELSE
+		;------------------------
+		;入力ミスのためやり直し
+		;------------------------
+		GOTO DUNGEON_32_QUEST_INPUT_LOOP
+
+	ENDIF
+WEND
+
+;返り値
+RETURN QUEST_DESIDED_FLG
+
+;メニュー・車いすの男の依頼
+@DUNGEON_32_MANU_STEAVEN
+;-------------
+;変数定義
+;-------------
+#DIM QUEST_DESIDED_FLG		;依頼選択済みフラグ(0:未決定 / 1:決定済み)　※依頼決定の箇所は二重ループの中であるため、ループを出るために用意したフラグです。
+#DIM LOOP_CNT_i				;ループ用カウント変数　※処理が長くて複雑なので、グローバル変数LOCALは使いたくない
+#DIM KEY_NO					;何番目のカギを使用するか(0～4)
+#DIM CHANGE_KEY_NO, 2		;入れ替える2つのカギの番号格納する配列
+#DIM CHANGE_KEY, 2			;一時的にカギのデータを格納する配列　カギの順番を入れ替えるために使用する(0：ダンジョンの危険度 / 1：ダンジョンの種類)
+
+;-------------
+;変数の初期化
+;-------------
+QUEST_DESIDED_FLG = 0		;依頼選択済みフラグ(0:未決定 / 1:決定済み)
+LOOP_CNT_i = 0				;ループ用カウント変数　※処理が長くて複雑なので、グローバル変数LOCALは使いたくない
+KEY_NO = 0					;何番目のカギを使用するか(0～4)
+VARSET CHANGE_KEY_NO		;入れ替える2つのカギの番号格納する配列
+VARSET CHANGE_KEY			;一時的にカギのデータを格納する配列　カギの順番を入れ替えるために使用する(0：ダンジョンの危険度 / 1：ダンジョンの種類)
+
+;-------------
+;本処理
+;-------------
+;冒頭の会話
+SELECTCASE 던전플래그:32:10
+	CASE 1
+		;1回目の訪問の場合
+		DRAWLINE
+		PRINTFORMW キミが『魔界のカギ』を手に入れたデビルサマナーだね？
+		PRINTFORML 
+		PRINTFORML 私はかつて瞬間移動装置ターミナルシステムの開発をしていたものだ。
+		PRINTFORML ところが実験中に偶然悪魔を呼び出してしまったのだ。
+		PRINTFORML ターミナルと魔界の接続は切断したが悪魔の現世への流入が止まらない。
+		PRINTFORML ゲートパワーを下げ、悪魔を魔界に留めるために魔界側を調査する必要がある。
+		PRINTFORMW しかし正確な座標設定なしでターミナルから魔界へ移動すればば悲惨なことになるだろう。
+		PRINTFORML 
+		PRINTFORML 調べたところ　悪魔は現実世界の霊的スポット
+		PRINTFORML 俗にいう異界を通して魔界と地上を行き来しているようだ。
+		PRINTFORML キミが異界の主から得たものは魔界と異界を通るための座標データだ。
+		PRINTFORML これを利用すればターミナルで異界および魔界へ直接乗り込むことが可能となるはずだ。
+		PRINTFORMW 例えば森の異界で手に入れたカギを使えば森の異界または森の魔界へいけるだろう。
+		PRINTFORML 
+		PRINTFORML 是非魔界の調査に協力して欲しい。
+		PRINTFORML 極めて危険な依頼だが、その代わり魔界の探索で得たものはすべてキミのものだ。
+		PRINTFORMW
+		던전플래그:32:10 += 1		;訪問回数を+1する
+
+	CASE 2
+		;2回目の訪問の場合
+		DRAWLINE
+		PRINTFORML 魔界の構造は不規則に変化しているようだ。
+		PRINTFORML あるいはひょっとしてキミの位置の方が変化しているのだろうか。
+		PRINTFORML 
+		PRINTFORML いずれにせよ地図の作製は無理だな。その都度地形を把握するほかないだろう。
+		PRINTFORMW
+
+	CASE 3
+		;3回目の訪問の場合
+		DRAWLINE
+		PRINTFORML 魔界では10階層ごとに出現する種族が切り替わるようだ。
+		PRINTFORML 天使の領域なら天使、魔獣の領域なら魔獣が出現している。
+		PRINTFORML 同じ階層でも入るたびにどの種族の領域なのか変化するから注意して欲しい。
+		PRINTFORMW
+
+	CASE 4
+		;4回目の訪問の場合
+		DRAWLINE
+		PRINTFORML 50階層ごとに出現する悪魔のレベルが+50されるようだ。
+		PRINTFORML 深く潜ると地上ではありえないほど強力な悪魔が現れるだろう。
+		PRINTFORML 気を付けて探索するんだ。
+		PRINTFORMW
+
+	CASE 5
+		;5回目の訪問の場合
+		DRAWLINE
+		PRINTFORML かつてターミナルが魔界へつながったことを知った
+		PRINTFORML ゴトウという男は悪魔を呼び出して操ろうとした。
+		PRINTFORML 私は悪魔および悪魔を操るものへの抑止力として
+		PRINTFORML 悪魔召喚プログラムを作成して多くの人に送った。
+		PRINTFORML 
+		PRINTFORML しかしほとんどの人は使いこなせなかったようだ。
+		PRINTFORMW
+
+	CASE 6
+		;6回目の訪問の場合
+		DRAWLINE
+		PRINTFORML 私がターミナルや悪魔召喚プログラムを作る前から
+		PRINTFORML 悪魔を呼び出し、操る術を持つ人々がいたことを確認している。
+		PRINTFORML 似たようなプログラムを作った学生もいれば
+		PRINTFORML 管とやらに悪魔を封じ込めて使役する術もあったようだ。
+		PRINTFORML もしかしたら遅かれ早かれ　伝説の悪魔たちは闇から目覚めていたのかもしれないな。
+		PRINTFORMW
+
+	CASE 100
+		;全333階層を突破済みの場合
+		DRAWLINE
+		PRINTFORML やあ　よく来たね。
+		PRINTFORML 魔界と地上を切り離すための研究は　まだまだ時間がかかりそうだ。
+		PRINTFORML 困難だが、必ず成し遂げてみせるとも。
+		PRINTFORML 
+		PRINTFORML かつて　悪魔をこの地上に呼び込んでしまった者として
+		PRINTFORML 責任を取らなければならない。
+		PRINTFORML 
+		PRINTFORMW
+
+	CASEELSE
+		;その他の場合(クリアしていない、かつ7回目以降の訪問の場合)
+		DRAWLINE
+		PRINTFORML またあったな%CALLNAME:MASTER%くん。
+		PRINTFORML 
+		PRINTFORML それにしてもキミは大したものだな。
+		PRINTFORML まだ悪魔に意識を乗っ取られていないのか。
+		PRINTFORML う～ん　私が見込んだだけのことはある。
+		PRINTFORML 
+		PRINTFORML さて、魔界の調査に行ってくれるかい？
+		PRINTFORMW
+
+ENDSELECT
+
+;どのカギを使用するか選択する
+DRAWLINE
+PRINTFORML 
+PRINTFORML さて、魔界の調査に行ってくれるかい？
+WHILE 1
+
+	;どのカギを使用するか選択する
+	PRINTFORML どのカギを使用する？
+	PRINTFORML
+	FOR LOOP_CNT_i, 0, 5
+		IF DUNGEON_32_KEY_LIST:LOOP_CNT_i:0 != 0
+			;保有する不思議なカギをリスト表示する
+			PRINTFORML [  {LOOP_CNT_i + 1}]:%DUNGEON_32_DEVIL_LEVEL_NAME:(DUNGEON_32_KEY_LIST:LOOP_CNT_i:0)%%DUNGEON_32_PLACE_NAME:(DUNGEON_32_KEY_LIST:LOOP_CNT_i:1)%のカギ
+		ENDIF
+	NEXT
+
+	PRINTFORML [ 99]:カギを並び替える
+	PRINTFORML [100]:やめる
+	$DUNGEON_32_STEVEN_INPUT_LOOP
+	INPUT
+	IF 1 <= RESULT && RESULT <= 5
+		;------------------------
+		;カギを使用する
+		;------------------------
+		KEY_NO = RESULT - 1		;カギの番号を取得する
+		IF DUNGEON_32_KEY_LIST:KEY_NO:0 != 0
+			;該当する番号のカギを保有している場合
+			WHILE 1
+				DRAWLINE
+				PRINTFORML 同じ鍵で異界と魔界どちらにも移動可能だ
+				PRINTFORML どちらへ行く？
+				PRINTFORML [  1]異界へ行く
+				PRINTFORML [  2]魔界へ行く
+				PRINTFORML [100]やめる
+				$DUNGEON_32_KEY_DUNGEON_TYPE_INPUT_LOOP
+				INPUT
+				IF RESULT == 1
+					;-------------------------------------
+					;異界へ行く
+					;-------------------------------------
+					던전플래그:32:1 = 1																					;挑戦中のダンジョンの大分類を指定(1:占い師マリーの依頼によるランダム異界)
+					던전플래그:32:2 = DUNGEON_32_IKAI_DEVIL_LEVEL_MIN:(DUNGEON_32_KEY_LIST:KEY_NO:0)						;出現する悪魔の最低レベルを指定
+					던전플래그:32:3 = DUNGEON_32_IKAI_DEVIL_LEVEL_MAX:(DUNGEON_32_KEY_LIST:KEY_NO:0)						;出現する悪魔の最高レベルを指定
+					던전플래그:32:4 = DUNGEON_32_KEY_LIST:KEY_NO:1														;ダンジョンの種類を指定
+					던전플래그:32:7 = DUNGEON_32_KEY_LIST:KEY_NO:0														;ダンジョンの危険度を指定
+					QUEST_DESIDED_FLG = 1																						;依頼選択済みフラグ(0:未決定 / 1:決定済み)　※「1:決定済み」の場合はメニューを終了してダンジョン探索を開始する。
+					던전플래그:32:5 = 2 + RAND:3																			;ダンジョンの深さを設定する。
+					던전플래그:32:6 = DUNGEON_32_DUNGEON_DIRECTION:(DUNGEON_32_KEY_LIST:KEY_NO:1)							;ダンジョンの方向を設定する(0:上に登る / 1:下に降りる)
+					던전플래그:32:8 = DUNGEON_32_IKAI_DEVIL_LEVEL_PLUS:(DUNGEON_32_KEY_LIST:KEY_NO:0)						;出現する悪魔のレベルのプラス補正(5の場合、出現する悪魔のレベルを本来のレベル+5にする)
+					던전플래그:32:9 = 1																					;ボス出現フラグ(1:出現する)
+					던전플래그:32:12 = 1																					;カギの使用による異界・魔界への再挑戦であるか(1:カギ使用)
+					DRAWLINE
+					BREAK
+
+				ELSEIF RESULT == 2
+					;-------------------------------------
+					;魔界へ行く
+					;-------------------------------------
+					던전플래그:32:1 = 2																					;挑戦中のダンジョンの大分類を指定(2:車いすの男の依頼)
+					던전플래그:32:4 = DUNGEON_32_KEY_LIST:KEY_NO:1														;ダンジョンの種類を指定
+					던전플래그:32:7 = DUNGEON_32_KEY_LIST:KEY_NO:0														;ダンジョンの危険度を指定
+					QUEST_DESIDED_FLG = 1																						;依頼選択済みフラグ(0:未決定 / 1:決定済み)　※「1:決定済み」の場合はメニューを終了してダンジョン探索を開始する。
+					던전플래그:32:5 = 333																					;ダンジョンの深さを設定する。
+					던전플래그:32:6 = 1																					;ダンジョンの方向を設定する(1:下に降りる)
+					던전플래그:32:9 = 1																					;ボス出現フラグ(1:出現する)
+					던전플래그:32:12 = 1																					;カギの使用による異界・魔界への再挑戦であるか(1:カギ使用)
+					DRAWLINE
+					BREAK
+
+				ELSEIF RESULT == 100
+					;-------------------------------------
+					;やめる
+					;-------------------------------------
+					BREAK
+
+				ELSE
+					;-------------------------------------
+					;その他の場合、入力ミスのためやり直し
+					;-------------------------------------
+					GOTO DUNGEON_32_KEY_DUNGEON_TYPE_INPUT_LOOP
+
+				ENDIF
+			WEND
+
+		ELSE
+			;その他の場合、該当する番号のカギを保有していないため入力しなおす
+			GOTO DUNGEON_32_STEVEN_INPUT_LOOP
+
+		ENDIF
+
+		;依頼決定済みの場合、ループを終了する(ゲーム側ではメニュー画面が終了してダンジョンがスタートする)
+		IF QUEST_DESIDED_FLG == 1
+			BREAK
+		ENDIF
+
+
+	ELSEIF RESULT == 99
+		;------------------------
+		;カギを並び替える
+		;------------------------
+		FOR LOOP_CNT_i, 0, 2
+			PRINTFORML {LOOP_CNT_i + 1}つめのカギは？(100を入力で中止)
+			$DUNGEON_32_CHANGE_KEY_INPUT_LOOP
+			INPUT
+			KEY_NO = RESULT - 1
+			IF 1 <= RESULT && RESULT <= 5
+				;-------------------------------------
+				;1～5を指定した場合(カギの番号は1～5)
+				;-------------------------------------
+				DRAWLINE
+				PRINTFORML 交換する{LOOP_CNT_i + 1}つめのカギ：{RESULT}番
+				CHANGE_KEY_NO:LOOP_CNT_i = RESULT - 1		;交換する1つめのカギの番号を登録する
+
+				;1つめのカギの場合、詳細データを一時保存する
+				IF LOOP_CNT_i == 0
+					CHANGE_KEY:0 = DUNGEON_32_KEY_LIST:(RESULT - 1):0	;ダンジョンの危険度
+					CHANGE_KEY:1 = DUNGEON_32_KEY_LIST:(RESULT - 1):1	;ダンジョンの種類
+				ENDIF
+
+			ELSEIF RESULT == 100
+				;-------------------------------------
+				;やめる(車いすの男の依頼メニューに戻る)
+				;-------------------------------------
+				DRAWLINE
+				BREAK
+
+			ELSE
+				;-------------------------------------
+				;その他の場合、入力ミスのためやり直し
+				;-------------------------------------
+				GOTO DUNGEON_32_CHANGE_KEY_INPUT_LOOP
+
+			ENDIF
+
+			;2つ目のカギを指定済みの場合、カギの交換を行う
+			IF LOOP_CNT_i == 1
+				DUNGEON_32_KEY_LIST:(CHANGE_KEY_NO:0):0 = DUNGEON_32_KEY_LIST:(CHANGE_KEY_NO:1):0
+				DUNGEON_32_KEY_LIST:(CHANGE_KEY_NO:0):1 = DUNGEON_32_KEY_LIST:(CHANGE_KEY_NO:1):1
+				DUNGEON_32_KEY_LIST:(CHANGE_KEY_NO:1):0 = CHANGE_KEY:0
+				DUNGEON_32_KEY_LIST:(CHANGE_KEY_NO:1):1 = CHANGE_KEY:1
+			ENDIF
+		NEXT
+		DRAWLINE
+
+	ELSEIF RESULT == 100
+		;---------
+		;やめる
+		;---------
+		DRAWLINE
+		PRINTFORML 魔界の探索はあまりに危険だ。
+		PRINTFORML よく準備を整えてからまた来てくれたまえ。
+		PRINTFORML
+		DRAWLINE
+
+		;メインメニューに戻る
+		BREAK
+
+	ELSE
+		;------------------------
+		;入力ミスのためやり直し
+		;------------------------
+		GOTO DUNGEON_32_STEVEN_INPUT_LOOP
+
+	ENDIF
+WEND
+
+;返り値
+RETURN QUEST_DESIDED_FLG
+
+
+;各メニューの説明を表示する
+@DUNGEON_32_EXPLAIN
+;-------------
+;ここから本処理
+;-------------
+DRAWLINE
+PRINTFORML
+PRINTFORML どれについて説明する？
+PRINTFORML
+WHILE 1
+	PRINTFORML [  1]占い師マリーの依頼　について
+	IF 던전플래그:32:10 >= 1
+		;魔界探索・カギを使用した探索が解放済みである場合
+		PRINTFORML [  2]車イスの男の依頼　について
+
+	ELSE
+		;その他の場合
+		PRINTFORML [  2]？？？？(未開放)　について
+
+	ENDIF
+	PRINTFORML [  3]秘境に挑戦する　について
+	PRINTFORML [ 98]最高記録　について
+	PRINTFORML [ 99]전체的な注意事項
+	PRINTFORML [100]やめる
+	$DUNGEON_32_SETUMEI_INPUT_LOOP
+	INPUT
+	IF RESULT == 1
+		;-------------------------------
+		;占い師マリーの依頼　について
+		;-------------------------------
+		DRAWLINE
+		PRINTFORML
+		PRINTFORML 如月マリーは表社会・裏社会問双方に広い人脈を持つ人物です。
+		PRINTFORML 彼女を介して民間の人々からの異界事件解決の依頼を受けることができます。
+		PRINTFORML 
+		PRINTFORML 異界とは現実の空間が何らかの原因で変化したものです。
+		PRINTFORML 入るたびに広さや道順などが不規則に変化し、また悪魔や宝箱が出現します。
+		PRINTFORML 異界の広さや出現する悪魔の種類、宝箱の発生率などは元となった場所の影響を強く受けます。
+		PRINTFORML 難易度は(1:簡単な / 2:ふつうの / 3:危険な / 4:破滅的な)の4種類存在しますが
+		PRINTFORML 難易度の高い依頼は相応の実力のサマナーでなければ受注できないようです。
+		PRINTFORML 
+		PRINTFORML 経験値およびMAGは(1:簡単な / 2:ふつうの)の場合のみ獲得可能
+		PRINTFORML 悪魔の勧誘(TALK)はすべて不可能となっており、また出現悪魔の解析も不可能です。
+		PRINTFORML あまり修行に向いた依頼ではなさそうです。
+		PRINTFORML 
+		PRINTFORML 異界の最奥には主となる悪魔が必ず存在し、これを倒すことで事件は解決となります。
+		PRINTFORML また1Fの出口から脱出することも可能ですが
+		PRINTFORML 異界の主を倒さず撤退した場合は依頼は失敗となり報酬はもらえません。
+		PRINTFORML 
+		PRINTFORML 無事に事件の解決に成功した場合、あなたは日本円の報酬といくらかの名声を得るでしょう。
+		PRINTFORML ただし如月マリーからの報酬はとても安価だとささやかれています……
+		PRINTFORMW
+		DRAWLINE
+
+	ELSEIF RESULT == 2
+		;-------------------------------
+		;車いすの男の依頼　について
+		;-------------------------------
+		IF 던전플래그:32:10 >= 1
+			;魔界探索・カギを使用した探索が解放済みである場合
+			DRAWLINE
+			PRINTFORML
+			PRINTFORML 車いすのおとこはかつて瞬間移動装置ターミナルシステムを開発していた人物です。
+			PRINTFORML 不幸にも実験中に悪魔を呼び出してしまった彼は
+			PRINTFORML なんとか悪魔を倒したものの大怪我をしてしまいました。
+			PRINTFORML その苦い経験から悪魔への対抗手段として作成したものが悪魔召喚プログラムです。
+			PRINTFORML 
+			PRINTFORML もしあなたが如月マリーの依頼による異界攻略にて『魔界につながるカギ』を得た場合
+			PRINTFORML 車いすのおとこから魔界探索の依頼を持ち掛けられるでしょう。
+			PRINTFORML 
+			PRINTFORML 魔界は地下300階を超える長大な迷宮となっており
+			PRINTFORML 10階層ごとに各種族の悪魔が自分たちの領域を作成して生息しています。
+			PRINTFORML 例えば1～10層は「はかなき妖精の領域」、11～20層は「ひそかな天使の領域」といった具合です。
+			PRINTFORML 10の倍数の階層ではその領域の主が存在しており、倒さなければ先へ進めません。
+			PRINTFORML 
+			PRINTFORML 下層ほど強力な悪魔が出現しますが、特に50層潜る毎に悪魔のレベルが+50されます。
+			PRINTFORML 例えば1階に出現するピクシーは通常通りレベル3ですが
+			PRINTFORML 51階の場合はレベル53、101階の場合はレベル103のピクシーが出現します。
+			PRINTFORML 
+			PRINTFORML 異界攻略および魔界攻略で入手したカギの種類によって
+			PRINTFORML 魔界突入時の初期階層と出現する悪魔の種族が変化します。
+			PRINTFORML カギはわずか5つしか持てませんが、お気に入りのカギを手に入れたら大切にしましょう。
+			PRINTFORML 
+			PRINTFORML 残念ながら魔界の悪魔たちはあなたの言葉に耳を貸してくれないようです。
+			PRINTFORML また、経験値やMAGも獲得できず、出現する悪魔の解析も不可能です。
+			PRINTFORML 仲魔探しや修行は別の場所で行いましょう。
+			PRINTFORMW
+			DRAWLINE
+
+		ELSE
+			;その他の場合(未開放なので解放条件だけ表示)
+			DRAWLINE
+			PRINTFORML
+			PRINTFORML もしあなたが如月マリーの依頼による異界攻略で『とあるアイテム』を得た場合
+			PRINTFORML 新しいダンジョンに挑戦可能となります。
+			PRINTFORML 『とあるアイテム』入手の期待値は異界攻略4回につき1個程度です。
+			PRINTFORMW
+			DRAWLINE
+
+		ENDIF
+
+	ELSEIF RESULT == 3
+		;-------------------------------
+		;秘境に挑戦する　について
+		;-------------------------------
+		DRAWLINE
+		PRINTFORML
+		PRINTFORML サマナーとしての活動の中であなたが知った秘境に挑戦します。
+		PRINTFORML 
+		PRINTFORML いずれのダンジョンも階層がとても深く、また常に地形が変化するためご注意ください。
+		PRINTFORML 出現する悪魔は強力ですが経験値はもらえません。また勧誘もできないようです。
+		PRINTFORML どちらかというと実益を求めるよりも挑戦自体を楽しむために足を運ぶことになるでしょう。
+		PRINTFORML 最上階もしくは最下層でダンジョンごとの目的を達成することでダンジョン踏破となります。
+		PRINTFORML 
+		PRINTFORML また秘境では意地悪なギミックがあるかもしれません。
+		PRINTFORML 探索用のスキルおよび[ダンジョン探索用のインストールソフト]の用意を推奨いたします。
+		PRINTFORMW
+		DRAWLINE
+
+	ELSEIF RESULT == 98
+		;-------------------------------
+		;最高記録
+		;-------------------------------
+		DRAWLINE
+		PRINTFORML
+		PRINTFORML 「ダンジョン32　不思議なダンジョン」では条件を満たすと極めて深いダンジョンに挑戦可能になります。
+		PRINTFORML これらのダンジョンについて(今周回 / 全周回)における最高到達記録を表示します。
+		PRINTFORML 
+		PRINTFORML 特に利益等はないやりこみ要素になります。
+		PRINTFORML 長丁場のダンジョンとなるため時間に余裕があるときにお楽しみください。
+		PRINTFORMW
+		DRAWLINE
+
+	ELSEIF RESULT == 99
+		;-------------------------------
+		;전체的な注意事項
+		;-------------------------------
+		DRAWLINE
+		PRINTFORML
+		PRINTFORML 「ダンジョン32　不思議なダンジョン」ではいわゆるローグライクなダンジョンをご用意しております。
+		PRINTFORML 侵入する度に地形が変化するため、毎回地図を埋めなおすことになります。
+		PRINTFORML また宝箱も自動で生成するので各フロアを探してみるのも一興かもしれません。
+		PRINTFORML (肝心の中身はそれほど大したものではありませんが……)
+		PRINTFORML 
+		PRINTFORML 既存のダンジョンと比較して多種多様な種類およびレベルの悪魔が登場しますが
+		PRINTFORML ゲームバランスを壊さないようにするため、一部ダンジョンを除いて
+		PRINTFORML 『仲魔勧誘不可・経験値取得不可・悪魔アナライズ率取得不可』となっております。
+		PRINTFORML あらかじめご了承ください。
+		PRINTFORML 
+		PRINTFORML また、大変恐縮ですが『ダンジョン内セーブが不安定』になっております。
+		PRINTFORML ダンジョン内でセーブしてロードした場合、画面が真っ暗になりますがどこかの方向に一歩歩くと解消されます。
+		PRINTFORML また地形が再生成されるためそのフロアのマップも最初から埋めなおしになります。
+		PRINTFORML 
+		PRINTFORML 階段やボスマスなどは再生成されるため進行不可能にはならないはずですが
+		PRINTFORML 念のためダンジョン内セーブは避けていただけると幸いです。
+		PRINTFORMW
+		DRAWLINE
+
+	ELSEIF RESULT == 100
+		;---------
+		;やめる
+		;---------
+		;メインメニューに戻る
+		DRAWLINE
+		BREAK
+
+	ELSE
+		;------------------------
+		;入力ミスのためやり直し
+		;------------------------
+		GOTO DUNGEON_32_SETUMEI_INPUT_LOOP
+
+	ENDIF
+WEND
+
+RETURN 1

@@ -40,12 +40,19 @@
 ;なんどでも発生するというのが原作の仕様らしいので
 ;とはいえ、うざすぎるのでEASYは1度づつしか発生しないように
 ;-----------------------------------------------------------------------
+;レアエネミー
+;ラッキーチェックのあいつらと戦えるおまけイベント。
+;処理はタルタロスやギンザ地下道の同様イベントとほぼ同じ。
+;遭遇しても選択肢で回避可能。
+;-----------------------------------------------------------------------
+
 
 ;=======================================================================
 ;	Edit	Date			Author					Reason
 ;	001		20XX/XX/XX								新規作成
-;	002		2020/08/20								필요레벨수정、아이템関連と카테드랄関連を변경
+;	002		2020/08/20								必要レベル修正、アイテム関連とカテドラル関連を変更
 ;	003		2020/08/02								監視塔強襲を通過せずにTDLに来た場合のワルオの会話を追加
+;	004		2021/12/XX								強力なエネミーと超低確率で遭遇するように
 
 ;=======================================================================
 ;攻略조건
@@ -67,7 +74,7 @@ RESULTS = T.D.L.
 
 
 ;=======================================================================
-;フ로어名표시
+;플로어名표시
 ;=======================================================================
 @FLOORNAME_35
 SELECTCASE FLAG:현M
@@ -147,7 +154,7 @@ ELSE
 	RETURN RESULT
 ENDIF
 ;=======================================================================
-;フ로어데이터
+;플로어데이터
 ;=======================================================================
 @MAKE_FLOOR_35
 SELECTCASE FLAG:현M
@@ -463,7 +470,7 @@ SIF ARGS == "G"
 ;=======================================================================
 @EVENT_CHECK_DUNGEON_35
 ;==========
-;出입の処理
+;出口の処理
 ;==========
 IF DA:(FLAG:현X):(FLAG:현Y) == 8
 	CALL DUNGEON_EXIT
@@ -503,7 +510,7 @@ ENDIF
 @EVENT_ENTER_DUNGEON_35,ARG
 ;ARG = 進入時の向き　0の場合ワープなど
 ;==========
-;出입の処理
+;出口の処理
 ;==========
 IF DA:(FLAG:현X):(FLAG:현Y) % 10 == 8
 	CALL DUNGEON_EXIT
@@ -1160,7 +1167,7 @@ ELSEIF LOCALS == "덫"
 	CALL GET_TREASURE_TRAP, LOCALS:1, LOCAL, GET_TYPE_NUM(LOCALS:2), FLAG:현던전, FLAG:현M + 75, (DA:(FLAG:현X):(FLAG:현Y) / 10) % 100
 ELSE
 	IF GETNUM(ITEM, LOCALS) == -1
-		PRINTL ＞아이템명의 지정이 잘못되었습니다
+		PRINTL ＞아이템 이름의 지정이 잘못되었습니다
 		PRINTW ＞아이템 취득처리를 중단합니다
 	ELSE
 		CALL GET_TREASURE, GETNUM(ITEM, LOCALS), LOCAL , FLAG:현던전, FLAG:현M + 75, (DA:(FLAG:현X):(FLAG:현Y) / 10) % 100
@@ -1185,7 +1192,7 @@ SELECTCASE DA:(FLAG:현X):(FLAG:현Y) / 10
 			IF MONEY:1 < 500
 				CALL SHOW_FORCEMOVE("D<2>", "D", "", "男", @"金が발りねえぞ!/なめんなよこら!")
 			ELSE
-				CALL SHOW_FORCEMOVE("UU", "D", "", "男", "４つの入입の/どこから入っても良いよ")
+				CALL SHOW_FORCEMOVE("UU", "D", "", "男", "４つの입구の/どこから入っても良いよ")
 				MONEY:1 -= 500
 			ENDIF
 		ELSE
@@ -1224,8 +1231,47 @@ SIF FLAG:미조우걸음수 < 5
 SIF 던전플래그:(FLAG:현던전):2 == 1
 	RETURN 0
 IF RAND:100 < FLAG:인카운트율
-	CALL ENEMY_TABLE
-	RETURN 1
+	;超低確率でレアエネミーと遭遇。タルタロスの赤悪魔処理とほぼ同様
+	IF RAND:200 < 1
+		CALL MESSAGE_WINDOW_D, "声", "ハハッ…/グワッ　グワッ…"
+		PRINTW ＞とても危険な悪魔の気配がする…
+		CALL INPUT_YN("戦いを挑む", "やり過ごす")
+		IF RESULT == 0
+			CALL MESSAGE_WINDOW_D, "악마", "やあ！/やっと会えたね！"
+			CALL MESSAGE_WINDOW_D, "악마", "それじゃ　今回は/君の強さを試してみよう！"
+			CALL MESSAGE_WINDOW_D, "악마", "おいで！　プルートゥ！"
+			
+			
+			CALL SET_ENEMY,9,[[キャラ:좀비마우스]],60,0,3
+			CFLAG:(CHARANUM-1):행동횟수 = 2
+			CFLAG:(CHARANUM-1):ＨＰ보정 += 1000
+			CFLAG:(CHARANUM-1):BS무효플래그 = 1
+			
+			CALL SET_ENEMY,8,[[キャラ:데몬덕]],60,0,3
+			CFLAG:(CHARANUM-1):행동횟수 = 2
+			CFLAG:(CHARANUM-1):ＨＰ보정 += 1000
+			CFLAG:(CHARANUM-1):BS무효플래그 = 1
+			
+			CALL SET_ENEMY,10,[[キャラ:오르트로스]],45,0,1
+			CFLAG:(CHARANUM-1):행동횟수 = 2
+			CFLAG:(CHARANUM-1):ＨＰ보정 += 500
+			
+			FLAG:회화불능플래그 = 1
+			FLAG:선제기습취소 = 1
+			CALL BATTLE_START
+			FLAG:회화불능플래그 = 0
+			FLAG:선제기습취소 = 0
+			
+			PRINTW ＞…トドメの一撃を受けた危険な悪魔は　派手な視覚効果を伴いながら遠くに飛んでいった。
+		ELSE
+			PRINTW ＞…悪魔の気配は遠ざかって行った。
+		ENDIF
+		FLAG:미조우걸음수 = 0
+		RETURN 0
+	ELSE
+		CALL ENEMY_TABLE
+		RETURN 1
+	ENDIF
 ELSE
 	FLAG:미조우걸음수 += 1
 	RETURN 0

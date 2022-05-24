@@ -25,7 +25,7 @@
 ;성욕처리の計算
 @성욕처리, ARG , ARG:1 = -1 , ARG:2 = -1
 #DIM CHARA , 1
-#DIM 元욕정 , 2
+#DIM 元欲情 , 2
 #DIM LCOUNT
 ;ARG = 処理するキャラ
 ;ARG:1 = 相手
@@ -46,7 +46,7 @@ FOR LOCAL , 0 , 1 + (ARG:1 > -1)
 	NOWEX:(ARG:LOCAL):사정 = 0
 	NOWEX:(ARG:LOCAL):분유 = 0
 	TCVAR:(ARG:LOCAL):획득자위경험 = 0
-	元욕정:LOCAL = CFLAG:(ARG:LOCAL):던전내발정용욕정치
+	元欲情:LOCAL = CFLAG:(ARG:LOCAL):던전내발정용욕정치
 	DOWNBASE:(ARG:LOCAL):체력 = 0
 	DOWNBASE:(ARG:LOCAL):기력 = 0
 NEXT
@@ -351,8 +351,12 @@ FOR LOCAL , 0 , 1 + (ARG:1 > -1 && !LOCAL:3)
 		CALL PREGNANCY_CHECK, (ARG:LOCAL)
 		;임신
 		IF RESULT && CHARA > -1
+;			PRINTFORML 妊娠確定
+;			FORCEWAIT
 			CALL SET_FATHERINFO, (ARG:LOCAL), NO:(ARG:(!LOCAL)), CFLAG:CHARA:캐릭터고유번호, CALLNAME:(ARG:(!LOCAL))
 		ELSEIF RESULT
+;			PRINTFORML 野良妊娠確定
+;			FORCEWAIT
 			CALL SET_FATHERINFO, (ARG:LOCAL), NO:(ARG:(!LOCAL)), CHARA, NAME:(ARG:(!LOCAL))
 		ENDIF
 	ENDIF
@@ -411,8 +415,6 @@ FOR LOCAL , 0 ,1 + (ARG:1 > -1 && !LOCAL:3)
 			DOWNBASE:(ARG:LOCAL):기력 += 100
 		ENDIF
 	ENDIF
-	CALL SHOW_ADD_EXP, ARG:LOCAL
-	CALL SHOW_ABNORMAL_EXP, (ARG:LOCAL)
 ;체력・기력소비
 	;던전내발정용욕정치は절정分減り、윤간された場合は増える、자위は少量減る
 	SIF ARG:2 < 3
@@ -435,12 +437,12 @@ FOR LOCAL , 0 ,1 + (ARG:1 > -1 && !LOCAL:3)
 		CFLAG:(ARG:LOCAL):던전내발정용욕정치 = 15000
 	SIF CFLAG:(ARG:LOCAL):던전내발정용욕정치 < 0
 		CFLAG:(ARG:LOCAL):던전내발정용욕정치 = 0
-	IF CFLAG:(ARG:LOCAL):던전내발정용욕정치 != 元욕정:LOCAL
+	IF CFLAG:(ARG:LOCAL):던전내발정용욕정치 != 元欲情:LOCAL
 		PRINTFORM 욕정　
-		LOCAL:5 = MIN(15000 , 元욕정:LOCAL)
+		LOCAL:5 = MIN(15000 , 元欲情:LOCAL)
 		SETCOLOR 0x40 + (0xff - 0x40) * LOCAL:5 / 15000 , 0x40 - (0x40 * LOCAL:5 / 15000) , 0x40 + (0xff - 0x40) * LOCAL:5 / 15000
 		SETCOLOR 0xff * LOCAL:5 / 15000 , 0 , 0xff * LOCAL:5 / 15000
-		IF 元욕정:LOCAL >= 10000
+		IF 元欲情:LOCAL >= 10000
 			PRINTFORM %ハート()%ＭＡＸ%ハート()%
 		ELSE
 			PRINTFORM %ハート()%
@@ -464,7 +466,7 @@ FOR LOCAL , 0 ,1 + (ARG:1 > -1 && !LOCAL:3)
 		PRINTFORML %ハート()%ＭＡＸ%ハート()%
 		RESETCOLOR
 	ENDIF
-;		PRINTFORML 욕정(%CALLNAME:(ARG:LOCAL)%)　{元욕정:LOCAL , 6 , RIGHT}→{CFLAG:(ARG:LOCAL):던전내발정용욕정치 , 6 , RIGHT}
+;		PRINTFORML 욕정(%CALLNAME:(ARG:LOCAL)%)　{元欲情:LOCAL , 6 , RIGHT}→{CFLAG:(ARG:LOCAL):던전내발정용욕정치 , 6 , RIGHT}
 	IF LOCAL:3
 		DOWNBASE:(ARG:LOCAL):체력 += (CFLAG:(ARG:LOCAL):본방횟수 + CFLAG:(ARG:LOCAL):애널횟수 + CFLAG:(ARG:LOCAL):펠라횟수) * 25
 		DOWNBASE:(ARG:LOCAL):기력 += (CFLAG:(ARG:LOCAL):본방횟수 + CFLAG:(ARG:LOCAL):애널횟수 + CFLAG:(ARG:LOCAL):펠라횟수) * 20 + CFLAG:(ARG:LOCAL):질내사정횟수 * 40
@@ -503,8 +505,8 @@ FOR LOCAL , 0 ,1 + (ARG:1 > -1 && !LOCAL:3)
 		BASE:(ARG:LOCAL):체력 = 0
 	SIF BASE:(ARG:LOCAL):기력 < 0
 		BASE:(ARG:LOCAL):기력 = 0
-	
-
+	CALL SHOW_ADD_EXP, ARG:LOCAL
+	CALL SHOW_ABNORMAL_EXP, (ARG:LOCAL)
 NEXT
 
 ;ＮＴＲ가능な場合
@@ -555,7 +557,7 @@ RETURN LOCAL , LOCAL:2
 
 
 ;-------------------------------------------------------------
-;地の아야
+;地の文
 ;-------------------------------------------------------------
 
 
@@ -582,11 +584,11 @@ CALL EVENT_MESSAGE_COMMON_DUNGEONSEX
 
 @EVENT_MESSAGE_81
 ;その場で자위
-#DIM DYNAMIC 仲마인数
+#DIM DYNAMIC 仲魔人数
 #DIM 代表者
 FOR LOCAL , 1 , 7
 	IF POS(LOCAL) > -1
-		仲마인数 ++
+		仲魔人数 ++
 		SIF POS(LOCAL) != TARGET
 			代表者 = POS(LOCAL)
 	ENDIF
@@ -595,8 +597,8 @@ SIF TARGET != MASTER
 	代表者 = MASTER
 PRINTFORML %조사처리(CALLNAME,"는")% 
 IF TALENT:음란 || TALENT:창부 || ABL:노출증 > 5
-	IF 仲마인数 > 1
-		PRINTFORML %CALLNAME:代表者%\@仲마인数 > 2 ? 들 # \@에게 과시하듯이 
+	IF 仲魔人数 > 1
+		PRINTFORML %CALLNAME:代表者%\@仲魔人数 > 2 ? 들 # \@에게 과시하듯이 
 	ELSE
 		PRINTFORML 누구에게 발견될 지도 모른다는 스릴에 설렘을 느끼리면서 
 	ENDIF
@@ -624,16 +626,16 @@ ELSE
 		PRINTFORML , 옷을 벗는 것조차 답답한지 옷 위에서 직접 몸을 더듬으며、
 	ENDIF
 	
-	SIF 仲마인数 > 1
-		PRINTFORMW %CALLNAME:代表者%\@仲마인数 > 2 ? 들 # \@(이)가 보고 있는 것도 잊고, 
+	SIF 仲魔人数 > 1
+		PRINTFORMW %CALLNAME:代表者%\@仲魔人数 > 2 ? 들 # \@(이)가 보고 있는 것도 잊고, 
 		
 		PRINTFORMW 일심불란하게 자신의 성기를 애무했다…
 ENDIF
 PRINTL
 IF NOWEX:Ｂ절정 + NOWEX:Ｃ절정 > 0
 	PRINTFORM 그 후, 
-	SIF 仲마인数 > 1
-		PRINTFORML %CALLNAME:代表者%\@仲마인数 > 2 ? 들 # \@이 보는 중에 
+	SIF 仲魔人数 > 1
+		PRINTFORML %CALLNAME:代表者%\@仲魔人数 > 2 ? 들 # \@이 보는 중에 
 	SIF NOWEX:Ｂ절정 > 0
 		PRINTFORM 가슴으로 {NOWEX:Ｂ절정}회
 	SIF NOWEX:Ｃ절정 > 0
@@ -643,15 +645,15 @@ ENDIF
 
 @EVENT_MESSAGE_82
 ;物陰で자위
-#DIM DYNAMIC 仲마인数
+#DIM DYNAMIC 仲魔人数
 FOR LOCAL , 1 , 7
 	SIF POS(LOCAL) > -1
-		仲마인数 ++
+		仲魔人数 ++
 NEXT
 PRINTFORML %조사처리(CALLNAME,"는")% 
 SIF 위험일(TARGET) >= 2
 	PRINTFORM 얼굴을 새빨갛게 물들이면서 
-IF 仲마인数 > 1
+IF 仲魔人数 > 1
 	PRINTFORML 동료마의 곁을 떠나 
 ELSE
 	PRINTFORML 진정될 것 같은 장소를 찾아 
@@ -812,6 +814,8 @@ IF GROUPMATCH(TFLAG:이벤트구상호출용 , 79 , 80)
 	ENDIF
 	;섹스
 	;PLAYER→TARGET
+	;KR판 임의수정 추정, 이벤트 추가 가필
+	;---- KR EDIT START ----------------------------
 	IF (TALENT:PLAYER:남자 == 1 && TALENT:TARGET:남자 == 0) || ((TALENT:PLAYER:남자 == 0 && (TALENT:PLAYER:후타나리 == 1 || TALENT:PLAYER:구현 == 1)) && TALENT:TARGET:남자 == 0)
 	;[남/오토코노코 → 여/후타나리/구현] or [후타나리/구현 → 여/후타나리/구현]
 		IF RAND:2 == 0
@@ -843,6 +847,7 @@ IF GROUPMATCH(TFLAG:이벤트구상호출용 , 79 , 80)
 		ENDIF
 	ELSEIF TALENT:PLAYER:남자 == 0 && (TALENT:TARGET:남자 == 1 || (TALENT:TARGET:남자 == 0 && (TALENT:TARGET:후타나리 == 1 || TALENT:TARGET:구현 == 1)))
 	;[여/후타나리/구현 → 남/오토코노코/후타나리/구현]
+	;---- KR EDIT END ------------------------------
 		IF CFLAG:TARGET:본방횟수
 			LOCALS:21 = 와(과) 얼싸안으며 {CFLAG:TARGET:본방횟수}회 어울려 
 			LOCALS:22 = 에게 질 안쪽을 자극하는 기승위로 {CFLAG:TARGET:본방횟수}회 괴롭혀져 

@@ -50,11 +50,11 @@
 ;	032		2015/12/11			JK好き				에스트마等が화면に표시されるように修正
 ;	033		2016/05/02			ネトリス			휴식を추가
 ;	034		2016/05/02			（U´・ω・｀）		日記帳exeに基づく필터링기능の추가
-;	035		2016/07/29			（U´・ω・｀）		ラン란다ンジョンのための記述を추가
+;	035		2016/07/29			（U´・ω・｀）		ランランンジョンのための記述を추가
 ;	036		2016/07/30			（U´・ω・｀）		オート필터の確認が個人的にうざかったので除去
-;													あとラン란다ンジョンの記述を修正
-;	037		2016/08/01			（U´・ω・｀）		ラン란다ンジョンのフラグ管理修正×２
-;	038		2016/08/07			（U´・ω・｀）		WORP,FORCEMOVE時のラン란다ンジョンの移動中断処理を実装
+;													あとランランンジョンの記述を修正
+;	037		2016/08/01			（U´・ω・｀）		ランランンジョンのフラグ管理修正×２
+;	038		2016/08/07			（U´・ω・｀）		WORP,FORCEMOVE時のランランンジョンの移動中断処理を実装
 ;	039		2016/09/25			多治見国々			던전の권장레벨の표시を옵션でも選択できるように
 ;	040		2017/06/23			kuni				キャラ표시でINPUT_CHARA_LISTを사용するように변경
 ;	041		2018/06/09			名無				一日に複数回탐색、結界石소비で던전내조교できるように
@@ -73,7 +73,12 @@
 ;	LNKUI	2021/02/11			Rsp暇人 			ダンジョン探索中、COMP（またはMENU)画面からリンケージ一覧を呼び出せるように
 ;	054		2021/04/11			Jガン				3D時のダンジョンの処理を追加
 ;													ウパニシャッド処理追加
-;	055		2021/04/22			JK好き				結界石によるダンジョン内調教であなたを選択できる問題を修正
+;	055		2021/04/22			JK好き				結界石による던전内調教であなたを選択できる問題を修正
+;	056		2021/07/24			っとっとき			던전探索モード設定オプションの追加
+;	057		2021/11/06			Schrott				東方EXにて、ミタマコイコイと同時に発動できる、御霊招来CSTR専用スキルを追加。
+;	058		2021/12/12			ロッド@カヤノソト	地形自動生成やF.O.E.の配置と制御に関する処理を追加
+;	059		2022/01/04			ロッド@カヤノソト	地形自動生成やF.O.E.に関する処理について、一部の던전においてのみ実行されるように機能を隔離しました。※「FLAG:지형자동생성・FOE플래그」が1(ON)の場合のみ有効
+;	060		2021/12/30			JK好き				@ENEMY_TABLE 御霊招来でエラー落ちする場合がある問題を修正
 ;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
 ;=====================================================================
 ;던전ＲＰＧモジュール
@@ -88,9 +93,20 @@ RESULTS = 탐색
 ;なんかの不손際で0未満なら0に
 SIF FLAG:던전탐색완료 < 0
 	FLAG:던전탐색완료 = 0
-;一日一回、もしくはマスターが절륜、수수께끼의매력、금단의지식ないし레벨50以上なら二回、레벨100以上なら三回まで
-SIF FLAG:던전탐색완료 >= 1+(TALENT:MASTER:절륜 || TALENT:MASTER:수수께끼의매력 || TALENT:MASTER:금단의지식 || BASE:MASTER:LV >= 50)+(BASE:MASTER:LV >= 100)
-	RETURN 0
+;---- EDIT 056 MOD START   -------------------------
+IF FLAG:던전탐색모드설정 == 0
+	;一日一回、もしくはマスターが絶倫、謎の魅力、禁断の知識ないしレベル50以上なら二回、レベル100以上なら三回まで
+	SIF FLAG:던전탐색완료 >= 1+(TALENT:MASTER:절륜 || TALENT:MASTER:수수께끼의매력 || TALENT:MASTER:금단의지식 || BASE:MASTER:LV >= 50)+(BASE:MASTER:LV >= 100)
+		RETURN 0
+ELSEIF FLAG:던전탐색모드설정 == 1
+	SIF FLAG:던전탐색완료 >= 1
+		RETURN 0
+ELSEIF FLAG:던전탐색모드설정 == 2
+	;一日一回、もしくはマスターが絶倫、謎の魅力ないしレベル50以上なら二回、レベル100以上なら三回まで
+	SIF FLAG:던전탐색완료 >= 1+(TALENT:MASTER:절륜 || TALENT:MASTER:수수께끼의매력 || BASE:MASTER:LV >= 50)+(BASE:MASTER:LV >= 100)
+		RETURN 0
+ENDIF
+;---- EDIT 056 MOD END   -------------------------
 ;---- EDIT 041 MOD END   -------------------------
 ;당신が臨月だと不可
 SIF (TALENT:MASTER:임신 && CFLAG:MASTER:출산예정일 - 2 <= DAY)
@@ -112,8 +128,14 @@ ENDIF
 
 @SHOP_COM_101
 DRAWLINE
-PRINTL 탐색할 장소를 선택해 주세요
-;ラン란다ンジョンの効果リセット
+IF FLAG:던전탐색모드설정 == 1
+	PRINTFORML 탐색할 장소를 선택해 주세요
+ELSEIF FLAG:던전탐색모드설정 == 0
+	PRINTFORML 탐색할 장소를 선택해 주세요 (남은 탐색 횟수 {( 1 + (TALENT:MASTER:절륜 || TALENT:MASTER:수수께끼의매력 || TALENT:MASTER:금단의지식 || BASE:MASTER:LV >= 50) + (BASE:MASTER:LV >= 100) - FLAG:던전탐색완료 )} )
+ELSEIF FLAG:던전탐색모드설정 == 2
+	PRINTFORML 탐색할 장소를 선택해 주세요 (남은 탐색 횟수 {( 1 + (TALENT:MASTER:절륜 || TALENT:MASTER:수수께끼의매력 || BASE:MASTER:LV >= 50) + (BASE:MASTER:LV >= 100) - FLAG:던전탐색완료 )} )
+ENDIF
+;ランランンジョンの効果リセット
 SIF EQUIP:MASTER:런런던전 == 0 || FLAG:COMP사용불능
 	CLEARBIT FLAG:232,0
 CALL SHOW_DUNGEONLIST
@@ -123,18 +145,42 @@ LOCAL = RESULT
 FLAG:현던전 = LOCAL
 FLAG:MAG소비율 = 100
 FLAG:월령진행률 = 100
-;에스트마の効果リセット挟みませてもらいます
+FLAG:탈출 = 0
+;-- 던전32:不思議な던전 --------
+;地形自動生成やF.O.E.制御関係のフラグやパラメータをクリアする。	※誤って値が残り続けることでの事故防止のため、ここでの初期化自体は常に行うようにする。
+FLAG:지형자동생성・FOE플래그 = 0		;地形の自動生成およびF.O.E.を利用するを利用しない	※補足：地形の自動生成およびF.O.E.を利用する던전の場合、この後の「START_DUNGEON_{FLAG:현던전}」の関数内でフラグをONに設定します。
+CALL CD_CLEAR_PARAMETERS				;地形自動生成・F.O.E.制御用の各種パラメータをクリアする
+CALL CD_CREAR_TIME_AND_TURN, 0			;던전内の経過時間・経過ターン数カウントをクリアする
+;-- 던전32:不思議な던전 --------
+;エストマの効果リセット挟みませてもらいます
 CALL ENCOUNTER_CHANGER
 ;スタート地点を呼び出し(현M、현X、현Yにそれぞれ代入)
 CALLFORM START_DUNGEON_{FLAG:현던전}
-;現在のフ로어데이터を読み込み
+;現在の플로어데이터を読み込み
 CALL MAKE_FLOOR, FLAG:현던전
 CALL AUTOMAP
+;-- タルタロスにF.O.E.『刈り取るもの』を追加するパッチ --------
+;던전内の経過時間・経過ターン数カウントの初期設定を行う
+IF FLAG:지형자동생성・FOE플래그 == 1
+	CALL CD_CREAR_TIME_AND_TURN, 1
+ENDIF
+;-- タルタロスにF.O.E.『刈り取るもの』を追加するパッチ --------
+;던전開始時のイベント
+TRYCALLFORM EVENT_DUNGEON_START_{FLAG:현던전}
+
+;-- 던전32:不思議な던전 --------
+;던전開始時のイベントで「FLAG:탈출 = 1」に設定している場合、던전を開始せず취소する。
+;　※던전イベント内でやっぱり던전突入をやめるという処理を可能とするための処理。不思議な던전系に限らず共通処理として用意しています。
+IF FLAG:탈출 == 1
+	FLAG:탈출 = 0	;脱出フラグをデフォルトに戻す
+	RETURN 0		;던전突入を취소する
+ENDIF
+;-- 던전32:不思議な던전 --------
+
 ;---- EDIT 041 MOD START   -------------------------
 FLAG:던전탐색완료 += 1
 ;---- EDIT 041 MOD END   -------------------------
-;던전開始時の이벤트
-TRYCALLFORM EVENT_DUNGEON_START_{FLAG:현던전}
+
 FLAG:도주불가플래그 = 0
 FLAG:회화불능플래그 = 0
 FLAG:선제기습취소 = 0
@@ -176,7 +222,6 @@ ENDIF
 
 SIF FLAG:던전내조교 == 1
 	BEGIN TRAIN
-FLAG:탈출 = 0
 ;---- EDIT 003 ADD START -------------------------
 ;日付변경時の処理に移動
 ;SIF FLAG:트리슈의샘이용횟수 > 0
@@ -226,7 +271,7 @@ FOR LOCAL, LOCAL:99 * リスト표시数(), (LOCAL:99 + 1) * リスト표시数(
 		BREAK
 	CALLFORM GET_DUNGEON_NAME_{LOCAL:LOCAL}
 	IF FLAG:DEBUG || FLAG:던전의권장레벨표시설정
-		PRINTFORM [{LOCAL:LOCAL,2}] %RESULTS,20,LEFT%
+		PRINTFORM [{LOCAL:LOCAL,2}] %RESULTS,34,LEFT%
 		TRYCCALLFORM GET_DUNGEON_LV_{LOCAL:LOCAL}
 			PRINTFORMLC 　(권장LV:{RESULT, 2}\@ FLAG:DEBUG ?　최저LV:{RESULT:1, 2}　최고LV:{RESULT:2, 2}　보스LV:{RESULT:3, 2}#\@)
 		CATCH
@@ -253,7 +298,7 @@ PRINTLC [110] 자동 필터링
 PRINTL [111] 필터 전체 해제
 DRAWLINE
 PRINTL [100] 돌아간다
-PRINTFORMLC \@ LOCAL:99 > 0 ? [101] 전 페이지 # %" " * 16%\@
+PRINTFORMLC \@ LOCAL:99 > 0 ? [101] 이전페이지 # %" " * 16%\@
 PRINTFORMLC \@ LOCAL:99 < 5 && LOCAL:((LOCAL:99+1) * リスト표시数()) >= 0 ? [103] 다음페이지 # %" " * 16%\@
 $INPUT_LOOP
 INPUT
@@ -375,7 +420,7 @@ ELSE
 ENDIF
 
 ;=====================================================================
-;現在の던전の現在のフ로어のANALYZE情報획득
+;現在の던전の現在の플로어のANALYZE情報획득
 ;引数はＸ・Ｙ
 ;描画速度改善用
 ;=====================================================================
@@ -385,7 +430,7 @@ ENDIF
 RETURNF DPOINT("GET" , , ARG , ARG:1 , FLAG:현M , @"던전%TOSTR(FLAG:현던전 , "00")%")
 
 ;=====================================================================
-;フ로어のANALYZE情報設置
+;플로어のANALYZE情報設置
 ;ARGは代入する数値で、
 ;以降の引数はそれぞれ、던전・階層・Ｘ・Ｙを示す
 ;=====================================================================
@@ -400,15 +445,15 @@ CALLF DPOINT("SET" , ARG , ARG:3 , ARG:4 , ARG:2 , @"던전%TOSTR(ARG:1 , "00")%
 RETURN 0
 
 ;=====================================================================
-;フ로어데이터作成処理
+;플로어데이터作成処理
 ;引数は던전番号
 ;=====================================================================
 @MAKE_FLOOR, ARG
-;던전ごとのフ로어데이터を取りに行く
+;던전ごとの플로어데이터を取りに行く
 CALLFORM MAKE_FLOOR_{ARG}
-;フ로어の기본데이터を체크し、なければセット
+;플로어の기본데이터を체크し、なければセット
 ;CALL SET_FLOOR_ANALYZE_DEFAULT, ARG, FLAG:현M
-;現在の던전の現在のフ로어のアナライズ情報を取得する
+;現在の던전の現在の플로어のアナライズ情報を取得する
 ;CALL SET_FLOOR_ANALYZE_T, ARG, FLAG:현M
 ;---- D3D 054 START (ADD) ------------------------------
 ;SIF EQUIP:MASTER:モノスコープ
@@ -418,7 +463,7 @@ D3D_WORP = 0
 ;---- D3D 054 END   (ADD) ------------------------------
 ;=====================================================================
 ;FLOOR_ANALYZE
-;フ로어전체や部屋をまとめてアナライズする
+;플로어전체や部屋をまとめてアナライズする
 ;ボス部屋などを使う際にどうぞ
 ;ARG M　ARG:1 X始点 ARG:2 X終点 Y始点 Y終点
 ;=====================================================================
@@ -435,7 +480,7 @@ FOR LOCAL:1, ARG:3, ARG:4
 	NEXT
 NEXT
 ;=====================================================================
-;現在のフ로어を描画
+;現在の플로어を描画
 ;=====================================================================
 @SHOW_FLOOR
 #LOCALSIZE 2
@@ -446,13 +491,9 @@ CALLFORM FLOORNAME_{FLAG:현던전}
 ;ALIGNMENT RIGHT
 IF FLAG:커스텀게임화면
 	PRINTFORML   ￥{MONEY,9}    ＣＯＭＰ용량： {NUM_NAKAMA() + 소프트용량()}/{FLAG:ＣＯＭＰ용량}사용중
-	SIF DELE_MAG_INCHARGE > 0
-		PRINTFORML MAG위임: {BASE:DELE_MAG_INCHARGE:ＭＡＧ,9}
 	PRINTFORM MAG:{BASE:MASTER:ＭＡＧ,9}    
 ELSE
 	PRINTFORML   ￥{MONEY,8}    ＣＯＭＰ용량： {NUM_NAKAMA() + 소프트용량()}/{FLAG:ＣＯＭＰ용량}사용중
-	SIF DELE_MAG_INCHARGE > 0
-		PRINTFORML MAG위임: {BASE:DELE_MAG_INCHARGE:ＭＡＧ,8}
 	PRINTFORM MAG:{BASE:MASTER:ＭＡＧ,8}    
 ENDIF
 IF FLAG:월령 != 0 && FLAG:월령 != 8
@@ -764,10 +805,14 @@ WHILE 1 == 1
 		BREAK
 	;탈출フラグ立ってたら終わり
 	IF FLAG:탈출
-		;마그네타이트 소모 담당 초기화
-		DELE_MAG_INCHARGE = 0
 		TRYCALLFORM EVENT_DUNGEON_END_{FLAG:현던전}
 		FLAG:탈출스킬금지 = 0
+		;-- タルタロスにF.O.E.『刈り取るもの』を追加するパッチ --------
+		;地形自動生成やF.O.E.制御関係のフラグやパラメータをクリアする。	※誤って値が残り続けることでの事故防止のため、ここでの初期化自体は常に行うようにする。
+		FLAG:지형자동생성・FOE플래그 = 0		;地形の自動生成およびF.O.E.を利用しない		※補足：地形の自動生成およびF.O.E.を利用する던전の場合、この後の「START_DUNGEON_{FLAG:현던전}」の関数内でフラグをONに設定します。
+		CALL CD_CLEAR_PARAMETERS				;地形自動生成・F.O.E.制御用の各種パラメータをクリアする
+		CALL CD_CREAR_TIME_AND_TURN, 0			;던전内の経過時間・経過ターン数カウントをクリアする
+		;-- タルタロスにF.O.E.『刈り取るもの』を追加するパッチ --------
 		BREAK
 	ENDIF
 	REDRAW 0
@@ -942,8 +987,14 @@ WHILE 1 == 1
 						CASEELSE
 							CALLFORM EVENT_CHECK_DUNGEON_{FLAG:현던전}
 					ENDSELECT
+					;-- 던전32:不思議な던전 --------
+					;「5」キーを押下してその場で待機の場合も敵シンボルが動く
+					IF FLAG:지형자동생성・FOE플래그 == 1
+						CALL SEF_SYMBOL_CHARA_ACTION
+					ENDIF
+					;-- 던전32:不思議な던전 --------
 				CASE "8"
-					;ラン란다ンジョンの판정
+					;ランランンジョンの판정
 					IF GETBIT(FLAG:232,0) == 0
 						;歩いて탐색
 						IF !RANGE(FLAG:현Y-1, 0, FLAG:최대Y-1)
@@ -995,7 +1046,7 @@ WHILE 1 == 1
 						ENDIF
 					ENDIF
 				CASE "4"
-					;ラン란다ンジョンの판정
+					;ランランンジョンの판정
 					IF GETBIT(FLAG:232,0) == 0
 						;歩いて탐색
 						IF !RANGE(FLAG:현X-1, 0, FLAG:최대X-1)
@@ -1047,7 +1098,7 @@ WHILE 1 == 1
 						ENDIF
 					ENDIF
 				CASE "6"
-					;ラン란다ンジョンの판정
+					;ランランンジョンの판정
 					IF GETBIT(FLAG:232,0) == 0
 						;歩いて탐색
 						IF !RANGE(FLAG:현X+1, 0, FLAG:최대X-1)
@@ -1099,7 +1150,7 @@ WHILE 1 == 1
 						ENDIF
 					ENDIF
 				CASE "2"
-					;ラン란다ンジョンの판정
+					;ランランンジョンの판정
 					IF GETBIT(FLAG:232,0) == 0
 						;歩いて탐색
 						IF !RANGE(FLAG:현Y+1, 0, FLAG:최대Y-1)
@@ -1227,7 +1278,7 @@ WHILE 1 == 1
 							CALLFORM EVENT_CHECK_DUNGEON_{FLAG:현던전}
 					ENDSELECT
 				CASE "w"
-					;ラン란다ンジョンの판정
+					;ランランンジョンの판정
 					IF GETBIT(FLAG:232,0) == 0
 						;歩いて탐색
 						IF !RANGE(FLAG:현Y-1, 0, FLAG:최대Y-1)
@@ -1279,7 +1330,7 @@ WHILE 1 == 1
 						ENDIF
 					ENDIF
 				CASE "a"
-					;ラン란다ンジョンの판정
+					;ランランンジョンの판정
 					IF GETBIT(FLAG:232,0) == 0
 						;歩いて탐색
 						IF !RANGE(FLAG:현X-1, 0, FLAG:최대X-1)
@@ -1331,7 +1382,7 @@ WHILE 1 == 1
 						ENDIF
 					ENDIF
 				CASE "d"
-					;ラン란다ンジョンの판정
+					;ランランンジョンの판정
 					IF GETBIT(FLAG:232,0) == 0
 						;歩いて탐색
 						IF !RANGE(FLAG:현X+1, 0, FLAG:최대X-1)
@@ -1383,7 +1434,7 @@ WHILE 1 == 1
 						ENDIF
 					ENDIF
 				CASE "s"
-					;ラン란다ンジョンの판정
+					;ランランンジョンの판정
 					IF GETBIT(FLAG:232,0) == 0
 						;歩いて탐색
 						IF !RANGE(FLAG:현Y+1, 0, FLAG:최대Y-1)
@@ -1739,6 +1790,12 @@ SIF RESULT || FLAG:인카운트하지않는다 || FLAG:탈출
 
 ;遭遇체크
 IF LOCAL == 0
+	;-- 던전32:不思議な던전 --------
+	;遭遇チェックのタイミングで敵シンボルの移動などの処理を行う
+	IF FLAG:지형자동생성・FOE플래그 == 1
+		CALL SEF_SYMBOL_CHARA_ACTION
+	ENDIF
+	;-- 던전32:不思議な던전 --------
 	LOCAL:3 = FLAG:인카운트율보정 + 100
 	SIF EQUIP:MASTER:에너미호이호이 && NUM_SUMMONER()
 		LOCAL:3 *= 2
@@ -2104,6 +2161,12 @@ SIF RESULT || FLAG:인카운트하지않는다 || FLAG:탈출
 ;遭遇체크
 ;遭遇したら２マス눈の移動はキャンセル
 IF LOCAL == 0
+	;-- 던전32:不思議な던전 --------
+	;遭遇チェックのタイミングで敵シンボルの移動などの処理を行う
+	IF FLAG:지형자동생성・FOE플래그 == 1
+		CALL SEF_SYMBOL_CHARA_ACTION
+	ENDIF
+	;-- 던전32:不思議な던전 --------
 	LOCAL:3 = FLAG:인카운트율보정 + 100
 	SIF EQUIP:MASTER:에너미호이호이 && NUM_SUMMONER()
 		LOCAL:3 *= 2
@@ -2393,6 +2456,12 @@ SIF RESULT || FLAG:인카운트하지않는다 || FLAG:탈출
 
 ;遭遇체크
 IF LOCAL == 0
+	;-- 던전32:不思議な던전 --------
+	;遭遇チェックのタイミングで敵シンボルの移動などの処理を行う
+	IF FLAG:지형자동생성・FOE플래그 == 1
+		CALL SEF_SYMBOL_CHARA_ACTION
+	ENDIF
+	;-- 던전32:不思議な던전 --------
 	LOCAL:3 = FLAG:인카운트율보정 + 100
 	SIF EQUIP:MASTER:에너미호이호이 && NUM_SUMMONER()
 		LOCAL:3 *= 2
@@ -3074,6 +3143,7 @@ IF !RESULT
 	RETURN -1
 ENDIF
 
+U = CHARA
 LOCAL:1 = 0
 IF (TALENT:CHARA:데빌시프터 !& TALENT:CHARA:식노) || CFLAG:CHARA:악마변신
 	FOR LOCAL, 1, 42
@@ -3610,7 +3680,35 @@ FOR LOCAL, 0, ENEMY_NUM
 	;ここで스테이터스変化させる場合の関数を呼ぶ
 	TRYCALLFORM SET_ENEMY_STATUS_{FLAG:현던전}, CHARANUM - 1
 NEXT
-;미타마코이코이
+;ミタマコイコイ
+IF EQUIP:MASTER:미타마코이코이 && 10 > LOCAL && GET_SUMMONER_MLV() > 2 && RAND:100 < GET_SUMMONER_MLV() - 2
+	CALLFORM ENEMY_{FLAG:현던전}, CLASS_NUM
+	FOR LOCAL:1,7,17
+		SIF POS(LOCAL:1) >= 0
+			CONTINUE
+		CALL SET_ENEMY, LOCAL:1, 1301 + RAND:4, ENEMYLV:(RAND:CLASS_NUM)
+		BREAK
+	NEXT
+ENDIF
+
+;東方MODEX虹追加分。
+;ミタマコイコイは戦闘開始時、空きがある場合、サマナーレベル-2%の確率で1匹だけ御霊が追加で配置される機能。
+;豪徳寺ミケのスキルは一律2％で同様の処理を行う様に。
+FOR LOCAL:1,1,7
+	LOCALS = 포지션{LOCAL:1}
+	IF FLAG:LOCALS > -1 && GET_STATE(CFLAG:(FLAG:LOCALS):상태이상) != "DYING" && HAVE_PU_SKILL(POS(LOCAL:1),"招符「弾災招福」")
+		IF RAND:100 < 2
+				CALLFORM ENEMY_{FLAG:현던전}, CLASS_NUM
+			FOR LOCAL:1,7,17
+				SIF POS(LOCAL:1) >= 0
+					CONTINUE
+				CALL SET_ENEMY, LOCAL:1, 1301 + RAND:4, ENEMYLV:(RAND:CLASS_NUM)
+				BREAK
+			NEXT
+		ENDIF
+	ENDIF
+NEXT
+
 IF EQUIP:MASTER:미타마코이코이 && 10 > LOCAL && GET_SUMMONER_MLV() > 2 && RAND:100 < GET_SUMMONER_MLV() - 2
 	CALLFORM ENEMY_{FLAG:현던전}, CLASS_NUM
 	FOR LOCAL:1,7,17
@@ -3795,7 +3893,7 @@ ENDIF
 ;罠箱発見処理
 ;=====================================================================
 @GET_TREASURE_TRAP,ARGS,ARG,ARG:1 = 0,ARG:2,ARG:3,ARG:4 = -1
-;ARGS = 罠の종류
+;ARGS = 덫の종류
 ;ARG 데미지量or확률
 ;ARG:1 バッド스테이터스の相性
 
@@ -3867,7 +3965,7 @@ ELSEIF RESULT == 1
 ENDIF
 
 ;=====================================================================
-;出입処理
+;出口処理
 ;=====================================================================
 @DUNGEON_EXIT
 PRINTL 출구가 있다. 밖으로 나가겠습니까? 
@@ -3891,9 +3989,16 @@ IF RESULT == 0
 	FLAG:현M = ARG
 	FLAG:현X = ARG:1
 	FLAG:현Y = ARG:2
-	;에스트마の効果リセット挟みませてもらいます
+	;エストマの効果リセット挟みませてもらいます
 	;CALL ENCOUNTER_CHANGER
-	;現在のフ로어데이터を読み込み
+	;-- タルタロスにF.O.E.『刈り取るもの』を追加するパッチ --------
+	;地形自動生成・F.O.E.制御を利用している場合はフロア移動時にクリアを行う
+	IF FLAG:지형자동생성・FOE플래그 == 1
+		CALL CD_CLEAR_PARAMETERS		;地形自動生成・F.O.E.制御用の各種パラメータをクリアする
+		CALL CD_CREAR_TIME_AND_TURN, 2	;現在フロアの経過時間・経過ターン数カウントをクリア
+	ENDIF
+	;-- タルタロスにF.O.E.『刈り取るもの』を追加するパッチ --------
+	;現在のフロアデータを読み込み
 	CALL MAKE_FLOOR, FLAG:현던전
 	CALL AUTOMAP
 	RETURN 1
@@ -3910,9 +4015,16 @@ CALL INPUT_YN,"Yes","No"
 
 IF RESULT == 0
 	FLAG:현M = ARG
-	;에스트마の効果リセット挟みませてもらいます
+	;エストマの効果リセット挟みませてもらいます
 	;CALL ENCOUNTER_CHANGER
-	;現在のフ로어데이터を読み込み
+	;-- タルタロスにF.O.E.『刈り取るもの』を追加するパッチ --------
+	;地形自動生成・F.O.E.制御を利用している場合はフロア移動時にクリアを行う
+	IF FLAG:지형자동생성・FOE플래그 == 1
+		CALL CD_CLEAR_PARAMETERS		;地形自動生成・F.O.E.制御用の各種パラメータをクリアする
+		CALL CD_CREAR_TIME_AND_TURN, 2	;現在フロアの経過時間・経過ターン数カウントをクリア
+	ENDIF
+	;-- タルタロスにF.O.E.『刈り取るもの』を追加するパッチ --------
+	;現在のフロアデータを読み込み
 	CALL MAKE_FLOOR, FLAG:현던전
 	;座標移動
 	FLAG:현X = SEARCH_ID(ARG:1) /100
@@ -3934,9 +4046,16 @@ IF RESULT == 0
 	FLAG:현M = ARG
 	FLAG:현X = ARG:1
 	FLAG:현Y = ARG:2
-	;에스트마の効果リセット挟みませてもらいます
+	;エストマの効果リセット挟みませてもらいます
 	;CALL ENCOUNTER_CHANGER
-	;現在のフ로어데이터を読み込み
+	;-- タルタロスにF.O.E.『刈り取るもの』を追加するパッチ --------
+	;地形自動生成・F.O.E.制御を利用している場合はフロア移動時にクリアを行う
+	IF FLAG:지형자동생성・FOE플래그 == 1
+		CALL CD_CLEAR_PARAMETERS		;地形自動生成・F.O.E.制御用の各種パラメータをクリアする
+		CALL CD_CREAR_TIME_AND_TURN, 2	;現在フロアの経過時間・経過ターン数カウントをクリア
+	ENDIF
+	;-- タルタロスにF.O.E.『刈り取るもの』を追加するパッチ --------
+	;現在のフロアデータを読み込み
 	CALL MAKE_FLOOR, FLAG:현던전
 	CALL AUTOMAP
 	RETURN 1
@@ -3953,9 +4072,16 @@ CALL INPUT_YN,"Yes","No"
 
 IF RESULT == 0
 	FLAG:현M = ARG
-	;에스트마の効果リセット挟みませてもらいます
+	;エストマの効果リセット挟みませてもらいます
 	;CALL ENCOUNTER_CHANGER
-	;現在のフ로어데이터を読み込み
+	;-- タルタロスにF.O.E.『刈り取るもの』を追加するパッチ --------
+	;地形自動生成・F.O.E.制御を利用している場合はフロア移動時にクリアを行う
+	IF FLAG:지형자동생성・FOE플래그 == 1
+		CALL CD_CLEAR_PARAMETERS		;地形自動生成・F.O.E.制御用の各種パラメータをクリアする
+		CALL CD_CREAR_TIME_AND_TURN, 2	;現在フロアの経過時間・経過ターン数カウントをクリア
+	ENDIF
+	;-- タルタロスにF.O.E.『刈り取るもの』を追加するパッチ --------
+	;現在のフロアデータを読み込み
 	CALL MAKE_FLOOR, FLAG:현던전
 	;座標移動
 	FLAG:현X = SEARCH_ID(ARG:1) /100
@@ -3977,10 +4103,10 @@ SIF FLAG:현M == ARG
 FLAG:현M = ARG
 FLAG:현X = ARG:1
 FLAG:현Y = ARG:2
-;現在のフ로어데이터を読み込み
+;現在の플로어데이터を読み込み
 CALL MAKE_FLOOR, FLAG:현던전
 CALL AUTOMAP
-;ラン란다ンジョン用のRUN중단フラグ立て
+;ランランンジョン用のRUN중단フラグ立て
 SIF GETBIT(FLAG:232,0) == 1
 	SETBIT FLAG:233,0
 ;移動後の던전이벤트呼び出し
@@ -3995,10 +4121,10 @@ SIF FLAG:현M == ARG
 	D3D_WORP = 1
 ;---- D3D 054 END   (ADD) ------------------------------
 FLAG:현M = ARG
-;ラン란다ンジョン用のRUN중단フラグ立て
+;ランランンジョン用のRUN중단フラグ立て
 SIF GETBIT(FLAG:232,0) == 1
 	SETBIT FLAG:233,0
-;現在のフ로어데이터を読み込み
+;現在の플로어데이터を読み込み
 CALL MAKE_FLOOR, FLAG:현던전
 	;座標移動
 	FLAG:현X = SEARCH_ID(ARG:1) /100
@@ -4050,6 +4176,7 @@ SIF ARG:2 == 0
 		PRINTL [6] 만트라 취득
 ;---- EDIT 050 MOD END   -------------------------		
 
+
 	DRAWLINE
 	PRINTL [0] 아무것도 하지 않는다
 
@@ -4074,7 +4201,7 @@ SIF ARG:2 == 0
 ;---- EDIT 050 MOD START   -----------------------
 		CASE 6
 			CALL KARMA_TERMINAL
-;---- EDIT 050 MOD END   -------------------------
+;---- EDIT 050 MOD END   -------------------------	
 	ENDSELECT
 	RESTART
 
@@ -4983,83 +5110,40 @@ FOR LOCAL:1,1,7
 		;종족が인간でも飛ばす
 		SIF ABL:LOCAL:종족 == 0
 			CONTINUE
-;---- EDIT 042 ADD START -------------------------
-		;저주의레드카펫起動中なら飛ばす
+		;---- EDIT 042 ADD START -------------------------
+		;呪いのレッドカーペット起動中なら飛ばす
 		SIF EQUIP:MASTER:저주의레드카펫
 			CONTINUE
-;---- EDIT 042 ADD END -------------------------
+		;---- EDIT 042 ADD END -------------------------
 		IF CFLAG:LOCAL:ＭＡＧ자가소비 == 1
-		;자기소비가 ＯＮ이라면 자신의 ＭＡＧ를 본다
+			;自己消費がＯＮなら自分のＭＡＧを見る
 			IF BASE:LOCAL:ＭＡＧ == 0
-			;악마 자신의 MAG가 고갈될 경우
-				IF BASE:DELE_MAG_INCHARGE:ＭＡＧ == 0
-				;마그네타이트 공급요원의 MAG가 0이 될 경우
-					IF DELE_MAG_INCHARGE == MASTER
-					;마그네타이트 공급요원이 아나타일 경우, 악마는 체력 기력에 데미지를 받는다
-						CALL VAR_HP,LOCAL,-(MAXBASE:LOCAL:ＨＰ/10),0
-						CALL VAR_MP,LOCAL,-(MAXBASE:LOCAL:ＭＰ/10),0
-					ELSE
-					;마그네타이트 공급요원이 동료 서머너일 경우, 공급요원 역할이 아나타로 전환된다
-						DELE_MAG_INCHARGE = MASTER
-						IF BASE:DELE_MAG_INCHARGE:ＭＡＧ == 0
-						;근데 아나타마저 MAG가 없다면, 악마는 체력 기력에 데미지를 받는다
-							CALL VAR_HP,LOCAL,-(MAXBASE:LOCAL:ＨＰ/10),0
-							CALL VAR_MP,LOCAL,-(MAXBASE:LOCAL:ＭＰ/10),0
-						ELSE
-						;여기서 아나타가 MAG를 갖고 있다면, 전환되는 그 즉시 아나타가 MAG를 지불한다
-							CALL CONTROL_MAG, DELE_MAG_INCHARGE, -MAXBASE:LOCAL:CP * FLAG:MAG소비율 / 100
-						ENDIF
-					ENDIF
+				;ＭＡＧが空の場合主人を見る
+				IF BASE:MASTER:ＭＡＧ == 0
+					;主人のも空ならダメージ処理
+					CALL VAR_HP,LOCAL,-(MAXBASE:LOCAL:ＨＰ/10),0
+					CALL VAR_MP,LOCAL,-(MAXBASE:LOCAL:ＭＰ/10),0
 				ELSE
-				;마그네타이트 공급요원의 MAG가 대신 지불된다
-					CALL CONTROL_MAG, DELE_MAG_INCHARGE, -MAXBASE:LOCAL:CP * FLAG:MAG소비율 / 100
+					CALL CONTROL_MAG, MASTER, -MAXBASE:LOCAL:CP * FLAG:MAG소비율 / 100
 				ENDIF
 			ELSE
-			;악마 자신이 MAG를 소비
+				;空でなければ自分で消費
 				CALL CONTROL_MAG,LOCAL, -MAXBASE:LOCAL:CP * FLAG:MAG소비율 / 100
 			ENDIF
 		ELSE
-		;자기소비가 ＯＦＦ라면 주인의 ＭＡＧ를 본다
-			IF BASE:DELE_MAG_INCHARGE:ＭＡＧ == 0
-			;마그네타이트 공급요원의 MAG가 0이 될 경우
+			;自己消費がＯＦＦなら主人のＭＡＧを見る
+			IF BASE:MASTER:ＭＡＧ == 0
+				;主人のＭＡＧが空の場合自分のＭＡＧを見る
 				IF BASE:LOCAL:ＭＡＧ == 0
-				;악마 자신의 MAG가 고갈될 경우
-					IF DELE_MAG_INCHARGE == MASTER
-					;공급요원이 아나타일 경우(아나타마저 MAG가 없다는 얘기니까), 악마는 체력 기력에 데미지를 받는다
-						CALL VAR_HP,LOCAL,-(MAXBASE:LOCAL:ＨＰ/10),0
-						CALL VAR_MP,LOCAL,-(MAXBASE:LOCAL:ＭＰ/10),0
-					ELSE
-					;마그네타이트 공급요원이 동료 서머너일 경우, 공급요원 역할이 아나타로 전환된다
-						DELE_MAG_INCHARGE = MASTER
-						IF BASE:DELE_MAG_INCHARGE:ＭＡＧ == 0
-						;근데 아나타마저 MAG가 없다면, 악마는 체력 기력에 데미지를 받는다
-							CALL VAR_HP,LOCAL,-(MAXBASE:LOCAL:ＨＰ/10),0
-							CALL VAR_MP,LOCAL,-(MAXBASE:LOCAL:ＭＰ/10),0
-						ELSE
-						;여기서 아나타가 MAG를 갖고 있다면, 전환되는 그 즉시 아나타가 MAG를 지불한다
-							CALL CONTROL_MAG, DELE_MAG_INCHARGE, -MAXBASE:LOCAL:CP * FLAG:MAG소비율 / 100
-						ENDIF
-					ENDIF
+					;主人のも空ならダメージ処理
+					CALL VAR_HP,LOCAL,-(MAXBASE:LOCAL:ＨＰ/10),0
+					CALL VAR_MP,LOCAL,-(MAXBASE:LOCAL:ＭＰ/10),0
 				ELSE
-				;악마가 지불하기 전에, 상황을 따져본다
-					IF DELE_MAG_INCHARGE != MASTER
-					;공급요원이 아나타가 아닐 경우, 일단 아나타한테 공급요원의 역할이 넘어간다
-						DELE_MAG_INCHARGE = MASTER
-						IF BASE:DELE_MAG_INCHARGE:ＭＡＧ == 0
-						;근데 아나타마저 MAG가 없다면, 악마가 MAG를 지불한다
-							CALL CONTROL_MAG, LOCAL,-MAXBASE:LOCAL:CP * FLAG:MAG소비율 / 100
-						ELSE
-						;여기서 아나타가 MAG를 갖고 있다면, 전환되는 그 즉시 아나타가 MAG를 지불한다
-							CALL CONTROL_MAG, DELE_MAG_INCHARGE, -MAXBASE:LOCAL:CP * FLAG:MAG소비율 / 100
-						ENDIF
-					ELSE
-					;공급요원이 아나타일 경우(아나타마저 MAG가 없다는 얘기니까), 악마가 MAG를 지불한다
-						CALL CONTROL_MAG, LOCAL,-MAXBASE:LOCAL:CP * FLAG:MAG소비율 / 100
-					ENDIF
+					CALL CONTROL_MAG, LOCAL,-MAXBASE:LOCAL:CP * FLAG:MAG소비율 / 100
 				ENDIF
 			ELSE
-			;마그네타이트 공급요원이 MAG를 지불한다
-				CALL CONTROL_MAG,DELE_MAG_INCHARGE,-MAXBASE:LOCAL:CP  * FLAG:MAG소비율 / 100
+				;空でなければ主人で消費
+				CALL CONTROL_MAG,MASTER,-MAXBASE:LOCAL:CP  * FLAG:MAG소비율 / 100
 			ENDIF
 		ENDIF
 	ENDIF
@@ -5069,41 +5153,12 @@ NEXT
 ;ＭＡＧ소비切り替え
 ;===================================================================
 @SWITCH_MAG
-#LOCALSIZE 6
-#DIM DYNAMIC LCOUNT
-REDRAW 0
-LCOUNT = LINECOUNT
 
 $PRINT_LIST
-;중마 유지용 마그네타이트 소모 담당을 정하는 부문
 DRAWLINE
-PRINTFORML 【ＭＡＧ충당요원 = 주인】
-FOR LOCAL,1,7
-	LOCALS = 포지션{LOCAL}
-	SIF FLAG:LOCALS < 0
-		CONTINUE
-	;종족이 악마인 경우이면서 아나타가 아닌 경우는 넘어간다(아나타는 인간이 아니어도 MAG충당요원에 해당)
-	SIF ABL:(FLAG:LOCALS):종족 > 0 && ((FLAG:LOCALS) != MASTER)
-		CONTINUE
-	;아나타(인간이 아닐수도 있음)를 제외한 인간 동료가 서머너가 아닐 경우, 넘어간다
-	SIF TALENT:(FLAG:LOCALS):서머너 == 0 && ((FLAG:LOCALS) != MASTER)
-		CONTINUE
-	PRINTFORM [{LOCAL}]　
-	CALL ARRANGE_CHARALIST_2,FLAG:LOCALS
-	PRINTFORML 　MAG:[{BASE:(FLAG:LOCALS):ＭＡＧ,8}/{MAXBASE:(FLAG:LOCALS):ＭＡＧ,8}] \@ DELE_MAG_INCHARGE == (FLAG:LOCALS) ? MAG공급담당 # 비담당 \@
-NEXT
-;중마의 MAG소모 방식을 정하는 부문
-DRAWLINE
-PRINTFORML ＭＡＧ비용을 바꾸고 싶은 동료마를 선택해주세요
 FOR LOCAL,1,7
 	LOCALS = 포지션{LOCAL}
 	SIF FLAG:LOCALS < 1
-		CONTINUE
-	;CP가 0인 경우는 넘어간다
-	SIF BASE:(FLAG:LOCALS):CP == 0
-		CONTINUE
-	;종족이 인간인 경우는 넘어간다
-	SIF ABL:(FLAG:LOCALS):종족 == 0
 		CONTINUE
 	PRINTFORM [{LOCAL}]　
 	CALL ARRANGE_CHARALIST_2,FLAG:LOCALS
@@ -5111,6 +5166,9 @@ FOR LOCAL,1,7
 	PRINTFORM 　MAG:[{BASE:(FLAG:LOCALS):ＭＡＧ,8}/{MAXBASE:(FLAG:LOCALS):ＭＡＧ,8}] \@ CFLAG:(FLAG:LOCALS):ＭＡＧ자가소비 ? 자기소비 # 주인소비 \@
 NEXT
 PRINTL
+
+DRAWLINE
+PRINTFORML ＭＡＧ소비를 바꾸고 싶은 캐릭터를 선택해주세요
 DRAWLINE
 
 PRINTLC [1000]돌아간다
@@ -5119,34 +5177,17 @@ $INPUT_LOOP_1
 INPUT
 LOCALS = 포지션{RESULT}
 IF RESULT == 1000
-	REDRAW 1 ;emuera 재(再)그리기 on
 	RETURN 0
-ELSEIF (RESULT < 1 || RESULT > 6) || POS(RESULT) < 0
-	CLEARLINE 1
-	REUSELASTLINE
+ELSEIF RESULT < 1 || RESULT > 6 || FLAG:LOCALS < 1
 	GOTO INPUT_LOOP_1
 ELSE
-	IF ((TALENT:(FLAG:LOCALS):서머너 > 0 && (ABL:(FLAG:LOCALS):종족 == 0 || BASE:(FLAG:LOCALS):CP == 0)) || (FLAG:LOCALS == MASTER)) && FLAG:LOCALS > -1
-	;마그네타이트 공급담당 지정
-		DELE_MAG_INCHARGE = (FLAG:LOCALS)
-		CLEARLINE LINECOUNT - LCOUNT
-		RESTART
-	ELSEIF ABL:(FLAG:LOCALS):종족 > 0 && BASE:(FLAG:LOCALS):CP > 0 && (FLAG:LOCALS != MASTER && FLAG:LOCALS > 0)
-	;중마 마그네타이트 소비방식 변경
-		IF CFLAG:(FLAG:LOCALS):ＭＡＧ자가소비 == 0
-			CFLAG:(FLAG:LOCALS):ＭＡＧ자가소비 = 1
-		ELSE
-			CFLAG:(FLAG:LOCALS):ＭＡＧ자가소비 = 0
-		ENDIF
-		CLEARLINE LINECOUNT - LCOUNT
-		RESTART
+	IF CFLAG:(FLAG:LOCALS):ＭＡＧ자가소비 == 0
+		CFLAG:(FLAG:LOCALS):ＭＡＧ자가소비 = 1
 	ELSE
-		CLEARLINE 1
-		REUSELASTLINE
-		GOTO INPUT_LOOP_1
+		CFLAG:(FLAG:LOCALS):ＭＡＧ자가소비 = 0
 	ENDIF
 ENDIF
-
+RESTART
 
 
 ;===================================================================
@@ -5201,7 +5242,7 @@ IF FLAG:월령 == 0 && FLAG:SHOP커맨드 == 101
 	FLAG:에스트마 = 0
 	FLAG:라이트마 = 0
 	FLAG:리프트마 = 0
-	CALL 酔い깨달음まし()
+	CALL 술에서깸()
 	TRYCALLFORM EVENT_NEWMOON_DUNGEON{FLAG:현던전}
 ENDIF
 
@@ -5320,6 +5361,16 @@ CATCH
 		LOCALS = %RESULTS%
 	ENDCATCH
 ENDCATCH
+
+;-- 던전32:不思議な던전 --------
+;動的に特殊タイルを設定する	※シンボルエンカウントなどの『移動するオブジェクト』対応
+;　※M番号、X座標、Y座標を関数名ではなく引数で渡すことでシンボルエンカウントなどの『移動するオブジェクト』の描画に対応可能とする
+IF FLAG:지형자동생성・FOE플래그 == 1
+	CALL SEF_TILE_MARK_DYBANUC, LX, LY
+	LOCALS = %RESULTS%
+ENDIF
+;-- 던전32:不思議な던전 --------
+
 ;---- EDIT 051 MOD  -------------------------
 IF GETCOLOR() == GETDEFCOLOR()
 	SELECTCASE LOCALS
@@ -5331,19 +5382,20 @@ IF GETCOLOR() == GETDEFCOLOR()
 			ELSE
 				SETCOLOR 0x777766
 			ENDIF
-		CASE "문"
+		;KR판 임의수정, 원본명 CASE 추가
+		CASE "扉", "문"
 			SETCOLOR 0x8888aa
-		CASE "보"
+		CASE "宝", "보"
 			SETCOLOR 0xffdd99
-		CASE "덫"
+		CASE "罠", "덫"
 			SETCOLOR 0xbb0033
-		CASE "승", "강"
+		CASE "昇", "降", "승", "강"
 			SETCOLOR 0x44aa00
 		CASE "Ｔ", "ｔ", "！"
 			SETCOLOR 0xaa44ff
 		CASE "Ｒ", "Ｃ"
 			SETCOLOR 0x77bbff
-		CASE "↑", "→", "↓", "←", "Ｅ", "출"
+		CASE "↑", "→", "↓", "←", "Ｅ", "出", "출"
 			SETCOLOR 0xff7700
 		CASEELSE
 	ENDSELECT
