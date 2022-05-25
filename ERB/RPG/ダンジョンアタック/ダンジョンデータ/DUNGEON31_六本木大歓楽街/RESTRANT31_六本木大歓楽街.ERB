@@ -1,0 +1,374 @@
+﻿;六本木大歓楽街
+;エロレストラン関連
+
+;もしかしたらこちらもなんか弄るかも…と思って分割
+;例によって共通化できそうな部分を一本化
+;…といっても娼館よりかはまだまだ修正の余地あり→11/20：少し改修。料理とか後で増やしやすいように対応
+;21/10/29　ファイル分割。中身は以前と同じ
+;21/11/20　第3の娼館こと援助の斡旋が可能なように対応。お持ち帰りも作成したが現時点では対応キャラいないのでガワだけ
+
+;フラグ管理メモ
+;26　エロレストラン、今まで利用したかどうかチェック
+;40番台　カフェ利用フラグ
+
+;=======================================================================
+;エロレストラン、食器持ち込みＯＫ、女体盛りや乳盃、おっぱいミルクティーやそれらの合わせ技を楽しめる
+;(第3の娼館として援助の斡旋所の機能を追加)
+;=======================================================================
+@RESTRANT31_BASE
+
+CALL MESSAGE_WINDOW_D, "노출한여자", @"카페・큐피드의 화살에 어서오세요"
+IF 던전플래그:31:26 == 0
+	;初回時
+	CALL MESSAGE_WINDOW_D, "", @"＞비밀스런 그곳이나 풍만한 가슴을 숨기기는 커녕、거기만 노출된 웨이트리스 옷을 입은 여자가 있다/＞이 가게의 접수원인것 같다/＞여자는 맥이 풀린 말투로 이쪽에 말을 걸어왔다…"
+	CALL MESSAGE_WINDOW_D, "노출한 웨이트리스", @"이런, 고객님은 본 점포의 이용이 처음이시네요/룰을 설명하겠습니다ー"
+	;再説明時はここから
+	$RESTRANT_INFO
+	CALL MESSAGE_WINDOW_D, "노출한 웨이트리스", @"본 점포는 고객님의 욕망을 충분히 만족시킬 수 있는 여자들과ー/조금 야한 식사를 즐기는 카페입니다."
+	CALL MESSAGE_WINDOW_D, "노출한 웨이트리스", @"본 점포는 식기로서 여성을 채용하고 있습니다 그러니ー/마음껏 즐기고 먹고 가세요ー"
+	CALL MESSAGE_WINDOW_D, "노출한 웨이트리스", @"또한 본 점포는 식당이니ー/핥는 정도의 식사는 상관없습니다만ー/그 이상의 행위는 금지되어 있습니다ー"
+	;ここ追記分(21/11/19)
+	CALL MESSAGE_WINDOW_D, "노출한 웨이트리스", @"대신이라고는 합니다만ー/본 점포는 원조를 희망하는 여자아이를 중개하고 있기 때문에ー/희망하시는 분은 그쪽으로 부탁드립니다ー"
+	CALL MESSAGE_WINDOW_D, "노출한 웨이트리스", @"그럼 부디ー/본 점포의 서비스를 즐겨가 주시길ー"
+	SIF 던전플래그:31:26 == 0
+		던전플래그:31:26 = 1
+ENDIF
+$REST_LOOP
+CALL MESSAGE_WINDOW_D, "노출한 웨이트리스", @"그럼ー/오늘은 어떻게 하시겠습니까아？"
+CALL INPUT_SELECT_D, "[1]요리를 주문한다く/[2]설명을 듣는다/[3]원조한다/[4]데리고 돌아간다///[0]그만둔다" , , , 2
+SELECTCASE RESULT
+	CASE 2
+		;説明を聞く
+		GOTO RESTRANT_INFO
+	CASE 0
+		CALL MESSAGE_WINDOW_D, "노출한 웨이트리스", @"감사합니다아"
+		CALL DUNGEON_WORP,2,14,1
+	CASE 1
+		;食事
+		CALL MESSAGE_WINDOW_D, "노출한 웨이트리스", @"그러며언/오늘의 메뉴는 이쪽입니다만ー/어떻게 하시겠습니까아？"
+		$REST_LOOP_1
+		CALLFORM RESTRANT31_MENU_LIST
+		IF RESULT == 0
+			;やめる
+			GOTO REST_LOOP
+		ELSE
+			CALLFORM RESTRANT31_MENU, RESULT
+			CALL MESSAGE_WINDOW_D, "노출한 웨이트리스", @"고객니임/다른 주문은ー/있으신가요오？"
+			GOTO REST_LOOP_1
+		ENDIF
+	CASE 3
+		;仲介
+		CALL MESSAGE_WINDOW_D, "노출한 웨이트리스", @"희망하는 여자아이느은/이쪽이 되겠습니다아"
+		$REST_LOOP_2
+		CALLFORM SORP_LIST_NEW, 1, 3
+		IF RESULT == 0
+			;やめる
+			GOTO REST_LOOP
+		ELSE
+			LOCAL = 0
+			LOCAL = RESULT
+		ENDIF
+		CALLFORM SORP_PLAY_{LOCAL}, "紹介文"
+		CALLFORM SORP_PLAY_{LOCAL}, "確認"
+		CALLFORM SORP_PLAY_{LOCAL}, "価格"
+		IF MONEY:1 < RESULT
+			CALL MESSAGE_WINDOW_D, "노출한 웨이트리스", @"고객니임/마카가 부족합니다아"
+			GOTO REST_LOOP_2
+		ENDIF
+		CALLFORM SORP_PLAY_{LOCAL}, "キャラ名"
+		CALL MESSAGE_WINDOW_D, "", @"%RESULTS%を援助しますか？"
+		CALL INPUT_YN_D , "원조한다" , "다른 계집으로 한다"
+		IF RESULT == 0
+			CALL MESSAGE_WINDOW_D, "노출한 웨이트리스", @"그러며연/あちらの個室でお待ちくださいー"
+			CALLFORM SORP_PLAY_{LOCAL}, "価格"
+			MONEY:1 -= RESULT
+			CALLFORM SORP_PLAY_{LOCAL}, "プレイ口上"
+			CALL DUNGEON_WORP,2,14,1
+		ELSE
+			CALL MESSAGE_WINDOW_D, "노출한 웨이트리스", @"他に希望の女の子はー/ございますかー？"
+			GOTO REST_LOOP_2
+		ENDIF
+	CASE 4
+		;お持ち帰り
+		CALL MESSAGE_WINDOW_D, "노출한 웨이트리스", @"女の子のー/お持ち帰りですかー？"
+		CALLFORM SORP_CAN_BUY_COUNT_NEW, 3
+		LOCAL = RESULT
+		IF LOCAL == 0
+			CALL MESSAGE_WINDOW_D, "노출한 웨이트리스", @"残念ですがお持ち帰り希望の女の子がいませんよー/当店はあくまでも仲介なのでー/女の子の同意がないとお持ち帰りできませんよー"
+			GOTO REST_LOOP
+		ENDIF
+		$REST_LOOP_3
+		CALL MESSAGE_WINDOW_D, "노출한 웨이트리스", @"お持ち帰りを希望している女の子はー/以下となりますー"
+		CALLFORM SORP_LIST_NEW, 2, 3
+		IF RESULT == 0
+			;やめる
+			GOTO REST_LOOP
+		ELSE
+			LOCAL = 0
+			LOCAL = RESULT
+		ENDIF
+		CALLFORM SORP_PLAY_{LOCAL}, "身受け確認"
+		CALLFORM SORP_PLAY_{LOCAL}, "身受け価格"
+		IF MONEY:1 < RESULT
+			CALLFORM SORP_PLAY_{LOCAL}, "キャラ名"
+			CALL MESSAGE_WINDOW_D, "노출한 웨이트리스", @"고객니임/마카가 부족합니다아"
+			GOTO REST_LOOP_3
+		ENDIF
+		CALL INPUT_YN_D , "데리고 돌아간다" , "다른 계집으로 한다"
+		IF RESULT == 0
+			CALLFORM SORP_PLAY_{LOCAL}, "キャラ名"
+			CALL MESSAGE_WINDOW_D, "노출한 웨이트리스", @"그러며연/잠시만 기다려 주세요오/불러오겠습니다아"
+			CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+			CALL MESSAGE_WINDOW_D, "노출한 웨이트리스", @"나머지는 자유롭게ー/이 뒤를 희망하신다며언/맞은편 빌딩에 있는 계열 호텔을 추천합니다아"
+			CALLFORM SORP_PLAY_{LOCAL}, "身受け口上"
+			CALL DUNGEON_WORP,2,14,1
+		ELSE
+			GOTO REST_LOOP_3
+		ENDIF
+	CASEELSE
+		GOTO REST_LOOP
+ENDSELECT
+
+;=======================================================================
+;メニューの処理
+;=======================================================================
+;もっとお手軽に手が出せるように1/20に値下げ。
+;あと、アルカディアと被るけどPT전체にMAG補給する効果を追加
+;量自体は及ばないがPT전체が対象なことと、経験等の加算なしな点で差別化
+
+;メニューリスト
+@RESTRANT31_MENU_LIST
+#DIMS VALUES
+
+VALUES = [1]여체접시(女体盛り) 아・라・모드 ５０
+VALUES += @"/[2]가슴잔 ３５"
+VALUES += @"/[3]밀크티 ３０"
+VALUES += @"/[4]자지밀크셰이크 ４０"
+VALUES += @"/"
+VALUES += @"/"
+VALUES += @"/[0]그만둔다"
+CALL INPUT_SELECT_D , VALUES , , , 2
+
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASEELSE
+		RETURN RESULT
+ENDSELECT
+
+;メニュー選択時
+@RESTRANT31_MENU, ARG
+#DIM 価格
+
+SELECTCASE ARG
+	CASE 1
+		;つるぺたリリム
+		CALL MESSAGE_WINDOW_D, "노출한 웨이트리스", @"여체접시 아・라・모드느은/５０마카입니다아/어떻게 하시겠습니까아？"
+		価格 = 50
+	CASE 2
+		;おっぱいサキュバス
+		CALL MESSAGE_WINDOW_D, "노출한 웨이트리스", @"가슴잔은ー/３５마카입니다아/어떻게 하시겠습니까아？"
+		価格 = 35
+	CASE 3
+		;母乳ヴェパール
+		CALL MESSAGE_WINDOW_D, "노출한 웨이트리스", @"밀크티느은/３０마카입니다아/어떻게 하시겠습니까아？"
+		価格 = 30
+	CASE 4
+		;ふたなりエルフor男の娘インプ
+		CALL MESSAGE_WINDOW_D, "노출한 웨이트리스", @"자지밀크셰이크느은/４０마카입니다아/어떻게 하시겠습니까아？"
+		価格 = 40
+	CASEELSE
+		RETURN
+ENDSELECT
+
+CALL INPUT_YN_D , "주문한다" , "그만둔다"
+IF RESULT == 0
+	IF MONEY:1 < 価格
+		CALL MESSAGE_WINDOW_D, "노출한 웨이트리스", @"고객니임/마카가 부족합니다아"
+		RETURN
+	ENDIF
+	MONEY:1 -= 価格
+	
+	;4の時は追加選択。
+	IF ARG == 4
+		CALL MESSAGE_WINDOW_D, "노출한 웨이트리스", @"그러면 고객니임/식기의 종류를 선택해 주십시오ー"
+		CALL INPUT_YN_D , "후타나리" , "오토코노코"
+		ARG += RESULT
+	ENDIF
+	
+	CALL MESSAGE_WINDOW_D, "노출한 웨이트리스", @"그려며언/잠시만 기다려 주세요오"
+	CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+	CALL SHOW_PICTURE, "EMPTY"
+	CALL MESSAGE_WINDOW_D, "노출한 웨이트리스", @"기다리셨습니다아/부디 천천히ー/"
+
+	CALLFORM RESTRANT31_EAT_{ARG}
+	;PT全員にMAG供給のオマケ効果を追加。入手MAGは価格*100
+	FOR LOCAL,1,7
+		IF POS(LOCAL) > -1
+			BASE:POS(LOCAL):ＭＡＧ += 価格 * 100
+			SIF BASE:POS(LOCAL):ＭＡＧ > MAXBASE:POS(LOCAL):ＭＡＧ
+				BASE:POS(LOCAL):ＭＡＧ = MAXBASE:POS(LOCAL):ＭＡＧ
+		ENDIF
+	NEXT
+	CALL MESSAGE_WINDOW_D, "", @"파티 전체에 MAG가 보급되었다…"
+	RETURN
+ELSE
+	RETURN
+ENDIF
+
+;=======================================================================
+;食事内容
+;=======================================================================
+;ごめんなさい…わかめ酒、趣味じゃないんで書けないんです…ごめんなさい…
+;というかエロ文章力を下さい…
+;------------
+;つるぺたリリム
+@RESTRANT31_EAT_1, ARGS
+
+IF 던전플래그:31:40 == 0
+	던전플래그:31:40 = 1
+	CALL MESSAGE_WINDOW_D, "", @"＞운반되어 온 것은 완만한 체형의 리림이었다/＞전라에 음부를 노출했지만/＞평탄한 가슴에는 그것을 보충하듯 푸딩을 배치했고/>날개는 크림이나 잼으로 칠색을 그렸다"
+	CALL MESSAGE_WINDOW_D, "리림", @"하아… 하아…%ハート()%/손님、손님 아무쪼록 맛있게 드셔주세요%ハート()%"
+	CALL MESSAGE_WINDOW_D, "", @"＞본인도 이렇게 말하고 있고、조속히 받도록 하자/>먼저 그대로 가슴에 놓여있는 푸딩을 먹자…"
+	CALL MESSAGE_WINDOW_D, "리림", @"앗… 햐앙！/ 숟가락이 기분좋아요、고객님%ハート()%"
+	CALL MESSAGE_WINDOW_D, "", @"＞숟가락이 가슴에 닿을 때마다 리림은 흥분해/>날개의 소스와 크림이 섞인다/>이것도 숟가락으로 긁어내어、일부러 가슴에 얹어 푸딩과 함께…"
+	CALL MESSAGE_WINDOW_D, "리림", @"히이… 후아아%ハート()%/날개가 차가워서… 아읏！/아、안돼 나와버렷！"
+	CALL MESSAGE_WINDOW_D, "리림", @"아…/아힛%ハート()%"
+	CALL MESSAGE_WINDOW_D, "", @"＞갑자기 리림의 가슴에서 모유가 흘러나와、푸딩의 캐러멜 소스와 섞인다/>아울러 치구도 완전히 젖어、이쪽도 소스로 사용할 수 있을 것이다"
+	CALL MESSAGE_WINDOW_D, "리림", @"그럼 손님…/ 소스는 모두 나왔습니다…/손님의 취향에 맞추어 드셔주세요%ハート()%"
+	CALL MESSAGE_WINDOW_D, "", @"＞이미 피로한 기색이 보이는 리림이었지만、푸딩은 더 남아있다/>물론 소스는 계속 쏟아져 나온다/>"+ CALLNAME:MASTER +"은 리림의 교성을 배경으로 맛있게 푸딩을 먹었다…"
+ELSE
+	CALL MESSAGE_WINDOW_D, "", @"＞오늘도 리림의 납작한 몸을 접시 대신/>가슴에 푸딩을 날개에 소스를 얹은 아・라・모드가 운반되어 왔다"
+	CALL MESSAGE_WINDOW_D, "리림", @"그럼 손님、/오늘도 부디 완식해 주세요%ハート()%"
+	IF RAND:3 == 0
+		;行儀悪いのは３分の１です
+		CALL MESSAGE_WINDOW_D, "", @"＞오늘은 조금 버릇없게、가슴의 푸딩을 그대로 찌르기로했다/>생각보다 고정되어 있었으므로、잘만 한다면…"
+		CALL MESSAGE_WINDOW_D, "리림", @"히잇%ハート()%/푸딩이 내 가슴을 빨아들여%ハート()%"
+		CALL MESSAGE_WINDOW_D, "", @"＞일부러 숟가락을 가슴에 닿게하지 않고/>푸딩 너머로 약한 자극을 계속하는 것으로 충분한 밀크를 나오게했다…"
+		CALL MESSAGE_WINDOW_D, "리림", @"아、내 밀크푸딩…/맛있습니까%ハート()%"
+		CALL MESSAGE_WINDOW_D, "", @"＞아주 맛있다/>가끔씩 날개의 소스를 찍어 맛을 바꿔가며/＞" + CALLNAME:MASTER + "은 리림의 푸딩을 맛있게 먹었다…"
+	ELSE
+		CALL MESSAGE_WINDOW_D, "", @"＞오늘은 밀크소스의 기분이다/>제대로 ２개 있는 숟가락을 다뤄、리림의 양 유두를 찾아냈다/>거기를 동글동글 으깨어 주면…"
+		CALL MESSAGE_WINDOW_D, "리림", @"앗…히잇！/ 그렇게 짓눌리면 흘러…/아앗、나와버립니다아%ハート()%"
+		CALL MESSAGE_WINDOW_D, "", @"＞…잘되어 푸딩은 순식간에 밀크소스 범벅으로 변모했다/>이후는 쏟아져 나오는 밀크와 함께 숟가락에 올려주면 된다/>비밀(秘蜜)도 섞어서 악센트로 할까…"
+		CALL MESSAGE_WINDOW_D, "리림", @"응 아앗%ハート()%/클리쨩 잡는거 그만해줘%ハート()%"
+	ENDIF
+ENDIF
+CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+CALL MESSAGE_WINDOW_D, "", @"＞이윽고 푸딩이 없어질 무렵、리림은 조금 전의 웨이트리스에게 운반되어 갔다…"
+
+;------------
+;おっぱいサキュバス
+@RESTRANT31_EAT_2
+
+IF 던전플래그:31:41 == 0
+	던전플래그:31:41 = 1
+	CALL MESSAGE_WINDOW_D, "", @"＞운반되어 온 것은 너무나 거대한 가슴을 가진 서큐버스였다/>정좌된 하체를 고정하여、노출된 허리 위만이 움직일 수 있는 것 같다…/>서큐버스는 그 가는 팔로 가슴을 들어올려…"
+	CALL MESSAGE_WINDOW_D, "서큐버스", @"손님/부디 계곡에、마음껏 술을 따라주세요%ハート()%"
+	CALL MESSAGE_WINDOW_D, "", @"＞서큐버스를 운반해온 카트에는、와인이 놓여져 있었다/>이 계곡에 쏟아주면 좋을까…"
+	CALL MESSAGE_WINDOW_D, "서큐버스", @"예、고객님 /정말 잘하시네요、처음이라고 생각되지 않을 정도에요%ハート()%/그럼 이번에는 제쪽에서…"
+	CALL MESSAGE_WINDOW_D, "", @"＞말하자마자 서큐버스는 스스로의 계곡에 입을 대고/>자기 입으로 와인을 머금었다/>아무래도 입으로 옮겨주는 것 같다…"
+	CALL MESSAGE_WINDOW_D, "서큐버스", @"읏… 쥬룻… 주훗…/후우、맛있으셨습니다、고객님%ハート()%"
+	CALL MESSAGE_WINDOW_D, "", @"서로、서큐버스의 계곡주를 마시거나 마시게하거나 하며 시간을 보냈다…"
+ELSE
+	CALL MESSAGE_WINDOW_D, "", @"＞여전히 거대한 가슴을 자랑하는 서큐버스다/>이번엔 양팔로 가슴을 끼우고…"
+	CALL MESSAGE_WINDOW_D, "서큐버스", @"고객님/부디 오늘 밤도、마음껏 저의 계곡을 마셔주세요%ハート()%"
+	IF RAND:2 == 0
+		CALL MESSAGE_WINDOW_D, "", @"＞이번에는 반대로 가슴 아래에서 마셔보기로하였다/>무릎베개되는 것 같은 자세기 되어、미세한 틈새에서 새어나오는 술에 달라붙었다"
+		CALL MESSAGE_WINDOW_D, "서큐버스", @"히익！/고、고객님%ハート()%/저、가슴 아래는 약해요%ハート()%"
+		CALL MESSAGE_WINDOW_D, "", @"＞이렇게 거대한 가슴이다、혼자서는 주무를수 없겠지/>그런 생각을하면서、"+ CALLNAME:MASTER +"은 계곡의 틈새를 혀로 유린해 와인을 마셨다…"
+	ELSE
+		CALL MESSAGE_WINDOW_D, "", @"＞이번에는 계곡에 마음껏 얼굴을 돌진해 마시기로 했다/>마치 아기가 된 것 같은 감각이다…"
+		CALL MESSAGE_WINDOW_D, "서큐버스", @"아앙%ハート()%/정말、그렇게 덤벼들지 않아도 와인은 얼마든지 있는데"
+		CALL MESSAGE_WINDOW_D, "", @"＞때때로 키스를 하고 술을 먹여주면서/＞" + CALLNAME:MASTER + "은 와인과 가슴을 맛있게 먹었다…"
+	
+	ENDIF
+ENDIF
+CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+CALL MESSAGE_WINDOW_D, "", @"＞이윽고 술이 없어질 무렵、서큐버스는 조금 전의 웨이트리스에게 운반되어 갔다…"
+
+
+;------------
+;母乳ヴェパール
+@RESTRANT31_EAT_3
+
+IF 던전플래그:31:42 == 0
+	던전플래그:31:42 = 1
+	CALL MESSAGE_WINDOW_D, "", @"＞운반되어 온 것은 주전자와 인어동상… 아니、베파르였다 />그 손과 인어의 꼬리는 움직이지 않도록 고정되어 있으며、무엇가 몸부림치고 있다/>유두에서는 이미 뿌옇게된 액체가 흘러나오고 있다…"
+	CALL MESSAGE_WINDOW_D, "베파르", @"고객니임！/제발、제발 제 가슴에서 밀크를 짜주시기 바랍니다！/가슴이 답답하고 괴로워서、저는 이제…"
+	CALL MESSAGE_WINDOW_D, "", @"＞아무래도 이것 때문에 끝없이 모유가 축적되는 것 같다/> 과연 그건 괴롭겠지、그것때문에 몸부림 치고 있었던 것 같다/>모처럼이니、실컷 젖을 짜내줄까…"
+	CALL MESSAGE_WINDOW_D, "베파르", @"아아 고객님、고맙습니다！/그럼… 아읏%ハート()%"
+	CALL MESSAGE_WINDOW_D, "", @"＞풍만한 가슴에서 짜내듯이 천천히 앞으로로 손을 움직인다/>베파르의 유두에서 순식간에 모유가 내뿜어져 왔다/>라고 할까、이렇게까지 기세가 좋으면 밀크티는 힘들다…"
+	CALL MESSAGE_WINDOW_D, "베파르", @"포트！포트가 있으므로 거기에 짜 주시면！/부디 부디 나의 모유를 맛봐주십시오！"
+	CALL MESSAGE_WINDOW_D, "", @"＞확실히、이미 포트에 홍차가 들어 있었다/>내뿜는 모유를 포트에 받고…/>밀크티의 완성이다"
+	CALL MESSAGE_WINDOW_D, "", @"＞…/＞흠、상당히 달콤하다/>설탕을 넣은 기억도 없기 때문에、모유가 진한 것이겠지"
+	CALL MESSAGE_WINDOW_D, "베파르", @"아앗、가슴이 답답해요/고객님、부디 더 나의 천한 젖을 짜주세요！"
+	CALL MESSAGE_WINDOW_D, "", @"＞…다행히 홍차는 아직 있다/>조금 달콤한게 싫기는 하지만、즐겁게 해주자…"
+ELSE
+	CALL MESSAGE_WINDOW_D, "", @"＞역시 이번에도、운반되어 온 베파르의 자유는 거의 빼앗기고있는 것 같다/> 필시 가슴이 부풀어 있는 것일까/> 몸이 상처를 입을 정도로 움직이려고 하고 있다"
+	CALL MESSAGE_WINDOW_D, "베파르", @"아아 고객니임！ 또 저를 골라 주셔서 감사합니다！/ 부디、부디 이번에도 나의 가슴을 짜주세요！"
+	CALL MESSAGE_WINDOW_D, "", @"＞어떻게 여기까지 모유를 내고 싶어질때까지 참고 있게 하는지/> 조교사로서의 "+ CALLNAME:MASTER +"는 그쪽이 궁금했다/>…하지만、어디까지나 지금의 "+ CALLNAME:MASTER +"은 손님이다"
+	CALL MESSAGE_WINDOW_D, "베파르", @"아、고객님！/더、더 강하게 짜주세요！/앗… 아앗%ハート()%"
+	CALL MESSAGE_WINDOW_D, "", @"＞마음껏 모유를 짜내어 />밀크티로 만들어주자…"
+ENDIF
+CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+CALL MESSAGE_WINDOW_D, "", @"＞이윽고 차가 없어질 무렵、베파르는 조금 전의 웨이트리스에게 운반되어 갔다…"
+
+;------------
+;ふたなりエルフ
+@RESTRANT31_EAT_4
+
+IF 던전플래그:31:43 == 0
+	던전플래그:31:43 = 1
+	CALL MESSAGE_WINDOW_D, "", @"＞운반되어 온 것은 우유와 그에 못지 않은 하얀 피부를 가진 아름다운 엘프의 여자였다/> 균형 잡힌 신체이기는 하지만 확실히 이질적인 부분이 있었다 /> 가랑이에 우뚝 솟은 검게 빛나는 육봉이다"
+	CALL MESSAGE_WINDOW_D, "", @"＞온몸이 묶여 스스로 쾌락을 맛볼 수 없는것 같지만 /> 그 끝에서 이미 쿠퍼액을 흘려/> 아름다운 얼굴은 페니스에 주어질 쾌락을 기대해서 녹아있다…"
+	CALL MESSAGE_WINDOW_D, "엘프", @"고객니임…/부디 이 에로에로 엘프의 더러운이 자지에서 자지즙을 착취해주세요%ハート()%/움찔움찔 말하는 자지 괴롭혀주세요%ハート()%"
+	CALL MESSAGE_WINDOW_D, "", @"＞본래 고귀한 종족인 엘프가 여기까지 호소하다니 /> 아무래도 이 엘프、상당한 조교사가 완성시킨 것 같다 /> " + CALLNAME:MASTER + "은 그 솜씨에 가벼운 질투와 부러움을 느꼈다…"
+	CALL MESSAGE_WINDOW_D, "엘프", @"손니임、걱정따윈 나중에 해주세요%ハート()%/그런일 보다 자지 쀼쀼 시켜주세요"
+	CALL MESSAGE_WINDOW_D, "", @"＞그것도 그렇다/> 생각을 가다듬은 " + CALLNAME:MASTER +"은 즉시、컵에 부어진 우유에 엘프의 페니스를 향해/> 음낭을 강하게 움켜 쥐었다!"
+	CALL MESSAGE_WINDOW_D, "엘프", @"히이아아아%ハート()%/사정해、사정 해버려、사정 햐으으으%ハート()%"
+	CALL MESSAGE_WINDOW_D, "", @"＞끈적한 소리를 내며 마치 폭발하는 것처럼 엘프는 사정했다 /> 순식간에 컵에 내용물이 쏟아져 나왔지… />만、꽤 맛있게 완성되었다"
+	CALL MESSAGE_WINDOW_D, "", @"＞포트 속에 아직도 우유는 있다 /> 그럼 얼마나 짜내어 줄까…"
+ELSE
+	CALL MESSAGE_WINDOW_D, "", @"＞엘프의 여자는 여전히 페니스를 발기시키고있다 /> 스스로 처리 할 수 없으니까 상당히 괴로울 것이다"
+	CALL MESSAGE_WINDOW_D, "엘프", @"고객니임…/오늘도 나의 더러운 암캐 자지에서 자지즙 착취해주세요%ハート()%"
+	CALL MESSAGE_WINDOW_D, "", @"＞그럼 조속히、사정 해달라고 하자/> 오늘은 유두를 잡아당겨보자…"
+	CALL MESSAGE_WINDOW_D, "엘프", @"아앗%ハート()% 가슴찢어져 버려%ハート()%/암캐자지 퓨우퓨우해 버려 우우%ハート()%"
+	CALL MESSAGE_WINDOW_D, "", @"＞순식간 컵 안은 정액으로 가득/> 거기에 우유를 부어…/> 후우 상당히 맛잇다…"
+	CALL MESSAGE_WINDOW_D, "엘프", @"행복해%ハート()%/이 암캐자지 덕분에 매일 행복해%ハート()%/더 사정시켜줘%ハート()%"
+	CALL MESSAGE_WINDOW_D, "", @"＞순식간에 승천한 엘프는 제쳐두고 /> 마음껏 정액을 짜내줬다…"
+ENDIF
+CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+CALL MESSAGE_WINDOW_D, "", @"＞이윽고 우유가 없어질 무렵、엘프는 조금 전의 웨이트리스에게 운반되어 갔다…"
+
+;------------
+;男の娘インプ
+@RESTRANT31_EAT_5
+
+IF 던전플래그:31:44 == 0
+	던전플래그:31:44 = 1
+	CALL MESSAGE_WINDOW_D, "", @"＞운반되어 온 것은 우유와 검은 아름다운 피부를 가진、소녀로 착각할 정도의 미소년이었다/＞등뒤에 난 박쥐의 날개로 보아 아마 임프일 것이다/＞모든게 가녀린 그 육체에는 그러나、리본이 붙은 굵은 육봉이 발기해 있었다…"
+	CALL MESSAGE_WINDOW_D, "임프", @"우우… 누군가…/누구라도 좋으니까… 이제 싸게 해줘…/누구라도 괜찮으니까… 부탁해…"
+	CALL MESSAGE_WINDOW_D, "", @"＞아무래도 리본에 사정을 멈춰진게 계속되어 주위도 보이지 않는 것 같다/＞사정하는 일 외에는 그의 머리에는 없겠지/＞이쪽도 우유의 준비는 할 수 있었고, 밀크셰이크를 만들게 해주자"
+	CALL MESSAGE_WINDOW_D, "", @"＞그렇게 생각하고는" + CALLNAME:MASTER + "은 우유가 들어간 컵을 페니스에 가져다대/＞리본을 재빨리 풀었다…"
+	IF TALENT:MASTER:남자 && !TALENT:MASTER:오토코노코
+		CALL MESSAGE_WINDOW_D, "임프", @"아、오빠 고마워、아、아、아아아！/사정해버려 우우%ハート()%/수컷즙 뷰뷰 사정해버려 우우%ハート()%"
+	ELSE
+		CALL MESSAGE_WINDOW_D, "임프", @"아、누나 고마워요、아、아、아아아！/사정한다아%ハート()%/자지즙 내버린다아%ハート()%"
+	ENDIF
+	CALL MESSAGE_WINDOW_D, "", @"＞임프는 격렬하게 경련하면서 페니스에서 정액을 뿌렸다/> 밀크 쉐이크의 완성이다…/> 음、꽤 맛있다"
+	CALL MESSAGE_WINDOW_D, "임프", @"히잇%ハート()%/멈추지않아 자지밀크 멈추지않아 우와%ハート()%"
+	CALL MESSAGE_WINDOW_D, "", @"＞다행히 우유도 정액도 많이 있다/>만족할때 까지 먹자…"
+ELSE
+	CALL MESSAGE_WINDOW_D, "", @"＞임프의 소년은 역시 리본으로 사정관리 되고 있다/마음대로 사정하려 했는지、양손은 뒤로 돌려져 단단히 묶어져 있다"
+	CALL MESSAGE_WINDOW_D, "임프", @"누가、누가…/누구라도 좋으니까… 나의 자지…/리본… 이거 풀어줘… 부탁해애…"
+	CALL MESSAGE_WINDOW_D, "", @"＞그럼 빨리 받을까/＞리본을 풀었다…"
+	CALL MESSAGE_WINDOW_D, "임프", @"아、됐다, 이걸로 사정한다%ハート()%/앗、앗앗… 굉장한 거 왔다아%ハート()%/나의 자지 굉장히 기분 좋은거어얼%ハート()%"
+	CALL MESSAGE_WINDOW_D, "", @"＞웨이트리스가 말하기를、애널도 충분히 조교된것 같다/＞여기는 한번、좀 더 싸게 해줄까"
+	CALL MESSAGE_WINDOW_D, "임프", @"히에에%ハート()% 엉덩이도、엉덩이도오%ハート()%/나의 몸 엉망진창으로오%ハート()%/그래도 기분 좋은걸%ハート()%"
+	CALL MESSAGE_WINDOW_D, "", @"＞마치 폭포와 같은 정액이다…/＞남기는 것도 아깝다, 맛있게 받는다…"
+ENDIF
+CALL MESSAGE_WINDOW_D, "", @"………………/…………/……"
+CALL MESSAGE_WINDOW_D, "", @"＞이윽고 우유가 없어질 무렵、임프는 다시 리본에 묶여 조금 전의 웨이트리스에게 운반되어 갔다…"
+
+;------------
