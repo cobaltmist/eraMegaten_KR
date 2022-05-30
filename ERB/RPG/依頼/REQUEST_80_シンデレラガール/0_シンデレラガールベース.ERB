@@ -3,6 +3,10 @@
 ;		その関係で1つの変数に保存できる이벤트数は64個から32個に減少
 ;이벤트ベースは内部処理に特化し、【이벤트作りたい人が見なくてもいい部分】として独立化。
 
+
+;追記)	戦闘中イベントの処理を実装するに際して【現在実行中のイベント】を取得しておきたかったので
+;		イベント呼び出し前に一行ずつ追加し、의뢰플래그:80:11に【実行するイベントのタイトル番号】を記録させる処理を追加。
+;		ただし、引用する의뢰플래그に関してはL_INDEXの最終値+1を参照するため、そこに関して後々弄る必要はない
 ;====================
 ;조건
 ;====================
@@ -30,7 +34,7 @@ FOR L_INDEX,0,20
 		IF !GETBIT(의뢰플래그:80:L_INDEX,LOCAL+32)
 			SETBIT 의뢰플래그:80:L_INDEX,LOCAL+32
 			CALLFORM REQUEST_80_TITLELIST_{L_INDEX} , LOCAL
-			LOCALS = 의뢰 【신데렐라걸【%RESULTS%】】%조사만처리(RESULTS,"가")% 출현！
+			LOCALS = （EX:IM＠S）의뢰 【신데렐라걸【%RESULTS%】】%조사만처리(RESULTS,"가")% 출현！
 			CALL MESSAGE_B(1, LOCALS)
 		ENDIF
 		;아직 못 본 이벤트의 수를 카운트
@@ -40,9 +44,9 @@ FOR L_INDEX,0,20
 	NEXT
 NEXT
 IF LOCAL:1 > 0
-	RESULTS = 신데렐라걸\(신규{LOCAL:1}개\)
+	RESULTS = （EX:IM＠S）신데렐라걸\(신규{LOCAL:1}개\)
 ELSE
-	RESULTS = 신데렐라걸
+	RESULTS = （EX:IM＠S）신데렐라걸
 ENDIF
 SIF LOCAL:2
 	RETURN 1
@@ -104,3 +108,70 @@ ENDCATCH
 $END_EVENT
 CLEARLINE 1
 GOTO INPUT_LOOP
+
+;====================
+;出現チェック関数
+;====================
+@REQUEST80_APP_CHECK,ARG,ARG:1
+#FUNCTION
+RETURNF GETBIT(의뢰플래그:80:ARG,ARG:1+32)
+
+;====================
+;既読チェック関数
+;====================
+@REQUEST80_READ_CHECK,ARG,ARG:1
+#FUNCTION
+RETURNF GETBIT(의뢰플래그:80:ARG,ARG:1)
+
+;------
+;使用例
+;------
+;深淵なる闇からの誘いをクリアしたかどうか
+;SIF REQUEST80_READ_CHECK(0,2)
+;	RETURN 1
+
+;====================
+;出現チェック関数(タイトルで)
+;====================
+@REQUEST80_APP_CHECK_T,ARGS = ""
+#DIM L_INDEX,2
+SIF ARGS == ""
+	RETURN 0
+FOR L_INDEX,0,20
+	FOR L_INDEX:1,0,32
+		TRYCCALLFORM REQUEST_80_TITLELIST_{L_INDEX} , L_INDEX:1
+			SIF ARGS == RESULTS
+				RETURN GETBIT(의뢰플래그:80:L_INDEX,L_INDEX:1+32)
+		CATCH
+			BREAK
+		ENDCATCH
+	NEXT
+NEXT
+RETURN 0
+
+;====================
+;既読チェック関数(タイトルで)
+;====================
+@REQUEST80_READ_CHECK_T,ARGS = ""
+#DIM L_INDEX,2
+SIF ARGS == ""
+	RETURN 0
+FOR L_INDEX,0,20
+	FOR L_INDEX:1,0,32
+		TRYCCALLFORM REQUEST_80_TITLELIST_{L_INDEX} , L_INDEX:1
+			SIF ARGS == RESULTS
+				RETURN GETBIT(의뢰플래그:80:L_INDEX,L_INDEX:1)
+		CATCH
+			BREAK
+		ENDCATCH
+	NEXT
+NEXT
+RETURN 0
+
+;------
+;使用例
+;------
+;深淵なる闇からの誘いを既読したかどうか
+;CALL REQUEST80_READ_CHECK_T("深淵なる闇からの誘い")
+;SIF RESULT
+;	RETURN 1
