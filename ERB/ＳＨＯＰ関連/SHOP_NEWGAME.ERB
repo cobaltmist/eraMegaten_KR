@@ -52,6 +52,8 @@
 ;	039		2021/06/25		ロッド@カヤノソト		コロシアムイベント26_데미지コンテストのフラグ・記録リセットを追加
 ;	040		2021/06/30		lemukot					「異能者半魔あなた強化段階」のフラグリセット追加、Editを更新日時に合わせた
 ;	041		2021/07/17		Musue					ペルソナ強化フラグのリセット処理
+;	042		2021/08/31		ロッド@カヤノソト		コロシアムイベント26_ダメージコンテストの特殊イベントの進行状況リセットを追加
+;	043		2022/01/05		ロッド@カヤノソト		キャラ引継ぎを微調整①「一部のキャラを次週に引き継ぎますか？ 」で「いいえ」の場合に再確認を表示②引継ぎの初期設定を「1：契約・陥落素質引継ぎ」に変更
 ;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
 ;=================================================================
 ;강하게뉴게임関連
@@ -105,7 +107,7 @@ NEXT
 
 PRINTL 주회 보너스를 설정합니까？
 IF REQUIRE_ENDING_POINT()
-	PRINTFORML [0] 설정을 변경한다(현재의 EP:{COUNT_ENDING_POINT()}/{REQUIRE_ENDING_POINT()}사용)
+	PRINTFORML [0] 설정을 변경한다(현재의 EP:{REQUIRE_ENDING_POINT()}/{COUNT_ENDING_POINT()}사용)
 	PRINTFORML [1] 변경하지 않는다
 ELSE
 	PRINTFORML [0] 설정한다(현재의 EP:{COUNT_ENDING_POINT()})
@@ -191,7 +193,7 @@ FOR LOCAL,1,CHARANUM
 	CFLAG:LOCAL:인계횟수 += 1
 	CFLAG:LOCAL:전투참가불가능 = 0
 	CALL SHOP_NEWGAME_INITCHARA, LOCAL
-	CALL 장비강화_CSTR, "全해제：能力のみ", LOCAL
+	CALL 장비강화_CSTR, "모두해제：능력만", LOCAL
 NEXT
 ;---- MOD 031 EDIT END   -------------------------
 
@@ -260,10 +262,6 @@ CFLAG:MASTER:이자리에없는플래그 = 0
 
 TALENT:MASTER:154 = 0
 
-;뱅드림+P5 모드
-FOR LOCAL, 0, 100
-	메멘토스의뢰:LOCAL = 0
-NEXT
 FLAG:던전필터1 = 0
 FLAG:던전필터2 = 0
 FLAG:취소된ED = 0
@@ -276,11 +274,12 @@ FLAG:소속조직 = 0
 FLAG:투기장랭크 = 0
 SAVESTR:랜덤대전팀 =
 CALL SELECT_COLOSSEUM_RANDOMBATTLE
-;---- 闘技場26_데미지コンテスト！ -------------------------
+;---- 闘技場26_ダメージコンテスト！ -------------------------
 YOUR_RANK = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ;現在の順位(レギュレーション1～10)　※レギュレーション4以降は予備です。
 COLOSSEUM_26_RANKING_EVENT_FLG = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ;ランキング1位イベント完了フラグ(レギュレーション1～10)
-COLOSSEUM_26_MAX_DAMAGE = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ;今周回の最大데미지(レギュレーションごとにハイスコアを格納する配列)　※次の周回へ進む際にリセットする。
-;---- 闘技場26_데미지コンテスト！ -------------------------
+COLOSSEUM_26_MAX_DAMAGE = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ;今周回の最大ダメージ(レギュレーションごとにハイスコアを格納する配列)　※次の周回へ進む際にリセットする。
+COLOSSEUM_26_SPECIAL_EVENT_FLG = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ;特殊イベントの進行状況をリセット
+;---- 闘技場26_ダメージコンテスト！ -------------------------
 TIME:1 = 0
 
 
@@ -381,7 +380,7 @@ FOR LOCAL,200,6000
 				ENDSELECT
 				ITEM:LOCAL = 0
 				SIF 개조장비(LOCAL)
-					CALL 개조장비해제,개조장비番号(LOCAL)
+					CALL 개조장비해제,개조장비번호(LOCAL)
 			ENDCATCH
 	ENDSELECT
 NEXT
@@ -465,9 +464,9 @@ VARSET 『관객』디오니소스진행, 0
 VARSET 호무호무vs고토우진행, 0
 VARSET 요리이벤트진행, 0
 VARSET Reconnect_Ragnarok진행, 0
-
-;그외 한판 개별이벤트 관련 리셋
-VARSET 세라픽게이트진행도, 0
+VARSET 롯폰기앞창관플래그, 0
+VARSET 롯폰기뒷창관플래그, 0
+VARSET 롯폰기창관플래그, 0
 
 ;集団ライブの変数もリセット
 VARSET 그룹인기
@@ -756,7 +755,7 @@ FOR LOCAL,0,8
 NEXT
 
 ;마장술・能力＆耐性初期化
-CALL 장비강화_CSTR, "全해제：능력のみ", MASTER
+CALL 장비강화_CSTR, "모두해제：능력만", MASTER
 
 ;---- EDIT 031 MOD START -------------------------
 ;페르소나のステ설정 
@@ -953,10 +952,20 @@ FOR LOCAL,0,CHARANUM
 		RETURN 0
 NEXT
 
+$INPUT_CHARA_HOLD_CHECK_LOOP
 PRINTL 일부 캐릭터를 다음 주차로 계승합니까？
 CALL INPUT_YN
 IF RESULT == 1
-	RETURN 0
+	PRINTL 모든 캐릭터를 삭제합니다。정말 괜찮으시겠습니까？
+	CALL INPUT_YN
+	IF RESULT == 0
+		;キャラ引継ぎなしで次へ進む
+		RETURN 0
+	ELSE
+		;直前の選択に戻る
+		DRAWLINE
+		GOTO INPUT_CHARA_HOLD_CHECK_LOOP
+	ENDIF
 ENDIF
 
 P = 0
@@ -966,11 +975,12 @@ LOCAL:2 = 0
 FOR LCOUNT, 0, CHARANUM
 	SIF LCOUNT == MASTER
 		CONTINUE
-;---- EDIT 024 MOD START -------------------------
+	;---- EDIT 024 MOD START -------------------------
 	; SIF (TALENT:LCOUNT:아내 || TALENT:LCOUNT:남편 || TALENT:LCOUNT:음마 || TALENT:LCOUNT:노리개) == 0 && CFLAG:LCOUNT:인계횟수 == 0
 	SIF (TALENT:LCOUNT:아내 || TALENT:LCOUNT:남편 || TALENT:LCOUNT:음마 || TALENT:LCOUNT:노리개 || TALENT:LCOUNT:맹우) == 0 && CFLAG:LCOUNT:인계횟수 == 0
-;---- EDIT 024 MOD END -------------------------
+	;---- EDIT 024 MOD END -------------------------
 		CONTINUE
+	CFLAG:LCOUNT:인계플래그 = 1		;引継ぎフラグの初期設定を「1：契約・陥落素質引継ぎ」に設定する
 	Q:(LOCAL:2) = LCOUNT
 	LOCAL:2 += 1
 NEXT
@@ -1206,7 +1216,7 @@ DRAWLINE
 FOR LOCAL,0,64
 	SIF GETBIT_BONUS_NAME(LOCAL) == "NONE"
 		CONTINUE
-		;한판 레이아웃 수정 12>15, 20>21
+		;KR판 레이아웃 수정 12>15, 20>21
 	LOCALS = %GETBIT_BONUS_NAME(LOCAL),15,LEFT%\({CHECK_ED_POINT(GETBIT_BONUS_NAME(LOCAL))}EP\)
 	IF GETBIT(FLAG:주회보너스,LOCAL)
 		SETCOLOR COLOR("AQUA")

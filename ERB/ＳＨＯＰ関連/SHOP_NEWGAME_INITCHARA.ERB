@@ -6,6 +6,8 @@
 ;=================================================================
 ;2021/04/10	NEO		受胎アイテム取得状況をリセットできるよう変更
 ;2021/04/26 軽木	「周回で喰奴を引き継いだ場合、無条件で習得状況が引き継がれる」ように
+;2021/09/ 5 JK好き	引き継いだキャラの体力回復・ストレス回復・気絶解除処理を追加
+;2022/01/ 3 JK好き	引き継いだキャラの専用技の覚えなおし処理を追加
 ;=================================================================
 @SHOP_NEWGAME_INITCHARA, ARG
 LOCAL = ARG
@@ -16,6 +18,11 @@ SIF NO:LOCAL >= 3701 && NO:LOCAL <= 3707
 	;엔젤転生処理
 SIF NO:LOCAL >= 3711 && NO:LOCAL <= 3718
 	CALL TYEFEI_TENSEI,ARG,301
+
+;体力回復
+BASE:LOCAL:체력 = MAXBASE:LOCAL:체력
+CFLAG:LOCAL:체력회복정지플래그 = 0
+CFLAG:LOCAL:스트레스치 = 0
 
 IF ABL:LOCAL:종족 == 0
 	BASE:LOCAL:LV = 5
@@ -1187,12 +1194,43 @@ IF NO:LOCAL == 4998
 				ABL:LOCAL:초기변신악마습득LV12 = 70
 		ENDSELECT
 	ENDIF
+;ランダムキャラはCSVを参照しても意味がない
+ELSEIF IS_RANDOMCHARA(LOCAL)
+	PRINTFORML %CALLNAME:LOCAL%はランダムキャラ
 ELSE
 	FOR LOCAL:1,1,21
 		ABL:LOCAL:("습득스킬" + TOSTR(LOCAL:1)) = CSVABL(NO:LOCAL,(GETNUM(ABL,"습득스킬" + TOSTR(LOCAL:1))),0)
 		ABL:LOCAL:("습득LV" + TOSTR(LOCAL:1)) = CSVABL(NO:LOCAL,(GETNUM(ABL,"습득LV" + TOSTR(LOCAL:1))),0)
 		ABL:LOCAL:("초기변신악마습득스킬" + TOSTR(LOCAL:1)) = CSVABL(NO:LOCAL,(GETNUM(ABL,"초기변신악마습득스킬" + TOSTR(LOCAL:1))),0)
 		ABL:LOCAL:("초기변신악마습득LV" + TOSTR(LOCAL:1)) = CSVABL(NO:LOCAL,(GETNUM(ABL,"초기변신악마습득LV" + TOSTR(LOCAL:1))),0)
+	NEXT
+	;CSVを参照してCSTR専用技の覚えなおし
+	FOR LOCAL:1,1,12+1
+		CSVCSTR NO:LOCAL,(GETNUM(CSTR,"전용기" + TOSTR(LOCAL:1))),0
+		;CSTR専用技が無いなら終了
+		SIF RESULTS == ""
+			BREAK
+		;CSTR専用技が既に設定されているなら続行
+		SIF CSTR:(LOCAL):("전용기" + TOSTR(LOCAL:1)) != ""
+			CONTINUE
+		;PRINTFORML %CALLNAME:LOCAL%/専用技{LOCAL:1}/%RESULTS%
+		CSTR:LOCAL:("전용기" + TOSTR(LOCAL:1)) = %RESULTS%
+	NEXT
+	;CSVを参照して初期スキルにCSTR専用技がないか探す
+	FOR LOCAL:1,1,12+1
+		;初期スキルに専用技があるなら再習得
+		IF INRANGE(CSVABL(NO:LOCAL,(GETNUM(ABL,"스킬" + TOSTR(LOCAL:1))),0),3904,3915)
+			;PRINTFORML %CALLNAME:LOCAL%/{LOCAL:1}/専用技発見覚えなおし
+			CALL LEARN_SKILL,LOCAL,CSVABL(NO:LOCAL,(GETNUM(ABL,"스킬" + TOSTR(LOCAL:1))),0)
+		;初期スキルが無いなら終了
+		ELSEIF CSVABL(NO:LOCAL,(GETNUM(ABL,"스킬" + TOSTR(LOCAL:1))),0) <= 0
+			;PRINTFORML %CALLNAME:LOCAL%/{LOCAL:1}/もう初期スキル無し
+			BREAK
+		;初期スキルが在るなら続行
+		ELSE
+			;PRINTFORML %CALLNAME:LOCAL%/{LOCAL:1}/スキルがあるけど専用技ではない
+			CONTINUE
+		ENDIF
 	NEXT
 	;スルト（ＡＮ）用に強引に処理を挟む
 	IF LOCAL == 266 && CFLAG:LOCAL:220 > 0
@@ -1204,19 +1242,19 @@ ELSE
 	ENDIF
 ENDIF
 
-	;外見・スリーサイズパッチ対応　周回時に피부색깔설정をTALENTからCFLAGに移す
-IF TALENT:LOCAL:117
-	CFLAG:LOCAL:38 = 1
-	TALENT:LOCAL:117 = 0
-ELSEIF TALENT:LOCAL:118
-	CFLAG:LOCAL:38 = 2
-	TALENT:LOCAL:118 = 0
-ELSEIF TALENT:LOCAL:119
-	CFLAG:LOCAL:38 = 3
-	TALENT:LOCAL:119 = 0
-ELSEIF TALENT:LOCAL:120
-	CFLAG:LOCAL:38 = 4
-	TALENT:LOCAL:120 = 0
+	;外見・スリーサイズパッチ対応　周回時に肌の色設定をTALENTからCFLAGに移す
+IF TALENT:LOCAL:하얀피부
+	CFLAG:LOCAL:피부색깔 = 1
+	TALENT:LOCAL:하얀피부 = 0
+ELSEIF TALENT:LOCAL:갈색피부
+	CFLAG:LOCAL:피부색깔 = 2
+	TALENT:LOCAL:갈색피부 = 0
+ELSEIF TALENT:LOCAL:붉은피부
+	CFLAG:LOCAL:피부색깔 = 3
+	TALENT:LOCAL:붉은피부 = 0
+ELSEIF TALENT:LOCAL:푸른피부
+	CFLAG:LOCAL:피부색깔 = 4
+	TALENT:LOCAL:푸른피부 = 0
 ENDIF
 	;ここまで
 
@@ -1226,6 +1264,12 @@ CFLAG:LOCAL:매춘인기 = 0
 CFLAG:LOCAL:요리인기 = 0
 CFLAG:LOCAL:극장인기 = 0
 CFLAG:LOCAL:아이돌인기 = 0
+
+	;EVENT_S関係のCFLAGリセット
+CFLAG:LOCAL:자궁내피임결계 = 0
+CFLAG:LOCAL:배란유발제 = 0
+CFLAG:LOCAL:바람꽃의이슬 = 0
+CFLAG:LOCAL:무한사정약플래그 = 0
 
 	;FOR LOCAL:1,1020,1025
 	;	CFLAG:LOCAL:(LOCAL:1) = 0
@@ -1299,6 +1343,10 @@ IF CFLAG:LOCAL:인계플래그 > 1
 		ELSE
 			TALENT:LOCAL:처녀 = CSVTALENT(NO:LOCAL,0,0)
 		ENDIF
+		
+		CFLAG:LOCAL:자궁최대용량 = 0
+		CALL 자궁최대용량초기설정,LOCAL
+		
 		FOR LOCAL:1,0,85
 			EXP:LOCAL:(LOCAL:1) = CSVEXP(NO:LOCAL,LOCAL:1,0)
 			CFLAG:LOCAL:이상경험기록 = 0
@@ -1322,7 +1370,7 @@ ENDIF
 CFLAG:LOCAL:링크악마 = -1
 SIF CFLAG:LOCAL:악마변신
 	CALL ACTION_2310 , LOCAL , 0
-;CFLAG:LOCAL:악마변신 = 0
+	;CFLAG:LOCAL:악마변신 = 0
 CFLAG:LOCAL:피링크플래그 = -1
 CFLAG:LOCAL:피변신플래그 = 0
 ;以下一旦コメントアウト
@@ -1357,6 +1405,7 @@ CFLAG:LOCAL:피변신플래그 = 0
 ; 		WEND
 ; 	NEXT
 ; ENDIF
+
 ; ;인수라の습득스킬リセットこれでいいのだろうか
 SIF TALENT:LOCAL:인수라
 	VARSET CDFLAG:LOCAL:0:0 ,0
@@ -1369,9 +1418,6 @@ CFLAG:LOCAL:노역플래그 = 0
 CFLAG:LOCAL:극장출연순서 = 0
 CFLAG:LOCAL:노역점포 = 0
 
-CFLAG:LOCAL:배란유도제 = 0
-CFLAG:LOCAL:피임약 = 0
-
 CFLAG:LOCAL:개별이벤트개방 = 0
 CFLAG:LOCAL:개별이벤트읽음 = 0
 FOR LOCAL:1, 1, 6
@@ -1379,14 +1425,14 @@ FOR LOCAL:1, 1, 6
 NEXT
 	;C = LOCAL
 CALL CLEAR_FLAG(LOCAL)
-SIF TALENT:LOCAL:153
+SIF TALENT:LOCAL:임신
 	CALL REVERSE_B_SIZE(LOCAL)
 
-TALENT:LOCAL:153 = 0
+TALENT:LOCAL:임신 = 0
 CFLAG:LOCAL:발정임신 = 0
 CFLAG:LOCAL:부친실종 = 0
 CFLAG:LOCAL:이번수태인수 = 0
-TALENT:LOCAL:154 = 0
+TALENT:LOCAL:육아중 = 0
 
 ;EPボーナスで受胎アイテム取得状態をリセットする場合
 IF GET_BONUS("수태아이템리셋")

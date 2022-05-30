@@ -165,15 +165,29 @@ ENDIF
 PRINTFORML [3] 배출 비율 확인
 SIF TALENT:MASTER:ガチャ > 0
 	PRINTFORML [4] 레벨 설정
+;ガチャレベルLv80以上＋エクストライベントON時限定ガチャ
+IF GETBIT(FLAG:EXTRA이벤트설정, 0) != 0 && FLAG:가챠레벨설정 == 80
+	PRINTFORML [5] EXTRAイベントガチャ(Lv80限定)
+ENDIF
 PRINTFORML [100] 돌아가기
 CUSTOMDRAWLINE =
 
-IF TALENT:MASTER:ガチャ > 0 && FLAG:DEBUG
-	CALL INPUTINT(1, 2, 3, 4, 777, 100)
-ELSEIF TALENT:MASTER:ガチャ > 0
-	CALL INPUTINT(1, 2, 3, 4, 100)
+IF GETBIT(FLAG:EXTRA이벤트설정, 0) != 0 && FLAG:가챠레벨설정 == 80
+	IF TALENT:MASTER:ガチャ > 0 && FLAG:DEBUG
+		CALL INPUTINT(1, 2, 3, 4, 5, 777, 100)
+	ELSEIF TALENT:MASTER:ガチャ > 0
+		CALL INPUTINT(1, 2, 3, 4, 5, 100)
+	ELSE
+		CALL INPUTINT(2, 3, 5, 100)
+	ENDIF
 ELSE
-	CALL INPUTINT(2, 3, 100)
+	IF TALENT:MASTER:ガチャ > 0 && FLAG:DEBUG
+		CALL INPUTINT(1, 2, 3, 4, 777, 100)
+	ELSEIF TALENT:MASTER:ガチャ > 0
+		CALL INPUTINT(1, 2, 3, 4, 100)
+	ELSE
+		CALL INPUTINT(2, 3, 100)
+	ENDIF
 ENDIF
 
 PRINTFORML 
@@ -249,7 +263,9 @@ SELECTCASE RESULT
 		PRINTFORML 　　　그러나 픽업 대상이 없는 경우에는 비 픽업 대상에서 선정합니다.
 		PRINTFORML 　　　그래도 없는 경우에는 한 단계 아래 조건으로 다시 선정합니다.
 		PRINTFORMW 
-		GOTO GACHA_LOOP_START
+		SIF GETBIT(FLAG:EXTRA이벤트설정, 0) != 0 && FLAG:가챠레벨설정 == 80
+			PRINTFORML 　　　EXTRAイベントガチャは、各抽選時１％の確率でEXTRA悪魔が排出される１０連ガチャです。
+		GOTO GACHA_LOOP_STAR
 
 	;ガチャ레벨の변경
 	CASE 4
@@ -258,6 +274,78 @@ SELECTCASE RESULT
 		CALL INPUT_MANY(0,BASE:MASTER:LV, , "0/1/2/3/4/5")
 		FLAG:가챠레벨설정 = RESULT
 		GOTO GACHA_LOOP_START
+
+	CASE 5
+		IF TALENT:MASTER:ガチャ > 0
+			LOCAL = FLAG:가챠레벨설정 * 2
+			IF MONEY:1 < (LOCAL * 10)
+				PRINTFORMW 魔貨が足りません。
+				GOTO GACHA_LOOP_START
+			ENDIF
+			MONEY:1 -= LOCAL * 10
+		ELSE
+			TALENT:MASTER:ガチャ = DAY
+		ENDIF
+		PRINTFORML ガチャガチャガチャガチャガチャガチャガチャガチャガチャガチャ……
+		PRINTFORMW 
+
+		;それぞれ１％でエクストライベントガチャに飛ぶ。残り９９％は最初が悪魔確定、最後がＲ以上確定
+		IF RAND:100 == 0
+			CALL エクストライベントガチャ
+		ELSE
+			CALL GACHA_ONCE,1,FLAG:현재가챠토픽
+		ENDIF
+		IF RAND:100 == 0
+			CALL エクストライベントガチャ
+		ELSE
+			CALL GACHA_ONCE,0,FLAG:현재가챠토픽
+		ENDIF
+		IF RAND:100 == 0
+			CALL エクストライベントガチャ
+		ELSE
+			CALL GACHA_ONCE,0,FLAG:현재가챠토픽
+		ENDIF
+		IF RAND:100 == 0
+			CALL エクストライベントガチャ
+		ELSE
+			CALL GACHA_ONCE,0,FLAG:현재가챠토픽
+		ENDIF
+		IF RAND:100 == 0
+			CALL エクストライベントガチャ
+		ELSE
+			CALL GACHA_ONCE,0,FLAG:현재가챠토픽
+		ENDIF
+		IF RAND:100 == 0
+			CALL エクストライベントガチャ
+		ELSE
+			CALL GACHA_ONCE,0,FLAG:현재가챠토픽
+		ENDIF
+		IF RAND:100 == 0
+			CALL エクストライベントガチャ
+		ELSE
+			CALL GACHA_ONCE,0,FLAG:현재가챠토픽
+		ENDIF
+		IF RAND:100 == 0
+			CALL エクストライベントガチャ
+		ELSE
+			CALL GACHA_ONCE,0,FLAG:현재가챠토픽
+		ENDIF
+		IF RAND:100 == 0
+			CALL エクストライベントガチャ
+		ELSE
+			CALL GACHA_ONCE,0,FLAG:현재가챠토픽
+		ENDIF
+		IF RAND:100 == 0
+			CALL エクストライベントガチャ
+		ELSE
+			CALL GACHA_ONCE,2,FLAG:현재가챠토픽
+		ENDIF
+
+		PRINTFORML 
+		PRINTFORMW ガチャを終了しました。
+		GOTO GACHA_LOOP_START
+
+
 	;もどる
 	CASE 100
 		RETURN
@@ -440,7 +528,7 @@ LOCAL = 0
 			CALL CHECK_ITEMMAX, LOCAL
 			IF RESULT > 0
 				SETCOLOR 0x888888
-				PRINTFORM 　(가지고 못하고 폐기했습니다)
+				PRINTFORM 　(가지지 못하고 폐기했습니다)
 				RESETCOLOR
 			ELSE
 				CALL GET_ITEM, LOCAL, 1
@@ -465,7 +553,7 @@ LOCAL = 0
 			CALL CHECK_ITEMMAX, LOCAL
 			IF RESULT > 0
 				SETCOLOR 0x888888
-				PRINTFORM 　(가지고 못하고 폐기했습니다)
+				PRINTFORM 　(가지지 못하고 폐기했습니다)
 				RESETCOLOR
 			ELSE
 				CALL GET_ITEM, LOCAL, 1
@@ -488,7 +576,7 @@ LOCAL = 0
 			CALL CHECK_ITEMMAX, LOCAL
 			IF RESULT > 0
 				SETCOLOR 0x888888
-				PRINTFORM 　(가지고 못하고 폐기했습니다)
+				PRINTFORM 　(가지지 못하고 폐기했습니다)
 				RESETCOLOR
 			ELSE
 				CALL GET_ITEM, LOCAL, 1
@@ -513,7 +601,7 @@ LOCAL = 0
 			CALL CHECK_ITEMMAX, LOCAL
 			IF RESULT > 0
 				SETCOLOR 0x888888
-				PRINTFORM 　(가지고 못하고 폐기했습니다)
+				PRINTFORM 　(가지지 못하고 폐기했습니다)
 				RESETCOLOR
 			ELSE
 				CALL GET_ITEM, LOCAL, 1
@@ -538,7 +626,7 @@ LOCAL = 0
 			CALL CHECK_ITEMMAX, LOCAL
 			IF RESULT > 0
 				SETCOLOR 0x888888
-				PRINTFORM 　(가지고 못하고 폐기했습니다)
+				PRINTFORM 　(가지지 못하고 폐기했습니다)
 				RESETCOLOR
 			ELSE
 				CALL GET_ITEM, LOCAL, 1
@@ -560,7 +648,7 @@ LOCAL = 0
 		CALL CHECK_ITEMMAX, LOCAL
 		IF RESULT > 0
 			SETCOLOR 0x888888
-			PRINTFORM 　(가지고 못하고 폐기했습니다)
+			PRINTFORM 　(가지지 못하고 폐기했습니다)
 			RESETCOLOR
 		ELSE
 			CALL GET_ITEM, LOCAL, 1
