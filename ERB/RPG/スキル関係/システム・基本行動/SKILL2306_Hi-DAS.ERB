@@ -8,7 +8,7 @@ RESULTS = High-Devil Analyze
 @SKILL_HITRATE_2306, ARG
 RETURN 0
 
-;　威힘
+;　위력
 @SKILL_POWER_2306, ARG
 RETURN 0
 
@@ -84,55 +84,65 @@ RETURN 0
 ;스킬 및 행동의 실행
 ;====================================================
 @ACTION_2306,ARG,ARG:1
-;ARG:0…実行者のCHARA Num　ARG:1…대상の포지션Num
+;ARG:0…実行者のCHARA Num　ARG:1…対象のポジションNum
 
-LOCAL = POS(ARG:1)
+;悪魔解析率上昇不能フラグを確認する
+IF FLAG:악마해석률상승불가플래그 == 0
+	;解析可能な場合
+	LOCAL = POS(ARG:1)
 
-;（実行者のLv+(지혜+운)*2-대상の레벨、최대９５최저５）％の판정に성공したら解析度が50、その時の出눈が운以下なら100上がる
-;실패しても10上がる
-LOCAL:2 = RAND:100
-PRINT 　Analyzing
-LOCAL:3 = LIMIT((BASE:ARG:LV + (BASE:ARG:지혜 + BASE:ARG:운) * 2 - BASE:LOCAL:LV),5,95)
-PRINTFORM ({LOCAL:3}％).....
-IF LOCAL:2 < LOCAL:3
-		IF LOCAL:2 < BASE:ARG:운
-			LOCAL:4 = 100
-			PRINT Critical !!
-		ELSE
-			LOCAL:4 = 50
-			PRINT Success.
-		ENDIF
-ELSE
-	LOCAL:4 = 10
-	PRINT Partial.
-ENDIF
-
-;ボスの場合、上昇は半分になる、서머너LV5以上又は민속학持ちだとならない
-SIF CFLAG:LOCAL:보스플래그 && !(TALENT:ARG:서머너 > 4 || HAVE_SKILL(ARG,[[스킬:민속학]]))
-	LOCAL:4 /= 2
-;서머너LV4以上だとボーナス
-SIF TALENT:ARG:서머너 > 3
-	LOCAL:4 += LOCAL:4/10
-SIF TALENT:ARG:서머너 > 4
-	LOCAL:4 += LOCAL:4/10
-	
-PRINTL
-PRINTFORM 　%CALLNAME:(LOCAL)% 
-
-CALL INCREASE_ANALYZE,(NO:LOCAL),LOCAL:4
-
-;언노운플래그が해제される
-IF CFLAG:LOCAL:언노운플래그 == 1
-	CFLAG:LOCAL:언노운플래그 = 0
-	IF NAME:LOCAL == "？？？？"
-		NAME:LOCAL = %CSVNAME(NO:LOCAL,0)%
-		CALLNAME:LOCAL = %CSVCALLNAME(NO:LOCAL,0)%
+	;（実行者のLv+(知恵+運)*2-対象のレベル、最大９５最低５）％の判定に成功したら解析度が50、その時の出目が運以下なら100上がる
+	;失敗しても10上がる
+	LOCAL:2 = RAND:100
+	PRINT 　Analyzing
+	LOCAL:3 = LIMIT((BASE:ARG:LV + (BASE:ARG:지혜 + BASE:ARG:운) * 2 - BASE:LOCAL:LV),5,95)
+	PRINTFORM ({LOCAL:3}％).....
+	IF LOCAL:2 < LOCAL:3
+			IF LOCAL:2 < BASE:ARG:운
+				LOCAL:4 = 100
+				PRINT Critical !!
+			ELSE
+				LOCAL:4 = 50
+				PRINT Success.
+			ENDIF
+	ELSE
+		LOCAL:4 = 10
+		PRINT Partial.
 	ENDIF
-	PRINTFORM ＝＞　%CALLNAME:(LOCAL)% 
+
+	;ボスの場合、上昇は半分になる、サマナーLV5以上又は民俗学持ちだとならない
+	SIF CFLAG:LOCAL:보스플래그 && !(TALENT:ARG:서머너 > 4 || HAVE_SKILL(ARG,[[스킬:민속학]]))
+		LOCAL:4 /= 2
+	;サマナーLV4以上だとボーナス
+	SIF TALENT:ARG:서머너 > 3
+		LOCAL:4 += LOCAL:4/10
+	SIF TALENT:ARG:서머너 > 4
+		LOCAL:4 += LOCAL:4/10
+		
+	PRINTL
+	PRINTFORM 　%CALLNAME:(LOCAL)% 
+
+	;解析率上昇処理
+	CALL INCREASE_ANALYZE,(NO:LOCAL),LOCAL:4
+
+	;アンノウンフラグが解除される
+	IF CFLAG:LOCAL:언노운플래그 == 1
+		CFLAG:LOCAL:언노운플래그 = 0
+		IF NAME:LOCAL == "？？？？"
+			NAME:LOCAL = %CSVNAME(NO:LOCAL,0)%
+			CALLNAME:LOCAL = %CSVCALLNAME(NO:LOCAL,0)%
+		ENDIF
+		PRINTFORM ＝＞　%CALLNAME:(LOCAL)% 
+	ENDIF
+
+	;解析率の表示
+	PRINTFORML Analyzed \@FLAG:(20000+NO:LOCAL) >= 1000 ? COMPLETE! # {FLAG:(20000+NO:LOCAL)/10}％ \@
+
+ELSE
+	;その他の場合
+	PRINTFORML だめだ！解析できない！
+
 ENDIF
-
-PRINTFORML Analyzed \@FLAG:(20000+NO:LOCAL) >= 1000 ? COMPLETE! # {FLAG:(20000+NO:LOCAL)/10}％ \@
-
 
 
 ;====================================================

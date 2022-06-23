@@ -3,10 +3,15 @@
 
 ;스킬명
 @SKILL_NAME_2310,ARG
-IF ARG == -1 || CFLAG:ARG:악마변신
-	RESULTS = 변신해제
-ELSE
+;キャラ指定なしまたは凡例表示(REmane含む)の場合
+IF ARG == -1
 	RESULTS = 악마변신
+ELSE
+	IF CFLAG:ARG:악마변신
+		RESULTS = 변신해제
+	ELSE
+		RESULTS = 악마변신
+	ENDIF
 ENDIF
 
 ;　명중
@@ -90,8 +95,9 @@ RETURN 0
 ;====================================================
 @ACTION_2310,ARG,ARG:1 = 0
 #DIM 仲魔
-#DIM 변신前ＨＰ
-#DIM 변신前ＭＰ
+#DIM 変身前ＨＰ
+#DIM 変身前ＭＰ
+#DIM 変数
 仲魔 = FINDCHARA_ID(CFLAG:ARG:링크악마)
 
 SIF ARG:1 == 1
@@ -121,13 +127,59 @@ FOR LOCAL,1,FLAG:이능자스킬수 + 1
 	ENDSELECT
 NEXT
 
-변신前ＨＰ = MAXBASE:ARG:ＨＰ
-변신前ＭＰ = MAXBASE:ARG:ＭＰ
+IF BASE:ARG:ＨＰ == MAXBASE:ARG:ＨＰ
+	変身前ＨＰ = -1
+ELSE
+	変身前ＨＰ = MAXBASE:ARG:ＨＰ
+ENDIF
+IF BASE:ARG:ＭＰ == MAXBASE:ARG:ＭＰ
+	変身前ＭＰ = -1
+ELSE
+	変身前ＭＰ = MAXBASE:ARG:ＭＰ
+ENDIF
+
 CALL SYNC_STATUS,ARG
-BASE:ARG:ＨＰ = MAX(1 , BASE:ARG:ＨＰ * MAXBASE:ARG:ＨＰ / 변신前ＨＰ)
-BASE:ARG:ＭＰ = MAX(0 , BASE:ARG:ＭＰ * MAXBASE:ARG:ＭＰ / 변신前ＭＰ)
+IF 変身前ＨＰ == -1
+	BASE:ARG:ＨＰ = MAXBASE:ARG:ＨＰ
+ELSE
+	仲魔 = 10000000 * MAXBASE:ARG:ＨＰ / 変身前ＨＰ
+	BASE:ARG:ＨＰ = MAX(1 , BASE:ARG:ＨＰ * 仲魔 / 10000000)
+	;失われたであろう小数点以下の数字を補填
+	SIF !CFLAG:ARG:악마변신 && BASE:ARG:ＨＰ > 1 && MAXBASE:ARG:ＨＰ != 変身前ＨＰ
+		BASE:ARG:ＨＰ += 1
+ENDIF
+IF 変身前ＭＰ == -1
+	BASE:ARG:ＭＰ = MAXBASE:ARG:ＭＰ
+ELSE
+	仲魔 = 10000000 * MAXBASE:ARG:ＭＰ / 変身前ＭＰ
+	BASE:ARG:ＭＰ = MAX(0 , BASE:ARG:ＭＰ * 仲魔 / 10000000)
+	;失われたであろう小数点以下の数字を補填
+	SIF !CFLAG:ARG:악마변신 && BASE:ARG:ＭＰ > 1 && MAXBASE:ARG:ＭＰ != 変身前ＭＰ
+		BASE:ARG:ＭＰ += 1
+ENDIF
 
-
+;入力行動をATTACK→GUN→GUARDの順に試行していく
+CALL CHECK_ACTIONABLE,ARG,0
+IF RESULT == 1
+	CFLAG:(ARG):입력행동 = 0
+	CALL RANDOM_TARGET,ARG,0
+	CFLAG:(ARG):방어플래그 = 0
+ELSE
+	IF EQUIP:(ARG):총
+		CALL CHECK_ACTIONABLE,ARG,2101
+		IF RESULT == 1
+			CFLAG:(ARG):입력행동 = 2101
+			CFLAG:(ARG):방어플래그 = 0
+			CALL RANDOM_TARGET,ARG,2101
+		ELSE
+			CFLAG:(ARG):입력행동 = -1
+			CFLAG:(ARG):방어플래그 = 1
+		ENDIF
+	ELSE
+		CFLAG:(ARG):입력행동 = -1
+		CFLAG:(ARG):방어플래그 = 1
+	ENDIF
+ENDIF
 
 ;====================================================
 ;실행내용 여기까지

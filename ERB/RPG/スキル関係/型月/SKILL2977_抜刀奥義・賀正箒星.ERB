@@ -1,5 +1,6 @@
-﻿;通常공격
-;스킬のテンプレートになっています
+﻿;20220205	NEO		威力向上、「50/100」→「200/300」
+;					原作でガード不能であったため、HPが減少している状態では貫通を付与
+;					（その分威力は控えめ、CT高いしな）
 
 ;스킬명
 @SKILL_NAME_2977,ARG
@@ -12,13 +13,13 @@ RETURN 120
 ;　위력
 @SKILL_POWER_2977, ARG
 IF ARG == -1
-	RETURN 50
+	RETURN 200
 ENDIF
 
 IF 현HP비율(ARG) < 33
-	RETURN 100
+	RETURN 300
 ELSE
-	RETURN 50
+	RETURN 200
 ENDIF
 
 
@@ -105,10 +106,52 @@ RETURN 23
 ;스킬 및 행동의 실행
 ;====================================================
 @ACTION_2977,ARG,ARG:1
+#LOCALSIZE 4
 ;LOCAL = POS(ARG:1)
-;전체공격に修正
+;全体攻撃に修正
 ;CALL ATTACK_SINGLE,ARG,LOCAL,2977
-CALL ATTACK_FIELD,ARG,ARG:1,2977
+
+;おまじない：琥珀が使用した場合のみ貫通
+IF 현HP비율(ARG) < 33 && SKILL_CHANGE(ARG, [[キャラ:코하쿠]])
+	PRINTFORML %CALLNAME:ARG,20% >>>>> 明日へと踏み出す一歩が抜刀術に力を与える！
+	IF CFLAG:ARG:포지션 < 7
+		LOCAL:1 = 7
+		LOCAL:2 = 17 
+	ELSE
+		LOCAL:1 = 1
+		LOCAL:2 = 7
+	ENDIF
+
+	FOR LOCAL, LOCAL:1, LOCAL:2
+		SIF POS(LOCAL) == -1 || CFLAG:POS(LOCAL):상태이상 == GET_STATE_NUM("DYING")
+			CONTINUE
+		;SIF CFLAG:ARG:PTフラグ == 0
+		;	RETURN 4
+
+		LOCAL:3 = 0
+		IF CFLAG:POS(LOCAL):물리반사플래그 == 1
+			CFLAG:POS(LOCAL):물리반사플래그 = 0
+			PRINTFORML [{LOCAL}]%CALLNAME:POS(LOCAL),20% >>>>> 物理反射結界を貫通した！
+			LOCAL:3 = 1
+		ENDIF
+
+		IF CFLAG:POS(LOCAL):검격무효화횟수 > 0
+			CFLAG:POS(LOCAL):검격무효화횟수 = 0
+			PRINTFORML [{LOCAL}]%CALLNAME:POS(LOCAL),20% >>>>> 剣撃無効化を貫通した！
+		ELSEIF 1 > CFLAG:POS(LOCAL):검격가드킬
+			CFLAG:POS(LOCAL):검격가드킬 = 1
+			PRINTFORML [{LOCAL}]%CALLNAME:POS(LOCAL),20% >>>>> 剣撃相性を貫通した！
+		ENDIF
+		CALL ATTACK_SINGLE, ARG, POS(LOCAL), 2977,1
+	NEXT
+
+	WAIT
+ELSE
+	;HP34%以上だとふつうの全体攻撃
+	CALL ATTACK_FIELD,ARG,ARG:1,2977
+ENDIF
+
+
 
 
 
@@ -117,8 +160,11 @@ CALL ATTACK_FIELD,ARG,ARG:1,2977
 ;====================================================
 
 ;　 설명문 표시
+;「踏み込んだ足の加重がキモの神速抜刀術」。
 @SKILL_EXPLAIN_2977
-PRINTL 코하루류 발도술의 오의？　빗자루 속 검에서 꺼낸 짧은 일섬과 함께、배경에 우주 생물과 같은 물건(뿔이나 날개를 볼 수 있으므로 용이라 생각됨)의 그림으로 변화하며、오른쪽 아래에 근하 신년 글씨가 나온다。
+PRINTL 琥珀流抜刀術の奥義？
+PRINTL 仕込み箒の一閃と共に、背景がウーパールーパーのようなモノ(角や翼が見られるので龍のつもりだと思われる)の絵に変化し、右下に謹賀新年の文字が出る。
+PRINTL HPが減少していると、明日へと踏み込む一歩を繰り出す(威力が向上し、反射・壁・剣撃相性を貫通する)。
 PRINTL 코하루의 필살기
 
 ;계승에 필요한 부위

@@ -1,5 +1,9 @@
-﻿;通常공격
-;스킬のテンプレートになっています
+﻿;210915	NEO		「HPが減っているほど大ダメージ」攻撃から、敵と自身のバフ量、敵の[魅惑]などの素質により威力が変動する攻撃に変更
+;				「最大威力値」は高いが、計算の都合上、最大威力値の状態では「カジャンダ無しで威力400の攻撃をあてたとき」と同等の威力
+;				最大ダメージが出るのは「対象がカジャ全開でサマンダ-4、自身がンダ全開でマカカジャ+8」状態
+;				（計算上、威力400の攻撃のカジャンダ全開の２、３倍ダメージ）
+;				マダンテ系ほどではないが浪漫砲
+
 
 ;스킬명
 @SKILL_NAME_2889,ARG
@@ -13,26 +17,13 @@ RETURN 100
 
 ;　위력
 @SKILL_POWER_2889, ARG
-#LOCALSIZE 2
 SIF ARG < 0
-	RETURN 1
-IF 스킬속성표시중
-	LOCAL:1 = FLAG:확산플래그
-	FLAG:확산플래그 = 현HP비율(ARG)
-ENDIF
-SELECTCASE FLAG:확산플래그
-	CASE IS > 75
-		LOCAL:0 = 1 + 220 * (100 - FLAG:확산플래그) / 100
-	CASE IS > 50
-		LOCAL:0 = 1 + 345 * (100 - FLAG:확산플래그) / 100
-	CASE IS > 5
-		LOCAL:0 = 1 + 490 * (100 - FLAG:확산플래그) / 100
-	CASEELSE
-		LOCAL:0 = 1 + 640 * (100 - FLAG:확산플래그) / 100
-ENDSELECT
+	RETURN 100
 SIF 스킬속성표시중
-	FLAG:확산플래그 = LOCAL:1
-RETURN LOCAL:0
+	RETURN 100
+
+RETURN FLAG:확산플래그
+
 
 ;　최저공격횟수
 @SKILL_MINATTACKNUMBER_2889,ARG
@@ -129,8 +120,64 @@ RETURN 0
 ;스킬 및 행동의 실행
 ;====================================================
 @ACTION_2889,ARG,ARG:1
-LOCAL = POS(ARG:1)
-FLAG:확산플래그 = BASE:ARG:ＨＰ * 100 / MAXBASE:ARG:ＨＰ
+#LOCALSIZE 4
+
+	LOCAL = POS(ARG:1)
+	FLAG:확산플래그 = 0
+
+	;倍率１：対象と自身のカジャンダを加算する
+	;敵のカジャンダ段階が＋であるほど威力増
+	;こちらのほうがダメージ影響が大きいのは「自分が恵まれていない状況より敵が恵まれている方が嫉妬パワーが出る」ため
+	FOR LOCAL:1,0,6
+		LOCAL:2 += CFLAG:LOCAL:(GET_BATTLESTATUS(LOCAL:1) + "강화")
+	NEXT
+	;最大33（威力倍率33加算）
+	FLAG:확산플래그 += (6 + LOCAL:2) / 6
+
+	;自身のカジャンダ段階がマイナスであるほど威力増
+	FOR LOCAL:1,0,6
+		LOCAL:2 += CFLAG:ARG:(GET_BATTLESTATUS(LOCAL:1) + "강화")
+	NEXT
+	;最低-15（威力倍率15加算）
+	FLAG:확산플래그 -= (6 + LOCAL:2) / 6
+
+	;倍率ボーナスが入って最大倍率50
+	FLAG:확산플래그 += 2
+
+	;倍率２：敵の素質、彼我の状態異常を見る
+	;基礎倍率は30、最大40
+	;魅力的だったり細かったり優しかったり頭がよかったり清らかだったりすると嫉妬のため威力上昇
+	;相手のみが健康でも威力上昇
+	;乳・尻サイズについては「自分より小さければスレンダーで嫉妬」「同じサイズなら形で嫉妬」「デカけりゃデカいで嫉妬」するため基礎倍率に含む
+	;性別身長体格についても乳尻とだいたい同様（それ言ったら魅力が仮にないとしたら「魅力故の災難に巻き込まれなさそう」で嫉妬しそうだが）
+	;一部味方限定と思われる素質もあるが、敵使用時の威力確保のためということで
+	LOCAL:2 = 30
+	LOCAL:2 += (TALENT:LOCAL:매력 * 2) +(TALENT:LOCAL:매혹 * 2) +(TALENT:LOCAL:수수께끼의매력 * 3) +(TALENT:LOCAL:인기 * 2) +(TALENT:LOCAL:好餌 * 2) +(TALENT:LOCAL:슬렌더) +(TALENT:LOCAL:소악마) +(TALENT:LOCAL:헌신적) +(TALENT:LOCAL:솔직함) +(TALENT:LOCAL:우애) +(TALENT:LOCAL:영맹) +(TALENT:LOCAL:현명) +(TALENT:LOCAL:천사)
+
+	;敵がGOODかつ自身がGOOD以外
+	SIF CFLAG:LOCAL:상태이상 == GET_STATE_NUM("GOOD") && CFLAG:ARG:상태이상 != GET_STATE_NUM("GOOD")
+		LOCAL:2 += 3
+
+	;最大倍率40
+	SIF LOCAL:2 >= 40
+		LOCAL:2 = 40 
+
+	;50*30＝1500
+	;50*40＝2000
+	FLAG:확산플래그 *= LOCAL:2
+
+	;最低威力：100
+	SIF FLAG:확산플래그 < 100
+		FLAG:확산플래그 = 100
+	;最大威力：2000
+	SIF FLAG:확산플래그 > 2000
+		FLAG:확산플래그 = 2000
+
+	;自身に[嫉妬]がなければ最大威力は400
+	SIF FLAG:확산플래그 > 400 && TALENT:ARG:질투 == 0
+		FLAG:확산플래그 = 400
+
+
 CALL ATTACK_SINGLE,ARG,LOCAL,2889
 FLAG:확산플래그 = 0
 
@@ -144,7 +191,9 @@ FLAG:확산플래그 = 0
 
 ;　 설명문 표시
 @SKILL_EXPLAIN_2889
-PRINTL 적 １체를 질투의 불로 공격한다。체력이 낮아질수록 공격력이 오른다。
+PRINTL 敵１体を妬みの炎で攻撃する。
+PRINTL 対象の強化段階と自身の弱体化段階と、対象と自身の健康状態（状態異常）、
+PRINTL その他嫉妬ポイント（対象の素質）によって、威力が＊大きく＊変動する。
 PRINTL 지모신　미즈하시 파르시의 스펠카드
 
 ;계승에 필요한 부위

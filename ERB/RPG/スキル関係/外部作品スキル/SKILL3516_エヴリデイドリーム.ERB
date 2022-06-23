@@ -1,4 +1,15 @@
-﻿
+﻿;20220205	NEO		流石に合計威力1200が簡単に出るのは問題だと思われたため改編
+;					「陥落していないとKUSOZAKO」「陥落段階に強く影響」が基本コンセプト
+;					愛が重いタイプなので「精神と重力の複合」に。
+;					陥落していない限り（あなたがロックオンされていないかぎり）かなり弱く。
+;					エヴリデイ・ドリーム（「毎日」が夢のよう）から、攻撃回数は多めに
+;					（「毎日」だから、一週間、7回攻撃にしたかったけどさすがに壊れそう）
+;					エヴリ・デイドリーム（すべて「白昼夢」）から、睡眠状態特効に。
+;					「夢のような」状態は、陥落後であろうと思われるため、陥落後にグッと強力に。
+;					（特に何もないであろう）相手が寝ている状態で威力が上がるのは、まあ、ゆるせ。
+;					かなり念のためではあるけれど、専用スキルなので、まゆ以外が使った場合は微妙めなスキルに
+
+
 ;스킬명
 @SKILL_NAME_3516, ARG
 RESULTS = 에브리데이드림
@@ -7,27 +18,50 @@ RESULTS = 에브리데이드림
 @SKILL_HITRATE_3516, ARG
 RETURN 100
 
-;　威힘
+;　위력
 @SKILL_POWER_3516, ARG
-SIF ARG < 0
-	RETURN 200
-LOCAL = 200 + ABL:ARG:가창기능 * 10
-RETURN LOCAL
-;RETURN 200 + ABL:ARG:가창기능 * 10
+	SIF ARG < 0
+		RETURN 50
+
+	;基礎威力は50、歌唱技能で100までは上昇
+	LOCAL = 50 + MIN(ABL:ARG:가창기능 * 5, 50)
+
+	;念のため：威力向上はまゆ限定
+	IF SKILL_CHANGE(ARG, [[キャラ:마유]])
+		;対象が睡眠状態である場合（拡散フラグが立っている場合）、威力が「陥落段階+1」倍
+		LOCAL:1 = POS(CFLAG:ARG:타겟)
+		;おまじない
+		IF CFLAG:(LOCAL:1):상태이상 == GET_STATE_NUM("DYING")
+			RETURN LOCAL
+		ELSEIF CFLAG:(LOCAL:1):상태이상 == GET_STATE_NUM("SLEEP")
+			LOCAL *= (함락(ARG) + 1)
+		ENDIF
+	ENDIF
+
+
+	RETURN LOCAL
+
+	;RETURN 200 + ABL:ARG:歌唱技能 * 10
 
 ;　최저공격횟수
 @SKILL_MINATTACKNUMBER_3516, ARG
 SIF ARG < 0
-	RETURN 1
-LOCAL = 1 + 함락(ARG)
+	RETURN 2
+LOCAL = 2
+
+;念のため：最低回数向上はまゆ限定
+SIF SKILL_CHANGE(ARG, [[キャラ:마유]])
+	LOCAL = 2 + 함락(ARG)
+
 RETURN LOCAL
 
 ;　최대공격횟수
 @SKILL_MAXATTACKNUMBER_3516, ARG
 SIF ARG < 0
-	RETURN 1
-LOCAL = 1 + 함락(ARG)
+	RETURN 2
+LOCAL = 2 + 함락(ARG)
 RETURN LOCAL
+
 
 ;　2 ＨＰ지불　3 ＭＰ지불
 @SKILL_COSTTYPE_3516, ARG
@@ -44,7 +78,39 @@ RETURN LOCAL
 
 ;　상성
 @SKILL_TYPE_3516, ARG
-RETURN GET_TYPE_NUM("정신")
+#LOCALSSIZE 3
+#LOCALSIZE 4
+
+;基本相性は精神
+IF ARG < 0 || 스킬속성표시중
+	RETURN GET_TYPE_NUM("정신")
+ELSEIF CFLAG:ARG:타겟 > 16 || CFLAG:ARG:타겟 < 1
+	RETURN GET_TYPE_NUM("정신")
+;陥落している場合、精神と重力の複合に変化（重い……）
+ELSEIF 함락(ARG) >= 1 && SKILL_CHANGE(ARG, [[キャラ:마유]])
+	LOCAL = POS(CFLAG:ARG:타겟)
+	SIF LOCAL < 0
+		RETURN GET_TYPE_NUM("정신")
+	LOCAL:2 = -1000
+	LOCALS = 정신
+	LOCALS:1 = 정신
+	LOCALS:2 = 중력
+	FOR LOCAL:1, 1, 3
+		;判定用に数値を仕舞う。反射は-200扱い
+		LOCAL:3 = MAXBASE:LOCAL:(LOCALS:(LOCAL:1)) == 999 ? -200 # MAXBASE:LOCAL:(LOCALS:(LOCAL:1))
+		LOCAL:3 = CFLAG:LOCAL:(LOCALS:(LOCAL:1)+"무효화횟수") ? -5 # LOCAL:3
+		LOCAL:3 = CFLAG:LOCAL:(LOCALS:(LOCAL:1)+"가드킬") && LOCAL:3 < 100 ? 100 # LOCAL:3
+		IF LOCAL:3 > LOCAL:2
+			LOCAL:2 = LOCAL:3
+			LOCALS = %LOCALS:(LOCAL:1)%
+		ENDIF
+	NEXT
+	RETURN GET_TYPE_NUM(LOCALS)
+
+ELSE
+	RETURN GET_TYPE_NUM("정신")
+ENDIF
+
 
 ;　1 EXTRA　2 MAGIC
 @SKILL_DECIDE_TYPE_3516, ARG
@@ -104,25 +170,41 @@ RETURN 14
 ;템플릿용、추가효과 시리즈
 ;추가효과 스테이터스
 @SKILL_ADDTIONAL_STATE_3516, ARG
-RETURN GET_STATE_NUM("PANIC")
+RETURN GET_STATE_NUM("SLEEP")
 
 ;추가효과 상성
 @SKILL_ADDTIONAL_TYPE_3516, ARG
+;精神相性
 RETURN 9
 
 ;추가효과 기본부여확률
 @SKILL_ADDTIONAL_BASE_RATE_3516, ARG
-RETURN 40
+;基本25、「陥落段階+1」倍で、最大100(上限に引っかかるが、ステ補正を受けてもなお高い数字になるように）
+SIF ARG < 0
+	RETURN 25
+
+LOCAL = 25
+
+;念のため：付与率向上はまゆ限定
+SIF SKILL_CHANGE(ARG, [[キャラ:마유]])
+	LOCAL = 25 * (1 + 함락(ARG))
+
+RETURN LOCAL
 
 ;추가효과 부여확률상한
 @SKILL_ADDTIONAL_MAX_RATE_3516, ARG
-RETURN 70
+;上限はやや低めだが付与率が高いのでボス相手でもソコソコ入るんじゃないだろうかという値（精神が通れば）
+RETURN 60
 
 ;====================================================
 ;스킬 및 행동의 실행
 ;====================================================
 @ACTION_3516, ARG, ARG:1
+
 CALL ATTACK_RAND, ARG, ARG:1, 3516
+
+
+
 
 ;====================================================
 ;실행내용 여기까지
@@ -130,8 +212,16 @@ CALL ATTACK_RAND, ARG, ARG:1, 3516
 
 ;　 설명문 표시
 @SKILL_EXPLAIN_3516
-PRINTL 적 복수체에 정신 상성의 중 데미지+혼란
-PRINTL 함락 됐을 경우 공격횟수가 증가하고、가창기능으로 위력이 올라간다
+PRINTL 敵複数体に精神相性で極小ダメージ+睡眠
+PRINTL 歌唱技能で基礎ダメージが上がる
+;おまじない
+IF U > 0 && U < CHARANUM && NO:U == [[キャラ:마유]]
+	PRINTL 陥落段階に応じて攻撃回数が増え、睡眠付与率が上昇。攻撃相性に重力が追加される
+	PRINTL また、睡眠状態の敵を対象にした場合、陥落段階に応じてダメージが倍増する
+ELSE
+	PRINTL 陥落段階に応じて最大攻撃回数が増加
+	PRINTL また、本来の歌い手が歌った場合……
+ENDIF
 
 ;계승에 필요한 부위
 @계승부위_3516, ARG

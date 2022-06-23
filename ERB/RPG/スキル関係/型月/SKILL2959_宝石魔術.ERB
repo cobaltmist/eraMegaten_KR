@@ -1,9 +1,7 @@
-﻿;통상공격
-;스킬のテンプレートになっています
-
-;스킬명
+﻿;스킬명
 @SKILL_NAME_2959,ARG
 RESULTS = 보석마술
+
 
 ;　명중
 @SKILL_HITRATE_2959, ARG
@@ -11,7 +9,14 @@ RETURN 100
 
 ;　위력
 @SKILL_POWER_2959, ARG
-RETURN 0
+IF ARG == -1
+	RETURN 300
+ENDIF
+IF BASE:ARG:LV < 60
+	RETURN BASE:ARG:LV * 10
+ELSE
+	RETURN 600
+ENDIF
 
 ;　최저공격횟수
 @SKILL_MINATTACKNUMBER_2959,ARG
@@ -28,37 +33,75 @@ RETURN 3
 
 ;　코스트량
 @SKILL_COST_2959,ARG
-RETURN 10
+RETURN 5
 
 ;　상성
 @SKILL_TYPE_2959,ARG
-RETURN 0
+;　相性 火炎・電撃(レベル40まで)・氷結(レベル60まで)・疾風(それ以上)のうち、もっともダメージが高くなるものになる
+#LOCALSSIZE 5
+#LOCALSIZE 5
+SIF ARG < 0 || 스킬속성표시중
+	RETURN GET_TYPE_NUM("화염")
+SIF CFLAG:ARG:타겟 > 16 || CFLAG:ARG:타겟 < 1
+	RETURN GET_TYPE_NUM("화염")
+LOCAL = POS(CFLAG:ARG:타겟)
+SIF LOCAL < 0
+	RETURN GET_TYPE_NUM("화염")
+	
+IF BASE:ARG:LV < 40
+	LOCAL:4 = 3
+ELSEIF BASE:ARG:LV < 60
+	LOCAL:4 = 4
+ELSE
+	LOCAL:4 = 5
+ENDIF
+	
+LOCAL:2 = -300
+;デフォは火炎をいれとく
+LOCALS = 화염
+LOCALS:1 = 전격
+LOCALS:2 = 화염
+LOCALS:3 = 빙결
+LOCALS:4 = 질풍
+FOR LOCAL:1, 1, LOCAL:4
+	;判定用に数値を仕舞う。反射は-200扱い
+	LOCAL:3 = MAXBASE:LOCAL:(LOCALS:(LOCAL:1)) == 999 ? -200 # MAXBASE:LOCAL:(LOCALS:(LOCAL:1))
+	LOCAL:3 = !(HAVE_SKILL(ARG,[[스킬:영세라이도우]]) || HAVE_SKILL(ARG,2947)) && CFLAG:LOCAL:(LOCALS:(LOCAL:1)+"무효화횟수") ? -5 # LOCAL:3
+	LOCAL:3 = CFLAG:LOCAL:(LOCALS:(LOCAL:1)+"가드킬") && LOCAL:3 < 100 ? 100 # LOCAL:3
+	LOCAL:3 = CFLAG:LOCAL:마법반사플래그 ? -200 # LOCAL:3
+
+	IF LOCAL:3 > LOCAL:2
+		LOCAL:2 = LOCAL:3
+		LOCALS = %LOCALS:(LOCAL:1)%
+	ENDIF
+NEXT
+RETURN GET_TYPE_NUM(LOCALS)
 
 ;　1 EXTRA　2 MAGIC
 @SKILL_DECIDE_TYPE_2959, ARG
-RETURN 1
-;特技
+RETURN 2
+;どちらでもない
 
 ;　1 물리데미지로 계산　2 마법데미지로 계산
 @SKILL_DAMAGETYPE_2959, ARG
-RETURN 0
+RETURN 2
 
 
 ;　대상　1 적　2 아군　3 양쪽전체　4 특수
 @SKILL_TARGET_2959
-RETURN 4
+RETURN 1
 
 ;　사거리
 @SKILL_RANGE_2959,ARG
-RETURN 1
+RETURN 3
 
 ;　범위　1 1체　2 1열　3 전체　4 적아군전체
 @SKILL_SPHERE_2959,ARG
-RETURN 4
+RETURN 1
 
 ;　 효과타입　1 공격、2 회복、3 상태변화、4 특수、5 상태회복
 @SKILL_EFECT_2959
-RETURN 4
+RETURN 1
 
 ;　 특수처리 여부 및 처리내용
 @SKILL_SPECIALEFECT_2959,ARG
@@ -69,7 +112,8 @@ SIF ARG == 1
 
 ;계승타입
 @SKILL_SUCCESSION_TYPE_2959
-RETURN 23
+RETURN 7
+;火炎
 
 ;속도보정
 @SKILL_SPEED_2959, ARG = -1
@@ -78,16 +122,19 @@ RETURN 0
 ;　구상의 표시와 그 타입
 @SKILL_MESSAGE_2959,ARG
 
+
 ;전투시 이외에 사용 가능한가
 @SKILL_ACTIONABLE_FIELD_2959
 RETURN 0
 
 ;스킬변화？용 랭크
 @SKILL_RANK_2959
-RETURN 23
+RETURN 7
 
-@계승불능_2959
-RETURN 1
+@SKILL_RANKUP_2959
+RETURN 0
+
+
 
 ;템플릿용、추가효과 시리즈
 ;추가효과 스테이터스
@@ -111,83 +158,47 @@ RETURN 0
 ;====================================================
 @ACTION_2959,ARG,ARG:1
 IF CFLAG:ARG:PT플래그 > 0
-	IF ITEM:274 > 0
-		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 가넷을 부숴서 마력을 해방했다！
-		ITEM:274 -= 1
-	ELSEIF ITEM:275 > 0
-		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 자수정을 부숴서 마력을 해방했다！
-		ITEM:275 -= 1
-	ELSEIF ITEM:276 > 0
-		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 아쿠아마린을 부숴서 마력을 해방했다！
-		ITEM:276 -= 1
-	ELSEIF ITEM:277 > 0
-		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 다이아몬드를 부숴서 마력을 해방했다！
-		ITEM:277 -= 1
-	ELSEIF ITEM:278 > 0
-		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 에메랄드를 부숴서 마력을 해방했다！
-		ITEM:278 -= 1
-	ELSEIF ITEM:279 > 0
-		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 진주를 부숴서 마력을 해방했다！
-		ITEM:279 -= 1
-	ELSEIF ITEM:280 > 0
-		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 루비를 부숴서 마력을 해방했다！
-		ITEM:280 -= 1
-	ELSEIF ITEM:281 > 0
-		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 오닉스를 부숴서 마력을 해방했다！
-		ITEM:281 -= 1
-	ELSEIF ITEM:282 > 0
-		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 사파이어를 부숴서 마력을 해방했다！
-		ITEM:282 -= 1
-	ELSEIF ITEM:283 > 0
-		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 오팔을 부숴서 마력을 해방했다！
-		ITEM:283 -= 1
-	ELSEIF ITEM:284 > 0
-		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 토파즈를 부숴서 마력을 해방했다！
-		ITEM:284 -= 1
-	ELSEIF ITEM:285 > 0
-		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 터쿼즈을 부숴서 마력을 해방했다！
-		ITEM:285 -= 1
+	IF BASE:ARG:LV < 60
+		MONEY -=  BASE:ARG:LV * 200
+	ELSE
+		MONEY -=  12000
 	ENDIF
+	SIF MONEY < 0
+		MONEY = 0
 ENDIF
-
-CFLAG:ARG:집중플래그 = 1
-CFLAG:ARG:마법위력강화 = MIN(32, CFLAG:ARG:마법위력강화 + 16)
-PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 다음 공격을 위해 집중하고 있다！
-
+PRINTFORMW %CALLNAME:ARG%は宝石を砕いて魔力を開放した！
+LOCAL = POS(ARG:1)
+CALL ATTACK_SINGLE,ARG,LOCAL,2959
 
 
 
 
-
-;====================================================
-;실행내용 여기까지
-;====================================================
-
-;====================================================
-;전투중 이외에서의 실행
-;====================================================
 
 
 ;====================================================
 ;실행내용 여기까지
 ;====================================================
-
 
 ;　 설명문 표시
 @SKILL_EXPLAIN_2959
-PRINTL 보석 하나를 파괴하여、다음에 쓰는 마법 공격의 위력을 높인다。
+PRINTL 宝石を砕いて複合属性の魔力弾として放つ。
 
 ;계승에 필요한 부위
 @계승부위_2959,ARG
 RETURN 1
 
+
 ;사용조건
 @SKILL_SPECIAL_ACTIONABLE_2959,ARG
-SIF CFLAG:ARG:PT플래그 == 0
-	RETURN 1
-SIF ITEM:274 < 1 && ITEM:275 < 1 && ITEM:276 < 1 && ITEM:277 < 1 && ITEM:278 < 1 && ITEM:279 < 1 && ITEM:280 < 1 && ITEM:281 < 1 && ITEM:282 < 1 && ITEM:283 < 1 && ITEM:284 < 1 && ITEM:285 < 1
-	RETURN 0
+IF CFLAG:ARG:PT플래그 > 0
+	IF BASE:ARG:LV < 60
+		SIF MONEY < BASE:ARG:LV * 200
+			RETURN 0
+	ELSE
+		SIF MONEY < 12000
+			RETURN 0
+	ENDIF
+ENDIF
 RETURN 1
-;아이템 개수 체크
-
+;金の有無、
 
