@@ -44,13 +44,17 @@ RETURN 17
 
 ;　1 EXTRA　2 MAGIC
 @SKILL_DECIDE_TYPE_2010, ARG
-RETURN 2
-;마법
+RETURN 1
+;物理
 
 ;　1 물리데미지로 계산　2 마법데미지로 계산
 @SKILL_DAMAGETYPE_2010, ARG
-RETURN 2
-
+SIF ARG < 0
+	RETURN 1
+;使用者の攻撃力が魔法威力より低い場合は魔法ダメージタイプになる
+SIF MAXBASE:ARG:힘 < MAXBASE:ARG:마력
+	RETURN 2
+RETURN 1
 
 ;　대상　1 적　2 아군　3 양쪽전체　4 특수
 @SKILL_TARGET_2010
@@ -123,9 +127,23 @@ RETURN 0
 ;스킬 및 행동의 실행
 ;====================================================
 @ACTION_2010,ARG,ARG:1
-CALL ATTACK_FIELD,ARG,ARG:1,2010
-
-CALL DEAD_CHARA,ARG
+#DIM L_経過ターン
+;面倒ごとを避けるために一時的に蘇生する
+BASE:ARG:ＨＰ += 1
+CFLAG:ARG:상태이상 = 0
+L_経過ターン = CFLAG:ARG:상태이상경과턴수
+CFLAG:ARG:상태이상경과턴수 = 0
+PRINTL
+SETCOLOR 0x66FFFF
+PRINTFORML 　　%CALLNAME:ARG% 잠재특수공격
+RESETCOLOR
+CALL ATTACK_FIELD, ARG, ARG:1,2010
+;もう一回死なせとく
+BASE:ARG:ＨＰ = 0
+CFLAG:ARG:상태이상 = GET_STATE_NUM("DYING")
+CFLAG:ARG:상태이상경과턴수 = L_経過ターン
+L_経過ターン = 0
+CFLAG:ARG:잠재능력발동횟수 ++
 
 
 ;====================================================
@@ -134,7 +152,9 @@ CALL DEAD_CHARA,ARG
 
 ;　 설명문 표시
 @SKILL_EXPLAIN_2010
-PRINTL [후열] 적 전체에 만능속성 대 마법데미지.
+PRINTL 적 전체에 상당한 대 데미지
+PRINTL 사용자의 힘과 마력 중 높은 쪽이 위력치에 가산되어、그에 적합한 대미지 타입이 된다
+PRINTL 또한、발동 중에는 한순간 소생되고、한순간에 다시 죽는다
 
 ;계승에 필요한 부위
 @계승부위_2010,ARG
