@@ -1,8 +1,8 @@
 ﻿;======================================================
-;아이템の기본処理を記述するファイルです
+;아이템의 기본처리를 기술하는 파일입니다
 ;======================================================
 ;======================================================
-;装備品の최대소지수処理
+;장비품의 최대소지수 처리
 ;======================================================
 @COUNT_ITEMMAX,ARG
 #FUNCTION
@@ -12,7 +12,7 @@ ELSE
 	RETURNF ARG + 2000
 ENDIF
 ;======================================================
-;아이템を최대値まで持っているか
+;아이템을 최대치까지 가지고 있는가
 ;======================================================
 @CHECK_ITEMMAX,ARG
 TRYCCALLFORM 최대소지수_{ARG+2000}
@@ -29,26 +29,42 @@ ENDCATCH
 ;아이템입수
 ;======================================================
 @GET_ITEM,ARG,ARG:1
+;ARG 아이템번호
+;ARG:1 입수개수
+
 ITEM:ARG += ARG:1
-TRYCCALLFORM 최대소지수_{ARG+2000}
-	SIF ITEM:ARG > RESULT
-		ITEM:ARG = RESULT
-CATCH
+IF ARG >= 2000
 	SIF ITEM:ARG > 999
 		ITEM:ARG = 999
-ENDCATCH
+ELSE
+	TRYCCALLFORM 최대소지수_{COUNT_ITEMMAX(ARG)}
+		SIF ITEM:ARG > RESULT
+			ITEM:ARG = RESULT
+	CATCH
+		SIF ITEM:ARG > 999
+			ITEM:ARG = 999
+	ENDCATCH
+ENDIF
 
 @GET_ITEMS,ARGS,ARG:1
+;ARGS 아이템명
+;ARG:1 입수개수
+
 ITEM:ARGS += ARG:1
-TRYCCALLFORM 최대소지수_{GETNUM(ITEM,ARGS)+2000}
-	SIF ITEM:ARGS > RESULT
-		ITEM:ARGS = RESULT
-CATCH
+IF GETNUM(ITEM, ARGS) >= 2000
 	SIF ITEM:ARGS > 999
 		ITEM:ARGS = 999
-ENDCATCH
+ELSE
+	TRYCCALLFORM 최대소지수_{COUNT_ITEMMAX(GETNUM(ITEM,ARGS))}
+		SIF ITEM:ARGS > RESULT
+			ITEM:ARGS = RESULT
+	CATCH
+		SIF ITEM:ARGS > 999
+			ITEM:ARGS = 999
+	ENDCATCH
+ENDIF
 ;======================================================
-;전투中の사용아이템を리스트化して표시
+;전투중 사용아이템 리스트화 표시
 ;======================================================
 @PRINT_USE_ITEM,ARG = -1
 SIF ARG == -1
@@ -68,19 +84,19 @@ ENDIF
 	DRAWLINE
 
 	FOR LOCAL,1000,2000
-		;未実装아이템は飛ばす
+		;未実装アイテムは飛ばす
 		SIF ITEMPRICE:LOCAL == 0
 			CONTINUE
-		;持ってない아이템は飛ばす
+		;持ってないアイテムは飛ばす
 		SIF ITEM:LOCAL < 1
 			CONTINUE
-		;합성用素材(1400～1450)は飛ばす
+		;合成用素材(1400～1450)は飛ばす
 		SIF 1400 <= LOCAL  && LOCAL <= 1450
 			CONTINUE
 		;処理
 		CALLFORM SKILL_EFECT_{LOCAL+2000}
 		IF (P == 2 && RESULT == 4) || (P == 1 && (RESULT == 1 || RESULT == 3)) || (P == 0 && (RESULT == 2 || RESULT == 5))
-		;전투中사용不可な아이템と사용조건を満たしていない아이템は灰色표시で選択不可
+		;戦闘中使用不可なアイテムと使用条件を満たしていないアイテムは灰色表示で選択不可
 			TRYCCALLFORM SKILL_ACTIONABLE_BATTLE_{LOCAL+2000}
 				LOCAL:1 = RESULT
 			CATCH
@@ -96,7 +112,7 @@ ENDIF
 				SETCOLOR 0x666666
 				Z:(LOCAL-1000) = 1
 			ENDIF
-			TRYCCALLFORM 최대소지수_{LOCAL+2000}
+			TRYCCALLFORM 최대소지수_{COUNT_ITEMMAX(LOCAL)}
 					PRINTFORMC [{LOCAL-1000,3}] %ITEMNAME:LOCAL,20,LEFT% {ITEM:LOCAL,2}/{RESULT,2}개
 			CATCH
 				PRINTFORMC [{LOCAL-1000,3}] %ITEMNAME:LOCAL,20,LEFT% {ITEM:LOCAL,2}/99개
@@ -141,7 +157,7 @@ ENDIF
 RETURN LOCAL
 
 ;======================================================
-;아이템の効果を아이템사용強度によって보정
+;아이템의 효과를 아이템 사용강도에 따라 보정
 ;======================================================
 @ITEM_POWERUP,ARG,ARG:1,ARG:2 = -999
 #FUNCTION
@@ -156,14 +172,14 @@ ENDIF
 
 RETURNF LOCAL
 
-@FIELD아이템関数,ARG,ARG:1,ARG:2 = -999
+@FIELD아이템함수,ARG,ARG:1,ARG:2 = -999
 #FUNCTION
 LOCAL:1 = 0
-;ARG 1=전투メンバーの아이템사용능력の최대値を返す　2=아이템사용강화の최대値を返す
-;　　3=아이템사용강화の최대値を用いて、ARG:1にARG:2の보정をかける（ITEM_POWERUP関数と同じ）
+;ARG 1=戦闘メンバーのアイテム使用能力の最大値を返す　2=アイテム使用強化の最大値を返す
+;　　3=アイテム使用強化の最大値を用いて、ARG:1にARG:2の補正をかける（ITEM_POWERUP関数と同じ）
 
 FOR LOCAL,0,CHARANUM
-	SIF CFLAG:LOCAL:PT플래그 == 0 || CFLAG:LOCAL:この場に居ないフラグ
+	SIF CFLAG:LOCAL:PT플래그 == 0 || CFLAG:LOCAL:이자리에없는플래그
 		CONTINUE
 	SIF CFLAG:LOCAL:포지션 < 1 || CFLAG:LOCAL:포지션 > 6
 		CONTINUE
@@ -187,33 +203,33 @@ ENDIF
 RETURNF LOCAL:2
 
 ;======================================================
-;お酒による性格변경
+;술에 의한 성격변경
 ;======================================================
-@酩酊,ARG,ARG:1,ARG:2
+@만취,ARG,ARG:1,ARG:2 ;酩酊
 ;ARG 대상 ARG:1 性格 ARG:2 아이템사용강화
-;CFLAG:飲酒前性格に、もとの性格を(性格のTALENT번호-우애のTALENT번호+3)bitで保存。1bit눈に변경フラグ、2bit눈に延長フラグを保存
-;CFLAG:飲酒前性格が存在する場合、性格を保存せずに現性格を上書き
+;CFLAG:음주전성격に、もとの性格を(性格のTALENT번호-우애のTALENT번호+3)bitで保存。1bit눈に변경フラグ、2bit눈に延長フラグを保存
+;CFLAG:음주전성격が存在する場合、性格を保存せずに現性格を上書き
 
 LOCAL:1 = 2
 LOCAL:2 = 0
-;想定外の수치は弾く
+;想定外の数値は弾く
 SIF ARG < 0 || ARG >= CHARANUM || ARG:1 < GETNUM(TALENT,"우애") || ARG:1 > GETNUM(TALENT,"허심")
 	RETURN
 ;保存するか否かを記憶
-SIF CFLAG:ARG:飲酒前性格 == 0
+SIF CFLAG:ARG:음주전성격 == 0
 	LOCAL:2 = 1
 ;변경を保存（인간等性格소질を持たない場合用）
-SETBIT CFLAG:ARG:飲酒前性格,1
+SETBIT CFLAG:ARG:음주전성격,1
 
 ;아이템사용강화が１이상なら、２サイクル持つ
 SIF ARG:2 > 0
-	SETBIT CFLAG:ARG:飲酒前性格,2
+	SETBIT CFLAG:ARG:음주전성격,2
 
 ;元の性格を保存
 FOR LOCAL,GETNUM(TALENT,"우애"),GETNUM(TALENT,"허심") + 1
 	LOCAL:1 ++
 	IF LOCAL:2 == 1 && TALENT:ARG:LOCAL
-		SETBIT CFLAG:ARG:飲酒前性格,LOCAL:1
+		SETBIT CFLAG:ARG:음주전성격,LOCAL:1
 	ENDIF
 	TALENT:ARG:LOCAL = 0
 NEXT
@@ -222,27 +238,27 @@ TALENT:ARG:(ARG:1) = 1
 
 
 
-@酔い깨달음まし,ARG:1
-;ARG:1 ターン종료시の酔い깨달음まし
-;こちらは時期によって一括なんで대상は取らない
-;CFLAG:飲酒前性格の1bit눈がONならOFFにする。そうでなければ、CFLAG:飲酒前性格から元の性格を読み込んで戻す
+@술에서깸,ARG:1 ;酔い覚まし
+;ARG:1 ターン終了時の酔い覚まし
+;こちらは時期によって一括なんで対象は取らない
+;CFLAG:음주전성격の1bit目がONならOFFにする。そうでなければ、CFLAG:음주전성격から元の性格を読み込んで戻す
 
 FOR LOCAL,0,CHARANUM
-	SIF CFLAG:LOCAL:飲酒前性格 == 0
+	SIF CFLAG:LOCAL:음주전성격 == 0
 		CONTINUE
 	;延長フラグONならOFFにして戻す
-	IF GETBIT(CFLAG:LOCAL:飲酒前性格,2) && ARG:1 == 0
-		CLEARBIT CFLAG:LOCAL:飲酒前性格,2
+	IF GETBIT(CFLAG:LOCAL:음주전성격,2) && ARG:1 == 0
+		CLEARBIT CFLAG:LOCAL:음주전성격,2
 		CONTINUE
 	ENDIF
 	LOCAL:1 = 2
 	FOR LOCAL:2,GETNUM(TALENT,"우애"),GETNUM(TALENT,"허심") + 1
 		LOCAL:1 ++
 		TALENT:LOCAL:(LOCAL:2) = 0
-		IF GETBIT(CFLAG:LOCAL:飲酒前性格,LOCAL:1)
+		IF GETBIT(CFLAG:LOCAL:음주전성격,LOCAL:1)
 			TALENT:LOCAL:(LOCAL:2) = 1
 		ENDIF
 	NEXT
-	CFLAG:LOCAL:飲酒前性格 = 0
+	CFLAG:LOCAL:음주전성격 = 0
 NEXT
 

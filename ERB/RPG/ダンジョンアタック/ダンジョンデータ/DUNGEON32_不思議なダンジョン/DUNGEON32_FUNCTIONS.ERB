@@ -1,0 +1,1527 @@
+﻿;---------------------------------------------------------------------------------------------------------------------------------
+;던전32　不思議な던전
+;---------------------------------------------------------------------------------------------------------------------------------
+;던전概要
+;	トルネコや試練の不思議な던전みたいに、入るたびに変化するタイプの던전を作成します。
+;	同じ階でも階段を上り下りする度に再生成されて別のマップになる予定です。
+;	(Elonaの「子犬の洞窟」とかがイメージしやすい...かな？)
+
+;更新日時　　　更新者				更新内容
+;2021/09/01　　ロッド@カヤノソト	作成に着手
+;---------------------------------------------------------------------------------------------------------------------------------
+
+;※「던전32：不思議な던전」では様々な処理を行う関係上、コードが長すぎて可読性が低くなる心配があったため
+;	独自の関数は本ファイルからこちらに移動しました。
+
+;---------------------------------------
+;占い師マリーの依頼を自動生成する処理
+;---------------------------------------
+@DUNGEON_32_MAKE_QUEST
+;-------------
+;変数定義
+;-------------
+#DIM LOOP_CNT_i					;ループ用カウント変数
+
+;-------------
+;変数の初期化
+;-------------
+LOOP_CNT_i = 0					;ループ用カウント変数
+VARSET DUNGEON_32_QUEST_LIST	;依頼リストをクリアする
+
+;-------------
+;本処理
+;-------------
+FOR LOOP_CNT_i, 0, 3
+	;던전の危険度を指定する
+	IF 1 <= BASE:MASTER:LV && BASE:MASTER:LV < 20
+		;主人公のレベルが1～19の場合
+		DUNGEON_32_QUEST_LIST:LOOP_CNT_i:0 = 1
+
+	ELSEIF 20 <= BASE:MASTER:LV && BASE:MASTER:LV < 40
+		;主人公のレベルが20～39の場合
+		DUNGEON_32_QUEST_LIST:LOOP_CNT_i:0 = 1 + RAND:2
+
+	ELSEIF 40 <= BASE:MASTER:LV && BASE:MASTER:LV < 59
+		;主人公のレベルが40～59の場合
+		DUNGEON_32_QUEST_LIST:LOOP_CNT_i:0 = 1 + RAND:3
+
+	ELSE
+		;その他の場合(主人公のレベルが60以上)
+		DUNGEON_32_QUEST_LIST:LOOP_CNT_i:0 = 1 + RAND:4
+
+	ENDIF
+
+	;던전の種類を指定する
+	DUNGEON_32_QUEST_LIST:LOOP_CNT_i:1 = 1 + RAND:12
+
+	;던전の深さを指定する
+	DUNGEON_32_QUEST_LIST:LOOP_CNT_i:2 = 2 + RAND:3
+
+NEXT
+
+RETURN 1
+
+;---------------------------------------
+;出現する悪魔の種族を設定する処理
+;---------------------------------------
+@DUNGEON_32_MAKE_DEVIL_CATEGORY
+;-------------
+;変数定義
+;-------------
+#DIM LOOP_CNT_i			;ループ用カウント変数
+
+;-------------
+;変数の初期化
+;-------------
+LOOP_CNT_i = 0			;ループ用カウント変数
+
+;-------------
+;本処理
+;-------------
+FOR LOOP_CNT_i, 0, 100
+	;出現する悪魔の種族をリセットする(0:出現しない)
+	CD_ARRAY_DEVIL_CATEGORY:LOOP_CNT_i = 0
+NEXT
+
+IF 던전플래그:32:1 == 1 || 던전플래그:32:1 == 2
+	;挑戦中の던전の大分類が(1:占い師マリーの依頼によるランダム異界)または(2:魔界探索)である場合
+
+	;던전の種類ごとに出現する悪魔の種類を設定する
+	SELECTCASE 던전플래그:32:4
+		CASE 1
+			;ビルの場合
+			CD_ARRAY_DEVIL_CATEGORY:4 = 1		;天使が出現する
+			CD_ARRAY_DEVIL_CATEGORY:6 = 1		;妖精が出現する
+			CD_ARRAY_DEVIL_CATEGORY:10 = 1	;妖鳥が出現する
+
+		CASE 2
+			;病院の場合
+			CD_ARRAY_DEVIL_CATEGORY:4 = 1		;天使が出現する
+			CD_ARRAY_DEVIL_CATEGORY:1 = 1		;地母神が出現する
+			CD_ARRAY_DEVIL_CATEGORY:11 = 1	;外道が出現する
+
+		CASE 3
+			;アパートの場合
+			CD_ARRAY_DEVIL_CATEGORY:6 = 1		;妖精が出現する
+			CD_ARRAY_DEVIL_CATEGORY:7 = 1		;妖鬼が出現する
+			CD_ARRAY_DEVIL_CATEGORY:5 = 1		;妖魔が出現する
+
+		CASE 4
+			;学校の場合
+			CD_ARRAY_DEVIL_CATEGORY:6 = 1		;妖精が出現する
+			CD_ARRAY_DEVIL_CATEGORY:9 = 1		;魔獣が出現する
+			CD_ARRAY_DEVIL_CATEGORY:7 = 1		;妖鬼が出現する
+
+		CASE 5
+			;森の場合
+			CD_ARRAY_DEVIL_CATEGORY:13 = 1	;精霊が出現する
+			CD_ARRAY_DEVIL_CATEGORY:3 = 1		;魔王が出現する
+			CD_ARRAY_DEVIL_CATEGORY:5 = 1		;妖魔が出現する
+
+		CASE 6
+			;山の場合
+			CD_ARRAY_DEVIL_CATEGORY:9 = 1		;魔獣が出現する
+			CD_ARRAY_DEVIL_CATEGORY:10 = 1	;妖鳥が出現する
+			CD_ARRAY_DEVIL_CATEGORY:8 = 1		;龍王が出現する
+
+		CASE 7
+			;神社の場合
+			CD_ARRAY_DEVIL_CATEGORY:2 = 1		;女神が出現する
+			CD_ARRAY_DEVIL_CATEGORY:1 = 1		;地母神が出現する
+			CD_ARRAY_DEVIL_CATEGORY:15 = 1	;鬼神が出現する
+
+		CASE 8
+			;警察署の場合
+			CD_ARRAY_DEVIL_CATEGORY:9 = 1		;魔獣が出現する
+			CD_ARRAY_DEVIL_CATEGORY:11 = 1	;外道が出現する
+			CD_ARRAY_DEVIL_CATEGORY:4 = 1		;天使が出現する
+
+		CASE 9
+			;古墳の場合
+			CD_ARRAY_DEVIL_CATEGORY:15 = 1	;鬼神が出現する
+			CD_ARRAY_DEVIL_CATEGORY:3 = 1		;魔王が出現する
+			CD_ARRAY_DEVIL_CATEGORY:8 = 1		;龍王が出現する
+
+		CASE 10
+			;墓地の場合
+			CD_ARRAY_DEVIL_CATEGORY:11 = 1	;外道が出現する
+			CD_ARRAY_DEVIL_CATEGORY:7 = 1		;妖鬼が出現する
+			CD_ARRAY_DEVIL_CATEGORY:13 = 1	;精霊が出現する
+
+		CASE 11
+			;海岸の場合
+			CD_ARRAY_DEVIL_CATEGORY:2 = 1		;女神が出現する
+			CD_ARRAY_DEVIL_CATEGORY:5 = 1		;妖魔が出現する
+			CD_ARRAY_DEVIL_CATEGORY:10 = 1	;妖鳥が出現する
+
+		CASE 12
+			;地下水道の場合
+			CD_ARRAY_DEVIL_CATEGORY:1 = 1		;地母神が出現する
+			CD_ARRAY_DEVIL_CATEGORY:2 = 1		;女神が出現する
+			CD_ARRAY_DEVIL_CATEGORY:3 = 1		;魔王が出現する
+			CD_ARRAY_DEVIL_CATEGORY:4 = 1		;天使が出現する
+			CD_ARRAY_DEVIL_CATEGORY:5 = 1		;妖魔が出現する
+			CD_ARRAY_DEVIL_CATEGORY:6 = 1		;妖精が出現する
+			CD_ARRAY_DEVIL_CATEGORY:7 = 1		;妖鬼が出現する
+			CD_ARRAY_DEVIL_CATEGORY:8 = 1		;龍王が出現する
+			CD_ARRAY_DEVIL_CATEGORY:9 = 1		;魔獣が出現する
+			CD_ARRAY_DEVIL_CATEGORY:10 = 1	;妖鳥が出現する
+			CD_ARRAY_DEVIL_CATEGORY:11 = 1	;外道が出現する
+			CD_ARRAY_DEVIL_CATEGORY:13 = 1	;精霊が出現する
+			CD_ARRAY_DEVIL_CATEGORY:15 = 1	;鬼神が出現する
+
+		CASE 13
+			;地母神の場合
+			CD_ARRAY_DEVIL_CATEGORY:1 = 1		;地母神が出現する
+
+		CASE 14
+			;女神の場合
+			CD_ARRAY_DEVIL_CATEGORY:2 = 1		;女神が出現する
+
+		CASE 15
+			;魔王の場合
+			CD_ARRAY_DEVIL_CATEGORY:3 = 1		;魔王が出現する
+
+		CASE 16
+			;天使の場合
+			CD_ARRAY_DEVIL_CATEGORY:4 = 1		;天使が出現する
+
+		CASE 17
+			;妖魔の場合
+			CD_ARRAY_DEVIL_CATEGORY:5 = 1		;妖魔が出現する
+
+		CASE 18
+			;妖精の場合
+			CD_ARRAY_DEVIL_CATEGORY:6 = 1		;妖精が出現する
+
+		CASE 19
+			;妖鬼の場合
+			CD_ARRAY_DEVIL_CATEGORY:7 = 1		;妖鬼が出現する
+
+		CASE 20
+			;龍王の場合
+			CD_ARRAY_DEVIL_CATEGORY:8 = 1		;龍王が出現する
+
+		CASE 21
+			;魔獣の場合
+			CD_ARRAY_DEVIL_CATEGORY:9 = 1		;魔獣が出現する
+
+		CASE 22
+			;妖鳥の場合
+			CD_ARRAY_DEVIL_CATEGORY:10 = 1	;妖鳥が出現する
+
+		CASE 23
+			;外道の場合
+			CD_ARRAY_DEVIL_CATEGORY:11 = 1	;外道が出現する
+
+		CASE 24
+			;精霊の場合
+			CD_ARRAY_DEVIL_CATEGORY:13 = 1	;精霊が出現する
+
+		CASE 25
+			;鬼神の場合
+			CD_ARRAY_DEVIL_CATEGORY:15 = 1	;鬼神が出現する
+
+	ENDSELECT
+ENDIF
+
+RETURN 1
+
+
+;--------------------------------------------
+;階段などのオブジェクト設置フラグを設定する
+;--------------------------------------------
+@DUNGEON_32_MAKE_OBJECTS
+;-------------
+;変数定義
+;-------------
+#DIM RANDOM_NO_100				;1～100の乱数を入れる変数。ターミナルなどの確立で出現するオブジェクトの判定に利用する
+#DIM TERMINAL_PERCENTAGE		;ターミナルの出現率(%)
+#DIM TREASUR_PERCENTAGE			;宝箱の出現率(%)
+#DIM MIGHTY_FOE_PERCENTAGE		;強敵(FOE)の出現率(%)
+#DIM MONSTER_HOUSE_PERCENTAGE	;モンスターハウスの出現率(%)
+#DIM FLOOR_ACREAGE				;フロアの広さ
+#DIM LOOP_CNT_i					;ループ用カウント変数
+
+
+;-------------
+;変数の初期化
+;-------------
+;各種変数の初期化
+TERMINAL_PERCENTAGE = 0			;ターミナルの出現率(%)
+RANDOM_NO_100 = 0				;1～100の乱数を入れる変数。ターミナルなどの確立で出現するオブジェクトの判定に利用する
+TREASUR_PERCENTAGE = 0			;宝箱の出現率(%)
+MIGHTY_FOE_PERCENTAGE = 0		;強敵(FOE)の出現率(%)
+MONSTER_HOUSE_PERCENTAGE = 0	;モンスターハウスの出現率(%)
+FLOOR_ACREAGE = 0				;フロアの広さ
+LOOP_CNT_i = 0					;ループ用カウント変数
+
+;登り階段、下り階段、出口などのオブジェクトフラグの初期化(0:作成しない / 1以上:その数だけ作成する)
+CD_UPPER_STAIRS_FLG = 0			;登り階段(登)
+CD_LOWER_STAIRS_FLG = 0			;降り階段(降)
+CD_EXIST_FLG = 0				;出口(出)
+CD_TERMINAL_FLG = 0				;ターミナル(Ｔ)
+CD_EVENT_FLG = 0				;イベントマス(！)
+CD_TREASURE_FLG = 0				;宝箱(宝)
+
+;-------------
+;本処理
+;-------------
+IF 던전플래그:32:1 == 1 || 던전플래그:32:1 == 2
+	;挑戦中の던전の大分類が(1:占い師マリーの依頼によるランダム異界)または(2:魔界探索)である場合
+
+	;던전の種類ごとに詳細設定を行う
+	SELECTCASE 던전플래그:32:4
+		CASE 1
+			;ビルの場合
+			TERMINAL_PERCENTAGE = 25	;ターミナル(Ｔ)出現率
+			TREASUR_PERCENTAGE = 20		;宝箱の出現率(%)
+
+		CASE 2
+			;病院の場合
+			TERMINAL_PERCENTAGE = 15	;ターミナル(Ｔ)出現率
+			TREASUR_PERCENTAGE = 20		;宝箱の出現率(%)
+
+		CASE 3
+			;アパートの場合
+			TERMINAL_PERCENTAGE = 5		;ターミナル(Ｔ)出現率
+			TREASUR_PERCENTAGE = 10		;宝箱の出現率(%)
+
+		CASE 4
+			;学校の場合
+			TERMINAL_PERCENTAGE = 5		;ターミナル(Ｔ)出現率
+			TREASUR_PERCENTAGE = 10		;宝箱の出現率(%)
+
+		CASE 5
+			;森の場合
+			TERMINAL_PERCENTAGE = 0		;ターミナル(Ｔ)出現率
+			TREASUR_PERCENTAGE = 60		;宝箱の出現率(%)
+
+		CASE 6
+			;山の場合
+			TERMINAL_PERCENTAGE = 0		;ターミナル(Ｔ)出現率
+			TREASUR_PERCENTAGE = 60		;宝箱の出現率(%)
+
+		CASE 7
+			;神社の場合
+			TERMINAL_PERCENTAGE = 5		;ターミナル(Ｔ)出現率
+			TREASUR_PERCENTAGE = 80		;宝箱の出現率(%)
+
+		CASE 8
+			;警察署の場合
+			TERMINAL_PERCENTAGE = 15	;ターミナル(Ｔ)出現率
+			TREASUR_PERCENTAGE = 20		;宝箱の出現率(%)
+
+		CASE 9
+			;古墳の場合
+			TERMINAL_PERCENTAGE = 0		;ターミナル(Ｔ)出現率
+			TREASUR_PERCENTAGE = 80		;宝箱の出現率(%)
+
+		CASE 10
+			;墓地の場合
+			TERMINAL_PERCENTAGE = 0		;ターミナル(Ｔ)出現率
+			TREASUR_PERCENTAGE = 35		;宝箱の出現率(%)
+
+		CASE 11
+			;海岸の場合
+			TERMINAL_PERCENTAGE = 0		;ターミナル(Ｔ)出現率
+			TREASUR_PERCENTAGE = 70		;宝箱の出現率(%)
+
+		CASE 12
+			;地下水道の場合
+			TERMINAL_PERCENTAGE = 15	;ターミナル(Ｔ)出現率
+			TREASUR_PERCENTAGE = 35		;宝箱の出現率(%)
+
+		CASEELSE
+			;その他の場合
+			TERMINAL_PERCENTAGE = 15	;ターミナル(Ｔ)出現率
+			TREASUR_PERCENTAGE = 35		;宝箱の出現率(%)
+
+	ENDSELECT
+ENDIF
+
+;階段、出口、最上階のボスマスの出現判定
+IF 던전플래그:32:6 == 0
+	;上に登る던전の場合
+	IF FLAG:현M == 1 || FLAG:현M == 던전플래그:32:16
+		;1階の場合、またはカギを用いて途中階層からスタートする場合の最初の階層の場合
+		CD_UPPER_STAIRS_FLG = 1		;登り階段(登)
+		CD_EXIST_FLG = 1			;出口(出)
+
+	ELSEIF DUNGEON_32_IS_LAST_FLOOR() == 1
+		;最上層の場合
+		CD_LOWER_STAIRS_FLG = 1		;降り階段(降)
+		CD_EVENT_FLG = 1			;イベントマス(！)　※ボスが登場する
+
+		;ボスフロアであることをプレイヤーに伝える
+		PRINTFORMW とてつもなく恐ろしい気配がする……
+
+	ELSE
+		;その他の場合
+		CD_UPPER_STAIRS_FLG = 1		;登り階段(登)
+		CD_LOWER_STAIRS_FLG = 1		;降り階段(降)
+
+	ENDIF
+
+ELSE
+	;その他の場合(下に降りる던전の場合)
+	IF FLAG:현M == -1 || FLAG:현M == 던전플래그:32:16
+		;1階の場合、またはカギを用いて途中階層からスタートする場合の最初の階層の場合
+		CD_LOWER_STAIRS_FLG = 1		;降り階段(降)
+		CD_EXIST_FLG = 1			;出口(出)
+
+	ELSEIF DUNGEON_32_IS_LAST_FLOOR() == 1
+		;最下層の場合
+		CD_UPPER_STAIRS_FLG = 1		;登り階段(登)
+		CD_EVENT_FLG = 1			;イベントマス(！)　※ボスが登場する
+
+		;ボスフロアであることをプレイヤーに伝える
+		PRINTFORMW とてつもなく恐ろしい気配がする……
+
+	ELSE
+		;その他の場合
+		CD_UPPER_STAIRS_FLG = 1		;登り階段(登)
+		CD_LOWER_STAIRS_FLG = 1		;降り階段(降)
+
+	ENDIF
+ENDIF
+
+;魔界探索の場合の追加設定
+IF 던전플래그:32:1 == 2
+	;10階層ごとに領域の主を設置する
+	IF FLAG:현M % 10 == 0 && 던전플래그:32:14 > 던전플래그:32:15
+		CD_EVENT_FLG = 1			;イベントマス(！)　※ボスが登場する
+		CD_LOWER_STAIRS_FLG = 0		;降り階段が発生しない(ボスを倒すと階段が出てくる)
+
+		;最上層/最下層でない場合、「恐ろしい気配」を表示する
+		;※最上層/最下層の場合も表示するため、二重にならないようにIF分岐を入れています。
+		IF DUNGEON_32_IS_LAST_FLOOR() != 1
+			PRINTFORMW とてつもなく恐ろしい気配がする……
+		ENDIF
+	ENDIF
+
+	;部屋の広さを計算する	※実際はフロア内が壁だらけであるため、最大範囲の1/20程度しか利用できないと考える。
+	FLOOR_ACREAGE = (FLAG:최대X) * (FLAG:최대Y) / 20
+
+	;フロアの広さに応じて敵シンボルを配置する
+	CD_ENEMY_FLG = 1 + (FLOOR_ACREAGE / 40) + RAND:((FLOOR_ACREAGE / 20) + 1)
+
+	;通常エネミーのシンボルは最大20まで
+	IF CD_ENEMY_FLG > 20
+		CD_ENEMY_FLG = 20
+	ENDIF
+
+	;強敵シンボルの出現率を設定する
+	MIGHTY_FOE_PERCENTAGE = 50
+
+	;モンスターハウスの出現率を設定する
+	MONSTER_HOUSE_PERCENTAGE = 20
+
+ENDIF
+
+
+;ターミナルの出現判定
+RANDOM_NO_100 = (RAND:100) + 1
+IF RANDOM_NO_100 <= CD_TERMINAL_FLG
+	CD_TERMINAL_FLG = 1				;ターミナル(Ｔ)
+ENDIF
+
+;宝箱の出現判定
+RANDOM_NO_100 = (RAND:100) + 1
+IF RANDOM_NO_100 <= TREASUR_PERCENTAGE
+	CD_TREASURE_FLG = 1				;宝箱(宝)
+ENDIF
+
+;強敵シンボルの出現判定
+RANDOM_NO_100 = (RAND:100) + 1
+IF RANDOM_NO_100 <= MIGHTY_FOE_PERCENTAGE
+	CD_SPECIAL_ENEMY_FLG = 1		;強敵シンボル
+ENDIF
+
+;モンスターハウスの出現判定
+RANDOM_NO_100 = (RAND:100) + 1
+IF RANDOM_NO_100 <= MONSTER_HOUSE_PERCENTAGE
+	CD_MONSTER_HOUSE_FLG = 1		;モンスターハウス発生フラグ
+ENDIF
+
+
+;-- TEST --
+;F.O.E.などのシンボル発生テスト
+;CD_ENEMY_FLG = 1
+;CD_SPECIAL_ENEMY_FLG = 1
+;CD_NEUTRAL_CHARA_FLG = 0
+;CD_SUPPORTER_CHARA_FLG = 0
+;CD_RESCUE_TARGET_FLG = 0
+;CD_TREASURE_FLG = 0
+;FLAG:최대X = 10
+;FLAG:최대Y = 10
+;CD_MONSTER_HOUSE_FLG = 1
+;-- TEST --
+
+RETURN 1
+
+
+;--------------------------------------------
+;シンボルエンカウントの敵の詳細を設定する
+;--------------------------------------------
+@DUNGEON_32_SET_SYMBOL_ENCOUNT_DETAIL
+;-------------
+;変数定義
+;-------------
+#DIM LOOP_CNT_i					;ループ用カウント変数
+#DIM LOOP_CNT_j					;ループ用カウント変数
+#DIM OBJECT_CNT					;オブジェクト(キャラクター)の数
+#DIM ENEMY_NO					;敵のCSV番号
+#DIM ENEMY_LEVEL				;敵のレベル
+#DIM ENEMY_ACT_CNT				;敵の行動回数
+#DIM ENEMY_BOSS_FLG				;敵のボスフラグ
+#DIM ARRAY_ENEMY_STATUS_ADD, 8	;ステータス8種類の補正値(0:HP / 1:MP / 2:힘 / 3:지혜 / 4:마력 / 5:인내력 / 6:속도 / 7:운)
+#DIM EVENT_PATTERN				;シンボルと接触時のイベントのパターン(0:未設定 / 1:戦闘する / 2:イベント発生)
+#DIM EVENT_NO1					;シンボルと接触時の特殊イベントの番号その1(던전番号)
+#DIM EVENT_NO2					;シンボルと接触時の特殊イベントの番号その2(イベントの詳細番号)
+#DIM NOT_TALK_FLG					;会話不能フラグ(0:회화可能 / 1:회화불능)	※シンボルエンカウントの場合、個別に設定してあげる必要がある
+
+
+;-------------
+;変数の初期化
+;-------------
+LOOP_CNT_i = 0					;ループ用カウント変数i
+LOOP_CNT_j = 0					;ループ用カウント変数i
+OBJECT_CNT = 0					;オブジェクト(キャラクター)の数
+ENEMY_NO = 0					;敵のCSV番号
+ENEMY_LEVEL = 0					;敵のレベル
+ENEMY_ACT_CNT = 0				;敵の行動回数
+ENEMY_BOSS_FLG = 0				;敵のボスフラグ
+VARSET ARRAY_ENEMY_STATUS_ADD	;ステータス8種類の補正値(0:HP / 1:MP / 2:힘 / 3:지혜 / 4:마력 / 5:인내력 / 6:속도 / 7:운)
+EVENT_PATTERN = 0				;シンボルと接触時のイベントのパターン(0:未設定 / 1:戦闘する / 2:特殊イベント発生)
+EVENT_NO1 = 32					;シンボルと接触時の特殊イベントの番号その1(던전番号)
+EVENT_NO2 = 0					;シンボルと接触時の特殊イベントの番号その2(イベントの詳細番号)
+NOT_TALK_FLG = 1				;会話不能フラグ(0:회화可能 / 1:회화불능)	※シンボルエンカウントの場合、個別に設定してあげる必要がある
+
+;-------------
+;本処理
+;-------------
+;キャラクターの数を取得する
+FOR LOOP_CNT_i, 0, 20
+	IF CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:0 != 0
+		OBJECT_CNT += 1
+	ENDIF
+NEXT
+
+;キャラクターの数だけループを回して処理を行う
+FOR LOOP_CNT_i, 0, OBJECT_CNT
+	;変数を初期化する
+	EVENT_PATTERN = 0
+
+	;シンボルの種類ごとに設定を行う。
+	SELECTCASE CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:0
+		CASE 1
+			;「1:通常の敵」の場合
+				;----------------------
+				;シンボルの情報を取得する
+				;----------------------
+				ENEMY_NO = CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:1											;敵のCSV番号を取得する
+				ENEMY_LEVEL = CSVBASE(ENEMY_NO, GETNUM(BASE,"LV"),0) + 던전플래그:32:8			;敵のレベル
+				ENEMY_ACT_CNT = 1																		;敵の行動回数
+				ENEMY_BOSS_FLG = 0																		;敵のボスフラグ
+				EVENT_PATTERN = 1																		;イベントのパターン(1:戦闘する)
+
+		CASE 2
+			;「2:強敵」の場合
+				;----------------------
+				;シンボルの情報を取得する
+				;----------------------
+				ENEMY_NO = CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:1											;敵のCSV番号を取得する
+				ENEMY_LEVEL = (CSVBASE(ENEMY_NO, GETNUM(BASE,"LV"),0) + 던전플래그:32:8) + 20		;敵のレベル
+				ENEMY_ACT_CNT = 2																		;敵の行動回数
+				ENEMY_BOSS_FLG = 1																		;敵のボスフラグ
+
+				;ステータス補正値の設定(2:힘 / 3:지혜 / 4:마력 / 5:인내력 / 6:속도 / 7:운)	※HP,MPの補正はなしとする
+				FOR LOOP_CNT_j, 2, 8
+					ARRAY_ENEMY_STATUS_ADD:LOOP_CNT_j = 던전플래그:32:14							;敵のステータス補正値(던전の階層の絶対値と同じ値とする)
+				NEXT
+
+				;ここで「通常戦闘」「特殊イベント」の分岐を行う
+				EVENT_PATTERN = 1																		;イベントのパターン(1:戦闘する)
+				;EVENT_PATTERN = 2																		;イベントのパターン(2:特殊イベント発生)
+				;EVENT_NO2 = 1																			;シンボルと接触時の特殊イベントの番号その2(イベントの詳細番号)
+
+		CASEELSE
+			;その他の場合(何もしない)
+
+	ENDSELECT
+
+	;----------------------
+	;シンボルの情報を登録する
+	;----------------------
+	;シンボルとの接触時のイベントパターンごとに登録を行う。
+	SELECTCASE EVENT_PATTERN
+		CASE 1, 2
+			;「1:通常の敵」「2:強敵」の場合
+			CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:12 = ENEMY_LEVEL												 		;レベル
+			CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:13 = ENEMY_ACT_CNT 														;行動回数
+			CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:14 = ENEMY_BOSS_FLG 													;ボスフラグ
+
+			;ステータス補正値の設定(0:HP / 1:MP / 2:힘 / 3:지혜 / 4:마력 / 5:인내력 / 6:속도 / 7:운)	※HP,MPの補正はなしとする
+			FOR LOOP_CNT_j, 0, 8
+				 CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:(15 + LOOP_CNT_j) = ARRAY_ENEMY_STATUS_ADD:LOOP_CNT_j
+			NEXT
+
+			CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:23 = EVENT_PATTERN														;シンボルと接触時のイベントのパターン(0:未設定 / 1:戦闘する / 2:特殊イベント発生)
+			CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:24 = EVENT_NO1															;シンボルと接触時の特殊イベントの番号その1(던전番号)
+			CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:25 = EVENT_NO2															;シンボルと接触時の特殊イベントの番号その2(イベントの詳細番号)
+			CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:27 = NOT_TALK_FLG														;会話不能フラグ(0:회화可能 / 1:회화불능)
+
+		CASEELSE
+			;その他の場合(何もしない)
+
+	ENDSELECT
+NEXT
+
+RETURN 1
+
+
+;-------------------------------------------------
+;現在のフロアが最上層/最下層であるか判定する
+;-------------------------------------------------
+;返り値
+;	0:最上層/最下層ではない
+;	1:最上層/最下層である
+;-----------------------------------------------------------------
+@DUNGEON_32_IS_LAST_FLOOR
+#FUNCTION
+#LOCALSIZE  1
+#LOCALSSIZE 1
+;-------------
+;変数定義
+;-------------
+#DIM IS_LAST_FLOOR_FLG	;現在のフロアが最上層/最下層であるかを示すフラグ(最上層・最下層ではない / 1:最上層・最下層である)
+
+;-------------
+;変数の初期化
+;-------------
+IS_LAST_FLOOR_FLG = 0	;現在のフロアが最上層/最下層であるかを示すフラグ(最上層・最下層ではない / 1:最上層・最下層である)
+
+;-------------
+;本処理
+;-------------
+;上に登る던전 / 下に降りる던전 で分岐してそれぞれ判定を行う
+IF 던전플래그:32:6 == 0
+	;上に登る던전の場合
+	IF FLAG:현M == 던전플래그:32:5
+		;最上層の場合
+		IS_LAST_FLOOR_FLG = 1
+
+	ELSE
+		;その他の場合
+		IS_LAST_FLOOR_FLG = 0
+
+	ENDIF
+
+ELSE
+	;その他の場合(下に降りる던전の場合)
+	IF FLAG:현M == (던전플래그:32:5) * -1
+		;最下層の場合
+		IS_LAST_FLOOR_FLG = 1
+
+	ELSE
+		;その他の場合
+		IS_LAST_FLOOR_FLG = 0
+
+	ENDIF
+ENDIF
+
+;返り値を返す
+RETURNF IS_LAST_FLOOR_FLG
+
+
+;-------------------------------------------------
+;ボス戦闘処理(異界の主、魔界の領域の主など)
+;-------------------------------------------------
+;-----------------------------------------------------------------
+@DUNGEON_32_BOSS_BATTLE
+;-------------
+;変数定義
+;-------------
+#DIM BOSS_CSV_NO		;ボス悪魔の種類(CSVファイルの番号)
+#DIM RANDOM_NO_100		;0～99の乱数を入れる変数。カギ入手イベントの判定などに利用する
+
+;-------------
+;変数の初期化
+;-------------
+BOSS_CSV_NO = 0			;ボス悪魔の種類(CSVファイルの番号)
+RANDOM_NO_100 = 0		;0～99の乱数を入れる変数。カギ入手イベントの判定などに利用する
+
+;-------------
+;本処理
+;-------------
+IF 던전플래그:32:1 == 1
+	;占い師マリーの依頼の場合
+
+	;戦闘前会話
+	CALL MESSAGE_WINDOW_D, "", "＞あなたはこの部屋の中に　他と様子の異なる悪魔を見つけた。"
+	CALL MESSAGE_WINDOW_D, "", "＞その悪魔を中心に空間がねじれている。　この異界の主で間違いないだろう"
+	CALL MESSAGE_WINDOW_D, "", "＞あなたはこの異界を解消するため　悪魔におどりかかった！"
+
+	;戦闘用のフラグ設定を行う
+	FLAG:도주불가플래그 = 1
+	FLAG:선제기습취소 = 1
+
+	;ボス悪魔の召喚
+	;	種類は던전内に出現する雑魚悪魔から1つをランダムに選択
+	;	レベルは本来のレベル + 15
+	BOSS_CSV_NO = CD_DEVIL_LIST:(RAND:CD_DEVIL_VARIETY_CNT)										;ボス悪魔のCSV番号を取得
+	CALL SET_ENEMY, 9, BOSS_CSV_NO, CSVBASE(BOSS_CSV_NO, GETNUM(BASE,"LV"),0) + 15, 0, 1		;ボス悪魔を9番の位置にセットする
+
+	;ボス悪魔のドロップアイテムを設定
+	ABL:(CHARANUM-1):아이템1 = [[아이템:챠크라드롭]]
+	ABL:(CHARANUM-1):입수확률1 = 100
+	ABL:(CHARANUM-1):아이템2 = [[아이템:챠크라포트]]
+	ABL:(CHARANUM-1):입수확률2 = 35
+	ABL:(CHARANUM-1):아이템3 = [[아이템:그레이트챠크라]]
+	ABL:(CHARANUM-1):입수확률3 = 10
+
+	;ボス悪魔のステータス等を設定
+	CFLAG:(CHARANUM-1):행동횟수 = 2								;二回行動
+	BASE:(CHARANUM-1):힘 = (BASE:(CHARANUM-1):힘) * 2			;力を2倍にする
+	BASE:(CHARANUM-1):지혜 = (BASE:(CHARANUM-1):지혜) * 2		;知恵を2倍にする
+	BASE:(CHARANUM-1):마력 = (BASE:(CHARANUM-1):마력) * 2		;魔力を2倍にする
+	BASE:(CHARANUM-1):인내력 = (BASE:(CHARANUM-1):인내력) * 2		;耐力を2倍にする
+	BASE:(CHARANUM-1):속도 = (BASE:(CHARANUM-1):속도) * 2		;速さを2倍にする
+	BASE:(CHARANUM-1):운 = (BASE:(CHARANUM-1):운) * 2			;運を2倍にする
+
+	;ステータス等の設定を有効にする
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)
+	
+	;戦闘開始
+	CALL BATTLE_START
+	
+	;戦闘用のフラグ設定を元に戻す
+	FLAG:도주불가플래그 = 0
+	FLAG:선제기습취소 = 0
+
+	;カギ入手イベント(25%、または4回目の依頼で確定ドロップ)
+	RANDOM_NO_100 = 1 + RAND:100			;1～100の乱数を設定する
+	IF RANDOM_NO_100 >= 75 || 던전플래그:32:0 == 4
+		CALL DUNGEON_32_GET_KEY				;カギ入手イベント
+	ENDIF
+
+
+	;던전クリア報酬
+	IF 던전플래그:32:12 == 0
+		;カギを使用していない場合(占い師マリーを通して依頼を受けている場合)
+		CALL MESSAGE_WINDOW_D, "", "＞異界の主が撃破されたことで異界化は解消された。"
+		CALL MESSAGE_WINDOW_D, "", "＞あなたは占い師マリーに報告を行い、報酬を受け取った。"
+		CALL MESSAGE_WINDOW_D, "", "＞￥5000を手に入れた"
+		MONEY += 5000
+		CALL MESSAGE_WINDOW_D, "", "＞名声5を得た"
+		FLAG:명성 += 5
+
+		;フラグ設定
+		IF 던전플래그:32:0 <= 20
+			던전플래그:32:0 += 1		;占い師マリーの依頼の進行度を+1する　※会話が少し変化する程度であまり意味はないです。
+		ENDIF
+
+	ELSE
+		;その他の場合(カギを使用して直接異界へきている、つまり占い師マリーの依頼を経由していない場合)
+		CALL MESSAGE_WINDOW_D, "", "＞異界の主が撃破されたことで異界化は解消された。"
+		CALL MESSAGE_WINDOW_D, "", "＞あなたは異界から帰還した。"
+
+	ENDIF
+
+	;던전を脱出する
+	FLAG:탈출 = 1
+
+ELSEIF 던전플래그:32:1 == 2
+	;魔界探索の場合
+
+	;戦闘前会話
+	CALL MESSAGE_WINDOW_D, "", "＞この領域の出口を塞ぐように立つ悪魔を見つけた。"
+	CALL MESSAGE_WINDOW_D, "", "＞種族の王だろうか　他の同族に傅かれているようだ。"
+	CALL MESSAGE_WINDOW_D, "", "＞あなたは先へ進むべく　領域の主に戦いを挑んだ！"
+
+	;戦闘用のフラグ設定を行う
+	FLAG:도주불가플래그 = 1
+	FLAG:선제기습취소 = 1
+
+	;ボス悪魔の召喚
+	;	種類は던전内に出現する雑魚悪魔から1つをランダムに選択
+	;	レベルは本来のレベル + 15 + 階層補正(51～100階は+50、101～150階は+100、151～200階は+150、...)
+	BOSS_CSV_NO = CD_DEVIL_LIST:(RAND:CD_DEVIL_VARIETY_CNT)																;ボス悪魔のCSV番号を取得
+	CALL SET_ENEMY, 9, BOSS_CSV_NO, CSVBASE(BOSS_CSV_NO, GETNUM(BASE,"LV"),0) + 15 + 던전플래그:32:8, 0, 1		;ボス悪魔を9番の位置にセットする
+
+	;ボス悪魔のドロップアイテムを設定
+	ABL:(CHARANUM-1):아이템1 = [[아이템:챠크라드롭]]
+	ABL:(CHARANUM-1):입수확률1 = 100
+	ABL:(CHARANUM-1):아이템2 = [[아이템:챠크라포트]]
+	ABL:(CHARANUM-1):입수확률2 = 35
+	ABL:(CHARANUM-1):아이템3 = [[아이템:그레이트챠크라]]
+	ABL:(CHARANUM-1):입수확률3 = 10
+
+	;ボス悪魔のステータス等を設定
+	CFLAG:(CHARANUM-1):행동횟수 = 3								;二回行動
+	BASE:(CHARANUM-1):힘 = (BASE:(CHARANUM-1):힘) * 2			;力を2倍にする
+	BASE:(CHARANUM-1):지혜 = (BASE:(CHARANUM-1):지혜) * 2		;知恵を2倍にする
+	BASE:(CHARANUM-1):마력 = (BASE:(CHARANUM-1):마력) * 2		;魔力を2倍にする
+	BASE:(CHARANUM-1):인내력 = (BASE:(CHARANUM-1):인내력) * 2		;耐力を2倍にする
+	BASE:(CHARANUM-1):속도 = (BASE:(CHARANUM-1):속도) * 2		;速さを2倍にする
+	BASE:(CHARANUM-1):운 = (BASE:(CHARANUM-1):운) * 2			;運を2倍にする
+
+	;ステータス等の設定を有効にする
+	CALL SYNC_STATUS,(CHARANUM-1)
+	CALL HEALTH_CHARA,(CHARANUM-1)		
+	
+	;戦闘開始
+	CALL BATTLE_START
+	
+	;戦闘用のフラグ設定を元に戻す
+	FLAG:도주불가플래그 = 0
+	FLAG:선제기습취소 = 0
+
+	;カギ入手イベント(25%)
+	RANDOM_NO_100 = 1 + RAND:100			;1～100の乱数を設定する
+	IF RANDOM_NO_100 >= 75
+		CALL DUNGEON_32_GET_KEY				;カギ入手イベント
+	ENDIF
+
+	;ボス撃破報酬
+	IF DUNGEON_32_IS_LAST_FLOOR() == 1
+		;最上層 / 最下層である場合
+		CALL MESSAGE_WINDOW_D, "", "＞領域の主を倒したが、その先に続く道が見つからない"
+		CALL MESSAGE_WINDOW_D, "", "＞どうやら魔界の最奥まで踏破したようだ！"
+		CALL MESSAGE_WINDOW_D, "", "＞あなたは車いすの男に報告を行い、帰還した。"
+		CALL MESSAGE_WINDOW_D, "", "＞￥50000を手に入れた"
+		MONEY += 50000
+		CALL MESSAGE_WINDOW_D, "", "＞名声2000を得た"
+		FLAG:명성 += 2000
+
+		PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━┓
+		PRINTFORML ┃DDS-NET　　　　　　　　　　　　　　　　　　　　　　　　 ┃
+		PRINTFORML ┃DATE:20XX-XX-XX　　　　　　　　　　　　　　　　　　　　 ┃
+		PRINTFORML ┃NAME:STEAVEN　　　　　　　　　　　　　　　　　　　　　　┃
+		PRINTFORML ┃魔界の調査結果について　　　　　　　　　　　　　　　　　┃
+		PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+		PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━┓
+		PRINTFORML ┃いよいよ魔界の構造が判明しつつある　　　　　　　　　　　┃
+		PRINTFORML ┃キミが調査をやり遂げてくれたおかげだ　　　　　　　　　　┃
+		PRINTFORML ┃本当にありがとう　　　　　　　　　　　　　　　　　　　　┃
+		PRINTFORML ┃現在は魔界と地上を切り離す方法を研究している　　　　　　┃
+		PRINTFORML ┃近い将来　有志をつのり　世界間の繋がりを断つつもりだ　　┃
+		PRINTFORML ┃かつての、人々が悪魔に怯えず過ごせた日々を取り戻したい　┃
+		PRINTFORML ┃その時はぜひ、キミの力を貸してほしい　　　　　　　　　　┃
+		PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+		;魔界探索の進行状況を100(クリア済み)に設定する
+		던전플래그:32:10 = 100
+		던전플래그:32:15 = 던전플래그:32:14		;ボスを撃破して進んだ階層を更新する
+
+		;던전を脱出する
+		FLAG:탈출 = 1
+
+	ELSE
+		;その他の場合(10階ごとの領域の主の場合)
+		CALL MESSAGE_WINDOW_D, "", "＞領域の主を撃破した。"
+		CALL MESSAGE_WINDOW_D, "", "＞あなたは車いすのおとこに報告を行い、報酬を受け取った。"
+		CALL MESSAGE_WINDOW_D, "", "＞￥2000を手に入れた"
+		MONEY += 2000
+		CALL MESSAGE_WINDOW_D, "", "＞名声20を得た"
+		FLAG:명성 += 20
+
+		던전플래그:32:15 = 던전플래그:32:14		;ボスを撃破して進んだ階層を更新する
+
+		CALL MESSAGE_WINDOW_D, "", "＞領域の主がいた場所に階段が出現した！"
+		DA:(FLAG:현X):(FLAG:현Y) = 7
+
+	ENDIF
+ENDIF
+
+
+
+;-------------------------------------------------
+;宝箱取得処理
+;-------------------------------------------------
+;-----------------------------------------------------------------
+@DUNGEON_32_GET_RANDOM_TREASURE
+;-------------
+;変数定義
+;-------------
+#DIM RANDOM_NO_100	;1～100の乱数を入れる変数。宝箱の中身の判定に使用する
+
+;-------------
+;変数の初期化
+;-------------
+RANDOM_NO_100 = 0	;1～100の乱数を入れる変数。宝箱の中身の判定などに使用する
+
+;-------------
+;本処理
+;-------------
+
+;乱数を決定する(宝の種類を決める)
+RANDOM_NO_100 = 1 + RAND:100
+
+SELECTCASE 던전플래그:32:1
+	CASE 1
+		;占い師マリーの依頼の場合
+
+		;危険度に応じて宝箱の中身を変更する
+		SELECTCASE 던전플래그:32:7
+			CASE 0
+				;危険度0：簡単な던전の場合
+				IF RANDOM_NO_100 <= 40
+					;日本円を獲得する
+					CALL GET_TREASURE_MONEY, 0, (200 + RAND:401), FLAG:현던전, 99	;補足：通常は던전플래그の4番目の引数で『宝箱をすでに開けた』という記録を残すのですが、ランダムな던전のためこれは不要。適当に未使用の99番目のフラグを当てはめています。
+
+				ELSEIF RANDOM_NO_100 <= 60
+					;魔石を獲得する
+					CALL GET_TREASURE, [[아이템:마석]], 1, FLAG:현던전, 99
+
+				ELSEIF RANDOM_NO_100 <= 80
+					;宝玉を獲得する
+					CALL GET_TREASURE, [[아이템:보옥]], 1, FLAG:현던전, 99
+
+				ELSE
+					;チャクラドロップを獲得する
+					CALL GET_TREASURE, [[아이템:챠크라드롭]], 1, FLAG:현던전, 99
+				
+				ENDIF
+
+
+
+			CASE 1
+				;危険度1：普通の던전の場合
+				IF RANDOM_NO_100 <= 40
+					;日本円を獲得する(\400～\1200)
+					CALL GET_TREASURE_MONEY, 0, (400 + RAND:801), FLAG:현던전, 99
+
+				ELSEIF RANDOM_NO_100 <= 55
+					;魔石を獲得する
+					CALL GET_TREASURE, [[아이템:마석]], 1, FLAG:현던전, 99
+
+				ELSEIF RANDOM_NO_100 <= 70
+					;宝玉を獲得する
+					CALL GET_TREASURE, [[아이템:보옥]], 1, FLAG:현던전, 99
+
+				ELSEIF RANDOM_NO_100 <= 85
+					;チャクラドロップを獲得する
+					CALL GET_TREASURE, [[아이템:챠크라드롭]], 1, FLAG:현던전, 99
+
+				ELSE
+					;チャクラポットを獲得する
+					CALL GET_TREASURE, [[아이템:그레이트챠크라]], 1, FLAG:현던전, 99
+				
+				ENDIF
+
+			CASE 2
+				;危険度2：危険な던전の場合
+				IF RANDOM_NO_100 <= 40
+					;日本円を獲得する(\600～\1800)
+					CALL GET_TREASURE_MONEY, 0, (600 + RAND:1201), FLAG:현던전, 99
+
+				ELSEIF RANDOM_NO_100 <= 60
+					;宝玉を獲得する
+					CALL GET_TREASURE, [[아이템:보옥]], 1, FLAG:현던전, 99
+
+				ELSEIF RANDOM_NO_100 <= 80
+					;チャクラドロップを獲得する
+					CALL GET_TREASURE, [[아이템:챠크라드롭]], 1, FLAG:현던전, 99
+
+				ELSE
+					;チャクラポットを獲得する
+					CALL GET_TREASURE, [[아이템:그레이트챠크라]], 1, FLAG:현던전, 99
+				
+				ENDIF
+
+			CASE 3
+				;危険度3：破滅的な던전の場合
+				IF RANDOM_NO_100 <= 40
+					;日本円を獲得する(\800～\2400)
+					CALL GET_TREASURE_MONEY, 0, (800 + RAND:1601), FLAG:현던전, 99
+
+				ELSEIF RANDOM_NO_100 <= 55
+					;宝玉を獲得する
+					CALL GET_TREASURE, [[아이템:보옥]], 1, FLAG:현던전, 99
+
+				ELSEIF RANDOM_NO_100 <= 70
+					;宝玉輪を獲得する
+					CALL GET_TREASURE, [[아이템:보옥륜]], 1, FLAG:현던전, 99
+
+				ELSEIF RANDOM_NO_100 <= 85
+					;チャクラポットを獲得する
+					CALL GET_TREASURE, [[아이템:챠크라포트]], 1, FLAG:현던전, 99
+
+				ELSEIF RANDOM_NO_100 <= 95
+					;グレイトチャクラを獲得する
+					CALL GET_TREASURE, [[아이템:그레이트챠크라]], 1, FLAG:현던전, 99
+
+				ELSE
+					;ソーマを獲得する
+					CALL GET_TREASURE, [[아이템:소마]], 1, FLAG:현던전, 99
+				
+				ENDIF
+		ENDSELECT
+
+	CASE 2
+		;魔界探索の場合
+		IF 던전플래그:32:14 <= 20
+			;20階層以下の場合
+				IF RANDOM_NO_100 <= 40
+					;日本円を獲得する(\400～\1200)
+					CALL GET_TREASURE_MONEY, 0, (400 + RAND:801), FLAG:현던전, 99
+
+				ELSEIF RANDOM_NO_100 <= 55
+					;魔石を獲得する
+					CALL GET_TREASURE, [[아이템:마석]], 1, FLAG:현던전, 99
+
+				ELSEIF RANDOM_NO_100 <= 70
+					;宝玉を獲得する
+					CALL GET_TREASURE, [[아이템:보옥]], 1, FLAG:현던전, 99
+
+				ELSEIF RANDOM_NO_100 <= 85
+					;チャクラドロップを獲得する
+					CALL GET_TREASURE, [[아이템:챠크라드롭]], 1, FLAG:현던전, 99
+
+				ELSE
+					;チャクラポットを獲得する
+					CALL GET_TREASURE, [[아이템:그레이트챠크라]], 1, FLAG:현던전, 99
+				
+				ENDIF
+
+		ELSEIF 던전플래그:32:14 <= 50
+			;21～50階層の場合
+				IF RANDOM_NO_100 <= 40
+					;日本円を獲得する(\600～\1800)
+					CALL GET_TREASURE_MONEY, 0, (600 + RAND:1201), FLAG:현던전, 99
+
+				ELSEIF RANDOM_NO_100 <= 60
+					;宝玉を獲得する
+					CALL GET_TREASURE, [[아이템:보옥]], 1, FLAG:현던전, 99
+
+				ELSEIF RANDOM_NO_100 <= 80
+					;チャクラドロップを獲得する
+					CALL GET_TREASURE, [[아이템:챠크라드롭]], 1, FLAG:현던전, 99
+
+				ELSE
+					;チャクラポットを獲得する
+					CALL GET_TREASURE, [[아이템:그레이트챠크라]], 1, FLAG:현던전, 99
+				
+				ENDIF
+
+		ELSEIF 던전플래그:32:14 <= 100
+			;51～100階層の場合
+				IF RANDOM_NO_100 <= 40
+					;日本円を獲得する(\800～\2400)
+					CALL GET_TREASURE_MONEY, 0, (800 + RAND:1601), FLAG:현던전, 99
+
+				ELSEIF RANDOM_NO_100 <= 55
+					;宝玉を獲得する
+					CALL GET_TREASURE, [[아이템:보옥]], 1, FLAG:현던전, 99
+
+				ELSEIF RANDOM_NO_100 <= 70
+					;宝玉輪を獲得する
+					CALL GET_TREASURE, [[아이템:보옥륜]], 1, FLAG:현던전, 99
+
+				ELSEIF RANDOM_NO_100 <= 85
+					;チャクラポットを獲得する
+					CALL GET_TREASURE, [[아이템:챠크라포트]], 1, FLAG:현던전, 99
+
+				ELSEIF RANDOM_NO_100 <= 95
+					;グレイトチャクラを獲得する
+					CALL GET_TREASURE, [[아이템:그레이트챠크라]], 1, FLAG:현던전, 99
+
+				ELSE
+					;ソーマを獲得する
+					CALL GET_TREASURE, [[아이템:소마]], 1, FLAG:현던전, 99
+				
+				ENDIF
+
+		ELSEIF 던전플래그:32:14 <= 150
+			;101～150階層の場合
+				IF RANDOM_NO_100 <= 40
+					;日本円を獲得する(\1000～\3000)
+					CALL GET_TREASURE_MONEY, 0, (800 + RAND:1601), FLAG:현던전, 99
+
+				ELSEIF RANDOM_NO_100 <= 55
+					;宝玉輪を獲得する
+					CALL GET_TREASURE, [[아이템:보옥륜]], 1, FLAG:현던전, 99
+
+				ELSEIF RANDOM_NO_100 <= 70
+					;チャクラポットを獲得する
+					CALL GET_TREASURE, [[아이템:챠크라포트]], 1, FLAG:현던전, 99
+
+				ELSEIF RANDOM_NO_100 <= 85
+					;グレイトチャクラを獲得する
+					CALL GET_TREASURE, [[아이템:그레이트챠크라]], 1, FLAG:현던전, 99
+
+				ELSE
+					;ソーマを獲得する
+					CALL GET_TREASURE, [[아이템:소마]], 1, FLAG:현던전, 99
+
+				ENDIF
+
+		ELSEIF 던전플래그:32:14 <= 200
+			;151～200階層の場合
+				IF RANDOM_NO_100 <= 40
+					;日本円を獲得する(\2000～\6000)
+					CALL GET_TREASURE_MONEY, 0, (800 + RAND:1601), FLAG:현던전, 99
+
+				ELSEIF RANDOM_NO_100 <= 55
+					;宝玉輪を獲得する
+					CALL GET_TREASURE, [[아이템:보옥륜]], 1, FLAG:현던전, 99
+
+				ELSEIF RANDOM_NO_100 <= 70
+					;グレイトチャクラを獲得する
+					CALL GET_TREASURE, [[아이템:그레이트챠크라]], 1, FLAG:현던전, 99
+
+				ELSE
+					;ソーマを獲得する
+					CALL GET_TREASURE, [[아이템:소마]], 1, FLAG:현던전, 99
+
+				ENDIF
+
+		ELSE
+			;201階層以上の場合
+				IF RANDOM_NO_100 <= 40
+					;日本円を獲得する(\10000～\30000)
+					CALL GET_TREASURE_MONEY, 0, (800 + RAND:1601), FLAG:현던전, 99
+
+				ELSEIF RANDOM_NO_100 <= 50
+					;ソーマを獲得する
+					CALL GET_TREASURE, [[아이템:소마]], 1, FLAG:현던전, 99
+
+				ELSEIF RANDOM_NO_100 <= 75
+					;善行の石を獲得する
+					CALL GET_TREASURE, [[아이템:선행의돌]], 1, FLAG:현던전, 99
+
+				ELSE
+					;悪行の石を獲得する
+					CALL GET_TREASURE, [[아이템:악행의돌]], 1, FLAG:현던전, 99
+
+				ENDIF
+		ENDIF
+	ENDSELECT
+
+;宝箱を消滅させて普通の床にする
+;DA:(FLAG:현X):(FLAG:현Y) = 1
+
+RETURN 1
+
+
+;--------------------------------------------
+;フロアの広さを設定する
+;--------------------------------------------
+@DUNGEON_32_DESIDE_FLOOR_SIZE
+;-------------
+;本処理
+;-------------
+
+IF 던전플래그:32:1 == 1
+	;挑戦中の던전の大分類が(1:占い師マリーの依頼によるランダム異界)である場合
+
+	;던전の種類ごとに詳細設定を行う
+	SELECTCASE 던전플래그:32:4
+		CASE 1
+			;ビルの場合
+ 			FLAG:최대X = 20
+			FLAG:최대Y = 20
+
+		CASE 2
+			;病院の場合
+			FLAG:최대X = 35
+			FLAG:최대Y = 35
+
+		CASE 3
+			;アパートの場合
+			FLAG:최대X = 40
+			FLAG:최대Y = 20
+
+		CASE 4
+			;学校の場合
+			FLAG:최대X = 30
+			FLAG:최대Y = 30
+
+		CASE 5
+			;森の場合
+			FLAG:최대X = 50
+			FLAG:최대Y = 50
+
+		CASE 6
+			;山の場合
+			FLAG:최대X = 50
+			FLAG:최대Y = 50
+
+		CASE 7
+			;神社の場合
+			FLAG:최대X = 30
+			FLAG:최대Y = 30
+
+		CASE 8
+			;警察署の場合
+			FLAG:최대X = 35
+			FLAG:최대Y = 35
+
+		CASE 9
+			;古墳の場合
+			FLAG:최대X = 40
+			FLAG:최대Y = 40
+
+		CASE 10
+			;墓地の場合
+			FLAG:최대X = 30
+			FLAG:최대Y = 30
+
+		CASE 11
+			;海岸の場合
+			FLAG:최대X = 60
+			FLAG:최대Y = 60
+
+		CASE 12
+			;地下水道の場合
+			FLAG:최대X = 45
+			FLAG:최대Y = 45
+
+		CASEELSE
+			;その他の場合(縦・横ともに10～60マスのランダム)
+			FLAG:최대X = 10 + RAND:51
+			FLAG:최대Y = 10 + RAND:51
+
+	ENDSELECT
+
+ENDIF
+
+RETURN 1
+
+
+;--------------------------------------------
+;各種フラグを初期化する
+;--------------------------------------------
+@DUNGEON_32_CLEAR_FLAG
+;-------------
+;変数定義
+;-------------
+#DIM LOOP_CNT_i			;ループ用カウント変数　※処理が長くて複雑なので、グローバル変数LOCALは使いたくない
+#DIM HAVE_KEY_FLG		;不思議なカギを入手済みであるかどうか(0:未所持 / 1:入手済み)
+
+;-------------
+;変数の初期化
+;-------------
+LOOP_CNT_i = 0			;ループ用カウント変数
+HAVE_KEY_FLG = 0		;不思議なカギを入手済みであるかどうか(0:未所持 / 1:入手済み)
+
+;-------------
+;本処理
+;-------------
+;던전の設定を初期化する
+던전플래그:32:1 = 0			;挑戦中の던전の大分類を指定(0:던전設定なし)
+던전플래그:32:4 = 0			;던전の種類詳細(0:未設定)
+던전플래그:32:7 = 0			;던전の危険度(0:未設定)
+던전플래그:32:8 = 0			;出現する悪魔のレベルのプラス補正(5の場合、出現する悪魔のレベルを本来のレベル+5にする)
+던전플래그:32:13 = 0			;던전到達階の記録が更新されたフラグ(0:更新無し / 1:更新有り)
+던전플래그:32:14 = 0			;現在の階層の絶対値(例として地上5階 / 地下5階いずれも5となる)
+던전플래그:32:15 = 0			;何階までボスを撃破して進んだか　※一度通過したボス階に戻ってきたときボスが復活しないようにする
+던전플래그:32:16 = 0			;探索開始時の階層　※カギを使用しての探索などだと途中階からスタートするため
+
+
+;戦闘設定用の各種フラグを初期化する(不思議な던전では経験値なし、解析率上昇不可、仲魔集めも不可！RPG的には全然おいしくない設定です。純粋に潜ることを楽しんでいただけるように頑張ります。
+FLAG:회화불능플래그 = 1				;悪魔と会話不可(仲魔に勧誘できない)
+FLAG:악마해석률상승불가플래그 = 1	;悪魔解析率を上げられない
+FLAG:RESULT스킵 = 1				;戦闘後のリザルト画面なし。経験値・MAGなどを得られない
+
+;車いすのおとこの이벤트플래그を設定する
+IF 던전플래그:32:10 == 0
+	;魔界探索・カギを使用した探索が未開放である場合
+
+	;不思議なカギを持っているかどうか確認する
+	FOR LOOP_CNT_i, 0, 5
+		IF DUNGEON_32_KEY_LIST:LOOP_CNT_i:0 != 0
+			;不思議なカギを保有している場合
+			HAVE_KEY_FLG = 1			;カギを入手済みである
+			BREAK
+		ENDIF
+	NEXT
+
+	;車いすのおとこのイベント
+	IF HAVE_KEY_FLG == 1
+		;不思議なカギを所持している場合
+		IF 던전플래그:32:0 == 0
+			;占い師マリーの依頼をまだやっていない場合、以前の周回で入手したカギを引き継いでいる
+			CALL MESSAGE_WINDOW, "" , "＞車いすに乗った初老の男が現れた"
+			DRAWLINE
+			PRINTFORML
+			PRINTFORML やあ　%CALLNAME:MASTER%くんじゃないか
+			PRINTFORML きみも　無事に次の世界へ移動したようだね
+			PRINTFORML さあ、君の自宅のターミナルシステムから魔界へ行けるようにしてあげよう
+			PRINTFORMW ………
+			PRINTFORMW ……
+			PRINTFORMW …
+			PRINTFORML よし、これで魔界へ行けるだろう
+			PRINTFORML では　またあおう
+			PRINTFORMW
+			DRAWLINE
+			CALL MESSAGE_WINDOW, "" , "＞『車いすの男の依頼』が解放された"
+			CALL MESSAGE_WINDOW, "" , "＞『カギを使用して異界・魔界を探索する』が解放された"
+			던전플래그:32:10 = 1		;魔界探索の解放
+
+		ELSE
+			;その他の場合、現在の周回でカギを入手している
+			CALL MESSAGE_WINDOW, "" , "＞自宅のパソコンに1通のメールが届いている"
+			PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━┓
+			PRINTFORML ┃DDS-NET　　　　　　　　　　　　　　　　　　　　　　　　 ┃
+			PRINTFORML ┃DATE:20XX-XX-XX　　　　　　　　　　　　　　　　　　　　 ┃
+			PRINTFORML ┃NAME:STEAVEN　　　　　　　　　　　　　　　　　　　　　　┃
+			PRINTFORML ┃異界の主を倒しカギを入手したキミへ　　　　　　　　　　　┃
+			PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+			PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━┓
+			PRINTFORML ┃そのカギは魔界への道しるべになるものだ　　　　　　　　　┃
+			PRINTFORML ┃悪魔の無秩序な氾濫をとめるためキミの協力が欲しい　　　　┃
+			PRINTFORML ┃このメールを受け取る君が勇気あるものであることを祈る　　┃
+			PRINTFORMW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+			DRAWLINE
+			CALL MESSAGE_WINDOW, "" , "＞『車いすの男の依頼』が解放された"
+			던전플래그:32:10 = 1		;魔界探索の解放
+
+		ENDIF
+	ENDIF
+ENDIF
+
+
+RETURN 1
+
+
+;--------------------------------------------
+;カギ入手イベント
+;--------------------------------------------
+@DUNGEON_32_GET_KEY
+;-------------
+;変数定義
+;-------------
+#DIM LOOP_CNT_i			;ループ用カウント変数　※処理が長くて複雑なので、グローバル変数LOCALは使いたくない
+#DIM KEY_SET_FLG		;入手したカギを登録したかどうか(0:未登録 / 1:登録済み)
+
+;-------------
+;変数の初期化
+;-------------
+LOOP_CNT_i = 0			;ループ用カウント変数
+KEY_SET_FLG = 0			;入手したカギを登録したかどうか(0:未登録 / 1:登録済み)
+
+;-------------
+;本処理
+;-------------
+PRINTFORML おや？　悪魔がいた場所に何かが光っている……？
+PRINTFORMW %DUNGEON_32_DEVIL_LEVEL_NAME:(던전플래그:32:7)%%DUNGEON_32_PLACE_NAME:(던전플래그:32:4)%のカギを見つけた！
+
+;既に同じカギを持っているかどうかチェックする
+FOR LOOP_CNT_i, 0, 5
+	IF DUNGEON_32_KEY_LIST:LOOP_CNT_i:0 == 던전플래그:32:7 && DUNGEON_32_KEY_LIST:LOOP_CNT_i:1 == 던전플래그:32:4
+		;同じカギを既に持っている場合、処理をスキップする
+		PRINTFORML 残念ながら既に持っているカギだった。
+		PRINTFORMW あなたは拾ったカギを捨てた。
+		RETURN 0
+	ENDIF
+NEXT
+
+
+;不思議なカギの保有リストの内、開いている箇所に入手したカギを設定する。
+FOR LOOP_CNT_i, 0, 5
+	IF DUNGEON_32_KEY_LIST:LOOP_CNT_i:0 == 0
+		;不思議なカギの保有リストに空きが存在する場合、その場所にカギをセットする
+		DUNGEON_32_KEY_LIST:LOOP_CNT_i:0 = 던전플래그:32:7			;던전の危険度を登録する(0:簡単な / 1:ふつうの / 2:危険な / 3:破滅的な / その他沢山)
+		DUNGEON_32_KEY_LIST:LOOP_CNT_i:1 = 던전플래그:32:4			;던전の種類を登録する(0:ビル / 1:病院 / 2:アパート / 3:学校 / 4:森 / 5:山 / 6:神社 / 7:警察署 / 8:古墳 / 9:墓地 / 10:海岸 / 11:地下水道 / その他沢山)
+		KEY_SET_FLG = 1														;カギを登録済み
+		BREAK
+	ENDIF
+NEXT
+
+;カギがいっぱいの場合、どれと入れ替えるか指定する
+IF KEY_SET_FLG == 0
+
+	WHILE 1
+		PRINTFORML
+		PRINTFORML カギがいっぱいです。以下のどれかと入れ替えてください。
+		
+		;保有しているカギを表示する
+		FOR LOOP_CNT_i, 0, 5
+			PRINTFORML [  {LOOP_CNT_i}]:%DUNGEON_32_DEVIL_LEVEL_NAME:(DUNGEON_32_KEY_LIST:LOOP_CNT_i:0)%%DUNGEON_32_PLACE_NAME:(DUNGEON_32_KEY_LIST:LOOP_CNT_i:1)%のカギ
+		NEXT
+		PRINTFORML [100]カギを入手しない
+		$DUNGEON_32_KEY_GET_INPUT_LOOP
+		INPUT
+		IF 1 <= RESULT && RESULT <= 5
+			;選択された箇所にカギを登録する
+			DUNGEON_32_KEY_LIST:RESULT:0 = 던전플래그:32:7			;던전の危険度を登録する(0:簡単な / 1:ふつうの / 2:危険な / 3:破滅的な / その他沢山)
+			DUNGEON_32_KEY_LIST:RESULT:1 = 던전플래그:32:4			;던전の種類を登録する(0:ビル / 1:病院 / 2:アパート / 3:学校 / 4:森 / 5:山 / 6:神社 / 7:警察署 / 8:古墳 / 9:墓地 / 10:海岸 / 11:地下水道 / その他沢山)
+			BREAK															;カギの取得を終了する
+
+		ELSEIF RESULT == 100
+			;カギを入手しない
+			PRINTFORMW あなたは拾ったカギを捨てた。
+			BREAK															;カギの取得を終了する
+
+		ELSE
+			;------------------------
+			;入力ミスのためやり直し
+			;------------------------
+			GOTO DUNGEON_32_KEY_GET_INPUT_LOOP
+
+		ENDIF
+	WEND
+ENDIF
+
+RETURN 1
+
+
+;--------------------------------------------
+;魔界探索の設定
+;--------------------------------------------
+@DUNGEON_32_SET_MAKAI
+;-------------
+;変数定義
+;-------------
+#DIM LOOP_CNT_i			;ループ用カウント変数					※処理が長くて複雑なので、グローバル変数LOCALは使いたくない
+#DIM FLOOR_50			;現在の階層を50で割った値(切り捨て)		※魔界探索では50階毎に出現する悪魔の(元々の)レベルが切り替わるため
+#DIM FLOOR_50_AMARI		;現在の階層を50で割った余り				※魔界探索では50階毎に出現する悪魔の(元々の)レベルが切り替わるため
+
+;-------------
+;変数の初期化
+;-------------
+LOOP_CNT_i = 0			;ループ用カウント変数
+FLOOR_50 = 0			;現在の階層を50で割った値(切り捨て)		※魔界探索では50階毎に出現する悪魔の(元々の)レベルが切り替わるため
+FLOOR_50_AMARI = 0		;現在の階層を50で割った余り				※魔界探索では50階毎に出現する悪魔の(元々の)レベルが切り替わるため
+
+;-------------
+;本処理
+;-------------
+;現在の階層について50で割った商と余りを取得する
+FLOOR_50 = 던전플래그:32:14 / 50							;現在の階層を50で割った値(切り捨て
+FLOOR_50_AMARI = 던전플래그:32:14 % 50						;現在の階層を50で割った余り
+
+;50の倍数階ピッタリの場合、余り0ではなくて余り50として扱う(던전が変化するのは51階、101階、151階、...のタイミングとする)
+IF FLOOR_50_AMARI == 0
+	FLOOR_50 -= 1
+	FLOOR_50_AMARI = 50
+ENDIF
+
+;出現する悪魔のレベル下限・レベル上限を設定する
+던전플래그:32:2 = FLOOR_50_AMARI				;出現する悪魔のレベル下限
+IF FLOOR_50_AMARI >= 41
+	;現在の階層を50で割った余りが41以上の場合出現する悪魔のレベル上限は200とする
+	던전플래그:32:3 = 200						;出現する悪魔のレベル上限限
+
+ELSE
+	;その他の場合、出現する悪魔のレベル上限は「最低レベル+20」とする
+	던전플래그:32:3 = FLOOR_50_AMARI + 20		;出現する悪魔のレベル上限限
+
+ENDIF
+
+;出現する悪魔のレベルのプラス補正
+던전플래그:32:8 = FLOOR_50 * 50
+
+;領域の危険度と種類を設定する
+IF 던전플래그:32:14 % 10 == 1 && 던전플래그:32:14 != 1 && FLAG:현M != 던전플래그:32:16
+	;階層が10n+1の場合(ただし1階および、カギを用いて侵入した最初の階層は除く)
+	던전플래그:32:4 = 13 + RAND:13			;ランダムに領域の種類を設定する
+	던전플래그:32:7 = 5 + (던전플래그:32:14 / 10)	;危険度は10階層毎に上昇	※10→11、20→21、...のタイミングで危険度を1上昇させる
+
+	;魔界探索の危険度は最大36とする
+	IF 던전플래그:32:7 > 36
+		던전플래그:32:7 = 36
+	ENDIF
+
+ENDIF
+
+;10n+1階
+
+RETURN 1
+
+
+;--------------------------------------------
+;スタートの階層を設定する
+;--------------------------------------------
+@DUNGEON_32_SET_START_DEPTH
+;-------------
+;本処理
+;-------------
+;1階または地下1階からスタートする場合の共通処理
+IF 던전플래그:32:6 == 0
+	;上に登る던전の場合
+	FLAG:현M = 1
+
+ELSE
+	;下に降りる던전の場合
+	FLAG:현M = -1
+
+ENDIF
+
+;魔界探索の場合のスタート階層
+IF 던전플래그:32:1 == 2
+	;魔界探索の場合、カギの危険度に合わせた階層からスタートする	※地下へ降りていく던전であるため階層は -1 する
+	FLAG:현M = DUNGEON_32_MAKAI_START_DEPTH_MIN:(던전플래그:32:7) * -1
+
+ENDIF
+
+;スタート時の階層を記録する
+던전플래그:32:16 = FLAG:현M
+
+RETURN 1
+
+
+;--------------------------------------------
+;到達記録などを作成する
+;--------------------------------------------
+@SAVE_RECORD
+;-------------
+;変数定義
+;-------------
+#DIM LOOP_CNT_i			;ループ用カウント変数					※処理が長くて複雑なので、グローバル変数LOCALは使いたくない
+#DIM DEPTH_CNT			;現在の階層の絶対値						※絶対値を取る。地上5階、地下5階いずれも5とする。
+
+;-------------
+;変数の初期化
+;-------------
+LOOP_CNT_i = 0			;ループ用カウント変数
+DEPTH_CNT = 0			;現在の階層の絶対値						※絶対値を取る。地上5階、地下5階いずれも5とする。
+
+;-------------
+;本処理
+;-------------
+;現在の現在の階層の絶対値を取得する
+IF FLAG:현M < 0
+	;地下の場合
+	DEPTH_CNT = FLAG:현M * -1
+
+ELSE
+	;その他の場合(地上の場合)
+	DEPTH_CNT = FLAG:현M
+
+ENDIF
+던전플래그:32:14 = DEPTH_CNT				;現在の階層の絶対値
+
+IF 던전플래그:32:1 == 2
+	;魔界探索の場合
+	IF DEPTH_CNT > 던전플래그:32:21
+		;これまでの到達記録より現在の階層の方が深い場合
+		던전플래그:32:21 = DEPTH_CNT		;던전到達階の記録を更新する
+		던전플래그:32:13 = 1				;던전到達階の記録が更新されたフラグ(0:更新無し / 1:更新有り)
+	ENDIF
+ENDIF
+
+
+RETURN 1
+
+
+;強敵のシンボルエンカウント発生時のイベント(F.O.E！F.O.E！)
+@SYMBOLEVENT_32_1, SYMBOL_NO
+;-------------
+;変数定義
+;-------------
+#DIM SYMBOL_NO
+
+;-------------
+;本処理
+;-------------
+PRINTFORML 特殊イベントが発生しました！　SYMBOL_NO:{SYMBOL_NO}
+RETURN 1
+
+
+
+

@@ -1,5 +1,5 @@
 ﻿
-; 相性패턴
+; 상성패턴
 ; 0:不問(なんでも)
 ; 1:약점(100%以上かつ999じゃない)
 ; 2:통상(100%以下あるいは999)
@@ -13,14 +13,14 @@
 @RESIST_LOOKUP_DEVIL
 #DIM LINE,2
 #DIM RESIST
-#DIM 相性패턴,19
+#DIM 상성패턴,19
 #DIM 옵션
-#DIM 조건数,2
+#DIM 조건수,2
 #DIM COL
 $TOP
 LINE = LINECOUNT
 FOR RESIST,0,18
-	SELECTCASE 相性패턴:RESIST
+	SELECTCASE 상성패턴:RESIST
 	CASE 0
 		COL = 0
 		LOCALS = ----
@@ -52,19 +52,28 @@ FOR RESIST,0,18
 NEXT
 PRINTL [25] 검색 시작
 PRINTL [26] 검색 조건 초기화
-PRINTFORML [27] 옵션１：\@ GETBIT(옵션,0) ? 내성 이상은 1개까지 불일치 허용 # 모두 일치하는 것만 검색 \@
+PRINTFORML [27] 옵션１：\@ LOCAL:2 > 0 ? 내성 이상은 {LOCAL:2}개까지 불일치 허용 # 모두 일치하는 것만 검색 \@
 PRINTFORML [28] 옵션２：\@ GETBIT(옵션,1) ? 상위의 조건을 포함하지 않는다 # 상위의 조건을 포함한다 \@
 PRINTL [29] 돌아간다
 INPUT
 LOCAL:1 = RESULT
 IF INRANGE(RESULT,0,18)
-	CALL RESIST_LOOKUP_DEVIL_SETPETTERN(LOCAL:1,相性패턴:(LOCAL:1))
+	CALL RESIST_LOOKUP_DEVIL_SETPETTERN(LOCAL:1,상성패턴:(LOCAL:1))
 	SIF RESULT >= 0
-		相性패턴:(LOCAL:1) = RESULT
+		상성패턴:(LOCAL:1) = RESULT
 ELSEIF RESULT == 26
-	VARSET 相性패턴,0
+	VARSET 상성패턴,0
 ELSEIF RESULT == 27
-	INVERTBIT 옵션,0
+	IF LOCAL:2 > 0
+		LOCAL:2 = 0
+	ELSE
+		PRINTL 허용할 불일치 상성 수를 입력하십시오
+		$FUITTI
+		INPUT
+		SIF RESULT < 1
+			GOTO FUITTI
+		LOCAL:2 = RESULT
+	ENDIF
 ELSEIF RESULT == 28
 	INVERTBIT 옵션,1
 ELSEIF RESULT == 29
@@ -74,27 +83,29 @@ ELSEIF RESULT == 25
 	$SEARCH
 	CUSTOMDRAWLINE =
 	LOCAL:1 = 0
-	FOR LOCAL, 1, 1900
+	FOR LOCAL, 1, 10000
 		SIF FLAG:(20000+LOCAL) < 100
 			CONTINUE
 		SIF !EXISTCSV(LOCAL, 0)
 			CONTINUE
-		SIF CSVCFLAG(LOCAL,(GETNUM(CFLAG,"전서소환불가")),0) == 1
+		;SIF CSVCFLAG(LOCAL,(GETNUM(CFLAG,"전서소환불가")),0) == 1
+		;	CONTINUE
+		SIF !CSVABL(LOCAL, GETNUM(ABL, "종족"), 0)
 			CONTINUE
 		SIF CSVCFLAG(LOCAL,(GETNUM(CFLAG,"합체조건있음")),0) == 1 && FLAG:(10000+LOCAL) == 0
 			CONTINUE
 
-		;ここに조건を入れる
-		VARSET 조건数
+		;ここに条件を入れる
+		VARSET 조건수
 		FOR RESIST,0,18
-			SIF 相性패턴:RESIST == 0
+			SIF 상성패턴:RESIST == 0
 				CONTINUE
-			조건数:0++
-			CALL CHECK_DEVIL_RESIST(LOCAL,RESIST,相性패턴:RESIST,!GETBIT(옵션,0))
+			조건수:0++
+			CALL CHECK_DEVIL_RESIST(LOCAL, RESIST, 상성패턴:RESIST, !GETBIT(옵션,1))
 			SIF RESULT == 1
-				조건数:1++
+				조건수:1++
 		NEXT
-		SIF 조건数:1 < 조건数:0
+		SIF 조건수:1 +LOCAL:2 < 조건수:0
 			CONTINUE
 		IF CSVCSTR(LOCAL, GETNUM(CSTR, "종족명"), 0) == ""
 			PRINTFORM %@"[{LOCAL,4}] "+ CSVNAME(LOCAL, 0) + "(" + STR:CSVABL(LOCAL, GETNUM(ABL, "종족"), 0) + ")",36,LEFT%

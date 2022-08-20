@@ -1,0 +1,185 @@
+﻿;元ネタはTRPGのスキル「ブルズアイ」。本来は防御力全無視だが、さすがにそれはマズいので
+;原作における宮下さんの挙動や印象（どんなときでもこれ一本で立ち向かっていた）の再現を優先して設定した
+
+;스킬명
+@SKILL_NAME_ブルズアイ！,ARG
+RESULTS = 【불스아이】！
+
+;　명중
+@SKILL_HITRATE_ブルズアイ！, ARG
+RETURN 999
+
+;　위력
+@SKILL_POWER_ブルズアイ！, ARG
+RETURN 410
+
+;クリティカル率
+@SKILL_CRITICAL_RATE_ブルズアイ！, ARG
+RETURN 999
+
+;　최저공격횟수
+@SKILL_MINATTACKNUMBER_ブルズアイ！,ARG
+RETURN 1
+
+;　최대공격횟수
+@SKILL_MAXATTACKNUMBER_ブルズアイ！,ARG
+RETURN 1
+
+;　2 ＨＰ지불　3 ＭＰ지불
+@SKILL_COSTTYPE_ブルズアイ！, ARG
+RETURN 3
+;소비없음＝1
+
+;　코스트량
+@SKILL_COST_ブルズアイ！,ARG
+;残弾式
+RETURN 0
+
+;　상성
+@SKILL_TYPE_ブルズアイ！,ARG
+RETURN 1
+;비구
+
+;　1 EXTRA　2 MAGIC
+@SKILL_DECIDE_TYPE_ブルズアイ！,ARG
+RETURN 1
+
+;　1 물리데미지로 계산　2 마법데미지로 계산
+@SKILL_DAMAGETYPE_ブルズアイ！,ARG
+RETURN 1
+
+;　대상　1 적　2 아군　3 양쪽전체　4 특수
+@SKILL_TARGET_ブルズアイ！,ARG
+RETURN 1
+
+;　사거리
+@SKILL_RANGE_ブルズアイ！,ARG
+RETURN 3
+
+;　범위　1 1체　2 1열　3 전체　4 적아군전체
+@SKILL_SPHERE_ブルズアイ！,ARG
+RETURN 1
+
+;　 효과타입　1 공격、2 회복、3 상태변화、4 특수、5 상태회복
+@SKILL_EFECT_ブルズアイ！,ARG
+RETURN 1
+
+;　 특수처리 여부 및 처리내용
+;@SKILL_SPECIALEFECT_ブルズアイ！,ARG
+;ARG = 1인 경우는 처리 여부를 반환합니다
+;SIF ARG == 1
+;	RETURN 0
+;아래쪽에 특수처리를 기술합니다
+
+;계승타입
+;@SKILL_SUCCESSION_TYPE_ブルズアイ！,ARG
+;RETURN 23
+;검격
+
+;속도보정
+@SKILL_SPEED_ブルズアイ！, ARG = -1
+RETURN 0
+
+;;　구상의 표시와 그 타입
+;@SKILL_MESSAGE_ブルズアイ！,ARG
+
+
+;전투시 이외에 사용 가능한가
+@SKILL_ACTIONABLE_FIELD_ブルズアイ！, ARG = -1
+RETURN 0
+
+;没
+;@SKILL_RANK_ブルズアイ！
+;@SKILL_RANKUP_ブルズアイ！
+;@계승불능_ブルズアイ！
+
+;템플릿용、추가효과 시리즈
+;추가효과 스테이터스
+;@SKILL_ADDTIONAL_STATE_ブルズアイ！,ARG
+;RETURN GET_STATE_NUM("DYING")
+
+;추가효과 상성
+;@SKILL_ADDTIONAL_TYPE_ブルズアイ！,ARG
+;RETURN 2
+;비구
+
+;추가효과 기본부여확률
+;@SKILL_ADDTIONAL_BASE_RATE_ブルズアイ！,ARG
+;RETURN 80
+
+;추가효과 부여확률상한
+;@SKILL_ADDTIONAL_MAX_RATE_ブルズアイ！,ARG
+;RETURN 100
+
+
+;====================================================
+;스킬 및 행동의 실행
+;====================================================
+@ACTION_ブルズアイ！, ARG, ARG:1, SKILL_NUM
+#LOCALSIZE 4
+#DIM SKILL_NUM
+
+;ガードキル処理
+IF ARG:1 == 19
+	LOCAL:2 = 1
+	LOCAL:3 = 7
+ELSE
+	LOCAL:2 = 7
+	LOCAL:3 = 17
+ENDIF
+
+FOR LOCAL, LOCAL:2, LOCAL:3
+	SIF POS(LOCAL) == -1 || CFLAG:POS(LOCAL):상태이상 == GET_STATE_NUM("DYING")
+		CONTINUE
+	LOCAL:1 = 1
+	SIF CFLAG:ARG:PT플래그 == 0
+		LOCAL:1 = 4
+	IF LOCAL:1 > CFLAG:POS(LOCAL):비구무효화횟수
+		LOCAL:1 -= CFLAG:POS(LOCAL):비구무효화횟수
+		CFLAG:POS(LOCAL):비구무효화횟수 = 0
+		IF LOCAL:1 >= CFLAG:POS(LOCAL):비구가드킬
+			CFLAG:POS(LOCAL):비구가드킬 = LOCAL:1
+			PRINTFORML [{LOCAL}]%CALLNAME:POS(LOCAL),20% >>>>> {LOCAL:1}턴、비구내성을 무효화！
+		ENDIF
+	ELSE
+		CFLAG:POS(LOCAL):비구무효화횟수 -= LOCAL:1
+		PRINTFORML [{LOCAL}]%CALLNAME:POS(LOCAL),20% >>>>> 비구무효화횟수가 감소！
+	ENDIF
+NEXT
+
+CFLAG:ARG:베어내기플래그 = 1
+CALL SKILLGAGE_F_ADD, ARG, SKILL_NUM,1
+CALL ATTACK_SINGLE,ARG,POS(ARG:1),SKILL_NUM
+
+;====================================================
+;실행내용 여기까지
+;====================================================
+;　説明文の表示
+@SKILL_EXPLAIN_ブルズアイ！, ARG
+#LOCALSIZE 1
+#DIM ブルズアイ！残弾
+ブルズアイ！残弾 = PU_SKILLNUM_GET(ARG, "ブルズアイ！")
+PRINTL 갈고 닦은 감각과 행운으로、필중의 탄환을 상대에 급소에 쳐박는、미야시타 쇼고의 필살기
+PRINTL 적 １체에 １턴 가드킬＋특대 데미지　필중・매우 높은 크리티컬률
+IF CFLAG:(CHARANUM-1):PT플래그 || U < 0 || U >= CHARANUM
+	PRINTL 1회 출격 당 3회까지 사용 가능
+ELSE
+	;残弾なし
+	IF SKILLGAGE_F_GET(ARG, ブルズアイ！残弾) > 4
+		PRINTL 잔탄　0발　사용 불가
+	;残弾あり
+	ELSE
+		PRINT 잔탄　
+		LOCAL = 3 - SKILLGAGE_F_GET(ARG, ブルズアイ！残弾)
+		PRINTV LOCAL
+		PRINTL 발
+	ENDIF
+ENDIF
+
+;사용조건
+@SKILL_SPECIAL_ACTIONABLE_ブルズアイ！, ARG
+#DIM ブルズアイ！残弾
+ブルズアイ！残弾 = PU_SKILLNUM_GET(ARG, "ブルズアイ！")
+SIF SKILLGAGE_F_GET(ARG, ブルズアイ！残弾) > 2
+	RETURN 0
+RETURN 1

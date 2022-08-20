@@ -11,6 +11,7 @@
 ;	Edit	Date			Author					Reason
 ;	001		20XX/XX/XX		----					新規作成
 ;	002		2021/04/22		Rsp暇人 				WAIT表示が誰のリンケージ参加中かわかるようにするための変更に対応
+;	003		2021/11/23		kamedakeisuke(ﾟдﾟ)		他人気合フラグ・他人集中フラグに対応
 
 ;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
 ;=================================================
@@ -24,15 +25,15 @@
 ;=================================================
 ;링케이지の内容コピって別に立てたる
 @INPUT_COM_19,ARG
-#DIM 元링케이지 , 1
+#DIM 元リンケージ , 1
 #DIM 元人数 , 1
 ;LOCAL:1-5 참가予定者
 FOR LOCAL,1,6
 	LOCAL:LOCAL = -1
 NEXT
-元링케이지 = CFLAG:ARG:사용링케이지
-IF 元링케이지 < 4000
-	TRYCALLFORM 참가人数_{元링케이지}
+元リンケージ = CFLAG:ARG:사용링케이지
+IF 元リンケージ < 4000
+	TRYCALLFORM 참가인수_{元リンケージ}
 	FOR LOCAL, RESULT+1, 6
 		;PRINTFORML %CALLNAME:(CFLAG:ARG:(1253+LOCAL)%링케이지참가해제
 		CFLAG:ARG:("링케이지참가자"+ TOSTR(LOCAL)) = -1
@@ -80,16 +81,16 @@ FOR LOCAL,4000,5000
 			CALLFORM SKILL_COST_{LOCAL}, ARG
 			PRINTFORM ＭＰ{RESULT,3}　　
 		ENDIF
-		CALLFORM 참가人数_{LOCAL}
+		CALLFORM 참가인수_{LOCAL}
 		LOCAL:32 = RESULT + 1
 		FOR LOCAL:31, 1, LOCAL:32
 			PRINTFORM 참가자{LOCAL:31}　
-			CALLFORM 링케이지コスト타입_{LOCAL}, LOCAL:31
+			CALLFORM 링케이지코스트타입_{LOCAL}, LOCAL:31
 			IF RESULT == 2
-				CALLFORM 링케이지コスト_{LOCAL}, LOCAL:31
+				CALLFORM 링케이지코스트_{LOCAL}, LOCAL:31
 				PRINTFORM ＨＰ{RESULT,3}％　
 			ELSE
-				CALLFORM 링케이지コスト_{LOCAL}, LOCAL:31
+				CALLFORM 링케이지코스트_{LOCAL}, LOCAL:31
 				PRINTFORM ＭＰ{RESULT,3}　　
 			ENDIF
 			IF LOCAL:31 == LOCAL:32 - 1
@@ -131,12 +132,12 @@ ELSEIF RESULT == 999
 	CALL CHECK_ACTIONABLE,ARG,LOCAL:7
 	SIF RESULT == 0
 		GOTO INPUT_LOOP1
-	CALLFORM 참가人数_{LOCAL:7}
+	CALLFORM 참가인수_{LOCAL:7}
 	LOCAL:8 = RESULT
 	FOR LOCAL , 1 , LOCAL:8+1
 		SIF RANGE(LOCAL:(10+LOCAL), 0 , CHARANUM) == 0
 			GOTO INPUT_LOOP1
-		CALLFORM 참가者조건_{LOCAL:7}, LOCAL:(10+LOCAL) , LOCAL
+		CALLFORM 참가자조건_{LOCAL:7}, LOCAL:(10+LOCAL) , LOCAL
 		SIF RESULT == 0
 			GOTO INPUT_LOOP1
 		CALL ACTIONABLE_CHARA,LOCAL:(10+LOCAL)
@@ -166,7 +167,7 @@ SIF RESULT == 0
 ;참가者표시
 $PRINT_MENE
 DRAWLINE
-CALLFORM 참가人数_{LOCAL:7}
+CALLFORM 참가인수_{LOCAL:7}
 LOCAL:8 = RESULT
 ;---- EDIT 010 MOD START -------------------------
 	CALLFORM SKILL_EXPLAIN_{LOCAL:7}
@@ -263,7 +264,7 @@ ELSEIF RESULT == 0
 ;		CALL 전투행동대응충성도상승,ARG _|_|バグるのでオミット
 		IF TALENT:(ARG):페르소나구사자
 			RESULT = 0
-			TRYCALLFORM 참가人数_{CFLAG:(ARG):입력행동}
+			TRYCALLFORM 참가인수_{CFLAG:(ARG):입력행동}
 			;페르소나구사자は공격참가で2の페르소나経験値を得る(링케이지の場合は참가人数*2)
 			CALL INCREASE_PERSONA_EXP, ARG, (RESULT+1)*2, CFLAG:(ARG):타겟
 		ENDIF
@@ -285,62 +286,66 @@ ELSEIF RESULT == 0
 	IF CFLAG:(ARG):입력행동 > -1
 		RESULT = 0
 		TRYCALLFORM SKILL_DAMAGETYPE_{CFLAG:(ARG):입력행동}, ARG
+		;---- EDIT 003 MOD START ---------------------------
 		IF RESULT == 1
 			CFLAG:(ARG):기합플래그 = 0
+			CFLAG:(ARG):타인기합플래그 = 0
 			CFLAG:(ARG):베어내기플래그 = 0
 			CFLAG:(ARG):방어반감플래그 = 0
 		ELSEIF RESULT == 2
 			CFLAG:(ARG):집중플래그 = 0
+			CFLAG:(ARG):타인집중플래그 = 0
 			CFLAG:(ARG):마법효과반감플래그 = 0
 		ENDIF
+		;---- EDIT 003 MOD END ---------------------------
 	ENDIF
 	;HP흡수処理
-	SIF CFLAG:(ARG):ステート == GET_STATE_NUM("BRAND") && CFLAG:(ARG):HP흡수量 > 0
-		CFLAG:(ARG):HP흡수量 = 1
-	SIF CFLAG:(ARG):회복불능플래그 && CFLAG:(ARG):HP흡수量 > 0
-		CFLAG:(ARG):HP흡수量 = 0
-	IF CFLAG:(ARG):HP흡수量 != 0
+	SIF CFLAG:(ARG):상태이상 == GET_STATE_NUM("BRAND") && CFLAG:(ARG):HP흡수량 > 0
+		CFLAG:(ARG):HP흡수량 = 1
+	SIF CFLAG:(ARG):회복불능플래그 && CFLAG:(ARG):HP흡수량 > 0
+		CFLAG:(ARG):HP흡수량 = 0
+	IF CFLAG:(ARG):HP흡수량 != 0
 		PRINTL
 		PRINTFORM 　ATTACKER:[{CPOS(ARG),2}] %CALLNAME:(ARG),20,LEFT%
-		IF CFLAG:(ARG):HP흡수量 > 0
-			PRINTFORM 　흡수>>　{CFLAG:(ARG):HP흡수量}회복
-			CALL VAR_HP((ARG), CFLAG:(ARG):HP흡수量, 3)
+		IF CFLAG:(ARG):HP흡수량 > 0
+			PRINTFORM 　흡수>>　{CFLAG:(ARG):HP흡수량}회복
+			CALL VAR_HP((ARG), CFLAG:(ARG):HP흡수량, 3)
 			PRINTL
 			PRINTW
 		ELSE
 			;2021/5/24
-			PRINTFORM 　반동>>　{-CFLAG:(ARG):HP흡수量}데미지
-			CALL VAR_HP((ARG), CFLAG:(ARG):HP흡수量, -1)
+			PRINTFORM 　반동>>　{-CFLAG:(ARG):HP흡수량}데미지
+			CALL VAR_HP((ARG), CFLAG:(ARG):HP흡수량, -1)
 			PRINTL
 			PRINTW
 		ENDIF
 	ENDIF
-	CFLAG:(ARG):HP흡수量 = 0
+	CFLAG:(ARG):HP흡수량 = 0
 	
 	;무효화횟수を減らす処理
 	FOR LOCAL:10,0,CHARANUM
-		FOR LOCAL:11,0,FLAG:相性数
-			IF CFLAG:(LOCAL:10):(GET_TYPE(LOCAL:11) + "被弾")
+		FOR LOCAL:11,0,FLAG:상성수
+			IF CFLAG:(LOCAL:10):(GET_TYPE(LOCAL:11) + "피탄")
 				CFLAG:(LOCAL:10):(GET_TYPE(LOCAL:11) + "무효화횟수") -= 1
-				CFLAG:(LOCAL:10):(GET_TYPE(LOCAL:11) + "被弾") = 0
+				CFLAG:(LOCAL:10):(GET_TYPE(LOCAL:11) + "피탄") = 0
 			ENDIF
 		NEXT
 		
-		FOR LOCAL:11,0,FLAG:ステート数
-			IF CFLAG:(LOCAL:10):(GET_STATE(LOCAL:11) + "被弾")
+		FOR LOCAL:11,0,FLAG:상태이상수
+			IF CFLAG:(LOCAL:10):(GET_STATE(LOCAL:11) + "피탄")
 				CFLAG:(LOCAL:10):(GET_STATE(LOCAL:11) + "무효화횟수") -= 1
-				CFLAG:(LOCAL:10):(GET_STATE(LOCAL:11) + "被弾") = 0
+				CFLAG:(LOCAL:10):(GET_STATE(LOCAL:11) + "피탄") = 0
 			ENDIF
 		NEXT
 		
-		IF CFLAG:(LOCAL:10):バステ被弾
-			CFLAG:(LOCAL:10):バステ被弾 = 0
-			CFLAG:(LOCAL:10):バステ무효화횟수 -= 1
+		IF CFLAG:(LOCAL:10):BS피탄
+			CFLAG:(LOCAL:10):BS피탄 = 0
+			CFLAG:(LOCAL:10):BS무효화횟수 -= 1
 		ENDIF
 	NEXT
 	
 	;마이ト化による爆発フラグが立っているキャラが居たら爆発する
-	SIF FINDCHARA(CFLAG:BOMB引火フラグ,1) != -1
+	SIF FINDCHARA(CFLAG:BOMB인화플래그,1) != -1
 		CALL BOMB_BANG
 	
 	SIF CFLAG:(ARG):도주플래그
@@ -356,7 +361,7 @@ ELSEIF RESULT == 0
 	CFLAG:ARG:방어플래그 = 1
 	CFLAG:ARG:입력행동 = CFLAG:(ARG):ＲＥＰＥＡＴ행동
 	CFLAG:ARG:타겟 = CFLAG:(ARG):ＲＥＰＥＡＴ타겟
-	CFLAG:ARG:던전内発情用욕정치 /= 4
+	CFLAG:ARG:던전내발정용욕정치 /= 4
 	BASE:ARG:체력 -= 100
 	BASE:ARG:기력 -= 100
 
@@ -366,7 +371,7 @@ ELSEIF RESULT == 0
 			CFLAG:(CFLAG:ARG:("링케이지참가자" + TOSTR(LOCAL))):입력행동 = -1
 			CFLAG:(CFLAG:ARG:("링케이지참가자" + TOSTR(LOCAL))):방어플래그 = 1
 			CFLAG:(CFLAG:ARG:("링케이지참가자" + TOSTR(LOCAL))):링케이지참가 = 0
-			CFLAG:(CFLAG:ARG:("링케이지참가자" + TOSTR(LOCAL))):던전内発情用욕정치 /= 2
+			CFLAG:(CFLAG:ARG:("링케이지참가자" + TOSTR(LOCAL))):던전내발정용욕정치 /= 2
 			BASE:(CFLAG:ARG:("링케이지참가자" + TOSTR(LOCAL))):체력 -= 100
 			BASE:(CFLAG:ARG:("링케이지참가자" + TOSTR(LOCAL))):기력 -= 100
 			CFLAG:ARG:("링케이지참가자" + TOSTR(LOCAL)) = -1
@@ -401,7 +406,7 @@ ELSEIF RESULT < 1 || RESULT > 6 || POS(RESULT) == -1
 ENDIF
 ;LOCAL:10のキャラが참가
 LOCAL:10 = POS(RESULT)
-CALLFORM 참가者조건_{LOCAL:7}, LOCAL:10 , LOCAL:9
+CALLFORM 참가자조건_{LOCAL:7}, LOCAL:10 , LOCAL:9
 SIF RESULT == 0
 	GOTO INPUT_LOOP3
 ;ＣＨＡＮＧＥ대상は弾く
@@ -431,7 +436,7 @@ GOTO PRINT_MENE
 ;================================================
 @ACTIONABLE_ECSLINKAGE,ARG,ARG:1
 ;まず옵션他が조건にあってなかったら帰る
-SIF !(FLAG:ムフフ전개) || !(EQUIP:MASTER:엑스링케이지)
+SIF !(FLAG:무후후전개) || !(EQUIP:MASTER:엑스링케이지)
 	RETURN 0
 ;대상스킬がそもそも링케이지じゃなかったら帰る
 ;この処理はより上の階層に逃がす予定
@@ -442,16 +447,16 @@ CATCH
 	RETURN 0
 ENDCATCH
 ;発動者が発情しておらず、체력기력が100以下だったら帰る
-SIF CFLAG:(ARG:1):던전内発情用욕정치 < 10000 || BASE:(ARG:1):체력 <= 100 || BASE:(ARG:1):기력 <= 100
+SIF CFLAG:(ARG:1):던전내발정용욕정치 < 10000 || BASE:(ARG:1):체력 <= 100 || BASE:(ARG:1):기력 <= 100
 	RETURN 0
 
 ;発動者が조건を満たしているか체크
-CALLFORM 発動者조건_{ARG},ARG:1
+CALLFORM 발동자조건_{ARG},ARG:1
 SIF RESULT == 0
 	RETURN 0
 
 ;참가者の人数を체크
-CALLFORM 참가人数_{ARG}
+CALLFORM 참가인수_{ARG}
 LOCAL:1 = RESULT
 
 ;조건を満たす참가者をDの枠に放り込む
@@ -467,11 +472,11 @@ FOR LOCAL, 1 , LOCAL:1+1
 		CALL INPUTABLE_CHARA , POS(LOCAL:2)
 		SIF RESULT == 0
 			CONTINUE
-		CALLFORM 참가者조건_{ARG},POS(LOCAL:2),LOCAL
+		CALLFORM 참가자조건_{ARG},POS(LOCAL:2),LOCAL
 		SIF RESULT == 0
 			CONTINUE
 		;엑스링케이지は発情してかつ체력기력なきゃ참가者になれない
-		SIF CFLAG:POS(LOCAL:2):던전内発情用욕정치 < 10000 || BASE:POS(LOCAL:2):체력 <= 100 || BASE:POS(LOCAL:2):기력 <= 100
+		SIF CFLAG:POS(LOCAL:2):던전내발정용욕정치 < 10000 || BASE:POS(LOCAL:2):체력 <= 100 || BASE:POS(LOCAL:2):기력 <= 100
 			CONTINUE
 		D:LOCAL |= POWER(2,LOCAL:2)
 	NEXT

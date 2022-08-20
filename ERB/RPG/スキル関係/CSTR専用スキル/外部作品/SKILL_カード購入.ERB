@@ -1,0 +1,1426 @@
+﻿;스킬명
+@SKILL_NAME_カード購入,ARG
+;専用技が封印されている
+IF CFLAG:ARG:998 == 0
+	RESULTS = ？？？？？
+ELSE
+	RESULTS = 카드 구입
+ENDIF
+
+;　명중
+@SKILL_HITRATE_カード購入, ARG
+RETURN 100
+
+;　위력
+@SKILL_POWER_カード購入, ARG
+RETURN 0
+
+;　최저공격횟수
+@SKILL_MINATTACKNUMBER_カード購入,ARG
+RETURN 1
+
+;　최대공격횟수
+@SKILL_MAXATTACKNUMBER_カード購入,ARG
+RETURN 1
+
+;　2 ＨＰ지불　3 ＭＰ지불
+@SKILL_COSTTYPE_カード購入, ARG
+RETURN 1
+;소비없음＝1
+
+;　코스트량
+@SKILL_COST_カード購入,ARG
+RETURN 0
+
+;　상성
+@SKILL_TYPE_カード購入,ARG
+RETURN 0
+
+;　1 EXTRA　2 MAGIC
+@SKILL_DECIDE_TYPE_カード購入, ARG
+RETURN 0
+
+;　1 물리데미지로 계산　2 마법데미지로 계산
+@SKILL_DAMAGETYPE_カード購入,ARG
+RETURN 0
+
+
+;　대상　1 적　2 아군　3 양쪽전체　4 특수
+@SKILL_TARGET_カード購入,ARG
+RETURN 4
+
+;　사거리
+@SKILL_RANGE_カード購入,ARG
+RETURN 3
+
+;　범위　1 1체　2 1열　3 전체　4 적아군전체
+@SKILL_SPHERE_カード購入,ARG
+RETURN 4
+
+;　 효과타입　1 공격、2 회복、3 상태변화、4 특수、5 상태회복
+@SKILL_EFECT_カード購入,ARG
+RETURN 4
+
+;　 특수처리 여부 및 처리내용
+;@SKILL_SPECIALEFECT_カード購入,ARG
+;ARG = 1인 경우는 처리 여부를 반환합니다
+;SIF ARG == 1
+;	RETURN 0
+;아래쪽에 특수처리를 기술합니다
+
+;속도보정
+@SKILL_SPEED_カード購入, ARG = -1
+RETURN 0
+
+;;　구상의 표시와 그 타입
+;@SKILL_MESSAGE_カード購入,ARG
+
+
+;전투시 이외에 사용 가능한가
+@SKILL_ACTIONABLE_FIELD_カード購入, ARG = -1
+RETURN 0
+
+;템플릿용、추가효과 시리즈
+;추가효과 스테이터스
+@SKILL_ADDTIONAL_STATE_カード購入,ARG
+RETURN 0
+
+;추가효과 상성
+@SKILL_ADDTIONAL_TYPE_カード購入,ARG
+RETURN 0
+
+;추가효과 기본부여확률
+@SKILL_ADDTIONAL_BASE_RATE_カード購入,ARG
+RETURN 0
+
+;추가효과 부여확률상한
+@SKILL_ADDTIONAL_MAX_RATE_カード購入,ARG
+RETURN 0
+
+;;拡散攻撃用追加処理
+;;ブレスなどの拡散攻撃に使う
+;@SKILL_SPREAD_カード購入,ARG
+;RETURN 0
+
+;====================================================
+;トリガー発動条件
+;====================================================
+;@SKILL_TRIGGER_ACTIONABLE_カード購入,ARG,ARG:1
+;RETURN 0
+
+;====================================================
+;カウンター発動条件
+;====================================================
+;@SKILL_COUNTER_ACTIONABLE_カード購入,ARG,ARG:1
+;RETURN RESULT
+
+;====================================================
+;ヒット時ダメージ前処理
+;====================================================
+;@SKILL_HIT_EFFECT_カード購入,ARG,ARG:1
+
+;====================================================
+;ダメージ発動時
+;====================================================
+;@SKILL_DAMAGE_EFFECT_カード購入,ARG,ARG:1
+
+;====================================================
+;行動によるスキルゲージ操作
+;====================================================
+@SKILLGAGE_CHARGE_カード購入,ARG,ARG:1
+#LOCALSIZE 1
+#DIM SKILL_NUM
+SKILL_NUM = PU_SKILLNUM_GET(ARG,"カード購入")
+FOR LOCAL,0,CHARANUM
+	SIF CFLAG:LOCAL:PT플래그 == CFLAG:ARG:PT플래그
+		CONTINUE
+	IF CFLAG:LOCAL:현데미지 > 0 && GET_STATE(CFLAG:LOCAL:상태이상) == "DYING"
+		CALL SKILLGAGE_F_ADD,ARG,SKILL_NUM,1
+		;エリート敵の襲撃
+		SIF SKILLGAGE_H_GET(ARG,PU_SKILLNUM_GET(ARG,"リラックス")) > 0
+			CALL SKILLGAGE_F_ADD,ARG,SKILL_NUM,SKILLGAGE_H_GET(ARG,PU_SKILLNUM_GET(ARG,"リラックス"))
+		;イベント用
+		IF CFLAG:ARG:998 == 2
+			;자신의 行動の場合＋完全防衛手当
+			SIF ARG == ARG:1 && GETCHARA([[キャラ:국경문]]) > -1 && BASE:GETCHARA([[キャラ:국경문]]):ＨＰ >= MAXBASE:GETCHARA([[キャラ:국경문]]):ＨＰ * 6 / 10
+				CALL SKILLGAGE_F_ADD,ARG,SKILL_NUM,1
+		ELSE
+			;자신의 行動の場合＋完全防衛手当
+			SIF ARG == ARG:1 && BASE:ARG:ＨＰ >= MAXBASE:ARG:ＨＰ * 6 / 10
+				CALL SKILLGAGE_F_ADD,ARG,SKILL_NUM,1
+		ENDIF
+	ELSE
+		CONTINUE
+	ENDIF
+NEXT
+RETURN 0
+
+;====================================================
+;스킬 및 행동의 실행
+;====================================================
+@ACTION_カード購入,ARG,ARG:1,SKILL_NUM
+#DIM SKILL_NUM
+
+;CALL ATTACK_SINGLE,ARG,POS(ARG:1),SKILL_NUM;	単体攻撃
+;CALL ATTACK_FIELD,ARG,ARG:1,SKILL_NUM;			範囲攻撃(列、全体)
+;CALL ATTACK_SPREAD,ARG,ARG:1,SKILL_NUM;		拡散攻撃
+;CALL ATTACK_RAND,ARG,ARG:1,SKILL_NUM;			ランダム攻撃
+
+
+;====================================================
+;실행내용 여기까지
+;====================================================
+
+;====================================================
+;전투중 이외에서의 실행
+;====================================================
+;@ACTION_FIELD_カード購入,ARG,ARG:1,SKILL_NUM
+;#DIM SKILL_NUM
+
+;CALL HEAL_SINGLE,ARG,POS(ARG:1),SKILL_NUM	;単体回復
+;CALL HEAL_FIELD,ARG,ARG:1,SKILL_NUM		;範囲回復(列、全体)
+;CALL ALL_HEAL, POS(ARG:1), 0				;単体前回復
+
+;====================================================
+;실행내용 여기까지
+;====================================================
+
+;====================================================
+;追加コマンド(一番下)
+;====================================================
+@SKILL_SPECIAL_COMMAND_カード購入,ARG,LOCAL,SKILL_NUM
+#DIM SKILL_NUM
+#LOCALSIZE 1
+;専用技が封印されていない
+IF CFLAG:ARG:998 > 0
+	SIF SKILLGAGE_D_GET(ARG,SKILL_NUM) > 0
+		SETCOLOR 0x404040
+	IF LOCAL >= 10
+		PRINTFORML [{LOCAL}]카드 구입
+	ELSE
+		PRINTFORML [{LOCAL}] 카드 구입
+	ENDIF
+	RESETCOLOR
+	IF SKILLGAGE_D_GET(ARG,SKILL_NUM) <= 0
+		C:(LOCAL++) = 10000 + SKILL_NUM
+	ELSE
+		C:(LOCAL++) = 0
+	ENDIF
+ENDIF
+RETURN LOCAL
+
+;====================================================
+;コマンド実行
+;====================================================
+@INPUT_COM_カード購入,ARG
+#DIM SKILL_NUM
+#DIM LOOP_NUM
+#DIM CARD_NUM, 5
+SKILL_NUM = PU_SKILLNUM_GET(ARG,"カード購入")
+CARD_NUM:1 = 0		;1枚目
+CARD_NUM:2 = 0		;2枚目
+CARD_NUM:3 = 0		;3枚目
+CARD_NUM:4 = 0		;4枚目
+
+LOCAL = 0
+IF CFLAG:ARG:포지션 < 7
+	FOR LOOP_NUM, 1, 7
+		LOCALS = 포지션{LOOP_NUM}
+		SIF FLAG:LOCALS < 0 || (NO:(FLAG:LOCALS) != 0 && NO:(FLAG:LOCALS) != 4999)
+			CONTINUE
+		;SIF GET_STATE(CFLAG:(FLAG:LOCALS):상태이상) == "DYING"
+		;	CONTINUE
+		LOCAL ++
+	NEXT
+	;＠不在の場合
+	SIF !LOCAL
+		CALL SKILLGAGE_H_SET,ARG,SKILL_NUM,3
+ENDIF
+
+LOCAL = CFLAG:ARG:입력행동
+CFLAG:ARG:입력행동 = PU_SKILLNUM_GET(ARG,"カード購入")
+
+CALL カード購入_DRAW,ARG,0,0,0,0
+FOR LOOP_NUM, 1, 5
+	;X枚目
+	CARD_NUM:LOOP_NUM = RESULT:(LOOP_NUM - 1)
+	;代払い額
+	LOCAL:(10 + LOOP_NUM) = MAX((カード購入_CARD_COST(ARG,CARD_NUM:LOOP_NUM) - SKILLGAGE_F_GET(ARG,SKILL_NUM)) * 5000, 0)
+NEXT
+SIF CARD_NUM:1 != 40 && CARD_NUM:2 != 40 && CARD_NUM:3 != 40
+	CARD_NUM:4 = 99
+
+CALL ANIMATION_ROLL_TEXT, "구입요청중………성공。", 1, 1, 300
+PRINTFORML ※특수통화가 부족한 경우、1통화＝￥5000의 환율로 돈이 소비됩니다（나머지 대금 상환횟수：{MAX(2 + (함락(ARG) > 0) - SKILLGAGE_H_GET(ARG,SKILL_NUM),0)}회）
+DRAWLINE
+FOR LOOP_NUM, 1, 5
+	SIF CARD_NUM:LOOP_NUM <= 0
+		CONTINUE
+	SIF !カード購入_CARD_BUYABLE(ARG, CARD_NUM:LOOP_NUM, LOCAL:(10 + LOOP_NUM))
+		SETCOLOR 0x404040
+	PRINTFORM [{LOOP_NUM}] %カード購入_CARD_NAME(ARG,CARD_NUM:LOOP_NUM),25,LEFT%%カード購入_CARD_TYPE(ARG,CARD_NUM:LOOP_NUM),20,LEFT%가격：
+	IF カード購入_CARD_COST(ARG,CARD_NUM:LOOP_NUM) == 0
+		PRINTFORM 무료
+	ELSEIF SKILLGAGE_H_GET(ARG,SKILL_NUM) < 2 + (함락(ARG) > 0) && LOCAL:(10 + LOOP_NUM) > 0
+		SIF SKILLGAGE_F_GET(ARG,SKILL_NUM) > 0
+			PRINTFORM {SKILLGAGE_F_GET(ARG,SKILL_NUM),2}매＋
+		PRINTFORM ￥%TOSTR(LOCAL:(10 + LOOP_NUM), "#,##0")%
+	ELSE
+		PRINTFORM {カード購入_CARD_COST(ARG,CARD_NUM:LOOP_NUM),2}매
+	ENDIF
+	PRINTL 
+	RESETCOLOR
+	PRINTFORML 　　%カード購入_CARD_DESCRIPTION(ARG,CARD_NUM:LOOP_NUM)%
+NEXT
+
+DRAWLINE
+PRINTL [0] 구입하지 않는다
+$INPUT_LOOP
+CALL INPUTINT(0,1,2,3,4)
+IF RESULT > 0
+	;購入するカード
+	LOCAL:4 = RESULT
+	IF CARD_NUM:(LOCAL:4) <= 0 || !カード購入_CARD_BUYABLE(ARG, CARD_NUM:(LOCAL:4), LOCAL:(10 + LOCAL:4))
+		;PRINTFORMW {SKILLGAGE_F_GET(ARG,SKILL_NUM)} {LOCAL:(10 + LOCAL:4)}
+		CLEARLINE 1
+		GOTO INPUT_LOOP
+	ELSE
+		SETCOLOR 0x33ffcc
+		PRINTFORML ┏>CHARA━━━━━━━━━━┓　┏>ACT━━━━━━━━━━━━━━━━━━┓
+		PRINTFORM ┃[{CPOS(ARG),2}] %CALLNAME:ARG,21,LEFT%┃　┃
+		PRINTFORML %"카드 구입",40,LEFT%┃
+		PRINTFORML ┗━━━━━━━━━━━━━┛　┗━━━━━━━━━━━━━━━━━━━━┛
+		RESETCOLOR
+		
+		CALL SKILLGAGE_F_ADD,ARG,SKILL_NUM,カード購入_CARD_COST(ARG,CARD_NUM:(LOCAL:4))*-1
+		IF SKILLGAGE_F_GET(ARG,SKILL_NUM) < 0
+			CALL SKILLGAGE_F_SET,ARG,SKILL_NUM,0
+			CALL SKILLGAGE_H_ADD,ARG,SKILL_NUM,1
+			MONEY -= LOCAL:(10 + LOCAL:4)
+		ENDIF
+		CALL カード購入_CARD_EFFECT, ARG, CARD_NUM:(LOCAL:4)
+		
+		;口上用
+		;カード番号（@カード購入_CARD_NAMEを参照）
+		CFLAG:ARG:900 = CARD_NUM:(LOCAL:4)
+		;代払い額（0～）
+		CFLAG:ARG:901 = LOCAL:(10 + LOCAL:4)
+		
+		SWAP TARGET,ARG
+		CALL 구상호출 , "BATTLE_MESSAGE" , TARGET , TARGET
+		SWAP TARGET,ARG
+	ENDIF
+ENDIF
+
+;毎ターン1回のみ要請できる
+CALL SKILLGAGE_D_ADD,ARG,SKILL_NUM,1
+
+CFLAG:ARG:입력행동 = LOCAL
+RETURN -1
+;-1 再びコマンド選択へ
+; 1 キャラ選択へ
+
+;====================================================
+;戦闘中スキルゲージの可視化
+;====================================================
+@SKILLGAGE_DISPLAY_カード購入,ARG
+#DIM SKILL_NUM
+SKILL_NUM = PU_SKILLNUM_GET(ARG,"カード購入")
+
+;専用技が封印されていない
+IF CFLAG:ARG:998 > 0
+	SETCOLOR 0xFF0000
+	SIF SKILLGAGE_H_GET(ARG,PU_SKILLNUM_GET(ARG,"カードスキルB")) > 0
+		PRINTFORML 지뢰：나머지 {SKILLGAGE_H_GET(ARG,PU_SKILLNUM_GET(ARG,"カードスキルB"))}개
+	SIF SKILLGAGE_H_GET(ARG,PU_SKILLNUM_GET(ARG,"カードスキルB")) < 0
+		PRINTFORML 스파이크：나머지 ∞회
+	RESETCOLOR
+
+	SETCOLOR 0x5090FF
+	IF SKILLGAGE_D_GET(ARG,PU_SKILLNUM_GET(ARG,"カードスキルB")) > 0
+		IF SKILLGAGE_H_GET(ARG,PU_SKILLNUM_GET(ARG,"カードスキルA")) == 1
+			PRINT 대지
+		ELSEIF SKILLGAGE_H_GET(ARG,PU_SKILLNUM_GET(ARG,"カードスキルA")) == 2
+			PRINT 대공
+		ENDIF
+		PRINTFORML 터렛：나머지 {SKILLGAGE_D_GET(ARG,PU_SKILLNUM_GET(ARG,"カードスキルB"))}턴
+	ENDIF
+	RESETCOLOR
+
+	SETCOLOR 0xFFA500
+	PRINTFORML 특수통화：{SKILLGAGE_F_GET(ARG,SKILL_NUM),3}매
+	RESETCOLOR
+ENDIF
+
+
+;　説明文の表示
+@SKILL_EXPLAIN_カード購入,ARG
+;専用技が封印されている
+IF CFLAG:ARG:998 == 0
+	PRINTL （개별이벤트 전용스킬 ＆ 개별이벤트 １～４를 모두 클리어하면…？）
+ELSE
+	PRINTL 1턴에 1회、턴을 소비하지 않고 기술적인 지원을 요청할 수 있습니다
+	PRINTL 카드를 구입하려면、자신이나 동료가 적을 쓰러뜨림으로써 얻을 수 있는 특수통화를 소비합니다
+	PRINTL 던전을 나오면、보유하고 있던 특수통화가 리셋됩니다
+ENDIF
+
+;사용조건
+@SKILL_SPECIAL_ACTIONABLE_カード購入,ARG
+RETURN 0
+
+@カード購入_CARD_BUYABLE, ARG, ARG:1, ARG:2
+#FUNCTION
+#DIM SKILL_NUM
+SKILL_NUM = PU_SKILLNUM_GET(ARG,"カード購入")
+SIF ARG:2 <= 0 && SKILLGAGE_F_GET(ARG,SKILL_NUM) < カード購入_CARD_COST(ARG,ARG:1)
+	RETURNF 0
+SIF ARG:2 > 0 && (SKILLGAGE_H_GET(ARG,SKILL_NUM) >= 2 + (함락(ARG) > 0) || MONEY < ARG:2)
+	RETURNF 0
+RETURNF 1
+
+@カード購入_DRAW, ARG, ARG:1 = 0, ARG:2 = 0, ARG:3 = 0, ARG:4 = 0
+; 1~15	強化
+;16~21	武器
+;22~28	設置
+;29~39	チャンス
+;40~49	イベント
+;50~59	メインウェポン
+;60~69	DLC
+;90~99	システム
+#DIM SKILL_NUM
+#DIM LOOP_NUM
+#DIM CARD_NUM, 5
+#DIM CARD_TEMP, 5
+SKILL_NUM = PU_SKILLNUM_GET(ARG,"カード購入")
+CARD_NUM:1 = ARG:1	;1枚目
+CARD_NUM:2 = ARG:2	;2枚目
+CARD_NUM:3 = ARG:3	;3枚目
+CARD_NUM:4 = ARG:4	;4枚目
+CARD_TEMP:1 = 0		;1枚目（臨時）
+CARD_TEMP:2 = 0		;2枚目（臨時）
+CARD_TEMP:3 = 0		;3枚目（臨時）
+CARD_TEMP:4 = 0		;4枚目（臨時）
+LOCAL = 0			;ランダム用
+LOCAL:1 = 0			;戦況の厳しさ
+LOCAL:2 = 0			;失敗回数
+;戦況の厳しさ（0~3）
+IF CFLAG:ARG:포지션 < 7
+	FOR LOOP_NUM, 1, 7
+		LOCALS = 포지션{LOOP_NUM}
+		SIF FLAG:LOCALS < 0
+			CONTINUE
+		;イベント用
+		SIF CFLAG:ARG:998 == 2 && GETCHARA([[キャラ:국경문]]) > -1 && FLAG:LOCALS != GETCHARA([[キャラ:국경문]])
+			CONTINUE
+		LOCAL ++
+		SIF BASE:(FLAG:LOCALS):ＨＰ < MAXBASE:(FLAG:LOCALS):ＨＰ * 7 / 10
+			LOCAL:1 ++
+		SIF BASE:(FLAG:LOCALS):ＨＰ < MAXBASE:(FLAG:LOCALS):ＨＰ * 5 / 10
+			LOCAL:1 ++
+		SIF BASE:(FLAG:LOCALS):ＨＰ < MAXBASE:(FLAG:LOCALS):ＨＰ * 3 / 10
+			LOCAL:1 ++
+		SIF BASE:(FLAG:LOCALS):ＨＰ <= 0
+			LOCAL:1 ++
+	NEXT
+	LOCAL:1 /= LOCAL
+ENDIF
+;カードドロー処理
+$DRAW_LOOP
+FOR LOOP_NUM, 1, 5
+	SIF CARD_NUM:LOOP_NUM
+		CONTINUE
+	
+	;強化、武器、設置、チャンス、イベント【変更を忘れずに】
+	SELECTCASE RAND:14	;RAND:15
+		CASE 0 TO 4
+			;強化(5)
+			CARD_TEMP:LOOP_NUM = 1 + RAND:15
+		CASE 5 TO 7
+			;武器(3)
+			IF SKILL_CHANGE(ARG, [[キャラ:마르푸샤]])
+				CARD_TEMP:LOOP_NUM = 16 + RAND:7
+				;パイルショット
+				SIF CARD_TEMP:LOOP_NUM == 22
+					CARD_TEMP:LOOP_NUM = 60
+			ELSE
+				CARD_TEMP:LOOP_NUM = 16 + RAND:6
+				;パイルショット
+				SIF CARD_TEMP:LOOP_NUM == 21
+					CARD_TEMP:LOOP_NUM = 60
+			ENDIF
+		CASE 8 TO 10
+			;設置(3)
+			CARD_TEMP:LOOP_NUM = 22 + RAND:8
+			;スパイク
+			SIF CARD_TEMP:LOOP_NUM == 29
+				CARD_TEMP:LOOP_NUM = 61
+		CASE 11
+			;チャンス(1)
+			CARD_TEMP:LOOP_NUM = 29 + RAND:6	;RAND:10
+		CASE 12 TO 13
+			;イベント(2)
+			CARD_TEMP:LOOP_NUM = 40 + RAND:6	;RAND:10
+		CASE 14
+			;メインウェポン(1)【専用武器が必要】
+			CARD_TEMP:LOOP_NUM = 50 + RAND:10
+		CASEELSE
+			;エラー(0)
+			CARD_TEMP:LOOP_NUM = 1 + RAND:60
+	ENDSELECT
+	
+	;基本成功率（数字が大きいほど引きにくい）
+	LOCAL = LOCAL:2 * -1
+	;既に同じカードを持っている
+	SIF LOOP_NUM - 1 > 0 && CARD_TEMP:LOOP_NUM == CARD_NUM:(LOOP_NUM - 1)
+		LOCAL += 10
+	SIF LOOP_NUM - 2 > 0 && CARD_TEMP:LOOP_NUM == CARD_NUM:(LOOP_NUM - 2)
+		LOCAL += 10
+	SIF LOOP_NUM - 3 > 0 && CARD_TEMP:LOOP_NUM == CARD_NUM:(LOOP_NUM - 3)
+		LOCAL += 10
+	;種類ランダム
+	SELECTCASE CARD_TEMP:LOOP_NUM
+		;強化
+		CASE 1 TO 15
+			;一般タイプ
+			LOCAL += 10
+			;非常に厳しい戦い
+			SIF LOCAL:1 == 2
+				LOCAL += 10
+			;もう何も恐くない
+			SIF LOCAL:1 >= 3
+				LOCAL += 20
+			;再抽選（乱数 ＞ 範囲）
+			SIF 1 + RAND:100 > 95 - LOCAL
+				CONTINUE
+		;武器
+		CASE 16 TO 21, 60
+			;レアタイプ
+			LOCAL += 30
+			;非常に厳しい戦い
+			SIF LOCAL:1 == 2
+				LOCAL -= 5
+			;もう何も恐くない
+			SIF LOCAL:1 >= 3
+				LOCAL -= 10
+			;武器スキルはＥＭＰＴＹではない
+			SIF SKILLGAGE_F_GET(ARG,PU_SKILLNUM_GET(ARG,"カードスキルA")) > 0
+				LOCAL += 10
+			;再抽選（乱数 ＞ 範囲）
+			SIF 1 + RAND:100 > 95 - LOCAL
+				CONTINUE
+		;設置
+		CASE 22 TO 28, 61
+			;レアタイプ
+			LOCAL += 30
+			;非常に厳しい戦い
+			SIF LOCAL:1 == 2
+				LOCAL += 5
+			;設置する余裕がない
+			SIF LOCAL:1 >= 3
+				LOCAL += 10
+			;設置スキルはＥＭＰＴＹではない
+			SIF SKILLGAGE_F_GET(ARG,PU_SKILLNUM_GET(ARG,"カードスキルB")) > 0
+				LOCAL += 10
+			;再抽選（乱数 ＞ 範囲）
+			SIF 1 + RAND:100 > 95 - LOCAL
+				CONTINUE
+		;チャンスカード
+		CASE 29 TO 39
+			;激レアタイプ
+			LOCAL += 70
+			;勝つためには運が必要
+			SIF LOCAL:1 == 2
+				LOCAL -= 10
+			;勝つためには、心の強さが必要
+			SIF LOCAL:1 >= 3
+				LOCAL += 10
+			;再抽選（乱数 ＞ 範囲）
+			SIF 1 + RAND:100 > 95 - LOCAL
+				CONTINUE
+		;イベントカード
+		CASE 40 TO 49
+			;激レアタイプ
+			LOCAL += 60
+			;非常に厳しい戦い
+			SIF LOCAL:1 == 2
+				LOCAL += 5
+			;イベントを見ている場合じゃない
+			SIF LOCAL:1 >= 3
+				LOCAL += 10
+			;再抽選（乱数 ＞ 範囲）
+			SIF 1 + RAND:100 > 95 - LOCAL
+				CONTINUE
+		;メインウェポン
+		CASE 50 TO 59
+			;激レアタイプ
+			LOCAL += 50
+			;厳しい戦い
+			SIF LOCAL:1 == 1
+				LOCAL += 5
+			;非常に厳しい戦い
+			SIF LOCAL:1 == 2
+				LOCAL += 10
+			;メインウェポンを変更する時間がない
+			SIF LOCAL:1 >= 3
+				LOCAL += 15
+			;再抽選（乱数 ＞ 範囲）
+			SIF 1 + RAND:100 > 95 - LOCAL
+				CONTINUE
+	ENDSELECT
+	
+	;基本成功率（数字が大きいほど引きにくい）
+	LOCAL = LOCAL:2 * -1
+	;既に同じカードを持っている
+	SIF LOOP_NUM - 1 > 0 && CARD_TEMP:LOOP_NUM == CARD_NUM:(LOOP_NUM - 1)
+		LOCAL += 10
+	SIF LOOP_NUM - 2 > 0 && CARD_TEMP:LOOP_NUM == CARD_NUM:(LOOP_NUM - 2)
+		LOCAL += 10
+	SIF LOOP_NUM - 3 > 0 && CARD_TEMP:LOOP_NUM == CARD_NUM:(LOOP_NUM - 3)
+		LOCAL += 10
+	;カードランダム
+	SELECTCASE CARD_TEMP:LOOP_NUM
+		;攻撃力UP
+		CASE 1 TO 3
+			;攻撃強化なし
+			SIF CFLAG:ARG:공격강화 == 0
+				LOCAL -= 5
+			;攻撃力はすでに高い
+			SIF CFLAG:ARG:공격강화 >= 16
+				LOCAL += 5
+			;攻撃力はすでに非常に高い
+			SIF CFLAG:ARG:공격강화 >= 32
+				LOCAL += 5
+			;攻撃力UP
+			SIF CARD_TEMP:LOOP_NUM == 1
+				LOCAL += 10
+			;攻撃力UP+2
+			SIF CARD_TEMP:LOOP_NUM == 2
+				LOCAL += 40
+			;攻撃力UP+3
+			SIF CARD_TEMP:LOOP_NUM == 3
+				LOCAL += 70
+			;再抽選（乱数 ＞ 範囲）
+			SIF 1 + RAND:100 > 95 - LOCAL
+				CONTINUE
+		;防御力UP
+		CASE 4 TO 6
+			;防御強化なし
+			SIF CFLAG:ARG:방어강화 == 0
+				LOCAL -= 5
+			;防御力はすでに高い
+			SIF CFLAG:ARG:방어강화 >= 16
+				LOCAL += 5
+			;防御力はすでに非常に高い
+			SIF CFLAG:ARG:방어강화 >= 32
+				LOCAL += 5
+			;防御力UP
+			SIF CARD_TEMP:LOOP_NUM == 4
+				LOCAL += 10
+			;防御力UP+2
+			SIF CARD_TEMP:LOOP_NUM == 5
+				LOCAL += 40
+			;防御力UP+3
+			SIF CARD_TEMP:LOOP_NUM == 6
+				LOCAL += 70
+			;再抽選（乱数 ＞ 範囲）
+			SIF 1 + RAND:100 > 95 - LOCAL
+				CONTINUE
+		;命中率UP
+		CASE 7 TO 9
+			;命中強化なし
+			SIF CFLAG:ARG:명중강화 == 0
+				LOCAL -= 5
+			;命中率はすでに高い
+			SIF CFLAG:ARG:명중강화 >= 16
+				LOCAL += 5
+			;命中率はすでに非常に高い
+			SIF CFLAG:ARG:명중강화 >= 32
+				LOCAL += 5
+			;命中率UP
+			SIF CARD_TEMP:LOOP_NUM == 7
+				LOCAL += 10
+			;命中率UP+2
+			SIF CARD_TEMP:LOOP_NUM == 8
+				LOCAL += 40
+			;命中率UP+3
+			SIF CARD_TEMP:LOOP_NUM == 9
+				LOCAL += 70
+			;再抽選（乱数 ＞ 範囲）
+			SIF 1 + RAND:100 > 95 - LOCAL
+				CONTINUE
+		;回避率UP
+		CASE 10 TO 12
+			;回避強化なし
+			SIF CFLAG:ARG:회피강화 == 0
+				LOCAL -= 5
+			;回避率はすでに高い
+			SIF CFLAG:ARG:회피강화 >= 16
+				LOCAL += 5
+			;回避率はすでに非常に高い
+			SIF CFLAG:ARG:회피강화 >= 32
+				LOCAL += 5
+			;回避率UP
+			SIF CARD_TEMP:LOOP_NUM == 10
+				LOCAL += 10
+			;回避率UP+2
+			SIF CARD_TEMP:LOOP_NUM == 11
+				LOCAL += 40
+			;回避率UP+3
+			SIF CARD_TEMP:LOOP_NUM == 12
+				LOCAL += 70
+			;再抽選（乱数 ＞ 範囲）
+			SIF 1 + RAND:100 > 95 - LOCAL
+				CONTINUE
+		;クリティカル率UP
+		CASE 13 TO 15
+			;クリティカル強化なし
+			SIF CFLAG:ARG:크리티컬강화 == 0
+				LOCAL -= 5
+			;クリティカル率はすでに高い
+			SIF CFLAG:ARG:크리티컬강화 >= 4
+				LOCAL += 5
+			;クリティカル率はすでに非常に高い
+			SIF CFLAG:ARG:크리티컬강화 >= 8
+				LOCAL += 5
+			;クリティカル率UP
+			SIF CARD_TEMP:LOOP_NUM == 13
+				LOCAL += 10
+			;クリティカル率UP+2
+			SIF CARD_TEMP:LOOP_NUM == 14
+				LOCAL += 40
+			;クリティカル率UP+3
+			SIF CARD_TEMP:LOOP_NUM == 15
+				LOCAL += 70
+			;再抽選（乱数 ＞ 範囲）
+			SIF 1 + RAND:100 > 95 - LOCAL
+				CONTINUE
+		;電熱砲
+		CASE 21
+			;激レアカード
+			LOCAL += 90
+			;イベント用
+			SIF CFLAG:ARG:998 == 2
+				LOCAL -= 10
+			;厳しい戦い
+			SIF LOCAL:1 == 1
+				LOCAL -= 10
+			;非常に厳しい戦い
+			SIF LOCAL:1 == 2
+				LOCAL -= 20
+			;死にそう…
+			SIF LOCAL:1 >= 3
+				LOCAL -= 30
+			;再抽選（乱数 ＞ 範囲）
+			SIF 1 + RAND:100 > 95 - LOCAL
+				CONTINUE
+		;バリケード
+		CASE 22 TO 24
+			;厳しい戦い
+			SIF LOCAL:1 == 1
+				LOCAL -= 5
+			;非常に厳しい戦い
+			SIF LOCAL:1 == 2
+				LOCAL -= 10
+			;バリケード
+			SIF CARD_TEMP:LOOP_NUM == 22
+				LOCAL += 10
+			;バリケードLV2
+			SIF CARD_TEMP:LOOP_NUM == 23
+				LOCAL += 40
+			;バリケードLV3
+			SIF CARD_TEMP:LOOP_NUM == 24
+				LOCAL += 70
+			;再抽選（乱数 ＞ 範囲）
+			SIF 1 + RAND:100 > 95 - LOCAL
+				CONTINUE
+		;地雷、スパイク
+		CASE 25, 61
+			;すでに地雷、スパイクが設置されている
+			SIF SKILLGAGE_H_GET(ARG,PU_SKILLNUM_GET(ARG,"カードスキルB")) != 0
+				LOCAL += 15
+			;すでにタレットが設置されている
+			SIF SKILLGAGE_D_GET(ARG,PU_SKILLNUM_GET(ARG,"カードスキルB")) > 0
+				LOCAL += 5
+			;再抽選（乱数 ＞ 範囲）
+			SIF 1 + RAND:100 > 95 - LOCAL
+				CONTINUE
+		;タレット（対地、対空）
+		CASE 27, 28
+			;すでに地雷、スパイクが設置されている
+			SIF SKILLGAGE_H_GET(ARG,PU_SKILLNUM_GET(ARG,"カードスキルB")) != 0
+				LOCAL += 5
+			;すでにタレットが設置されている
+			SIF SKILLGAGE_D_GET(ARG,PU_SKILLNUM_GET(ARG,"カードスキルB")) > 0
+				LOCAL += 15
+			;再抽選（乱数 ＞ 範囲）
+			SIF 1 + RAND:100 > 95 - LOCAL
+				CONTINUE
+		;ランダム
+		CASEELSE
+			;再抽選（乱数 ＞ 範囲）
+			SIF 1 + RAND:100 > 95 - LOCAL
+				CONTINUE
+	ENDSELECT
+	;君に決めた！
+	CARD_NUM:LOOP_NUM = CARD_TEMP:LOOP_NUM
+NEXT
+;判定に失敗しても次回の成功率が上がる
+IF !CARD_NUM:1 || !CARD_NUM:2 || !CARD_NUM:3 || !CARD_NUM:4
+	LOCAL:2 ++
+	GOTO DRAW_LOOP
+ENDIF
+RETURN CARD_NUM:1,CARD_NUM:2,CARD_NUM:3,CARD_NUM:4
+
+@カード購入_CARD_EFFECT, ARG, ARG:1
+#DIM SKILL_NUM
+SKILL_NUM = PU_SKILLNUM_GET(ARG,"カード購入")
+SELECTCASE ARG:1
+	CASE 1
+		;攻撃力UP
+		CFLAG:ARG:공격강화 += 4
+		SIF CFLAG:ARG:공격강화 > 32
+			CFLAG:ARG:공격강화 = 32
+		PRINTFORMW %CALLNAME:ARG%의 공격력이 높아졌다！
+	CASE 2
+		;攻撃力UP+2
+		CFLAG:ARG:공격강화 += 8
+		SIF CFLAG:ARG:공격강화 > 32
+			CFLAG:ARG:공격강화 = 32
+		PRINTFORMW %CALLNAME:ARG%의 공격력이 대폭 높아졌다！
+	CASE 3
+		;攻撃力UP+3
+		CFLAG:ARG:공격강화 += 12
+		SIF CFLAG:ARG:공격강화 > 32
+			CFLAG:ARG:공격강화 = 32
+		PRINTFORMW %CALLNAME:ARG%의 공격력이 대폭 높아졌다！
+	CASE 4
+		;防御力UP
+		CFLAG:ARG:방어강화 += 4
+		SIF CFLAG:ARG:방어강화 > 32
+			CFLAG:ARG:방어강화 = 32
+		PRINTFORMW %CALLNAME:ARG%의 방어력이 높아졌다！
+	CASE 5
+		;防御力UP+2
+		CFLAG:ARG:방어강화 += 8
+		SIF CFLAG:ARG:방어강화 > 32
+			CFLAG:ARG:방어강화 = 32
+		PRINTFORMW %CALLNAME:ARG%의 방어력이 대폭 높아졌다！
+	CASE 6
+		;防御力UP+3
+		CFLAG:ARG:방어강화 += 12
+		SIF CFLAG:ARG:방어강화 > 32
+			CFLAG:ARG:방어강화 = 32
+		PRINTFORMW %CALLNAME:ARG%의 방어력이 대폭 높아졌다！
+	CASE 7
+		;命中率UP
+		CFLAG:ARG:명중강화 += 4
+		SIF CFLAG:ARG:명중강화 > 32
+			CFLAG:ARG:명중강화 = 32
+		PRINTFORMW %CALLNAME:ARG%의 명중률이 높아졌다！
+	CASE 8
+		;命中率UP+2
+		CFLAG:ARG:명중강화 += 8
+		SIF CFLAG:ARG:명중강화 > 32
+			CFLAG:ARG:명중강화 = 32
+		PRINTFORMW %CALLNAME:ARG%의 명중률이 대폭 높아졌다！
+	CASE 9
+		;命中率UP+3
+		CFLAG:ARG:명중강화 += 12
+		SIF CFLAG:ARG:명중강화 > 32
+			CFLAG:ARG:명중강화 = 32
+		PRINTFORMW %CALLNAME:ARG%의 명중률이 대폭 높아졌다！
+	CASE 10
+		;回避率UP
+		CFLAG:ARG:회피강화 += 4
+		SIF CFLAG:ARG:회피강화 > 32
+			CFLAG:ARG:회피강화 = 32
+		PRINTFORMW %CALLNAME:ARG%의 회피율이 높아졌다！
+	CASE 11
+		;回避率UP+2
+		CFLAG:ARG:회피강화 += 8
+		SIF CFLAG:ARG:회피강화 > 32
+			CFLAG:ARG:회피강화 = 32
+		PRINTFORMW %CALLNAME:ARG%의 회피율이 대폭 높아졌다！
+	CASE 12
+		;回避率UP+3
+		CFLAG:ARG:회피강화 += 12
+		SIF CFLAG:ARG:회피강화 > 32
+			CFLAG:ARG:회피강화 = 32
+		PRINTFORMW %CALLNAME:ARG%의 회피율이 대폭 높아졌다！
+	CASE 13
+		;クリティカル率UP
+		CFLAG:ARG:크리티컬강화 += 1
+		SIF CFLAG:ARG:크리티컬강화 > 8
+			CFLAG:ARG:크리티컬강화 = 8
+		PRINTFORMW %CALLNAME:ARG%의 크리티컬률이 높아졌다！
+	CASE 14
+		;クリティカル率UP+2
+		CFLAG:ARG:크리티컬강화 += 2
+		SIF CFLAG:ARG:크리티컬강화 > 8
+			CFLAG:ARG:크리티컬강화 = 8
+		PRINTFORMW %CALLNAME:ARG%의 크리티컬률이 대폭 높아졌다！
+	CASE 15
+		;クリティカル率UP+3
+		CFLAG:ARG:크리티컬강화 += 3
+		SIF CFLAG:ARG:크리티컬강화 > 8
+			CFLAG:ARG:크리티컬강화 = 8
+		PRINTFORMW %CALLNAME:ARG%의 크리티컬률이 대폭 높아졌다！
+	CASE 16
+		;ワイドショット
+		CALL SKILLGAGE_F_SET,ARG,PU_SKILLNUM_GET(ARG,"カードスキルA"),1
+		PRINTFORMW 무기스킬이「와이드 샷」으로 변경되었습니다。
+	CASE 17
+		;バズソーショット
+		CALL SKILLGAGE_F_SET,ARG,PU_SKILLNUM_GET(ARG,"カードスキルA"),2
+		PRINTFORMW 무기스킬이「버즈소 샷」으로 변경되었습니다。
+	CASE 18
+		;シザーズショット
+		CALL SKILLGAGE_F_SET,ARG,PU_SKILLNUM_GET(ARG,"カードスキルA"),3
+		PRINTFORMW 무기스킬이「시저스 샷」으로 변경되었습니다。
+	CASE 19
+		;クレジットショット
+		CALL SKILLGAGE_F_SET,ARG,PU_SKILLNUM_GET(ARG,"カードスキルA"),4
+		PRINTFORMW 무기스킬이「크레딧 샷」으로 변경되었습니다。
+	CASE 20
+		;リペアショット
+		CALL SKILLGAGE_F_SET,ARG,PU_SKILLNUM_GET(ARG,"カードスキルA"),5
+		PRINTFORMW 무기스킬이「리페어 샷」으로 변경되었습니다。
+	CASE 21
+		;電熱砲
+		CALL SKILLGAGE_F_SET,ARG,PU_SKILLNUM_GET(ARG,"カードスキルA"),6
+		PRINTFORMW 무기스킬이「전열포」으로 변경되었습니다。
+	CASE 22
+		;バリケード
+		CALL SKILLGAGE_F_SET,ARG,PU_SKILLNUM_GET(ARG,"カードスキルB"),1
+		PRINTFORMW 설치스킬이「바리케이트」로 변경되었습니다。
+	CASE 23
+		;バリケードLV2
+		CALL SKILLGAGE_F_SET,ARG,PU_SKILLNUM_GET(ARG,"カードスキルB"),2
+		PRINTFORMW 설치스킬이「바리케이트LV2」로 변경되었습니다。
+	CASE 24
+		;バリケードLV3
+		CALL SKILLGAGE_F_SET,ARG,PU_SKILLNUM_GET(ARG,"カードスキルB"),3
+		PRINTFORMW 설치스킬이「바리케이트LV3」로 변경되었습니다。
+	CASE 25
+		;地雷
+		CALL SKILLGAGE_F_SET,ARG,PU_SKILLNUM_GET(ARG,"カードスキルB"),4
+		PRINTFORMW 설치스킬이「지뢰」로 변경되었습니다。
+	CASE 26
+		;空爆
+		CALL SKILLGAGE_F_SET,ARG,PU_SKILLNUM_GET(ARG,"カードスキルB"),5
+		PRINTFORMW 설치스킬이「공습」으로 변경되었습니다。
+	CASE 27
+		;対地タレット
+		CALL SKILLGAGE_F_SET,ARG,PU_SKILLNUM_GET(ARG,"カードスキルB"),6
+		PRINTFORMW 설치스킬이「대지터렛」으로 변경되었습니다。
+	CASE 28
+		;対空タレット
+		CALL SKILLGAGE_F_SET,ARG,PU_SKILLNUM_GET(ARG,"カードスキルB"),7
+		PRINTFORMW 설치스킬이「대공터렛」으로 변경되었습니다。
+	CASE 29 TO 39
+		;チャンスカード
+		CALL ANIMATION_ROLL_TEXT, "어이쿠、이 카드는………", 1, 1, 300
+		SELECTCASE ARG:1
+			CASE 29
+				CALL PRINT_RAINBOW2L, "「초화력」！！",15
+				PRINTFORMW %ARG는% 다음 공격을 위해 힘을 모았다！
+				CFLAG:ARG:기합플래그 = 1
+				SIF HAVE_SKILL(ARG,2480)
+					CFLAG:ARG:기합플래그 = 2
+			CASE 30
+				CALL PRINT_RAINBOW2L, "「초연사」！！",15
+				PRINTFORMW %ARG는% 다음 공격을 위해 사격자세를 취했다！
+				CFLAG:ARG:베어내기플래그 = 1
+			CASE 31
+				CALL PRINT_RAINBOW2L, "「마구 쏘기」！！",15
+				PRINTFORMW 이 턴 중、무기스킬이나 설치스킬을 사용해도 MP는 소비되지 않습니다。
+				CALL SKILLGAGE_D_SET,ARG,PU_SKILLNUM_GET(ARG,"カードスキルA"),1
+			CASE 32
+				CALL PRINT_RAINBOW2L, "「정액급부금」！！",15
+				PRINTFORMW %ARG는% 10매의 특수통화를 손에 넣었다！
+				CALL SKILLGAGE_F_ADD,ARG,SKILL_NUM,10
+			CASE 33
+				SETCOLOR 0xFF0000
+				CALL ANIMATION_ROLL_TEXT, "「공공사업비징수」！！", 1, 2, 500
+				RESETCOLOR
+				PRINTFORML %ARG는% 10매의 특수통화를 잃었다……
+				CALL SKILLGAGE_F_ADD,ARG,SKILL_NUM,-10
+				SIF SKILLGAGE_F_GET(ARG,SKILL_NUM) < 0
+					CALL SKILLGAGE_F_SET,ARG,SKILL_NUM,0
+				TWAIT 1000, 0
+				;防御力UP
+				CFLAG:ARG:방어강화 += 8
+				SIF CFLAG:ARG:방어강화 > 32
+					CFLAG:ARG:방어강화 = 32
+				PRINTFORMW ……웬일인지 %CALLNAME:ARG%의 방어력이 대폭 높아졌다！
+			CASE 34
+				SETCOLOR 0xFF0000
+				CALL ANIMATION_ROLL_TEXT, "「엘리트 적의 습격」！！", 1, 2, 500
+				RESETCOLOR
+				PRINTFORML 적이 갑자기 강해졌다！
+				IF CFLAG:ARG:포지션 < 7
+					LOCAL:1 = 7
+					LOCAL:2 = 17 
+				ELSE
+					LOCAL:1 = 1
+					LOCAL:2 = 7
+				ENDIF
+				FOR LOCAL, LOCAL:1, LOCAL:2
+					LOCALS = 포지션{LOCAL}
+					SIF FLAG:LOCALS < 0
+						CONTINUE
+					FOR LOCAL:3,0,6
+						CFLAG:(FLAG:LOCALS):(GET_BATTLESTATUS(LOCAL:3) + "강화") = MIN(32, CFLAG:(FLAG:LOCALS):(GET_BATTLESTATUS(LOCAL:3) + "강화") + 8)
+					NEXT
+				NEXT
+				TWAIT 1000, 0
+				CALL SKILLGAGE_H_ADD,ARG,PU_SKILLNUM_GET(ARG,"リラックス"),1
+				PRINTFORMW 이 배틀에서 적을 쓰러뜨림으로써 얻을 수 있는 특수통화가 늘어났습니다！
+		ENDSELECT
+	CASE 40, 99
+		;カード引き直し
+		CALL SKILLGAGE_D_ADD,ARG,SKILL_NUM,-1
+		PRINTFORMW 이 턴 중、다시 한 번 카드를 구입할 수 있게 되었다！
+	CASE 41
+		;一攫千金
+		LOCAL = 2
+		DO
+			LOCAL += 2
+		LOOP RAND:(MAX(2,LOCAL/2)) == 0
+		PRINTFORMW %ARG는% {LOCAL}매의 특수통화를 손에 넣었다！
+		CALL SKILLGAGE_F_ADD,ARG,SKILL_NUM,LOCAL
+	CASE 42
+		;有給休暇
+		IF RAND:4 == 0
+			CALL 有給休暇許可
+			SIF CFLAG:ARG:무효플래그 < 1
+				CFLAG:ARG:무효플래그 = 1
+			PRINTFORMW %CALLNAME:ARG%로의 만능 이외의 공격을 １회 막는 것이 가능하게 되었다！
+		ELSE
+			CALL 有給休暇却下
+			PRINTFORMW ……何も起こらなかった。
+		ENDIF
+	CASE 43
+		;お金が欲しい
+		PRINTFORML %ARG는% 10매의 특수통화를 손에 넣었다！
+		CALL SKILLGAGE_F_ADD,ARG,SKILL_NUM,10
+		TWAIT 1000, 0
+		;全能力DOWN
+		FOR LOCAL,0,6
+			CFLAG:ARG:(GET_BATTLESTATUS(LOCAL) + "강화") = MAX(-16, CFLAG:ARG:(GET_BATTLESTATUS(LOCAL) + "강화") - 4)
+		NEXT
+		PRINTFORMW 하지만 %CALLNAME:ARG%의 모든 능력이 낮아졌다……
+	CASE 44
+		;トレードオフ
+		LOCAL:0 = CFLAG:ARG:공격강화
+		LOCAL:1 = CFLAG:ARG:마법위력강화
+		CFLAG:ARG:공격강화 = LOCAL:1
+		CFLAG:ARG:마법위력강화 = LOCAL:0
+		LOCAL:0 = CFLAG:ARG:방어강화
+		LOCAL:1 = CFLAG:ARG:마법효과강화
+		CFLAG:ARG:방어강화 = LOCAL:1
+		CFLAG:ARG:마법효과강화 = LOCAL:0
+		LOCAL:0 = CFLAG:ARG:명중강화
+		LOCAL:1 = CFLAG:ARG:회피강화
+		CFLAG:ARG:명중강화 = LOCAL:1
+		CFLAG:ARG:회피강화 = LOCAL:0
+		PRINTFORMW 공격과 마법위력、방어와 마법효과、명중과 회피의 강화・약화효과의 교환이 이루어졌습니다！
+	CASE 45
+		;リバランス
+		;全能力UP
+		FOR LOCAL,0,6
+			CFLAG:ARG:(GET_BATTLESTATUS(LOCAL) + "강화") = MIN(32, CFLAG:ARG:(GET_BATTLESTATUS(LOCAL) + "강화") + 4)
+		NEXT
+		PRINTFORML %CALLNAME:ARG%의 모든 능력이 높아졌다！
+		TWAIT 1000, 0
+		;攻撃力DOWN-3
+		CFLAG:ARG:공격강화 -= 12
+		SIF CFLAG:ARG:공격강화 < -16
+			CFLAG:ARG:공격강화 = -16
+		PRINTFORMW 하지만 %CALLNAME:ARG%의 공격력이 대폭 낮아졌다……
+	CASE 60
+		;パイルショット
+		CALL SKILLGAGE_F_SET,ARG,PU_SKILLNUM_GET(ARG,"カードスキルA"),7
+		PRINTFORMW 무기스킬이「파일 샷」으로 변경되었습니다。
+	CASE 61
+		;スパイク
+		CALL SKILLGAGE_F_SET,ARG,PU_SKILLNUM_GET(ARG,"カードスキルB"),8
+		PRINTFORMW 설치스킬이「스파이크」로 변경되었습니다。
+	CASEELSE
+		;ＥＭＰＴＹ
+ENDSELECT
+;イベント用　国境門
+IF CFLAG:ARG:998 == 2 && GETCHARA([[キャラ:국경문]]) > -1
+	;全能力の同期化
+	FOR LOCAL,0,6
+		CFLAG:GETCHARA([[キャラ:국경문]]):(GET_BATTLESTATUS(LOCAL) + "강화") = MAX(CFLAG:GETCHARA([[キャラ:국경문]]):(GET_BATTLESTATUS(LOCAL) + "강화"), CFLAG:ARG:(GET_BATTLESTATUS(LOCAL) + "강화"))
+	NEXT
+ENDIF
+
+@カード購入_CARD_COST, ARG, ARG:1
+#FUNCTION
+#DIM SKILL_NUM
+SKILL_NUM = PU_SKILLNUM_GET(ARG,"カード購入")
+SELECTCASE ARG:1
+	CASE 1
+		RETURNF 2
+	CASE 2
+		RETURNF 5
+	CASE 3
+		RETURNF 8
+	CASE 4
+		RETURNF 2
+	CASE 5
+		RETURNF 5
+	CASE 6
+		RETURNF 8
+	CASE 7
+		RETURNF 2
+	CASE 8
+		RETURNF 5
+	CASE 9
+		RETURNF 8
+	CASE 10
+		RETURNF 2
+	CASE 11
+		RETURNF 5
+	CASE 12
+		RETURNF 8
+	CASE 13
+		RETURNF 1
+	CASE 14
+		RETURNF 3
+	CASE 15
+		RETURNF 5
+	CASE 16
+		RETURNF 5
+	CASE 17
+		RETURNF 5
+	CASE 18
+		RETURNF 5
+	CASE 19
+		RETURNF 5
+	CASE 20
+		RETURNF 2
+	CASE 21
+		RETURNF 8
+	CASE 22
+		RETURNF 2
+	CASE 23
+		RETURNF 5
+	CASE 24
+		RETURNF 8
+	CASE 25
+		RETURNF 5
+	CASE 26
+		RETURNF 5
+	CASE 27
+		RETURNF 5
+	CASE 28
+		RETURNF 5
+	CASE 29 TO 39
+		RETURNF 3
+	CASE 40
+		RETURNF 0
+	CASE 41
+		RETURNF 0
+	CASE 42
+		RETURNF 0
+	CASE 43
+		RETURNF 0
+	CASE 44 TO 49
+		RETURNF 3
+	CASE 50 TO 59
+		RETURNF 6
+	CASE 60
+		RETURNF 5
+	CASE 61
+		RETURNF 5
+	CASE 99
+		RETURNF 7
+	CASEELSE
+		RETURNF 0
+ENDSELECT
+
+@カード購入_CARD_NAME, ARG, ARG:1
+#FUNCTIONS
+SELECTCASE ARG:1
+	CASE 1
+		RETURNF "공격력UP"
+	CASE 2
+		RETURNF "공격력UP+2"
+	CASE 3
+		RETURNF "공격력UP+3"
+	CASE 4
+		RETURNF "방어력UP"
+	CASE 5
+		RETURNF "방어력UP+2"
+	CASE 6
+		RETURNF "방어력UP+3"
+	CASE 7
+		RETURNF "명중률UP"
+	CASE 8
+		RETURNF "명중률UP+2"
+	CASE 9
+		RETURNF "명중률UP+3"
+	CASE 10
+		RETURNF "회피율UP"
+	CASE 11
+		RETURNF "회피율UP+2"
+	CASE 12
+		RETURNF "회피율UP+3"
+	CASE 13
+		RETURNF "크리티컬률UP"
+	CASE 14
+		RETURNF "크리티컬률UP+2"
+	CASE 15
+		RETURNF "크리티컬률UP+3"
+	CASE 16
+		RETURNF "와이드 샷"
+	CASE 17
+		RETURNF "버즈소 샷"
+	CASE 18
+		RETURNF "시저스 샷"
+	CASE 19
+		RETURNF "크레딧 샷"
+	CASE 20
+		RETURNF "리페어 샷"
+	CASE 21
+		RETURNF "전열포"
+	CASE 22
+		RETURNF "바리케이트"
+	CASE 23
+		RETURNF "바리케이트LV2"
+	CASE 24
+		RETURNF "바리케이트LV3"
+	CASE 25
+		RETURNF "지뢰"
+	CASE 26
+		RETURNF "공습"
+	CASE 27
+		RETURNF "대지터렛"
+	CASE 28
+		RETURNF "대공터렛"
+	CASE 29 TO 39
+		RETURNF "？？？"
+	CASE 40, 99
+		RETURNF "카드 교환"
+	CASE 41
+		RETURNF "일확천금"
+	CASE 42
+		RETURNF "유급휴가"
+	CASE 43
+		RETURNF "돈을 원한다"
+	CASE 44
+		RETURNF "트레이드 오프"
+	CASE 45
+		RETURNF "리밸런스"
+	;CASE 49
+	;	RETURNF "武器修理"
+	CASE 60
+		RETURNF "파일 샷"
+	CASE 61
+		RETURNF "스파이크"
+	CASEELSE
+		RETURNF "ＥＭＰＴＹ"
+ENDSELECT
+
+@カード購入_CARD_DESCRIPTION, ARG, ARG:1
+#FUNCTIONS
+SELECTCASE ARG:1
+    CASE 1
+        RETURNF "자신의 물리공격력을 １단계 UP"
+    CASE 2
+        RETURNF "자신의 물리공격력을 ２단계 UP"
+    CASE 3
+        RETURNF "자신의 물리공격력을 ３단계 UP"
+    CASE 4
+        RETURNF "자신의 물리방어력을 １단계 UP"
+    CASE 5
+        RETURNF "자신의 물리방어력을 ２단계 UP"
+    CASE 6
+        RETURNF "자신의 물리방어력을 ３단계 UP"
+    CASE 7
+        RETURNF "자신의 명중을 １단계 UP"
+    CASE 8
+        RETURNF "자신의 명중을 ２단계 UP"
+    CASE 9
+        RETURNF "자신의 명중을 ３단계 UP"
+    CASE 10
+        RETURNF "자신의 회피를 １단계 UP"
+    CASE 11
+        RETURNF "자신의 회피를 ２단계 UP"
+    CASE 12
+        RETURNF "자신의 회피를 ３단계 UP"
+    CASE 13
+        RETURNF "자신의 크리티컬률을 １ UP。턴 당 １ 감소"
+    CASE 14
+        RETURNF "자신의 크리티컬률을 ２ UP。턴 당 １ 감소"
+    CASE 15
+        RETURNF "자신의 크리티컬률을 ３ UP。턴 당 １ 감소"
+    CASE 16
+        RETURNF "일회용 총기。적 전열에 비구 상성의 대 데미지"
+    CASE 17
+        RETURNF "일회용 총기。대상과 그 주위에 검격 상성의 대 데미지"
+    CASE 18
+        RETURNF "일회용 총기。적 1체와 그 뒤의 적에게 핵열 상성의 대 데미지"
+    CASE 19
+        RETURNF "일회용 총기。적 전열에 특수통화에 따른 １～５회 비구 상성의 중 데미지"
+    CASE 20
+        RETURNF "일회용 총기。아군 1인을 크게 회복한다"
+    CASE 21
+        RETURNF "일회용 총기。적 전체～적 1체에 화염＋핵열의 복합상성의 관통 특대～초특대 데미지"
+    CASE 22
+        RETURNF "일회용 장비。아군 1열에의 물리상성의 공격을 각각 １회씩 막는 벽을 친다"
+    CASE 23
+        RETURNF "일회용 장비。아군 1열에의 물리상성의 공격을 각각 ２회씩 막는 벽을 친다"
+    CASE 24
+        RETURNF "일회용 장비。아군 1열에의 물리상성의 공격을 각각 ３회씩 막는 벽을 친다"
+    CASE 25
+        RETURNF "일회용 장비。공격해 온 전열의 적에게 핵열 상성으로 데미지를 주는 지뢰를 설치"
+    CASE 26
+        RETURNF "일회용 장비。적 전체에 핵열 상성의 대 데미지＋FLAME"
+    CASE 27
+        RETURNF "일회용 장비。자신과 아군의 행동 후、적 전열에 만능 상성으로 공격하는 터렛을 설치"
+    CASE 28
+        RETURNF "일회용 장비。자신과 아군의 행동 후、적 후열에 만능 상성으로 공격하는 터렛을 설치"
+    CASE 29 TO 39
+        RETURNF "찬스카드。랜덤으로 자신 강화・적의 강화・특수통화 취득 및 소비 등이 발동"
+    CASE 40, 99
+        RETURNF "현재 카드 구입을 종료・재추첨해 다시 한번 카드 구입이 가능해진다"
+    CASE 41
+        RETURNF "특수통화 랜덤으로 입수"
+    CASE 42
+        RETURNF "허가되면 데미지도 여유로워지는 유급휴가를 신청한다。각하될 가능성이 더 놓은 것은 비밀"
+    CASE 43
+        RETURNF "자신의 모든 능력 １단계 다운과 맞바꿔、특수통화를 10매 손에 넣는다"
+    CASE 44
+        RETURNF "자신의 물리공격・마법공격、물리방어・마법효과、명중・회피、각각의 강화수치를 교환한다"
+    CASE 45
+        RETURNF "자신의 물리공격력 ２단계 다운과 맞바꿔、다른 모든 능력을 １단계 UP"
+    ;CASE 49
+    ;    RETURNF "武器修理"
+	CASE 60
+		RETURNF "일회용 총기。전열의 적 1체에 ３회 핵열 상성의 중 데미지＋BRAND"
+	CASE 61
+		RETURNF "일회용 장비。공격해 온 전열의 적에게 지변 상성으로 데미지를 주는 스파이크를 설치"
+    CASEELSE
+        RETURNF " "
+ENDSELECT
+
+@カード購入_CARD_TYPE, ARG, ARG:1
+#FUNCTIONS
+SELECTCASE ARG:1
+	CASE 1 TO 15
+		RETURNF "【강화】"
+	CASE 16 TO 21, 60
+		RETURNF "【무기】"
+	CASE 22 TO 28, 61
+		RETURNF "【설치】"
+	CASE 29 TO 39
+		RETURNF "【찬스】"
+	CASE 40 TO 49
+		RETURNF "【이벤트】"
+	CASE 50 TO 59
+		RETURNF "【메인 웨폰】"
+	CASE 90 TO 99
+		RETURNF "【시스템】"
+	CASEELSE
+		RETURNF "【에러】"
+ENDSELECT
+
+@有給休暇許可
+PRINT 유
+TWAIT 100, 0
+CLEARLINE 1
+PRINT 유급
+TWAIT 100, 0
+CLEARLINE 1
+PRINT 유급휴
+TWAIT 100, 0
+CLEARLINE 1
+REPEAT 2
+	PRINT 유급휴가
+	TWAIT 100, 0
+	CLEARLINE 1
+REND
+REPEAT 2
+	PRINT 유급휴가…
+	TWAIT 100, 0
+	CLEARLINE 1
+REND
+REPEAT 2
+	PRINT 유급휴가……
+	TWAIT 100, 0
+	CLEARLINE 1
+REND
+REPEAT 2
+	PRINT 유급휴가………
+	TWAIT 100, 0
+	CLEARLINE 1
+REND
+PRINT 유급휴가………
+SETCOLOR 0x00FF00
+PRINT 허
+RESETCOLOR
+TWAIT 100, 0
+CLEARLINE 1
+PRINT 유급휴가………
+SETCOLOR 0x00FF00
+PRINT 허가
+RESETCOLOR
+TWAIT 100, 0
+CLEARLINE 1
+PRINT 유급휴가………
+SETCOLOR 0x00FF00
+PRINT 허가。
+RESETCOLOR
+TWAIT 500, 0
+
+@有給休暇却下
+PRINT 유
+TWAIT 100, 0
+CLEARLINE 1
+PRINT 유급
+TWAIT 100, 0
+CLEARLINE 1
+PRINT 유급휴가
+TWAIT 100, 0
+CLEARLINE 1
+REPEAT 2
+	PRINT 유급휴가
+	TWAIT 100, 0
+	CLEARLINE 1
+REND
+REPEAT 2
+	PRINT 유급휴가…
+	TWAIT 100, 0
+	CLEARLINE 1
+REND
+REPEAT 2
+	PRINT 유급휴가……
+	TWAIT 100, 0
+	CLEARLINE 1
+REND
+REPEAT 2
+	PRINT 유급휴가………
+	TWAIT 100, 0
+	CLEARLINE 1
+REND
+PRINT 유급휴가………
+SETCOLOR 0xFF0000
+PRINT 각
+RESETCOLOR
+TWAIT 100, 0
+CLEARLINE 1
+PRINT 유급휴가………
+SETCOLOR 0xFF0000
+PRINT 각하
+RESETCOLOR
+TWAIT 100, 0
+CLEARLINE 1
+PRINT 유급휴가………
+SETCOLOR 0xFF0000
+PRINT 각하。
+RESETCOLOR
+TWAIT 500, 0

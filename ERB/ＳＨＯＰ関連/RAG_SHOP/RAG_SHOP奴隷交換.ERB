@@ -8,7 +8,7 @@ C = RESULT
 
 
 LCOUNT = 0
-IF GETBIT(FLAG:EXTRA이벤트설정, 0) == 1
+IF EXTRA강화(5)
 	PRINTL 어느 쪽을 고릅니까？
 	PRINTL [ 1] 통상
 	PRINTL [ 2] EXTRA
@@ -24,16 +24,29 @@ PRINTL 「그럼 원하는 걸 골라봐」
 PRINTL
 IF LCOUNT == 1
 	;EXTRAキャラ枠
-;	CALL RAG_DOREI_EXCHANGE_표시(1,[[キャラ:시아노]], "사파이어", 3, "가넷", 3, "아쿠아마린", 3)
+	;CALL RAG_DOREI_EXCHANGE_표시(1,[[キャラ:시아노]], "사파이어", 3, "가넷", 3, "아쿠아마린", 3)
 	CALL RAG_DOREI_EXCHANGE_표시(2,[[キャラ:루이제트]], "아메지스트", 3, "터키석", 3, "진주", 3)
 		IF ABL:MASTER:가창기능 >= 8
 			CALL RAG_DOREI_EXCHANGE_표시(3,[[キャラ:치키（＃FE）]], "아메지스트", 1, "터키석", 1, "진주", 1)
-		ENDIF	
-		;九龍キャラ枠
+		ELSE
+			SETCOLOR 0x999999
+			PRINTL ※입하작업중（필요・가창기능８이상）
+			RESETCOLOR
+		ENDIF
+		IF BASE:MASTER:LV >= 50
+			CALL RAG_DOREI_EXCHANGE_표시(4,[[キャラ:질（LT）]], "사파이어", 3, "아메지스트", 3, "다이아몬드", 3)
+		ELSE
+			SETCOLOR 0x999999
+			PRINTL ※입하작업（필요・전투Lv50이상）
+			RESETCOLOR
+		ENDIF
+	;九龍キャラ枠
 	CALL RAG_DOREI_EXCHANGE_표시(10,[[キャラ:미나카미]], "사파이어", 3, "가넷", 3, "아쿠아마린", 3)
 	CALL RAG_DOREI_EXCHANGE_표시(11,[[キャラ:야치호]], "아메지스트", 3, "터키석", 3, "진주", 3)
 	;PSO2キャラ枠
 	CALL RAG_DOREI_EXCHANGE_표시(20,[[キャラ:제네]], "에메랄드", 3, "오팔", 3, "가넷", 3)
+	;Marufushaキャラ枠
+	CALL RAG_DOREI_EXCHANGE_표시(30,[[キャラ:마르푸샤]], "루비", 3, "오닉스", 3, "다이아몬드", 3)
 ELSE
 	;通常キャラ枠
 	CALL RAG_DOREI_EXCHANGE_표시(1,[[キャラ:아사히]], "에메랄드", 1, "아메지스트", 1)
@@ -45,7 +58,7 @@ ELSE
 ENDIF
 	PRINTL
 	PRINTFORM [999] 돌아간다　
-	PRINTFORML [1000]가게를 나간다
+	PRINTFORML [1000] 가게를 나간다
 	INPUT
 IF RESULT < 999 && DB:RESULT:0 > 0
 	VARSET LOCAL
@@ -70,13 +83,13 @@ GOTO DOREI_EXCHANGE
 
 @RAG_DOREI_EXCHANGE(ARG, ARGS:1, ARG:1, ARGS:2 = "", ARG:2 = 0, ARGS:3 = "", ARG:3 = 0, ARGS:4 = "", ARG:4 = 0, ARGS:5 = "", ARG:5 = 0, ARGS:6 = "", ARG:6 = 0, ARGS:7 = "", ARG:7 = 0, ARGS:8 = "", ARG:8 = 0, ARGS:9 = "", ARG:9 = 0, ARGS:10 = "", ARG:10 = 0, ARGS:11 = "", ARG:11 = 0, ARGS:12 = "", ARG:12 = 0)
 
-#DIM 宝石종류, 13
-#DIM 宝石필요数, 13
-#DIM 宝石소지数, 13
+#DIM 보석종류, 13
+#DIM 보석필요수, 13
+#DIM 보석소지수, 13
 
-VARSET 宝石종류,0
-VARSET 宝石필요数,0
-VARSET 宝石소지数,0
+VARSET 보석종류,0
+VARSET 보석필요수,0
+VARSET 보석소지수,0
 
 IF GETCHARA(ARG) > 0
 	PRINTL 라그：
@@ -98,22 +111,22 @@ FOR LOCAL:2, 1, 13
 	SIF LOCAL:1 == 0
 		BREAK
 	IF LOCAL:1 > 0
-		IF LOCAL:1 == 宝石종류:(LOCAL:2-1)
+		IF LOCAL:1 == 보석종류:(LOCAL:2-1)
 			LOCAL:2 --
-			宝石필요数:(LOCAL:2) += ARG:(LOCAL:3)
-			宝石소지数:(LOCAL:2) += ITEM:(ARGS:(LOCAL:3))
+			보석필요수:(LOCAL:2) += ARG:(LOCAL:3)
+			보석소지수:(LOCAL:2) += ITEM:(ARGS:(LOCAL:3))
 		ELSE
-			宝石종류:(LOCAL:2) = LOCAL:1
-			宝石필요数:(LOCAL:2) = ARG:(LOCAL:3)
-			宝石소지数:(LOCAL:2) = ITEM:(ARGS:(LOCAL:3))
+			보석종류:(LOCAL:2) = LOCAL:1
+			보석필요수:(LOCAL:2) = ARG:(LOCAL:3)
+			보석소지수:(LOCAL:2) = ITEM:(ARGS:(LOCAL:3))
 		ENDIF
 		ARGS:(LOCAL:3) = ""
 	ENDIF
 NEXT
 FOR LOCAL, 1, 13
-	SIF 宝石종류:LOCAL == 0
+	SIF 보석종류:LOCAL == 0
 		BREAK
-	IF 宝石소지数:LOCAL < 宝石필요数:LOCAL
+	IF 보석소지수:LOCAL < 보석필요수:LOCAL
 		PRINTL 라그：
 		PRINTW 「보석이 부족하네에」
 		RETURN 0
@@ -123,9 +136,9 @@ NEXT
 PRINTL 라그：
 PRINTFORML 「%CSVCALLNAME(ARG,0)%와 교환할게, 괜찮지？」
 FOR LOCAL, 1, 13
-	SIF 宝石종류:LOCAL == 0
+	SIF 보석종류:LOCAL == 0
 		BREAK
-	PRINTFORML %ITEMNAME:(宝石종류:LOCAL),18,LEFT%　소지수:{宝石소지数:LOCAL,2} → {(宝石소지数:LOCAL-宝石필요数:LOCAL),2}
+	PRINTFORML %ITEMNAME:(보석종류:LOCAL),18,LEFT%　소지수:{보석소지수:LOCAL,2} → {(보석소지수:LOCAL-보석필요수:LOCAL),2}
 NEXT
 CALL INPUT_YN("예", "아니오")
 SIF RESULT == 1
@@ -134,31 +147,31 @@ CALL ADD_NEW_COMPANION,ARG,0
 IF RESULT
 	PRINTFORMW ＞%CSVCALLNAME(ARG,0)%가 노예가 되었다
 	FOR LOCAL, 1, 13
-		SIF 宝石종류:LOCAL == 0
+		SIF 보석종류:LOCAL == 0
 			BREAK
-		ITEM:(宝石종류:LOCAL) -= 宝石필요数:LOCAL
+		ITEM:(보석종류:LOCAL) -= 보석필요수:LOCAL
 	NEXT
 	PRINTFORML ＞%CSVCALLNAME(ARG,0)%를 전력으로 삼습니까？
 	CALL INPUT_YN("예", "아니오")
 	SIF RESULT == 0
 		CFLAG:(RESULT:1):전투참가불가능 = -1
+	SIF ARG == [[キャラ:마르푸샤]]
+		마르푸샤개인이벤트버전 = 130
 ELSE
 	PRINTFORMW ＞%CSVCALLNAME(ARG,0)%를 노예로 만들 수 없었다
-
-
 ENDIF
 
 
 @RAG_DOREI_EXCHANGE_표시(ARG:13, ARG, ARGS:1, ARG:1, ARGS:2 = "", ARG:2 = 0, ARGS:3 = "", ARG:3 = 0, ARGS:4 = "", ARG:4 = 0, ARGS:5 = "", ARG:5 = 0, ARGS:6 = "", ARG:6 = 0, ARGS:7 = "", ARG:7 = 0, ARGS:8 = "", ARG:8 = 0, ARGS:9 = "", ARG:9 = 0, ARGS:10 = "", ARG:10 = 0, ARGS:11 = "", ARG:11 = 0, ARGS:12 = "", ARG:12 = 0)
 
-#DIM 宝石종류, 13
-#DIM 宝石필요数, 13
-#DIM 宝石소지数, 13
+#DIM 보석종류, 13
+#DIM 보석필요수, 13
+#DIM 보석소지수, 13
 #DIM LCOUNT
 
-VARSET 宝石종류,0
-VARSET 宝石필요数,0
-VARSET 宝石소지数,0
+VARSET 보석종류,0
+VARSET 보석필요수,0
+VARSET 보석소지수,0
 LCOUNT = 0
 
 ;LOCAL = [[キャラ:%ARGS:0%]]
@@ -190,14 +203,14 @@ FOR LOCAL:2, 1, 13
 	SIF LOCAL:1 == 0
 		BREAK
 	IF LOCAL:1 > 0
-		IF LOCAL:1 == 宝石종류:(LOCAL:2-1)
+		IF LOCAL:1 == 보석종류:(LOCAL:2-1)
 			LOCAL:2 --
-			宝石필요数:(LOCAL:2) += ARG:(LOCAL:3)
-			宝石소지数:(LOCAL:2) += ITEM:(ARGS:(LOCAL:3))
+			보석필요수:(LOCAL:2) += ARG:(LOCAL:3)
+			보석소지수:(LOCAL:2) += ITEM:(ARGS:(LOCAL:3))
 		ELSE
-			宝石종류:(LOCAL:2) = LOCAL:1
-			宝石필요数:(LOCAL:2) = ARG:(LOCAL:3)
-			宝石소지数:(LOCAL:2) = ITEM:(ARGS:(LOCAL:3))
+			보석종류:(LOCAL:2) = LOCAL:1
+			보석필요수:(LOCAL:2) = ARG:(LOCAL:3)
+			보석소지수:(LOCAL:2) = ITEM:(ARGS:(LOCAL:3))
 		ENDIF
 		ARGS:(LOCAL:3) = ""
 	ENDIF
@@ -208,27 +221,27 @@ LCOUNT += 13
 LOCAL:3 = LCOUNT
 LOCAL:4 = 0
 FOR LOCAL, 1, 13
-	SIF 宝石종류:LOCAL == 0
+	SIF 보석종류:LOCAL == 0
 		BREAK
 	IF LOCAL > 3 && LOCAL % 3 == 1
 		LOCAL:4 ++
 		LOCAL:3 = LCOUNT
 		CALL SET_PICTURE , @"_[{ARG:13,3}],{C}_" , LOCAL:4 , , LOCAL:3 - 6
 	ENDIF
-	IF 宝石소지数:LOCAL >= 宝石필요数:LOCAL
+	IF 보석소지수:LOCAL >= 보석필요수:LOCAL
 		;SETCOLOR COLOR("하늘색")
 		LOCAL:1 = COLOR("하늘색")
 	ELSE
-		;SETCOLOR COLOR("붉은색")
-		LOCAL:1 = COLOR("붉은색")
+		;SETCOLOR COLOR("赤")
+		LOCAL:1 = COLOR("赤")
 	ENDIF
-	;PRINTFORM %ITEMNAME:(宝石종류:LOCAL),18,LEFT%　({宝石소지数:LOCAL,2}/{宝石필요数:LOCAL,2})
-	CALL SET_PICTURE , @"_%ITEMNAME:(宝石종류:LOCAL),14,LEFT%({宝石소지数:LOCAL,3}/{宝石필요数:LOCAL,3}) ,{LOCAL:1}_" , LOCAL:4 , , LOCAL:3
+	;PRINTFORM %ITEMNAME:(보석종류:LOCAL),18,LEFT%　({보석소지수:LOCAL,2}/{보석필요수:LOCAL,2})
+	CALL SET_PICTURE , @"_%ITEMNAME:(보석종류:LOCAL),14,LEFT%({보석소지수:LOCAL,3}/{보석필요수:LOCAL,3}) ,{LOCAL:1}_" , LOCAL:4 , , LOCAL:3
 	LOCAL:3 += 24
 	
 	;RESETCOLOR
-	DB:(ARG:13):LOCAL = 宝石종류:LOCAL
-	DB:(ARG:13):LOCAL += 宝石필요数:LOCAL * 100000
+	DB:(ARG:13):LOCAL = 보석종류:LOCAL
+	DB:(ARG:13):LOCAL += 보석필요수:LOCAL * 100000
 NEXT
 CALL SET_PICTURE ,  , 0 , "표시" , 1 + LOCAL:4
 ;PRINTFORML

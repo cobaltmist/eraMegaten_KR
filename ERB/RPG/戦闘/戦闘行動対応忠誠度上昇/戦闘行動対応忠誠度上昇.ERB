@@ -3,6 +3,7 @@
 ;	001		20XX/XX/XX		----					新規作成
 ;	002		2020/05/31		Jガン					보이콧판정の計算式を変えて구상が出やすいように
 ;	003		2021/01/04		Jガン					링케이지참가자も구상が出せるように
+;	004		2021/09/11		木綿豆腐				リンケージ参加口上が出なくなっていたので修正
 ;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
 
 @전투행동대응충성도상승,ARG
@@ -37,9 +38,9 @@
 		ENDIF
 		;메시지呼び出し
 		$RISE_SKIPPED_OFF
-		SWAP TARGET,FLAG:行動順1
-		CALL 구상呼び出し , "BATTLE_MESSAGE" , TARGET , TARGET , MOTIVE
-		SWAP TARGET,FLAG:行動順1
+		SWAP TARGET,FLAG:행동순1
+		CALL 구상호출 , "BATTLE_MESSAGE" , TARGET , TARGET , MOTIVE
+		SWAP TARGET,FLAG:행동순1
 		;충성도増減
 		TCVAR:ARG:획득충성도 = MAX(0,TCVAR:ARG:획득충성도+LOYALTY)
 		
@@ -73,7 +74,7 @@
 		SIF EQUIP:MASTER:블랙컴퍼니 == 1 && LOYALTY > 0
 			LOYALTY *= TALENT:ARG:허심 ? -1 # -5
 		;보이콧판정
-		CFLAG:ARG:ボイコットフラグ = 0
+		CFLAG:ARG:보이콧플래그 = 0
 		IF LOYALTY <= 0 && IS_HUMAN(ARG) == 0
 			;충성도上昇がない場合は보이콧판정
 			SIF MOTIVE != 0
@@ -82,14 +83,14 @@
 			CALLFORM SKILL_COST_{CFLAG:ARG:입력행동},ARG
 			LOYALTY -= MAX(1,RESULT) * (TALENT:ARG:허심 ? 1 # 5)
 		ENDIF
-		SWAP TARGET,FLAG:行動順1
-		IF CFLAG:ARG:ボイコットフラグ == 1
-			CALL 구상呼び出し , "BATTLE_BOYCOTT_MESSAGE" , TARGET , TARGET , MOTIVE
+		SWAP TARGET,FLAG:행동순1
+		IF CFLAG:ARG:보이콧플래그 == 1
+			CALL 구상호출 , "BATTLE_BOYCOTT_MESSAGE" , TARGET , TARGET , MOTIVE
 		ELSE
 			;충성도上昇に伴う메시지
-			CALL 구상呼び出し , "BATTLE_MESSAGE" , TARGET , TARGET , MOTIVE
+			CALL 구상호출 , "BATTLE_MESSAGE" , TARGET , TARGET , MOTIVE
 		ENDIF
-		SWAP TARGET,FLAG:行動順1
+		SWAP TARGET,FLAG:행동순1
 		;난이도[EASY]이상で기력値増減
 		SIF FLAG:전투시보이콧설정 > 1
 			BASE:ARG:기력 = LIMIT(BASE:ARG:기력+LOYALTY,0,MAXBASE:ARG:기력)
@@ -98,18 +99,22 @@
 	ENDIF
 	
 	;---- EDIT 003 MOD START -------------------------
-	IF CFLAG:(FLAG:行動順1):ボイコットフラグ == 1 && FLAG:전투시보이콧설정 > 2
+	;---- EDIT 004 MOD START -------------------------
+	;IF CFLAG:(FLAG:행동순1):보이콧플래그 == 1 && FLAG:전투시보이콧설정 > 2
+	;FLAG:전투시보이콧설정=3から実際に行動しなくなるので
+	IF (CFLAG:(FLAG:행동순1):보이콧플래그 == 0 && FLAG:전투시보이콧설정 > 2) || (FLAG:전투시보이콧설정 <= 2)
 		TFLAG:전투이벤트 = 100
-		;링케이지の場合、更に링케이지참가자の구상も出す
+		;リンケージの場合、更にリンケージ参加者の口上も出す
 		IF CFLAG:ARG:링케이지발동 && RANGE(CFLAG:ARG:입력행동,4000,4999)
-			CALLFORM 참가人数_{CFLAG:ARG:입력행동}
-			LOCAL:1 = RESULT
+			CALLFORM 참가인수_{CFLAG:ARG:입력행동}
+			LOCAL:1 = RESULT + 1
 			FOR LOCAL , 1 , LOCAL:1
 				SIF RANGE(CFLAG:ARG:("링케이지참가자"+TOSTR(LOCAL)),0,CHARANUM) == 0
 					CONTINUE
-				CALL 구상呼び出し , "BATTLE_EVENT" , CFLAG:ARG:("링케이지참가자"+TOSTR(LOCAL)) , CFLAG:ARG:("링케이지참가자"+TOSTR(LOCAL)) , ARG
+				CALL 구상호출 , "BATTLE_EVENT" , CFLAG:ARG:("링케이지참가자"+TOSTR(LOCAL)) , CFLAG:ARG:("링케이지참가자"+TOSTR(LOCAL)) , ARG
 			NEXT
 		ENDIF
 	ENDIF
+	;---- EDIT 004 MOD END ---------------------------
 	;---- EDIT 003 MOD END ---------------------------
 

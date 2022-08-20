@@ -1,0 +1,775 @@
+﻿;스킬명
+@SKILL_NAME_リラックス,ARG
+;専用技が封印されている
+IF CFLAG:ARG:998 == 0
+	RESULTS = ？？？？？
+ELSE
+	RESULTS = 릴렉스
+ENDIF
+
+;　명중
+@SKILL_HITRATE_リラックス, ARG
+RETURN 100
+
+;　위력
+@SKILL_POWER_リラックス, ARG
+RETURN 0
+
+;;クリティカル率
+@SKILL_CRITICAL_RATE_リラックス, ARG
+RETURN 0
+
+;　최저공격횟수
+@SKILL_MINATTACKNUMBER_リラックス,ARG
+RETURN 1
+
+;　최대공격횟수
+@SKILL_MAXATTACKNUMBER_リラックス,ARG
+RETURN 1
+
+;　2 ＨＰ지불　3 ＭＰ지불
+@SKILL_COSTTYPE_リラックス, ARG
+;専用技が封印されている
+SIF CFLAG:ARG:998 == 0
+	RETURN 1
+RETURN 2
+;소비없음＝1
+
+;　코스트량
+@SKILL_COST_リラックス,ARG
+;専用技が封印されている
+SIF CFLAG:ARG:998 == 0
+	RETURN 0
+;イベント用
+SIF CFLAG:ARG:998 == 2
+	RETURN 0
+RETURN 10
+
+;　상성
+@SKILL_TYPE_リラックス,ARG
+RETURN 0
+
+;　1 EXTRA　2 MAGIC
+@SKILL_DECIDE_TYPE_リラックス, ARG
+RETURN 1
+
+;　1 물리데미지로 계산　2 마법데미지로 계산
+@SKILL_DAMAGETYPE_リラックス,ARG
+RETURN 0
+
+
+;　대상　1 적　2 아군　3 양쪽전체　4 특수
+@SKILL_TARGET_リラックス,ARG
+RETURN 4
+
+;　사거리
+@SKILL_RANGE_リラックス,ARG
+RETURN 3
+
+;　범위　1 1체　2 1열　3 전체　4 적아군전체
+@SKILL_SPHERE_リラックス,ARG
+RETURN 1
+
+;　 효과타입　1 공격、2 회복、3 상태변화、4 특수、5 상태회복
+@SKILL_EFECT_リラックス,ARG
+RETURN 4
+
+;　 특수처리 여부 및 처리내용
+;@SKILL_SPECIALEFECT_リラックス,ARG
+;ARG = 1인 경우는 처리 여부를 반환합니다
+;SIF ARG == 1
+;	RETURN 0
+;아래쪽에 특수처리를 기술합니다
+
+;속도보정
+@SKILL_SPEED_リラックス, ARG = -1
+RETURN 0
+
+;;　구상의 표시와 그 타입
+;@SKILL_MESSAGE_リラックス,ARG
+
+
+;전투시 이외에 사용 가능한가
+@SKILL_ACTIONABLE_FIELD_リラックス, ARG = -1
+;専用技が封印されている
+SIF CFLAG:ARG:998 == 0
+	RETURN 0
+RETURN 1
+
+;템플릿용、추가효과 시리즈
+;추가효과 스테이터스
+@SKILL_ADDTIONAL_STATE_リラックス,ARG
+RETURN 0
+
+;추가효과 상성
+@SKILL_ADDTIONAL_TYPE_リラックス,ARG
+RETURN 0
+
+;추가효과 기본부여확률
+@SKILL_ADDTIONAL_BASE_RATE_リラックス,ARG
+RETURN 0
+
+;추가효과 부여확률상한
+@SKILL_ADDTIONAL_MAX_RATE_リラックス,ARG
+RETURN 0
+
+;====================================================
+;스킬 및 행동의 실행
+;====================================================
+@ACTION_リラックス,ARG,ARG:1,SKILL_NUM
+#DIM SKILL_NUM
+
+;死亡以外の状態異常も回復する
+CALL ALL_CURE_STATE, ARG, ARG, 0
+
+;MP回復
+IF CFLAG:ARG:998 == 2
+	PRINTFORML 　　TARGET:[{CPOS(ARG),2}] %CALLNAME:ARG,20,LEFT%　>>>>>>　{MAXBASE:ARG:ＭＰ / 3}회복
+	CALL VAR_MP, ARG, MAXBASE:ARG:ＭＰ / 3, 3
+ELSE
+	PRINTFORML 　　TARGET:[{CPOS(ARG),2}] %CALLNAME:ARG,20,LEFT%　>>>>>>　{MAXBASE:ARG:ＭＰ / (5 - (함락(ARG) > 0))}회복
+	CALL VAR_MP, ARG, MAXBASE:ARG:ＭＰ / (5 - (함락(ARG) > 0)), 3
+ENDIF
+
+;自身の補助効果を全て消す
+FOR LOCAL:1,0,6
+	CFLAG:ARG:(GET_BATTLESTATUS(LOCAL:1) + "강화") = MAX(0, CFLAG:ARG:(GET_BATTLESTATUS(LOCAL:1) + "강화"))
+	CFLAG:ARG:(GET_BATTLESTATUS(LOCAL:1) + "강화") = MIN(0, CFLAG:ARG:(GET_BATTLESTATUS(LOCAL:1) + "강화"))
+NEXT
+PRINTFORMW %CALLNAME:ARG%의 보조효과가 전부 사라졌다！
+
+CALL SKILLGAGE_F_ADD,ARG,SKILL_NUM,1
+
+;====================================================
+;실행내용 여기까지
+;====================================================
+
+;====================================================
+;전투중 이외에서의 실행
+;====================================================
+@ACTION_FIELD_リラックス,ARG,ARG:1,SKILL_NUM
+#DIM SKILL_NUM
+CLEARLINE 1
+
+SETCOLOR 0x66FFFF
+IF SKILLGAGE_F_GET(ARG,SKILL_NUM) == 0
+	IF GETCONFIGS("描画インターフェース") != "WINAPI"
+		SIF NO:ARG == [[キャラ:마르푸샤]]
+			CALL ドリンク_マルフーシャ
+		IF NO:ARG == [[キャラ:라이카(Marufusha)]]
+			IF RAND:2
+				CALL ドリンク_ライカ
+			ELSEIF RAND:2
+				CALL アクション_ライカ
+			ELSE
+				CALL アクション_ライカ_2
+			ENDIF
+		ENDIF
+		IF NO:ARG == [[キャラ:벨카(Marufusha)]]
+			IF RAND:2
+				CALL ドリンク_ベルカ
+			ELSE
+				CALL アクション_ベルカ
+			ENDIF
+		ENDIF
+		IF NO:ARG == [[キャラ:스트렐카(Marufusha)]]
+			IF RAND:2
+				CALL ドリンク_ストレルカ
+			ELSE
+				CALL アクション_ストレルカ
+			ENDIF
+		ENDIF
+		IF NO:ARG == [[キャラ:펠리세트]]
+			IF RAND:2
+				CALL ドリンク_フェリセット
+			ELSE
+				CALL アクション_フェリセット_2
+			ENDIF
+		ENDIF
+		IF NO:ARG == [[キャラ:알리비나]]
+			IF RAND:2
+				CALL ドリンク_アリビナ
+			ELSEIF RAND:2
+				CALL アクション_アリビナ
+			ELSEIF RAND:2
+				CALL アクション_アリビナ_3
+			ELSE
+				CALL アクション_アリビナ_2
+			ENDIF
+		ENDIF
+		IF NO:ARG == [[キャラ:비온]]
+			IF RAND:2
+				CALL ドリンク_ビオン
+			ELSEIF RAND:2
+				CALL アクション_ビオン
+			ELSE
+				CALL アクション_ビオン_2
+			ENDIF
+		ENDIF
+		IF NO:ARG == [[キャラ:에노스]]
+			IF RAND:2
+				CALL ドリンク_エノス
+			ELSEIF RAND:2
+				CALL アクション_エノス
+			ELSE
+				CALL アクション_エノス_2
+			ENDIF
+		ENDIF
+		PRINTL 
+	ENDIF
+	PRINTL 남은 키트 수：★★☆
+ELSEIF SKILLGAGE_F_GET(ARG,SKILL_NUM) == 1
+	IF GETCONFIGS("描画インターフェース") != "WINAPI"
+		SIF NO:ARG == [[キャラ:마르푸샤]]
+			CALL シャワー_マルフーシャ
+		SIF NO:ARG == [[キャラ:라이카(Marufusha)]]
+			CALL シャワー_ライカ
+		SIF NO:ARG == [[キャラ:벨카(Marufusha)]]
+			CALL シャワー_ベルカ
+		SIF NO:ARG == [[キャラ:스트렐카(Marufusha)]]
+			CALL シャワー_ストレルカ
+		SIF NO:ARG == [[キャラ:펠리세트]]
+			CALL シャワー_フェリセット
+		SIF NO:ARG == [[キャラ:알리비나]]
+			CALL シャワー_アリビナ
+		SIF NO:ARG == [[キャラ:비온]]
+			CALL シャワー_ビオン
+		SIF NO:ARG == [[キャラ:에노스]]
+			CALL シャワー_エノス
+		PRINTL 
+	ENDIF
+	PRINTL 남은 키트 수：★☆☆
+ELSEIF SKILLGAGE_F_GET(ARG,SKILL_NUM) == 2
+	IF GETCONFIGS("描画インターフェース") != "WINAPI"
+		SIF NO:ARG == [[キャラ:마르푸샤]]
+			CALL スリープ_マルフーシャ
+		SIF NO:ARG == [[キャラ:라이카(Marufusha)]]
+			CALL スリープ_ライカ
+		SIF NO:ARG == [[キャラ:벨카(Marufusha)]]
+			CALL スリープ_ベルカ
+		SIF NO:ARG == [[キャラ:스트렐카(Marufusha)]]
+			CALL スリープ_ストレルカ
+		SIF NO:ARG == [[キャラ:펠리세트]]
+			CALL スリープ_フェリセット
+		SIF NO:ARG == [[キャラ:알리비나]]
+			CALL スリープ_アリビナ
+		SIF NO:ARG == [[キャラ:비온]]
+			CALL スリープ_ビオン
+		SIF NO:ARG == [[キャラ:에노스]]
+			CALL スリープ_エノス
+		PRINTL 
+	ENDIF
+	PRINTL 남은 키트 수：☆☆☆
+ENDIF
+RESETCOLOR
+
+;死亡以外の状態異常も回復する
+CALL ALL_CURE_STATE, ARG, ARG, 0
+
+;MP回復
+IF CFLAG:ARG:998 == 2
+	PRINTFORMW 　　TARGET:[{CPOS(ARG),2}] %CALLNAME:ARG,20,LEFT%　>>>>>>　{MAXBASE:ARG:ＭＰ / 3}회복
+	CALL VAR_MP, ARG, MAXBASE:ARG:ＭＰ / 3, 3
+ELSE
+	PRINTFORMW 　　TARGET:[{CPOS(ARG),2}] %CALLNAME:ARG,20,LEFT%　>>>>>>　{MAXBASE:ARG:ＭＰ / (5 - (함락(ARG) > 0))}회복
+	CALL VAR_MP, ARG, MAXBASE:ARG:ＭＰ / (5 - (함락(ARG) > 0)), 3
+ENDIF
+
+CALL SKILLGAGE_F_ADD,ARG,SKILL_NUM,1
+
+;====================================================
+;실행내용 여기까지
+;====================================================
+
+;　説明文の表示
+@SKILL_EXPLAIN_リラックス,ARG
+;専用技が封印されている
+IF CFLAG:ARG:998 == 0
+	PRINTL （개별이벤트 전용스킬 ＆ 개별이벤트 １～４를 모두 클리어하면…？）
+ELSE
+	;イベント用
+	IF CFLAG:ARG:998 == 2
+		SETCOLOR 0xFFA500
+		PRINTFORML 자신의 최대MP의 1/3을 회복하고、사망 이외의 상태이상도 회복한다
+		RESETCOLOR
+	ELSE
+		PRINTFORML 자신의 최대MP의 1/{5 - (함락(ARG) > 0)}를 회복하고、사망 이외의 상태이상도 회복한다
+	ENDIF
+	PRINTL 자신의 보조효과도 전부 사라지므로、사용 타이밍을 고려할 필요가 있습니다
+	PRINTL 스킬은 3회까지만 사용 가능하며、SHOP화면으로 돌아가면 리셋됩니다
+ENDIF
+
+;사용조건
+@SKILL_SPECIAL_ACTIONABLE_リラックス,ARG
+#DIM SKILL_NUM
+SKILL_NUM = PU_SKILLNUM_GET(ARG,"リラックス")
+;専用技が封印されている
+SIF CFLAG:ARG:998 == 0
+	RETURN 0
+SIF SKILLGAGE_F_GET(ARG,SKILL_NUM) >= 3
+	RETURN 0
+RETURN 1
+
+;-------------------------------------------------
+;《ドリンク》
+;-------------------------------------------------
+
+@ドリンク_マルフーシャ
+LOCAL = 1250
+FOR LOCAL:1, 1, 12
+	CALL PRINT_IMAGE(@"ドリンク_マルフーシャ_{LOCAL:1}",LOCAL)
+	TWAIT 100, 0
+	CLEARLINE LOCAL/100
+NEXT
+CALL PRINT_IMAGE(@"ドリンク_マルフーシャ_11",LOCAL)
+TWAIT 100, 0
+
+@ドリンク_ライカ
+LOCAL = 1250
+FOR LOCAL:1, 1, 9
+	CALL PRINT_IMAGE(@"ドリンク_ライカ_{LOCAL:1}",LOCAL)
+	TWAIT 100, 0
+	CLEARLINE LOCAL/100
+NEXT
+CALL PRINT_IMAGE(@"ドリンク_ライカ_8",LOCAL)
+TWAIT 100, 0
+
+@ドリンク_ベルカ
+LOCAL = 1250
+FOR LOCAL:1, 1, 12
+	CALL PRINT_IMAGE(@"ドリンク_ベルカ_{LOCAL:1}",LOCAL)
+	TWAIT 100, 0
+	CLEARLINE LOCAL/100
+NEXT
+CALL PRINT_IMAGE(@"ドリンク_ベルカ_11",LOCAL)
+TWAIT 100, 0
+
+@ドリンク_ストレルカ
+LOCAL = 1250
+FOR LOCAL:1, 1, 10
+	CALL PRINT_IMAGE(@"ドリンク_ストレルカ_{LOCAL:1}",LOCAL)
+	TWAIT 100, 0
+	CLEARLINE LOCAL/100
+NEXT
+CALL PRINT_IMAGE(@"ドリンク_ストレルカ_9",LOCAL)
+TWAIT 100, 0
+
+@ドリンク_フェリセット
+LOCAL = 1250
+FOR LOCAL:1, 1, 10
+	CALL PRINT_IMAGE(@"ドリンク_フェリセット_{LOCAL:1}",LOCAL)
+	TWAIT 100, 0
+	CLEARLINE LOCAL/100
+NEXT
+CALL PRINT_IMAGE(@"ドリンク_フェリセット_9",LOCAL)
+TWAIT 100, 0
+
+@ドリンク_アリビナ
+LOCAL = 1250
+FOR LOCAL:1, 1, 12
+	CALL PRINT_IMAGE(@"ドリンク_アリビナ_{LOCAL:1}",LOCAL)
+	TWAIT 100, 0
+	CLEARLINE LOCAL/100
+NEXT
+CALL PRINT_IMAGE(@"ドリンク_アリビナ_11",LOCAL)
+TWAIT 100, 0
+
+@ドリンク_ビオン
+LOCAL = 1250
+FOR LOCAL:1, 1, 8
+	CALL PRINT_IMAGE(@"ドリンク_ビオン_{LOCAL:1}",LOCAL)
+	TWAIT 100, 0
+	CLEARLINE LOCAL/100
+NEXT
+CALL PRINT_IMAGE(@"ドリンク_ビオン_7",LOCAL)
+TWAIT 100, 0
+
+@ドリンク_エノス
+LOCAL = 1250
+FOR LOCAL:1, 1, 8
+	CALL PRINT_IMAGE(@"ドリンク_エノス_{LOCAL:1}",LOCAL)
+	TWAIT 100, 0
+	CLEARLINE LOCAL/100
+NEXT
+CALL PRINT_IMAGE(@"ドリンク_エノス_7",LOCAL)
+TWAIT 100, 0
+
+;-------------------------------------------------
+;《シャワー》
+;-------------------------------------------------
+
+@シャワー_マルフーシャ
+LOCAL = 1250
+REPEAT 3
+	CALL PRINT_IMAGE(@"シャワー_マルフーシャ_1",LOCAL)
+	TWAIT 100, 0
+	CLEARLINE LOCAL/100
+REND
+FOR LOCAL:1, 2, 6
+	REPEAT 2
+		CALL PRINT_IMAGE(@"シャワー_マルフーシャ_{LOCAL:1}",LOCAL)
+		TWAIT 100, 0
+		CLEARLINE LOCAL/100
+	REND
+NEXT
+CALL PRINT_IMAGE(@"シャワー_マルフーシャ_5",LOCAL)
+TWAIT 100, 0
+
+@シャワー_ライカ
+LOCAL = 1250
+REPEAT 3
+	CALL PRINT_IMAGE(@"シャワー_ライカ_1",LOCAL)
+	TWAIT 100, 0
+	CLEARLINE LOCAL/100
+REND
+FOR LOCAL:1, 2, 7
+	REPEAT 2
+		CALL PRINT_IMAGE(@"シャワー_ライカ_{LOCAL:1}",LOCAL)
+		TWAIT 100, 0
+		CLEARLINE LOCAL/100
+	REND
+NEXT
+CALL PRINT_IMAGE(@"シャワー_ライカ_6",LOCAL)
+TWAIT 100, 0
+
+@シャワー_ベルカ
+LOCAL = 1250
+REPEAT 3
+	CALL PRINT_IMAGE(@"シャワー_ベルカ_1",LOCAL)
+	TWAIT 100, 0
+	CLEARLINE LOCAL/100
+REND
+FOR LOCAL:1, 2, 7
+	REPEAT 2
+		CALL PRINT_IMAGE(@"シャワー_ベルカ_{LOCAL:1}",LOCAL)
+		TWAIT 100, 0
+		CLEARLINE LOCAL/100
+	REND
+NEXT
+CALL PRINT_IMAGE(@"シャワー_ベルカ_6",LOCAL)
+TWAIT 100, 0
+
+@シャワー_ストレルカ
+LOCAL = 1250
+REPEAT 3
+	CALL PRINT_IMAGE(@"シャワー_ストレルカ_1",LOCAL)
+	TWAIT 100, 0
+	CLEARLINE LOCAL/100
+REND
+FOR LOCAL:1, 2, 7
+	REPEAT 2
+		CALL PRINT_IMAGE(@"シャワー_ストレルカ_{LOCAL:1}",LOCAL)
+		TWAIT 100, 0
+		CLEARLINE LOCAL/100
+	REND
+NEXT
+CALL PRINT_IMAGE(@"シャワー_ストレルカ_6",LOCAL)
+TWAIT 100, 0
+
+@シャワー_フェリセット
+LOCAL = 1250
+CALL PRINT_IMAGE(@"シャワー_フェリセット_1",LOCAL)
+TWAIT 100, 0
+CLEARLINE LOCAL/100
+FOR LOCAL:1, 1, 14
+	CALL PRINT_IMAGE(@"シャワー_フェリセット_{LOCAL:1}",LOCAL)
+	TWAIT 100, 0
+	CLEARLINE LOCAL/100
+NEXT
+CALL PRINT_IMAGE(@"シャワー_フェリセット_13",LOCAL)
+TWAIT 100, 0
+
+@シャワー_アリビナ
+LOCAL = 1250
+REPEAT 3
+	CALL PRINT_IMAGE(@"シャワー_アリビナ_1",LOCAL)
+	TWAIT 100, 0
+	CLEARLINE LOCAL/100
+REND
+FOR LOCAL:1, 2, 8
+	REPEAT 2
+		CALL PRINT_IMAGE(@"シャワー_アリビナ_{LOCAL:1}",LOCAL)
+		TWAIT 100, 0
+		CLEARLINE LOCAL/100
+	REND
+NEXT
+CALL PRINT_IMAGE(@"シャワー_アリビナ_7",LOCAL)
+TWAIT 100, 0
+
+@シャワー_ビオン
+LOCAL = 1250
+REPEAT 3
+	CALL PRINT_IMAGE(@"シャワー_ビオン_1",LOCAL)
+	TWAIT 100, 0
+	CLEARLINE LOCAL/100
+REND
+FOR LOCAL:1, 2, 6
+	REPEAT 2
+		CALL PRINT_IMAGE(@"シャワー_ビオン_{LOCAL:1}",LOCAL)
+		TWAIT 100, 0
+		CLEARLINE LOCAL/100
+	REND
+NEXT
+CALL PRINT_IMAGE(@"シャワー_ビオン_5",LOCAL)
+TWAIT 100, 0
+
+@シャワー_エノス
+LOCAL = 1250
+REPEAT 3
+	CALL PRINT_IMAGE(@"シャワー_エノス_1",LOCAL)
+	TWAIT 100, 0
+	CLEARLINE LOCAL/100
+REND
+FOR LOCAL:1, 2, 6
+	REPEAT 2
+		CALL PRINT_IMAGE(@"シャワー_エノス_{LOCAL:1}",LOCAL)
+		TWAIT 100, 0
+		CLEARLINE LOCAL/100
+	REND
+NEXT
+CALL PRINT_IMAGE(@"シャワー_エノス_5",LOCAL)
+TWAIT 100, 0
+
+;-------------------------------------------------
+;《スリープ》
+;-------------------------------------------------
+
+@スリープ_マルフーシャ
+LOCAL = 1250
+FOR LOCAL:1, 1, 7
+	REPEAT 2
+		CALL PRINT_IMAGE(@"スリープ_マルフーシャ_{LOCAL:1}",LOCAL)
+		TWAIT 100, 0
+		CLEARLINE LOCAL/100
+	REND
+NEXT
+CALL PRINT_IMAGE(@"スリープ_マルフーシャ_6",LOCAL)
+TWAIT 100, 0
+
+@スリープ_ライカ
+LOCAL = 1250
+FOR LOCAL:1, 1, 4
+	REPEAT 3
+		CALL PRINT_IMAGE(@"スリープ_ライカ_{LOCAL:1}",LOCAL)
+		TWAIT 100, 0
+		CLEARLINE LOCAL/100
+	REND
+NEXT
+CALL PRINT_IMAGE(@"スリープ_ライカ_3",LOCAL)
+TWAIT 100, 0
+CLEARLINE LOCAL/100
+CALL PRINT_IMAGE(@"スリープ_ライカ_3",LOCAL)
+TWAIT 100, 0
+
+@スリープ_ベルカ
+LOCAL = 1250
+FOR LOCAL:1, 1, 4
+	REPEAT 3
+		CALL PRINT_IMAGE(@"スリープ_ベルカ_{LOCAL:1}",LOCAL)
+		TWAIT 100, 0
+		CLEARLINE LOCAL/100
+	REND
+NEXT
+CALL PRINT_IMAGE(@"スリープ_ベルカ_3",LOCAL)
+TWAIT 100, 0
+CLEARLINE LOCAL/100
+CALL PRINT_IMAGE(@"スリープ_ベルカ_3",LOCAL)
+TWAIT 100, 0
+
+@スリープ_ストレルカ
+LOCAL = 1250
+FOR LOCAL:1, 1, 4
+	REPEAT 3
+		CALL PRINT_IMAGE(@"スリープ_ストレルカ_{LOCAL:1}",LOCAL)
+		TWAIT 100, 0
+		CLEARLINE LOCAL/100
+	REND
+NEXT
+CALL PRINT_IMAGE(@"スリープ_ストレルカ_3",LOCAL)
+TWAIT 100, 0
+CLEARLINE LOCAL/100
+CALL PRINT_IMAGE(@"スリープ_ストレルカ_3",LOCAL)
+TWAIT 100, 0
+
+@スリープ_フェリセット
+CALL アクション_フェリセット
+
+@スリープ_アリビナ
+LOCAL = 1250
+FOR LOCAL:1, 1, 7
+	REPEAT 2
+		CALL PRINT_IMAGE(@"スリープ_アリビナ_{LOCAL:1}",LOCAL)
+		TWAIT 100, 0
+		CLEARLINE LOCAL/100
+	REND
+NEXT
+CALL PRINT_IMAGE(@"スリープ_アリビナ_6",LOCAL)
+TWAIT 100, 0
+
+@スリープ_ビオン
+LOCAL = 1250
+FOR LOCAL:1, 1, 7
+	REPEAT 2
+		CALL PRINT_IMAGE(@"スリープ_ビオン_{LOCAL:1}",LOCAL)
+		TWAIT 100, 0
+		CLEARLINE LOCAL/100
+	REND
+NEXT
+CALL PRINT_IMAGE(@"スリープ_ビオン_6",LOCAL)
+TWAIT 100, 0
+
+@スリープ_エノス
+LOCAL = 1250
+FOR LOCAL:1, 1, 4
+	REPEAT 3
+		CALL PRINT_IMAGE(@"スリープ_エノス_{LOCAL:1}",LOCAL)
+		TWAIT 100, 0
+		CLEARLINE LOCAL/100
+	REND
+NEXT
+CALL PRINT_IMAGE(@"スリープ_エノス_3",LOCAL)
+TWAIT 100, 0
+CLEARLINE LOCAL/100
+CALL PRINT_IMAGE(@"スリープ_エノス_3",LOCAL)
+TWAIT 100, 0
+
+;-------------------------------------------------
+;《アクション》
+;-------------------------------------------------
+
+@アクション_ライカ
+LOCAL = 1250
+FOR LOCAL:1, 1, 9
+	CALL PRINT_IMAGE(@"アクション_ライカ_{LOCAL:1}",LOCAL)
+	TWAIT 100, 0
+	CLEARLINE LOCAL/100
+NEXT
+CALL PRINT_IMAGE(@"アクション_ライカ_8",LOCAL)
+TWAIT 100, 0
+
+@アクション_ライカ_2
+LOCAL = 1250
+FOR LOCAL:1, 1, 8
+	CALL PRINT_IMAGE(@"アクション_ライカ_2_{LOCAL:1}",LOCAL)
+	TWAIT 100, 0
+	CLEARLINE LOCAL/100
+NEXT
+CALL PRINT_IMAGE(@"アクション_ライカ_2_7",LOCAL)
+TWAIT 100, 0
+
+@アクション_ベルカ
+LOCAL = 1250
+FOR LOCAL:1, 1, 17
+	CALL PRINT_IMAGE(@"アクション_ベルカ_{LOCAL:1}",LOCAL)
+	TWAIT 100, 0
+	CLEARLINE LOCAL/100
+NEXT
+CALL PRINT_IMAGE(@"アクション_ベルカ_16",LOCAL)
+TWAIT 100, 0
+
+@アクション_ストレルカ
+LOCAL = 1250
+FOR LOCAL:1, 1, 9
+	CALL PRINT_IMAGE(@"アクション_ストレルカ_{LOCAL:1}",LOCAL)
+	TWAIT 100, 0
+	CLEARLINE LOCAL/100
+NEXT
+CALL PRINT_IMAGE(@"アクション_ストレルカ_1",LOCAL)
+TWAIT 100, 0
+CLEARLINE LOCAL/100
+CALL PRINT_IMAGE(@"アクション_ストレルカ_1",LOCAL)
+TWAIT 100, 0
+
+@アクション_フェリセット
+LOCAL = 1250
+FOR LOCAL:1, 1, 7
+	REPEAT 2
+		CALL PRINT_IMAGE(@"アクション_フェリセット_{LOCAL:1}",LOCAL)
+		TWAIT 100, 0
+		CLEARLINE LOCAL/100
+	REND
+NEXT
+CALL PRINT_IMAGE(@"アクション_フェリセット_6",LOCAL)
+TWAIT 100, 0
+
+@アクション_フェリセット_2
+LOCAL = 1250
+FOR LOCAL:1, 1, 6
+	REPEAT 2
+		CALL PRINT_IMAGE(@"アクション_フェリセット_2_{LOCAL:1}",LOCAL)
+		TWAIT 100, 0
+		CLEARLINE LOCAL/100
+	REND
+NEXT
+CALL PRINT_IMAGE(@"アクション_フェリセット_2_5",LOCAL)
+TWAIT 100, 0
+
+@アクション_アリビナ
+LOCAL = 1250
+FOR LOCAL:1, 1, 9
+	CALL PRINT_IMAGE(@"アクション_アリビナ_{LOCAL:1}",LOCAL)
+	TWAIT 100, 0
+	CLEARLINE LOCAL/100
+NEXT
+CALL PRINT_IMAGE(@"アクション_アリビナ_8",LOCAL)
+TWAIT 100, 0
+
+@アクション_アリビナ_2
+LOCAL = 1250
+FOR LOCAL:1, 1, 10
+	CALL PRINT_IMAGE(@"アクション_アリビナ_2_{LOCAL:1}",LOCAL)
+	TWAIT 100, 0
+	CLEARLINE LOCAL/100
+NEXT
+CALL PRINT_IMAGE(@"アクション_アリビナ_2_9",LOCAL)
+TWAIT 100, 0
+
+@アクション_アリビナ_3
+LOCAL = 1250
+FOR LOCAL:1, 1, 10
+	CALL PRINT_IMAGE(@"アクション_アリビナ_3_{LOCAL:1}",LOCAL)
+	TWAIT 100, 0
+	CLEARLINE LOCAL/100
+NEXT
+CALL PRINT_IMAGE(@"アクション_アリビナ_3_9",LOCAL)
+TWAIT 100, 0
+
+@アクション_ビオン
+LOCAL = 1250
+FOR LOCAL:1, 1, 9
+	CALL PRINT_IMAGE(@"アクション_ビオン_{LOCAL:1}",LOCAL)
+	TWAIT 100, 0
+	CLEARLINE LOCAL/100
+NEXT
+CALL PRINT_IMAGE(@"アクション_ビオン_8",LOCAL)
+TWAIT 100, 0
+
+@アクション_ビオン_2
+LOCAL = 1250
+FOR LOCAL:1, 1, 6
+	CALL PRINT_IMAGE(@"アクション_ビオン_2_{LOCAL:1}",LOCAL)
+	TWAIT 100, 0
+	CLEARLINE LOCAL/100
+NEXT
+CALL PRINT_IMAGE(@"アクション_ビオン_2_5",LOCAL)
+TWAIT 100, 0
+
+@アクション_エノス
+LOCAL = 1250
+FOR LOCAL:1, 1, 10
+	CALL PRINT_IMAGE_DOUBLE(@"アクション_エノス_0_2",LOCAL,@"アクション_エノス_{LOCAL:1}")
+	TWAIT 100, 0
+	CLEARLINE LOCAL/100
+NEXT
+CALL PRINT_IMAGE_DOUBLE(@"アクション_エノス_0_2",LOCAL,@"アクション_エノス_9")
+TWAIT 100, 0
+
+@アクション_エノス_2
+LOCAL = 1250
+FOR LOCAL:1, 1, 7
+	CALL PRINT_IMAGE_DOUBLE(@"アクション_エノス_0_2",LOCAL,@"アクション_エノス_2_{LOCAL:1}")
+	TWAIT 100, 0
+	CLEARLINE LOCAL/100
+NEXT
+CALL PRINT_IMAGE_DOUBLE(@"アクション_エノス_0_2",LOCAL,@"アクション_エノス_2_6")
+TWAIT 100, 0

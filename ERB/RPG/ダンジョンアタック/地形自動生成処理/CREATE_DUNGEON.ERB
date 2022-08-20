@@ -1,0 +1,1544 @@
+﻿;---------------------------------------------------------------------------------------------------------------------------------
+;던전の地形生成モジュール
+;---------------------------------------------------------------------------------------------------------------------------------
+;概要
+;	トルネコや試練の不思議な던전みたいに、入るたびに変化するタイプの던전を作成します。
+;	同じ階でも階段を上り下りする度に再生成されて別のマップになる予定です。
+;	(Elonaの「子犬の洞窟」とかがイメージしやすい...かな？)
+;
+;部屋の概念について
+;	以下の方針で部屋を作成しています。
+;		①マップ전체を全部壁で埋めます
+;		②マップをいくつかのエリアに切り分けます
+;		③各エリアの内側に侵入可能なマスでできたエリアを作成します(壁→侵入可能エリアで上書き)
+;	結果として、一見するとただの壁なだけの区域(②)とその内側の@が侵入できる範囲(③)の二重構造で部屋ができています。
+;	配列「CD_ARRAY_BLOCK」に格納する部屋の情報もこれに基づいており、第2添字が0なら部屋の外側、1なら部屋の内側についての情報を格納します。
+;		CD_ARRAY_BLOCK:5:0:2　だと5番目の部屋(正確には0から数えるので6番目の部屋)の、外側部分(壁でできている部分)の横幅　※つまり②の横幅
+;		CD_ARRAY_BLOCK:5:1:2　だと5番目の部屋(正確には0から数えるので6番目の部屋)の、内側部分(@が侵入できる部分)の横幅　※つまり③の横幅
+;	となります。この部屋の外側と内側の使い分けは特に通路の作成などで大きく関わってくるのでご注意願います。(2021/09/12 ロッド@カヤノソトより)
+
+;更新日時　　　更新者				更新内容
+;2021/09/01　　ロッド@カヤノソト	作成に着手
+;---------------------------------------------------------------------------------------------------------------------------------
+;=====================================================================
+;던전の地形生成モジュール
+;=====================================================================
+
+;地形生成処理
+@CD_CREATE_DUNGEON
+
+;-------------
+;ここから本処理
+;-------------
+;マップデータをデフォルト化する。(すべて壁)
+CALL CD_CREATE_DUNGEON_DEFAULT
+
+;部屋割り処理1
+CALL CD_BLOCK_ALLOCATION_1
+
+;特殊部屋の作成(お店、モンスターハウスなど)
+CALL CD_CREATE_SPECIAL_BLOCK
+
+;マップデータ更新処理
+CALL CD_UPDATE_MAP_DATA
+
+;設定された通路をマップに反映する
+CALL CD_CREATE_BYPASS
+
+;オブジェクトの設置　※@の初期位置や階段、出口、ターミナルマスなどの設定
+CALL CD_SET_OBJECT
+
+;シンボルエンカウントの敵のCSV番号を設定する
+CALL SEF_SET_SYMBOL_CSV_NO
+
+;マップデータ反映
+;	引数を1に設定すると、作成されたマップデータを画面に表示する。(デバッグ用)
+CALL CD_COMMIT_MAP_DATA, 0
+
+RETURN 1
+
+
+;マップデータをデフォルト化する。(すべて壁)
+@CD_CREATE_DUNGEON_DEFAULT
+;-------------
+;変数定義
+;-------------
+#DIM DIRECTION_LIST, 10			;移動できる方向のリスト。テンキーの位置と対応する。(0:未設定 / 1:左下 / 2:下 / 3:右下 / 4:左 / 5:未設定(テンキーと合わせるため、不要な5の枠もいちおう用意しています。) / 6:右 / 7:左上 / 8:上 / 9:右上)
+
+;-------------
+;変数の初期化
+;-------------
+CD_POINT_X = 0				;現在作成中のマスのX座標を初期化
+CD_POINT_Y = 0				;現在作成中のマスのY座標を初期化
+
+;-------------
+;ここから本処理
+;-------------
+;マップデータを初期化する
+VARSET CD_FLOOR_LINE_ARG
+
+;すべてのマスが壁のマップを作成する(詳細な地形は後で作成するため)
+;※作成したマップデータはグローバルな配列「CD_FLOOR_LINE_ARG」に格納することで返す。
+FOR CD_POINT_Y, 0, FLAG:최대Y
+	;一番上から一行ずつループを回して地形を作成
+	FOR CD_POINT_X, 0, FLAG:최대X
+		CD_FLOOR_LINE_ARG:CD_POINT_Y:CD_POINT_X = 0
+	NEXT
+NEXT
+
+RETURN 1
+
+
+;部屋割り処理1(部屋を半分にして、その片方を半分にして、またその片方を...タイプ)
+@CD_BLOCK_ALLOCATION_1
+;-------------
+;変数定義
+;-------------
+#DIM BLOCK_NO						;何番目の部屋であるか
+#DIM BLOCK_INF_BEFORE, 4			;分割前の部屋の情報(左上端のX座標,Y座標,横幅,縦幅)
+#DIM BLOCK_INF_AFTER_1, 4			;分割後の部屋1の情報(左上端のX座標,Y座標,横幅,縦幅)
+#DIM BLOCK_INF_AFTER_2, 4			;分割後の部屋2の情報(左上端のX座標,Y座標,横幅,縦幅)
+#DIM DIVISION_TYPE_1				;縦に割るか横に割るか(0:縦 / 1:横)
+#DIM DIVISION_TYPE_2 = 0			;割った後どちらの部屋番号を若い方とするか(0:上・左を若い方とする / 1:下・右を若い方とする)　※番号が大きい方は再び分割の対象となるため、どちらかを決める必要がある。
+#DIM DIVISION_CNT					;分割回数(0なら1部屋)
+#DIM LOOP_CNT_i						;ループ用カウント変数　※処理が長くて複雑なので、グローバル変数LOCALは使いたくない
+#DIM FREQUENCY_ADD_BYPASS			;通路を追加する確立(百分率)
+
+;-------------
+;変数の初期化
+;-------------
+VARSET BLOCK_INF_BEFORE				;分割前の部屋の情報(右上端のX座標,Y座標,横幅,縦幅)
+VARSET BLOCK_INF_AFTER_1			;分割後の部屋1の情報(右上端のX座標,Y座標,横幅,縦幅)
+VARSET BLOCK_INF_AFTER_2			;分割後の部屋2の情報(右上端のX座標,Y座標,横幅,縦幅)
+DIVISION_TYPE_1 = 0					;縦に割るか横に割るか(0:縦 / 1:横)
+DIVISION_TYPE_2 = 0					;割った後どちらの部屋番号を若い方とするか(0:上・左を若い方とする / 1:下・右を若い方とする)　※番号が大きい方は再び分割の対象となるため、どちらかを決める必要がある。
+DIVISION_CNT = 0					;分割回数(0なら1部屋)
+BLOCK_NO = 0						;作成する部屋の総数
+LOOP_CNT_i = 0						;ループ用カウント変数
+FREQUENCY_ADD_BYPASS = 0			;通路を追加する確立(百分率)
+
+;-------------
+;ここから本処理
+;-------------
+;最初の「分割前の部屋」情報にマップ전체をセットする
+BLOCK_INF_BEFORE:0 = 0				;X座標
+BLOCK_INF_BEFORE:1 = 0				;Y座標
+BLOCK_INF_BEFORE:2 = FLAG:최대X		;横幅(初期値、すなわち1回目の分割前はマップ전체の横幅)
+BLOCK_INF_BEFORE:3 = FLAG:최대Y		;縦幅(初期値、すなわち1回目の分割前はマップ전체の縦幅)
+
+;分割回数を0～9の乱数で決定する。　※分割回数0の場合は1部屋のみのフロアとなる。
+DIVISION_CNT = RAND:10
+
+;分割なしの場合
+IF DIVISION_CNT == 0
+	;「分割前の部屋」の情報をそのまま登録する
+	CALL CD_COMMIT_BLOCK, 1, BLOCK_INF_BEFORE, 0
+	CD_BLOCK_CNT = 1
+ELSE
+	;部屋の分割回数ごとにループを回して処理を行う。
+	FOR LOOP_CNT_i, 0, DIVISION_CNT
+
+		;部屋を分割するパターンを決定する
+		DIVISION_TYPE_1 = RAND:2	;縦に割るか横に割るか(0:縦 / 1:横)
+		DIVISION_TYPE_2 = RAND:2	;割った後どちらの部屋番号を若い方とするか(0:上・左を若い方とする / 1:下・右を若い方とする)
+
+		;縦割り/横割りで分岐処理を行う
+		IF DIVISION_TYPE_1 == 0
+			;縦割りの場合
+
+			IF BLOCK_INF_BEFORE:2 < (CD_BLOCK_OUTSIDE_SIZE_MIN * 2)
+				;分割前の部屋の横幅が「部屋の最小サイズ」の2倍に満たない場合、分割せず終了
+				BREAK
+			ENDIF
+			
+			;部屋の作成数を1追加
+			BLOCK_NO += 1
+
+			;-------------------------------
+			;分割後の部屋の情報を作成
+			;-------------------------------
+			;分割後の左側の部屋の左上端のX座標
+			BLOCK_INF_AFTER_1:0 = BLOCK_INF_BEFORE:0
+			;分割後の左側の部屋の左上端のY座標
+			BLOCK_INF_AFTER_1:1 = BLOCK_INF_BEFORE:1
+			;分割後の左側の部屋の横幅
+			IF BLOCK_INF_BEFORE:2 == CD_BLOCK_OUTSIDE_SIZE_MIN * 2
+				;分割前の横幅が部屋の最小サイズの2倍ピッタリの場合
+				BLOCK_INF_AFTER_1:2 = CD_BLOCK_OUTSIDE_SIZE_MIN
+			ELSE
+				;その他の場合
+				BLOCK_INF_AFTER_1:2 = CD_BLOCK_OUTSIDE_SIZE_MIN + RAND:(BLOCK_INF_BEFORE:2 - CD_BLOCK_OUTSIDE_SIZE_MIN * 2)
+			ENDIF
+			;分割後の左側の部屋の縦幅
+			BLOCK_INF_AFTER_1:3 = BLOCK_INF_BEFORE:3
+
+			;分割後の右側の部屋の左上端のX座標
+			BLOCK_INF_AFTER_2:0 = BLOCK_INF_BEFORE:0 + BLOCK_INF_AFTER_1:2
+			;分割後の右側の部屋の左上端のY座標
+			BLOCK_INF_AFTER_2:1 = BLOCK_INF_BEFORE:1
+			;分割後の右側の部屋の横幅
+			BLOCK_INF_AFTER_2:2 = BLOCK_INF_BEFORE:2 - BLOCK_INF_AFTER_1:2
+			;分割後の右側の部屋の縦幅
+			BLOCK_INF_AFTER_2:3 = BLOCK_INF_BEFORE:3
+
+			;-------------------------------
+			;部屋の分割と登録処理
+			;-------------------------------
+			CALL CD_DEVIDE_BLOCK, BLOCK_NO, BLOCK_INF_BEFORE, BLOCK_INF_AFTER_1, BLOCK_INF_AFTER_2, DIVISION_TYPE_2
+
+		ELSE
+			;横割りの場合
+
+			IF BLOCK_INF_BEFORE:3 < (CD_BLOCK_OUTSIDE_SIZE_MIN * 2)
+				;分割前の部屋の縦幅が「部屋の最小サイズ」の2倍に満たない場合、分割せず終了
+				BREAK
+			ENDIF
+			
+			;部屋の作成数を1追加
+			BLOCK_NO += 1
+
+			;-------------------------------
+			;分割後の部屋の情報を作成
+			;-------------------------------
+			;分割後の上側の部屋の左上端のX座標
+			BLOCK_INF_AFTER_1:0 = BLOCK_INF_BEFORE:0
+			;分割後の上側の部屋の左上端のY座標
+			BLOCK_INF_AFTER_1:1 = BLOCK_INF_BEFORE:1
+			;分割後の上側の部屋の横幅
+			BLOCK_INF_AFTER_1:2 = BLOCK_INF_BEFORE:2
+			;分割後の上側の部屋の縦幅
+			IF BLOCK_INF_BEFORE:3 == CD_BLOCK_OUTSIDE_SIZE_MIN * 2
+				;分割前の縦幅が部屋の最小サイズの2倍ピッタリの場合
+				BLOCK_INF_AFTER_1:3 = CD_BLOCK_OUTSIDE_SIZE_MIN
+			ELSE
+				;その他の場合
+				BLOCK_INF_AFTER_1:3 = CD_BLOCK_OUTSIDE_SIZE_MIN + RAND:(BLOCK_INF_BEFORE:3 - CD_BLOCK_OUTSIDE_SIZE_MIN * 2)
+			ENDIF
+			;分割後の下側の部屋の左上端のX座標
+			BLOCK_INF_AFTER_2:0 = BLOCK_INF_BEFORE:0
+			;分割後の下側の部屋の左上端のY座標
+			BLOCK_INF_AFTER_2:1 = BLOCK_INF_BEFORE:1 + BLOCK_INF_AFTER_1:3
+			;分割後の下側の部屋の横幅
+			BLOCK_INF_AFTER_2:2 = BLOCK_INF_BEFORE:2
+			;分割後の下側の部屋の縦幅
+			BLOCK_INF_AFTER_2:3 = BLOCK_INF_BEFORE:3 - BLOCK_INF_AFTER_1:3
+
+			;-------------------------------
+			;部屋の分割と登録処理
+			;-------------------------------
+			CALL CD_DEVIDE_BLOCK, BLOCK_NO, BLOCK_INF_BEFORE, BLOCK_INF_AFTER_1, BLOCK_INF_AFTER_2, DIVISION_TYPE_2
+
+		ENDIF
+	NEXT
+	
+	;最後に残った部屋の情報を登録する　※上記ループでは部屋を分割する度に片方を登録しているため、最後の一つの部屋が残ってしまう。
+	BLOCK_NO += 1
+	CD_BLOCK_CNT = BLOCK_NO
+	CALL CD_COMMIT_BLOCK, BLOCK_NO, BLOCK_INF_BEFORE, 0	;引数に「CD_BLOCK_CNT」を使用した方がキレイな気もするけれど、他に合わせて「BLOCK_NO」を利用します。
+
+ENDIF
+
+;部屋作成処理
+CALL CD_MAKE_ROOM
+
+;通路を設定する　※部屋1と部屋2、部屋2と部屋3、...と単純に連番で通路でつなげる。
+FOR LOOP_CNT_i, 0, CD_BLOCK_CNT - 1
+	CALL CD_DEFINE_BYPASS, LOOP_CNT_i, LOOP_CNT_i + 1
+NEXT
+
+;一定確率で2つ先の部屋にも通路をつなげる
+IF CD_BLOCK_CNT >= 3
+	;部屋の数に応じて、「2つ先の部屋への通路」の発生確率を設定する
+	IF CD_BLOCK_CNT == 3
+		;部屋が3つの場合
+		FREQUENCY_ADD_BYPASS = 50
+	
+	ELSEIF CD_BLOCK_CNT == 4
+		;部屋が4つの場合
+		FREQUENCY_ADD_BYPASS = 40
+
+	ELSE
+		FREQUENCY_ADD_BYPASS = 30
+
+	ENDIF
+
+	;部屋ごとに「2つ先の部屋への通路」を作成するかどうか判定を行う
+	;	部屋を最初から最後まで一直線に単純に繋げただけではつまらない！一つの部屋から複数の通路が発生するように当処理をご用意しております。
+	FOR LOOP_CNT_i, 0, CD_BLOCK_CNT - 2
+		IF RAND:100 < FREQUENCY_ADD_BYPASS
+			CALL CD_DEFINE_BYPASS, LOOP_CNT_i, LOOP_CNT_i + 2
+		ENDIF
+	NEXT
+ENDIF
+
+RETURN 1
+
+
+;部屋作成処理(与えられたエリアの中に@が侵入可能な範囲(部屋)を作成する)
+@CD_MAKE_ROOM
+;-------------
+;変数定義
+;-------------
+#DIM BLOCK_INF_OUTSIDE, 4							;部屋の外側の情報(右上端のX座標,Y座標,横幅,縦幅)
+#DIM BLOCK_INF_INSIDE, 4							;部屋の内側の情報(右上端のX座標,Y座標,横幅,縦幅)
+#DIM BLOCK_WIDTH_BAFFER								;部屋の横幅の余裕
+#DIM BLOCK_HEIGHT_BAFFER							;部屋の縦幅の余裕
+
+
+;-------------
+;ここから本処理
+;-------------
+;部屋1件ずつループを回して内側の空間を作成する
+FOR LOCAL, 0, CD_BLOCK_CNT
+	;--------------------------------------
+	;変数の値を初期化する
+	;--------------------------------------
+	VARSET BLOCK_INF_OUTSIDE						;部屋の外側の情報(左上端のX座標,Y座標,横幅,縦幅)
+	VARSET BLOCK_INF_INSIDE							;部屋の内側の情報(左上端のX座標,Y座標,横幅,縦幅)
+	BLOCK_WIDTH_BAFFER = 0							;部屋の横幅の余裕
+	BLOCK_HEIGHT_BAFFER = 0							;部屋の縦幅の余裕
+
+	;--------------------------------------
+	;部屋の外側のサイズと位置を取得する
+	;--------------------------------------
+	BLOCK_INF_OUTSIDE:0 = CD_ARRAY_BLOCK:LOCAL:0:0	;部屋の外側の左上端のX座標
+	BLOCK_INF_OUTSIDE:1 = CD_ARRAY_BLOCK:LOCAL:0:1	;部屋の外側の左上端のY座標
+	BLOCK_INF_OUTSIDE:2 = CD_ARRAY_BLOCK:LOCAL:0:2	;部屋の外側の横幅
+	BLOCK_INF_OUTSIDE:3 = CD_ARRAY_BLOCK:LOCAL:0:3	;部屋の外側の縦幅
+	
+	;--------------------------------------
+	;部屋の内側のサイズと位置を決定する
+	;--------------------------------------
+	;部屋の内側の横幅
+	IF BLOCK_INF_OUTSIDE:2 > CD_BLOCK_OUTSIDE_SIZE_MIN
+		;部屋の横幅に余裕がある場合
+		BLOCK_INF_INSIDE:2 = CD_BLOCK_INNER_SIZE_MIN + RAND:(BLOCK_INF_OUTSIDE:2 - CD_BLOCK_OUTSIDE_SIZE_MIN)
+	ELSE
+		;その他の場合
+		BLOCK_INF_INSIDE:2 = CD_BLOCK_INNER_SIZE_MIN
+	ENDIF
+
+	;部屋の横幅の余裕　※外幅-内幅を求め、さらに最低でも左右2*2=4マスは最低でも壁に使用するものとして引いた残りを余裕とする。
+	BLOCK_WIDTH_BAFFER = BLOCK_INF_OUTSIDE:2 - BLOCK_INF_INSIDE:2 - CD_BLOCK_WALL_SIZE_MIN
+
+	;部屋の内側の左上端のX座標
+	IF BLOCK_WIDTH_BAFFER > 0
+		;部屋の横幅に余裕がある場合
+		BLOCK_INF_INSIDE:0 = BLOCK_INF_OUTSIDE:0 + 2 + RAND:BLOCK_WIDTH_BAFFER
+	ELSE
+		;その他の場合
+		BLOCK_INF_INSIDE:0 = BLOCK_INF_OUTSIDE:0 + 2
+	ENDIF
+
+	;部屋の内側の縦幅
+	IF BLOCK_INF_OUTSIDE:3 > CD_BLOCK_OUTSIDE_SIZE_MIN
+		;部屋の横幅に余裕がある場合
+		BLOCK_INF_INSIDE:3 = CD_BLOCK_INNER_SIZE_MIN + RAND:(BLOCK_INF_OUTSIDE:3 - CD_BLOCK_OUTSIDE_SIZE_MIN)
+	ELSE
+		;その他の場合
+		BLOCK_INF_INSIDE:3 = CD_BLOCK_INNER_SIZE_MIN
+	ENDIF
+
+	;部屋の横幅の余裕　※外幅-内幅を求め、さらに最低でも左右2*2=4マスは最低でも壁に使用するものとして引いた残りを余裕とする。
+	BLOCK_HEIGHT_BAFFER = BLOCK_INF_OUTSIDE:3 - BLOCK_INF_INSIDE:3 - CD_BLOCK_WALL_SIZE_MIN
+
+	;部屋の内側の左上端のX座標
+	IF BLOCK_HEIGHT_BAFFER > 0
+		;部屋の縦幅に余裕がある場合
+		BLOCK_INF_INSIDE:1 = BLOCK_INF_OUTSIDE:1 + 2 + RAND:BLOCK_HEIGHT_BAFFER
+	ELSE
+		;その他の場合
+		BLOCK_INF_INSIDE:1 = BLOCK_INF_OUTSIDE:1 + 2
+	ENDIF
+
+	;--------------------------------------
+	;作成した部屋データを配列に格納する
+	;--------------------------------------
+	CALL CD_COMMIT_BLOCK, (LOCAL + 1), BLOCK_INF_INSIDE, 1
+
+NEXT
+
+RETURN 1
+
+;マップデータ更新処理
+;※作成済みの部屋データをマップデータに反映する。
+@CD_UPDATE_MAP_DATA
+;-------------
+;変数定義
+;-------------
+#DIM BLOCK_INNER_POINT_X								;部屋の内側の左上端のX座標
+#DIM BLOCK_INNER_POINT_Y								;部屋の内側の左上端のY座標
+#DIM BLOCK_INNER_WIDTH									;部屋の内側の横幅
+#DIM BLOCK_INNER_HEIGHT									;部屋の内側の縦幅
+
+;-------------
+;ここから本処理
+;-------------
+;部屋データ1件ずつループを回してマップデータに反映する
+FOR LOCAL, 0, CD_BLOCK_CNT
+	;----------------------------
+	;部屋のデータを取得する
+	;----------------------------
+	BLOCK_INNER_POINT_X = CD_ARRAY_BLOCK:LOCAL:1:0		;部屋の内側の左上端のX座標
+	BLOCK_INNER_POINT_Y = CD_ARRAY_BLOCK:LOCAL:1:1		;部屋の内側の左上端のY座標
+	BLOCK_INNER_WIDTH = CD_ARRAY_BLOCK:LOCAL:1:2			;部屋の内側の横幅
+	BLOCK_INNER_HEIGHT = CD_ARRAY_BLOCK:LOCAL:1:3			;部屋の内側の縦幅
+
+	;部屋の上から一行ずつループを回して地形を作成
+	FOR CD_POINT_Y, BLOCK_INNER_POINT_Y, (BLOCK_INNER_POINT_Y + BLOCK_INNER_HEIGHT)
+		;部屋の左端から一マスずつループを回して0(壁)→1(侵入可能マス)に変更
+		FOR CD_POINT_X, BLOCK_INNER_POINT_X, (BLOCK_INNER_POINT_X + BLOCK_INNER_WIDTH)
+			CD_FLOOR_LINE_ARG:CD_POINT_Y:CD_POINT_X = 1
+		NEXT
+	NEXT
+NEXT
+
+RETURN 1
+
+
+;オブジェクトの設置　※@の初期位置や階段、出口、ターミナルマスなどの設定
+@CD_SET_OBJECT
+;-------------
+;変数定義
+;-------------
+#DIM BLOCK_NO					;何番目の部屋であるか
+#DIM OBJECT_CNT					;オブジェクト設置数
+#DIM OBJECT_POSITION, 50, 2		;オブジェクトの座標(最大数50,それぞれX座標とY座標)
+#DIM LOOP_CNT_i					;ループ用カウント変数i
+#DIM LOOP_CNT_j					;ループ用カウント変数j
+#DIM POSITION_DOUBLING_FLG		;オブジェクトのポジションが重複しているフラグ(0:重複していない / 1:重複している)
+#DIM LOOP_LIMITER				;無限ループ防止用のカウンター
+#DIM SPECIAL_TILE_CNT			;特殊タイルカウント変数(敵キャラのなど特殊タイルの数をカウントする)
+#DIM FLOOR_ACREAGE				;フロアの平地面積(部屋内部の@が歩けるマスの合計。通路は除外する)
+#DIM MAX_OBJECT_CNT				;オブジェクトを設置できる最大数(基本的にフロアの平地面積と同じだが、最大50とする)
+#DIM MAX_ENEMY_ADD_CNT			;敵シンボルを追加できる最大数
+#DIM ENEMY_ADD_CNT				;敵シンボルを追加する数(モンスターハウスを作成するなど敵を追加する場合に利用する)
+#DIM SPECIAL_BLOCK_ACREAGE		;モンスターハウスなど、特殊な部屋の床面積
+#DIM SYMBOL_TYPE				;シンボルの種類
+
+;-------------
+;変数の初期化
+;-------------
+BLOCK_NO = 0					;何番目の部屋であるか
+OBJECT_CNT = 0					;オブジェクト設置数
+VARSET OBJECT_POSITION			;オブジェクトを設置する座標(最大数50,それぞれX座標とY座標)
+LOOP_CNT_i = 0					;ループ用カウント変数i
+LOOP_CNT_j = 0					;ループ用カウント変数j
+POSITION_DOUBLING_FLG = 0		;オブジェクトのポジションが重複しているフラグ(0:重複していない / 1:重複している)
+LOOP_LIMITER = 0				;無限ループ防止用のカウンター
+SPECIAL_TILE_CNT = 0			;特殊タイルカウント変数(敵キャラのなど特殊タイルの数をカウントする)
+CD_POINT_X = 0					;オブジェクトを配置する座標(暫定・X座標)　※他のオブジェクトと座標が重複していない場合は配列「OBJECT_POSITION」に格納する
+CD_POINT_Y = 0					;オブジェクトを配置する座標(暫定・Y座標)　※他のオブジェクトと座標が重複していない場合は配列「OBJECT_POSITION」に格納する
+FLOOR_ACREAGE = 0				;フロアの平地面積(部屋内部の@が歩けるマスの合計。通路は除外する)
+MAX_OBJECT_CNT = 0				;オブジェクトを設置できる最大数(基本的にフロアの平地面積と同じだが、最大50とする)
+MAX_ENEMY_ADD_CNT = 0			;敵シンボルを追加できる最大数
+ENEMY_ADD_CNT = 0				;敵シンボルを追加する数(モンスターハウスを作成するなど敵を追加する場合に利用する)
+SPECIAL_BLOCK_ACREAGE = 0		;モンスターハウスなど、特殊な部屋の床面積
+SYMBOL_TYPE = 0					;シンボルの種類
+
+;-------------
+;ここから本処理
+;-------------
+;-----------------------------------------------
+;オブジェクトの数が限界を超えないように調整する
+;-----------------------------------------------
+;フロアの平地面積(オブジェクトを置ける最大のマスの数)を取得する
+FLOOR_ACREAGE = CD_CHECK_FLOOR_ACREAGE()
+
+;オブジェクトを設置できる最大数を取得する
+MAX_OBJECT_CNT = MIN(FLOOR_ACREAGE, 50)
+
+;オブジェクトの設置数を確認する
+OBJECT_CNT = 1 + CD_UPPER_STAIRS_FLG + CD_LOWER_STAIRS_FLG + CD_EXIST_FLG + CD_TERMINAL_FLG + CD_EVENT_FLG + CD_TREASURE_FLG + CD_ENEMY_FLG + CD_SPECIAL_ENEMY_FLG + CD_NEUTRAL_CHARA_FLG + CD_SUPPORTER_CHARA_FLG + CD_RESCUE_TARGET_FLG		;@の初期位置は必ず設定するため最初に+1
+
+;オブジェクトの数が50を超える場合、重要度の低いオブジェクトから順に減らしていく
+
+;要救助者(緑色●)を減らす
+IF OBJECT_CNT > MAX_OBJECT_CNT && CD_RESCUE_TARGET_FLG > 0
+	IF CD_RESCUE_TARGET_FLG < OBJECT_CNT - MAX_OBJECT_CNT
+		OBJECT_CNT -= CD_RESCUE_TARGET_FLG						;オブジェクト전체の数を減らす
+		CD_RESCUE_TARGET_FLG = 0								;要救助者の数を減らす
+	ELSE
+		CD_RESCUE_TARGET_FLG -= (OBJECT_CNT - MAX_OBJECT_CNT)	;要救助者の数を減らす
+		OBJECT_CNT = MAX_OBJECT_CNT								;オブジェクト전체の数を減らす
+	ENDIF
+ENDIF
+
+;味方(青色●)を減らす
+IF OBJECT_CNT > MAX_OBJECT_CNT && CD_SUPPORTER_CHARA_FLG > 0
+	IF CD_SUPPORTER_CHARA_FLG < OBJECT_CNT - MAX_OBJECT_CNT
+		OBJECT_CNT -= CD_SUPPORTER_CHARA_FLG					;オブジェクト전체の数を減らす
+		CD_SUPPORTER_CHARA_FLG = 0								;要救助者の数を減らす
+	ELSE
+		CD_SUPPORTER_CHARA_FLG -= (OBJECT_CNT - MAX_OBJECT_CNT)	;要救助者の数を減らす
+		OBJECT_CNT = MAX_OBJECT_CNT								;オブジェクト전체の数を減らす
+	ENDIF
+ENDIF
+
+;中立キャラ(黄色●)を減らす
+IF OBJECT_CNT > MAX_OBJECT_CNT && CD_NEUTRAL_CHARA_FLG > 0
+	IF CD_NEUTRAL_CHARA_FLG < OBJECT_CNT - MAX_OBJECT_CNT
+		OBJECT_CNT -= CD_NEUTRAL_CHARA_FLG						;オブジェクト전체の数を減らす
+		CD_NEUTRAL_CHARA_FLG = 0								;要救助者の数を減らす
+	ELSE
+		CD_NEUTRAL_CHARA_FLG -= (OBJECT_CNT - MAX_OBJECT_CNT)	;要救助者の数を減らす
+		OBJECT_CNT = MAX_OBJECT_CNT								;オブジェクト전체の数を減らす
+	ENDIF
+ENDIF
+
+;特殊な敵(赤色●)を減らす
+IF OBJECT_CNT > MAX_OBJECT_CNT && CD_SPECIAL_ENEMY_FLG > 0
+	IF CD_SPECIAL_ENEMY_FLG < OBJECT_CNT - MAX_OBJECT_CNT
+		OBJECT_CNT -= CD_SPECIAL_ENEMY_FLG						;オブジェクト전체の数を減らす
+		CD_SPECIAL_ENEMY_FLG = 0								;要救助者の数を減らす
+	ELSE
+		CD_SPECIAL_ENEMY_FLG -= (OBJECT_CNT - MAX_OBJECT_CNT)	;要救助者の数を減らす
+		OBJECT_CNT = MAX_OBJECT_CNT								;オブジェクト전체の数を減らす
+	ENDIF
+ENDIF
+
+;敵(オレンジ色●)を減らす
+IF OBJECT_CNT > MAX_OBJECT_CNT && CD_ENEMY_FLG > 0
+	IF CD_ENEMY_FLG < OBJECT_CNT - MAX_OBJECT_CNT
+		OBJECT_CNT -= CD_ENEMY_FLG								;オブジェクト전체の数を減らす
+		CD_ENEMY_FLG = 0										;要救助者の数を減らす
+	ELSE
+		CD_ENEMY_FLG -= (OBJECT_CNT - MAX_OBJECT_CNT)			;要救助者の数を減らす
+		OBJECT_CNT = MAX_OBJECT_CNT								;オブジェクト전체の数を減らす
+	ENDIF
+ENDIF
+
+;宝箱(宝)を減らす
+IF OBJECT_CNT > MAX_OBJECT_CNT && CD_TREASURE_FLG > 0
+	IF CD_TREASURE_FLG < OBJECT_CNT - MAX_OBJECT_CNT
+		OBJECT_CNT -= CD_TREASURE_FLG							;オブジェクト전체の数を減らす
+		CD_TREASURE_FLG = 0										;要救助者の数を減らす
+	ELSE
+		CD_TREASURE_FLG -= (OBJECT_CNT - MAX_OBJECT_CNT)		;要救助者の数を減らす
+		OBJECT_CNT = MAX_OBJECT_CNT								;オブジェクト전체の数を減らす
+	ENDIF
+ENDIF
+
+;---------------------------------------
+;オブジェクトの数だけ座標を先に決定する
+;---------------------------------------
+;オブジェクト設置数の数だけループを回し、位置を決める
+FOR LOOP_CNT_i, 0, OBJECT_CNT
+
+	;他のオブジェクトと座標が重複しなくなるまでWHILEでループを回す
+	LOOP_LIMITER = 0
+	WHILE 1
+
+		;座標重複フラグをクリアする
+		POSITION_DOUBLING_FLG = 0
+
+		;オブジェクトを配置する座標(暫定)を取得する
+		CALL CD_GET_POINT, CD_POINT_X, CD_POINT_Y, 1, 0, -1
+
+		;既に取得済みの座標と重複がないかチェックする
+		FOR LOOP_CNT_j, 0, LOOP_CNT_i + 1
+			IF CD_POINT_X == OBJECT_POSITION:LOOP_CNT_j:0 && CD_POINT_Y == OBJECT_POSITION:LOOP_CNT_j:1
+				;既存のオブジェクト設置座標と重複していた場合
+				POSITION_DOUBLING_FLG = 1
+			ENDIF
+		NEXT
+
+		IF POSITION_DOUBLING_FLG == 0
+			;座標の重複なしの場合
+			OBJECT_POSITION:LOOP_CNT_i:0 = CD_POINT_X
+			OBJECT_POSITION:LOOP_CNT_i:1 = CD_POINT_Y
+			BREAK
+
+		ELSEIF LOOP_LIMITER >= 200
+			;ループ回数が200を超えている場合、無限ループの疑いによりオブジェクト配置を強制終了(狭いマップにオブジェクトを多数設置しようとするなどで発生します。)
+			BREAK
+
+		ENDIF
+
+		;ループ回数を計測
+		LOOP_LIMITER += 1
+
+	WEND
+NEXT
+
+;----------------------------------
+;各種オブジェクトの座標を設定する
+;----------------------------------
+;ループカウンタを0にリセットしたうえで、この先のオブジェクトへの座標割り当てについて『何個目のオブジェクトか』のカウンタに利用する
+LOOP_CNT_i = 0
+LOOP_CNT_j = 0
+
+;@の初期位置を設定する
+FLAG:현X = OBJECT_POSITION:LOOP_CNT_i:0		;X座標
+FLAG:현Y = OBJECT_POSITION:LOOP_CNT_i:1		;Y座標
+LOOP_CNT_i += 1
+
+;登り階段の位置を設定する
+FOR LOOP_CNT_j, 0, CD_UPPER_STAIRS_FLG
+	CD_FLOOR_LINE_ARG:(OBJECT_POSITION:LOOP_CNT_i:1):(OBJECT_POSITION:LOOP_CNT_i:0) = 6
+	LOOP_CNT_i += 1
+NEXT
+
+;降り階段の位置を設定する
+FOR LOOP_CNT_j, 0, CD_LOWER_STAIRS_FLG
+	CD_FLOOR_LINE_ARG:(OBJECT_POSITION:LOOP_CNT_i:1):(OBJECT_POSITION:LOOP_CNT_i:0) = 7
+	LOOP_CNT_i += 1
+NEXT
+
+;出口の位置を設定する
+FOR LOOP_CNT_j, 0, CD_EXIST_FLG
+	CD_FLOOR_LINE_ARG:(OBJECT_POSITION:LOOP_CNT_i:1):(OBJECT_POSITION:LOOP_CNT_i:0) = 8
+	LOOP_CNT_i += 1
+NEXT
+
+;ターミナルの位置を設定する
+FOR LOOP_CNT_j, 0, CD_TERMINAL_FLG
+	CD_FLOOR_LINE_ARG:(OBJECT_POSITION:LOOP_CNT_i:1):(OBJECT_POSITION:LOOP_CNT_i:0) = T
+	LOOP_CNT_i += 1
+NEXT
+
+;イベントマスの位置を設定する
+FOR LOOP_CNT_j, 0, CD_EVENT_FLG
+	CD_FLOOR_LINE_ARG:(OBJECT_POSITION:LOOP_CNT_i:1):(OBJECT_POSITION:LOOP_CNT_i:0) = 4
+	CD_ARRAY_EVENT_POINT:LOOP_CNT_j:0 = OBJECT_POSITION:LOOP_CNT_i:0								;〇個目のイベントマスのX座標　※イベントマスを複数用意する場合に備えてそれぞれの座標を記録しておく。例えば特定の順番で回る必要がある、とかできるように。
+	CD_ARRAY_EVENT_POINT:LOOP_CNT_j:1 = OBJECT_POSITION:LOOP_CNT_i:1								;〇個目のイベントマスのY座標　※イベントマスを複数用意する場合に備えてそれぞれの座標を記録しておく。例えば特定の順番で回る必要がある、とかできるように。
+	LOOP_CNT_i += 1
+NEXT
+
+;宝箱の位置を設定する
+FOR LOOP_CNT_j, 0, CD_TREASURE_FLG
+	CD_FLOOR_LINE_ARG:(OBJECT_POSITION:LOOP_CNT_i:1):(OBJECT_POSITION:LOOP_CNT_i:0) = 3
+	LOOP_CNT_i += 1
+NEXT
+
+
+;--------------------------------------------------------------------
+;ここから先、特殊タイルの配置(敵キャラなど)
+;タイルの種類は床のまま変更せず、座標だけ設定する。
+;	※後に特殊タイルとして『タイルの種類は床のままだが表示だけ変更する』
+;--------------------------------------------------------------------
+SPECIAL_TILE_CNT = 0	;特殊タイルのカウント数を初期化
+;通常の敵(シンボルエンカウント)の位置を設定する
+FOR LOOP_CNT_j, 0, CD_ENEMY_FLG
+	CD_ARRAY_OTHER_CHARA:SPECIAL_TILE_CNT:0 = 1															;種類を「1:通常の敵」に設定する
+	CD_ARRAY_OTHER_CHARA:SPECIAL_TILE_CNT:3 = 2															;基本パターンを「2:@を追う」に設定する
+	CD_ARRAY_OTHER_CHARA:SPECIAL_TILE_CNT:5 = OBJECT_POSITION:LOOP_CNT_i:0								;X座標を設定する
+	CD_ARRAY_OTHER_CHARA:SPECIAL_TILE_CNT:6 = OBJECT_POSITION:LOOP_CNT_i:1								;Y座標を設定する
+	CD_ARRAY_OTHER_CHARA:SPECIAL_TILE_CNT:23 = 1														;遭遇時の処理を「1:戦闘」に設定する
+	IF (RAND:100) + 1 <= 25
+		CD_ARRAY_OTHER_CHARA:SPECIAL_TILE_CNT:4 = 5														;確率で現在の思考を「5:睡眠」に設定する
+	ENDIF
+	SPECIAL_TILE_CNT += 1
+	LOOP_CNT_i += 1
+NEXT
+
+;強敵(シンボルエンカウント)の位置を設定する
+FOR LOOP_CNT_j, 0, CD_SPECIAL_ENEMY_FLG
+	CD_ARRAY_OTHER_CHARA:SPECIAL_TILE_CNT:0 = 2															;種類を「2:強敵」に設定する
+	CD_ARRAY_OTHER_CHARA:SPECIAL_TILE_CNT:3 = 2															;基本パターンを「2:@を追う」に設定する
+	CD_ARRAY_OTHER_CHARA:SPECIAL_TILE_CNT:5 = OBJECT_POSITION:LOOP_CNT_i:0								;X座標を設定する
+	CD_ARRAY_OTHER_CHARA:SPECIAL_TILE_CNT:6 = OBJECT_POSITION:LOOP_CNT_i:1								;Y座標を設定する
+	CD_ARRAY_OTHER_CHARA:SPECIAL_TILE_CNT:23 = 1														;遭遇時の処理を「1:戦闘」に設定する
+	SPECIAL_TILE_CNT += 1
+	LOOP_CNT_i += 1
+NEXT
+
+;中立(商人など)の位置を設定する
+FOR LOOP_CNT_j, 0, CD_NEUTRAL_CHARA_FLG
+	CD_ARRAY_OTHER_CHARA:SPECIAL_TILE_CNT:0 = 3															;種類を「3:中立(商人など)」に設定する
+	CD_ARRAY_OTHER_CHARA:SPECIAL_TILE_CNT:3 = 3															;基本パターンを「3:@から逃げる」に設定する
+	CD_ARRAY_OTHER_CHARA:SPECIAL_TILE_CNT:5 = OBJECT_POSITION:LOOP_CNT_i:0								;X座標を設定する
+	CD_ARRAY_OTHER_CHARA:SPECIAL_TILE_CNT:6 = OBJECT_POSITION:LOOP_CNT_i:1								;Y座標を設定する
+	CD_ARRAY_OTHER_CHARA:SPECIAL_TILE_CNT:23 = 0														;遭遇時の処理を「0:未設定」に設定する
+	SPECIAL_TILE_CNT += 1
+	LOOP_CNT_i += 1
+NEXT
+
+;味方の位置を設定する
+FOR LOOP_CNT_j, 0, CD_SUPPORTER_CHARA_FLG
+	CD_ARRAY_OTHER_CHARA:SPECIAL_TILE_CNT:0 = 4															;種類を「4:味方」に設定する
+	CD_ARRAY_OTHER_CHARA:SPECIAL_TILE_CNT:3 = 4															;基本パターンを「4:さまよう」に設定する
+	CD_ARRAY_OTHER_CHARA:SPECIAL_TILE_CNT:5 = OBJECT_POSITION:LOOP_CNT_i:0								;X座標を設定する
+	CD_ARRAY_OTHER_CHARA:SPECIAL_TILE_CNT:6 = OBJECT_POSITION:LOOP_CNT_i:1								;Y座標を設定する
+	CD_ARRAY_OTHER_CHARA:SPECIAL_TILE_CNT:23 = 0														;遭遇時の処理を「0:未設定」に設定する
+	SPECIAL_TILE_CNT += 1
+	LOOP_CNT_i += 1
+NEXT
+
+;要救助者の位置を設定する
+FOR LOOP_CNT_j, 0, CD_RESCUE_TARGET_FLG
+	CD_ARRAY_OTHER_CHARA:SPECIAL_TILE_CNT:0 = 5															;種類を「5:要救助者」に設定する
+	CD_ARRAY_OTHER_CHARA:SPECIAL_TILE_CNT:3 = 1															;基本パターンを「1:動かない」に設定する
+	CD_ARRAY_OTHER_CHARA:SPECIAL_TILE_CNT:5 = OBJECT_POSITION:LOOP_CNT_i:0								;X座標を設定する
+	CD_ARRAY_OTHER_CHARA:SPECIAL_TILE_CNT:6 = OBJECT_POSITION:LOOP_CNT_i:1								;Y座標を設定する
+	CD_ARRAY_OTHER_CHARA:SPECIAL_TILE_CNT:23 = 0														;遭遇時の処理を「0:未設定」に設定する
+	SPECIAL_TILE_CNT += 1
+	LOOP_CNT_i += 1
+NEXT
+
+;----------------------------------------------
+;モンスターハウス用の追加モンスターを設定する
+;----------------------------------------------
+IF CD_MONSTER_HOUSE_FLG > 0
+	;モンスターハウスを作成する場合
+
+	;部屋ごとにループを回し、モンスターハウスだった場合は処理を行う
+	FOR LOOP_CNT_i, 0, 10
+		IF CD_ARRAY_BLOCK_DETAIL:LOOP_CNT_i:0 == 2
+			;モンスターハウスの場合
+			BLOCK_NO = LOOP_CNT_i	;部屋の番号
+
+			;敵シンボルを追加できる最大数を取得する
+			MAX_ENEMY_ADD_CNT = MAX_OBJECT_CNT - OBJECT_CNT
+
+			IF MAX_ENEMY_ADD_CNT > 0
+				;敵シンボルを追加できる場合
+			
+				;該当の部屋の床面積を取得する
+				SPECIAL_BLOCK_ACREAGE = CD_CHECK_BLOCK_ACREAGE(BLOCK_NO)
+				
+				;追加する敵シンボルの数を設定する
+				ENEMY_ADD_CNT = MIN((SPECIAL_BLOCK_ACREAGE / 2) + RAND:((SPECIAL_BLOCK_ACREAGE + 1) / 3), MAX_ENEMY_ADD_CNT)
+
+				;敵シンボルをモンスターハウスに追加する
+				FOR LOOP_CNT_j, 0, ENEMY_ADD_CNT
+					;オブジェクトを配置する座標を取得する
+					CALL CD_GET_POINT, CD_POINT_X, CD_POINT_Y, 1, 0, BLOCK_NO
+
+					;敵シンボルの詳細情報を設定する
+					CD_ARRAY_OTHER_CHARA:SPECIAL_TILE_CNT:0 = 2															;種類を「2:強敵」に設定する
+					CD_ARRAY_OTHER_CHARA:SPECIAL_TILE_CNT:3 = 2															;基本パターンを「2:@を追う」に設定する
+					CD_ARRAY_OTHER_CHARA:SPECIAL_TILE_CNT:5 = CD_POINT_X												;X座標を設定する
+					CD_ARRAY_OTHER_CHARA:SPECIAL_TILE_CNT:6 = CD_POINT_Y												;Y座標を設定する
+					CD_ARRAY_OTHER_CHARA:SPECIAL_TILE_CNT:23 = 1														;遭遇時の処理を「1:戦闘」に設定する
+					CD_ARRAY_OTHER_CHARA:SPECIAL_TILE_CNT:4 = 5															;現在の思考を「5:睡眠」に設定する
+					SPECIAL_TILE_CNT += 1
+					CD_SPECIAL_ENEMY_FLG += 1
+				NEXT
+
+			ELSE
+				;敵シンボルを追加できない場合
+				CD_ARRAY_BLOCK_DETAIL:BLOCK_NO:0 = 0	;部屋の種類を「0:普通の部屋」に変更する
+
+			ENDIF
+		ENDIF
+	NEXT
+
+	;初期位置がモンスターハウスの場合、現在の思考を「5:睡眠」に設定する
+	FOR LOOP_CNT_i, 0, SPECIAL_TILE_CNT
+		SYMBOL_TYPE = CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:0					;シンボルの種類
+		CD_POINT_X = CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:5					;X座標
+		CD_POINT_Y = CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:6					;Y座標
+		BLOCK_NO = SEF_CHARA_EXIST_BLOCK_NO(CD_POINT_X, CD_POINT_Y,2)	;部屋の番号
+
+		;モンスターハウス内の敵の初期状態を睡眠に設定する
+		IF (SYMBOL_TYPE == 1 || SYMBOL_TYPE == 2) && CD_ARRAY_BLOCK_DETAIL:BLOCK_NO:0 == 2
+			;シンボルの種類が「1:通常の敵」または「2:強敵」かつ、所属している部屋が「2:モンスターハウス」である場合
+			CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:4 = 5						;現在の思考を「5:睡眠」に設定する
+		ENDIF
+	NEXT
+
+ENDIF
+
+
+RETURN 1
+
+
+;マップデータ反映
+@CD_COMMIT_MAP_DATA, DEBUG_FLG
+;-------------
+;変数定義
+;-------------
+;デバッグ中であるか(0:デバッグでない / 1:デバッグである)
+#DIM DEBUG_FLG
+
+;-------------
+;ここから本処理
+;-------------
+;地形データを取り込んで本作成を行う
+FOR CD_POINT_Y, 0, FLAG:최대Y
+	;※変数「CD_FLOOR_LINE」の初期化について、空文字列""を指定したところ後の文字列の結合に""が含まれてしまったため右辺を本当に何も無しで代入する。(正しい書き方なのかは自信ないです...)
+	CD_FLOOR_LINE = 
+	FOR LOCAL, 0, FLAG:최대X
+		CD_FLOOR_LINE '= CD_FLOOR_LINE + CD_FLOOR_LINE_ARG:CD_POINT_Y:LOCAL
+	NEXT
+
+	;地形生成処理を実行する
+	CALL MAKE_FLOOR_LINE, CD_POINT_Y, CD_FLOOR_LINE
+	
+	;デバッグの場合、マップデータを画面に表示する
+	IF DEBUG_FLG == 1
+		PRINTFORML %CD_FLOOR_LINE%
+	ENDIF
+NEXT
+
+RETURN 1
+
+
+;部屋の分割と登録処理　※「CD_BLOCK_ALLOCATION_1」で行うような「元の部屋を2つに分割する」処理の補助に使用する
+@CD_DEVIDE_BLOCK, BLOCK_NO, BLOCK_INF_BEFORE, BLOCK_INF_AFTER_1, BLOCK_INF_AFTER_2, DIVISION_TYPE_2
+;-------------
+;変数定義
+;-------------
+#DIM BLOCK_NO									;何番目の部屋であるか
+#DIM REF BLOCK_INF_BEFORE						;分割前の部屋の情報(左上端のX座標,Y座標,横幅,縦幅)
+#DIM REF BLOCK_INF_AFTER_1						;分割後の部屋1の情報(左上端のX座標,Y座標,横幅,縦幅)
+#DIM REF BLOCK_INF_AFTER_2						;分割後の部屋2の情報(左上端のX座標,Y座標,横幅,縦幅)
+#DIM DIVISION_TYPE_2 = 0						;割った後どちらの部屋番号を若い方とするか(0:上・左を若い方とする / 1:下・右を若い方とする)　※番号が大きい方は再び分割の対象となるため、どちらかを決める必要がある。
+
+;-------------
+;ここから本処理
+;-------------
+IF DIVISION_TYPE_2 == 0
+	;上・左側の部屋を登録する
+	CALL CD_COMMIT_BLOCK, BLOCK_NO, BLOCK_INF_AFTER_1, 0
+
+	;下・右側の部屋を次の「分割前の部屋」としてセットする
+	BLOCK_INF_BEFORE:0 = BLOCK_INF_AFTER_2:0	;部屋の左上のX座標
+	BLOCK_INF_BEFORE:1 = BLOCK_INF_AFTER_2:1	;部屋の左上のY座標
+	BLOCK_INF_BEFORE:2 = BLOCK_INF_AFTER_2:2	;部屋の横幅
+	BLOCK_INF_BEFORE:3 = BLOCK_INF_AFTER_2:3	;部屋の縦幅
+
+	;分割後の部屋の情報をクリアする
+	VARSET BLOCK_INF_AFTER_1
+	VARSET BLOCK_INF_AFTER_2
+ELSE
+	;下・右側の部屋を登録する
+	CALL CD_COMMIT_BLOCK, BLOCK_NO, BLOCK_INF_AFTER_2, 0
+
+	;上・左側の部屋を次の「分割前の部屋」としてセットする
+	BLOCK_INF_BEFORE:0 = BLOCK_INF_AFTER_1:0	;部屋の左上のX座標
+	BLOCK_INF_BEFORE:1 = BLOCK_INF_AFTER_1:1	;部屋の左上のY座標
+	BLOCK_INF_BEFORE:2 = BLOCK_INF_AFTER_1:2	;部屋の横幅
+	BLOCK_INF_BEFORE:3 = BLOCK_INF_AFTER_1:3	;部屋の縦幅
+
+	;分割後の部屋の情報をクリアする
+	VARSET BLOCK_INF_AFTER_1
+	VARSET BLOCK_INF_AFTER_2
+
+ENDIF
+
+RETURN 1
+
+
+
+;部屋登録処理　※「CD_ARRAY_BLOCK」に部屋の情報を登録する
+@CD_COMMIT_BLOCK, BLOCK_NO, BLOCK_INF, INNER_FLG
+;-------------
+;変数定義
+;-------------
+#DIM BLOCK_NO												;何番目の部屋であるか
+#DIM REF BLOCK_INF											;登録する部屋の情報(右上端のX座標,Y座標,横幅,縦幅)
+#DIM INNER_FLG												;部屋の外側/内側のどちらの情報を登録するか(0:外側 / 1:内側)
+
+;-------------
+;ここから本処理
+;-------------
+;配列「CD_ARRAY_BLOCK」に部屋の情報を格納する
+;部屋の設定
+;	第1添字：部屋の番号(部屋は最大10個とする)
+;	第2添字：部屋を外側の壁の部分と内側の侵入可能部分に分ける。(0:外側/1:内側)
+;	第3添字：部屋の位置と大きさを格納する。(1:左上端のX座標 / 2:左上端のY座標 / 3:部屋の横幅 / 4:部屋の縦幅)
+
+CD_ARRAY_BLOCK:(BLOCK_NO - 1):INNER_FLG:0 = BLOCK_INF:0		;X座標
+CD_ARRAY_BLOCK:(BLOCK_NO - 1):INNER_FLG:1 = BLOCK_INF:1		;Y座標
+CD_ARRAY_BLOCK:(BLOCK_NO - 1):INNER_FLG:2 = BLOCK_INF:2		;部屋の横幅
+CD_ARRAY_BLOCK:(BLOCK_NO - 1):INNER_FLG:3 = BLOCK_INF:3		;部屋の縦幅
+
+RETURN 1
+
+;通路設定処理
+@CD_DEFINE_BYPASS, BLOCK_NO_1, BLOCK_NO_2
+;-------------
+;変数定義
+;-------------
+#DIM BLOCK_NO_1							;通路につながる部屋の番号1(番号が若い方)
+#DIM BLOCK_NO_2							;通路につながる部屋の番号2(番号が古い方)
+#DIM BYPASS_NO							;通路の番号
+#DIM POSITIONAL_RELATION				;部屋の位置関係(0:どちらでもない / 1:部屋1が左、部屋2が右 / 2:部屋1が右、部屋2が左 / 3:部屋1が上、部屋2が下 / 4:部屋2が上、部屋1が下)
+#DIM ARG_ENTRANCE_POSITION_1, 2			;部屋1と通路の接点の座標(0:X座標 / 1:Y座標)
+#DIM ARG_ENTRANCE_POSITION_2, 2			;部屋2と通路の接点の座標(0:X座標 / 1:Y座標)
+
+;-------------
+;変数の初期化
+;-------------
+POSITIONAL_RELATION = 0					;部屋の位置関係　※初期状態は(0:どちらでもない)とする。これは二つの部屋が重なっている場合が該当し、通路の作成は不要となる。
+VARSET ARG_ENTRANCE_POSITION_1			;部屋1と通路の接点の座標(0:X座標 / 1:Y座標)
+VARSET ARG_ENTRANCE_POSITION_2			;部屋2と通路の接点の座標(0:X座標 / 1:Y座標)
+
+;-------------
+;ここから本処理
+;-------------
+
+;-----------------------------------------------------------------------------
+;部屋の位置関係チェック(ついでに部屋と通路の接点もここで設定する)
+;-----------------------------------------------------------------------------
+IF (CD_ARRAY_BLOCK:BLOCK_NO_1:0:0 + CD_ARRAY_BLOCK:BLOCK_NO_1:0:2) - 1 < CD_ARRAY_BLOCK:BLOCK_NO_2:0:0
+	;部屋1の右端よりも部屋2の左端の方が右側にある場合
+	POSITIONAL_RELATION = 1																				;部屋の位置関係(1:部屋1が左、部屋2が右)
+	ARG_ENTRANCE_POSITION_1:0 = CD_ARRAY_BLOCK:BLOCK_NO_1:1:0 + CD_ARRAY_BLOCK:BLOCK_NO_1:1:2 - 1			;部屋1と通路の接点のX座標(部屋1の右端)
+	ARG_ENTRANCE_POSITION_1:1 = CD_ARRAY_BLOCK:BLOCK_NO_1:1:1 + RAND:(CD_ARRAY_BLOCK:BLOCK_NO_1:1:3)		;部屋1と通路の接点のY座標(部屋1の上端から下端までのランダム)
+	ARG_ENTRANCE_POSITION_2:0 = CD_ARRAY_BLOCK:BLOCK_NO_2:1:0												;部屋2と通路の接点のX座標(部屋2の左端)
+	ARG_ENTRANCE_POSITION_2:1 = CD_ARRAY_BLOCK:BLOCK_NO_2:1:1 + RAND:(CD_ARRAY_BLOCK:BLOCK_NO_2:1:3)		;部屋2と通路の接点のY座標(部屋2の上端から下端までのランダム)
+
+ELSEIF (CD_ARRAY_BLOCK:BLOCK_NO_2:0:0 + CD_ARRAY_BLOCK:BLOCK_NO_2:0:2) - 1 < CD_ARRAY_BLOCK:BLOCK_NO_1:0:0
+	;部屋2の右端よりも部屋1の左端の方が右側にある場合
+	POSITIONAL_RELATION = 2																				;部屋の位置関係(2:部屋1が右、部屋2が左)
+	ARG_ENTRANCE_POSITION_1:0 = CD_ARRAY_BLOCK:BLOCK_NO_1:1:0												;部屋1と通路の接点のX座標(部屋1の左端)
+	ARG_ENTRANCE_POSITION_1:1 = CD_ARRAY_BLOCK:BLOCK_NO_1:1:1 + RAND:(CD_ARRAY_BLOCK:BLOCK_NO_1:1:3)		;部屋1と通路の接点のY座標(部屋1の上端から下端までのランダム)
+	ARG_ENTRANCE_POSITION_2:0 = CD_ARRAY_BLOCK:BLOCK_NO_2:1:0 + CD_ARRAY_BLOCK:BLOCK_NO_2:1:2 - 1			;部屋2と通路の接点のX座標(部屋2の右端)
+	ARG_ENTRANCE_POSITION_2:1 = CD_ARRAY_BLOCK:BLOCK_NO_2:1:1 + RAND:(CD_ARRAY_BLOCK:BLOCK_NO_2:1:3)		;部屋2と通路の接点のY座標(部屋2の上端から下端までのランダム)
+
+ELSEIF (CD_ARRAY_BLOCK:BLOCK_NO_1:0:1 + CD_ARRAY_BLOCK:BLOCK_NO_1:0:3) - 1 < CD_ARRAY_BLOCK:BLOCK_NO_2:0:1
+	;部屋1の下端よりも部屋2の上端の方が下側にある場合
+	POSITIONAL_RELATION = 3																				;部屋の位置関係(3:部屋1が上、部屋2が下)
+	ARG_ENTRANCE_POSITION_1:0 = CD_ARRAY_BLOCK:BLOCK_NO_1:1:0 + RAND:(CD_ARRAY_BLOCK:BLOCK_NO_1:1:2)		;部屋1と通路の接点のX座標(部屋1の左端から右端までのランダム)
+	ARG_ENTRANCE_POSITION_1:1 = CD_ARRAY_BLOCK:BLOCK_NO_1:1:1 + CD_ARRAY_BLOCK:BLOCK_NO_1:1:3 - 1			;部屋1と通路の接点のY座標(部屋1の下端)
+	ARG_ENTRANCE_POSITION_2:0 = CD_ARRAY_BLOCK:BLOCK_NO_2:1:0 + RAND:(CD_ARRAY_BLOCK:BLOCK_NO_2:1:2)		;部屋2と通路の接点のX座標(部屋2の左端から右端までのランダム)
+	ARG_ENTRANCE_POSITION_2:1 = CD_ARRAY_BLOCK:BLOCK_NO_2:1:1												;部屋2と通路の接点のY座標(部屋2の上端)
+
+ELSEIF (CD_ARRAY_BLOCK:BLOCK_NO_2:0:1 + CD_ARRAY_BLOCK:BLOCK_NO_2:0:3) - 1 < CD_ARRAY_BLOCK:BLOCK_NO_1:0:1
+	;部屋2の下端よりも部屋1の上端の方が下側にある場合
+	POSITIONAL_RELATION = 4																				;部屋の位置関係(4:部屋2が上、部屋1が下)
+	ARG_ENTRANCE_POSITION_1:0 = CD_ARRAY_BLOCK:BLOCK_NO_1:1:0 + RAND:(CD_ARRAY_BLOCK:BLOCK_NO_1:1:2)		;部屋1と通路の接点のX座標(部屋1の左端から右端までのランダム)
+	ARG_ENTRANCE_POSITION_1:1 = CD_ARRAY_BLOCK:BLOCK_NO_1:1:1												;部屋1と通路の接点のY座標(部屋1の上端)
+	ARG_ENTRANCE_POSITION_2:0 = CD_ARRAY_BLOCK:BLOCK_NO_2:1:0 + RAND:(CD_ARRAY_BLOCK:BLOCK_NO_2:1:2)		;部屋2と通路の接点のX座標(部屋2の左端から右端までのランダム)
+	ARG_ENTRANCE_POSITION_2:1 = CD_ARRAY_BLOCK:BLOCK_NO_2:1:1 + CD_ARRAY_BLOCK:BLOCK_NO_2:1:3 - 1			;部屋2と通路の接点のY座標(部屋2の下端)
+
+ELSE
+	;部屋1と部屋2が重なっている場合
+	;※通路を作製しないため部屋と通路の接点の座標は設定しない。
+	POSITIONAL_RELATION = 0																				;部屋の位置関係(0:どちらでもない)
+ENDIF
+
+;-----------------------------------------------------------------------------
+;取得した「部屋の位置関係」「部屋と通路の接点の座標」を格納する。
+;-----------------------------------------------------------------------------
+CD_ARRAY_DUNGEON_BYPASS:CD_BYPASS_CNT:0 = BLOCK_NO_1														;0:通路とつながる部屋の番号(若い方)
+CD_ARRAY_DUNGEON_BYPASS:CD_BYPASS_CNT:1 = BLOCK_NO_2														;1:通路とつながる部屋の番号(古い方)
+CD_ARRAY_DUNGEON_BYPASS:CD_BYPASS_CNT:2 = POSITIONAL_RELATION												;2:部屋1と部屋2の位置関係
+CD_ARRAY_DUNGEON_BYPASS:CD_BYPASS_CNT:3 = ARG_ENTRANCE_POSITION_1:0										;3:部屋1と通路の接点のX座標
+CD_ARRAY_DUNGEON_BYPASS:CD_BYPASS_CNT:4 = ARG_ENTRANCE_POSITION_1:1										;4:部屋1と通路の接点のY座標
+CD_ARRAY_DUNGEON_BYPASS:CD_BYPASS_CNT:5 = ARG_ENTRANCE_POSITION_2:0										;5:部屋2と通路の接点のX座標
+CD_ARRAY_DUNGEON_BYPASS:CD_BYPASS_CNT:6 = ARG_ENTRANCE_POSITION_2:1										;6:部屋2と通路の接点のY座標
+
+;作成する通路の総数をカウントする
+CD_BYPASS_CNT += 1
+
+RETURN 1
+
+
+;設定された通路をマップに反映する処理
+@CD_CREATE_BYPASS
+;※部屋から部屋への通路は部屋1→部屋2の通路は右、上、右のように最大二度曲がる。
+;　したがって、通路作成処理もまた右、上、右の3回通路を作成することで전체で部屋1→部屋2への1本の通路を作成する
+;　曲がらない場合も同様の処理を行い、同じ方向の3本の通路をつなげて1本の通路とする。(上記の例の場合は中間の上向きの通路が長さ0マスとなる。)
+
+;-------------
+;変数定義
+;-------------
+#DIM DIRECTION, 3			;通路の方向(0:上 / 1:右 / 2:下 / 3:左)　※部屋1→部屋2の通路は右、上、右のように最大二度曲がる想定のため方向を3つ用意する
+#DIM DISTANCE, 3			;通路の距離※方向と同様に距離も3つ用意する
+#DIM DIRECTION_DETAIL_X		;通路の両端のX座標の差　※部屋2側出口のX座標 - 部屋1側出口のX座標
+#DIM DIRECTION_DETAIL_Y		;通路の両端のY座標の差　※部屋2側出口のY座標 - 部屋1側出口のY座標
+#DIM START_POINT, 3, 2		;3本のミニ通路の出発点のX座標とY座標　※実際は一直線の通路であっても曲がっていると仮定して処理を行う
+#DIM LOOP_CNT_i				;ループ用カウンタ変数i
+#DIM LOOP_CNT_j				;ループ用カウンタ変数j
+
+;-------------
+;変数の初期化
+;-------------
+VARSET DIRECTION			;通路の方向(0:上 / 1:右 / 2:下 / 3:左)
+VARSET DISTANCE				;通路の距離
+DIRECTION_DETAIL_X = 0		;通路の両端のX座標の差
+DIRECTION_DETAIL_Y = 0		;通路の両端のY座標の差
+VARSET START_POINT			;通路が曲がる2つのポイントそれぞれのX座標とY座標
+LOOP_CNT_i = 0				;ループ用カウンタ変数i
+LOOP_CNT_j = 0				;ループ用カウンタ変数j
+
+;-------------
+;ここから本処理
+;-------------
+;設定されている通路1本ずつループを回してマップへの反映を行う
+FOR LOOP_CNT_i, 0, CD_BYPASS_CNT
+	IF CD_ARRAY_DUNGEON_BYPASS:LOOP_CNT_i:2 != 0
+		;部屋の位置関係が(0:どちらでもない)以外の場合のみ通路を作成する
+		;※(0:どちらでもない)の場合は部屋が重なってしまっているため通路が不要
+
+		;----------------------------------
+		;通路の始点・方向・距離を確認する
+		;----------------------------------
+		;通路の両端の座標差を取得する
+		DIRECTION_DETAIL_X = CD_ARRAY_DUNGEON_BYPASS:LOOP_CNT_i:5 - CD_ARRAY_DUNGEON_BYPASS:LOOP_CNT_i:3		;通路の両端のX座標の差
+		DIRECTION_DETAIL_Y = CD_ARRAY_DUNGEON_BYPASS:LOOP_CNT_i:6 - CD_ARRAY_DUNGEON_BYPASS:LOOP_CNT_i:4		;通路の両端のY座標の差
+
+		;出発点の座標を取得する
+		START_POINT:0:0 = CD_ARRAY_DUNGEON_BYPASS:LOOP_CNT_i:3		;出発点のX座標
+		START_POINT:0:1 = CD_ARRAY_DUNGEON_BYPASS:LOOP_CNT_i:4		;出発点のY座標
+
+		;通路とつながる部屋1、部屋2の位置関係に応じて分岐する
+		SELECTCASE CD_ARRAY_DUNGEON_BYPASS:LOOP_CNT_i:2
+			;1:部屋1が左、部屋2が右の場合
+			CASE 1
+				;出発～1番目のカーブまで
+				DIRECTION:0 = 1																																				;1番目の方向:右
+				DISTANCE:0 = (CD_ARRAY_BLOCK:(CD_ARRAY_DUNGEON_BYPASS:LOOP_CNT_i:0):0:0) + (CD_ARRAY_BLOCK:(CD_ARRAY_DUNGEON_BYPASS:LOOP_CNT_i:0):0:2) - (CD_ARRAY_DUNGEON_BYPASS:LOOP_CNT_i:3)		;1番目の距離：部屋1と通路の接点から部屋の右端まで
+				START_POINT:1:0 = START_POINT:0:0 + DISTANCE:0																												;ミニ通路の出発点1のX座標
+				START_POINT:1:1 = START_POINT:0:1																															;ミニ通路の出発点1のY座標
+
+				;1番目のカーブ～2番目のカーブまで
+				IF DIRECTION_DETAIL_Y > 0
+					;Y方向(画面下)の場合
+					DIRECTION:1 = 2																																			;2番目の方向:下
+					DISTANCE:1 = DIRECTION_DETAIL_Y																															;2番目の距離：部屋1から部屋2までのY座標の差
+					START_POINT:2:0 = START_POINT:1:0																														;ミニ通路の出発点2のX座標
+					START_POINT:2:1 = START_POINT:1:1 + DISTANCE:1																											;ミニ通路の出発点2のY座標
+				ELSE
+					;その他の場合　※Y軸マイナス方向(画面上)またはY軸方向に進まない場合
+					DIRECTION:1 = 0																																			;2番目の方向:上
+					DISTANCE:1 = DIRECTION_DETAIL_Y * -1																													;2番目の距離：部屋1から部屋2までのY座標の差(距離なのでマイナスをプラスに直す)
+					START_POINT:2:0 = START_POINT:1:0																														;ミニ通路の出発点2のX座標
+					START_POINT:2:1 = START_POINT:1:1 - DISTANCE:1																											;ミニ通路の出発点2のY座標
+				ENDIF
+
+				;2番目のカーブ～終点まで
+				DIRECTION:2 = DIRECTION:0																																	;3番目の方向:1番目と同じ
+				DISTANCE:2 = (CD_ARRAY_DUNGEON_BYPASS:LOOP_CNT_i:5) -  START_POINT:2:0																						;3番目の距離：ミニ通路の出発点2から通路の終点まで
+
+
+			;2:部屋1が右、部屋2が左の場合
+			CASE 2
+				;出発～1番目のカーブまで
+				DIRECTION:0 = 3																																				;1番目の方向:左
+				DISTANCE:0 = (CD_ARRAY_DUNGEON_BYPASS:LOOP_CNT_i:3) - (CD_ARRAY_BLOCK:(CD_ARRAY_DUNGEON_BYPASS:LOOP_CNT_i:0):0:0)													;1番目の距離：部屋1と通路の接点から部屋の左端まで
+				START_POINT:1:0 = START_POINT:0:0 - DISTANCE:0																												;ミニ通路の出発点1のX座標
+				START_POINT:1:1 = START_POINT:0:1																															;ミニ通路の出発点1のY座標
+
+				IF DIRECTION_DETAIL_Y > 0
+					;Y方向(画面下)の場合
+					DIRECTION:1 = 2																																			;2番目の方向:下
+					DISTANCE:1 = DIRECTION_DETAIL_Y																															;2番目の距離：部屋1から部屋2までのY座標の差
+					START_POINT:2:0 = START_POINT:1:0																														;ミニ通路の出発点2のX座標
+					START_POINT:2:1 = START_POINT:1:1 + DISTANCE:1																											;ミニ通路の出発点2のY座標
+				ELSE
+					;その他の場合　※Y軸マイナス方向(画面上)またはY軸方向に進まない場合
+					DIRECTION:1 = 0																																			;2番目の方向:上
+					DISTANCE:1 = DIRECTION_DETAIL_Y * -1																													;2番目の距離：部屋1から部屋2までのY座標の差(距離なのでマイナスをプラスに直す)
+					START_POINT:2:0 = START_POINT:1:0																														;ミニ通路の出発点2のX座標
+					START_POINT:2:1 = START_POINT:1:1 - DISTANCE:1																											;ミニ通路の出発点2のY座標
+				ENDIF
+
+				;2番目のカーブ～終点まで
+				DIRECTION:2 = DIRECTION:0																																	;3番目の方向:1番目と同じ
+				DISTANCE:2 = START_POINT:2:0 - (CD_ARRAY_DUNGEON_BYPASS:LOOP_CNT_i:5)  																						;3番目の距離：ミニ通路の出発点2から通路の終点まで
+
+			;3:部屋1が上、部屋2が下の場合
+			CASE 3
+				;出発～1番目のカーブまで
+				DIRECTION:0 = 2																																				;1番目の方向:下
+				DISTANCE:0 = (CD_ARRAY_BLOCK:(CD_ARRAY_DUNGEON_BYPASS:LOOP_CNT_i:0):0:1) + (CD_ARRAY_BLOCK:(CD_ARRAY_DUNGEON_BYPASS:LOOP_CNT_i:0):0:3) - (CD_ARRAY_DUNGEON_BYPASS:LOOP_CNT_i:4)		;1番目の距離：部屋1と通路の接点から部屋の下端まで
+				START_POINT:1:0 = START_POINT:0:0																															;ミニ通路の出発点1のX座標
+				START_POINT:1:1 = START_POINT:0:1 + DISTANCE:0																												;ミニ通路の出発点1のY座標
+
+				;1番目のカーブ～2番目のカーブまで
+				IF DIRECTION_DETAIL_X > 0
+					;X方向(画面右)の場合
+					DIRECTION:1 = 1																																			;2番目の方向:右
+					DISTANCE:1 = DIRECTION_DETAIL_X																															;2番目の距離：部屋1から部屋2までのX座標の差
+					START_POINT:2:0 = START_POINT:1:0 + DISTANCE:1																											;ミニ通路の出発点2のX座標
+					START_POINT:2:1 = START_POINT:1:1																														;ミニ通路の出発点2のY座標
+				ELSE
+					;その他の場合　※X軸マイナス方向(画面左)またはX軸方向に進まない場合
+					DIRECTION:1 = 3																																			;2番目の方向:左
+					DISTANCE:1 = DIRECTION_DETAIL_X * -1																													;2番目の距離：部屋1から部屋2までのX座標の差(距離なのでマイナスをプラスに直す)
+					START_POINT:2:0 = START_POINT:1:0 - DISTANCE:1																											;ミニ通路の出発点2のX座標
+					START_POINT:2:1 = START_POINT:1:1																														;ミニ通路の出発点2のY座標
+				ENDIF
+
+				;2番目のカーブ～終点まで
+				DIRECTION:2 = DIRECTION:0																																	;3番目の方向:1番目と同じ
+				DISTANCE:2 = (CD_ARRAY_DUNGEON_BYPASS:LOOP_CNT_i:6) -  START_POINT:2:1																						;3番目の距離：ミニ通路の出発点2から通路の終点まで
+
+			;4:部屋2が上、部屋1が下
+			CASE 4
+				;出発～1番目のカーブまで
+				DIRECTION:0 = 0																																				;1番目の方向:上
+				DISTANCE:0 = (CD_ARRAY_DUNGEON_BYPASS:LOOP_CNT_i:4) - (CD_ARRAY_BLOCK:(CD_ARRAY_DUNGEON_BYPASS:LOOP_CNT_i:0):0:1)													;1番目の距離：部屋1と通路の接点から部屋の上端まで
+				START_POINT:1:0 = START_POINT:0:0																															;ミニ通路の出発点1のX座標
+				START_POINT:1:1 = START_POINT:0:1 - DISTANCE:0																												;ミニ通路の出発点1のY座標
+
+				;1番目のカーブ～2番目のカーブまで
+				IF DIRECTION_DETAIL_X > 0
+					;X方向(画面右)の場合
+					DIRECTION:1 = 1																																			;2番目の方向:右
+					DISTANCE:1 = DIRECTION_DETAIL_X																															;2番目の距離：部屋1から部屋2までのX座標の差
+					START_POINT:2:0 = START_POINT:1:0 + DISTANCE:1																											;ミニ通路の出発点2のX座標
+					START_POINT:2:1 = START_POINT:1:1																														;ミニ通路の出発点2のY座標
+				ELSE
+					;その他の場合　※X軸マイナス方向(画面左)またはX軸方向に進まない場合
+					DIRECTION:1 = 3																																			;2番目の方向:左
+					DISTANCE:1 = DIRECTION_DETAIL_X * -1																													;2番目の距離：部屋1から部屋2までのX座標の差(距離なのでマイナスをプラスに直す)
+					START_POINT:2:0 = START_POINT:1:0 - DISTANCE:1																											;ミニ通路の出発点2のX座標
+					START_POINT:2:1 = START_POINT:1:1																														;ミニ通路の出発点2のY座標
+				ENDIF
+
+				;2番目のカーブ～終点まで
+				DIRECTION:2 = DIRECTION:0																																	;3番目の方向:1番目と同じ
+				DISTANCE:2 = START_POINT:2:1 - (CD_ARRAY_DUNGEON_BYPASS:LOOP_CNT_i:6)																							;3番目の距離：ミニ通路の出発点2から通路の終点まで
+
+		ENDSELECT
+
+		;----------------------------------
+		;通路の情報をMAPデータに反映する
+		;----------------------------------
+		FOR LOOP_CNT_j, 0, 3
+			CALL CD_MAKE_LINE, START_POINT:LOOP_CNT_j:0, START_POINT:LOOP_CNT_j:1, DIRECTION:LOOP_CNT_j, DISTANCE:LOOP_CNT_j
+		NEXT
+
+	ENDIF
+NEXT
+
+RETURN 1
+
+
+;設定された始点から指定の方向へ指定の距離だけ直線通路を作成する処理
+;※通路設置用に作成したけれど他にもいろいろ便利なはず？
+@CD_MAKE_LINE, POSITION_X, POSITION_Y, DIRECTION, DISTANCE
+;-------------
+;変数定義
+;-------------
+#DIM POSITION_X			;始点のX座標
+#DIM POSITION_Y			;始点のY座標
+#DIM DIRECTION			;方向(0:上 / 1:右 / 2:下 / 3:左)
+#DIM DISTANCE			;距離
+
+;-------------
+;変数の初期化
+;-------------
+CD_POINT_X = POSITION_X	;現在作成中のマスのX座標
+CD_POINT_Y = POSITION_Y	;現在作成中のマスのY座標
+
+;-------------
+;ここから本処理
+;-------------
+;始点の座標を侵入可能マスにする
+CD_FLOOR_LINE_ARG:CD_POINT_Y:CD_POINT_X = 1
+
+FOR LOCAL, 0, DISTANCE
+	;指定された距離の回数分ループを回して1マスずつマップに反映していく。
+
+	;指定された方向に座標を一つずらす
+	SELECTCASE DIRECTION
+		CASE 0
+			;上方向の場合
+			CD_POINT_Y -= 1
+
+		CASE 1
+			;右方向の場合
+			CD_POINT_X += 1
+
+		CASE 2
+			;下方向の場合
+			CD_POINT_Y += 1
+
+		CASEELSE
+			;その他の場合(左方向)
+			CD_POINT_X -= 1
+
+	ENDSELECT
+
+	;該当のマスを侵入可能マスにする
+	CD_FLOOR_LINE_ARG:CD_POINT_Y:CD_POINT_X = 1
+NEXT
+
+RETURN 1
+
+
+;不思議な던전の各種パラメータをリセットする処理
+;던전のERB側にて、不思議な던전作成の関数を呼び出す前に実行する想定です。
+@CD_CLEAR_PARAMETERS
+;------------------------
+;グローバルな変数の初期化
+;------------------------
+VARSET CD_FLOOR_LINE_ARG			;マップデータを格納する配列
+CD_FLOOR_LINE = ""					;マップの横一行を文字列(例：10001)に変換したものを格納する変数。　※上記の配列「CD_FLOOR_LINE_ARG」を文字列に直したものをここに入れる。
+CD_POINT_X = 0						;現在作成中のマスのX座標
+CD_POINT_Y = 0						;現在作成中のマスのY座標
+CD_BLOCK_CNT = 0					;作成する部屋の総数
+CD_BYPASS_CNT = 0					;作成する通路の総数
+VARSET CD_ARRAY_BLOCK				;部屋の設定
+VARSET CD_ARRAY_BLOCK_DETAIL		;部屋の特殊設定
+VARSET CD_ARRAY_DUNGEON_BYPASS		;通路の設定
+VARSET CD_ARRAY_EVENT_POINT			;イベントマスの設定
+CD_DEVIL_VARIETY_CNT = 0			;出現する悪魔が何種類であるか
+VARSET CD_DEVIL_LIST				;出現する悪魔のCSV番号を格納する変数(最大で500種類を想定)
+VARSET CD_ARRAY_DEVIL_CATEGORY		;出現する悪魔の種族を格納する(0:出現しない / 1:出現する)
+VARSET CD_ARRAY_OTHER_CHARA			;マップ上に存在する@以外のキャラクタ情報(最大50体)
+VARSET CD_MONSTER_HOUSE_FLG			;던전内の経過時間・経過ターンのカウント
+
+;登り階段、下り階段、出口などのオブジェクトフラグ(0:作成しない / 1以上:その数だけ作成する)
+CD_UPPER_STAIRS_FLG = 0				;登り階段(登)
+CD_LOWER_STAIRS_FLG = 0				;降り階段(降)
+CD_EXIST_FLG = 0					;出口(出)
+CD_TERMINAL_FLG = 0					;ターミナル(Ｔ)
+CD_EVENT_FLG = 0					;イベントマス(！)
+CD_TREASURE_FLG = 0					;宝箱(宝)
+CD_ENEMY_FLG = 0					;敵(オレンジ色●)
+CD_SPECIAL_ENEMY_FLG = 0			;特殊な敵(赤色●)　※F.O.E！F.O.E！
+CD_NEUTRAL_CHARA_FLG = 0			;中立キャラ(黄色●)
+CD_SUPPORTER_CHARA_FLG = 0			;味方(青色●)
+CD_RESCUE_TARGET_FLG = 0			;要救助者(緑色●)
+CD_MONSTER_HOUSE_FLG = 0			;モンスターハウス発生フラグ
+
+RETURN 1
+
+
+;-----------------------------------------------------------------------------
+;フロア内の平地面積を返す関数
+;	※通路は除外し、各部屋の内側(@が歩けるマス)の合計を取得する
+;-----------------------------------------------------------------------------
+;返り値
+;	ACREAGE		:フロア内の平地面積
+;-----------------------------------------------------------------------------
+@CD_CHECK_FLOOR_ACREAGE
+#FUNCTION
+#LOCALSIZE  1
+#LOCALSSIZE 1
+;-------------
+;変数定義
+;-------------
+#DIM LOOP_CNT_i				;ループ用カウント変数　※処理が長くて複雑なので、グローバル変数LOCALは使いたくない
+#DIM ACREAGE				;フロア内の平地面積
+
+;-------------
+;変数の初期化
+;-------------
+LOOP_CNT_i = 0				;ループ用カウント変数
+ACREAGE = 0					;フロア内の平地面積
+
+;-------------
+;ここから本処理
+;-------------
+;部屋の数だけループを回して面積の計算を行う
+FOR LOOP_CNT_i, 0, CD_BLOCK_CNT
+	;フロア面積に[現在の部屋の面積]を加算する
+	ACREAGE += CD_CHECK_BLOCK_ACREAGE(LOOP_CNT_i)
+NEXT
+
+;フロア内の平地面積を返す
+RETURNF ACREAGE
+
+
+;-----------------------------------------------------------------------------
+;指定された部屋の平地面積を返す関数
+;	※部屋の外壁は除外し、内側(@が歩けるマス)の合計を取得する
+;-----------------------------------------------------------------------------
+;返り値
+;	ACREAGE		:部屋内の平地面積
+;-----------------------------------------------------------------------------
+@CD_CHECK_BLOCK_ACREAGE, BLOCK_NO
+#FUNCTION
+#LOCALSIZE  1
+#LOCALSSIZE 1
+;-------------
+;変数定義
+;-------------
+#DIM BLOCK_NO				;部屋の番号
+#DIM ACREAGE				;部屋内の平地面積
+
+;-------------
+;変数の初期化
+;-------------
+ACREAGE = 0					;部屋内の平地面積
+
+;-------------
+;ここから本処理
+;-------------
+;[部屋の横幅] * [部屋の縦幅]で部屋の床面積を算出する
+ACREAGE = CD_ARRAY_BLOCK:BLOCK_NO:1:2 * CD_ARRAY_BLOCK:BLOCK_NO:1:3
+
+;フロア内の平地面積を返す
+RETURNF ACREAGE
+
+
+;-----------------------------------------------------------------------------
+;特殊部屋の作成(お店、モンスターハウスなど)
+;-----------------------------------------------------------------------------
+@CD_CREATE_SPECIAL_BLOCK
+;-------------
+;変数定義
+;-------------
+#DIM ACREAGE						;部屋内の平地面積
+#DIM BLOCK_NO						;部屋の番号
+#DIM BLOCK_CNT						;条件を満たす部屋の数	※床の数が16マス以上存在する場合のみモンスターハウスになりうる、等の条件を設定するため。
+#DIM BLOCK_LIST, 10, 2				;条件を満たす部屋のリスト(第1添え字：最大10この部屋候補 / 第2添え字：該当する部屋の詳細(部屋番号・床面積))	
+#DIM LOOP_CNT_i						;ループ用カウンタ変数i
+#DIM RANDOM_NO						;乱数(どの部屋をモンスターハウスなどに設定するか考える際に使用する)
+
+;-------------
+;変数の初期化
+;-------------
+ACREAGE = 0							;部屋内の平地面積
+BLOCK_NO = 0						;部屋の番号
+BLOCK_CNT = 0						;条件を満たす部屋の数	※床の数が16マス以上存在する場合のみモンスターハウスになりうる、等の条件を設定するため。
+VARSET BLOCK_LIST					;部屋のリスト(第1添え字：部屋の番号 / 第2添え字：部屋の総床面積、開いている床面積)	※例として部屋の総床面積が10マスの場合、、階段が一つと敵シンボルが二つ存在する場合、開いている床面積は(10-3=7)マスとなる。
+LOOP_CNT_i = 0						;ループ用カウンタ変数i
+RANDOM_NO = 0						;乱数(どの部屋をモンスターハウスなどに設定するか考える際に使用する)
+
+;-------------
+;ここから本処理
+;-------------
+
+;----------------------------
+;モンスターハウスを作成する
+;----------------------------
+IF CD_MONSTER_HOUSE_FLG > 0
+	;モンスターハウスに設定可能な条件を満たす部屋を取得する(床面積16マス以上)
+	FOR LOOP_CNT_i, 0, CD_BLOCK_CNT
+		ACREAGE = CD_CHECK_BLOCK_ACREAGE(LOOP_CNT_i)
+		IF ACREAGE >= 16
+			;該当の部屋の床面積が16以上である場合、モンスターハウスの候補とする
+			BLOCK_LIST:BLOCK_CNT:0 = LOOP_CNT_i			;部屋番号を登録する
+			BLOCK_LIST:BLOCK_CNT:1 = ACREAGE			;部屋の床面積を登録する
+			BLOCK_CNT += 1								;モンスターハウス候補の部屋の数を+1する
+		ENDIF
+	NEXT
+
+	;作成するモンスターハウスの数を決定する
+	CD_MONSTER_HOUSE_FLG = MIN(CD_MONSTER_HOUSE_FLG, BLOCK_CNT)
+
+	;モンスターハウスにする部屋番号(1つ目)を乱数で設定する	※2つ目以降は、1つ目のモンスターハウスの次の部屋番号とする。例として部屋番号3を1つ目のモンスターハウスにするなら、2つ目、3つ目はそれぞれ部屋番号4,5,...となる。
+	RANDOM_NO = BLOCK_CNT
+
+	;FORループを回し、順番にモンスターハウスを作成していく
+	FOR LOOP_CNT_i, 0, CD_MONSTER_HOUSE_FLG
+		;モンスターハウスにする部屋の番号を決定する
+		BLOCK_NO = RANDOM_NO + LOOP_CNT_i
+		IF BLOCK_NO > CD_MONSTER_HOUSE_FLG
+			BLOCK_NO -= CD_MONSTER_HOUSE_FLG
+		ENDIF
+
+		;モンスターハウスを設定する
+		CD_ARRAY_BLOCK_DETAIL:(BLOCK_LIST:BLOCK_NO:0):0 = 2		;部屋の種類を「2:モンスターハウス」に設定する
+	NEXT
+ENDIF
+
+RETURN 1
+
+
+;-----------------------------------------------------------------------------
+;経過時間・経過ターン数のカウント処理
+;-----------------------------------------------------------------------------
+@CD_COUNT_TIME_AND_TURN
+;-------------
+;変数定義
+;-------------
+#DIM CURRENT_TIME					;現在時刻
+#DIM PRE_TIME						;前回カウント時の時刻
+#DIM ELAPSED_TIME					;前回カウント時からの経過時間(ミリ秒)
+
+;-------------
+;変数の初期化
+;-------------
+CURRENT_TIME = 0					;現在時刻
+PRE_TIME = 0						;前回カウント時の時刻
+ELAPSED_TIME = 0					;前回カウント時からの経過時間(ミリ秒)
+
+
+;-------------
+;ここから本処理
+;-------------
+;階層が変わった場合のリセット処理
+;※本来は階段などでフロア移動時に処理を挟むが、想定外のフロア移動などで抜けてしまっている場合はここでフォローする
+IF CD_TIME_AND_TURN:1 != FLAG:현M
+	;前回のカウント時と現在の階層が異なる場合
+	CALL CD_CREAR_TIME_AND_TURN, 2	;現在フロアの経過時間・経過ターン数をクリア
+ENDIF
+
+;現在時刻を取得する
+GETMILLISECOND
+CURRENT_TIME = RESULT
+
+;「前回カウント時の時刻」「プレイ開始時間」の内、大きい方を「前回カウント時の時刻」とする。	※던전内セーブ&ロードを行った場合が該当します。
+CD_TIME_AND_TURN:0 = MAX(CD_TIME_AND_TURN:0, FLAG:플레이개시시간)
+
+;前回計測時からの経過時間を取得する
+PRE_TIME = CD_TIME_AND_TURN:0					;前回カウント時の時刻
+ELAPSED_TIME = CURRENT_TIME - PRE_TIME			;前回計測時からの経過時間(現在時刻 - 前回カウント時の時刻)
+
+;経過時間のカウント
+CD_TIME_AND_TURN:2 += ELAPSED_TIME				;던전開始からの経過時間
+CD_TIME_AND_TURN:3 += ELAPSED_TIME				;現在フロア突入からの経過時間
+
+;経過ターン数のカウント
+CD_TIME_AND_TURN:4 += 1
+CD_TIME_AND_TURN:5 += 1
+
+;「前回カウント時の時刻」に現在時刻を登録する
+CD_TIME_AND_TURN:0 = CURRENT_TIME
+
+RETURN 1
+
+
+;-----------------------------------------------------------------------------
+;経過時間・経過ターン数のクリア処理
+;-----------------------------------------------------------------------------
+;引数
+;	CREAR_TYPE:どのパターンで経過時間・経過ターン数をクリアするか
+;		0:던전突入時(全てのカウントをクリアする)
+;		1:階段などで階層移動時(現在フロアの経過時間・経過ターン数をクリア)
+;-----------------------------------------------------------------------------
+@CD_CREAR_TIME_AND_TURN, CREAR_TYPE
+;-------------
+;変数定義
+;-------------
+#DIM CREAR_TYPE						;どのパターンで経過時間・経過ターン数をクリアするか(0:던전突入時 / 1:階段などで階層移動時)
+#DIM CURRENT_TIME					;現在時刻
+
+;-------------
+;変数の初期化
+;-------------
+CURRENT_TIME = 0					;現在時刻
+
+;-------------
+;ここから本処理
+;-------------
+;現在時刻を取得する
+GETMILLISECOND
+CURRENT_TIME = RESULT
+
+IF CREAR_TYPE == 0
+	;던전脱出時などの場合(全てをクリアする)
+	CD_TIME_AND_TURN:0	= 0					;前回カウント時の時刻
+	CD_TIME_AND_TURN:1	= 0					;前回カウント時の階層
+	CD_TIME_AND_TURN:2	= 0					;던전開始からの経過時間	※単位：ms(ミリセカンド。1000msで1秒)
+	CD_TIME_AND_TURN:3	= 0					;現在フロア突入からの経過時間	※単位：ms(ミリセカンド。1000msで1秒)
+	CD_TIME_AND_TURN:4	= 0					;던전開始からの総ターン数
+	CD_TIME_AND_TURN:5	= 0					;現在フロアのターン数
+
+ELSEIF CREAR_TYPE == 1
+	;던전突入時などの場合
+	CD_TIME_AND_TURN:0	= CURRENT_TIME		;前回カウント時の時刻
+	CD_TIME_AND_TURN:1	= FLAG:현M			;前回カウント時の階層
+	CD_TIME_AND_TURN:2	= 0					;던전開始からの経過時間	※単位：ms(ミリセカンド。1000msで1秒)
+	CD_TIME_AND_TURN:3	= 0					;現在フロア突入からの経過時間	※単位：ms(ミリセカンド。1000msで1秒)
+	CD_TIME_AND_TURN:4	= 0					;던전開始からの総ターン数
+	CD_TIME_AND_TURN:5	= 0					;現在フロアのターン数
+
+ELSEIF CREAR_TYPE == 2
+	;階層が変わった場合の処理
+	CD_TIME_AND_TURN:0	= CURRENT_TIME		;前回カウント時の時刻
+	CD_TIME_AND_TURN:1	= FLAG:현M			;前回カウント時の階層
+	CD_TIME_AND_TURN:3	= 0					;現在フロア突入からの経過時間	※単位：ms(ミリセカンド。1000msで1秒)
+	CD_TIME_AND_TURN:5	= 0					;現在フロアのターン数
+ENDIF
+
+RETURN 1
+
+
+;-----------------------------------------------------------------------------
+;マップ内のランダムな座標を取得する処理
+;-----------------------------------------------------------------------------
+;引数
+;	POINT_X			:X座標	※値参照を利用して、取得した座標をこの引数に格納する
+;	POINT_Y			:Y座標	※値参照を利用して、取得した座標をこの引数に格納する
+;	MAP_TYPE		:どのタイプのマップであるか
+;						0:通常の던전(マップ전체からランダムで座標を取得する)
+;						1:不思議な던전(ランダムに一つの部屋を選択し、さらに範囲内からランダムな座標を取得する)	※通路上の座標を選択しないための処理
+;	WALL_CHECK_FLG	:取得した座標が壁であるかどうかチェックするフラグ(0:チェック無し / 1:チェックあり。壁ではない座標を取得する)
+;	BLOCK_NO		:部屋の番号。不思議な던전の場合、部屋を指定して座標を取得することができる。(-1:指定なし・ランダムな部屋 / 0以上:該当の番号の部屋)
+;-----------------------------------------------------------------------------
+@CD_GET_POINT, POINT_X, POINT_Y, MAP_TYPE, WALL_CHECK_FLG, BLOCK_NO
+;-------------
+;変数定義
+;-------------
+#DIM REF POINT_X			;X座標(引数)
+#DIM REF POINT_Y			;Y座標(引数)
+#DIM MAP_TYPE				;どのタイプのマップであるか(0:通常の던전 / 1:不思議な던전)
+#DIM WALL_CHECK_FLG			;取得した座標が壁であるかどうかチェックするフラグ(0:チェック無し / 1:チェックあり。壁ではない座標を取得する)
+#DIM BLOCK_NO				;部屋の番号。不思議な던전の場合、部屋を指定して座標を取得することができる。(-1:指定なし・ランダムな部屋 / 0以上:該当の番号の部屋)
+#DIM TEMP_POINT_X			;X座標(暫定)
+#DIM TEMP_POINT_Y			;Y座標(暫定)
+#DIM BLOCK_INNER_POINT_X	;部屋の内側の左上端のX座標
+#DIM BLOCK_INNER_POINT_Y	;部屋の内側の左上端のY座標
+#DIM BLOCK_INNER_WIDTH		;部屋の内側の横幅
+#DIM BLOCK_INNER_HEIGHT		;部屋の内側の縦幅
+#DIM LOOP_LIMITER			;無限ループ防止用のカウンター
+#DIM POINT_NG_FLG			;座標のNGフラグ(0:OK / 1:NG・座標を再取得)
+
+;-------------
+;変数の初期化
+;-------------
+TEMP_POINT_X = 0			;X座標(暫定)
+TEMP_POINT_Y = 0			;Y座標(暫定)
+BLOCK_INNER_POINT_X = 0		;部屋の内側の左上端のX座標
+BLOCK_INNER_POINT_Y = 0		;部屋の内側の左上端のY座標
+BLOCK_INNER_WIDTH = 0		;部屋の内側の横幅
+BLOCK_INNER_HEIGHT = 0		;部屋の内側の縦幅
+LOOP_LIMITER = 0			;無限ループ防止用のカウンター
+POINT_NG_FLG = 0			;座標のNGフラグ(0:OK / 1:NG・座標を再取得)
+
+;-------------
+;ここから本処理
+;-------------
+;座標取得処理
+LOOP_LIMITER = 0
+WHILE 1
+	;座標のチェックフラグを初期化する	※初期状態は「0:OK」
+	POINT_NG_FLG = 0
+
+	;通常の던전 / 不思議な던전 それぞれで座標を取得する
+	IF MAP_TYPE == 0
+		;通常の던전の場合
+		TEMP_POINT_X = RAND:(FLAG:최대X)
+		TEMP_POINT_Y = RAND:(FLAG:최대Y)
+
+	ELSE
+		;不思議な던전の場合
+
+		;部屋番号が指定されていない場合、ランダムな部屋に決定する
+		IF BLOCK_NO == -1
+			BLOCK_NO = RAND:CD_BLOCK_CNT
+		ENDIF
+
+		;部屋の情報を取得する
+		BLOCK_INNER_POINT_X = CD_ARRAY_BLOCK:BLOCK_NO:1:0					;部屋の内側の左上端のX座標
+		BLOCK_INNER_POINT_Y = CD_ARRAY_BLOCK:BLOCK_NO:1:1					;部屋の内側の左上端のY座標
+		BLOCK_INNER_WIDTH = CD_ARRAY_BLOCK:BLOCK_NO:1:2						;部屋の内側の横幅
+		BLOCK_INNER_HEIGHT = CD_ARRAY_BLOCK:BLOCK_NO:1:3					;部屋の内側の縦幅
+
+		;部屋内の座標を取得する
+		TEMP_POINT_X = BLOCK_INNER_POINT_X + RAND:BLOCK_INNER_WIDTH			;X座標(暫定)
+		TEMP_POINT_Y = BLOCK_INNER_POINT_Y + RAND:BLOCK_INNER_HEIGHT		;Y座標(暫定)
+	ENDIF
+
+	;取得した座標が壁であるかどうかチェック
+	IF WALL_CHECK_FLG == 1
+		IF DA:(TEMP_POINT_X):(TEMP_POINT_Y) == 0
+			POINT_NG_FLG = 1	;該当座標が壁であるためNG
+		ENDIF
+	ENDIF
+
+	;取得した座標が@の現在位置と同じであるかどうかチェック
+	IF TEMP_POINT_X == FLAG:현X && TEMP_POINT_Y == FLAG:현Y
+		POINT_NG_FLG = 1		;該当座標が@の現在位置と同じであるためNG
+	ENDIF
+
+	IF POINT_NG_FLG == 0
+		;座標のチェック結果がOKである場合(参照引き渡しの引数に、取得した座標を格納する)
+		POINT_X = TEMP_POINT_X
+		POINT_Y = TEMP_POINT_Y
+		BREAK
+
+	ELSEIF LOOP_LIMITER >= 200
+		;ループ回数が200を超えている場合、無限ループの疑いにより強制終了
+		BREAK
+
+	ENDIF
+
+	;ループ回数を計測
+	LOOP_LIMITER += 1
+WEND
+
+RETURN 1
+

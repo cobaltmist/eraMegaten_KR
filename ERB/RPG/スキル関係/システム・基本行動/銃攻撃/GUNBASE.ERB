@@ -1,7 +1,7 @@
 ﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
 ;
 ;	Module		:GUNBASE.ERB
-;	Facility	:총の기본的な処理
+;	Facility	:총の基本的な処理
 ;
 ;	Licence		:。
 ;
@@ -9,28 +9,29 @@
 ;
 ;	Edit	Date			Author					Reason
 ;	001		20XX/XX/XX		----					新規作成
-;	002		2011/11/11		旅人					統合整備（데미지計算処理統合）
-;	003		2019/10/24		ナナドラMOD				스웨이리액트による공격회피後の処理추가
+;	002		2011/11/11		旅人					統合整備（ダメージ計算処理統合）
+;	003		2019/10/24		ナナドラMOD				スウェイリアクトによる攻撃回避後の処理追加
 ;	004		2019/12/30		Jガン					RECEIVE_SETをつけてカウンター処理を出すように
 ;	005		2020/03/XX		Jガン					銃攻撃中を示すフラグ追加
 ;	006		2020/07/31		Jガン					回避時の1moreフラグ現象処理追加、JUDG_HITの命中系の処理を変更、つけ忘れたRECEIVE_SET
 ;	007		2020/10/17		Jガン					ランダム攻撃でエラーが出たのを修正
-;	008		2020/10/20		Jガン					ATTACK_HITに使用スキルの引数を追加、一時的に타겟を変える処理追加
+;	008		2020/10/20		Jガン					ATTACK_HITに使用スキルの引数を追加、一時的にターゲットを変える処理追加
 ;	009		2021/04/23		JK好き					GUN_FIELD、GUN_RAND時の銃の状態異常参照が出来ていなかった問題を修正
 ;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
 
 
-;기본的な총명중판정の処理
+;基本的な銃命中判定の処理
+;---- EDIT 006 ADD ---------------------------
 @JUDG_HIT_GUN,ARG,ARG:1,ARG:2
 #LOCALSIZE 1
 #DIM L_추가명중강화
 #DIM L_추가회피강화
 L_추가명중강화 = 0
 L_추가회피강화 = 0
-;ARG 공격者
-;ARG:1 被공격者
-;ARG:2 스킬명중률
-;LOCAL 能力差による기본명중률
+;ARG 攻撃者
+;ARG:1 被攻撃者
+;ARG:2 スキル命中率
+;LOCAL 能力差による基本命中率
 LOCAL = 100 - (MAXBASE:(ARG:1):(GET_BATTLESTATUS(3)) / 2) + (MAXBASE:ARG:총명중 / 2)
 
 ;---- 추가명중강화 ----
@@ -45,9 +46,9 @@ L_추가회피강화 += CHECK_SKILL(ARG:1,3605)*4
 LOCAL *= (32 + CFLAG:ARG:명중강화 + L_추가명중강화)
 LOCAL /= (32 + CFLAG:(ARG:1):회피강화 + L_추가회피강화)
 
-;バステ影響설정有効
+;バステ影響設定有効
 IF BATTLE_SETTING_IS_BAD_STATUS()
-	SELECTCASE GET_STATE(CFLAG:(ARG:1):ステート)
+	SELECTCASE GET_STATE(CFLAG:(ARG:1):상태이상)
 		CASE "STONE","PALYZE","BIND","FREEZE","SHOCK","SLEEP","PANIC","CHARM","HEAT","SLIP"
 			RETURN 1
 	ENDSELECT
@@ -58,30 +59,30 @@ ELSE
 	RETURN 0
 ENDIF
 
-;기본的な총공격の데미지処理
+;基本的な銃攻撃のダメージ処理
 @DAMAGE_GUN, ARG, ARG:1, ARG:2, ARG:3, ARG:4 = 5, ARG:5 = 0
-;ARG 공격者
-;ARG:1 被공격者
-;ARG:2 威힘
+;ARG 攻撃者
+;ARG:1 被攻撃者
+;ARG:2 威力
 ;ARG:3 相性
-;LOCAL 데미지
+;LOCAL ダメージ
 ;---- EDIT 005 ADD START ---------------------------
-FLAG:총공격中 = 1
+FLAG:총공격중 = 1
 ;---- EDIT 005 ADD END   ---------------------------
 
 ;---- EDIT 006 ADD START ---------------------------
 LOCAL:1 = 0
 CALL RECEIVE_SET,ARG:1,ARG:3,1
-SIF !FLAG:카운터中
+SIF !FLAG:카운터중
 	CFLAG:(ARG:1):회피실패 = 1
 ;---- EDIT 006 ADD END   ---------------------------
 
 ;---- EDIT 002 DEL START ---------------------------
-;;링케이지の場合、能力参照者を指定できる
+;;リンケージの場合、能力参照者を指定できる
 ;IF CFLAG:ARG:링케이지발동 && !CFLAG:ARG:단독링케이지
 ;	;PRINTFORMW %CALLNAME:ARG%の공격힘は{MAXBASE:ARG:마법위력}
-;	TRYCCALLFORM 링케이지能力参照者_{CFLAG:ARG:사용링케이지}, ARG
-;		TRYCALLFORM 링케이지能力参照者_{CFLAG:ARG:사용링케이지}, ARG
+;	TRYCCALLFORM 링케이지능력참조자_{CFLAG:ARG:사용링케이지}, ARG
+;		TRYCALLFORM 링케이지능력참조자_{CFLAG:ARG:사용링케이지}, ARG
 ;		LOCALS = 링케이지참가자{RESULT}
 ;		SIF RESULT
 ;			ARG = CFLAG:ARG:LOCALS
@@ -101,7 +102,7 @@ ARG = RESULT
 ;ENDIF
 ;---- EDIT 002 DEL END   ---------------------------
 ;---- EDIT 002 ADD START ---------------------------
-;- BTL計算:데미지ブロック (1:物理)
+;- BTL計算:ダメージブロック (1:物理)
 IF BTL_CALC_DAMAGE_BLOCK(ARG:0, ARG:1, ARG:3, 1)
 	PRINT BLOCK
 	RETURN 0
@@ -120,7 +121,7 @@ ENDIF
 ;LOCAL /= 10000
 ;---- EDIT 002 DEL END   ---------------------------
 ;---- EDIT 002 ADD START ---------------------------
-;- BTL計算:基礎데미지
+;- BTL計算:基礎ダメージ
 CALL BTL_CALC_BASE_DAMAGE(ARG:0, ARG:1, ARG:2, "총")
 LOCAL = RESULT
 ;---- EDIT 002 ADD END   ---------------------------
@@ -131,31 +132,31 @@ LOCAL = RESULT
 ;SIF CFLAG:ARG:기합플래그
 ;	TIMES LOCAL , 2.5
 ;	IF (HAVE_SKILL(ARG,[[스킬:관통]]) || HAVE_SKILL(ARG,[[스킬:영세라이도우]])) && MAXBASE:(ARG:1):(GET_TYPE(ARG:3)) >= 0
-;		;관통持ちは내성と無効を無視
+;		;貫通持ちは耐性と無効を無視
 ;		LOCAL *= MAX(100,MAXBASE:(ARG:1):(GET_TYPE(ARG:3)))
-;		;벨・데르は관통でも0데미지に
+;		;ベル・デルは貫通でも0ダメージに
 ;		SIF NO:(ARG:1) == [[キャラ:벨・데르]]
 ;			LOCAL = 0
 ;	ELSEIF CFLAG:(ARG:1):(GET_TYPE(ARG:3) + "가드킬") && (MAXBASE:(ARG:1):(GET_TYPE(ARG:3)) < 100 || MAXBASE:(ARG:1):(GET_TYPE(ARG:3)) == 999)
-;		;가드킬効果：내성以上を完全に無視
+;		;ガードキル効果：耐性以上を完全に無視
 ;		LOCAL *= 100
 ;		;LOCAL *= MAX(100,MAXBASE:(ARG:1):(GET_TYPE(ARG:3)))
-;		;벨・데르は관통でも0데미지に
+;		;ベル・デルは貫通でも0ダメージに
 ;		SIF NO:(ARG:1) == [[キャラ:벨・데르]]
 ;			LOCAL = 0
 ;	ELSE
 ;		LOCAL *= MAXBASE:(ARG:1):(GET_TYPE(ARG:3))
 ;	ENDIF
 ;	LOCAL /= 100
-;	LOCALS = %GET_TYPE(ARG:3)%무효화횟수
+;	LOCALS = %GET_TYPE(ARG:3)%無効化回数
 ;	IF CFLAG:(ARG:1):LOCALS
 ;		LOCAL = 0
 ;		CFLAG:(ARG:1):(GET_TYPE(ARG:3) + "被弾") = 1
 ;	ENDIF
-;	;後列のキャラには데미지減少
+;	;後列のキャラにはダメージ減少
 ;	SIF (CFLAG:(ARG:1):포지션 > 3 && CFLAG:(ARG:1):포지션 < 7) || CFLAG:(ARG:1):포지션 > 11
 ;		TIMES LOCAL,0.60
-;	;방어中のキャラには데미지減少
+;	;防御中のキャラにはダメージ減少
 ;	SIF CFLAG:(ARG:1):방어플래그
 ;		LOCAL /= 2
 ;	IF CFLAG:(ARG:1):PT플래그 > 0
@@ -172,23 +173,23 @@ LOCAL = RESULT
 ;	ENDIF
 ;	SIF CFLAG:(ARG:1):PT플래그 == 0 && FLAG:전투난이도 == 1
 ;		TIMES LOCAL , 1.40
-;	;眠っていたら데미지大
-;	SIF CFLAG:(ARG:1):ステート == GET_STATE_NUM("SLEEP")
+;	;眠っていたらダメージ大
+;	SIF CFLAG:(ARG:1):상태이상 == GET_STATE_NUM("SLEEP")
 ;		TIMES LOCAL,1.5
-;	;自身がオルギアで데미지上昇
-;	SIF CFLAG:ARG:ステート == GET_STATE_NUM("ORGY")
+;	;自身がオルギアでダメージ上昇
+;	SIF CFLAG:ARG:상태이상 == GET_STATE_NUM("ORGY")
 ;		TIMES LOCAL,1.25
-;	;FREEZE時は전격、SHOCK時は빙결の데미지が倍化
-;	SIF CFLAG:(ARG:1):ステート == GET_STATE_NUM("FREEZE") && GET_TYPE(ARG:3) == "전격" || CFLAG:(ARG:1):ステート == GET_STATE_NUM("SHOCK") && GET_TYPE(ARG:3) == "빙결"
+;	;FREEZE時は電撃、SHOCK時は氷結のダメージが倍化
+;	SIF CFLAG:(ARG:1):상태이상 == GET_STATE_NUM("FREEZE") && GET_TYPE(ARG:3) == "전격" || CFLAG:(ARG:1):상태이상 == GET_STATE_NUM("SHOCK") && GET_TYPE(ARG:3) == "빙결"
 ;		TIMES LOCAL,2.0
-;	;추격의심득持ち+1more中は威힘が1.5倍
+;	;追撃の心得持ち+1more中は威力が1.5倍
 ;	SIF CFLAG:ARG:１more플래그 > 0 && HAVE_SKILL(ARG,[[스킬:추격의심득]])
 ;		TIMES LOCAL,1.5 
 ;	LOCAL = LOCAL * (CFLAG:(ARG:1):물리피데미지보정 +100) / 100
 ;---- EDIT 002 DEL END ---------------------------
 ;---- EDIT 002 ADD START -------------------------
 
-	;- BTL計算:데미지調整 (1:物理)
+	;- BTL計算:ダメージ調整 (1:物理)
 	CALL BTL_CALC_DAMAGE_ADJUSTMENT(ARG:0, ARG:1, LOCAL, ARG:3, 1)
 	LOCAL = RESULT
 
@@ -196,17 +197,17 @@ LOCAL = RESULT
 
 
 ;---- EDIT 002 DEL START -------------------------
-;	;クリティカル판정
+;	;クリティカル判定
 ;	IF RAND:100 < ARG:4 * (10 + MAXBASE:ARG:운) / (10 + MAXBASE:(ARG:1):운)*(CFLAG:(ARG):크리티컬강화+8)/((HAVE_SKILL(ARG:1,2418)>0)+1)*((HAVE_SKILL(ARG,2419)>0)+2)/8 * (CFLAG:ARG:크리티컬보정+100) / 100
 ;		TIMES LOCAL , 1.50
 ;		PRINTFORM 《CRITICAL》 
 ;		LOCAL:1 += 2
-;	ELSEIF HAVE_SKILL(ARG,[[스킬:황천의회심]]) && FLAG:月齢 == 8 || HAVE_SKILL(ARG,[[스킬:정천의회심]]) && FLAG:月齢 == 0
+;	ELSEIF HAVE_SKILL(ARG,[[스킬:황천의회심]]) && FLAG:월령 == 8 || HAVE_SKILL(ARG,[[스킬:정천의회심]]) && FLAG:월령 == 0
 ;		TIMES LOCAL , 1.50
 ;		PRINTFORM 《CRITICAL》 
 ;		LOCAL:1 += 2
 ;	ELSE
-;		SELECTCASE GET_STATE(CFLAG:(ARG:1):ステート)
+;		SELECTCASE GET_STATE(CFLAG:(ARG:1):상태이상)
 ;			CASE "SLEEP","SHOCK","FREEZE"
 ;				TIMES LOCAL , 1.50
 ;				PRINTFORM 《CRITICAL》 
@@ -214,33 +215,33 @@ LOCAL = RESULT
 ;		ENDSELECT
 ;	ENDIF
 ;	IF LOCAL >= BASE:(ARG:1):ＨＰ && (HAVE_SKILL(ARG:1,2407) || (EQUIP:(ARG:1):바・벨 && FLAG:벨신격파 & 8)) && CFLAG:(ARG:1):이악물기플래그 == 0
-;		PRINTFORM {LOCAL} 데미지
+;		PRINTFORM {LOCAL}ダメージ
 ;		CALL VAR_HP,ARG:1,-LOCAL,2
 ;		CFLAG:(ARG:1):이악물기플래그 = 1
 ;	ELSEIF  LOCAL >= BASE:(ARG:1):ＨＰ && HAVE_SKILL(ARG:1,2406) && CFLAG:(ARG:1):이악물기플래그 == 0
-;		PRINTFORM {LOCAL} 데미지
+;		PRINTFORM {LOCAL}ダメージ
 ;		CALL VAR_HP,ARG:1,-LOCAL,1
 ;		CFLAG:(ARG:1):이악물기플래그 = 1
 ;	ELSEIF  LOCAL >= BASE:(ARG:1):ＨＰ && HAVE_SKILL(ARG:1,2434)
-;		;아르카나시프트を持ってる限り이악물기ます。
-;		PRINTFORM {LOCAL} 데미지
+;		;アルカナシフトを持ってる限り食いしばります。
+;		PRINTFORM {LOCAL}ダメージ
 ;		CALL VAR_HP,ARG:1,-LOCAL,4
 ;		CFLAG:(ARG:1):이악물기플래그 = 1
 ;	ELSEIF LOCAL >= 0
-;		PRINTFORM {LOCAL} 데미지
+;		PRINTFORM {LOCAL}ダメージ
 ;		CALL VAR_HP,ARG:1,-LOCAL,0
 ;	ELSE
-;		PRINTFORM {-LOCAL}회복
+;		PRINTFORM {-LOCAL}回復
 ;		CALL VAR_HP,ARG:1,-LOCAL,3
-;		;わざわざ스내피の為に何をしているんだ俺は
-;		CFLAG:(ARG:1):데미지흡수量 -= LOCAL
+;		;わざわざスナッピーの為に何をしているんだ俺は
+;		CFLAG:(ARG:1):데미지흡수량 -= LOCAL
 ;	ENDIF
-;	SIF CFLAG:(ARG:1):ステート == GET_STATE_NUM("SLEEP") && LOCAL > 0
-;		CFLAG:(ARG:1):ステート = 0
+;	SIF CFLAG:(ARG:1):상태이상 == GET_STATE_NUM("SLEEP") && LOCAL > 0
+;		CFLAG:(ARG:1):상태이상 = 0
 ;---- EDIT 002 DEL END ---------------------------
 ;---- EDIT 002 ADD START -------------------------
 
-	;- BTL計算:데미지実行 (1:物理)
+	;- BTL計算:ダメージ実行 (1:物理)
 	CALL BTL_CALC_DAMAGE_EXE(ARG:0, ARG:1, LOCAL, ARG:3, 1, ARG:4, ARG:5)
 	LOCAL	= RESULT:0
 	LOCAL:1	= RESULT:1
@@ -250,7 +251,7 @@ LOCAL = RESULT
 ;---- EDIT 006 ADD ---------------------------
 	CALL RECEIVE_SET,ARG:1,ARG:3,1,LOCAL,LOCAL:1
 
-	;구상用にフラグ保存
+	;口上用にフラグ保存
 	CALL BATTLE_EVENT_ATTACK, ARG , ARG:1, LOCAL, 1
 
 	SIF LOCAL < 1
@@ -259,9 +260,9 @@ LOCAL = RESULT
 ;	;COOP or 1moreのフラグ立て
 ;	SIF MAXBASE:(ARG:1):(GET_TYPE(ARG:3)) > 100 && MAXBASE:(ARG:1):(GET_TYPE(ARG:3)) != 999
 ;		LOCAL:1 += 1
-;	;弱点を付かれ、방어しておらず、데미지を受けており、瀕死になっていなければＣＯＯＰの대상に
-;	;行動者が적なら、
-;	IF CFLAG:(ARG:1):ステート != GET_STATE_NUM("DYING") && LOCAL > 0 && CFLAG:(ARG:1):방어플래그 == 0 && LOCAL:1
+;	;弱点を付かれ、防御しておらず、ダメージを受けており、瀕死になっていなければＣＯＯＰの対象に
+;	;行動者が敵なら、
+;	IF CFLAG:(ARG:1):상태이상 != GET_STATE_NUM("DYING") && LOCAL > 0 && CFLAG:(ARG:1):방어플래그 == 0 && LOCAL:1
 ;		IF CFLAG:ARG:PT플래그 > 0
 ;			SIF LOCAL:1 & 1
 ;				CFLAG:(ARG:1):ＣＯＯＰ플래그 += ARG:2/(1+(CFLAG:(ARG:1):ＣＯＯＰ플래그 > 0))
@@ -292,7 +293,7 @@ LOCAL = RESULT
 #DIM STOCK
 #DIM num
 ;---- EDIT 005 ADD START ---------------------------
-FLAG:총공격中 = 1
+FLAG:총공격중 = 1
 ;---- EDIT 005 ADD END   ---------------------------
 ;コストを支払う
 VARSET num,0
@@ -327,7 +328,7 @@ FOR LOCAL:10,0,LOCAL:1
 	;LOCAL:2 스킬명중률
 	CALLFORM SKILL_POWER_{ARG:2}, ARG
 	LOCAL:3 = RESULT
-	;LOCAL:3 스킬威힘
+	;LOCAL:3 스킬위력
 	CALLFORM SKILL_TYPE_{ARG:2},ARG
 	LOCAL:4 = RESULT
 	;LOCAL:4 스킬相性
@@ -341,7 +342,7 @@ FOR LOCAL:10,0,LOCAL:1
 	CATCH
 		LOCAL:11 = 0
 	ENDCATCH
-	SIF CFLAG:ARG:ステート == GET_STATE_NUM("CURSE")
+	SIF CFLAG:ARG:상태이상 == GET_STATE_NUM("CURSE")
 		LOCAL:11 -= 50
 	
 
@@ -355,24 +356,24 @@ FOR LOCAL:10,0,LOCAL:1
 
 	CALLFORM JUDG_HIT_GUN,ARG,ARG:1,LOCAL:2
 	IF RESULT == 1
-		;명중した
+		;命中した
 		;				0	1		2		3	  4		5		6		7		8		9		10
 		CALL ATTACK_HIT,ARG,ARG:1,LOCAL:3,LOCAL:4,3,LOCAL:6,LOCAL:7,LOCAL:8,LOCAL:9,LOCAL:11,LOCAL:12,ARG:2
 ;		IF (MAXBASE:(ARG:1):(GET_TYPE(LOCAL:4)) == 999 && !CFLAG:(ARG:1):(GET_TYPE(LOCAL:4)+"가드킬")) || (CFLAG:(ARG:1):물리반사플래그 && LOCAL:4 < 4) || (CFLAG:(ARG:1):마법반사플래그 && (LOCAL:4 > 3 && LOCAL:4 != 17))
 ;			PRINTL しまったはねかえされた
 ;			PRINTFORM 　　TARGET:[{CPOS(ARG),2}] %CALLNAME:ARG,20,LEFT%　>>>>>>　
 ;			CALLFORM DAMAGE_GUN,ARG,ARG,LOCAL:3,LOCAL:4,LOCAL:12
-;			IF RESULT > 0 && LOCAL:6 > 0 && CFLAG:(ARG):ステート != GET_STATE_NUM("DYING")
+;			IF RESULT > 0 && LOCAL:6 > 0 && CFLAG:(ARG):상태이상 != GET_STATE_NUM("DYING")
 ;				PRINT  & 
 ;				CALL ATTACK_BADSTATE,ARG,ARG,LOCAL:6,LOCAL:7,LOCAL:8,LOCAL:9
 ;			ELSE
 ;				PRINTW
 ;			ENDIF
-;			;구상用に数値確保
+;			;口上用に数値確保
 ;			CALL BATTLE_EVENT_ATTACK, ARG, ARG:1, 0, 3
 ;		ELSE
 ;			CALLFORM DAMAGE_GUN,ARG,ARG:1,LOCAL:3,LOCAL:4,LOCAL:12
-;			IF RESULT > 0 && LOCAL:6 > 0 && CFLAG:(ARG:1):ステート != GET_STATE_NUM("DYING")
+;			IF RESULT > 0 && LOCAL:6 > 0 && CFLAG:(ARG:1):상태이상 != GET_STATE_NUM("DYING")
 ;				PRINT  & 
 ;				CALL ATTACK_BADSTATE,ARG,ARG:1,LOCAL:6,LOCAL:7,LOCAL:8,LOCAL:9
 ;			ELSE
@@ -385,16 +386,16 @@ FOR LOCAL:10,0,LOCAL:1
 		PRINTW MISS
 ;---- EDIT 006 ADD  -------------------------
 		CALL ONE_MORE_POINT_ADD,ARG,-1
-		;구상用に수치確保
+		;口上用に数値確保
 		CALL BATTLE_EVENT_ATTACK, ARG, ARG:1, 0, 2
 ;---- EDIT 003 ADD START -------------------------
-		SIF TFLAG:스웨이리액트 && NO:(ARG:1) == [[キャラ:로어=아=루아]]
+		SIF TFLAG:스웨이리액트 && NO:(ARG:1) == [[キャラ:로어＝아＝루아]]
 			num = num + 1
 ;---- EDIT 003 ADD END ---------------------------
 	ENDIF
 	TRYCALLFORM SKILL_GUN_SPECIALACTION{ARG:2}, ARG, ARG:1
 	FLAG:공격횟수 = 0
-	SIF GET_STATE(CFLAG:(ARG:1):ステート) == "DYING"
+	SIF GET_STATE(CFLAG:(ARG:1):상태이상) == "DYING"
 		BREAK
 NEXT
 CALL RECEIVE_SET,ARG:1,LOCAL:4,1
@@ -410,7 +411,7 @@ SWAP STOCK,CFLAG:ARG:타겟
 #DIM num1
 #DIM STOCK
 ;---- EDIT 005 ADD START ---------------------------
-FLAG:총공격中 = 1
+FLAG:총공격중 = 1
 ;---- EDIT 005 ADD END   ---------------------------
 VARSET num,0
 VARSET num1,0
@@ -473,14 +474,14 @@ FOR LOCAL:9,LOCAL:7,LOCAL:8
 		;LOCAL:2 스킬명중률
 		CALLFORM SKILL_POWER_{ARG:2}, ARG
 		LOCAL:3 = RESULT
-		;LOCAL:3 스킬威힘
+		;LOCAL:3 스킬위력
 		CALLFORM SKILL_TYPE_{ARG:2},ARG
 		LOCAL:4 = RESULT
 		;LOCAL:4 스킬相性
 		CALLFORM SKILL_DAMAGETYPE_{ARG:2}, ARG
 		LOCAL:5 = RESULT
 		;LOCAL:5 与える데미지の物理/魔法
-		;ＨＰ소비物理스킬なら추가威힘参照
+		;ＨＰ소비物理스킬なら추가위력参照
 		;CALLFORM SKILL_COSTTYPE_{ARG:2}, ARG
 		;IF RESULT == 2
 		;	CALLFORM SKILL_COST_{ARG:2}, ARG
@@ -494,10 +495,10 @@ FOR LOCAL:9,LOCAL:7,LOCAL:8
 		CATCH
 			LOCAL:14 = 0
 		ENDCATCH
-		SIF CFLAG:ARG:ステート == GET_STATE_NUM("CURSE")
+		SIF CFLAG:ARG:상태이상 == GET_STATE_NUM("CURSE")
 			LOCAL:14 -= 50
 		;LOCAL:15 크리티컬보정
-		TRYCCALLFORM SKILL_CRITICAL_RATE_{ARG:2}
+		TRYCCALLFORM SKILL_CRITICAL_RATE_{ARG:2},ARG
 			LOCAL:15 = RESULT
 		CATCH
 			LOCAL:15 = 5
@@ -505,13 +506,13 @@ FOR LOCAL:9,LOCAL:7,LOCAL:8
 		LOCALS = 포지션{LOCAL:9}
 		SIF FLAG:LOCALS < 0
 			CONTINUE
-		SIF GET_STATE(CFLAG:(FLAG:LOCALS):ステート) == "DYING"
+		SIF GET_STATE(CFLAG:(FLAG:LOCALS):상태이상) == "DYING"
 			CONTINUE
 		;PRINTFORM 　　TARGET:[{CPOS(FLAG:LOCALS),2}] %CALLNAME:(FLAG:LOCALS),20,LEFT%　>>>>>>　
 		CALLFORM JUDG_HIT_GUN,ARG,FLAG:LOCALS,LOCAL:2
 		
 		IF RESULT == 1
-			;명중した
+			;命中した
 			;				0	1			2		3		4	5		6		7			8		9		10
 			CALL ATTACK_HIT,ARG,FLAG:LOCALS,LOCAL:3,LOCAL:4,3,LOCAL:10,LOCAL:11,LOCAL:12,LOCAL:13,LOCAL:14,LOCAL:15,ARG:2
 ;			IF (MAXBASE:(FLAG:LOCALS):(GET_TYPE(LOCAL:4)) == 999 && !CFLAG:(FLAG:LOCALS):(GET_TYPE(LOCAL:4)+"가드킬")) || (CFLAG:(FLAG:LOCALS):물리반사플래그 && LOCAL:4 < 4) || (CFLAG:(FLAG:LOCALS):마법반사플래그 && (LOCAL:4 > 3 && LOCAL:4 != 17))
@@ -519,18 +520,18 @@ FOR LOCAL:9,LOCAL:7,LOCAL:8
 ;				PRINTFORM 　　TARGET:[{CPOS(ARG),2}] %CALLNAME:ARG,20,LEFT%　>>>>>>　
 ;				;CALLFORM DAMAGE_GUN,ARG,ARG,LOCAL:3,LOCAL:4,LOCAL:14,LOCAL:15
 ;				CALLFORM DAMAGE_GUN,ARG,ARG,LOCAL:3,LOCAL:4,LOCAL:15
-;				IF RESULT > 0 && LOCAL:10 > 0 && CFLAG:(ARG):ステート != GET_STATE_NUM("DYING")
+;				IF RESULT > 0 && LOCAL:10 > 0 && CFLAG:(ARG):상태이상 != GET_STATE_NUM("DYING")
 ;					PRINT  & 
 ;					CALL ATTACK_BADSTATE,ARG,ARG,LOCAL:10,LOCAL:11,LOCAL:12,LOCAL:13
 ;				ELSE
 ;				PRINTW
 ;				ENDIF
-;				;구상用に数値確保
+;				;口上用に数値確保
 ;				CALL BATTLE_EVENT_ATTACK, ARG, FLAG:LOCALS, 0, 3
 ;			ELSE
 ;				;CALLFORM DAMAGE_GUN,ARG,FLAG:LOCALS,LOCAL:3,LOCAL:4,LOCAL:14,LOCAL:15
 ;				CALLFORM DAMAGE_GUN,ARG,FLAG:LOCALS,LOCAL:3,LOCAL:4,LOCAL:15
-;				IF RESULT > 0 && LOCAL:10 > 0 && FLAG:LOCALS > -1 && CFLAG:(FLAG:LOCALS):ステート != GET_STATE_NUM("DYING")
+;				IF RESULT > 0 && LOCAL:10 > 0 && FLAG:LOCALS > -1 && CFLAG:(FLAG:LOCALS):상태이상 != GET_STATE_NUM("DYING")
 ;					PRINT  & 
 ;					CALL ATTACK_BADSTATE,ARG,FLAG:LOCALS,LOCAL:10,LOCAL:11,LOCAL:12,LOCAL:13
 ;				ELSE
@@ -544,10 +545,10 @@ FOR LOCAL:9,LOCAL:7,LOCAL:8
 			PRINTW MISS
 ;---- EDIT 006 ADD  -------------------------
 			CALL ONE_MORE_POINT_ADD,ARG,-1
-			;구상用に수치確保
+			;口上用に数値確保
 			CALL BATTLE_EVENT_ATTACK, ARG, FLAG:LOCALS, 0, 2
 ;---- EDIT 003 ADD START -------------------------
-			SIF TFLAG:스웨이리액트 && NO:(POS(LOCAL:9)) == [[キャラ:로어=아=루아]]
+			SIF TFLAG:스웨이리액트 && NO:(POS(LOCAL:9)) == [[キャラ:로어＝아＝루아]]
 				num = num + 1
 				num1 = FLAG:LOCALS
 ;---- EDIT 003 ADD END ---------------------------
@@ -574,7 +575,7 @@ CFLAG:ARG:타겟 = STOCK
 #DIM num1
 #DIM STOCK
 ;---- EDIT 005 ADD START ---------------------------
-FLAG:총공격中 = 1
+FLAG:총공격중 = 1
 ;---- EDIT 005 ADD END   ---------------------------
 STOCK = CFLAG:ARG:타겟
 VARSET num,0
@@ -621,7 +622,7 @@ LOCAL:2 = RESULT
 ;LOCAL:2 스킬명중률
 CALLFORM SKILL_POWER_{ARG:2}, ARG
 LOCAL:3 = RESULT
-;LOCAL:3 스킬威힘
+;LOCAL:3 스킬위력
 CALLFORM SKILL_TYPE_{ARG:2},ARG
 LOCAL:4 = RESULT
 ;LOCAL:4 스킬相性
@@ -649,7 +650,7 @@ TRYCCALLFORM SKILL_HP_ABSORBER_{ARG:2},ARG
 CATCH
 	LOCAL:16 = 0
 ENDCATCH
-SIF CFLAG:ARG:ステート == GET_STATE_NUM("CURSE")
+SIF CFLAG:ARG:상태이상 == GET_STATE_NUM("CURSE")
 	LOCAL:16 -= 50
 	
 ;LOCAL:15 크리티컬보정
@@ -663,7 +664,7 @@ FOR LOCAL,0,LOCAL:1
 	FOR LOCAL:14,LOCAL:7,LOCAL:8
 		LOCALS = 포지션{LOCAL:14}
 		CFLAG:ARG:타겟 = LOCAL:14
-		SIF FLAG:LOCALS > -1 && GET_STATE(CFLAG:(FLAG:LOCALS):ステート) != "DYING"
+		SIF FLAG:LOCALS > -1 && GET_STATE(CFLAG:(FLAG:LOCALS):상태이상) != "DYING"
 			GOTO END_FOR
 		IF LOCAL:14 == LOCAL:8-1
 			CFLAG:ARG:타겟 = STOCK
@@ -677,29 +678,29 @@ FOR LOCAL,0,LOCAL:1
 	SIF FLAG:LOCALS < 0
 		GOTO DECIDE_TARGET
 	
-	SIF GET_STATE(CFLAG:(FLAG:LOCALS):ステート) == "DYING"
+	SIF GET_STATE(CFLAG:(FLAG:LOCALS):상태이상) == "DYING"
 		GOTO DECIDE_TARGET
 	;PRINTFORM 　　TARGET:[{CPOS(FLAG:LOCALS),2}] %CALLNAME:(FLAG:LOCALS),20,LEFT%　>>>>>>　
 	CALLFORM JUDG_HIT_GUN,ARG,FLAG:LOCALS,LOCAL:2
 	IF RESULT == 1
-			;명중した
+			;命中した
 			;				0	1			2		3		4	5		6		7			8		9		10
 			CALL ATTACK_HIT,ARG,FLAG:LOCALS,LOCAL:3,LOCAL:4,3,LOCAL:10,LOCAL:11,LOCAL:12,LOCAL:13,LOCAL:16,LOCAL:15,ARG:2
 ;			IF (MAXBASE:(FLAG:LOCALS):(GET_TYPE(LOCAL:4)) == 999 && !CFLAG:(FLAG:LOCALS):(GET_TYPE(LOCAL:4)+"가드킬")) || (CFLAG:(FLAG:LOCALS):물리반사플래그 && LOCAL:4 < 4) || (CFLAG:(FLAG:LOCALS):마법반사플래그 && (LOCAL:4 > 3 && LOCAL:4 != 17))
 ;				PRINTL しまったはねかえされた
 ;				PRINTFORM 　　TARGET:[{CPOS(ARG),2}] %CALLNAME:ARG,20,LEFT%　>>>>>>　
 ;				CALLFORM DAMAGE_GUN,ARG,ARG,LOCAL:3,LOCAL:4,LOCAL:15
-;				IF RESULT > 0 && LOCAL:10 > 0 && CFLAG:(ARG):ステート != GET_STATE_NUM("DYING")
+;				IF RESULT > 0 && LOCAL:10 > 0 && CFLAG:(ARG):상태이상 != GET_STATE_NUM("DYING")
 ;					PRINT  & 
 ;					CALL ATTACK_BADSTATE,ARG,ARG,LOCAL:10,LOCAL:11,LOCAL:12,LOCAL:13
 ;				ELSE
 ;				PRINTW
 ;				ENDIF
-;				;구상用に数値確保
+;				;口上用に数値確保
 ;				CALL BATTLE_EVENT_ATTACK, ARG, FLAG:LOCALS, 0, 3
 ;			ELSE
 ;				CALLFORM DAMAGE_GUN,ARG,FLAG:LOCALS,LOCAL:3,LOCAL:4,LOCAL:15
-;				IF RESULT > 0 && LOCAL:10 > 0 && FLAG:LOCALS > -1 && CFLAG:(FLAG:LOCALS):ステート != GET_STATE_NUM("DYING")
+;				IF RESULT > 0 && LOCAL:10 > 0 && FLAG:LOCALS > -1 && CFLAG:(FLAG:LOCALS):상태이상 != GET_STATE_NUM("DYING")
 ;					PRINT  & 
 ;					CALL ATTACK_BADSTATE,ARG,FLAG:LOCALS,LOCAL:10,LOCAL:11,LOCAL:12,LOCAL:13
 ;				ELSE
@@ -712,10 +713,10 @@ FOR LOCAL,0,LOCAL:1
 		PRINTW MISS
 ;---- EDIT 006 ADD  -------------------------
 		CALL ONE_MORE_POINT_ADD,ARG,-1
-		;구상用に수치確保
+		;口上用に数値確保
 		CALL BATTLE_EVENT_ATTACK, ARG, FLAG:LOCALS, 0, 2
 ;---- EDIT 003 ADD START -------------------------
-		SIF TFLAG:스웨이리액트 && NO:(FLAG:LOCALS) == [[キャラ:로어=아=루아]]
+		SIF TFLAG:스웨이리액트 && NO:(FLAG:LOCALS) == [[キャラ:로어＝아＝루아]]
 			num = num + 1
 			num1 = FLAG:LOCALS
 ;---- EDIT 003 ADD END ---------------------------
@@ -735,7 +736,7 @@ SIF num > 0
 CFLAG:ARG:타겟 = STOCK
 
 ;============================================================================
-;特定の특수탄を장비しているかの판정
+;特定の特殊弾を装備しているかの判定
 ;============================================================================
 @HAVE_BULLET,ARG,ARG:1
 #FUNCTION

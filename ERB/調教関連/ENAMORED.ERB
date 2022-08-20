@@ -1,4 +1,17 @@
-﻿
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:ENAMORED.ERB
+;	Facility	:미조교함락関連の処理群
+;
+;	Licence		:ライセンスフリー。
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		20XX/XX/XX		----					新規作成
+;	002		2021/11/20		JK好き					戦闘素質を持った非戦闘員を戦闘員化させる処理に不足があった問題を修正
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+
 @ENAMORED_CHECK
 #DIM 신뢰함락
 #DIM 信충성도
@@ -10,10 +23,10 @@ IF MAXBASE:MASTER:충성도 == 0
 	FOR LOCAL,0,CHARANUM
 		SIF LOCAL == MASTER
 			CONTINUE
-		SIF CFLAG:LOCAL:被조교횟수 > 0 || 함락(LOCAL) || CFLAG:LOCAL:NTRフラグ > 0
+		SIF CFLAG:LOCAL:피조교횟수 > 0 || 함락(LOCAL) || CFLAG:LOCAL:NTR플래그 > 0
 			CONTINUE
 		SIF MARK:LOCAL:고통각인 || MARK:LOCAL:쾌락각인 || MARK:LOCAL:굴복각인
-			CFLAG:LOCAL:被조교횟수 += 1
+			CFLAG:LOCAL:피조교횟수 += 1
 	NEXT
 	MAXBASE:MASTER:충성도 = 1
 ENDIF
@@ -21,11 +34,12 @@ ENDIF
 ;비전투원が전투員素質を持っていて、훈련경험を持っていれば비전투원が無くなる
 FOR LOCAL,0,CHARANUM
 	;機械の乙女を除外
-	IF TALENT:LOCAL:비전투원 == 1 && EXP:LOCAL:훈련경험 > 99 && (TALENT:LOCAL:석세서 || TALENT:LOCAL:데빌시프터 || TALENT:LOCAL:이능자 || TALENT:LOCAL:페르소나구사자 || TALENT:LOCAL:도구지식 || TALENT:LOCAL:아이템숙련 || TALENT:LOCAL:건슬링거 || TALENT:LOCAL:쿠즈노하 || TALENT:LOCAL:식노 || TALENT:LOCAL:달인 || TALENT:LOCAL:기계의처녀)
+	IF TALENT:LOCAL:비전투원 == 1 && EXP:LOCAL:훈련경험 > 99 && (TALENT:LOCAL:석세서 || TALENT:LOCAL:데빌시프터 || TALENT:LOCAL:이능자 || TALENT:LOCAL:페르소나구사자 || TALENT:LOCAL:도구지식 || TALENT:LOCAL:아이템숙련 || TALENT:LOCAL:건슬링거 || TALENT:LOCAL:쿠즈노하 || TALENT:LOCAL:식노 || TALENT:LOCAL:달인)
 		SETCOLOR 0x0099cc
 		PRINTFORMW 전투경험을 충분히 쌓은 %조사처리(NAME:LOCAL,"는")% 전투에 참가할 수 있게 되었다.
-		TALENT:LOCAL:230 = 0
+		TALENT:LOCAL:비전투원 = 0
 		RESETCOLOR
+		CALL CHECK_COMBATANTING,LOCAL
 	ENDIF
 NEXT
 
@@ -36,7 +50,7 @@ IF FLAG:미조교시함락 > 0
 		LOCAL:3 = 0
 		SIF LOCAL == MASTER
 			CONTINUE
-		SIF CFLAG:LOCAL:被조교횟수 > 0 || CFLAG:LOCAL:NTRフラグ > 0
+		SIF CFLAG:LOCAL:피조교횟수 > 0 || CFLAG:LOCAL:NTR플래그 > 0
 			CONTINUE
 		SIF 함락(LOCAL) > 2
 			CONTINUE
@@ -47,7 +61,7 @@ IF FLAG:미조교시함락 > 0
 		;필요な충성도を算出。
 		LOCAL:1 = 10000 + (ABS(ABL:LOCAL:속성LD - ABL:MASTER:속성LD) + ABS(ABL:LOCAL:속성LC - ABL:MASTER:속성LC)) * 5000
 		;신뢰系함락処理を行う			 
-		IF FLAG:신뢰系함락설정 > 0
+		IF FLAG:신뢰계함락설정 > 0
 			IF TALENT:LOCAL:동료
 			ELSEIF TALENT:LOCAL:신뢰
 				;【신뢰】→【맹우】の場合필요な충성도４倍
@@ -67,7 +81,7 @@ IF FLAG:미조교시함락 > 0
 			SIF TALENT:MASTER:수수께끼의매력 == 0
 				LOCAL:3 = 1
 		ELSEIF TALENT:MASTER:수수께끼의매력
-		;異性相손かつ主人が수수께끼의매력持ちの場合、0.8倍
+		;異性相手かつ主人が수수께끼의매력持ちの場合、0.8倍
 			TIMES LOCAL:1,0.8
 		ENDIF
 		IF (FLAG:미조교시함락 == 1 && (CFLAG:LOCAL:전투참가불가능 == -1 || TALENT:LOCAL:신뢰)) || FLAG:미조교시함락 == 2
@@ -78,14 +92,14 @@ IF FLAG:미조교시함락 > 0
 					PRINTFORMW %조사처리(NAME:LOCAL, "는")% 【신뢰】를 얻었다
 					PRINTL
 					TALENT:LOCAL:신뢰 = 1
-					CFLAG:LOCAL:未조교함락 = 1
+					CFLAG:LOCAL:미조교함락 = 1
 					;SIF CFLAG:LOCAL:전투참가불가능 == -1
 					;	CFLAG:LOCAL:전투참가불가능 = 0
-					FLAG:信頼人数 += 1
-					FLAG:今周回信頼人数 += 1
+					FLAG:신뢰인수 += 1
+					FLAG:이번주회신뢰인수 += 1
 					;主人に落とされていることを保存
-					CDFLAG:LOCAL:キャラ間함락素質:100 = 7;
-					CFLAG:LOCAL:함락キャラ = CFLAG:MASTER:キャラ固有の번호
+					CDFLAG:LOCAL:캐릭터간함락소질:100 = 7;
+					CFLAG:LOCAL:함락캐릭터 = CFLAG:MASTER:캐릭터고유번호
 					SIF ABL:LOCAL:종족 != 0
 						CALL CHECK_LEVEL_UP, LOCAL
 					LOCAL:2 = 1
@@ -98,8 +112,8 @@ IF FLAG:미조교시함락 > 0
 					TALENT:LOCAL:신뢰 = 0
 					TALENT:LOCAL:동료 = 1
 					;主人に落とされていることを保存
-					CDFLAG:LOCAL:キャラ間함락素質:100 = 8;
-					CFLAG:LOCAL:함락キャラ = CFLAG:MASTER:キャラ固有の번호
+					CDFLAG:LOCAL:캐릭터간함락소질:100 = 8;
+					CFLAG:LOCAL:함락캐릭터 = CFLAG:MASTER:캐릭터고유번호
 					LOCAL:2 = 1
 					SETBIT FLAG:(50000+NO:LOCAL), 9
 				ENDIF
@@ -114,17 +128,17 @@ IF FLAG:미조교시함락 > 0
 					MARK:LOCAL:굴복각인 = MAX(MARK:LOCAL:굴복각인,3)
 					ABL:LOCAL:순종 = MAX(ABL:LOCAL:순종,3)
 					TALENT:LOCAL:연모 = 1
-					CFLAG:LOCAL:未조교함락 = 1
+					CFLAG:LOCAL:미조교함락 = 1
 					SIF CFLAG:LOCAL:전투참가불가능 == -1
 						CFLAG:LOCAL:전투참가불가능 = 0
 					;함락人数の二重取りになってしまうのでダメ
 					IF !TALENT:LOCAL:신뢰
-						FLAG:연모人数 += 1
-						FLAG:今周回연모人数 += 1
+						FLAG:연모인수 += 1
+						FLAG:이번주회연모인수 += 1
 					ENDIF
 					;主人に落とされていることを保存
-					CDFLAG:LOCAL:キャラ間함락素質:100 = 1; 恋慕なので1が正しいはず
-					CFLAG:LOCAL:함락キャラ = CFLAG:MASTER:キャラ固有の번호
+					CDFLAG:LOCAL:캐릭터간함락소질:100 = 1; 恋慕なので1が正しいはず
+					CFLAG:LOCAL:함락캐릭터 = CFLAG:MASTER:캐릭터고유번호
 					SIF ABL:LOCAL:종족 != 0
 						CALL CHECK_LEVEL_UP, LOCAL
 					LOCAL:2 = 1

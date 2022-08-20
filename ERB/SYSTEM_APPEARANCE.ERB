@@ -1,4 +1,19 @@
-﻿;========================================================
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:SYSTEM_APPEARANCE.ERB
+;	Facility	:スリーサイズ表示処理
+;
+;	Licence		:ライセンスフリー。
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		20XX/XX/XX		----					新規作成
+;	002		2021/11/20		JK好き					妊娠中のバストサイズ変動処理を行う@SET_PREGNANCY_BUSTを作成
+;													合わせて@SHOW_INFO_BODYSIZEを調整
+;	003		2021/12/07		JK好き					@SET_PREGNANCY_BUST カップ数を表示するように追加
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;========================================================
 ;言うまでもなく某erastaのWS（わしが育てた）システムのパクry
 ;あと머리카락型とか各種色설정
 
@@ -28,7 +43,7 @@
 
 ;그외のファイルで改造したところ
 ;SHOP_NAMECHANGE.ERB 各種설정処理を추가
-;SHOW_STATUS.ERB スリーサイズ표시 魔乳・むちむちの표시分岐など
+;SHOW_STATUS.ERB スリーサイズ표시 마유・むちむちの표시分岐など
 ;ITEM.ERB 肌の色関連をTALENTからCFLAGに
 ;EVENT_P.ERB 임신発깨달음時にバスト1cm成長
 ;SYSTEM_DAUGHTER.ERB 娘にスリーサイズ・外見を遺伝させる
@@ -46,10 +61,10 @@ IF BASE:ARG:신장 > 0 && !TALENT:ARG:유아／유아퇴행
 
 	;体重が設定されており、「0：인간」「32：괴이」「36：半魔」「43：영웅」「44：悪魔つき」「45：조마」なら体重表示
 	IF BASE:ARG:체중 > 0 && (ABL:ARG:종족 == 0 || ABL:ARG:종족 == 32 || ABL:ARG:종족 == 36 || ABL:ARG:종족 == 43 || ABL:ARG:종족 ==44 || ABL:ARG:종족 == 45)
-			;ふたごちゃんパッチオンかつ妊娠している場合
+		;ふたごちゃんパッチオンかつ妊娠している場合
 		;計算しようかと思ったが、元から計算はしていないので
-		IF FLAG:ふたごちゃんフラグ > 0 && TALENT:ARG:임신
-			PRINTFORM   체중：{BASE:ARG:체중}kg ＋ 胎児{CFLAG:ARG:今回受胎人数}人分
+		IF FLAG:쌍둥이플래그 > 0 && TALENT:ARG:임신
+			PRINTFORM   체중：{BASE:ARG:체중}kg ＋ 胎児{CFLAG:ARG:이번수태인수}人分
 		ELSE
 			PRINTFORM   체중：{BASE:ARG:체중}kg
 		ENDIF
@@ -60,21 +75,28 @@ IF BASE:ARG:신장 > 0 && !TALENT:ARG:유아／유아퇴행
 	IF BASE:ARG:바스트 == 0 
 		PRINTFORM   Ｂ：불명
 	ELSE
-		PRINTFORM   Ｂ：{BASE:ARG:바스트}cm
-		PRINT (
-		CALL SHOW_CUPSIZE(ARG)
-		PRINT )
+		IF TALENT:ARG:임신 == 0 || (TALENT:ARG:육아중 && CFLAG:ARG:유모인가？ == 0)
+			PRINTFORM   Ｂ：{BASE:ARG:바스트}cm
+			PRINT (
+			CALL SHOW_CUPSIZE(ARG)
+			PRINT )
+		ELSE
+			PRINTFORM   현재Ｂ：{(MAXBASE:ARG:바스트)}cm （원Ｂ：{BASE:ARG:바스트}cm）
+			PRINT (
+			CALL SHOW_CUPSIZE(ARG)
+			PRINT )
+		ENDIF
 	ENDIF
 
 	IF BASE:ARG:웨스트 == 0 
 		PRINTFORM   Ｗ：불명
 	ELSE
-		IF CFLAG:ARG:子宮現在容量 == 0
+		IF CFLAG:ARG:자궁현재용량 == 0
 			PRINTFORM   Ｗ：{BASE:ARG:웨스트}cm
 		ELSE
 			;腹囲が470センチとかになっちゃってたので修正
-			PRINTFORM   現在Ｗ：{( (CFLAG:ARG:子宮現在容量*6/1000) + BASE:ARG:웨스트)}cm （元Ｗ：{BASE:ARG:웨스트}cm）
-;			PRINTFORM   現在Ｗ：{( (CFLAG:ARG:子宮現在容量*6/100) + BASE:ARG:웨스트)}cm （元Ｗ：{BASE:ARG:웨스트}cm）
+			PRINTFORM   現在Ｗ：{( (CFLAG:ARG:자궁현재용량*6/1000) + BASE:ARG:웨스트)}cm （元Ｗ：{BASE:ARG:웨스트}cm）
+;			PRINTFORM   現在Ｗ：{( (CFLAG:ARG:자궁현재용량*6/100) + BASE:ARG:웨스트)}cm （元Ｗ：{BASE:ARG:웨스트}cm）
 		ENDIF
 	ENDIF
 
@@ -84,13 +106,13 @@ IF BASE:ARG:신장 > 0 && !TALENT:ARG:유아／유아퇴행
 		PRINTFORM   Ｈ：{BASE:ARG:힙사이즈}cm
 		CALL CHECK_HIPSIZE(ARG)
 	ENDIF
-		PRINTFORML 
+	PRINTFORML 
 
 	;「子宮」容量なので、オトコの場合は表示しない（男の娘は妊娠できるが、表示しない）
 	IF !BASE:ARG:웨스트 == 0 && !TALENT:ARG:남자
-		PRINTFORM 現在子宮内정액量{CFLAG:ARG:子宮現在容量}ml ／ 최대子宮容量{CFLAG:ARG:子宮최대容量}ml
+		PRINTFORM 現在子宮内精液量{CFLAG:ARG:자궁현재용량}ml ／ 最大子宮容量{CFLAG:ARG:자궁최대용량}ml
 		;5000ml＝一般的な妊娠後期の子宮容積を超過している場合
-		SIF FLAG:ふたごちゃんフラグ > 0 && (CFLAG:ARG:子宮現在容量 > 5000)
+		SIF FLAG:쌍둥이플래그 > 0 && (CFLAG:ARG:자궁현재용량 > 5000)
 			PRINTFORM ：【精液ボテ】
 	ENDIF
 ENDIF
@@ -108,8 +130,12 @@ PRINTL
 ;カップサイズ測定
 ;-------------------------------------------------
 @CHECK_CUPSIZE, ARG
-;Sはカップサイズ用変数、Xはバスト보정値、Yはウェスト보정値、Zは身長보정値
-X = ((((BASE:ARG:바스트 * 100) - (BASE:ARG:신장 * 54)) * 100) / 250)
+;Sはカップサイズ用変数、Xはバスト補正値、Yはウェスト補正値、Zは身長補正値
+IF TALENT:ARG:임신 == 0 || (TALENT:ARG:육아중 && CFLAG:ARG:유모인가？ == 0)
+	X = ((((BASE:ARG:바스트 * 100) - (BASE:ARG:신장 * 54)) * 100) / 250)
+ELSE
+	X = ((((MAXBASE:ARG:바스트 * 100) - (BASE:ARG:신장 * 54)) * 100) / 250)
+ENDIF
 Y = ((((BASE:ARG:신장 * 38) - (BASE:ARG:웨스트 * 100)) * 100) / 342)
 ;임신時は임신発깨달음時のウェストから計算
 ; SIF TALENT:ARG:임신
@@ -130,7 +156,7 @@ IF S > 0
 	CFLAG:ARG:컵수 = S / 100
 ENDIF
 
-TALENT:ARG:魔乳 = 0
+TALENT:ARG:마유 = 0
 TALENT:ARG:폭유 = 0
 TALENT:ARG:거유 = 0
 TALENT:ARG:절벽 = 0
@@ -139,7 +165,7 @@ TALENT:ARG:빈유 = 0
 ;カップサイズから대상の가슴資質を修正する
 SELECTCASE CFLAG:ARG:컵수
 CASE IS >= 14
-	TALENT:ARG:魔乳 = 1
+	TALENT:ARG:마유 = 1
 CASE IS >= 8
 	TALENT:ARG:폭유 = 1
 CASE IS >= 6
@@ -548,7 +574,8 @@ ENDSELECT
 ;誤差上等。仮決めみたいなもの。
 ;-------------------------------------------------
 @SET_INFO_BODYSIZE, ARG, ARGS
-;남자の場合、または身長미설정、また、厳しめの조건に合致しない場合は帰る
+#DIM 補正
+;オトコの場合、または身長未設定、また、厳しめの条件に合致しない場合は帰る
 SIF TALENT:ARG:남자 || BASE:ARG:신장 == 0
 	RETURN 0
 
@@ -561,14 +588,18 @@ IF BASE:ARG:바스트 == 0
 ENDIF
 
 
-;변경の上限、下限については、あえて체크しない
+;変更の上限、下限については、あえてチェックしない
 SELECTCASE ARGS
-	CASE "豊가슴"
+	CASE "豊胸"
 		;0-2カップ分くらい変動する
-		BASE:ARG:바스트 += RAND:6 +1
-	CASE "縮가슴"
+		補正 = RAND:6 +1
+		BASE:ARG:바스트 += 補正
+		MAXBASE:ARG:바스트 += 補正
+	CASE "縮胸"
 		;0-2カップ分くらい変動する
-		BASE:ARG:바스트 -= RAND:6 +1
+		補正 = RAND:6 +1
+		BASE:ARG:바스트 -= 補正
+		MAXBASE:ARG:바스트 -= 補正
 	CASE "肥満"
 		BASE:ARG:웨스트 += RAND:3 +1
 	CASE "痩身"
@@ -605,8 +636,10 @@ ENDSELECT
 			LOCAL = 30
 	ELSEIF TALENT:ARG:거유
 		;D-E
-		LOCAL = RAND:30
+		LOCAL = RAND:20
 		LOCAL += 50
+		SIF TALENT:ARG:음유
+			LOCAL += 10
 		;カップサイズは6-7
 		SIF LOCAL >= 70
 			LOCAL = 70
@@ -616,18 +649,22 @@ ENDSELECT
 		;F-K
 		LOCAL = RAND:80
 		LOCAL += 60
+		SIF TALENT:ARG:음유
+			LOCAL += 10
 		;カップサイズは8-13
 		SIF LOCAL >= 130
 			LOCAL = 130
 		SIF LOCAL <= 80
 			LOCAL = 80
-	ELSEIF TALENT:ARG:魔乳
+	ELSEIF TALENT:ARG:마유
 		;L-魔
 		;魔なるものなので凄まじく雑にブレる
 		;期待値的には18＝Ｐカップくらい。
 		;また、下限カップが出やすい。1/3くらいはＬカップになる。ラージサイズだな。……雑ゥ！！！
 		LOCAL = RAND:250
 		LOCAL += 60
+		SIF TALENT:ARG:음유
+			LOCAL += 50
 		;カップサイズは14-30
 		SIF LOCAL >= 300
 			LOCAL = 300
@@ -637,7 +674,9 @@ ENDSELECT
 	ELSE
 		;C
 		LOCAL = RAND:10
-		LOCAL = 50
+		LOCAL += 50
+		SIF TALENT:ARG:음유
+			LOCAL += 10 + RAND:30
 	ENDIF
 
 	;身長からおよそのサイズを설정
@@ -649,7 +688,6 @@ ENDSELECT
 	RESULT -= S % 1000
 
 	BASE:ARG:바스트 = RESULT / 1000
-
 
 ;-------------------------------------------------
 ;ウェストサイズのオートセット
@@ -741,9 +779,6 @@ ENDSELECT
 
 	BASE:ARG:힙사이즈 = RESULT / 1000
 
-
-
-
 ;-------------------------------------------------
 ;指定バストサイズにするやつ
 ;SET_INFO_BODYSIZE_BUST,キャラ,乳サイズを指定
@@ -754,7 +789,7 @@ ENDSELECT
 	TALENT:ARG:빈유 = 0
 	TALENT:ARG:거유 = 0
 	TALENT:ARG:폭유 = 0
-	TALENT:ARG:魔乳 = 0
+	TALENT:ARG:마유 = 0
 
 	SELECTCASE ARGS
 		CASE "절벽"
@@ -765,8 +800,8 @@ ENDSELECT
 			TALENT:ARG:거유 = 1
 		CASE "폭유"
 			TALENT:ARG:폭유 = 1
-		CASE "魔乳"
-			TALENT:ARG:魔乳 = 1
+		CASE "마유"
+			TALENT:ARG:마유 = 1
 		CASEELSE
 	ENDSELECT
 
@@ -800,16 +835,41 @@ CALL SET_INFO_BODYSIZE_AUTO_BUST, ARG
 CALL SET_INFO_BODYSIZE_AUTO_HIP, ARG
 
 
+;-------------------------------------------------
+;妊娠時のバストサイズ変動のオートセット
+;-------------------------------------------------
+;元のバストサイズはBASEにキープし、妊娠中はMAXBASEで表す
+;変化量は適当誰か変えて
+@SET_PREGNANCY_BUST, ARG
+#DIM 補正 = 1
+IF TALENT:ARG:임신
+	PRINTFORM 妊娠によって%CALLNAME:ARG%のバストサイズは{BASE:ARG:바스트}から
+	IF BUST(ARG) == 1
+		補正 += RAND:2
+	ELSEIF BUST(ARG) == 2
+		補正 += RAND:5
+	ELSEIF BUST(ARG) == 3
+		補正 += RAND:7
+	ELSEIF BUST(ARG) == 4
+		補正 += RAND:9
+	ELSEIF BUST(ARG) == 5
+		補正 += RAND:10
+	ELSEIF BUST(ARG) == 6
+		補正 += RAND:15
+	ENDIF
 
+	SIF TALENT:ARG:음유
+		補正 += 3
+	補正 += ABL:ARG:분유중독/2
+	RESULT -= BASE:ARG:바스트
 
-
-
-
-
-
-
-
-
-
-
-
+	MAXBASE:ARG:바스트 = BASE:ARG:바스트 + 補正
+	PRINTFORM {MAXBASE:ARG:바스트}(
+	CALL SHOW_CUPSIZE(ARG)
+	PRINTFORMW )になった
+ELSE
+	MAXBASE:ARG:바스트 = BASE:ARG:바스트
+	PRINTFORM %CALLNAME:ARG%のバストサイズは{BASE:ARG:바스트}(
+	CALL SHOW_CUPSIZE(ARG)
+	PRINTFORMW )に戻った
+ENDIF

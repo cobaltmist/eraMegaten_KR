@@ -3,23 +3,23 @@
 ;================================================================
 @MAKE_MASHO_STAFF
 #DIM LCOUNT
-#DIMS LSKILL;스킬표시用
-#DIM SKILL_ADDITION;추가스킬一時保存
-#DIM SKILL_COUNT = 0;추가스킬の数を설정
-#DIM SKILL_LOOP;추가스킬格納ループ用
-FLAG:合体予定악마1 = -1
-;LOCAL ループ用
-;LOCAL:1 素材の登録番号
+#DIMS LSKILL;스킬표시용
+#DIM SKILL_ADDITION;추가스킬일시보존
+#DIM SKILL_COUNT = 0;추가스킬의 수 설정
+#DIM SKILL_LOOP;추가스킬격납루프용
+FLAG:합체예정악마1 = -1
+;LOCAL 루프용
+;LOCAL:1 소재의 등록번호
 LOCAL:1 = -1
-;LOCAL:2 악마の표시用変数
-;LOCAL:3 合体結果の杖枠
-;LOCAL:4 作成する마정장비の종류
-;G 合体杖のフラグを管理する変数 20-25:バッド스테이터스晴明用
+;LOCAL:2 악마의 표시용 변수
+;LOCAL:3 합체결과의 지팡이 틀
+;LOCAL:4 작성하는 마정장비의종류
+;G 合体杖のフラグを管理する変数 20-25:バッドステータス晴明用
 
 $START_MAKE
 LOCAL:6 = 0
 
-;キャラリストを표시・選択
+;キャラリストを表示・選択
 CALL INPUT_CHARA_LIST("소체로 쓸 악마를 선택해주십시오","CASTING_MASHO")
 SIF RESULT == 1000
 	RETURN 0
@@ -39,35 +39,35 @@ IF LOCAL:3 == -1
 	RETURN 0
 ENDIF
 
-;合体杖の속성を決める
-;습득스킬によってGを설정
+;合体杖の属性を決める
+;習得スキルによってGを設定
 VARSET G,-1
 G:0 = 1
 FOR LOCAL,1,FLAG:스킬수+1
 	LOCALS = 스킬{LOCAL}
 	IF ABL:(LOCAL:1):LOCALS > 0
 		RESULT = 0
-		;相性による조건
+		;相性による条件
 		TRYCALLFORM SKILL_TYPE_{ABL:(LOCAL:1):LOCALS},LOCAL:1
 		G:RESULT = 1
 	ENDIF
 NEXT
-;타격以外の物理は無し
+;打撃以外の物理は無し
 G:0 = -1
 G:1 = -1
 G:2 = 1
 G:3 = -1
 
 
-;신경・정신は特殊
-;その스킬で発生する상태이상を取得する。공격상성は타격のまま
+;神経・精神は特殊
+;そのスキルで発生する状態異常を取得する。攻撃相性は打撃のまま
 G:8 = -1
 G:9 = -1
 FOR LOCAL,1,FLAG:스킬수+1
 	LOCALS = 스킬{LOCAL}
 	IF ABL:(LOCAL:1):LOCALS > 0
 		RESULT = 0
-		;相性による조건
+		;相性による条件
 		TRYCCALLFORM SKILL_ADDTIONAL_STATE_{ABL:(LOCAL:1):LOCALS},LOCAL:1
 			SELECTCASE GET_STATE(RESULT)
 				CASE "POISON"
@@ -88,11 +88,11 @@ FOR LOCAL,1,FLAG:스킬수+1
 	ENDIF
 NEXT
 
-;杖の공격상성を選択
+;杖の攻撃相性を選択
 $PRINT_TYPE
 DRAWLINE
 PRINTL 지팡이의 공격상성을 선택해주십시오
-FOR LOCAL,0,FLAG:相性数
+FOR LOCAL,0,FLAG:상성수
 	IF G:LOCAL > 0
 		IF LOCAL < 9
 			PRINTFORM [ {LOCAL}] 【%GET_TYPE(LOCAL)%】
@@ -132,10 +132,10 @@ INPUT
 IF RESULT == 100
 	RESTART
 ELSEIF G:RESULT > 0
-	;DCに데이터を입력
-	;まずは명칭と相性、추가효과を決めておく
-	;40:相性。49:명칭。45:추가효과。46：추가효과상성。47:추가효과기본부여확률。48:추가효과付与確率上限
-	;화염、핵열に炎上を추가。
+	;DCにデータを入力
+	;まずは名称と相性、追加効果を決めておく
+	;40:相性。49:名称。45:추가효과。46：追加効果相性。47:추가효과基本付与確率。48:추가효과付与確率上限
+	;火炎、核熱に炎上を追加。
 	SELECTCASE RESULT
 		CASE 2
 			DC:(LOCAL:3):40 = RESULT
@@ -217,12 +217,12 @@ ELSEIF G:RESULT > 0
 			DC:(LOCAL:3):49 = 37
 	ENDSELECT
 
-	;공격횟수を설정
+	;攻撃回数を設定
 	;41:최저공격횟수。42:최대공격횟수
 	DC:(LOCAL:3):41 = 1
 	DC:(LOCAL:3):42 = 1
 
-	;기본能力値修正、전투能力値修正を決定
+	;基本能力値修正、戦闘能力値修正を決定
 	;기본
 	;0:레벨。1:힘。2:지혜。3:마력。4:인내력。5:속도。6:운。
 	DC:(LOCAL:3):0 += (MIN(ABL:(LOCAL:1):순종 , 10) + MIN(ABL:(LOCAL:1):욕망 , 10) + MIN(ABL:(LOCAL:1):기교 , 10) +3)/6 *(BASE:(LOCAL:1):LV+20)/20
@@ -232,7 +232,7 @@ ELSEIF G:RESULT > 0
 	DC:(LOCAL:3):4 += (MIN(ABL:(LOCAL:1):순종 , 10)+1)/2 *(BASE:(LOCAL:1):LV+40)/40
 	DC:(LOCAL:3):2 += (MIN(ABL:(LOCAL:1):기교 , 10)+1)/2 *(BASE:(LOCAL:1):LV+40)/40
 	DC:(LOCAL:3):5 += (MIN(ABL:(LOCAL:1):기교 , 10)+1)/2 *(BASE:(LOCAL:1):LV+40)/40
-	;레벨による조교効果보정
+	;レベルによる調教効果補正
 ;	DC:(LOCAL:3):0 *= (BASE:(LOCAL:1):LV+20)/20
 ;	DC:(LOCAL:3):1 *= (BASE:(LOCAL:1):LV+40)/40
 ;	DC:(LOCAL:3):2 *= (BASE:(LOCAL:1):LV+40)/40
@@ -247,11 +247,11 @@ ELSEIF G:RESULT > 0
 	DC:(LOCAL:3):14 = (MIN(BASE:(LOCAL:1):LV,80)+5+DC:(LOCAL:3):0*2)*3/2 + BASE:(LOCAL:1):마력*3/2 + BASE:(LOCAL:1):지혜 / 2
 	DC:(LOCAL:3):15 = (MIN(BASE:(LOCAL:1):LV,80)+5+DC:(LOCAL:3):0*2) + BASE:(LOCAL:1):지혜 + BASE:(LOCAL:1):운/2 + BASE:(LOCAL:1):마력/2
 	
-	;杖仕様に변경
-	;검よりも物理方面が弱く、魔法方面が強い
+	;杖仕様に変更
+	;剣よりも物理方面が弱く、魔法方面が強い
 	TIMES DC:(LOCAL:3):10 , 0.80
 
-	;속도30以上で명중100％
+	;速さ30以上で命中100％
 	IF BASE:(LOCAL:1):속도 >= 30
 		TIMES DC:(LOCAL:3):11 , 1.00
 	ELSE
@@ -262,14 +262,14 @@ ELSEIF G:RESULT > 0
 	TIMES DC:(LOCAL:3):14 , 1.00
 	TIMES DC:(LOCAL:3):15 , 0.60
 	
-	;충성도による加算
+	;忠誠度による加算
 	DC:(LOCAL:3):10 += MIN(BASE:(LOCAL:1):충성도/500,30)
 	DC:(LOCAL:3):11 += MIN(BASE:(LOCAL:1):충성도/500,30)
 	DC:(LOCAL:3):14 += MIN(BASE:(LOCAL:1):충성도/500,30)
 	DC:(LOCAL:3):15 += MIN(BASE:(LOCAL:1):충성도/500,30)
 	
 	
-	;공격形態は소재のものをコピー
+	;攻撃形態は素材のものをコピー
 ;	DC:(LOCAL:3):41 = ABL:(LOCAL:1):최저공격횟수
 ;	DC:(LOCAL:3):41 = 1
 ;	DC:(LOCAL:3):42 = ABL:(LOCAL:1):최대공격횟수
@@ -277,7 +277,7 @@ ELSEIF G:RESULT > 0
 	DC:(LOCAL:3):43 = ABL:(LOCAL:1):사거리
 	DC:(LOCAL:3):44 = ABL:(LOCAL:1):공격범위
 	
-	;;사거리・공격범위によって명중と공격に修正が入る
+	;;射程・攻撃範囲によって命中と攻撃に修正が入る
 	;SELECTCASE DC:(LOCAL:3):43
 	;	CASE 2
 	;		TIMES DC:(LOCAL:3):11 , 0.8
@@ -360,7 +360,7 @@ ELSEIF G:RESULT > 0
 	ENDSELECT
 	
 	;방어상성
-	FOR LOCAL,0,FLAG:相性数
+	FOR LOCAL,0,FLAG:상성수
 		DC:(LOCAL:3):(20+LOCAL) = 100
 	NEXT
 	;만능は공격が75%になる
@@ -380,7 +380,7 @@ ELSEIF G:RESULT > 0
 				LSKILL = 스킬{LOCAL+1}
 				IF ABL:(LOCAL:1):LSKILL
 					;継承不能스킬は不可
-					TRYCCALLFORM 継承不能_{ABL:(LOCAL:1):LSKILL}
+					TRYCCALLFORM 계승불능_{ABL:(LOCAL:1):LSKILL}
 					SIF RESULT
 						CONTINUE
 					CATCH
@@ -415,10 +415,10 @@ ELSE
 	GOTO INPUT_TYPE
 ENDIF
 
-;合体結果の杖を표시
+;합체결과의 지팡이를 표시
 CALL 장비설명,(2450+LOCAL:3+450*DC:(LOCAL:3):39)
 
-;상태이상とその확률を표시
+;상태이상과 그 확률을 표시
 IF GET_STATE(DC:(LOCAL:3):45) != "GOOD"
 	PRINT 【추가효과】
 	SELECTCASE GET_STATE(DC:(LOCAL:3):45)
@@ -442,7 +442,7 @@ IF GET_STATE(DC:(LOCAL:3):45) != "GOOD"
 			PRINT CHARM
 		CASEELSE
 	ENDSELECT
-	;추가효과の확률にボーナスがあると知らせる為に色を変える。
+	;追加効果の確率にボーナスがあると知らせる為に色を変える。
 	IF (DC:(LOCAL:3):44 >= 2) && (BASE:(LOCAL:1):지혜 >=30)
 		SETCOLOR COLOR("aqua")
 		PRINTFORM  {DC:(LOCAL:3):47}％
@@ -466,11 +466,11 @@ SELECTCASE RESULT
 		FOR LCOUNT, 0, 50
 			DC:(LOCAL:3):LCOUNT = 0
 		NEXT
-		;마정장비추가스킬用
+		;마정장비추가스킬용
 		FOR LOCAL,53,55
 			DC:(LOCAL:3):LOCAL = 0
 		NEXT
-		;추가스킬数초기化
+		;추가스킬초기화
 		SKILL_COUNT = 0
 		RESTART
 ENDSELECT
@@ -479,8 +479,8 @@ PRINTFORMW %STR:(DC:(LOCAL:3):49+100)%를 손에 넣었다
 
 CALL FUSION_LETTER,LOCAL:1,1
 
-;合体素材の악마を소거
-CALL キャラ삭제, LOCAL:1
+;합체소재의 악마를 삭제
+CALL 캐릭터삭제, LOCAL:1
 
 ITEM:무명의도 -= 1
 

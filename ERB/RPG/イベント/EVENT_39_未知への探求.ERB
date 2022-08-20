@@ -1,10 +1,19 @@
-﻿
+﻿;=================================================================
+;EVENT_39:未知への探求
+;悪魔のアナライズ数に応じてご褒美がもらえるイベント
+;
+;更新日時　　　更新者				更新内容
+;2021/06/25　　ロッド@カヤノソト	他の処理で解析済の悪魔の種類を返す関数「ANALYZE_COUNT_CHECK」を新規作成したため、こちらも処理を共通化する。
+;									ついでに関係する一文字変数「A」「B」をそれぞれ「ANALYZE_COUNT_ALL」「ANALYZE_COUNT_100」に変更。
+;									※これ以前の履歴が記載されていないため、とりあえずロッドがこれを記載します。
+;=================================================================
+
 
 ;====================
 ;조건
 ;====================
 @PLAYABLE_EVENT_39
-IF DAY >= 10 && 이벤트フラグ:39:0 >= 0 && 이벤트フラグ:39:0 != 2000
+IF DAY >= 10 && 이벤트플래그:39:0 >= 0 && 이벤트플래그:39:0 != 2000
 	RESULTS = 미지에 대한 탐구
 	RETURN 1
 ENDIF
@@ -16,13 +25,25 @@ RETURN 0
 ;====================
 @SHOPCOM_EVENT_39
 
-A = 0
-B = 0
+;集計結果(全て・解析率0%でもカウントする)
+#DIM ANALYZE_COUNT_ALL
+
+;集計結果(解析率100%)
+#DIM ANALYZE_COUNT_100
+
+;A = 0
+;B = 0
 C = 0
 i = 0
 
+;すべての悪魔の種類を取得する(女神転生から出典のみ・EXTRA出典は除外する)
+ANALYZE_COUNT_ALL = ANALYZE_COUNT_CHECK(1, 0, 100, 1, 999, -1)
+
+;解析率100%のの悪魔の種類を取得する(女神転生から出典のみ・EXTRA出典は除外する)
+ANALYZE_COUNT_100 = ANALYZE_COUNT_CHECK(1, 100, 100, 1, 999, -1)
+
 CUSTOMDRAWLINE =
-IF 이벤트フラグ:39:0 >= 1
+IF 이벤트플래그:39:0 >= 1
 	PRINTFORML
 	PRINTW ＞악마 연구가 엘리고르를 방문했다
 	PRINTL
@@ -30,7 +51,7 @@ IF 이벤트フラグ:39:0 >= 1
 	PRINTL 「어서오게. 내게 악마전서를 보여주겠나?」
 	PRINTW 「물론 해석을 마친 악마의 수에 맞추어 보수를 주도록 하지」
 ELSE
-	이벤트フラグ:39:0 = 1
+	이벤트플래그:39:0 = 1
 	; バランス調整案
 	; 二週눈以降でかつ、전투난이도がノーマル以上のとき10〜50の報酬をカット
 	;SIF FLAG:전투난이도 >= 2 && FLAG:주회횟수 >= 1
@@ -68,12 +89,12 @@ IF RESULT == 1
 	; -1は完成後の景品となる악마を除外しているため。
 	PRINTL
 	PRINTL 엘리고르：
-	PRINTFORMW 「전 {A - 1}종 중 {B}종을 완전히 해석했군」
+	PRINTFORMW 「전 {ANALYZE_COUNT_ALL - 2}종 중 {ANALYZE_COUNT_100}종을 완전히 해석했군」
 	WHILE C == 0
-		SELECTCASE 이벤트フラグ:39:0
+		SELECTCASE 이벤트플래그:39:0
 			;10종류
 			CASE 1
-				IF B >= 10
+				IF ANALYZE_COUNT_100 >= 10
 					PRINTL 「10종류 이상의 해석이 끝났군」
 					PRINTW 「보수로 300마카를 진상하지」
 					PRINTL
@@ -83,8 +104,8 @@ IF RESULT == 1
 					PRINTL 엘리고르：
 					PRINTL 「자네 일치고는 쌀지도 모르지만, 10종이라면 이쯤되네」
 					PRINTW 「다음엔 30종 이상 해석을 끝마쳤을 때, 보수를 주도록 하지」
-					이벤트フラグ:39:0 ++
-					IF B >= 30
+					이벤트플래그:39:0 ++
+					IF ANALYZE_COUNT_100 >= 30
 						PRINTW 「이런？」
 					ELSE
 						C = 1
@@ -97,7 +118,7 @@ IF RESULT == 1
 				
 			;30종류
 			CASE 2
-				IF B >= 30
+				IF ANALYZE_COUNT_100 >= 30
 					PRINTL 「30종 이상의 해석을 끝마쳤군」
 					PRINTW 「보수는……무명의도가 좋으려나?」
 					PRINTL
@@ -108,8 +129,8 @@ IF RESULT == 1
 					PRINTL 「이걸 들고 사교의 관에 가면 마정무기를 작성할 수 있네」
 					PRINTL 「석세서의 자질이 있다면 만들어 둬서 손해볼 건 없지」
 					PRINTW 「다음엔 50종 이상 해석을 끝마쳤을 때, 보수를 주도록 하지」
-					이벤트フラグ:39:0 ++
-					IF B >= 50
+					이벤트플래그:39:0 ++
+					IF ANALYZE_COUNT_100 >= 50
 						PRINTW 「이런？」
 					ELSE
 						C = 1
@@ -124,7 +145,7 @@ IF RESULT == 1
 				
 			;50종류
 			CASE 3
-				IF B >= 50
+				IF ANALYZE_COUNT_100 >= 50
 					PRINTL 「50종 이상의 해석을 끝마쳤군」
 					PRINTW 「보수로 4장의 스킬카드를 주지」
 					PRINTL
@@ -141,21 +162,21 @@ IF RESULT == 1
 					PRINTL 「강화 스킬이 매우 유용하단 걸 알고 있을까」
 					PRINTL 「전투에서 잘 활용하길 바라네」
 					PRINTW 「다음엔 100종……여기까지 온 자네라면 불가능하진 않을 터」
-					이벤트フラグ:39:0 ++
-					IF B >= 100
+					이벤트플래그:39:0 ++
+					IF ANALYZE_COUNT_100 >= 100
 						PRINTW 「이런？」
 					ELSE
 						C = 1
 					ENDIF
 				ELSE
 					PRINTW 「다음엔 50종 이상 해석을 끝마쳤을 때, 보수를 주도록 하지」
-					CALL EVENT_39_Advice
+					CALL EVENT_39_Advice, ANALYZE_COUNT_100
 					C = 1
 				ENDIF
 				
 			;100종류
 			CASE 4
-				IF B >= 100
+				IF ANALYZE_COUNT_100 >= 100
 					PRINTL 「축하하네! 100종에 도달했어」
 					PRINTW 「이번 보수는 청룡좀비의 데이터라네」
 					IF BASE:MASTER:LV >= 40
@@ -177,9 +198,9 @@ IF RESULT == 1
 						BASE:LOCAL:검격 = 125
 						BASE:LOCAL:화염 = 250
 						BASE:LOCAL:파마 = 400
-						CFLAG:LOCAL:善悪치 = 1
-						CFLAG:LOCAL:秩混치 = 1
-						CFLAG:LOCAL:이벤트加入 = 1
+						CFLAG:LOCAL:선악치 = 1
+						CFLAG:LOCAL:질혼치 = 1
+						CFLAG:LOCAL:이벤트가입 = 1
 						; プロフィール소거
 						FOR i,30,49
 							CSTR:LOCAL:i = 　
@@ -214,9 +235,9 @@ IF RESULT == 1
 							BASE:LOCAL:검격 = 125
 							BASE:LOCAL:화염 = 250
 							BASE:LOCAL:파마 = 400
-							CFLAG:LOCAL:善悪치 = 1
-							CFLAG:LOCAL:秩混치 = 1
-							CFLAG:LOCAL:이벤트加入 = 1
+							CFLAG:LOCAL:선악치 = 1
+							CFLAG:LOCAL:질혼치 = 1
+							CFLAG:LOCAL:이벤트가입 = 1
 							; プロフィール소거
 							FOR i,30,49
 								CSTR:LOCAL:i = 　
@@ -232,21 +253,21 @@ IF RESULT == 1
 					PRINTL 「종족, 스킬, 내성에 변화가 있지만 본래보다 약해져 있는 게 보통이지」
 					PRINTL 「악마전서상에는 예전의 모습과 동일 악마로 취급되네」
 					PRINTW 「다음엔 150종. 뭐, 전서 완성에 비하면 쉬운 일이지」
-					이벤트フラグ:39:0 ++
-					IF B >= 150
+					이벤트플래그:39:0 ++
+					IF ANALYZE_COUNT_100 >= 150
 						PRINTW 「이런？」
 					ELSE
 						C = 1
 					ENDIF
 				ELSE
 					PRINTW 「다음엔 150종……여기까지 온 자네라면 불가능하진 않을 터」
-					CALL EVENT_39_Advice
+					CALL EVENT_39_Advice, ANALYZE_COUNT_100
 					C = 1
 				ENDIF
 				
 			;150종류
 			CASE 5
-				IF B >= 150
+				IF ANALYZE_COUNT_100 >= 150
 					PRINTL 「축하한다！　150종류에 도달했다」
 					PRINTW 「보수로 리빙・엣지를 주지」
 					PRINTL
@@ -257,20 +278,20 @@ IF RESULT == 1
 					PRINTL 「이 무기는 장비하는 사람의 능력으로 강함이 바뀌는 이상한 무기다」
 					PRINTL 「싸울 때 잘 활용해 주었으면 한다」
 					PRINTW 「다음은 200종류……여기까지 온 너라면 불가능하지 않겠지」
-					이벤트フラグ:39:0 ++
-					IF B >= 200
+					이벤트플래그:39:0 ++
+					IF ANALYZE_COUNT_100 >= 200
 						PRINTW 「이런？」
 					ELSE
 						C = 1
 					ENDIF
 				ELSE
 					PRINTW 「다음은 200종류……여기까지 온 너라면 불가능하지 않겠지」
-					CALL EVENT_39_Advice
+					CALL EVENT_39_Advice, ANALYZE_COUNT_100
 					C = 1
 				ENDIF
 			;200종류
 			CASE 6
-				IF B >= 200
+				IF ANALYZE_COUNT_100 >= 200
 					PRINTL 「200종 이상의 해석을 끝냈군」
 					PRINTW 「이번 보수는 젠더프리다」
 					IF ITEM:젠더프리 == 0
@@ -291,21 +312,21 @@ IF RESULT == 1
 					ENDIF
 					PRINTL 「다음은 300종. 이것을 넘으면, 악마에 대해 남들 만큼의 지식이 있다고 할 수 있지」
 					PRINTW 「일단락이라 해도 과언은 아니네」
-					이벤트フラグ:39:0 ++
-					IF B >= 300
+					이벤트플래그:39:0 ++
+					IF ANALYZE_COUNT_100 >= 300
 						PRINTW 「이런？」
 					ELSE
 						C = 1
 					ENDIF
 				ELSE
 					PRINTW 「다음은 200종류. 뭐, 전서의 완성에 비하면 편한 도전이다」
-					CALL EVENT_39_Advice
+					CALL EVENT_39_Advice, ANALYZE_COUNT_100
 					C = 1
 				ENDIF
 				
 			;300종류
 			CASE 7
-				IF B >= 300
+				IF ANALYZE_COUNT_100 >= 300
 					PRINTL 「300종…… 꽤 노력하고 있는 것 같군」
 					PRINTW 「이번 보수는 미라이의 도플갱어다」
 					IF BASE:MASTER:LV >= 50
@@ -333,7 +354,7 @@ IF RESULT == 1
 						CFLAG:LOCAL:초기속옷（하） = 602
 						CFLAG:LOCAL:초기양말 = 801
 						CFLAG:LOCAL:초기신발 = 908
-						CFLAG:LOCAL:이벤트加入 = 1
+						CFLAG:LOCAL:이벤트가입 = 1
 						; プロフィール소거
 						FOR i,30,49
 							CSTR:LOCAL:i = 　
@@ -355,7 +376,7 @@ IF RESULT == 1
 							PRINTL
 							CALL ADD_NEW_COMPANION,1006,1000,1
 							LOCAL = RESULT:1
-							NAME:LOCAL = 미라이の도플갱어
+							NAME:LOCAL = 미라이의도플갱어
 							CALLNAME:LOCAL = 미라이
 							ABL:LOCAL:스킬3 = 4; 양팔찍기
 							TALENT:LOCAL:유아체형 = 1
@@ -373,7 +394,7 @@ IF RESULT == 1
 							CFLAG:LOCAL:속옷（하） = 602
 							CFLAG:LOCAL:양말 = 801
 							CFLAG:LOCAL:신발 = 908
-							CFLAG:LOCAL:이벤트加入 = 1
+							CFLAG:LOCAL:이벤트가입 = 1
 							; プロフィール소거
 							FOR i,30,49
 								CSTR:LOCAL:i = 　
@@ -387,21 +408,21 @@ IF RESULT == 1
 					PRINTL 「마계를 방황하고 있던 여자애를 흉내낸 도플갱어다」
 					PRINTL 「……혹시 너는 원래 모습의 여자애를 알고 있나?」
 					PRINTW 「다음은 400종. 이것을 넘으면 악마에 대해 전문가를 자칭해도 좋을지도 모르겠군」
-					이벤트フラグ:39:0 ++
-					IF B >= 400
+					이벤트플래그:39:0 ++
+					IF ANALYZE_COUNT_100 >= 400
 						PRINTW 「おや？」
 					ELSE
 						C = 1
 					ENDIF
 				ELSE
 					PRINTW 「다음은 400종.이것을 넘으면 악마에 대해 남들만큼의 지식이 있다고 할 수 있지」
-					CALL EVENT_39_Advice
+					CALL EVENT_39_Advice, ANALYZE_COUNT_100
 					C = 1
 				ENDIF
 				
 			;400종류
 			CASE 8
-				IF B >= 400
+				IF ANALYZE_COUNT_100 >= 400
 					PRINTL 「400종을 돌파…… 슬슬 악마의 전문가를 자칭해도 좋겠는걸」
 					PRINTW 「이번 보수는 모든 종류의 향을 주지」
 					PRINTL
@@ -423,21 +444,21 @@ IF RESULT == 1
 					PRINTL 「자네만한 서머너라면 익숙한 물건이겠지만, 능력치를 상승시키는 향들일세」
 					PRINTL 「이거라면 아무리 있어도 나쁠 건 없지」
 					PRINTW 「다음은 500종류. 이를 달성하면 전서 컴플리트의 위업이 눈에 보일 것이야」
-					이벤트フラグ:39:0 ++
-					IF B >= 500
+					이벤트플래그:39:0 ++
+					IF ANALYZE_COUNT_100 >= 500
 						PRINTW 「이런？」
 					ELSE
 						C = 1
 					ENDIF
 				ELSE
 					PRINTW 「다음은 400종류. 악마의 아마추어와 프로의 경계, 그리고 본 게임의 시작이기도 하다」
-					CALL EVENT_39_Advice
+					CALL EVENT_39_Advice, ANALYZE_COUNT_100
 					C = 1
 				ENDIF
 				
 			;500종류
 			CASE 9
-				IF B >= 500
+				IF ANALYZE_COUNT_100 >= 500
 					PRINTL 「500종 달성…… 전서 컴플리트의 위업이 보이기 시작했군」
 					PRINTW 「이번 보수는 픽시 LV70의 데이터일세」
 					IF BASE:MASTER:LV >= 35
@@ -484,21 +505,21 @@ IF RESULT == 1
 					PRINTL 「하지만 그녀는 80레벨까지 성장하면 강력한 스킬을 배우게 되는 모양이네」
 					PRINTL 「이 기회에 시험해보는 건 어떠려나?」
 					PRINTW 「다음은 600종류. 이걸 넘어서면 악마의 전문가를 자칭해도 무방할 것이야」
-					이벤트フラグ:39:0 ++
-					IF B >= 600
+					이벤트플래그:39:0 ++
+					IF ANALYZE_COUNT_100 >= 600
 						PRINTW 「이런？」
 					ELSE
 						C = 1
 					ENDIF
 				ELSE
 					PRINTW 「다음은 600종. 초조해할 건 없네. 노력하게나」
-					CALL EVENT_39_Advice
+					CALL EVENT_39_Advice, ANALYZE_COUNT_100
 					C = 1
 				ENDIF
 				
 			;600종류
 			CASE 10
-				IF B >= 600
+				IF ANALYZE_COUNT_100 >= 600
 					PRINTL 「600종 이상의 분석을 끝마쳤군」
 					PRINTW 「이번 보상은 학습장치일세」
 					PRINTL
@@ -509,21 +530,21 @@ IF RESULT == 1
 					PRINTL 「이것을 장비시키면 전투 없이도 전투 경험을 쌓을 수 있지」
 					PRINTW 「레벨은 올리고 싶지만 싸울 수 없는 자에게 장비시키면 좋을 거야」
 					PRINTW 「다음엔 650종 이상 해석을 끝마쳤을 때, 보수를 주도록 하지」
-					이벤트フラグ:39:0 ++
-					IF B >= 650
+					이벤트플래그:39:0 ++
+					IF ANALYZE_COUNT_100 >= 650
 						PRINTW 「이런？」
 					ELSE
 						C = 1
 					ENDIF
 				ELSE
 					PRINTW 「다음엔 650종 이상 해석을 끝마쳤을 때, 보수를 주도록 하지」
-					CALL EVENT_39_Advice
+					CALL EVENT_39_Advice, ANALYZE_COUNT_100
 					C = 1
 				ENDIF
 				
 			;650종류
 			CASE 11
-				IF B >= 650
+				IF ANALYZE_COUNT_100 >= 650
 					PRINTW 「650종 이상의 분석을 끝마쳤군」
 					PRINTW 「이번 보상은 파라켈수스일세」
 					IF ITEM:파라켈수스 == 0
@@ -543,21 +564,21 @@ IF RESULT == 1
 						MONEY:1 += 5000
 					ENDIF
 					PRINTW 「다음엔 700종 이상 해석을 끝마쳤을 때, 보수를 주도록 하지」
-					이벤트フラグ:39:0 ++
-					IF B >= 700
+					이벤트플래그:39:0 ++
+					IF ANALYZE_COUNT_100 >= 700
 						PRINTW 「이런？」
 					ELSE
 						C = 1
 					ENDIF
 				ELSE
 					PRINTFORMW 「다음엔 700종 이상 해석을 끝마쳤을 때, 보수를 주도록 하지」
-					CALL EVENT_39_Advice
+					CALL EVENT_39_Advice, ANALYZE_COUNT_100
 					C = 1
 				ENDIF
 				
 			;700종류
 			CASE 12
-				IF B >= 700
+				IF ANALYZE_COUNT_100 >= 700
 					PRINTL 「700종 이상의 분석을 끝냈군」
 					PRINTW 「이번 보상은 헤드셋일세」
 					PRINTL
@@ -568,21 +589,21 @@ IF RESULT == 1
 					PRINTL 「친한 상대에게 장비시켜보게나」
 					PRINTW 「전투 중, 뜻밖의 지원을 받을 수 있을 거야」
 					PRINTW 「다음엔 750종 이상 해석을 끝마쳤을 때, 보수를 주도록 하지」
-					이벤트フラグ:39:0 ++
-					IF B >= 750
+					이벤트플래그:39:0 ++
+					IF ANALYZE_COUNT_100 >= 750
 						PRINTW 「이런？」
 					ELSE
 						C = 1
 					ENDIF
 				ELSE
 					PRINTW 「다음엔 750종 이상 해석을 끝마쳤을 때, 보수를 주도록 하지」
-					CALL EVENT_39_Advice
+					CALL EVENT_39_Advice, ANALYZE_COUNT_100
 					C = 1
 				ENDIF
 			
 			;750종류
 			CASE 13
-				IF B >= 750
+				IF ANALYZE_COUNT_100 >= 750
 					PRINTL 「750종 이상의 분석을 끝마쳤군」
 					PRINTW 「이번 보상은 허니문일세」
 					IF ITEM:허니문 == 0
@@ -602,21 +623,21 @@ IF RESULT == 1
 						MONEY:1 += 3000
 					ENDIF
 					PRINTW 「다음엔 800종 이상 해석을 끝마쳤을 때, 보수를 주도록 하지」
-					이벤트フラグ:39:0 ++
-					IF B >= 800
+					이벤트플래그:39:0 ++
+					IF ANALYZE_COUNT_100 >= 800
 						PRINTW 「이런？」
 					ELSE
 						C = 1
 					ENDIF
 				ELSE
 					PRINTW 「다음엔 600종 이상 해석을 끝마쳤을 때, 보수를 주도록 하지」
-					CALL EVENT_39_Advice
+					CALL EVENT_39_Advice, ANALYZE_COUNT_100
 					C = 1
 				ENDIF
 				
 			;800종류
 			CASE 14
-				IF B >= 800
+				IF ANALYZE_COUNT_100 >= 800
 					PRINTW 「800종 이상의 분석을 끝마쳤군」
 					PRINTW 「이번 보상은 에너미호이호이일세」
 					IF ITEM:에너미호이호이 == 0
@@ -636,21 +657,21 @@ IF RESULT == 1
 						MONEY:1 += 5000
 					ENDIF
 					PRINTW 「다음엔 850종 이상 해석을 끝마쳤을 때, 보수를 주도록 하지」
-					이벤트フラグ:39:0 ++
-					IF B >= 850
+					이벤트플래그:39:0 ++
+					IF ANALYZE_COUNT_100 >= 850
 						PRINTW 「이런？」
 					ELSE
 						C = 1
 					ENDIF
 				ELSE
 					PRINTW 「다음엔 850종 이상 해석을 끝마쳤을 때, 보수를 주도록 하지」
-					CALL EVENT_39_Advice
+					CALL EVENT_39_Advice, ANALYZE_COUNT_100
 					C = 1
 				ENDIF
 				
 			;850종류
 			CASE 15
-				IF B >= 850
+				IF ANALYZE_COUNT_100 >= 850
 					PRINTL 「850종류이상의 분석을 끝마쳤군」
 					PRINTW 「이번 보상은 아르센일세」
 					IF ITEM:아르센 == 0
@@ -671,21 +692,21 @@ IF RESULT == 1
 						MONEY:1 += 5000
 					ENDIF
 					PRINTW 「다음엔 900종 이상 해석을 끝마쳤을 때, 보수를 주도록 하지」
-					이벤트フラグ:39:0 ++
-					IF B >= 900
+					이벤트플래그:39:0 ++
+					IF ANALYZE_COUNT_100 >= 900
 						PRINTW 「이런？」
 					ELSE
 						C = 1
 					ENDIF
 				ELSE
 					PRINTL 「다음엔 850종 이상 해석을 끝마쳤을 때, 보수를 주도록 하지」
-					CALL EVENT_39_Advice
+					CALL EVENT_39_Advice, ANALYZE_COUNT_100
 					C = 1
 				ENDIF
 				
 			;900종류
 			CASE 16
-				IF B >= 900
+				IF ANALYZE_COUNT_100 >= 900
 					PRINTL 「900종 이상의 분석을 끝마쳤군」
 					PRINTW 「이번 보상은, 그렇군......」
 					FLAG:ＣＯＭＰ용량 += 10
@@ -694,25 +715,25 @@ IF RESULT == 1
 					PRINTW 「특수한 인스톨소프트가 없으면 눈에 띄지 않는 악마도 있는 것 같으니까 말이야」
 					PRINTW 「전서 완성에 도움이 되길 바라지」
 					PRINTW 「다음엔 950종 이상 해석을 끝마쳤을 때, 보수를 주도록 하지」
-					이벤트フラグ:39:0 ++
-					IF B >= 950
+					이벤트플래그:39:0 ++
+					IF ANALYZE_COUNT_100 >= 950
 						PRINTW 「이런？」
 					ELSE
 						C = 1
 					ENDIF
 				ELSE
 					PRINTL 「다음엔 900종 이상 해석을 끝마쳤을 때, 보수를 주도록 하지」
-					CALL EVENT_39_Advice
+					CALL EVENT_39_Advice, ANALYZE_COUNT_100
 					C = 1
 				ENDIF
 				
 			;950종류
 			CASE 17
-				IF B >= 950
+				IF ANALYZE_COUNT_100 >= 950
 					PRINTL 「950종 이상의 분석을 끝마쳤군」
 					PRINTW 「이번 보상은 프라이데이일세」
-					IF ITEM:프라이데이	 == 0
-						ITEM:프라이데이	 = 1
+					IF ITEM:프라이데이 == 0
+						ITEM:프라이데이 = 1
 						PRINTL
 						PRINTW ＞인스톨 소프트, 프라이데이를 받았다.
 						PRINTL
@@ -728,21 +749,21 @@ IF RESULT == 1
 						MONEY:1 += 40000
 					ENDIF
 					PRINTW 「다음엔 1000종 이상 해석을 끝마쳤을 때, 보수를 주도록 하지」
-					이벤트フラグ:39:0 ++
-					IF B >= 1000
+					이벤트플래그:39:0 ++
+					IF ANALYZE_COUNT_100 >= 1000
 						PRINTW 「이런？」
 					ELSE
 						C = 1
 					ENDIF
 				ELSE
 					PRINTL 「다음엔 950종 이상 해석을 끝마쳤을 때, 보수를 주도록 하지」
-					CALL EVENT_39_Advice
+					CALL EVENT_39_Advice, ANALYZE_COUNT_100
 					C = 1
 				ENDIF
 				
 			;1000종류
 			CASE 18
-				IF B >= 1000
+				IF ANALYZE_COUNT_100 >= 1000
 					PRINTL 「1000종 이상의 분석을 끝마쳤군」
 					PRINTW 「이번 보상은 스티븐일세」
 					IF ITEM:스티븐 == 0
@@ -761,30 +782,31 @@ IF RESULT == 1
 						PRINTL
 						MONEY:1 += 80000
 					ENDIF
+					
 					PRINTW 「자, 다음에 보수를 넘기는 것은 악마전서가 완성되었을 때다」
 					PRINTW 「……사실 자네보다 타이트한 조건으로 이에 도전한 자는 없네」
 					;PRINTW クロダンシャク「오, 오우…」
 					PRINTW 「그래도 여기까지 온 자네라면 가능하다고 믿고 있어」
-					이벤트フラグ:39:0 ++
-					IF B < (A - 1)
+					이벤트플래그:39:0 ++
+					IF ANALYZE_COUNT_100 < (ANALYZE_COUNT_ALL - 1)
 						C = 1
 					ELSE
 
 					ENDIF
 				ELSE
 					PRINTL 「다음엔 1000종 이상 해석을 끝마쳤을 때, 보수를 주도록 하지」
-					CALL EVENT_39_Advice
+					CALL EVENT_39_Advice, ANALYZE_COUNT_100
 					C = 1
 				ENDIF
 			; ラスト。악마全書が完成
 			CASEELSE
-				IF B < (A - 1)
+				IF ANALYZE_COUNT_100 < (ANALYZE_COUNT_ALL - 2)
 					PRINTL 「자, 다음 보수를 넘기는 건 악마전서가 완성되었을 때다」
 					PRINTL 「……사실 자네보다 타이트한 조건으로 이에 도전한 자는 없네」
 					PRINTW 「그래도 여기까지 온 자네라면 가능하다고 믿고 있어」
 					PRINTL 
 					PRINTL 엘리고르：
-					CALL EVENT_39_Advice
+					CALL EVENT_39_Advice, ANALYZE_COUNT_100
 					C = 1
 				ELSE
 					PRINTW 「……응?」
@@ -836,7 +858,7 @@ IF RESULT == 1
 				PRINTW 「이 악마전서에는 이 세상의 모든 게 기록되어있는 거나 마찬가지」
 				PRINTW 「자네는 이 모든 걸 눈으로 보아왔겠지……」
 				PRINTW 「정말로 고맙네. 이걸로 내 연구에도 진리에 한층 가까워졌을 것이야」
-				이벤트フラグ:39:0 = 2000
+				이벤트플래그:39:0 = 2000
 			ENDIF
 		ENDSELECT
 	WEND
@@ -849,7 +871,7 @@ ENDIF
 PRINTL
 PRINTW ＞엘리고르 곁에서 떠났다.
 
-IF 이벤트フラグ:39:0 == 2000
+IF 이벤트플래그:39:0 == 2000
 	PRINTL
 	PRINTW ＞악마전서의 연구, 완전 클리어! 명성 1000을 얻었다.
 	PRINTL
@@ -863,11 +885,17 @@ RETURN 0
 ; ここで체크する악마のリストも定めている
 ; 一応、여신転生シリーズに絞り、アナライズの대상外である조마も除外しておく
 
-FOR i,1,4389
+;-----------------------------------------------------------------------------------------------------
+;悪魔のアナライズ数をチェックする関数「ANALYZE_COUNT_CHECK」を新規作成したため、そちらを使用する。
+;※下記のforループでは「2周目以降、悪魔全書をすべて1%にする」処理のみ引き続き実行する。
+;2021/06/30	ロッド@カヤノソト
+;-----------------------------------------------------------------------------------------------------
+;2周目以降、悪魔全書をすべて1%にする
+FOR i,1,4390
 	SIF !EXISTCSV(i, 0)
 	CONTINUE
 
-	; 半魔、リンク専用、페르소나専用を除外
+	; 半魔、リンク専用、페르소나전용を除外
 	SIF i >= 3500 && i <= 3699
 	CONTINUE
 	SIF i >= 3800 && i <= 3999
@@ -875,9 +903,6 @@ FOR i,1,4389
 	
 	;メリーさん除外
 	SIF i == 1082
-	CONTINUE
-	;팔척님 제외
-	SIF i == 1060
 	CONTINUE
 
 	;幻影の幽霊の머신除外
@@ -887,12 +912,8 @@ FOR i,1,4389
 	; 악마호무라除外
 	SIF i == 298
 	CONTINUE
-	;
+	; まどマギ怪異除外
 	SIF i >= 3380 && i <= 3399
-	CONTINUE
-	
-	; extra 바토리 제외
-	SIF i == 4377
 	CONTINUE
 
 	;디버그용、악마全書をすべて100%に
@@ -905,9 +926,6 @@ FOR i,1,4389
 			FLAG:(20000+i) = 10
 	ENDIF
 	
-	A ++
-	SIF FLAG:(20000+i) >= 1000
-	B ++
 NEXT
 
 RETURN
@@ -926,9 +944,12 @@ BASE:ARG:ＥＸＰ = 0
 
 RETURN
 
-@EVENT_39_Advice
+@EVENT_39_Advice, ANALYZE_COUNT_100
 
-IF B < 200 || RAND:4 == 0
+;集計結果(解析率100%)
+#DIM ANALYZE_COUNT_100
+
+IF ANALYZE_COUNT_100 < 200 || RAND:4 == 0
 	SELECTCASE RAND:8
 
 	CASE 0

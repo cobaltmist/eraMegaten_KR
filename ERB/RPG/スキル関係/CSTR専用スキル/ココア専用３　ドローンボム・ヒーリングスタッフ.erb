@@ -1,0 +1,220 @@
+﻿;スキル名
+@SKILL_NAME_D・ヒーリングS,ARG
+RESULTS = D・힐링S
+
+
+;　명중
+@SKILL_HITRATE_D・ヒーリングS, ARG
+RETURN 120
+
+;　위력
+@SKILL_POWER_D・ヒーリングS, ARG
+RETURN 250
+
+;クリティカル率
+@SKILL_CRITICAL_RATE_D・ヒーリングS, ARG
+RETURN 0
+
+;　최저공격횟수
+@SKILL_MINATTACKNUMBER_D・ヒーリングS,ARG
+RETURN 1
+
+;　최대공격횟수
+@SKILL_MAXATTACKNUMBER_D・ヒーリングS,ARG
+RETURN 1
+
+;　2 ＨＰ지불　3 ＭＰ지불
+@SKILL_COSTTYPE_D・ヒーリングS, ARG
+RETURN 1
+;消費なし＝1
+
+;　코스트량　HPだと％になるんだ。しらそん
+@SKILL_COST_D・ヒーリングS,ARG
+RETURN 0
+
+;　상성
+@SKILL_TYPE_D・ヒーリングS,ARG
+#LOCALSSIZE 5
+#LOCALSIZE 4
+SIF ARG < 0 || 스킬속성표시중
+	RETURN GET_TYPE_NUM("충격")
+SIF CFLAG:ARG:타겟 > 16 || CFLAG:ARG:타겟 < 1
+	RETURN GET_TYPE_NUM("충격")
+LOCAL = POS(CFLAG:ARG:타겟)
+SIF LOCAL < 0
+	RETURN GET_TYPE_NUM("충격")
+	
+LOCAL:2 = -300
+LOCALS = 충격
+LOCALS:1 = 충격
+LOCALS:2 = 만능
+;0~2。属性の数まで参照しよう。それをすぎるとエラーだゾ
+FOR LOCAL:1, 1, 3
+	;判定用に数値を仕舞う。反射は-200扱い
+	LOCAL:3 = MAXBASE:LOCAL:(LOCALS:(LOCAL:1)) == 999 ? -200 # MAXBASE:LOCAL:(LOCALS:(LOCAL:1))
+	LOCAL:3 = !(HAVE_SKILL(ARG,[[스킬:영세라이도우]]) || HAVE_SKILL(ARG,2947)) && CFLAG:LOCAL:(LOCALS:(LOCAL:1)+"무효화횟수") ? -5 # LOCAL:3
+	LOCAL:3 = CFLAG:LOCAL:(LOCALS:(LOCAL:1)+"가드킬") && LOCAL:3 < 100 ? 100 # LOCAL:3
+	SELECTCASE LOCAL:1
+		CASE 1
+			LOCAL:3 = CFLAG:LOCAL:물리반사플래그 ? -200 # LOCAL:3
+		CASE 1 TO 3
+			LOCAL:3 = CFLAG:LOCAL:마법반사플래그 ? -200 # LOCAL:3
+		CASEELSE
+	ENDSELECT
+	IF LOCAL:3 > LOCAL:2
+		LOCAL:2 = LOCAL:3
+		LOCALS = %LOCALS:(LOCAL:1)%
+	ENDIF
+NEXT
+PRINT 속성상성：
+PRINTS LOCALS
+RETURN GET_TYPE_NUM(LOCALS)
+
+
+;　1 EXTRA　2 MAGIC
+@SKILL_DECIDE_TYPE_D・ヒーリングS,ARG
+RETURN 1
+
+;　1 물리데미지로 계산　2 마법데미지로 계산
+@SKILL_DAMAGETYPE_D・ヒーリングS,ARG
+RETURN 1
+
+
+;　対象が1敵か2味方か3場全体か4特殊か
+@SKILL_TARGET_D・ヒーリングS,ARG
+RETURN 1
+
+;　사거리
+@SKILL_RANGE_D・ヒーリングS,ARG
+RETURN 3
+
+;　범위　1 1체　2 1열　3 전체　4 적아군전체
+@SKILL_SPHERE_D・ヒーリングS,ARG
+RETURN 2
+
+;　 효과타입　1 공격、2 회복、3 상태변화、4 특수、5 상태회복
+@SKILL_EFECT_D・ヒーリングS,ARG
+RETURN 1
+
+;　 특수처리 여부 및 처리내용
+;@SKILL_SPECIALEFECT_D・ヒーリングS,ARG
+;ARG = 1인 경우는 처리 여부를 반환합니다
+;SIF ARG == 1
+;	RETURN 0
+;아래쪽에 특수처리를 기술합니다
+
+;계승타입
+;@SKILL_SUCCESSION_TYPE_D・ヒーリングS,ARG
+;RETURN 23
+;검격
+
+;속도보정
+@SKILL_SPEED_D・ヒーリングS, ARG = -1
+RETURN 0
+
+;;　口上の表示とそのタイプ
+;@SKILL_MESSAGE_D・ヒーリングS,ARG
+
+
+;전투시 이외에 사용 가능한가
+@SKILL_ACTIONABLE_FIELD_D・ヒーリングS, ARG = -1
+RETURN 0
+
+;没
+;@SKILL_RANK_D・ヒーリングS
+;@SKILL_RANKUP_D・ヒーリングS
+;@계승불능_D・ヒーリングS
+
+;템플릿용、추가효과 시리즈
+;추가효과 스테이터스
+@SKILL_ADDTIONAL_STATE_D・ヒーリングS,ARG
+RETURN 0
+
+;추가효과 상성
+@SKILL_ADDTIONAL_TYPE_D・ヒーリングS,ARG
+RETURN 0
+
+;추가효과 기본부여확률
+@SKILL_ADDTIONAL_BASE_RATE_D・ヒーリングS,ARG
+RETURN 0
+
+;추가효과 부여확률상한
+@SKILL_ADDTIONAL_MAX_RATE_D・ヒーリングS,ARG
+RETURN 0
+
+;;拡散攻撃用追加処理
+;;ブレスなどの拡散攻撃に使う
+;@SKILL_SPREAD_D・ヒーリングS,ARG
+;RETURN 0
+
+;====================================================
+;스킬 및 행동의 실행
+;====================================================
+@ACTION_D・ヒーリングS,ARG,ARG:1,SKILL_NUM
+#DIM SKILL_NUM
+#DIM ボムストック
+#DIM 前HP
+ボムストック = PU_SKILLNUM_GET(ARG,"ボムリロード")
+CALL SKILLGAGE_F_ADD,ARG,ボムストック,1
+IF ARG:1 == 17
+	LOCAL:1 = 1
+	LOCAL:2 = 4
+ELSEIF ARG:1 == 18
+	LOCAL:1 = 4
+	LOCAL:2 = 7
+ELSEIF ARG:1 == 19
+	LOCAL:1 = 1
+	LOCAL:2 = 7
+ELSEIF ARG:1 == 20
+	LOCAL:1 = 7
+	LOCAL:2 = 12
+ELSEIF ARG:1 == 21
+	LOCAL:1 = 12
+	LOCAL:2 = 17
+ELSEIF ARG:1 == 22
+	LOCAL:1 = 7
+	LOCAL:2 = 17
+ELSEIF ARG:1 == 23
+	LOCAL:1 = 1
+	LOCAL:2 = 17
+ENDIF
+FOR LOCAL,LOCAL:1,LOCAL:2
+	SIF POS(LOCAL) < 0 || CFLAG:POS(LOCAL):상태이상 == GET_STATE_NUM("DYING")
+		CONTINUE
+	前HP = BASE:POS(LOCAL):ＨＰ
+	CALL ATTACK_SINGLE,ARG,POS(LOCAL),3542
+	IF POS(LOCAL) > -1 && BASE:POS(LOCAL):ＨＰ < 前HP
+			CFLAG:POS(LOCAL):공격강화 = MAX(-16, CFLAG:POS(LOCAL):공격강화 - 4)
+			CFLAG:POS(LOCAL):마법위력강화 = MAX(-16, CFLAG:POS(LOCAL):마법위력강화 - 4)
+			PRINTFORML 　　TARGET:[{LOCAL,2}] %CALLNAME:POS(LOCAL),20,LEFT%　>>>>>>　물리・마법공격이 다운！
+	ENDIF
+NEXT
+
+;====================================================
+;실행내용 여기까지
+;====================================================
+
+;　説明文の表示
+@SKILL_EXPLAIN_D・ヒーリングS,ARG
+PRINTL 적 1열에 충격・만능의 복합속성으로 중위력의 물리공격을 １회 행한다。
+PRINTL 추가효과：명중시 공격력・마법위력을 １단계 저하。　조건：봄 스톡 １소비。
+PRINTL 
+PRINTL 코코아가 조합해 들고 다니는 봄에、리본의 마법을 조합한 드론 폭탄。
+PRINTL 힐링 스태프를 배합하면、호밍 레이저로 적의 공격력을 낮추는 효과가 있다。
+PRINTL 단、사용하려면 봄 리로드 스킬의 소지가 필요。고양이귀 족　코코아의 기능（전용）
+
+
+;没
+;@계승부위_D・ヒーリングS,ARG
+
+;사용조건
+@SKILL_SPECIAL_ACTIONABLE_D・ヒーリングS,ARG
+#DIM ボムストック
+ボムストック = PU_SKILLNUM_GET(ARG,"ボムリロード")
+IF SKILLGAGE_F_GET(ARG,ボムストック) > 3
+	RETURN 0
+ELSEIF HAVE_SKILL(ARG,ボムストック)
+	RETURN 1
+ELSE
+	RETURN 0
+ENDIF

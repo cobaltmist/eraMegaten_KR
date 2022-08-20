@@ -1,12 +1,17 @@
 ﻿;ＣＨＡＮＧＥ
-;システム用스킬です
+;システム用スキルです
 
-;스킬名
+;스킬명
 @SKILL_NAME_2310,ARG
-IF ARG == -1 || CFLAG:ARG:악마변신
-	RESULTS = 변신해제
-ELSE
+;キャラ指定なしまたは凡例表示(REmane含む)の場合
+IF ARG == -1
 	RESULTS = 악마변신
+ELSE
+	IF CFLAG:ARG:악마변신
+		RESULTS = 변신해제
+	ELSE
+		RESULTS = 악마변신
+	ENDIF
 ENDIF
 
 ;　명중
@@ -25,30 +30,30 @@ RETURN 0
 @SKILL_MAXATTACKNUMBER_2310,ARG
 RETURN 0
 
-;　ＨＰ2を支払うかＭＰ3を支払うか
+;　2 ＨＰ지불　3 ＭＰ지불
 @SKILL_COSTTYPE_2310, ARG
 RETURN 1
-;소비なし＝1
+;소비없음＝1
 
-;　コストの量
+;　코스트량
 @SKILL_COST_2310,ARG
 RETURN 0
 
-;　相性
+;　상성
 @SKILL_TYPE_2310,ARG
 RETURN 0
 
-;　1EXTRAか2MAGICか
+;　1 EXTRA　2 MAGIC
 @SKILL_DECIDE_TYPE_2310, ARG
 RETURN 0
 ;どちらでもない
 
-;　1물리데미지で計算するか2마법데미지で計算するか
+;　1 물리데미지로 계산　2 마법데미지로 계산
 @SKILL_DAMAGETYPE_2310, ARG
-RETURN 1
+RETURN 0
 
 
-;　대상が1적か2아군か3場전체か4特殊か
+;　대상　1 적　2 아군　3 양쪽전체　4 특수
 @SKILL_TARGET_2310
 RETURN 4
 
@@ -56,52 +61,53 @@ RETURN 4
 @SKILL_RANGE_2310,ARG
 RETURN 1
 
-;　범위　1１체　2１열　3전체　4　적아군전체
+;　범위　1 1체　2 1열　3 전체　4 적아군전체
 @SKILL_SPHERE_2310,ARG
 RETURN 1
 
-;　 効果の타입　1공격、2회복、3상태변화、4特殊、5상태회복
+;　 효과타입　1 공격、2 회복、3 상태변화、4 특수、5 상태회복
 @SKILL_EFECT_2310
 RETURN 4
 
 ;계승타입
 @SKILL_SUCCESSION_TYPE_2310
 RETURN 0
-;継承
+;계승불가
 
 ;속도보정
 @SKILL_SPEED_2310, ARG = -1
 RETURN 10
 
-;　구상の표시とその타입
+;　구상의 표시와 그 타입
 @SKILL_MESSAGE_2310,ARG
 
-;전투時以外に사용できるか
+;전투시 이외에 사용 가능한가
 @SKILL_ACTIONABLE_FIELD_2310
 RETURN 1
 
-;스킬변화？用랭크
+;스킬변화？용 랭크
 @SKILL_RANK_2310
 RETURN 0
-;변화
+;변화불가
 
 ;====================================================
-;스킬及び行動の実行
+;스킬 및 행동의 실행
 ;====================================================
 @ACTION_2310,ARG,ARG:1 = 0
 #DIM 仲魔
-#DIM 변신前ＨＰ
-#DIM 변신前ＭＰ
+#DIM 変身前ＨＰ
+#DIM 変身前ＭＰ
+#DIM 変数
 仲魔 = FINDCHARA_ID(CFLAG:ARG:링크악마)
 
 SIF ARG:1 == 1
-	PRINTFORMW %AUTO_SPLIT("악마로 모습을 바꾸었다！_인간으로 모습을 바꾸었다！","_",CFLAG:ARG:악마변신)%
+	PRINTFORMW %AUTO_SPLIT("악마로 모습을 바꾸었다！_인간으로 모습으로 돌아왔다！","_",CFLAG:ARG:악마변신)%
 
 CFLAG:ARG:악마변신 = !CFLAG:ARG:악마변신
 SIF 仲魔 > 0 && TALENT:ARG:데빌시프터
-	CFLAG:仲魔:被변신フラグ = CFLAG:ARG:악마변신
+	CFLAG:仲魔:피변신플래그 = CFLAG:ARG:악마변신
 
-;변신先악마がパーティに居るなら外す
+;変身先悪魔がパーティに居るなら外す
 SIF CFLAG:ARG:악마변신 && CFLAG:ARG:링크악마 > 0 && 仲魔 > 0 && CPOS(仲魔) > 0
 	CALL REMOVE_POSITION, CPOS(仲魔)
 
@@ -121,19 +127,65 @@ FOR LOCAL,1,FLAG:이능자스킬수 + 1
 	ENDSELECT
 NEXT
 
-변신前ＨＰ = MAXBASE:ARG:ＨＰ
-변신前ＭＰ = MAXBASE:ARG:ＭＰ
+IF BASE:ARG:ＨＰ == MAXBASE:ARG:ＨＰ
+	変身前ＨＰ = -1
+ELSE
+	変身前ＨＰ = MAXBASE:ARG:ＨＰ
+ENDIF
+IF BASE:ARG:ＭＰ == MAXBASE:ARG:ＭＰ
+	変身前ＭＰ = -1
+ELSE
+	変身前ＭＰ = MAXBASE:ARG:ＭＰ
+ENDIF
+
 CALL SYNC_STATUS,ARG
-BASE:ARG:ＨＰ = MAX(1 , BASE:ARG:ＨＰ * MAXBASE:ARG:ＨＰ / 변신前ＨＰ)
-BASE:ARG:ＭＰ = MAX(0 , BASE:ARG:ＭＰ * MAXBASE:ARG:ＭＰ / 변신前ＭＰ)
+IF 変身前ＨＰ == -1
+	BASE:ARG:ＨＰ = MAXBASE:ARG:ＨＰ
+ELSE
+	仲魔 = 10000000 * MAXBASE:ARG:ＨＰ / 変身前ＨＰ
+	BASE:ARG:ＨＰ = MAX(1 , BASE:ARG:ＨＰ * 仲魔 / 10000000)
+	;失われたであろう小数点以下の数字を補填
+	SIF !CFLAG:ARG:악마변신 && BASE:ARG:ＨＰ > 1 && MAXBASE:ARG:ＨＰ != 変身前ＨＰ
+		BASE:ARG:ＨＰ += 1
+ENDIF
+IF 変身前ＭＰ == -1
+	BASE:ARG:ＭＰ = MAXBASE:ARG:ＭＰ
+ELSE
+	仲魔 = 10000000 * MAXBASE:ARG:ＭＰ / 変身前ＭＰ
+	BASE:ARG:ＭＰ = MAX(0 , BASE:ARG:ＭＰ * 仲魔 / 10000000)
+	;失われたであろう小数点以下の数字を補填
+	SIF !CFLAG:ARG:악마변신 && BASE:ARG:ＭＰ > 1 && MAXBASE:ARG:ＭＰ != 変身前ＭＰ
+		BASE:ARG:ＭＰ += 1
+ENDIF
 
-
+;入力行動をATTACK→GUN→GUARDの順に試行していく
+CALL CHECK_ACTIONABLE,ARG,0
+IF RESULT == 1
+	CFLAG:(ARG):입력행동 = 0
+	CALL RANDOM_TARGET,ARG,0
+	CFLAG:(ARG):방어플래그 = 0
+ELSE
+	IF EQUIP:(ARG):총
+		CALL CHECK_ACTIONABLE,ARG,2101
+		IF RESULT == 1
+			CFLAG:(ARG):입력행동 = 2101
+			CFLAG:(ARG):방어플래그 = 0
+			CALL RANDOM_TARGET,ARG,2101
+		ELSE
+			CFLAG:(ARG):입력행동 = -1
+			CFLAG:(ARG):방어플래그 = 1
+		ENDIF
+	ELSE
+		CFLAG:(ARG):입력행동 = -1
+		CFLAG:(ARG):방어플래그 = 1
+	ENDIF
+ENDIF
 
 ;====================================================
-;実行内容ここまで
+;실행내용 여기까지
 ;====================================================
 
-;　 설명文の표시
+;　 설명문 표시
 @SKILL_EXPLAIN_2310
 ;SIF TALENT:ARG:데빌시프터
 ;	PRINT 링크하고 있는
@@ -145,7 +197,7 @@ IF FINDCHARA_ID(CFLAG:ARG:링크악마) > 0
 	;소환予定のキャラは無理
 	SIF CFLAG:(ARG:1):피소환플래그
 		RETURN 0
-	SIF CFLAG:(ARG:1):この場に居ないフラグ
+	SIF CFLAG:(ARG:1):이자리에없는플래그
 		RETURN 0
 ENDIF
 RETURN 1

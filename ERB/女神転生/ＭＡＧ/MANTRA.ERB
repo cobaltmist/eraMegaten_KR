@@ -10,6 +10,7 @@
 ;
 ;	Edit	Date			Author					Reason
 ;	001		2021/04/11		Jガン					新スキル追加、火炎とバステ系にもスキル追加、他色々
+;	002		2021/11/26		JK好き					喰奴の変身中能力に負の値が設定できてしまう問題を修正
 ;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
 
 
@@ -22,7 +23,7 @@ VARSET D, -1
 VARSET X
 PAGE = 0
 선택계통 = 0
-;스킬登録(만트라)
+;스킬등록(만트라)
 FOR LOCAL, 1, 116
 	SIF CDFLAG:ARG:만트라:LOCAL < 10000
 		CONTINUE
@@ -36,7 +37,7 @@ FOR LOCAL, 1, 116
 		CDFLAG:ARG:식노습득스킬:(RESULT:(LOCAL:1)) = 1
 	NEXT
 NEXT
-;스킬登録(습득스킬)
+;스킬등록(습득스킬)
 FOR LOCAL, 1, 21
 	SIF ABL:ARG:@"초기변신악마습득스킬{LOCAL}" <= 0
 		CONTINUE
@@ -47,7 +48,7 @@ FOR LOCAL, 1, 21
 	X:RESULT = 1
 	CDFLAG:ARG:식노습득스킬:(ABL:ARG:@"초기변신악마습득스킬{LOCAL}") = 1
 NEXT
-;他습득스킬
+;他習得スキル
 FOR LOCAL, 1, 5000
 	SIF CDFLAG:ARG:식노습득스킬:LOCAL <= 0
 		CONTINUE
@@ -58,7 +59,7 @@ NEXT
 LINE = LINECOUNT
 $START
 CLEARLINE LINECOUNT -LINE
-;표시스킬用のページ作成
+;표시스킬용 페이지 작성
 VARSET S, -1
 LOCAL:1 = 0
 FOR LOCAL, 0, 4000
@@ -82,7 +83,7 @@ FOR LOCAL, 1, FLAG:스킬수+1
 		RESULTS = EMPTY
 	ELSE
 		CALLFORM SKILL_NAME_{ABL:ARG:@"초기변신악마스킬{LOCAL}"}, ARG
-		;セット中の스킬は2にしておく
+		;セット中のスキルは2にしておく
 		D:(ABL:ARG:@"초기변신악마스킬{LOCAL}") = 2
 	ENDIF
 	PRINTFORM 　[{LOCAL}]%RESULTS,20,LEFT%
@@ -90,7 +91,7 @@ FOR LOCAL, 1, FLAG:스킬수+1
 		PRINTL 
 NEXT
 DRAWLINE
-PRINTL □식노습득済스킬
+PRINTL □식노습득완스킬
 FOR LOCAL,PAGE*30,(PAGE+1)*30
 	IF S:LOCAL > 0
 		CALLFORM SKILL_NAME_{S:LOCAL}
@@ -106,7 +107,7 @@ SIF LINEISEMPTY()
 	PRINTL 
 DRAWLINE
 FOR LOCAL,0,21
-	;セットできる스킬が無い系統は暗く표시
+	;セットできるスキルが無い系統は暗く表示
 	SIF X:LOCAL == 0
 		SETCOLOR COLOR("gray")
 	PRINTFORM [{10+LOCAL}] %GET_SUCCESSION(LOCAL)%　　
@@ -120,13 +121,13 @@ PRINTFORM [32] 자동효과
 RESETCOLOR
 SIF X:23 == 0
 	SETCOLOR 0x606060
-PRINTFORM [4023] 레어
+PRINTFORM [33] 레어
 RESETCOLOR
 PRINTL 
 DRAWLINE
-PRINTFORMLC \@(PAGE <= 0) ? %" " * 16% # [107]이전 페이지\@
+PRINTFORMLC \@(PAGE <= 0) ? %" " * 16% # [107]이전페이지\@
 PRINTLC [0]돌아간다
-PRINTFORMLC \@(PAGE >= (LOCAL:1 - 1) / 20) ? %" " * 16% # [109]다음 페이지\@
+PRINTFORMLC \@(S:(PAGE * 30 + 31) <= 0) ? %" " * 16% # [109]다음페이지\@
 PRINTL 
 PRINTFORMLC [106]이전 계통
 PRINTFORMLC \@ 선택계통 == -1 ? 현재 계통【　　】#현재 계통【%GET_SUCCESSION(선택계통)%】\@
@@ -135,7 +136,7 @@ INPUT
 LOCAL = RESULT
 SELECTCASE LOCAL
 	CASE 0
-		;악마변신している場合、스킬同期を行う
+		;悪魔変身している場合、スキル同期を行う
 		IF CFLAG:ARG:악마변신
 			FOR LOCAL, 1, 9
 				ABL:ARG:@"스킬{LOCAL}" = ABL:ARG:@"초기변신악마스킬{LOCAL}"
@@ -221,7 +222,7 @@ SELECTCASE LOCAL
 				ENDIF
 			ENDIF
 		ENDIF
-	CASE 10 TO 32
+	CASE 10 TO 33
 		PAGE = 0
 		선택계통 = RESULT - 10
 ENDSELECT
@@ -229,25 +230,27 @@ GOTO START
 
 @MANTRA_BASESTATUS, ARG
 #LOCALSIZE 3
-#DIM 최대보정値, 6
-VARSET 최대보정値
+#DIM 최대보정값, 6
+#DIM 마이너스값, 1
+VARSET 최대보정값
 FOR LOCAL, 1, 116
 	SIF CDFLAG:ARG:만트라:LOCAL < 10000
 		CONTINUE
 	CALL GET_MANTRA_ABILITY, LOCAL
 	FOR LOCAL:1, 1, 7
 		SIF RESULT:2 % POWER(10, LOCAL:1 + 1) / POWER(10, LOCAL:1)
-			최대보정値:(LOCAL:1 - 1) += RESULT:2 % POWER(10, LOCAL:1 + 1) / POWER(10, LOCAL:1)
+			최대보정값:(LOCAL:1 - 1) += RESULT:2 % POWER(10, LOCAL:1 + 1) / POWER(10, LOCAL:1)
 	NEXT
-	;디버그용数値確認
-	;TSTR = 인내력
+	;デバッグ用数値確認
+	;TSTR = 耐力
 	;SIF RESULT:2 % POWER(10, GET_BASESTATUS_NUM(TSTR) + 1) / POWER(10, GET_BASESTATUS_NUM(TSTR))
-	;	PRINTFORML %TSTR%　%GET_MANTRA(LOCAL)%　{RESULT:2 % POWER(10, GET_BASESTATUS_NUM(TSTR) + 1) / POWER(10, GET_BASESTATUS_NUM(TSTR))}({최대보정値:(GET_BASESTATUS_NUM(TSTR)-1)})
+	;	PRINTFORML %TSTR%　%GET_MANTRA(LOCAL)%　{RESULT:2 % POWER(10, GET_BASESTATUS_NUM(TSTR) + 1) / POWER(10, GET_BASESTATUS_NUM(TSTR))}({最大補正値:(GET_BASESTATUS_NUM(TSTR)-1)})
 NEXT
 LOCAL:1 = LINECOUNT
 LOCAL:2 = CFLAG:ARG:악마변신
 CFLAG:ARG:악마변신 = 1
 $START
+VARSET 마이너스값
 CALL SYNC_STATUS,ARG
 CLEARLINE LINECOUNT - LOCAL:1
 DRAWLINE
@@ -257,34 +260,47 @@ PRINTL 변신악마의 능력을 변화시킬 수 있습니다
 DRAWLINE
 PRINTL □변신악마능력
 FOR LOCAL, 1, FLAG:기본능력수
+	IF MAXBASE:ARG:GET_BASESTATUS(LOCAL) < 0
+		SETCOLOR COLOR("red")
+		마이너스값 = 1
+	ENDIF
 	PRINTFORML    %GET_BASESTATUS(LOCAL),4% {MAXBASE:ARG:GET_BASESTATUS(LOCAL), 2}
+	RESETCOLOR
 NEXT
 DRAWLINE
 PRINTL □변신악마기초능력
 FOR LOCAL, 1, FLAG:기본능력수
 	PRINTFORM %GET_BASESTATUS(LOCAL),4% {CSVBASE(CFLAG:ARG:초기링크악마, GETNUM(BASE, GET_BASESTATUS(LOCAL)),0) + CFLAG:ARG:(GET_BASESTATUS(LOCAL)+"만트라보정"),2}
-	PRINTFORM 　　({MAX(CSVBASE(CFLAG:ARG:초기링크악마, GETNUM(BASE, GET_BASESTATUS(LOCAL)),0)-최대보정値:(LOCAL-1),1), 2} ～ {CSVBASE(CFLAG:ARG:초기링크악마, GETNUM(BASE, GET_BASESTATUS(LOCAL)),0)+최대보정値:(LOCAL-1),2})
+	PRINTFORM 　　({MAX(CSVBASE(CFLAG:ARG:초기링크악마, GETNUM(BASE, GET_BASESTATUS(LOCAL)),0)-최대보정값:(LOCAL-1),1), 2} ～ {CSVBASE(CFLAG:ARG:초기링크악마, GETNUM(BASE, GET_BASESTATUS(LOCAL)),0)+최대보정값:(LOCAL-1),2})
 	PRINTPLAIN 　|
 	PRINTFORML [{LOCAL}] + | [{LOCAL + 6, 2}] - | [{LOCAL + 12}] 임의입력
 NEXT
 DRAWLINE
 PRINTL [19] 리셋한다
 DRAWLINE
+SIF 마이너스값
+	SETCOLOR COLOR("red")
 PRINTL [20] 돌아간다
+RESETCOLOR
 CALL INPUTINT(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20)
+IF RESULT == 20 && 마이너스값
+	PRINTFORML 변신악마의 능력에 마이너스값이 있습니다。재설정해주세요。
+	FORCEWAIT
+	RESULT = 0
+ENDIF
 SELECTCASE RESULT
 	CASE 1 TO 6
 		LOCAL = RESULT
 		CFLAG:ARG:(GET_BASESTATUS(LOCAL)+"만트라보정") ++
-		SIF CFLAG:ARG:(GET_BASESTATUS(LOCAL)+"만트라보정") > 최대보정値:(LOCAL-1)
-			CFLAG:ARG:(GET_BASESTATUS(LOCAL)+"만트라보정") = 최대보정値:(LOCAL-1)
-		;CALL INPUT_MANY(MAX(CSVBASE(CFLAG:ARG:초기링크악마, GETNUM(BASE, GET_BASESTATUS(LOCAL)),0)-최대보정値:(LOCAL-1),1), CSVBASE(CFLAG:ARG:초기링크악마, GETNUM(BASE, GET_BASESTATUS(LOCAL)),0)+최대보정値:(LOCAL-1))
+		SIF CFLAG:ARG:(GET_BASESTATUS(LOCAL)+"만트라보정") > 최대보정값:(LOCAL-1)
+			CFLAG:ARG:(GET_BASESTATUS(LOCAL)+"만트라보정") = 최대보정값:(LOCAL-1)
+		;CALL INPUT_MANY(MAX(CSVBASE(CFLAG:ARG:초기링크악마, GETNUM(BASE, GET_BASESTATUS(LOCAL)),0)-최대보정값:(LOCAL-1),1), CSVBASE(CFLAG:ARG:초기링크악마, GETNUM(BASE, GET_BASESTATUS(LOCAL)),0)+최대보정값:(LOCAL-1))
 		; = RESULT - CSVBASE(CFLAG:ARG:초기링크악마, GETNUM(BASE, GET_BASESTATUS(LOCAL)),0)
 	CASE 7 TO 12
 		LOCAL = (RESULT - 6)
 		CFLAG:ARG:(GET_BASESTATUS(LOCAL)+"만트라보정") --
-		SIF CFLAG:ARG:(GET_BASESTATUS(LOCAL)+"만트라보정") < -최대보정値:(LOCAL-1)
-			CFLAG:ARG:(GET_BASESTATUS(LOCAL)+"만트라보정") = -최대보정値:(LOCAL-1)
+		SIF CFLAG:ARG:(GET_BASESTATUS(LOCAL)+"만트라보정") < -최대보정값:(LOCAL-1)
+			CFLAG:ARG:(GET_BASESTATUS(LOCAL)+"만트라보정") = -최대보정값:(LOCAL-1)
 	CASE 13 TO 18
 		LOCAL = (RESULT - 12)
 		PRINTFORML %GET_BASESTATUS(LOCAL)%의 설정수치를 입력해주세요（0=취소）
@@ -292,7 +308,7 @@ SELECTCASE RESULT
 		INPUT
 		IF RESULT == 0
 			GOTO START
-		ELSEIF MAX(CSVBASE(CFLAG:ARG:초기링크악마, GETNUM(BASE, GET_BASESTATUS(LOCAL)),0)-최대보정値:(LOCAL-1),1) <= RESULT && CSVBASE(CFLAG:ARG:초기링크악마, GETNUM(BASE, GET_BASESTATUS(LOCAL)),0) + 최대보정値:(LOCAL-1) >= RESULT
+		ELSEIF MAX(CSVBASE(CFLAG:ARG:초기링크악마, GETNUM(BASE, GET_BASESTATUS(LOCAL)),0)-최대보정값:(LOCAL-1),1) <= RESULT && CSVBASE(CFLAG:ARG:초기링크악마, GETNUM(BASE, GET_BASESTATUS(LOCAL)),0) + 최대보정값:(LOCAL-1) >= RESULT
 			CFLAG:ARG:(GET_BASESTATUS(LOCAL)+"만트라보정") = RESULT - CSVBASE(CFLAG:ARG:초기링크악마, GETNUM(BASE, GET_BASESTATUS(LOCAL)),0)
 		ELSE
 			GOTO NINI
@@ -315,10 +331,10 @@ GOTO START
 #DIM START_X
 #DIM START_Y
 #DIM CHARA, 1
-;選択中の만트라名
+;選択中のマントラ名
 #DIMS MNAME, 1
 #DIM MNUM, 1
-;選択中の만트라の座標
+;選択中のマントラの座標
 #DIM MANTRA_X
 #DIM MANTRA_Y
 #DIM MANTRA_ABLE, 120
@@ -332,8 +348,8 @@ GOTO START
 #DIM 周りマスター数, 1
 マスター数 = 0
 ;初めて
-IF !GETBIT(FLAG:만트라개방度, 1)
-	SETBIT FLAG:만트라개방度, 1
+IF !GETBIT(FLAG:만트라개방도, 1)
+	SETBIT FLAG:만트라개방도, 1
 	PRINTW 처음 실행할 때마다 만트라 시스템의 해설을 합니다
 	PRINTW 또한、이 해설은 나중에도 볼 수 있습니다
 	CLEARLINE 2
@@ -342,7 +358,7 @@ ENDIF
 CHARA = ARG:2
 ;만트라の状況登録
 VARSET MANTRA_ABLE
-IF !GETBIT(FLAG:만트라개방度, 2)
+IF !GETBIT(FLAG:만트라개방도, 2)
 	LOCAL:1 = 0
 	FOR LOCAL, 20, 38
 		IF CDFLAG:CHARA:만트라:LOCAL == 10000
@@ -352,12 +368,12 @@ IF !GETBIT(FLAG:만트라개방度, 2)
 		ENDIF
 	NEXT
 	IF LOCAL:1
-		CALL MESSAGE_B(2, "マップの外端の만트라をマスターしたことにより", "新たな만트라が開かれます！")
-		SETBIT FLAG:만트라개방度, 2
+		CALL MESSAGE_B(2, "맵의 바깥쪽 만트라를 마스터함으로써", "새로운 만트라가 개방됩니다！")
+		SETBIT FLAG:만트라개방도, 2
 		CLEARLINE 4
 	ENDIF
 ENDIF
-IF GETBIT(FLAG:만트라개방度, 2) && !GETBIT(FLAG:만트라개방度, 3)
+IF GETBIT(FLAG:만트라개방도, 2) && !GETBIT(FLAG:만트라개방도, 3)
 	LOCAL:1 = 0
 	FOR LOCAL, 38, 98
 		IF CDFLAG:CHARA:만트라:LOCAL == 10000
@@ -366,8 +382,8 @@ IF GETBIT(FLAG:만트라개방度, 2) && !GETBIT(FLAG:만트라개방度, 3)
 		ENDIF
 	NEXT
 	IF LOCAL:1
-		CALL MESSAGE_B(2, "マップの外端の만트라をマスターしたことにより", "新たな만트라が開かれます！")
-		SETBIT FLAG:만트라개방度, 3
+		CALL MESSAGE_B(2, "맵의 바깥쪽 만트라를 마스터함으로써", "새로운 만트라가 개방됩니다！")
+		SETBIT FLAG:만트라개방도, 3
 		CLEARLINE 4
 	ENDIF
 ENDIF
@@ -378,20 +394,20 @@ FOR LOCAL, 1, 116
 		CONTINUE
 	マスター数 ++
 NEXT
-;0:非표시 1:DL不可 2:DL可能 3:DL済 4:EQUIP 5:MASTER
-;식노は디폴트でDL可能にしておく
+;0:非表示 1:DL不可 2:DL可能 3:DL済 4:EQUIP 5:MASTER
+;喰奴はデフォルトでDL可能にしておく
 MANTRA_ABLE:1 = 2
-;장비만트라の설정
+;装備マントラの設定
 MANTRA_ABLE:(EQUIP:CHARA:장비만트라) = 4
 FOR MANTRA_Y, 0, 15
 	FOR MANTRA_X, 0, 15
 		SIF GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y) == "NONE"
 			CONTINUE
-		;만트라취득済み
+		;マントラ取得済み
 		SELECTCASE CDFLAG:CHARA:만트라:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y))
 			CASE 10000
 				MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y)) = 5
-				;隣接만트라を취득可能に변경
+				;隣接マントラを取得可能に変更
 				IF MANTRA_Y % 2
 					SIF GET_MANTRA_MAPNAME(MANTRA_X-1, MANTRA_Y-1) != "NONE"
 						MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X-1, MANTRA_Y-1)) = MAX(MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X-1, MANTRA_Y-1)), 2)
@@ -419,10 +435,10 @@ FOR MANTRA_Y, 0, 15
 				MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y)) = MAX(MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y)), 3)
 			CASEELSE
 				;外端到達による開放
-				IF !GETBIT(FLAG:만트라개방度, 2)
+				IF !GETBIT(FLAG:만트라개방도, 2)
 					SIF GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y)) <= 37
 						MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y)) = MAX(MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y)), 1)
-				ELSEIF !GETBIT(FLAG:만트라개방度, 3)
+				ELSEIF !GETBIT(FLAG:만트라개방도, 3)
 					SIF GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y)) <= 97
 						MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y)) = MAX(MANTRA_ABLE:GET_MANTRA_NUM(GET_MANTRA_MAPNAME(MANTRA_X, MANTRA_Y)), 1)
 				ELSE
@@ -685,7 +701,7 @@ NEXT
 IF MANTRA_ABLE:MNUM <= 2 || (MANTRA_ABLE:MNUM == 3 && FLAG:SHOP커맨드 == [[SHOP:탐색]])
 	PRINTFORML 필요ＭＡＧ:%TOSTR1000(PRICE)%
 ELSE
-	PRINTFORM 습득度　　:
+	PRINTFORM 습득도　　:
 	IF MANTRA_ABLE:MNUM == 5
 		PRINTL ＭＡＳＴＥＲ
 	ELSE
@@ -809,13 +825,13 @@ ELSEIF RESULT == 900 && FLAG:DEBUG
 	FOR LOCAL, 0, 4000
 		SIF D:LOCAL
 			CONTINUE
-		TRYCCALLFORM 적専用_{LOCAL}
+		TRYCCALLFORM 적전용_{LOCAL}
 			SIF RESULT
 				CONTINUE
 		CATCH
 			CONTINUE
 		ENDCATCH
-		TRYCCALLFORM 継承不能_{LOCAL}
+		TRYCCALLFORM 계승불능_{LOCAL}
 			SIF RESULT
 				CONTINUE
 		CATCH
@@ -911,7 +927,7 @@ SELECTCASE ARG
 	CASE 7
 	{
 		RETURN 1, 10000, POWER(10, GET_BASESTATUS_NUM("속도")) * 1, 
-		[[스킬:마카쟈마]], [[스킬:하피루마]], [[스킬:해피스텝]], [[스킬:마성의난무]]
+		[[스킬:마카쟈마]], [[스킬:해피루마]], [[스킬:해피스텝]], [[스킬:마성의난무]]
 	}	
 		;[[スキル:魔封ブレイク]]
 	;秘言二
@@ -923,7 +939,7 @@ SELECTCASE ARG
 	{
 		RETURN 2, 30000, POWER(10, GET_BASESTATUS_NUM("인내력")) * 1, 
 		[[스킬:안개베기]], [[스킬:강절단]], [[스킬:사랑의채찍]], [[스킬:극락왕생파]], 
-		[[스킬:난심의일도]], [[스킬:마구날뛰기]], [[스킬:돌려차기]], [[스킬:수비무너뜨리기]]	
+		[[스킬:난심의일도]], [[스킬:마구날뛰기]], [[스킬:돌려차기]], [[스킬:방어부수기]]	
 	}
 	;즌바라린/
 	;어령1(힘+3)
@@ -1183,7 +1199,7 @@ SELECTCASE ARG
 	CASE 56
 	{
 		RETURN 2, 30000, POWER(10, GET_BASESTATUS_NUM("지혜")) * 1, 
-		[[스킬:무도]], [[스킬:에이하]], [[스킬:주온]], [[스킬:주살브레이크]], 
+		[[스킬:무드]], [[스킬:에이하]], [[스킬:주온]], [[스킬:주살브레이크]], 
 		[[스킬:이블아이]]
 	}
 		;/저주의언령/
@@ -1288,7 +1304,7 @@ SELECTCASE ARG
 	CASE 71
 	{
 		RETURN 4, 300000, POWER(10, GET_BASESTATUS_NUM("운")) * 1, 
-		[[스킬:마하무도]], [[스킬:바이에이하]], [[스킬:마하주온]], [[스킬:저주의언령]], 
+		[[스킬:마하무드]], [[스킬:바이에이하]], [[스킬:마하주온]], [[스킬:저주의언령]], 
 		[[스킬:어둠의벽]], [[스킬:페트라아이]], [[스킬:주살어택커]]
 	}
 		;/저주비문/石化光線/주살ストロンガ
@@ -1360,7 +1376,7 @@ SELECTCASE ARG
 	CASE 80
 	{
 		RETURN 5, 600000, POWER(10, GET_BASESTATUS_NUM("힘")) * 1 + POWER(10, GET_BASESTATUS_NUM("속도")) * 1, 
-		[[스킬:대나무베기]], [[스킬:낭아천주참]], [[스킬:데스바운드]], [[스킬:암야의검]], 
+		[[스킬:대나무베기]], [[스킬:낭아천주참]], [[스킬:데스바운드]], [[스킬:암야검]], 
 		[[스킬:검격리플렉트]], [[스킬:이할의활천]]
 	}
 		;마음의외침/파워チャージ/物理브레이크/삼켜내기カウンタ
@@ -1368,7 +1384,7 @@ SELECTCASE ARG
 	CASE 81
 	{
 		RETURN 6, 800000, POWER(10, GET_BASESTATUS_NUM("힘")) * 1 + POWER(10, GET_BASESTATUS_NUM("인내력")) * 1, 
-		[[스킬:산산조각베기]], [[스킬:구십구나선격]], [[스킬:작열차가]], [[스킬:부월쇄파]], 
+		[[스킬:산산조각베기]], [[스킬:구십구나선격]], [[스킬:작열거가]], [[스킬:부월쇄파]], 
 		[[스킬:어둠속의기습]], [[스킬:검격드레인]]
 	}
 		;大屠殺/대상제/物理리플렉트/ペトラ어택커
@@ -1401,7 +1417,7 @@ SELECTCASE ARG
 	{
 		RETURN 5, 600000, POWER(10, GET_BASESTATUS_NUM("지혜")) * 1 +  POWER(10, GET_BASESTATUS_NUM("운")) * 1, 
 		[[스킬:텐타라후]], [[스킬:캔디보이스]], [[스킬:아라크노와이어]], [[스킬:뉴로크런치]], 
-		[[스킬:영면의유혹]], [[스킬:바이쳐더스트]], [[스킬:정신가드킬]], [[스킬:신경가드킬]]
+		[[스킬:영면의유혹]], [[스킬:바이쳐・더스트]], [[스킬:정신가드킬]], [[스킬:신경가드킬]]
 	}
 		;/마비큰파동/混乱デストロイア/猛毒デストロイア
 	;성도
@@ -1446,7 +1462,7 @@ SELECTCASE ARG
 	CASE 94
 	{
 		RETURN 6, 500000, POWER(10, GET_BASESTATUS_NUM("운")) * 1 + POWER(10, GET_BASESTATUS_NUM("지혜")) * 1, 
-		[[스킬:무도온]], [[스킬:마하무도온]], [[스킬:축시의참배]], [[스킬:헬즈아이]], 
+		[[스킬:무드온]], [[스킬:마하무드온]], [[스킬:축시의참배]], [[스킬:헬즈아이]], 
 		[[스킬:마하에이하]], [[스킬:에이가온]], [[스킬:주살가드킬]], [[스킬:주살리플렉트]]
 	}
 		;축시의참배
@@ -1544,7 +1560,7 @@ SELECTCASE ARG
 	CASE 108;001
 	{
 		RETURN 7, 1250000, POWER(10, GET_BASESTATUS_NUM("지혜")) * 1 + POWER(10, GET_BASESTATUS_NUM("운")) * 1, 
-		[[스킬:색즉시공]], [[스킬:메가스트라이크]], [[스킬:샤후라]], [[스킬:절세의육체]], 
+		[[스킬:색즉시공]], [[스킬:메가스트라이크]], [[스킬:셔플러]], [[스킬:절세의육체]], 
 		[[스킬:너버스엣지]]
 	}
 		;색즉시공/BSデストロイア
@@ -1572,9 +1588,9 @@ SELECTCASE ARG
 	CASE 113
 	{
 		RETURN 7, 1200000, POWER(10, GET_BASESTATUS_NUM("지혜")) * 1 + POWER(10, GET_BASESTATUS_NUM("마력")) * 1, 
-		[[스킬:루나카미]], [[스킬:나이스・샷]], [[스킬:진리의번개]], [[스킬:매혹의뇌격]]
+		[[스킬:나루카미]], [[스킬:나이스・샷]], [[스킬:진리의번개]], [[스킬:매혹의뇌격]]
 	}	
-		;루나카미
+		;나루카미
 	;사신死神
 	CASE 114
 	{
@@ -1645,7 +1661,7 @@ SELECTCASE RESULT
 		PRINTL 
 		PRINTW 웨이트 스킬은 일시적으로 식노의 능력을 변화시키는 스킬 군입니다
 		PRINTW 어택커 계통은 그 턴에 사용하는 헌트 스킬의 상성을 변화시킵니다
-		PRINTW 이것으로 인해 헌트스킬로 적의 약점을 찌를 수 있게됩니다
+		PRINTW 이것으로 인해 헌트 스킬로 적의 약점을 찌를 수 있게됩니다
 		PRINTL 
 		PRINTW 브레이크 계열은 그 턴 동안、지정된 상성의 공격을 무효화시킵니다
 		PRINTW 마찬가지로 리플렉트 계열은 반사、드레인 계열은 흡수를 합니다

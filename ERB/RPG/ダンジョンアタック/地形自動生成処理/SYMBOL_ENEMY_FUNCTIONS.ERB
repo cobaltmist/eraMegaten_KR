@@ -1,0 +1,1811 @@
+﻿;---------------------------------------------------------------------------------------------------------------------------------
+;シンボルエネミー関数
+;---------------------------------------------------------------------------------------------------------------------------------
+;概要
+;	世界樹の迷宮のFOEみたいに던전内で徘徊するシンボルエンカウントの敵を用意します。
+;	基本的には@を見つけていない場合はフロア内を徘徊し、@を発見したら近づいてくるような感じを想定しています。
+;
+
+;更新日時　　　更新者				更新内容
+;2021/09/01　　ロッド@カヤノソト	作成に着手
+;---------------------------------------------------------------------------------------------------------------------------------
+
+;-------------------------------------------------
+;種族・レベルを絞って出現する悪魔を設定する関数
+;	※この関数を使わず、던전のERBファイル側で直接指定しても良いと思います。
+;-------------------------------------------------
+@SEF_DESIDE_DEVIL_VARIETY, LEVEL_BOTTOM, LEVEL_TOP
+;-------------
+;変数定義
+;-------------
+#DIM LEVEL_BOTTOM					;出現する悪魔のレベル下限
+#DIM LEVEL_TOP						;出現する悪魔のレベル上限
+
+;-------------
+;ここから本処理
+;-------------
+WHILE 1
+	CD_DEVIL_VARIETY_CNT = 0			;出現する悪魔が何種類であるか
+	VARSET CD_DEVIL_LIST				;出現する悪魔のCSV番号を格納する変数(最大で200種類を想定)
+
+	;キャラクターのCSV番号ごとにループを回し、던전に出現させるかどうかを判定する
+	FOR LOCAL, 1, 9999
+
+		;該当の番号のCSVが存在しない場合、パスして次へ
+		IF !EXISTCSV(LOCAL, 0)
+			CONTINUE
+		ENDIF
+
+		;特定の種族の悪魔を除外する
+		SELECTCASE CSVABL(LOCAL, (GETNUM(ABL, "종족")), 0)
+			CASE 0
+				;種族が0(人間)の場合、除外する
+				CONTINUE
+			CASE 36
+				;種族が36(半魔)の場合、除外する
+				CONTINUE
+			CASE 39
+				;種族が39(リンク専用悪魔)の場合、除外する
+				CONTINUE
+			CASE 40
+				;種族が40(ペルソナ専用悪魔)の場合、除外する
+				CONTINUE
+		ENDSELECT
+
+		;EXTRA出典の悪魔を除外する
+		IF CSVCFLAG(LOCAL, (GETNUM(CFLAG,"EXTRA출전")), 0) >= 1
+			;EXTRA出典の場合、カウントしない
+			;※「EXTRA出典」が-2(偽典),-1(デビチル)の場合は女神転生系統なので除外しない。
+			CONTINUE
+		ENDIF
+
+		;レベル上限・下限チェック
+		IF !(LEVEL_BOTTOM <= CSVBASE(LOCAL, (GETNUM(BASE, "LV")), 0) && CSVBASE(LOCAL, (GETNUM(BASE, "LV")), 0) <= LEVEL_TOP)
+			;レベルが指定の範囲内ではない場合、除外する
+			CONTINUE
+		ENDIF
+
+		;普通に入手できない悪魔の場合は除外する
+		IF CSVCFLAG(LOCAL,GETNUM(CFLAG,"특수합체만"),0)
+			;特殊合体のみの場合、除外する
+			CONTINUE
+		ELSEIF CSVCFLAG(LOCAL,GETNUM(CFLAG,"합체조건있음"),0)
+			;合体条件が存在する場合、除外する
+			CONTINUE
+		ELSEIF CSVCFLAG(LOCAL,GETNUM(CFLAG,"전서소환불가"),0)
+			;全書召喚が不可である場合、除外する
+			CONTINUE
+		ENDIF
+
+		;던전ごとに指定された種族以外は除外する。
+		IF CD_ARRAY_DEVIL_CATEGORY:(CSVABL(LOCAL, (GETNUM(ABL, "종족")), 0)) != 1
+			;該当の種族の出現フラグが1(出現する)以外である場合、除外する
+			CONTINUE
+		ENDIF
+
+		;---------------------------------------------------------------------
+		;上記までのチェックをパスした場合、該当悪魔を出現するように設定する
+		;---------------------------------------------------------------------
+		;CALL INCREASE_ANALYZE, LOCAL, 10						;おそらくこの「悪魔アナライズ率上昇処理」は不要なためコメントアウト
+		CD_DEVIL_VARIETY_CNT += 1								;出現する悪魔の種類を+1する
+		CD_DEVIL_LIST:(CD_DEVIL_VARIETY_CNT - 1) = LOCAL		;出現する悪魔のCSV番号を登録する
+
+		;出現する悪魔は最大500種類とする
+		IF CD_DEVIL_VARIETY_CNT > 500
+			BREAK
+		ENDIF
+	NEXT
+	IF CD_DEVIL_VARIETY_CNT == 0
+		;出現する悪魔の下限レベルを下げる
+		IF LEVEL_BOTTOM <= 6
+			;下限レベルが6以下の場合は下限レベルを1に設定する
+			LEVEL_BOTTOM = 1
+
+		ELSE
+			;下限レベルが7以上の場合は下限レベルを5下げる
+			LEVEL_BOTTOM = LEVEL_BOTTOM - 5
+
+		ENDIF
+
+		;出現する悪魔の上限レベルを5上げる
+		LEVEL_TOP = LEVEL_TOP + 5
+
+	ELSE
+		BREAK	;出現する悪魔が登録出来たらループを終了する。
+
+	;以下はデバッグ用に出現する悪魔を一覧表示する処理。
+	;ELSE
+	;	PRINTL 出現悪魔は以下の通りです
+	;	FOR LOCAL, 0, CD_DEVIL_VARIETY_CNT + 1
+	;		SIF CD_DEVIL_LIST:LOCAL == 0
+	;			BREAK
+	;		PRINTFORM \@ CSVCSTR(CD_DEVIL_LIST:LOCAL,GETNUM(CSTR,"종족명"),0) != "" ? %CSVCSTR(CD_DEVIL_LIST:LOCAL,GETNUM(CSTR,"종족명"),0),10,LEFT% # %STR:(CSVABL(CD_DEVIL_LIST:LOCAL,GETNUM(ABL,"종족"),0)),10,LEFT%\@　
+	;		PRINTFORM %CSVCALLNAME(CD_DEVIL_LIST:LOCAL,0),20,LEFT%　
+	;		PRINTFORML LV{CSVBASE(CD_DEVIL_LIST:LOCAL,GETNUM(BASE,"LV"),0),6}
+	;	NEXT
+	;	WAIT
+
+	ENDIF
+WEND
+
+RETURN 1
+
+
+;-------------------------------------------------
+;動的に特殊タイルを表示する処理(動き回る敵シンボルなどを想定)
+;TILE_MARK_DYBANUC_{FLAG:현던전}_X
+;-------------------------------------------------
+;引数などについて
+;-------------------------------------------------
+;引数
+;	POINT_X				:X座標
+;	POINT_Y				:Y座標
+;OUTパラメータ
+;  RESULTS				:該当のタイルをマップ上で表示する場合の文字
+;-------------------------------------------------
+@SEF_TILE_MARK_DYBANUC, POINT_X , POINT_Y
+;-------------
+;変数定義
+;-------------
+#DIM POINT_X			;X座標
+#DIM POINT_Y			;Y座標
+#DIM FLOOR_NO			;M番号(現在の階層)			※ここではFLOOR_NOを使用しないが、共通で引数にFLOOR_NOを設定する必要があるため用意する
+#DIM LOOP_CNT_i			;ループ用カウント変数
+#DIM OBJECT_CNT			;設置するオブジェクトの数
+
+
+;-------------
+;変数の初期化
+;-------------
+LOOP_CNT_i = 0			;ループ用カウント変数
+OBJECT_CNT = 0			;設置するオブジェクトの数
+
+;-------------
+;ここから本処理
+;-------------
+;設置するオブジェクトの数を取得する
+FOR LOOP_CNT_i, 0, 20
+	IF CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:0 != 0
+		OBJECT_CNT += 1
+	ENDIF
+NEXT
+
+;オブジェクトの数だけループを回して処理を行う
+FOR LOOP_CNT_i, 0, OBJECT_CNT
+	IF CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:0 != 0 && CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:0 != 6
+		;オブジェクトが設置されている場合
+
+		IF POINT_X == CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:5 && POINT_Y == CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:6
+			;該当の座標にオブジェクトが存在する場合
+
+			;オブジェクトの種類ごとに文字色の設定を行う
+			SELECTCASE CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:0
+				CASE 1
+					;「1:通常の敵」の場合
+					SETCOLOR 0xffa500				;オレンジ文字にする
+
+				CASE 2
+					;「2:強敵」の場合
+					SETCOLOR 0xff0000				;赤文字にする
+
+				CASE 3
+					;「3:中立(商人など)」の場合
+					SETCOLOR 0xffff00				;黄文字にする
+
+				CASE 4
+					;「4:味方」の場合
+					SETCOLOR 0x0000ff				;青文字にする
+
+				CASE 5
+					;「5:要救助者」の場合
+					SETCOLOR 0xff1493				;ピンク文字にする
+			ENDSELECT
+
+			;オブジェクトの状態に応じて表示する文字を設定する
+			IF CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:4 == 5
+				;オブジェクトが睡眠中の場合
+				RESULTS = 眠
+			ELSE
+				;その他の場合(オブジェクトが起きている場合)
+				RESULTS = ●
+			ENDIF
+
+			;引数の座標にシンボルを設置した場合、処理を終了する		※同じ座標にオブジェクトは1つのみ設置のため、これ以上のループは無駄な処理となるため。
+			BREAK
+		ENDIF
+	ENDIF
+NEXT
+
+;敵シンボルを行動させる関数
+;	※最終的には特殊行動とかいろいろ設定したいけど、とりあえず移動だけ作ります
+@SEF_SYMBOL_CHARA_ACTION
+;-------------
+;変数定義
+;-------------
+#DIM LOOP_CNT_i					;ループ用カウント変数　※処理が長くて複雑なので、グローバル変数LOCALは使いたくない
+#DIM LOOP_CNT_j					;ループ用カウント変数j
+#DIM OBJECT_CNT					;オブジェクト(キャラクター)の数
+#DIM ACTION_NO					;行動内容
+#DIM WALL_PASS_FLG				;壁抜けフラグ(0:壁抜け不可 / 1:壁抜け可能)
+
+
+;-------------
+;変数の初期化
+;-------------
+LOOP_CNT_i = 0					;ループ用カウント変数i
+LOOP_CNT_j = 0					;ループ用カウント変数j
+OBJECT_CNT = 0					;オブジェクト(キャラクター)の数
+ACTION_NO = 0					;行動内容
+WALL_PASS_FLG = 0				;壁抜けフラグ(0:壁抜け不可 / 1:壁抜け可能)
+
+;-------------
+;ここから本処理
+;-------------
+;キャラクターの数を取得する
+FOR LOOP_CNT_i, 0, 20
+	IF CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:0 != 0
+		OBJECT_CNT += 1
+	ENDIF
+NEXT
+
+;キャラクターの数だけループを回して処理を行う
+FOR LOOP_CNT_i, 0, OBJECT_CNT
+
+	;壁抜けフラグの確認
+	WALL_PASS_FLG = CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:28
+
+	;---------------------------------------
+	;状況を設定する(@を視認しているかなど)
+	;---------------------------------------
+	;@を視認する処理
+	IF SEF_IS_LOOK_AT(CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:5, CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:6, FLAG:현X, FLAG:현Y, WALL_PASS_FLG) == 1
+		;@を視認している場合
+		CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:11 = 1				;@を見つけているフラグ(1:見つけている)
+		CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:8 = FLAG:현X		;@の現在座標(X座標)を記憶する
+		CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:9 = FLAG:현Y		;@の現在座標(Y座標)を記憶する
+	ELSE
+		;その他の場合(@を見つけていない場合)
+		CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:11 = 0				;@を見つけているフラグ(0:見失っている)
+	ENDIF
+
+	;---------------------------------------
+	;[現在の思考]を設定する
+	;---------------------------------------
+	;[現在の思考]が未設定の場合、[基本パターン]にする
+	IF CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:4 == 0
+		CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:4 = CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:3
+	ENDIF
+
+	;状況を踏まえて[現在の思考]を設定する
+	SELECTCASE CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:4
+		CASE 1
+			;[現在の思考]が「1:動かない」の場合、変化なし
+
+		CASE 2
+			;[現在の思考]が「2:@を追う」の場合
+			IF CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:11 == 1
+				;@の存在が見えている場合、変化なし
+
+			ELSEIF (CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:8 >= 1 && CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:9 >= 1)
+				;目標となる座標が存在する場合、変化なし(その座標へ向かう)	※最後に見た@の位置を追うことを想定
+
+			ELSE
+				;その他の場合(@を追うための情報が存在しない場合)
+				CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:4 = 4		;「4:さまよう」
+
+			ENDIF
+
+		CASE 3
+			;[現在の思考]が「3:@から逃げる」の場合
+			IF CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:11 == 1
+				;@の存在が見えている場合、変化なし
+
+			ELSE
+				;その他の場合(@が見えていない場合)
+				CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:4 = 4		;「4:さまよう」
+
+			ENDIF
+
+		CASE 4
+			;[現在の思考]が「4:さまよう」の場合
+			IF CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:11 == 1
+				;@の存在が見えている場合
+				IF CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:3 == 2 || CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:3 == 3
+					;[基本パターン]が「2:@を追う」または「3:@から逃げる」の場合、[現在の思考]は[基本パターン]で上書きする(@を追う/@から逃げる)
+					CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:4 = CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:3
+
+				ELSE
+					;その他の場合、@が見ていても特に変化なし
+
+				ENDIF
+
+			ELSE
+				;その他の場合、変化なし
+
+			ENDIF
+
+		CASE 5
+			;[現在の思考]が「5:睡眠」の場合
+			IF SEF_CHECK_AWAKE(LOOP_CNT_i, 25) == 1
+				;起きた場合、現在の思考を[0:未設定]に設定する	※起きたターンは動かず、次のターンから行動を開始するため。寝ぼけています。
+				CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:4 = 0		;「0:未設定」
+			ENDIF
+
+		CASEELSE
+			;その他の場合、異常値であるためメッセージを表示して処理を終了する
+			PRINTFORML モンスター(シンボルエンカウント)の行動決定処理にてエラーが発生しました。
+			PRINTFORML 関数「SEF_SYMBOL_CHARA_ACTION」にて[現在の思考]が{CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:4}になっています。
+			BREAK
+
+	ENDSELECT
+
+	;---------------------------------------
+	;行動内容を決定する
+	;---------------------------------------
+	;[現在の思考]に合わせて行動内容を決定する
+	SELECTCASE CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:4
+		CASE 0
+			;[現在の思考]が「0:未設定」の場合
+			ACTION_NO = 99																												;行動No:99(行動なし)
+
+		CASE 1
+			;[現在の思考]が「1:動かない」の場合
+			ACTION_NO = 99																												;行動No:99(行動なし)
+
+		CASE 2
+			;[現在の思考]が「2:@を追う」の場合
+			CALL SEF_FOLLOW_DIRECTION(CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:5, CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:6, CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:8, CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:9, WALL_PASS_FLG, 0, 0, 0)	;:@を追う場合の進行方向を取得する
+			ACTION_NO = RESULT																											;行動No:1～9(移動)
+			CALL SEF_CHARA_MOVE, LOOP_CNT_i, ACTION_NO																					;移動を実行
+
+		CASE 3
+			;[現在の思考]が「3:@から逃げる」の場合
+			CALL SEF_FOLLOW_DIRECTION(CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:5, CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:6, CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:8, CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:9, WALL_PASS_FLG, 0, 0, 1)	;:@から逃げる場合の進行方向を取得する
+			ACTION_NO = RESULT																											;行動No:1～9(移動)
+			CALL SEF_CHARA_MOVE, LOOP_CNT_i, ACTION_NO																					;移動を実行
+
+		CASE 4
+			;[現在の思考]が「4:さまよう」の場合
+			CALL SEF_PATROL_DIRECTION(LOOP_CNT_i, 0, 0, 0)																				;徘徊時の進行方向を取得する
+			ACTION_NO = RESULT																											;行動No:1～9(移動)
+			CALL SEF_CHARA_MOVE, LOOP_CNT_i, ACTION_NO																					;移動を実行
+
+		CASE 5
+			;[現在の思考]が「5:睡眠」の場合
+			ACTION_NO = 99																												;行動No:99(行動なし)
+
+		CASEELSE
+			;その他の場合、異常値であるためメッセージを表示して処理を終了する
+			PRINTFORML モンスター(シンボルエンカウント)の行動決定処理にてエラーが発生しました。
+			PRINTFORML 関数「SEF_SYMBOL_CHARA_ACTION」にて[現在の思考]が{CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:4}になっています。
+			BREAK
+	ENDSELECT
+
+	;---------------------------------------
+	;行動終了後の処理
+	;---------------------------------------
+	;目的地の座標に到達している場合、目的地をクリアする
+	IF (CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:5 == CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:8) && (CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:6 == CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:9)
+		CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:8 = 0																								;目的地(X座標)をクリア
+		CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:9 = 0																								;目的地(Y座標)をクリア
+	ENDIF
+
+	;前回の行動を記憶する
+	CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:7 = ACTION_NO
+	
+NEXT
+
+;シンボルとの接触時イベント(敵シンボルが移動して@にぶつかった場合、このタイミングでイベント開始となる)
+CALL SEF_SYMBOL_EVENT
+
+;モンスターハウス侵入チェック	※モンスターハウスに侵入した場合、このタイミングでメッセージが流れて、部屋内のモンスターが目を覚ます
+CALL SEF_ENTER_MONSTER_HOUSE
+
+;経過時間・経過ターン数カウント
+CALL CD_COUNT_TIME_AND_TURN
+
+RETURN 1
+
+;-------------------------------------------------
+;徘徊モードの進行方向を返す関数
+;-------------------------------------------------
+;引数
+;	CHARA_NO:対象となるオブジェクト(シンボルエンカウントのシンボルなど)の番号
+;	NO_WALL_FLG:周囲の壁を無視するフラグ(0:壁のある方向は返さない / 1:壁を無視して8方向すべてを返す)
+;	NO_EDGE_FLG:マップ端を無視するフラグ(0:マップ端のある方向は返さない / 1:マップ端を無視して8方向すべてを返す)
+;	NANAME_FLG:斜め移動がOKかどうかのフラグ(0:斜めなし / 1:斜めあり)
+;-------------------------------------------------
+;返り値(周囲8マスのどの方向かを返す)
+;	1:左下
+;	2:下
+;	3:右下
+;	4:左
+;	6:右
+;	7:左上
+;	8:上
+;	9:右上
+;-------------------------------------------------
+@SEF_PATROL_DIRECTION, CHARA_NO, NO_WALL_FLG, NO_EDGE_FLG, NANAME_FLG
+;-------------
+;変数定義
+;-------------
+#DIM CHARA_NO					;対象となるオブジェクト(シンボルエンカウントのシンボルなど)の番号
+#DIM NO_WALL_FLG				;周囲の壁を無視するフラグ(0:壁のある方向は返さない / 1:壁を無視して8方向すべてを返す)
+#DIM NO_EDGE_FLG				;マップ端を無視するフラグ(0:マップ端のある方向は返さない / 1:マップ端を無視して8方向すべてを返す)
+#DIM NANAME_FLG					;斜め移動がOKかどうかのフラグ(0:斜めなし / 1:斜めあり)
+#DIM PRE_DIRECTION				;前回の移動方向(テンキーの1,2,3,4,6,7,8,9に対応)
+#DIM DIRECTION					;今回の移動方向(テンキーの1,2,3,4,6,7,8,9に対応)
+#DIM POINT_X					;キャラクターのX座標
+#DIM POINT_Y					;キャラクターのY座標
+#DIM ARRAY_WALL_FLG, 10			;引数の座標の周囲8マスの状況を格納する配列(0:壁ではない / 1:壁である / 2:マップ端である)
+;									※第1添字：方向(0:未設定 / 1:左下 / 2:下 / 3:右下 / 4:左 / 5:未設定(テンキーと合わせるため、不要な5の枠もいちおう用意しています。) / 6:右 / 7:左上 / 8:上 / 9:右上)
+#DIM ARRAY_DIRECTION_SYUKAN, 8		;キャラクターから見た主観の方向とテンキーの対応
+;									第一添え字：(0:上 / 1:右上 / 2:右 / 3:右下 / 4:下 / 5:左下 / 6:左 / 7:左上)
+;									例としてキャラクターが下向きの場合、キャラクターから見て左がテンキーの6(右)になるため[ARRAY_DIRECTION_SYUKAN:0 = 6]となる
+#DIM LOOP_CNT_i					;ループ用カウント変数　※処理が長くて複雑なので、グローバル変数LOCALは使いたくない
+
+;-------------
+;変数の初期化
+;-------------
+PRE_DIRECTION = 0				;前回の移動方向(テンキーの1,2,3,4,6,7,8,9に対応)
+DIRECTION = 0					;今回の移動方向(テンキーの1,2,3,4,6,7,8,9に対応)
+POINT_X = 0						;X座標
+POINT_Y = 0						;Y座標
+VARSET ARRAY_WALL_FLG			;引数の座標の周囲8マスが壁かどうかを格納する配列(0:壁ではない / 1:壁である)
+VARSET ARRAY_DIRECTION_SYUKAN			;キャラクターから見た主観の方向とテンキーの対応
+LOOP_CNT_i = 0					;ループ用カウント変数i
+
+;-------------
+;ここから本処理
+;-------------
+
+;キャラクターの座標を取得する
+POINT_X = CD_ARRAY_OTHER_CHARA:CHARA_NO:5		;X座標の取得
+POINT_Y = CD_ARRAY_OTHER_CHARA:CHARA_NO:6		;Y座標の取得
+
+;キャラクターの向きを取得する
+PRE_DIRECTION = CD_ARRAY_OTHER_CHARA:CHARA_NO:26
+
+;キャラクターの向きが未設定の場合、8(前方)に設定する
+SELECTCASE PRE_DIRECTION
+	CASE 8, 9, 6, 3, 2, 1, 4, 7
+		;方向が正しく設定されている場合
+
+	CASEELSE
+		;その他の場合(方向が未設定)
+		PRE_DIRECTION = 8
+
+ENDSELECT
+
+;キャラクタの主観方向とテンキーの対応を取得する
+CALL SEF_SYUKAN_DIRECTION, ARRAY_DIRECTION_SYUKAN, PRE_DIRECTION
+
+;周囲8マスの壁・マップ端の有無を確認する	※参照引き渡しで配列「ARRAY_WALL_FLG」に格納される
+CALL SEF_CHECK_LANDFORM, POINT_X , POINT_Y, ARRAY_WALL_FLG
+
+;左側に進める、かつ左下に壁がある場合は左折する
+IF ARRAY_WALL_FLG:(ARRAY_DIRECTION_SYUKAN:6) == 0 && ARRAY_WALL_FLG:(ARRAY_DIRECTION_SYUKAN:5) == 1
+	RETURN ARRAY_DIRECTION_SYUKAN:6
+ENDIF
+
+;周囲8マスの壁・マップ端を無視するかどうか設定する	※参照引き渡しで配列「ARRAY_WALL_FLG」に格納される
+CALL SEF_DISREGARD_WALL, NO_WALL_FLG, NO_EDGE_FLG, ARRAY_WALL_FLG
+
+;斜め方向の可否を設定する
+IF NANAME_FLG == 0
+	ARRAY_WALL_FLG:1 = 1	;左下は移動不可(壁があるフラグを立てる)
+	ARRAY_WALL_FLG:3 = 1	;右下は移動不可(壁があるフラグを立てる)
+	ARRAY_WALL_FLG:7 = 1	;左上は移動不可(壁があるフラグを立てる)
+	ARRAY_WALL_FLG:9 = 1	;右上は移動不可(壁があるフラグを立てる)
+ENDIF
+
+;進行方向を設定する
+;※最優先で前方へ、前方に進めない場合は右上、それもだめなら右、右下、下...と時計回りに判定する
+FOR LOOP_CNT_i, 0, 8
+	IF ARRAY_WALL_FLG:(ARRAY_DIRECTION_SYUKAN:LOOP_CNT_i) == 0
+		;該当の方向に進める場合
+		RETURN ARRAY_DIRECTION_SYUKAN:LOOP_CNT_i
+	ENDIF
+NEXT
+
+;方向を取得できなかった場合、5を返す(その場にとどまる)
+RETURN 5
+
+
+;-------------------------------------------------
+;目的地を目指している場合の進行方向を取得する処理
+;-------------------------------------------------
+;引数
+;	POINT_X:キャラクターのX座標
+;	POINT_Y:キャラクターのY座標
+;	DISTINATION_X:눈的地のX座標
+;	DISTINATION_Y:눈的地のX座標
+;	NO_WALL_FLG:周囲の壁を無視するフラグ(0:壁のある方向は返さない / 1:壁を無視して8方向すべてを返す)
+;	NO_EDGE_FLG:マップ端を無視するフラグ(0:マップ端のある方向は返さない / 1:マップ端を無視して8方向すべてを返す)
+;	NANAME_FLG:斜め移動がOKかどうかのフラグ(0:斜めなし / 1:斜めあり)
+;	ESCAPE_FLG:눈的地から逃げているどうかのフラグ(0:逃げていない / 1:逃げている)	※逃げている場合は目的地と逆方向へ進む
+;-------------------------------------------------
+;返り値(周囲8マスのどの方向かを返す)
+;	1:左下
+;	2:下
+;	3:右下
+;	4:左
+;	5:同じ座標(その場にとどまる)
+;	6:右
+;	7:左上
+;	8:上
+;	9:右上
+;-------------------------------------------------
+@SEF_FOLLOW_DIRECTION, POINT_X, POINT_Y, DISTINATION_X, DISTINATION_Y, NO_WALL_FLG, NO_EDGE_FLG, NANAME_FLG, ESCAPE_FLG
+;-------------
+;変数定義
+;-------------
+#DIM POINT_X					;対象となるオブジェクト(シンボルエンカウントのシンボルなど)の番号
+#DIM POINT_Y					;対象となるオブジェクト(シンボルエンカウントのシンボルなど)の番号
+#DIM DISTINATION_X				;対象となるオブジェクト(シンボルエンカウントのシンボルなど)の番号
+#DIM DISTINATION_Y				;対象となるオブジェクト(シンボルエンカウントのシンボルなど)の番号
+#DIM NO_WALL_FLG				;周囲の壁を無視するフラグ(0:壁のある方向は返さない / 1:壁を無視して8方向すべてを返す)
+#DIM NO_EDGE_FLG				;マップ端を無視するフラグ(0:マップ端のある方向は返さない / 1:マップ端を無視して8方向すべてを返す)
+#DIM NANAME_FLG					;斜め移動がOKかどうかのフラグ(0:斜めなし / 1:斜めあり)
+#DIM ESCAPE_FLG					;目的地から逃げているどうかのフラグ(0:逃げていない / 1:逃げている)	※逃げている場合は目的地と逆方向へ進む
+#DIM DISTANCE, 2				;目的地への距離(X軸方向, Y軸方向)
+#DIM ARRAY_WALL_FLG, 10			;引数の座標の周囲8マスの状況を格納する配列(0:壁ではない / 1:壁である / 2:マップ端である)
+#DIM DIRECTION					;目的地の方向(テンキーの1,2,3,4,6,7,8,9に対応)
+#DIM DIRECTION_LIST, 8			;最終的に選択できる方向のリスト。優先順位が高い方向から順に格納する(0:未設定 / 1:左下 / 2:下 / 3:右下 / 4:左 / 5:右 / 6:左上 / 7:上 / 8:右上)
+#DIM ARRAY_DIRECTION_SYUKAN, 8	;キャラクターから見た主観の方向とテンキーの対応
+;									第一添え字：(0:上 / 1:右上 / 2:右 / 3:右下 / 4:下 / 5:左下 / 6:左 / 7:左上)
+;									例としてキャラクターが下向きの場合、キャラクターから見て左がテンキーの6(右)になるため[ARRAY_DIRECTION_SYUKAN:0 = 6]となる
+#DIM LOOP_CNT_i					;ループ用カウント変数
+
+;-------------
+;変数の初期化
+;-------------
+VARSET DISTANCE					;目的地への距離(X軸方向, Y軸方向)
+VARSET ARRAY_WALL_FLG			;引数の座標の周囲8マスが壁かどうかを格納する配列(0:壁ではない / 1:壁である)
+DIRECTION = 0					;方向(テンキーの1,2,3,4,6,7,8,9に対応)
+VARSET DIRECTION_LIST			;引数の座標の周囲8マスが壁かどうかを格納する配列(0:壁ではない / 1:壁である)
+VARSET ARRAY_DIRECTION_SYUKAN	;キャラクターから見た主観の方向とテンキーの対応
+LOOP_CNT_i = 0					;ループ用カウント変数
+
+;-------------
+;ここから本処理
+;-------------
+;キャラクターの座標と目的地の座標が同じ場合、その場にとどまる(5を返す)
+IF (DISTINATION_X == POINT_X) && (DISTINATION_Y == POINT_Y)
+	RETURN 5
+ENDIF
+
+;目的地への距離を取得する
+DISTANCE:0 = DISTINATION_X - POINT_X	;X軸方向の距離
+DISTANCE:1 = DISTINATION_Y - POINT_Y	;Y軸方向の距離
+
+;目的地から逃げている場合、目的地への距離を逆向きに計算する
+IF ESCAPE_FLG == 1
+	DISTANCE:0 = DISTANCE:0 * -1	;X軸方向の距離
+	DISTANCE:1 = DISTANCE:1 * -1	;Y軸方向の距離
+ENDIF
+
+;周囲8マスの壁・マップ端の有無を確認する	※参照引き渡しで配列「ARRAY_WALL_FLG」に格納される
+CALL SEF_CHECK_LANDFORM, POINT_X , POINT_Y, ARRAY_WALL_FLG
+
+;周囲8マスの壁・マップ端を無視するかどうか設定する	※参照引き渡しで配列「ARRAY_WALL_FLG」に格納される
+CALL SEF_DISREGARD_WALL, NO_WALL_FLG, NO_EDGE_FLG, ARRAY_WALL_FLG
+
+;斜め方向の可否を設定する
+IF NANAME_FLG == 0
+	ARRAY_WALL_FLG:1 = 1	;左下は移動不可(壁があるフラグを立てる)
+	ARRAY_WALL_FLG:3 = 1	;右下は移動不可(壁があるフラグを立てる)
+	ARRAY_WALL_FLG:7 = 1	;左上は移動不可(壁があるフラグを立てる)
+	ARRAY_WALL_FLG:9 = 1	;右上は移動不可(壁があるフラグを立てる)
+ENDIF
+
+;目的地の方向を取得する
+DIRECTION = SEF_CHECK_DIRECTION(DISTANCE:0, DISTANCE:1)
+
+;目的地の方向を前とした場合の各主観方向とテンキーの対応を取得する
+CALL SEF_SYUKAN_DIRECTION, ARRAY_DIRECTION_SYUKAN, DIRECTION
+
+;目的地の方向に合わせて、移動方向の優先順位を設定する
+;	優先順位は上、左上、右上、左、右、左下、右下、下とする。
+DIRECTION_LIST = ARRAY_DIRECTION_SYUKAN:0, ARRAY_DIRECTION_SYUKAN:7, ARRAY_DIRECTION_SYUKAN:1, ARRAY_DIRECTION_SYUKAN:6, ARRAY_DIRECTION_SYUKAN:2, ARRAY_DIRECTION_SYUKAN:5, ARRAY_DIRECTION_SYUKAN:3, ARRAY_DIRECTION_SYUKAN:4
+
+;優先順位の高い方向から順に、進行可能な場合はそちらへ進む
+FOR LOOP_CNT_i, 0, 8
+	IF ARRAY_WALL_FLG:(DIRECTION_LIST:LOOP_CNT_i) == 0
+		RETURN DIRECTION_LIST:LOOP_CNT_i
+	ENDIF
+NEXT
+
+;進行可能な方向が存在しなかった場合、その場にとどまる(5を返す)
+RETURN 5
+
+
+;-------------------------------------------------
+;敵シンボルを移動させる関数
+;-------------------------------------------------
+;引数
+;	CHARA_NO:対象となるオブジェクト(シンボルエンカウントのシンボルなど)の番号
+;	DIRECTION:移動方向
+;-------------------------------------------------
+@SEF_CHARA_MOVE, CHARA_NO, DIRECTION
+;-------------
+;変数定義
+;-------------
+#DIM CHARA_NO					;対象となるオブジェクト(シンボルエンカウントのシンボルなど)の番号
+#DIM DIRECTION					;移動方向(テンキーの1,2,3,4,6,7,8,9に対応)
+#DIM DIRECTION_X				;方向のX座標成分(-1:左に1マス / 0:中心と同じX座標 / 1:右に1マス)
+#DIM DIRECTION_Y				;方向のY座標成分(-1:上に1マス / 0:中心と同じY座標 / 1:下に1マス)
+
+;-------------
+;変数の初期化
+;-------------
+DIRECTION_X = 0					;方向のX座標成分(-1:左に1マス / 0:中心と同じX座標 / 1:右に1マス)
+DIRECTION_Y = 0					;方向のY座標成分(-1:上に1マス / 0:中心と同じY座標 / 1:下に1マス)
+
+;-------------
+;ここから本処理
+;-------------
+;「5:その場にとどまる」の場合、移動無し(何もしない)
+IF DIRECTION == 5
+	RETURN 1
+ENDIF
+
+;X,Y座標にどのように移動するかを取得する
+SELECTCASE DIRECTION
+	CASE 1
+		;「1:左下」の場合
+		DIRECTION_X = -1		;方向のX座標成分
+		DIRECTION_Y = 1			;方向のY座標成分
+
+	CASE 2
+		;「2:下」の場合
+		DIRECTION_X = 0			;方向のX座標成分
+		DIRECTION_Y = 1			;方向のY座標成分
+
+	CASE 3
+		;「3:右下」の場合
+		DIRECTION_X = 1			;方向のX座標成分
+		DIRECTION_Y = 1			;方向のY座標成分
+
+	CASE 4
+		;「4:左」の場合
+		DIRECTION_X = -1		;方向のX座標成分
+		DIRECTION_Y = 0			;方向のY座標成分
+
+	CASE 6
+		;「6:右」の場合
+		DIRECTION_X = 1			;方向のX座標成分
+		DIRECTION_Y = 0			;方向のY座標成分
+
+	CASE 7
+		;「7:左上」の場合
+		DIRECTION_X = -1		;方向のX座標成分
+		DIRECTION_Y = -1		;方向のY座標成分
+
+	CASE 8
+		;「8:上」の場合
+		DIRECTION_X = 0			;方向のX座標成分
+		DIRECTION_Y = -1		;方向のY座標成分
+
+	CASE 9
+		;「1:左下」の場合
+		DIRECTION_X = 1			;方向のX座標成分
+		DIRECTION_Y = -1		;方向のY座標成分
+
+ENDSELECT
+
+;シンボルの位置を移動させる
+CD_ARRAY_OTHER_CHARA:CHARA_NO:5 += DIRECTION_X
+CD_ARRAY_OTHER_CHARA:CHARA_NO:6 += DIRECTION_Y
+
+;キャラクターの向きを保存する
+CD_ARRAY_OTHER_CHARA:CHARA_NO:26 = DIRECTION
+
+RETURN 1
+
+
+;-------------------------------------------------
+;ランダムな方向を返してくれる関数
+;-------------------------------------------------
+;引数
+;	POINT_X:対象となるオブジェクトのX座標
+;	POINT_Y:対象となるオブジェクトのY座標
+;	NO_WALL_FLG:周囲の壁を無視するフラグ(0:壁のある方向は返さない / 1:壁を無視して8方向すべてを返す)
+;	NO_EDGE_FLG:マップ端を無視するフラグ(0:マップ端のある方向は返さない / 1:マップ端を無視して8方向すべてを返す)
+;	NANAME_FLG:斜め移動がOKかどうかのフラグ(0:斜めなし / 1:斜めあり)
+;-------------------------------------------------
+;返り値(周囲8マスのどの方向かを返す)
+;	1:左下
+;	2:下
+;	3:右下
+;	4:左
+;	6:右
+;	7:左上
+;	8:上
+;	9:右上
+;-------------------------------------------------
+@SEF_RANDOM_MOVE_DIRECTION, POINT_X , POINT_Y, NO_WALL_FLG, NO_EDGE_FLG, NANAME_FLG
+;-------------
+;変数定義
+;-------------
+#DIM POINT_X					;X座標
+#DIM POINT_Y					;Y座標
+#DIM NO_WALL_FLG				;周囲の壁を無視するフラグ(0:壁のある方向は返さない / 1:壁を無視して8方向すべてを返す)
+#DIM NO_EDGE_FLG				;マップ端を無視するフラグ(0:マップ端のある方向は返さない / 1:マップ端を無視して8方向すべてを返す)
+#DIM NANAME_FLG					;斜め移動がOKかどうかのフラグ(0:斜めなし / 1:斜めあり)
+#DIM LOOP_CNT_i					;ループ用カウント変数
+#DIM DIRECTION					;方向(テンキーの1,2,3,4,6,7,8,9に対応)
+#DIM TILE_TYPE					;調査中のタイル(マス)の種類(0:壁がない / 1:壁がある / 2:マップ端である)
+
+#DIM ARRAY_WALL_FLG, 10			;引数の座標の周囲8マスの状況を格納する配列(0:壁ではない / 1:壁である / 2:マップ端である)
+;									※第1添字：方向(0:未設定 / 1:左下 / 2:下 / 3:右下 / 4:左 / 5:未設定(テンキーと合わせるため、不要な5の枠もいちおう用意しています。) / 6:右 / 7:左上 / 8:上 / 9:右上)
+
+#DIM DIRECTION_LIST, 8			;最終的に選択できる方向のリスト(0:未設定 / 1:左下 / 2:下 / 3:右下 / 4:左 / 5:右 / 6:左上 / 7:上 / 8:右上)
+#DIM DIRECTION_CNT				;最終的に選択できる方向の数(最大8。壁があったりマップ端だったりするとその方向は選べないため数が減る)
+
+;-------------
+;変数の初期化
+;-------------
+LOOP_CNT_i = 0					;ループ用カウント変数
+DIRECTION = 0					;方向(テンキーの1,2,3,4,6,7,8,9に対応)
+TILE_TYPE = 0					;調査中のタイル(マス)の種類(0:壁がない / 1:壁がある / 2:マップ端である)
+VARSET ARRAY_WALL_FLG			;引数の座標の周囲8マスが壁かどうかを格納する配列(0:壁ではない / 1:壁である)
+VARSET DIRECTION_LIST			;引数の座標の周囲8マスが壁かどうかを格納する配列(0:壁ではない / 1:壁である)
+DIRECTION_CNT = 0
+
+;-------------
+;ここから本処理
+;-------------
+
+;---------------------------------------
+;周囲8マスの地形を確認する
+;---------------------------------------
+;周囲8マスの壁・マップ端の有無を確認する(参照引き渡しで配列「ARRAY_WALL_FLG」に格納される)
+CALL SEF_CHECK_LANDFORM, POINT_X , POINT_Y, ARRAY_WALL_FLG
+
+;周囲8マスの壁・マップ端を無視するかどうか設定する
+CALL SEF_DISREGARD_WALL, NO_WALL_FLG, NO_EDGE_FLG, ARRAY_WALL_FLG
+
+;斜め方向の可否を設定する
+IF NANAME_FLG == 0
+	ARRAY_WALL_FLG:1 = 1	;左下は移動不可(壁があるフラグを立てる)
+	ARRAY_WALL_FLG:3 = 1	;右下は移動不可(壁があるフラグを立てる)
+	ARRAY_WALL_FLG:7 = 1	;左上は移動不可(壁があるフラグを立てる)
+	ARRAY_WALL_FLG:9 = 1	;右上は移動不可(壁があるフラグを立てる)
+ENDIF
+
+;---------------------------------------
+;選択可能な方向のリストを作成する
+;---------------------------------------
+;周囲8マス分のループを回して処理を行う
+FOR LOOP_CNT_i, 1, 10
+	;確認する方向を取得する
+	DIRECTION = LOOP_CNT_i
+
+	;5は方向が存在しないため、パスする
+	IF DIRECTION == 5
+		CONTINUE
+	ENDIF
+
+	;壁がない場合、選択可能な方向のリストに追加する
+	IF ARRAY_WALL_FLG:DIRECTION == 0
+		DIRECTION_LIST:DIRECTION_CNT = DIRECTION
+		DIRECTION_CNT += 1
+	ENDIF
+NEXT
+
+;---------------------------------------
+;ランダムな方向を返す
+;---------------------------------------
+IF DIRECTION_CNT >= 1
+	;選択可能な方向が1つ以上存在する場合
+	RETURN DIRECTION_LIST:(RAND:DIRECTION_CNT)		;選択可能な方向のリストからランダムに1つの値を返す
+
+ELSE
+	;選択可能な方向が存在しない場合(その場にとどまる意味で5を返す)
+		RETURN 5
+ENDIF
+
+
+;----------------------------------------------------
+;周囲8マスの壁・マップ端を無視するかどうかを設定する
+;----------------------------------------------------
+;引数
+;	NO_WALL_FLG:周囲の壁を無視するフラグ(0:壁のある方向は返さない / 1:壁を無視して8方向すべてを返す)
+;	NO_EDGE_FLG:マップ端を無視するフラグ(0:マップ端のある方向は返さない / 1:マップ端を無視して8方向すべてを返す)
+;	ARRAY_WALL_FLG:周囲8マスの状況を格納する配列(0:壁ではない / 1:壁である / 2:マップ端である)
+;-------------------------------------------------
+;返り値(周囲8マスのどの方向かを返す)
+;	厳密には返り値ではないが、参照引き渡しの引数の配列「ARRAY_WALL_FLG」に各方向の状況を格納する(0:壁ではない / 1:壁である / 2:マップ端である)
+;		0;未設定
+;		1:左下
+;		2:下
+;		3:右下
+;		4:左
+;		5:未設定
+;		6:右
+;		7:左上
+;		8:上
+;		9:右上
+;	例として右と左のみ壁無し、それ以外は壁ありの場合、(0, 1, 1, 1, 0, 0, 0, 1, 1, 1)となる。	※0番目と5番目は壁の有無を判定せず常に0(壁無し)とする。
+;-------------------------------------------------
+@SEF_DISREGARD_WALL, NO_WALL_FLG, NO_EDGE_FLG, ARRAY_WALL_FLG
+;-------------
+;変数定義
+;-------------
+#DIM LOOP_CNT_i					;ループ用カウント変数
+#DIM NO_WALL_FLG				;周囲の壁を無視するフラグ(0:壁のある方向は返さない / 1:壁を無視して8方向すべてを返す)
+#DIM NO_EDGE_FLG				;マップ端を無視するフラグ(0:マップ端のある方向は返さない / 1:マップ端を無視して8方向すべてを返す)
+#DIM REF ARRAY_WALL_FLG			;周囲8マスの状況を格納する配列(0:壁ではない / 1:壁である / 2:マップ端である)
+;									※第1添字：方向(0:未設定 / 1:左下 / 2:下 / 3:右下 / 4:左 / 5:未設定(テンキーと合わせるため、不要な5の枠もいちおう用意しています。) / 6:右 / 7:左上 / 8:上 / 9:右上)
+
+#DIM TILE_TYPE					;調査中のタイル(マス)の種類(0:壁がない / 1:壁がある / 2:マップ端である)
+
+;-------------
+;変数の初期化
+;-------------
+LOOP_CNT_i = 0					;ループ用カウント変数
+TILE_TYPE = 0					;調査中のタイル(マス)の種類(0:壁がない / 1:壁がある / 2:マップ端である)
+
+;-------------
+;ここから本処理
+;-------------
+;周囲の地形について格納された引数の配列「ARRAY_WALL_FLG」について、ループを回して処理を行う
+FOR LOOP_CNT_i, 0, 10
+	;タイルの種類を取得する(0:壁がない / 1:壁がある / 2:マップ端である)
+	TILE_TYPE = ARRAY_WALL_FLG:LOOP_CNT_i
+
+	;壁・マップ端を無視する場合の処理
+	IF NO_WALL_FLG == 1 && TILE_TYPE == 1
+		;壁を無視する、かつ該当のタイルが壁の場合
+		TILE_TYPE = 0	;壁を無視する
+
+	ELSEIF NO_EDGE_FLG == 1 && TILE_TYPE == 2
+		;マップ端を無視する、かつ該当のタイルがマップ端の場合
+		TILE_TYPE = 0	;マップ端を無視する
+	ENDIF
+
+	;確認結果を配列に格納する
+	ARRAY_WALL_FLG:LOOP_CNT_i = TILE_TYPE
+NEXT
+
+RETURN 1
+
+;------------------------------------------------------------
+;ある座標の周囲8マスの状況(壁・マップ端の有無)を調査する関数
+;------------------------------------------------------------
+;引数
+;	POINT_X:X座標
+;	POINT_Y:Y座標
+;	DIRECTION:壁があるかどうか確認する方向
+;-------------------------------------------------
+;返り値(周囲8マスのどの方向かを返す)
+;	0:壁がない
+;	1:壁がある
+;	2:マップ端がある
+;-------------------------------------------------
+@SEF_CHECK_LANDFORM, POINT_X, POINT_Y, ARRAY_WALL_FLG
+;-------------
+;変数定義
+;-------------
+#DIM POINT_X					;X座標
+#DIM POINT_Y					;Y座標
+#DIM NO_WALL_FLG				;周囲の壁を無視するフラグ(0:壁のある方向は返さない / 1:壁を無視して8方向すべてを返す)
+#DIM NO_EDGE_FLG				;マップ端を無視するフラグ(0:マップ端のある方向は返さない / 1:マップ端を無視して8方向すべてを返す)
+#DIM LOOP_CNT_i					;ループ用カウント変数
+#DIM DIRECTION					;方向(テンキーの1,2,3,4,6,7,8,9に対応)
+#DIM TILE_TYPE					;調査中のタイル(マス)の種類(0:壁がない / 1:壁がある / 2:マップ端である)
+
+#DIM REF ARRAY_WALL_FLG			;引数の座標の周囲8マスの状況を格納する配列(0:壁ではない / 1:壁である / 2:マップ端である)
+;									※第1添字：方向(0:未設定 / 1:左下 / 2:下 / 3:右下 / 4:左 / 5:未設定(テンキーと合わせるため、不要な5の枠もいちおう用意しています。) / 6:右 / 7:左上 / 8:上 / 9:右上)
+;-------------
+;変数の初期化
+;-------------
+LOOP_CNT_i = 0					;ループ用カウント変数
+DIRECTION = 0					;方向(テンキーの1,2,3,4,6,7,8,9に対応)
+TILE_TYPE = 0					;調査中のタイル(マス)の種類(0:壁がない / 1:壁がある / 2:マップ端である)
+
+;-------------
+;ここから本処理
+;-------------
+
+;---------------------------------------
+;周囲8マスの壁の有無を取得する
+;---------------------------------------
+;周囲8マス分のループを回して処理を行う
+FOR LOOP_CNT_i, 1, 10
+	;変数を初期化する
+	TILE_TYPE = 0
+
+	;確認する方向を取得する
+	DIRECTION = LOOP_CNT_i
+
+	;5は方向が存在しないため、パスする
+	IF DIRECTION == 5
+		CONTINUE
+	ENDIF
+
+	;該当の方向に壁・マップ端があるかどうかを取得する
+	TILE_TYPE = SEF_WALL_CHECK(POINT_X, POINT_Y, DIRECTION)
+
+	;確認結果を配列に格納する
+	ARRAY_WALL_FLG:LOOP_CNT_i = TILE_TYPE
+
+NEXT
+
+RETURN 1
+
+
+;-------------------------------------------------
+;指定の方向に壁およびマップ端があるか返す関数
+;-------------------------------------------------
+;引数
+;	POINT_X:X座標
+;	POINT_Y:Y座標
+;	DIRECTION:壁があるかどうか確認する方向
+;-------------------------------------------------
+;返り値(周囲8マスのどの方向かを返す)
+;	0:壁がない
+;	1:壁がある
+;	2:マップ端がある
+;-------------------------------------------------
+@SEF_WALL_CHECK, POINT_X, POINT_Y, DIRECTION
+#FUNCTION
+#LOCALSIZE  1
+#LOCALSSIZE 1
+
+;-------------
+;変数定義
+;-------------
+#DIM POINT_X			;X座標
+#DIM POINT_Y			;Y座標
+#DIM DIRECTION			;方向(テンキーの1,2,3,4,6,7,8,9に対応)
+#DIM DIRECTION_X		;方向のX座標成分(-1:左に1マス / 0:中心と同じX座標 / 1:右に1マス)
+#DIM DIRECTION_Y		;方向のY座標成分(-1:上に1マス / 0:中心と同じY座標 / 1:下に1マス)
+
+;-------------
+;変数の初期化
+;-------------
+DIRECTION_X = 0			;方向のX座標成分(-1:左に1マス / 0:中心と同じX座標 / 1:右に1マス)
+DIRECTION_Y = 0			;方向のY座標成分(-1:上に1マス / 0:中心と同じY座標 / 1:下に1マス)
+
+;-------------
+;ここから本処理
+;-------------
+;----------------------------------
+;方向の確認
+;----------------------------------
+;方向のX座標成分を取得する
+SELECTCASE DIRECTION
+	CASE 1, 4, 7
+		;左方向の場合
+		DIRECTION_X = -1
+
+	CASE 3, 6, 9
+		;右方向の場合
+		DIRECTION_X = 1
+
+	CASEELSE
+		;その他の場合
+		DIRECTION_X = 0
+
+ENDSELECT
+
+;方向のY座標成分を取得する
+SELECTCASE DIRECTION
+	CASE 1, 2, 3
+		;下方向の場合
+		DIRECTION_Y = 1
+
+	CASE 7, 8, 9
+		;上方向の場合
+		DIRECTION_Y = -1
+
+	CASEELSE
+		;その他の場合
+		DIRECTION_Y = 0
+
+ENDSELECT
+
+;----------------------------------
+;マップ端であるかを確認
+;----------------------------------
+;マップ右端・左端チェック
+IF POINT_X == 0
+	;マップ左端の場合
+	IF DIRECTION_X == -1
+		RETURNF 2
+	ENDIF
+
+ELSEIF POINT_X == (FLAG:최대X - 1)
+	;マップ右端の場合
+	IF DIRECTION_X == 1
+		RETURNF 2
+	ENDIF
+ENDIF
+
+;マップの上端・下端チェック
+IF POINT_Y == 0
+	;マップ上端の場合
+	IF DIRECTION_Y == -1
+		RETURNF 2
+	ENDIF
+
+ELSEIF POINT_Y == (FLAG:최대Y - 1)
+	;マップ下端の場合
+	IF DIRECTION_Y == 1
+		RETURNF 2
+	ENDIF
+ENDIF
+
+
+;----------------------------------
+;壁の有無を確認
+;----------------------------------
+;該当の方向に壁があるかどうかを確認する
+IF DA:(POINT_X + DIRECTION_X):(POINT_Y + DIRECTION_Y) == 0
+	;壁が存在する
+	RETURNF 1
+
+ELSE
+	;壁が存在しない
+	RETURNF 0
+
+ENDIF
+
+
+;-------------------------------------------------
+;シンボルエンカウントの敵のCSV番号を設定する
+;-------------------------------------------------
+;引数
+;	CHARA_NO:対象となるオブジェクト(シンボルエンカウントのシンボルなど)の番号
+;	DIRECTION:移動方向
+;-------------------------------------------------
+@SEF_SET_SYMBOL_CSV_NO
+;-------------
+;変数定義
+;-------------
+#DIM LOOP_CNT_i					;ループ用カウント変数　※処理が長くて複雑なので、グローバル変数LOCALは使いたくない
+#DIM OBJECT_CNT					;オブジェクト(キャラクター)の数
+
+;-------------
+;変数の初期化
+;-------------
+LOOP_CNT_i = 0					;ループ用カウント変数i
+OBJECT_CNT = 0					;オブジェクト(キャラクター)の数
+
+;-------------
+;ここから本処理
+;-------------
+;キャラクターの数を取得する
+FOR LOOP_CNT_i, 0, 20
+	IF CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:0 != 0
+		OBJECT_CNT += 1
+	ENDIF
+NEXT
+
+;キャラクターの数だけループを回して処理を行う
+FOR LOOP_CNT_i, 0, OBJECT_CNT
+	CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:1 = CD_DEVIL_LIST:(RAND:CD_DEVIL_VARIETY_CNT)		;出現する悪魔のリストからランダムでCSV番号を取得する
+NEXT
+RETURN 1
+
+
+;--------------------------
+;シンボル接触時のイベント
+;--------------------------
+@SEF_SYMBOL_EVENT
+;-------------
+;変数定義
+;-------------
+#DIM LOOP_CNT_i								;ループ用カウント変数
+#DIM LOOP_CNT_j								;ループ用カウント変数
+#DIM OBJECT_CNT								;オブジェクト(キャラクター)の数
+#DIM BATTLE_ENEMY_CNT						;戦闘を行う敵シンボルの数
+#DIM ENEMY_POSITION							;敵を配置する位置
+#DIM ENEMY_LEVEL							;敵のレベル
+#DIM ENEMY_NO								;敵のCSV番号
+#DIM ENEMY_ACT_CNT							;敵の行動回数
+#DIM ENEMY_BOSS_FLG							;敵のボスフラグ
+#DIM ARRAY_ENEMY_STATUS_ADD, 8				;ステータス8種類の補正値(0:HP / 1:MP / 2:힘 / 3:지혜 / 4:마력 / 5:인내력 / 6:속도 / 7:운)
+#DIM EVENT_PATTERN							;シンボルと接触時のイベントのパターン(0:未設定 / 1:戦闘する / 2:イベント発生)
+#DIMS EVENT_NAME							;シンボルと接触時の特殊イベントの関数名
+#DIM EVENT_NO1								;シンボルと接触時の特殊イベントの番号その1(던전番号)
+#DIM EVENT_NO2								;シンボルと接触時の特殊イベントの番号その2(イベントの詳細番号)
+#DIM NOT_TALK_FLG							;会話不能フラグ(0:회화可能 / 1:회화불능)	※シンボルエンカウントの場合、個別に設定してあげる必要がある
+#DIM PRE_NOT_TALK_FLG						;元々の「会話不能フラグ」の状態をここに格納する	※この関数が終了した後、元の値に戻す必要があるため
+#DIM PRE_NOT_ESCAPE_FLG						;元々の「逃走不可フラグ」の状態をここに格納する	※この関数が終了した後、元の値に戻す必要があるため
+
+
+;-------------
+;変数の初期化
+;-------------
+LOOP_CNT_i = 0								;ループ用カウント変数i
+LOOP_CNT_j = 0								;ループ用カウント変数i
+OBJECT_CNT = 0								;オブジェクト(キャラクター)の数
+BATTLE_ENEMY_CNT = 0						;戦闘を行う敵シンボルの数
+ENEMY_LEVEL = 0								;敵のレベル
+ENEMY_NO = 0								;敵のCSV番号
+ENEMY_ACT_CNT = 0							;敵の行動回数
+ENEMY_POSITION = 7							;敵を配置する位置
+ENEMY_BOSS_FLG = 0							;敵のボスフラグ
+VARSET ARRAY_ENEMY_STATUS_ADD				;ステータス8種類の補正値(0:HP / 1:MP / 2:힘 / 3:지혜 / 4:마력 / 5:인내력 / 6:속도 / 7:운)
+EVENT_PATTERN = 0							;シンボルと接触時のイベントのパターン(0:未設定 / 1:戦闘する / 2:特殊イベント発生)
+EVENT_NO1 = 0								;シンボルと接触時の特殊イベントの番号その1(던전番号)
+EVENT_NO2 = 0								;シンボルと接触時の特殊イベントの番号その2(イベントの詳細番号)
+NOT_TALK_FLG = 0							;会話不能フラグ(0:회화可能 / 1:회화불능)	※シンボルエンカウントの場合、個別に設定してあげる必要がある
+PRE_NOT_TALK_FLG = FLAG:회화불능플래그		;元々の「会話不能フラグ」の状態をここに格納する	※この関数が終了した後、元の値に戻して上げる必要があるため
+PRE_NOT_ESCAPE_FLG = FLAG:도주불가플래그	;元々の「逃走不可フラグ」の状態をここに格納する	※この関数が終了した後、元の値に戻す必要があるため
+
+;-------------
+;ここから本処理
+;-------------
+;キャラクターの数を取得する
+FOR LOOP_CNT_i, 0, 20
+	IF CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:0 != 0
+		OBJECT_CNT += 1
+	ENDIF
+NEXT
+
+;--------------------
+;敵の配置・設定処理
+;--------------------
+;キャラクターの数だけループを回して処理を行う
+FOR LOOP_CNT_i, 0, OBJECT_CNT
+
+	;@の位置にシンボルが存在しない場合、パスする
+	IF !(CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:5 == (FLAG:현X) && CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:6 == (FLAG:현Y))
+		CONTINUE
+	ENDIF
+
+	;シンボルの状態が「6:削除予定」である場合、パスする
+	IF CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:0 == 6
+		CONTINUE
+	ENDIF
+
+	;シンボルと接触時のイベントのパターンを取得する
+	EVENT_PATTERN = CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:23
+	
+	;イベントのパターンごとに処理を行う
+	SELECTCASE EVENT_PATTERN
+		CASE 1
+			;「1:戦闘する」の場合
+			;@の位置に敵シンボルが存在する場合
+
+			;----------------------
+			;敵の情報を取得する
+			;----------------------
+			ENEMY_NO = CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:1			;CSV番号
+			ENEMY_LEVEL = CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:12		;レベル
+			ENEMY_ACT_CNT = CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:13		;行動回数
+			ENEMY_BOSS_FLG = CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:14		;ボスフラグ
+			NOT_TALK_FLG = CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:27		;会話不能フラグ(0:회화可能 / 1:회화불능)
+
+			;ステータス8種類の補正値を取得する
+			FOR LOOP_CNT_j, 0, 8
+				ARRAY_ENEMY_STATUS_ADD:LOOP_CNT_j = CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:(15 + LOOP_CNT_j)
+			NEXT
+
+			;----------------------------------
+			;敵の情報が未設定の場合は修正する
+			;----------------------------------
+			;レベルが未設定の場合はデフォルトに合わせる
+			IF ENEMY_LEVEL == 0
+				ENEMY_LEVEL = CSVBASE(ENEMY_NO, GETNUM(BASE,"LV"),0)
+			ENDIF
+
+			;行動回数が未設定の場合は一回に設定する
+			IF ENEMY_ACT_CNT == 0
+				ENEMY_ACT_CNT = 1
+			ENDIF
+
+			;ボスフラグ、ステータス補正値は未設定(0)の場合はそのままで良いため特に何もしない
+
+
+			;----------------------
+			;敵の配置と設定を行う
+			;----------------------
+			;悪魔を配置する
+			CALL SET_ENEMY, (ENEMY_POSITION), ENEMY_NO , ENEMY_LEVEL, 0, ENEMY_BOSS_FLG		;出現する悪魔を設定する
+
+			;悪魔のステータス等を設定
+			CFLAG:(CHARANUM-1):행동횟수 = ENEMY_ACT_CNT											;行動回数
+			CFLAG:(CHARANUM-1):ＨＰ보정 += ARRAY_ENEMY_STATUS_ADD:0								;ステータス補正:HP
+			CFLAG:(CHARANUM-1):ＭＰ보정 += ARRAY_ENEMY_STATUS_ADD:1								;ステータス補正:MP
+			BASE:(CHARANUM-1):힘 += ARRAY_ENEMY_STATUS_ADD:2									;ステータス補正:힘
+			BASE:(CHARANUM-1):지혜 += ARRAY_ENEMY_STATUS_ADD:3									;ステータス補正:지혜
+			BASE:(CHARANUM-1):마력 += ARRAY_ENEMY_STATUS_ADD:4									;ステータス補正:마력
+			BASE:(CHARANUM-1):인내력 += ARRAY_ENEMY_STATUS_ADD:5									;ステータス補正:인내력
+			BASE:(CHARANUM-1):속도 += ARRAY_ENEMY_STATUS_ADD:6									;ステータス補正:속도
+			BASE:(CHARANUM-1):운 += ARRAY_ENEMY_STATUS_ADD:7									;ステータス補正:운
+
+			;シンボルの種類が「2:強敵」の敵が1体でも存在する場合、逃走不可とする
+			IF CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:0 == 2
+				FLAG:도주불가플래그 = 1
+			ENDIF
+
+			;一体でも会話不能な敵がいる場合、会話不能フラグを立てる
+			IF NOT_TALK_FLG == 1
+				FLAG:회화불능플래그 = 1
+			ENDIF
+
+			;ステータス等の設定を有効にする
+			CALL SYNC_STATUS,(CHARANUM-1)
+			CALL HEALTH_CHARA,(CHARANUM-1)
+
+			;----------------------
+			;その他の処理
+			;----------------------
+			CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:0 = 6												;キャラクタの状態を「6:削除予定」に設定する。※逃げた場合も削除する
+			BATTLE_ENEMY_CNT += 1																;戦闘を行う敵シンボルの数をカウントする
+			ENEMY_POSITION += 1																	;敵を配置する位置
+
+			;敵を8体設置した場合は処理を終了する
+			IF BATTLE_ENEMY_CNT == 8
+				BREAK
+			ENDIF
+
+		CASE 2
+			;「2:特殊イベント発生」の場合
+
+			;--------------------------------------------------
+			;シンボルと接触時の特殊イベントの関数名を取得する
+			;--------------------------------------------------
+			EVENT_NO1 = CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:24										;シンボルと接触時の特殊イベントの番号その1(던전番号)
+			EVENT_NO2 = CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:25										;シンボルと接触時の特殊イベントの番号その2(イベントの詳細番号)
+			EVENT_NAME = SYMBOLEVENT_{EVENT_NO1}_{EVENT_NO2}
+
+			;------------------------
+			;特殊イベントを実行する
+			;------------------------
+			TRYCCALLFORM %EVENT_NAME%, LOOP_CNT_i												;特殊イベントの関数を実行する。	※引数として「何番目のシンボルか(0～19)」の数値を渡す。
+			CATCH
+				;関数が見つからないなどのエラー発生時
+				PRINTFORML エラー！シンボル接触時のイベントが見つかりませんでした。イベント名：%EVENT_NAME%
+
+			ENDCATCH
+
+			;----------------------
+			;その他の処理
+			;----------------------
+			CD_ARRAY_OTHER_CHARA:LOOP_CNT_i:0 = 6													;キャラクタの状態を「6:削除予定」に設定する。※逃げた場合も削除する
+
+		CASEELSE
+			;その他の場合(何もしない)
+
+	ENDSELECT
+NEXT
+
+;--------------------
+;バトル開始
+;--------------------
+IF BATTLE_ENEMY_CNT >= 1
+	;戦闘を行う敵シンボルの数が1つ以上存在する場合
+	CALL BATTLE_START
+ENDIF
+
+;戦闘設定用の各種フラグを元の値に戻す
+FLAG:회화불능플래그 = PRE_NOT_TALK_FLG
+FLAG:도주불가플래그 = PRE_NOT_ESCAPE_FLG
+
+RETURN 1
+
+
+;---------------------------------------------------------------------------------------------------------------------
+;該当の座標が何番目の部屋に属しているのかを返す関数
+;(あるオブジェクトがどの部屋に位置しているかなどを調べるために使用する)
+;---------------------------------------------------------------------------------------------------------------------
+;引数
+;	POINT_X		:調べたいオブジェクトのX座標
+;	POINT_Y		:調べたいオブジェクトのY座標
+;	CHECK_TYPE	:調査タイプ(1:部屋の内側部分の範囲にいるかどうか / 2:部屋の内側部分+上下左右1の範囲にいるかどうか(部屋内のキャラの視界がこれ) / 3:部屋の外側部分にいるかどうか)
+;
+;返り値
+;	0以上の整数	:引数の座標が属する部屋の番号
+;	-1			:該当する部屋が存在しない場合(通路にいる、壁の中にいるなど。壁を掘って進んでいる場合もこちら)
+;---------------------------------------------------------------------------------------------------------------------
+@SEF_CHARA_EXIST_BLOCK_NO, POINT_X, POINT_Y, CHECK_TYPE
+#FUNCTION
+#LOCALSIZE  1
+#LOCALSSIZE 1
+;-------------
+;変数定義
+;-------------
+#DIM POINT_X											;始点のX座標
+#DIM POINT_Y											;始点のY座標
+#DIM CHECK_TYPE											;始点のY座標
+#DIM BLOCK_POINT_X										;部屋の左上端のX座標
+#DIM BLOCK_POINT_Y										;部屋の左上端のY座標
+#DIM BLOCK_WIDTH										;部屋の横幅
+#DIM BLOCK_HEIGHT										;部屋の縦幅
+#DIM BLOCK_NO											;引数の座標が位置する部屋の番号(返り値として使用する)
+#DIM LOOP_CNT_i											;ループ用カウント変数　※処理が長くて複雑なので、グローバル変数LOCALは使いたくない
+
+;-------------
+;変数の初期化
+;-------------
+BLOCK_NO = -1											;引数の座標が位置する部屋の番号(返り値として使用する)
+LOOP_CNT_i = 0											;ループ用カウント変数　※処理が長くて複雑なので、グローバル変数LOCALは使いたくない
+
+;-------------
+;ここから本処理
+;-------------
+;部屋データ1件ずつループを回してマップデータに反映する
+FOR LOOP_CNT_i, 0, CD_BLOCK_CNT
+	;----------------------------
+	;部屋のデータを取得する
+	;----------------------------
+	;チェックタイプごとに部屋の範囲設定を変更する(内側 / 外側 など)
+	SELECTCASE CHECK_TYPE
+		CASE 1
+			;「1:部屋の内側」の場合
+			BLOCK_POINT_X = CD_ARRAY_BLOCK:LOOP_CNT_i:1:0		;部屋の内側の左上端のX座標
+			BLOCK_POINT_Y = CD_ARRAY_BLOCK:LOOP_CNT_i:1:1		;部屋の内側の左上端のY座標
+			BLOCK_WIDTH = CD_ARRAY_BLOCK:LOOP_CNT_i:1:2		;部屋の内側の横幅
+			BLOCK_HEIGHT = CD_ARRAY_BLOCK:LOOP_CNT_i:1:3		;部屋の内側の縦幅
+
+		CASE 2
+			BLOCK_POINT_X = CD_ARRAY_BLOCK:LOOP_CNT_i:1:0 - 1	;部屋の内側の左上端のX座標
+			BLOCK_POINT_Y = CD_ARRAY_BLOCK:LOOP_CNT_i:1:1 - 1	;部屋の内側の左上端のY座標
+			BLOCK_WIDTH = CD_ARRAY_BLOCK:LOOP_CNT_i:1:2 + 2	;部屋の内側の横幅
+			BLOCK_HEIGHT = CD_ARRAY_BLOCK:LOOP_CNT_i:1:3 + 2	;部屋の内側の縦幅
+
+		CASE 3
+			;「3:部屋の外側部分にいるかどうか」の場合
+			BLOCK_POINT_X = CD_ARRAY_BLOCK:LOOP_CNT_i:0:0		;部屋の外側の左上端のX座標
+			BLOCK_POINT_Y = CD_ARRAY_BLOCK:LOOP_CNT_i:0:1		;部屋の外側の左上端のY座標
+			BLOCK_WIDTH = CD_ARRAY_BLOCK:LOOP_CNT_i:0:2		;部屋の外側の横幅
+			BLOCK_HEIGHT = CD_ARRAY_BLOCK:LOOP_CNT_i:0:3		;部屋の外側の縦幅
+
+		CASEELSE
+			;その他の場合、エラー
+			RETURNF -1
+		
+	ENDSELECT
+
+	;引数の座標が現在チェック中の部屋の範囲に該当するかどうか確認する
+	IF (BLOCK_POINT_X <= POINT_X && POINT_X <= BLOCK_POINT_X + BLOCK_WIDTH - 1) && (BLOCK_POINT_Y <= POINT_Y && POINT_Y <= BLOCK_POINT_Y + BLOCK_HEIGHT - 1)
+		;引数のX座標,Y座標がどちらもその部屋の範囲内である場合
+		BLOCK_NO = LOOP_CNT_i	;該当の部屋番号を取得する
+		BREAK
+	ENDIF
+
+NEXT
+
+;返り値を返す
+RETURNF BLOCK_NO
+
+
+;---------------------------------------------------------------------------------------------------------------------
+;あるキャラクターが別のキャラクターを視認しているかを確認する関数
+;---------------------------------------------------------------------------------------------------------------------
+;引数
+;	CHARA1_X		:キャラクター1のX座標
+;	CHARA1_Y		:キャラクター1のY座標
+;	CHARA2_X		:キャラクター2のX座標
+;	CHARA2_Y		:キャラクター2のY座標
+;
+;返り値
+;	1			:@を視認している
+;	0			:@を視認していない
+;---------------------------------------------------------------------------------------------------------------------
+@SEF_IS_LOOK_AT, CHARA1_X, CHARA1_Y, CHARA2_X, CHARA2_Y, WALL_PASS_FLG
+#FUNCTION
+#LOCALSIZE  1
+#LOCALSSIZE 1
+;-------------
+;変数定義
+;-------------
+#DIM CHARA1_X					;キャラクタ1のX座標
+#DIM CHARA1_Y					;キャラクタ1のY座標
+#DIM CHARA2_X					;キャラクタ2のX座標
+#DIM CHARA2_Y					;キャラクタ2のY座標
+#DIM WALL_PASS_FLG				;壁抜けフラグ
+#DIM CHARA1_BLOCK_NO			;@が滞在している部屋の番号
+#DIM CHARA2_BLOCK_NO			;シンボルが滞在している部屋の番号
+#DIM DISTANCE, 2				;キャラクター1 → キャラクター2の距離(X方向成分, Y方向成分)
+
+;-------------
+;変数の初期化
+;-------------
+CHARA1_BLOCK_NO = 0				;@が滞在している部屋の番号
+CHARA2_BLOCK_NO = 0				;シンボルが滞在している部屋の番号
+VARSET DISTANCE					;キャラクター1 → キャラクター2の距離(X方向成分, Y方向成分)
+
+;-------------
+;ここから本処理
+;-------------
+;壁抜きフラグが「1：1:壁抜け可能」の場合、無条件でフロア전체を見渡せる。
+IF WALL_PASS_FLG == 1
+	RETURNF 1
+ENDIF
+
+;キャラクターが滞在している部屋の番号を取得する
+CHARA1_BLOCK_NO = SEF_CHARA_EXIST_BLOCK_NO(CHARA1_X, CHARA1_Y, 2)		;キャラクター1の部屋番号
+CHARA2_BLOCK_NO = SEF_CHARA_EXIST_BLOCK_NO(CHARA2_X, CHARA2_Y, 2)		;キャラクター2の部屋番号
+
+;キャラクター1,2の部屋番号が取得できた場合、同じ部屋なら視認している
+IF CHARA1_BLOCK_NO >= 0 && CHARA2_BLOCK_NO >= 0
+	IF CHARA1_BLOCK_NO == CHARA2_BLOCK_NO
+		RETURNF 1
+	ENDIF
+ENDIF
+
+;キャラクター間の距離を取得する
+DISTANCE:0 = CHARA2_X - CHARA1_X
+DISTANCE:1 = CHARA2_Y - CHARA1_Y
+
+;キャラクター間の距離が[周囲8マス]の場合、視認している	※タテ・ヨコ・ナナメ1マス分
+IF (-1 <= DISTANCE:0) && (DISTANCE:0 <= 1)
+	IF (-1 <= DISTANCE:1) && (DISTANCE:1 <= 1)
+		RETURNF 1
+	ENDIF
+ENDIF
+
+RETURNF 0
+
+
+;---------------------------------------------------------------------------------------------------------------------
+;睡眠中のキャラクターが起きるかどうかチェックする関数
+;---------------------------------------------------------------------------------------------------------------------
+;引数
+;	CHARA_NO:対象となるオブジェクト(シンボルエンカウントのシンボルなど)の番号
+;
+;返り値
+;	1			:起きる
+;	0			:起きない
+;---------------------------------------------------------------------------------------------------------------------
+@SEF_CHECK_AWAKE, CHARA_NO, AWAKE_PERCENTAGE
+#FUNCTION
+#LOCALSIZE  1
+#LOCALSSIZE 1
+;-------------
+;変数定義
+;-------------
+#DIM CHARA_NO					;キャラクターの番号
+#DIM AWAKE_PERCENTAGE			;起きる確率
+#DIM CHARA_POSITION, 2			;キャラクタの位置(X座標, Y座標)
+#DIM DISTANCE, 2				;キャラクター → @の距離(X方向成分, Y方向成分)
+#DIM RANDOM_NO_100				;1～100の乱数を入れる変数。起きるかどうかの判定に利用する
+#DIM AWAKE_FLG					;起きるための条件を満たしているかどうか(0:条件を満たしていない / 1:条件を満たしている)	※条件を満たさない限り、ずっと寝ている。@が周囲8マスに近づくなど
+
+;-------------
+;変数の初期化
+;-------------
+CHARA_POSITION = 0				;キャラクタの位置(X座標, Y座標)
+VARSET DISTANCE					;キャラクター1 → キャラクター2の距離(X方向成分, Y方向成分)
+RANDOM_NO_100 = 0				;1～100の乱数を入れる変数。起きるかどうかの判定に利用する
+AWAKE_FLG = 0					;起きるための条件を満たしているかどうか(0:条件を満たしていない / 1:条件を満たしている)	※条件を満たさない限り、ずっと寝ている。@が周囲8マスに近づくなど
+
+;-------------
+;ここから本処理
+;-------------
+;キャラクターの座標を取得する
+CHARA_POSITION:0 = CD_ARRAY_OTHER_CHARA:CHARA_NO:5		;X座標
+CHARA_POSITION:1 = CD_ARRAY_OTHER_CHARA:CHARA_NO:6		;Y座標
+
+;キャラクターと@の距離を取得する
+DISTANCE:0 = FLAG:현X - CHARA_POSITION:0				;X軸方向の距離
+DISTANCE:1 = FLAG:현Y - CHARA_POSITION:1				;Y軸方向の距離
+
+;[周囲8マス]に@が存在する場合、起きる条件を満たす
+IF (-1 <= DISTANCE:0) && (DISTANCE:0 <= 1)
+	IF (-1 <= DISTANCE:1) && (DISTANCE:1 <= 1)
+		AWAKE_FLG = 1
+	ENDIF
+ENDIF
+
+;起きる条件を満たしている場合、起きるかどうかを確率で判定する
+IF AWAKE_FLG == 1
+	RANDOM_NO_100 = (RAND:100) + 1
+	IF RANDOM_NO_100 <= AWAKE_PERCENTAGE
+		;「1:起きる」を返す
+		RETURNF 1
+	ENDIF
+ENDIF
+
+;その他の場合、「0:起きない」を返す
+RETURNF 0
+
+
+;-------------------------------------------------
+;キャラクタの主観方向とテンキーの対応を取得する関数
+;-------------------------------------------------
+;引数
+;	DIRECTION:キャラクターの向いている方向(テンキーの数字に対応。4なら左、9なら右上)
+;	ARRAY_DIRECTION_SYUKAN:キャラクターがらみた主観の方向とテンキーの対応(0:壁のある方向は返さない / 1:壁を無視して8方向すべてを返す)
+;		第一添え字：(0:上 / 1:右上 / 2:右 / 3:右下 / 4:下 / 5:左下 / 6:左 / 7:左上)
+;		例としてキャラクターが下向きの場合、キャラクターから見て左がテンキーの6(右)になるため[DIRECTION_SYUKAN:0 = 6]となる
+;-------------------------------------------------
+;返り値
+;	返り値はないが、引数「ARRAY_DIRECTION_SYUKAN」を参照引き渡しとしてこれに値を入れる
+;-------------------------------------------------
+@SEF_SYUKAN_DIRECTION, ARRAY_DIRECTION_SYUKAN, DIRECTION
+;-------------
+;変数定義
+;-------------
+#DIM REF ARRAY_DIRECTION_SYUKAN	;キャラクターから見た主観の方向とテンキーの対応
+;									第一添え字：(0:上 / 1:右上 / 2:右 / 3:右下 / 4:下 / 5:左下 / 6:左 / 7:左上)
+;									例としてキャラクターが下向きの場合、キャラクターから見て左がテンキーの6(右)になるため[DIRECTION_SYUKAN:0 = 6]となる
+#DIM DIRECTION					;キャラクターの向いている方向(テンキーの数字に対応。4なら左、9なら右上)
+
+;-------------
+;ここから本処理
+;-------------
+;キャラクタの主観方向とテンキーの対応を取得する
+SELECTCASE DIRECTION
+	CASE 8
+		;上を向いている場合
+		ARRAY_DIRECTION_SYUKAN = 8, 9, 6, 3, 2, 1, 4, 7
+
+	CASE 9
+		;右上を向いている場合
+		ARRAY_DIRECTION_SYUKAN = 9, 6, 3, 2, 1, 4, 7, 8
+
+	CASE 6
+		;右を向いている場合
+		ARRAY_DIRECTION_SYUKAN = 6, 3, 2, 1, 4, 7, 8, 9
+
+	CASE 3
+		;右下を向いている場合
+		ARRAY_DIRECTION_SYUKAN = 3, 2, 1, 4, 7, 8, 9, 6
+
+	CASE 2
+		;下を向いている場合
+		ARRAY_DIRECTION_SYUKAN = 2, 1, 4, 7, 8, 9, 6, 3
+
+	CASE 1
+		;左下を向いている場合
+		ARRAY_DIRECTION_SYUKAN = 1, 4, 7, 8, 9, 6, 3, 2
+
+	CASE 4
+		;左を向いている場合
+		ARRAY_DIRECTION_SYUKAN = 4, 7, 8, 9, 6, 3, 2, 1
+
+	CASE 7
+		;左上を向いている場合
+		ARRAY_DIRECTION_SYUKAN = 7, 8, 9, 6, 3, 2, 1, 4
+
+ENDSELECT
+
+RETURN 1
+
+
+;---------------------------------------------------------------------------------------------------------------------
+;目的地への方向を返す関数
+;---------------------------------------------------------------------------------------------------------------------
+;引数
+;	DISTANCE_X:눈的地への距離(X軸方向)
+;	DISTANCE_Y:눈的地への距離(Y軸方向)
+;
+;返り値
+;	1:左下
+;	2:下
+;	3:右下
+;	4:左
+;	6:右
+;	7:左上
+;	8:上
+;	9:右上
+;---------------------------------------------------------------------------------------------------------------------
+@SEF_CHECK_DIRECTION, DISTANCE_X, DISTANCE_Y
+#FUNCTION
+#LOCALSIZE  1
+#LOCALSSIZE 1
+;-------------
+;変数定義
+;-------------
+#DIM DISTANCE_X					;目的地への距離(X軸方向)
+#DIM DISTANCE_Y					;目的地への距離(Y軸方向)
+
+;-------------
+;ここから本処理
+;-------------
+;目的地の方向を取得する
+IF DISTANCE_X < 0
+	;X軸方向が左方向の場合
+	IF DISTANCE_Y < 0
+		;Y軸方向が上方向の場合
+		RETURNF 7	;方向が左上である
+
+	ELSEIF DISTANCE_Y == 0
+		;Y軸方向が同じである場合
+		RETURNF 4	;方向が左である
+
+	ELSEIF DISTANCE_Y > 0
+		;Y軸方向が下方向の場合
+		RETURNF 1	;方向が左下である
+	ENDIF
+
+ELSEIF DISTANCE_X == 0
+	;X軸方向が同じである場合
+	IF DISTANCE_Y < 0
+		;Y軸方向が上方向の場合
+		RETURNF 8	;方向が上である
+
+	ELSEIF DISTANCE_Y == 0
+		;Y軸方向が同じである場合
+		RETURNF 5	;目的地とキャラクターが同じ位置である
+		
+
+	ELSEIF DISTANCE_Y > 0
+		;Y軸方向が下方向の場合
+		RETURNF 2	;方向が下である
+	ENDIF
+
+
+ELSEIF DISTANCE_X > 0
+	;X軸方向が右方向の場合
+	IF DISTANCE_Y < 0
+		;Y軸方向が上方向の場合
+		RETURNF 9	;方向が右上である
+
+	ELSEIF DISTANCE_Y == 0
+		;Y軸方向が同じである場合
+		RETURNF 6	;方向が右である
+
+	ELSEIF DISTANCE_Y > 0
+		;Y軸方向が下方向の場合
+		RETURNF 3	;方向が右下である
+	ENDIF
+ENDIF
+
+;方向を取得できなかった場合、エラーの意味で0を返す
+RETURNF 0
+
+
+;-----------------------------------------------------------------------------
+;モンスターハウス侵入時の処理
+;-----------------------------------------------------------------------------
+@SEF_ENTER_MONSTER_HOUSE
+;-------------
+;変数定義
+;-------------
+#DIM BLOCK_NO						;部屋の番号
+#DIM ACREAGE						;部屋内の平地面積
+#DIM BLOCK_CNT						;条件を満たす部屋の数	※床の数が16マス以上存在する場合のみモンスターハウスになりうる、等の条件を設定するため。
+#DIM BLOCK_LIST, 10, 2				;条件を満たす部屋のリスト(第1添え字：最大10この部屋候補 / 第2添え字：該当する部屋の詳細(部屋番号・床面積))	
+#DIM LOOP_CNT_i						;ループ用カウンタ変数i
+#DIM LOOP_CNT_j						;ループ用カウンタ変数j
+#DIM RANDOM_NO						;乱数(どの部屋をモンスターハウスなどに設定するか考える際に使用する)
+#DIM POINT_X						;X座標
+#DIM POINT_Y						;Y座標
+
+;-------------
+;変数の初期化
+;-------------
+BLOCK_NO = 0						;部屋の番号
+ACREAGE = 0							;部屋内の平地面積
+BLOCK_CNT = 0						;条件を満たす部屋の数	※床の数が16マス以上存在する場合のみモンスターハウスになりうる、等の条件を設定するため。
+VARSET BLOCK_LIST					;部屋のリスト(第1添え字：部屋の番号 / 第2添え字：部屋の総床面積、開いている床面積)	※例として部屋の総床面積が10マスの場合、、階段が一つと敵シンボルが二つ存在する場合、開いている床面積は(10-3=7)マスとなる。
+LOOP_CNT_i = 0						;ループ用カウンタ変数i
+LOOP_CNT_j = 0						;ループ用カウンタ変数j
+RANDOM_NO = 0						;乱数(どの部屋をモンスターハウスなどに設定するか考える際に使用する)
+POINT_X = 0							;X座標
+POINT_Y = 0							;Y座標
+
+;-------------
+;ここから本処理
+;-------------
+;@の現在の部屋番号を取得する
+BLOCK_NO = SEF_CHARA_EXIST_BLOCK_NO(FLAG:현X, FLAG:현Y,1)
+
+IF BLOCK_NO >= 0
+	;いずれかの部屋の中にいる場合
+	IF CD_ARRAY_BLOCK_DETAIL:BLOCK_NO:0 == 2 && CD_ARRAY_BLOCK_DETAIL:BLOCK_NO:1 == 0
+		;現在の部屋がモンスターハウス、かつ1回目の侵入の場合
+		CALL MESSAGE_WINDOW_D, "", "＞モンスターハウスだ！！"
+		CD_ARRAY_BLOCK_DETAIL:BLOCK_NO:1 = 1		;モンスターハウスに侵入済みにする
+
+		;モンスターハウス内のモンスターが全員起きる
+		;	※モンスターの数だけループを回して処理を行う
+		FOR LOOP_CNT_j, 0, 50
+			;
+			IF (CD_ARRAY_OTHER_CHARA:LOOP_CNT_j:0 == 1 || CD_ARRAY_OTHER_CHARA:LOOP_CNT_j:0 == 2) && CD_ARRAY_OTHER_CHARA:LOOP_CNT_j:4 == 5
+				;モンスターの種類が「1:通常の敵」または「2:強敵」かつ、現在の思考が「5:睡眠」の場合
+				
+				;モンスターの存在している部屋を確認する
+				POINT_X = CD_ARRAY_OTHER_CHARA:LOOP_CNT_j:5			;モンスターのX座標
+				POINT_Y = CD_ARRAY_OTHER_CHARA:LOOP_CNT_j:6			;モンスターのY座標
+				
+				;モンスターのいる部屋と@のいる部屋が同じ場合、モンスターが目を覚ます
+				IF SEF_CHARA_EXIST_BLOCK_NO(POINT_X, POINT_Y,1) == BLOCK_NO
+					CD_ARRAY_OTHER_CHARA:LOOP_CNT_j:4 = 0
+				ENDIF
+			ENDIF
+		NEXT
+	ENDIF
+ENDIF
+
+RETURN 1
+
+;-----------------------------------------------------------------------------
+;シンボル追加処理
+;-----------------------------------------------------------------------------
+;引数
+;	TYPE				:種類(0:未設定 / 1:通常の敵 / 2:強敵 / 3:中立(商人など) / 4:味方 / 5:要救助者 / 6:削除予定(倒した場合など))
+;	CSV_NO				:キャラクターのCSV番号
+;	DEFAULT_PATTERN		:基本パターン(0:未設定 / 1:動かない / 2:@を追う / 3:@から逃げる / 4:さまよう / 5:睡眠)
+;	POINT_X				:現在位置(X座標)
+;	POINT_Y				:現在位置(Y座標)
+;	LEVEL				:レベル
+;	ATTACK_CNT			:행동횟수(戦闘時)
+;	BOSS_FLG			:보스플래그
+;	EVENT_TYPE			:遭遇時の処理(0:未設定 / 1:戦闘する / 2:特殊イベント発生)
+;	EVENT_NO1			:遭遇時のイベント番号1(던전番号)				※イベント無しの場合は0
+;	EVENT_NO2			:遭遇時のイベント番号2(イベントごとの個別の番号)	※イベント無しの場合は0
+;	NO_TALK_FLG			:회화불능플래그(0:회화可能 / 1:회화불능)
+;	WALL_PASS_FLG		:壁抜けフラグ(0:壁抜け不可 / 1:壁抜け可能)
+;-----------------------------------------------------------------------------
+@SEF_ADD_SYMBOL, TYPE, CSV_NO, DEFAULT_PATTERN, POINT_X, POINT_Y, LEVEL, ATTACK_CNT, BOSS_FLG, EVENT_TYPE, EVENT_NO1, EVENT_NO2, NO_TALK_FLG, WALL_PASS_FLG
+;-------------
+;変数定義
+;-------------
+#DIM TYPE				;種類(0:未設定 / 1:通常の敵 / 2:強敵 / 3:中立(商人など) / 4:味方 / 5:要救助者 / 6:削除予定(倒した場合など))
+#DIM CSV_NO				;キャラクターのCSV番号
+#DIM DEFAULT_PATTERN	;基本パターン(0:未設定 / 1:動かない / 2:@を追う / 3:@から逃げる / 4:さまよう / 5:睡眠)
+#DIM POINT_X			;現在位置(X座標)
+#DIM POINT_Y			;現在位置(Y座標)
+#DIM LEVEL				;レベル
+#DIM ATTACK_CNT			;行動回数(戦闘時)
+#DIM BOSS_FLG			;ボスフラグ
+#DIM EVENT_TYPE			;遭遇時の処理(0:未設定 / 1:戦闘する / 2:特殊イベント発生)
+#DIM EVENT_NO1			;遭遇時のイベント番号1(던전番号)				※イベント無しの場合は0
+#DIM EVENT_NO2			;遭遇時のイベント番号2(イベントごとの個別の番号)	※イベント無しの場合は0
+#DIM NO_TALK_FLG		;会話不能フラグ(0:회화可能 / 1:회화불능)
+#DIM WALL_PASS_FLG		;壁抜けフラグ(0:壁抜け不可 / 1:壁抜け可能)
+#DIM SYMBOL_NO			;シンボルの番号
+
+;-------------
+;変数の初期化
+;-------------
+SYMBOL_NO = 0			;シンボルの番号
+
+;-------------
+;ここから本処理
+;-------------
+;シンボルの数を+1する
+SELECTCASE TYPE
+	CASE 1
+		;1:通常の敵
+		CD_ENEMY_FLG += 1
+
+	CASE 2
+		;2:強敵
+		CD_SPECIAL_ENEMY_FLG += 1
+
+	CASE 3
+		;1:3:中立(商人など)
+		CD_NEUTRAL_CHARA_FLG += 1
+
+	CASE 4
+		;4:味方
+		CD_SUPPORTER_CHARA_FLG += 1
+
+	CASE 5
+		;5:要救助者
+		CD_RESCUE_TARGET_FLG += 1
+ENDSELECT
+
+;今回作成するシンボルの番号を確認する
+SYMBOL_NO = CD_ENEMY_FLG + CD_SPECIAL_ENEMY_FLG + CD_NEUTRAL_CHARA_FLG + CD_SUPPORTER_CHARA_FLG + CD_RESCUE_TARGET_FLG - 1		;番号は0からスタートのため、シンボルの総数-1となる
+
+;敵シンボルの詳細情報を設定する
+CD_ARRAY_OTHER_CHARA:SYMBOL_NO:0 = TYPE													;種類
+CD_ARRAY_OTHER_CHARA:SYMBOL_NO:1 = CSV_NO												;CSV番号
+CD_ARRAY_OTHER_CHARA:SYMBOL_NO:3 = DEFAULT_PATTERN										;基本パターン
+CD_ARRAY_OTHER_CHARA:SYMBOL_NO:4 = DEFAULT_PATTERN										;現在の思考	※初期値は「基本パターン」と同じとする
+CD_ARRAY_OTHER_CHARA:SYMBOL_NO:5 = POINT_X												;X座標
+CD_ARRAY_OTHER_CHARA:SYMBOL_NO:6 = POINT_Y												;Y座標
+CD_ARRAY_OTHER_CHARA:SYMBOL_NO:12 = LEVEL												;レベル
+CD_ARRAY_OTHER_CHARA:SYMBOL_NO:13 = ATTACK_CNT											;行動回数(戦闘時)
+CD_ARRAY_OTHER_CHARA:SYMBOL_NO:14 = BOSS_FLG											;ボスフラグ
+CD_ARRAY_OTHER_CHARA:SYMBOL_NO:23 = EVENT_TYPE											;遭遇時の処理
+CD_ARRAY_OTHER_CHARA:SYMBOL_NO:24 = EVENT_NO1											;遭遇時のイベント番号1(던전番号)
+CD_ARRAY_OTHER_CHARA:SYMBOL_NO:25 = EVENT_NO2											;遭遇時のイベント番号2(イベントごとの個別の番号)
+CD_ARRAY_OTHER_CHARA:SYMBOL_NO:27 = NO_TALK_FLG											;会話不能フラグ
+CD_ARRAY_OTHER_CHARA:SYMBOL_NO:28 = WALL_PASS_FLG										;壁抜けフラグ
+
+
+;作成した追加したシンボルの番号を返す(番号は0スタートなので、1体目が0、2体目が1、...)
+RETURN SYMBOL_NO
