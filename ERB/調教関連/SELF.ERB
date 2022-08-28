@@ -1,4 +1,19 @@
-﻿;SELF.ERB、奴隷か요바이리스트らの봉사などの이벤트
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:SELF.ERB
+;	Facility	:奴隷からの奉仕などのイベント
+;
+;	
+;	Licence		:ライセンスフリー
+;
+;	Edit	Date			Author					Reason
+;	001		20XX/XX/XX		----					新規作成
+;	002		2022/02/23		JK好き					ヘッダー新規作成、処理を整理統合、マジックナンバーを整理、朝Vレイプ・調教後セックス(逆転)追加
+;	003		2022/03/12		JK好き					受け側男、攻め側女時の就寝時素股イベントで精液経験が受け側にも加算される問題を修正
+;													調教後セックス(逆転)時に存在しない経験を与えてエラー落ちする問題を修正
+;													調教後助手プレイ時に存在しない経験を与えてエラー落ちする問題を修正
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+
 ;-------------------------------------------------
 ;夜종료시及び朝に起こる이벤트 타겟選択
 ;-------------------------------------------------
@@ -29,10 +44,10 @@ FOR LCOUNT, 0, CHARANUM
 	SIF CFLAG:LCOUNT:상사내습 == 1
 		CONTINUE
 	;체력が500以下なら除外
-	SIF BASE:LCOUNT:0 <= 500
+	SIF BASE:LCOUNT:체력 <= 500
 		CONTINUE
 	;반발각인がある場合は除外
-	SIF MARK:LCOUNT:3 >= 1
+	SIF MARK:LCOUNT:반발각인 >= 1
 		CONTINUE
 	;함락소질が無い場合は除外
 	SIF 함락(LCOUNT) == 0
@@ -136,7 +151,7 @@ LOCAL = TARGET
 TARGET = B
 
 $LOOP_N
-IF TALENT:B:6 || TALENT:B:7 || TALENT:B:8
+IF TALENT:B:친애 || TALENT:B:창부 || TALENT:B:예속
 	R = RAND:7
 ELSE
 	R = RAND:9
@@ -144,28 +159,28 @@ ENDIF
 
 IF R == 0
 	;대상C 相手V（처녀及び재생처녀を持たず、V감각2이상、욕망3이상で男でない、대상が男또는フタナリ場合）
-	IF TALENT:B:0 == 0 && TALENT:B:1 == 0 && ABL:B:4 >= 2 && ABL:B:1 >= 3 && Y == 1 && !IS_MALE(B)
+	IF TALENT:B:처녀 == 0 && TALENT:B:재생처녀 == 0 && ABL:B:Ｖ감각 >= 2 && ABL:B:욕망 >= 3 && Y == 1 && !IS_MALE(B)
 		CALL SELF_NIGHT6
 	ELSE
 		GOTO LOOP_N
 	ENDIF
 ELSEIF R == 1
 	;대상C 相手A（A감각3이상、욕망4이상、대상が男또는フタナリ場合）
-	IF ABL:B:5 >= 3 && ABL:B:1 >= 4 && Y == 1
+	IF ABL:B:Ａ감각 >= 3 && ABL:B:욕망 >= 4 && Y == 1
 		CALL SELF_NIGHT31
 	ELSE
 		GOTO LOOP_N
 	ENDIF
 ELSEIF R == 2
 	;대상V 相手C（대상が처녀及び재생처녀を持たず男でない、타겟のＣ감각3이상、욕망3이상で男또는フタナリの場合）
-	IF TALENT:E:0 == 0 && TALENT:E:1 == 0 && IS_MALE(E) == 0 && ABL:B:3 >= 3 && ABL:B:1 >= 3 && HAVE_PENIS(B)
+	IF TALENT:E:처녀 == 0 && TALENT:E:재생처녀 == 0 && IS_MALE(E) == 0 && ABL:B:Ｃ감각 >= 3 && ABL:B:욕망 >= 3 && HAVE_PENIS(B)
 		CALL SELF_NIGHT32
 	ELSE
 		GOTO LOOP_N
 	ENDIF
 ELSEIF R == 3
 	;대상A 相手C（대상のA감각3이상、타겟のＣ감각3이상、욕망4이상で男또는フタナリの場合）
-	IF ABL:E:5 >= 3 && ABL:B:3 >= 3 && ABL:B:1 >= 4 && HAVE_PENIS(B)
+	IF ABL:E:Ａ감각 >= 3 && ABL:B:Ｃ감각 >= 3 && ABL:B:욕망 >= 4 && HAVE_PENIS(B)
 		CALL SELF_NIGHT33
 	ELSE
 		GOTO LOOP_N
@@ -178,10 +193,11 @@ ELSEIF R == 4
 		GOTO LOOP_N
 	ENDIF
 ELSEIF R == 5
+	;夜自慰
 	CALL SELF_NIGHT35
 ELSEIF R == 6
 	;一緒に寝る(연모または친애が필요)
-	IF TALENT:B:3 || TALENT:B:6
+	IF TALENT:B:연모 || TALENT:B:친애
 		CALL SELF_NIGHT36
 	ELSE
 		GOTO LOOP_N
@@ -198,143 +214,130 @@ TARGET = LOCAL
 ;요바이（대상C 相手V）
 @SELF_NIGHT6
 DRAWLINE
-TFLAG:13 = 9
-CALL KOJO_MESSAGE_EVENT
 
 ;욕망
-IF ABL:B:1 <= 2
+IF ABL:B:욕망 <= 2
 	A = 1
-ELSEIF ABL:B:1 <= 4
+ELSEIF ABL:B:욕망 <= 4
 	A = 2
-ELSEIF ABL:B:1 <= 7
+ELSEIF ABL:B:욕망 <= 7
 	A = 3
-ELSEIF ABL:B:1 <= 10
+ELSEIF ABL:B:욕망 <= 10
 	A = 4
 ELSE
-	A = 4 + (ABL:B:1 - 10) / 4
+	A = 4 + (ABL:B:욕망 - 10) / 4
 ENDIF
 
 ;Ｖ감각
-IF ABL:B:4 <= 2
+IF ABL:B:Ｖ감각 <= 2
 	A += 1
-ELSEIF ABL:B:4 <= 4
+ELSEIF ABL:B:Ｖ감각 <= 4
 	A += 2
-ELSEIF ABL:B:4 <= 7
+ELSEIF ABL:B:Ｖ감각 <= 7
 	A += 3
-ELSEIF ABL:B:4 <= 10
+ELSEIF ABL:B:Ｖ감각 <= 10
 	A += 4
 ELSE
-	A += 4 + (ABL:B:4 - 10) / 3
+	A += 4 + (ABL:B:Ｖ감각 - 10) / 3
 ENDIF
 
 ;Ｃ감각（대상）
-IF ABL:E:3 <= 2
+IF ABL:E:Ｃ감각 <= 2
 	A += 1
-ELSEIF ABL:E:3 <= 4
+ELSEIF ABL:E:Ｃ감각 <= 4
 	A += 2
-ELSEIF ABL:E:3 <= 7
+ELSEIF ABL:E:Ｃ감각 <= 7
 	A += 3
-ELSEIF ABL:E:3 <= 10
+ELSEIF ABL:E:Ｃ감각 <= 10
 	A += 4
 ELSE
-	A += 4 + (ABL:E:3 - 10) / 3
+	A += 4 + (ABL:E:Ｃ감각 - 10) / 3
 ENDIF
 
 ;정액중독
-IF ABL:B:16 <= 1
+IF ABL:B:정액중독 <= 1
 	A += 1
-ELSEIF ABL:B:16 <= 2
+ELSEIF ABL:B:정액중독 <= 2
 	A += 2
-ELSEIF ABL:B:16 <= 5
+ELSEIF ABL:B:정액중독 <= 5
 	A += 3
-ELSEIF ABL:B:16 <= 7
+ELSEIF ABL:B:정액중독 <= 7
 	A += 4
-ELSEIF ABL:B:16 <= 10
+ELSEIF ABL:B:정액중독 <= 10
 	A += 5
 ELSE
-	A += 5 + (ABL:B:16 - 10) / 4
+	A += 5 + (ABL:B:정액중독 - 10) / 4
 ENDIF
 
 ;섹스중독
-IF ABL:B:18 <= 1
+IF ABL:B:섹스중독 <= 1
 	A += 1
-ELSEIF ABL:B:18 <= 2
+ELSEIF ABL:B:섹스중독 <= 2
 	A += 2
-ELSEIF ABL:B:18 <= 4
+ELSEIF ABL:B:섹스중독 <= 4
 	A += 3
-ELSEIF ABL:B:18 <= 6
+ELSEIF ABL:B:섹스중독 <= 6
 	A += 4
-ELSEIF ABL:B:18 <= 8
+ELSEIF ABL:B:섹스중독 <= 8
 	A += 5
-ELSEIF ABL:B:18 <= 10
+ELSEIF ABL:B:섹스중독 <= 10
 	A += 6
 ELSE
-	A += 6 + (ABL:B:18 - 10) / 3
+	A += 6 + (ABL:B:섹스중독 - 10) / 3
 ENDIF
 
 ;창부
-SIF TALENT:B:7
+SIF TALENT:B:창부
 	A += 1
 ;섹스광
-SIF TALENT:B:75
+SIF TALENT:B:섹스광
 	A += 2
 ;Ｖ민감
-SIF TALENT:B:104
+SIF TALENT:B:Ｖ민감
 	A += 1
 ;헌신적
-SIF TALENT:B:63
+SIF TALENT:B:헌신적
 	A += 1
 ;영맹또는교활
-SIF TALENT:B:202 || TALENT:B:205
+SIF TALENT:B:영맹 || TALENT:B:교활
 	A += 1
 
 SIF A == 0
 	A = 1
 
 IF IS_LESBIAN(B,E)
-	PRINTFORML %EXPNAME:40%+{A}
-	PRINTFORML %EXPNAME:40%(%CALLNAME:E%)+{A}
-	EXP:B:40 += A
-	EXP:E:40 += A
+	CALL ADDS_EXP("레즈경험", A, B)
+	CALL ADDS_EXP("레즈경험", A, E)
 ENDIF
 
 IF HAVE_PENIS(B)
-	EXP:B:3 += A/2
-	PRINTFORML %EXPNAME:3%＋{A/2}
+	CALL ADDS_EXP("사정경험", A/2, B)
 ENDIF
 
-IF CFLAG:B:101 > 1 && CFLAG:B:108 == 0
-	EXP:B:5 += A/2
-	CFLAG:B:101 += A/2
+IF CFLAG:B:노예의질내사정에의한임신판정 > 1 && CFLAG:B:자궁내피임결계 == 0
+	CALL ADDS_EXP("질사경험", A/2, E)
+	CFLAG:B:노예의질내사정에의한임신판정 += A/2
 ENDIF
 
-EXP:E:3 += A/2
-EXP:B:0 += A/2
-EXP:B:2 += A/4
-SIF TALENT:E:남자 == 0
-	EXP:E:2 += A/4
-EXP:B:4 += A/2
-EXP:E:4 += A/2
-EXP:B:20 += A/2
-EXP:B:22 += A/4
-JUEL:B:1 += A*100
-PRINTFORML %EXPNAME:3%(%CALLNAME:E%)＋{A/2}
-PRINTFORML %EXPNAME:0%＋{A/2}
-PRINTFORML %EXPNAME:2%＋{A/4}
-SIF TALENT:E:남자 == 0
-	PRINTFORML %EXPNAME:2%(%CALLNAME:E%)＋{A/4}
-PRINTFORML %EXPNAME:4%＋{A/2}
-PRINTFORML %EXPNAME:4%(%CALLNAME:E%)＋{A/2}
-PRINTFORML %EXPNAME:20%＋{A/2}
-PRINTFORML %EXPNAME:22%＋{A/4}
-PRINTFORML %PALAMNAME:1%의 구슬＋{A*100}
-PRINTFORML %PALAMNAME:5%의 구슬＋{A*60}
-PRINTFORML %PALAMNAME:7%의 구슬＋{A*40}
-PRINTFORMW %PALAMNAME:8%의 구슬＋{A*40}
-JUEL:B:5 += A*60
-JUEL:B:7 += A*40
-JUEL:B:8 += A*40
-PRINTL 
+CALL ADDS_EXP("사정경험", A/2, E)
+CALL ADDS_EXP("Ｖ경험", A/2, B)
+CALL ADDS_EXP("절정경험", A/4, B)
+CALL ADDS_EXP("절정경험", A/4, E)
+CALL ADDS_EXP("성교경험", A/2, B)
+;CALL ADDS_EXP("性交経験", A/2, E)
+CALL ADDS_EXP("정액경험", A/2, B)
+GOTJUEL:B:쾌Ｖ += A*100
+GOTJUEL:B:복종 += A*60
+GOTJUEL:B:굴복 += A*40
+GOTJUEL:B:습득 += A*40
+TFLAG:13 = 9
+CALL KOJO_MESSAGE_EVENT
+PRINTFORML ---%CALLNAME:B%---
+CALL SHOW_ADD_EXP(B, "단순")
+CALL SHOW_JUEL_CHECK, B
+PRINTFORML ---%CALLNAME:E%---
+CALL SHOW_ADD_EXP(E, "단순")
+CALL SHOW_JUEL_CHECK, E
 PRINTFORMW {A/2}회의 행위를 마친 뒤, 마음이 통한 두사람은 연결된 채로 얼싸안고 깊은 잠에 빠졌다……
 
 DRAWLINE
@@ -345,142 +348,129 @@ RETURN 0
 ;요바이（대상C 相手A）
 @SELF_NIGHT31
 DRAWLINE
-TFLAG:13 = 31
-CALL KOJO_MESSAGE_EVENT
 
 ;욕망
-IF ABL:B:1 <= 2
+IF ABL:B:욕망 <= 2
 	A = 1
-ELSEIF ABL:B:1 <= 4
+ELSEIF ABL:B:욕망 <= 4
 	A = 2
-ELSEIF ABL:B:1 <= 7
+ELSEIF ABL:B:욕망 <= 7
 	A = 3
-ELSEIF ABL:B:1 <= 10
+ELSEIF ABL:B:욕망 <= 10
 	A = 4
 ELSE
-	A = 4 + (ABL:B:1 - 10) / 4
+	A = 4 + (ABL:B:욕망 - 10) / 4
 ENDIF
 
 ;Ａ감각
-IF ABL:B:5 <= 2
+IF ABL:B:Ａ감각 <= 2
 	A += 1
-ELSEIF ABL:B:5 <= 4
+ELSEIF ABL:B:Ａ감각 <= 4
 	A += 2
-ELSEIF ABL:B:5 <= 7
+ELSEIF ABL:B:Ａ감각 <= 7
 	A += 3
-ELSEIF ABL:B:5 <= 10
+ELSEIF ABL:B:Ａ감각 <= 10
 	A += 4
 ELSE
-	A += 4 + (ABL:B:5 - 10) / 3
+	A += 4 + (ABL:B:Ａ감각 - 10) / 3
 ENDIF
 
 ;Ｃ감각（대상）
-IF ABL:E:3 <= 2
+IF ABL:E:Ｃ감각 <= 2
 	A += 1
-ELSEIF ABL:E:3 <= 4
+ELSEIF ABL:E:Ｃ감각 <= 4
 	A += 2
-ELSEIF ABL:E:3 <= 7
+ELSEIF ABL:E:Ｃ감각 <= 7
 	A += 3
-ELSEIF ABL:E:3 <= 10
+ELSEIF ABL:E:Ｃ감각 <= 10
 	A += 4
 ELSE
-	A += 4 + (ABL:E:3 - 10) / 3
+	A += 4 + (ABL:E:Ｃ감각 - 10) / 3
 ENDIF
 
 ;정액중독
-IF ABL:B:16 <= 1
+IF ABL:B:정액중독 <= 1
 	A += 1
-ELSEIF ABL:B:16 <= 2
+ELSEIF ABL:B:정액중독 <= 2
 	A += 2
-ELSEIF ABL:B:16 <= 5
+ELSEIF ABL:B:정액중독 <= 5
 	A += 3
-ELSEIF ABL:B:16 <= 7
+ELSEIF ABL:B:정액중독 <= 7
 	A += 4
-ELSEIF ABL:B:16 <= 10
+ELSEIF ABL:B:정액중독 <= 10
 	A += 5
 ELSE
-	A += 5 + (ABL:B:16 - 10) / 3
+	A += 5 + (ABL:B:정액중독 - 10) / 3
 ENDIF
 
 ;섹스중독
-IF ABL:B:18 <= 1
+IF ABL:B:섹스중독 <= 1
 	A += 1
-ELSEIF ABL:B:18 <= 2
+ELSEIF ABL:B:섹스중독 <= 2
 	A += 2
-ELSEIF ABL:B:18 <= 4
+ELSEIF ABL:B:섹스중독 <= 4
 	A += 3
-ELSEIF ABL:B:18 <= 6
+ELSEIF ABL:B:섹스중독 <= 6
 	A += 4
-ELSEIF ABL:B:18 <= 8
+ELSEIF ABL:B:섹스중독 <= 8
 	A += 5
-ELSEIF ABL:B:18 <= 10
+ELSEIF ABL:B:섹스중독 <= 10
 	A += 6
 ELSE
-	A += 6 + (ABL:B:18 - 10) / 3
+	A += 6 + (ABL:B:섹스중독 - 10) / 3
 ENDIF
 
 ;창부
-SIF TALENT:B:7
+SIF TALENT:B:창부
 	A += 1
 ;헌신적
-SIF TALENT:B:63
+SIF TALENT:B:헌신적
 	A += 1
 ;애널광
-SIF TALENT:B:76
+SIF TALENT:B:애널광
 	A += 2
 ;Ａ민감
-SIF TALENT:B:106
+SIF TALENT:B:Ａ민감
 	A += 1
 ;영맹또는교활
-SIF TALENT:B:202 || TALENT:B:205
+SIF TALENT:B:영맹 || TALENT:B:교활
 	A += 1
 
 SIF A == 0
 	A = 1
 
 IF IS_LESBIAN(B,E)
-	PRINTFORML %EXPNAME:40%+{A}
-	PRINTFORML %EXPNAME:40%(%CALLNAME:E%)+{A}
-	EXP:B:40 += A
-	EXP:E:40 += A
+	CALL ADDS_EXP("레즈경험", A, B)
+	CALL ADDS_EXP("레즈경험", A, E)
 ELSEIF IS_GAY(B,E)
-	PRINTFORML %EXPNAME:41%+{A}
-	PRINTFORML %EXPNAME:41%(%CALLNAME:E%)+{A}
-	EXP:B:41 += A
-	EXP:E:41 += A
+	CALL ADDS_EXP("ＢＬ경험", A, B)
+	CALL ADDS_EXP("ＢＬ경험", A, E)
 ENDIF
 
-EXP:E:3 += A/2
-PRINTFORML %EXPNAME:3%(%CALLNAME:E%)＋{A/2}
+CALL ADDS_EXP("사정경험", A/2, E)
 
 IF HAVE_PENIS(B)
-	EXP:B:3 += A/2
-	PRINTFORML %EXPNAME:3%＋{A/2}
+	CALL ADDS_EXP("사정경험", A/2, B)
 ENDIF
 
-EXP:B:1 += A/2
-EXP:B:2 += A/4
-SIF TALENT:E:남자 == 0
-	EXP:E:2 += A/4
-EXP:B:4 += A/2
-EXP:E:4 += A/2
-EXP:B:20 += A/2
-JUEL:B:2 += A*100
-JUEL:B:5 += A*70
-JUEL:B:7 += A*30
-JUEL:B:8 += A*40
-PRINTFORML %EXPNAME:1%＋{A/2}
-PRINTFORML %EXPNAME:2%＋{A/4}
-SIF TALENT:E:남자 == 0
-	PRINTFORML %EXPNAME:2%(%CALLNAME:E%)＋{A/4}
-PRINTFORML %EXPNAME:4%＋{A/2}
-PRINTFORML %EXPNAME:4%(%CALLNAME:E%)＋{A/2}
-PRINTFORML %EXPNAME:20%＋{A/2}
-PRINTFORML %PALAMNAME:2%의 구슬＋{A*100}
-PRINTFORML %PALAMNAME:5%의 구슬＋{A*70}
-PRINTFORML %PALAMNAME:7%의 구슬＋{A*30}
-PRINTFORMW %PALAMNAME:8%의 구슬＋{A*40}
-PRINTL 
+CALL ADDS_EXP("Ａ경험", A/2, B)
+CALL ADDS_EXP("절정경험", A/4, B)
+CALL ADDS_EXP("절정경험", A/4, E)
+CALL ADDS_EXP("성교경험", A/2, B)
+;CALL ADDS_EXP("성교경험", A/2, E)
+CALL ADDS_EXP("정액경험", A/2, B)
+GOTJUEL:B:쾌Ａ += A*100
+GOTJUEL:B:복종 += A*70
+GOTJUEL:B:굴복 += A*30
+GOTJUEL:B:습득 += A*40
+TFLAG:13 = 31
+CALL KOJO_MESSAGE_EVENT
+PRINTFORML ---%CALLNAME:B%---
+CALL SHOW_ADD_EXP(B, "단순")
+CALL SHOW_JUEL_CHECK, B
+PRINTFORML ---%CALLNAME:E%---
+CALL SHOW_ADD_EXP(E, "단순")
+CALL SHOW_JUEL_CHECK, E
 PRINTFORMW {A/2}회의 행위를 마친 뒤, 그대로 당신의 가슴 위에서 잠들어버렸다……
 
 DRAWLINE
@@ -491,121 +481,112 @@ RETURN 0
 ;요바이（대상V 相手C）
 @SELF_NIGHT32
 DRAWLINE
-TFLAG:13 = 32
-CALL KOJO_MESSAGE_EVENT
 
 ;욕망
-IF ABL:B:1 <= 2
+IF ABL:B:욕망 <= 2
 	A = 2
-ELSEIF ABL:B:1 <= 4
+ELSEIF ABL:B:욕망 <= 4
 	A = 3
-ELSEIF ABL:B:1 <= 7
+ELSEIF ABL:B:욕망 <= 7
 	A = 4
-ELSEIF ABL:B:1 <= 10
+ELSEIF ABL:B:욕망 <= 10
 	A = 5
 ELSE
-	A = 5 + (ABL:B:1 - 10) / 4
+	A = 5 + (ABL:B:욕망 - 10) / 4
 ENDIF
 
 ;Ｃ감각
-IF ABL:B:3 <= 2
+IF ABL:B:Ｃ감각 <= 2
 	A += 2
-ELSEIF ABL:B:3 <= 4
+ELSEIF ABL:B:Ｃ감각 <= 4
 	A += 3
-ELSEIF ABL:B:3 <= 7
+ELSEIF ABL:B:Ｃ감각 <= 7
 	A += 4
-ELSEIF ABL:B:3 <= 10
+ELSEIF ABL:B:Ｃ감각 <= 10
 	A += 5
 ELSE
-	A += 5 + (ABL:B:3 - 10) / 3
+	A += 5 + (ABL:B:Ｃ감각 - 10) / 3
 ENDIF
 
 ;Ｖ감각（대상）
-IF ABL:E:4 <= 2
+IF ABL:E:Ｖ감각 <= 2
 	A += 1
-ELSEIF ABL:E:4 <= 4
+ELSEIF ABL:E:Ｖ감각 <= 4
 	A += 2
-ELSEIF ABL:E:4 <= 7
+ELSEIF ABL:E:Ｖ감각 <= 7
 	A += 3
-ELSEIF ABL:E:4 <= 10
+ELSEIF ABL:E:Ｖ감각 <= 10
 	A += 4
 ELSE
-	A += 4 + (ABL:E:4 - 10) / 3
+	A += 4 + (ABL:E:Ｖ감각 - 10) / 3
 ENDIF
 
 ;섹스중독
-IF ABL:B:18 <= 1
+IF ABL:B:섹스중독 <= 1
 	A += 1
-ELSEIF ABL:B:18 <= 2
+ELSEIF ABL:B:섹스중독 <= 2
 	A += 2
-ELSEIF ABL:B:18 <= 4
+ELSEIF ABL:B:섹스중독 <= 4
 	A += 3
-ELSEIF ABL:B:18 <= 6
+ELSEIF ABL:B:섹스중독 <= 6
 	A += 4
-ELSEIF ABL:B:18 <= 8
+ELSEIF ABL:B:섹스중독 <= 8
 	A += 5
-ELSEIF ABL:B:18 <= 10
+ELSEIF ABL:B:섹스중독 <= 10
 	A += 6
 ELSE
-	A += 6 + (ABL:B:18 - 10) / 3
+	A += 6 + (ABL:B:섹스중독 - 10) / 3
 ENDIF
 
 ;자위광
-SIF TALENT:B:74
+SIF TALENT:B:자위광
 	A += 2
 ;Ｃ민감
-SIF TALENT:B:102
+SIF TALENT:B:Ｃ민감
 	A += 1
 ;영맹또는잔학
-SIF TALENT:B:202 || TALENT:B:207
+SIF TALENT:B:영맹 || TALENT:B:잔학
 	A += 1
 
 SIF A == 0
 	A = 1
 
 IF IS_LESBIAN(B,E)
-	PRINTFORML %EXPNAME:40%+{A}
-	PRINTFORML %EXPNAME:40%(%CALLNAME:E%)+{A}
-	EXP:B:40 += A
-	EXP:E:40 += A
+	CALL ADDS_EXP("레즈경험", A, B)
+	CALL ADDS_EXP("레즈경험", A, E)
+ELSEIF IS_GAY(B,E)
+	CALL ADDS_EXP("ＢＬ경험", A, B)
+	CALL ADDS_EXP("ＢＬ경험", A, E)
 ENDIF
 
-EXP:B:3 += A/2
-PRINTFORML %EXPNAME:3%＋{A/2}
+CALL ADDS_EXP("사정경험", A/2, B)
 
 IF HAVE_PENIS(E)
-	EXP:E:3 += A/2
-	PRINTFORML %EXPNAME:3%(%CALLNAME:E%)＋{A/2}
+	CALL ADDS_EXP("사정경험", A/2, E)
 ENDIF
 
-IF CFLAG:E:101 > 1 && CFLAG:E:108 == 0
-	EXP:E:5 += A/2
-	CFLAG:E:101 += A/2
+IF CFLAG:E:노예의질내사정에의한임신판정 > 1 && CFLAG:E:자궁내피임결계 == 0
+	CALL ADDS_EXP("질사경험", A/2, E)
+	CFLAG:E:노예의질내사정에의한임신판정 += A/2
 ENDIF
 
-EXP:E:0 += A/2
-EXP:B:2 += A/4
-SIF TALENT:E:남자 == 0
-	EXP:E:2 += A/4
-EXP:B:4 += A/2
-EXP:E:4 += A/2
-PRINTFORML %EXPNAME:20%＋{A/2}
-JUEL:B:0 += A*100
-JUEL:B:5 += A*50
-JUEL:B:6 += A*60
-JUEL:B:8 += A*40
-PRINTFORML %EXPNAME:0%(%CALLNAME:E%)＋{A/2}
-PRINTFORML %EXPNAME:2%＋{A/4}
-SIF TALENT:E:남자 == 0
-	PRINTFORML %EXPNAME:2%(%CALLNAME:E%)＋{A/4}
-PRINTFORML %EXPNAME:4%＋{A/2}
-PRINTFORML %EXPNAME:4%(%CALLNAME:E%)＋{A/2}
-PRINTFORML %EXPNAME:20%(%CALLNAME:E%)＋{A/2}
-PRINTFORML %PALAMNAME:0%의 구슬＋{A*100}
-PRINTFORML %PALAMNAME:5%의 구슬＋{A*50}
-PRINTFORML %PALAMNAME:6%의 구슬＋{A*60}
-PRINTFORMW %PALAMNAME:8%의 구슬＋{A*40}
-PRINTL 
+CALL ADDS_EXP("Ｖ경험", A/2, E)
+CALL ADDS_EXP("절정경험", A/4, B)
+CALL ADDS_EXP("절정경험", A/4, E)
+;CALL ADDS_EXP("성교경험", A/2, B)
+CALL ADDS_EXP("성교경험", A/2, E)
+GOTJUEL:B:쾌Ｃ += A*100
+GOTJUEL:B:복종 += A*50
+GOTJUEL:B:욕정 += A*60
+GOTJUEL:B:습득 += A*40
+TFLAG:13 = 32
+CALL KOJO_MESSAGE_EVENT
+PRINTFORML ---%CALLNAME:B%---
+CALL SHOW_ADD_EXP(B, "단순")
+CALL SHOW_JUEL_CHECK, B
+PRINTFORML ---%CALLNAME:E%---
+CALL SHOW_ADD_EXP(E, "단순")
+CALL SHOW_JUEL_CHECK, E
 PRINTFORMW %조사처리(CALLNAME:B,"는")% 질내에 {A/2}회 정액을 쏟아내고는, 두 사람은 그 상태로 잠들었다……
 
 DRAWLINE
@@ -616,121 +597,107 @@ RETURN 0
 ;요바이（대상A 相手C）
 @SELF_NIGHT33
 DRAWLINE
-TFLAG:13 = 33
-CALL KOJO_MESSAGE_EVENT
 
 ;욕망
-IF ABL:B:1 <= 2
+IF ABL:B:욕망 <= 2
 	A = 2
-ELSEIF ABL:B:1 <= 4
+ELSEIF ABL:B:욕망 <= 4
 	A = 3
-ELSEIF ABL:B:1 <= 7
+ELSEIF ABL:B:욕망 <= 7
 	A = 4
-ELSEIF ABL:B:1 <= 10
+ELSEIF ABL:B:욕망 <= 10
 	A = 5
 ELSE
-	A = 5 + (ABL:B:1 - 10) / 4
+	A = 5 + (ABL:B:욕망 - 10) / 4
 ENDIF
 
 ;Ｃ감각
-IF ABL:B:3 <= 2
+IF ABL:B:Ｃ감각 <= 2
 	A += 2
-ELSEIF ABL:B:3 <= 4
+ELSEIF ABL:B:Ｃ감각 <= 4
 	A += 3
-ELSEIF ABL:B:3 <= 7
+ELSEIF ABL:B:Ｃ감각 <= 7
 	A += 4
-ELSEIF ABL:B:3 <= 10
+ELSEIF ABL:B:Ｃ감각 <= 10
 	A += 5
 ELSE
-	A += 5 + (ABL:B:3 - 10) / 3
+	A += 5 + (ABL:B:Ｃ감각 - 10) / 3
 ENDIF
 
 ;Ａ감각（대상）
-IF ABL:E:5 <= 2
+IF ABL:E:Ａ감각 <= 2
 	A += 1
-ELSEIF ABL:E:5 <= 4
+ELSEIF ABL:E:Ａ감각 <= 4
 	A += 2
-ELSEIF ABL:E:5 <= 7
+ELSEIF ABL:E:Ａ감각 <= 7
 	A += 3
-ELSEIF ABL:E:5 <= 10
+ELSEIF ABL:E:Ａ감각 <= 10
 	A += 4
 ELSE
-	A += 4 + (ABL:E:5 - 10) / 3
+	A += 4 + (ABL:E:Ａ감각 - 10) / 3
 ENDIF
 
 ;섹스중독
-IF ABL:B:18 <= 1
+IF ABL:B:섹스중독 <= 1
 	A += 1
-ELSEIF ABL:B:18 <= 2
+ELSEIF ABL:B:섹스중독 <= 2
 	A += 2
-ELSEIF ABL:B:18 <= 4
+ELSEIF ABL:B:섹스중독 <= 4
 	A += 3
-ELSEIF ABL:B:18 <= 6
+ELSEIF ABL:B:섹스중독 <= 6
 	A += 4
-ELSEIF ABL:B:18 <= 8
+ELSEIF ABL:B:섹스중독 <= 8
 	A += 5
-ELSEIF ABL:B:18 <= 10
+ELSEIF ABL:B:섹스중독 <= 10
 	A += 6
 ELSE
-	A += 6 + (ABL:B:18 - 10) / 3
+	A += 6 + (ABL:B:섹스중독 - 10) / 3
 ENDIF
 
 ;자위광
-SIF TALENT:B:74
+SIF TALENT:B:자위광
 	A += 2
 ;Ｃ민감
-SIF TALENT:B:102
+SIF TALENT:B:Ｃ민감
 	A += 1
 ;영맹또는잔학
-SIF TALENT:B:202 || TALENT:B:207
+SIF TALENT:B:영맹 || TALENT:B:잔학
 	A += 1
 
 SIF A == 0
 	A = 1
 
 IF IS_LESBIAN(B,E)
-	PRINTFORML %EXPNAME:40%+{A}
-	PRINTFORML %EXPNAME:40%(%CALLNAME:E%)+{A}
-	EXP:B:40 += A
-	EXP:E:40 += A
+	CALL ADDS_EXP("레즈경험", A, B)
+	CALL ADDS_EXP("레즈경험", A, E)
 ELSEIF IS_GAY(B,E)
-	PRINTFORML %EXPNAME:41%+{A}
-	PRINTFORML %EXPNAME:41%(%CALLNAME:E%)+{A}
-	EXP:B:41 += A
-	EXP:E:41 += A
+	CALL ADDS_EXP("ＢＬ경험", A, B)
+	CALL ADDS_EXP("ＢＬ경험", A, E)
 ENDIF
 
-EXP:B:3 += A/2
-PRINTFORML %EXPNAME:3%＋{A/2}
+CALL ADDS_EXP("사정경험", A/2, B)
 
 IF HAVE_PENIS(E)
-	EXP:E:3 += A/2
-	PRINTFORML %EXPNAME:3%(%CALLNAME:E%)＋{A/2}
+	CALL ADDS_EXP("사정경험", A/2, E)
 ENDIF
 
-EXP:E:1 += A/2
-EXP:B:2 += A/4
-SIF TALENT:E:남자 == 0
-	EXP:E:2 += A/4
-EXP:B:4 += A/2
-EXP:E:4 += A/2
-PRINTFORML %EXPNAME:20%＋{A/2}
-JUEL:B:0 += A*100
-JUEL:B:5 += A*40
-JUEL:B:6 += A*70
-JUEL:B:8 += A*40
-PRINTFORML %EXPNAME:1%(%CALLNAME:E%)＋{A/2}
-PRINTFORML %EXPNAME:2%＋{A/4}
-SIF TALENT:E:남자 == 0
-	PRINTFORML %EXPNAME:2%(%CALLNAME:E%)＋{A/4}
-PRINTFORML %EXPNAME:4%＋{A/2}
-PRINTFORML %EXPNAME:4%(%CALLNAME:E%)＋{A/2}
-PRINTFORML %EXPNAME:20%(%CALLNAME:E%)＋{A/2}
-PRINTFORML %PALAMNAME:0%의 구슬＋{A*100}
-PRINTFORML %PALAMNAME:5%의 구슬＋{A*40}
-PRINTFORML %PALAMNAME:6%의 구슬＋{A*70}
-PRINTFORMW %PALAMNAME:8%의 구슬＋{A*40}
-PRINTL 
+CALL ADDS_EXP("Ａ경험", A/2, E)
+CALL ADDS_EXP("절정경험", A/4, B)
+CALL ADDS_EXP("절정경험", A/4, E)
+;CALL ADDS_EXP("성교경험", A/2, B)
+CALL ADDS_EXP("성교경험", A/2, E)
+GOTJUEL:B:쾌Ｃ += A*100
+GOTJUEL:B:복종 += A*40
+GOTJUEL:B:욕정 += A*70
+GOTJUEL:B:습득 += A*40
+TFLAG:13 = 33
+CALL KOJO_MESSAGE_EVENT
+PRINTFORML ---%CALLNAME:B%---
+CALL SHOW_ADD_EXP(B, "단순")
+CALL SHOW_JUEL_CHECK, B
+PRINTFORML ---%CALLNAME:E%---
+CALL SHOW_ADD_EXP(E, "단순")
+CALL SHOW_JUEL_CHECK, E
 PRINTFORMW %CALLNAME:E%의 장내에 {A/2}회 정액을 쏟아내고는, 만족해하며 잠들었다……
 
 DRAWLINE
@@ -741,105 +708,100 @@ RETURN 0
 ;요바이（両者C（스마타）・両者C（貝合わせ））
 @SELF_NIGHT34
 DRAWLINE
-TFLAG:13 = 34
-CALL KOJO_MESSAGE_EVENT
 
 ;욕망
-IF ABL:B:1 <= 2
+IF ABL:B:욕망 <= 2
 	A = 2
-ELSEIF ABL:B:1 <= 4
+ELSEIF ABL:B:욕망 <= 4
 	A = 3
-ELSEIF ABL:B:1 <= 7
+ELSEIF ABL:B:욕망 <= 7
 	A = 4
-ELSEIF ABL:B:1 <= 10
+ELSEIF ABL:B:욕망 <= 10
 	A = 5
 ELSE
-	A = 5 + (ABL:B:1 - 10) / 4
+	A = 5 + (ABL:B:욕망 - 10) / 4
 ENDIF
 
 ;봉사정신
-IF ABL:B:7 <= 2
+IF ABL:B:봉사정신 <= 2
 	A += 1
-ELSEIF ABL:B:7 <= 4
+ELSEIF ABL:B:봉사정신 <= 4
 	A += 2
-ELSEIF ABL:B:7 <= 7
+ELSEIF ABL:B:봉사정신 <= 7
 	A += 3
-ELSEIF ABL:B:7 <= 10
+ELSEIF ABL:B:봉사정신 <= 10
 	A += 4
 ELSE
-	A += 4 + (ABL:B:7 - 10) / 3
+	A += 4 + (ABL:B:봉사정신 - 10) / 3
 ENDIF
 
 ;Ｃ감각
-IF ABL:B:3 <= 2
+IF ABL:B:Ｃ감각 <= 2
 	A += 2
-ELSEIF ABL:B:3 <= 4
+ELSEIF ABL:B:Ｃ감각 <= 4
 	A += 3
-ELSEIF ABL:B:3 <= 7
+ELSEIF ABL:B:Ｃ감각 <= 7
 	A += 4
-ELSEIF ABL:B:3 <= 10
+ELSEIF ABL:B:Ｃ감각 <= 10
 	A += 5
 ELSE
-	A += 5 + (ABL:B:3 - 10) / 3
+	A += 5 + (ABL:B:Ｃ감각 - 10) / 3
 ENDIF
 
 ;Ｃ감각（대상）
-IF ABL:E:3 <= 2
+IF ABL:E:Ｃ감각 <= 2
 	A += 1
-ELSEIF ABL:E:3 <= 4
+ELSEIF ABL:E:Ｃ감각 <= 4
 	A += 2
-ELSEIF ABL:E:3 <= 7
+ELSEIF ABL:E:Ｃ감각 <= 7
 	A += 3
-ELSEIF ABL:E:3 <= 10
+ELSEIF ABL:E:Ｃ감각 <= 10
 	A += 4
 ELSE
-	A += 4 + (ABL:E:3 - 10) / 3
+	A += 4 + (ABL:E:Ｃ감각 - 10) / 3
 ENDIF
 
 ;자위광
-SIF TALENT:B:74
+SIF TALENT:B:자위광
 	A += 2
 ;Ｃ민감
-SIF TALENT:B:102
+SIF TALENT:B:Ｃ민감
 	A += 1
 
 SIF A == 0
 	A = 1
 
 IF IS_LESBIAN(B,E)
-	PRINTFORML %EXPNAME:40%+{A}
-	PRINTFORML %EXPNAME:40%(%CALLNAME:E%)+{A}
-	EXP:B:40 += A
-	EXP:E:40 += A
+	CALL ADDS_EXP("레즈경험", A, B)
+	CALL ADDS_EXP("레즈경험", A, E)
+ELSEIF IS_GAY(B,E)
+	CALL ADDS_EXP("ＢＬ경험", A, B)
+	CALL ADDS_EXP("ＢＬ경험", A, E)
 ENDIF
 
-IF Y == 1
-	EXP:E:3 += A/2
-	EXP:B:20 += A
-	PRINTFORML %EXPNAME:3%(%CALLNAME:E%)＋{A/2}
-	PRINTFORML %EXPNAME:20%＋{A}
-ELSEIF HAVE_PENIS(B)
-	EXP:B:3 += A/2
-	EXP:E:20 += A
-	PRINTFORML %EXPNAME:3%＋{A/2}
-	PRINTFORML %EXPNAME:20%(%CALLNAME:E%)＋{A}
+IF HAVE_PENIS(E)
+	CALL ADDS_EXP("사정경험", A/2, E)
+	CALL ADDS_EXP("정액경험", A, B)
+ENDIF
+IF HAVE_PENIS(B)
+	CALL ADDS_EXP("사정경험", A/2, B)
+	CALL ADDS_EXP("정액경험", A, E)
 ENDIF
 
-EXP:B:2 += A/4
-SIF TALENT:E:남자 == 0
-	EXP:E:2 += A/4
-JUEL:B:0 += A*100
-JUEL:B:5 += A*50
-JUEL:B:6 += A*50
-JUEL:B:8 += A*40
-PRINTFORML %EXPNAME:2%＋{A/4}
-SIF TALENT:E:남자 == 0
-	PRINTFORML %EXPNAME:2%(%CALLNAME:E%)＋{A/4}
-PRINTFORML %PALAMNAME:0%의 구슬＋{A*100}
-PRINTFORML %PALAMNAME:5%의 구슬＋{A*50}
-PRINTFORML %PALAMNAME:6%의 구슬＋{A*50}
-PRINTFORMW %PALAMNAME:8%의 구슬＋{A*40}
-PRINTL 
+CALL ADDS_EXP("절정경험", A/4, B)
+CALL ADDS_EXP("절정경험", A/4, E)
+GOTJUEL:B:쾌Ｃ += A*100
+GOTJUEL:B:복종 += A*50
+GOTJUEL:B:욕정 += A*50
+GOTJUEL:B:습득 += A*40
+TFLAG:13 = 34
+CALL KOJO_MESSAGE_EVENT
+PRINTFORML ---%CALLNAME:B%---
+CALL SHOW_ADD_EXP(B, "단순")
+CALL SHOW_JUEL_CHECK, B
+PRINTFORML ---%CALLNAME:E%---
+CALL SHOW_ADD_EXP(E, "단순")
+CALL SHOW_JUEL_CHECK, E
 PRINTFORMW 그 뒤, 두 사람은 서로 얼싸안은 채로 잠에 빠져들었다……
 
 DRAWLINE
@@ -852,54 +814,54 @@ RETURN 0
 DRAWLINE
 
 ;욕망
-IF ABL:B:1 <= 2
+IF ABL:B:욕망 <= 2
 	A = 1
-ELSEIF ABL:B:1 <= 4
+ELSEIF ABL:B:욕망 <= 4
 	A = 2
-ELSEIF ABL:B:1 <= 7
+ELSEIF ABL:B:욕망 <= 7
 	A = 3
-ELSEIF ABL:B:1 <= 10
+ELSEIF ABL:B:욕망 <= 10
 	A = 4
 ELSE
-	A = 4 + (ABL:B:1 - 10) / 4
+	A = 4 + (ABL:B:욕망 - 10) / 4
 ENDIF
 
 ;노출증
-IF ABL:B:8 <= 2
+IF ABL:B:노출증 <= 2
 	A += 1
-ELSEIF ABL:B:8 <= 4
+ELSEIF ABL:B:노출증 <= 4
 	A += 2
-ELSEIF ABL:B:8 <= 7
+ELSEIF ABL:B:노출증 <= 7
 	A += 3
-ELSEIF ABL:B:8 <= 10
+ELSEIF ABL:B:노출증 <= 10
 	A += 4
 ELSE
-	A += 4 + (ABL:B:8 - 10) / 4
+	A += 4 + (ABL:B:노출증 - 10) / 4
 ENDIF
 
 ;자위중독
-IF ABL:B:15 <= 2
+IF ABL:B:자위중독 <= 2
 	A += 2
-ELSEIF ABL:B:15 <= 4
+ELSEIF ABL:B:자위중독 <= 4
 	A += 3
-ELSEIF ABL:B:15 <= 7
+ELSEIF ABL:B:자위중독 <= 7
 	A += 4
-ELSEIF ABL:B:15 <= 10
+ELSEIF ABL:B:자위중독 <= 10
 	A += 5
 ELSE
-	A += 5 + (ABL:B:15 - 10) / 4
+	A += 5 + (ABL:B:자위중독 - 10) / 4
 ENDIF
 
 ;자위하기쉬움
-SIF TALENT:B:60
+SIF TALENT:B:자위하기쉬움
 	A += 2
 ;자위광（Cだと重複するので他より弱く）
-SIF TALENT:B:74
+SIF TALENT:B:자위광
 	A += 1
 
 ;CVAB판정
 $LOOP_N_M
-IF TALENT:B:140
+IF TALENT:B:남자
 	R = RAND:3
 ELSE
 	R = RAND:4
@@ -907,148 +869,132 @@ ENDIF
 
 IF R == 0
 	;C판정
-	TFLAG:13 = 35
-	CALL KOJO_MESSAGE_EVENT
 	;Ｃ감각
-	IF ABL:B:3 <= 2
+	IF ABL:B:Ｃ감각 <= 2
 		A += 1
-	ELSEIF ABL:B:3 <= 4
+	ELSEIF ABL:B:Ｃ감각 <= 4
 		A += 2
-	ELSEIF ABL:B:3 <= 7
+	ELSEIF ABL:B:Ｃ감각 <= 7
 		A += 3
-	ELSEIF ABL:B:3 <= 10
+	ELSEIF ABL:B:Ｃ감각 <= 10
 		A += 4
 	ELSE
-		A += 4 + (ABL:B:3 - 10) / 3
+		A += 4 + (ABL:B:Ｃ감각 - 10) / 3
 	ENDIF
 	;자위광
-	SIF TALENT:B:74
+	SIF TALENT:B:자위광
 		A += 2
 	;Ｃ민감
-	SIF TALENT:B:102
+	SIF TALENT:B:Ｃ민감
 		A += 1
 	SIF A == 0
 		A = 1
 	IF HAVE_PENIS(B)
-		EXP:B:3 += A/2
-		PRINTFORML %EXPNAME:3%＋{A/2}
-		IF ABL:B:8 >= 5
+		CALL ADDS_EXP("사정경험", A/2, B)
+		IF ABL:B:노출증 >= 5
 			;BUKKAKE
-			EXP:E:20 += A/2
-			PRINTFORML %EXPNAME:20%(%CALLNAME:E%)＋{A/2}
+			CALL ADDS_EXP("정액경험", A/2, E)
 		ENDIF
 	ENDIF
-	JUEL:B:0 += A*60
-	PRINTFORML %PALAMNAME:0%의 구슬＋{A*60}
+	GOTJUEL:B:쾌Ｃ += A*60
 ELSEIF R == 1
 	;A판정（A감각2이상）
-	IF  ABL:B:5 >= 2
-		TFLAG:13 = 35
-		CALL KOJO_MESSAGE_EVENT
+	IF  ABL:B:Ａ감각 >= 2
 		;Ａ감각
-		IF ABL:B:5 <= 2
+		IF ABL:B:Ａ감각 <= 2
 			A += 1
-		ELSEIF ABL:B:5 <= 4
+		ELSEIF ABL:B:Ａ감각 <= 4
 			A += 2
-		ELSEIF ABL:B:5 <= 7
+		ELSEIF ABL:B:Ａ감각 <= 7
 			A += 3
-		ELSEIF ABL:B:5 <= 10
+		ELSEIF ABL:B:Ａ감각 <= 10
 			A += 4
 		ELSE
-			A += 4 + (ABL:B:5 - 10) / 3
+			A += 4 + (ABL:B:Ａ감각 - 10) / 3
 		ENDIF
 		;애널광
-		SIF TALENT:B:76
+		SIF TALENT:B:애널광
 			A += 2
 		;Ａ민감
-		SIF TALENT:B:106
+		SIF TALENT:B:Ａ민감
 			A += 1
 		SIF A == 0
 			A = 1
-		EXP:B:1 += A/2
-		PRINTFORML %EXPNAME:1%＋{A/2}
-		JUEL:B:2 += A*60
-		PRINTFORML %PALAMNAME:2%의 구슬＋{A*60}
+		CALL ADDS_EXP("Ａ경험", A/2, B)
+		GOTJUEL:B:쾌Ａ += A*60
 	ELSE
 		GOTO LOOP_N_M
 	ENDIF
 ELSEIF R == 2
 	;B판정
-	TFLAG:13 = 35
-	CALL KOJO_MESSAGE_EVENT
 	;Ｂ감각
-	IF ABL:B:6 <= 2
+	IF ABL:B:Ｂ감각 <= 2
 		A += 1
-	ELSEIF ABL:B:6 <= 4
+	ELSEIF ABL:B:Ｂ감각 <= 4
 		A += 2
-	ELSEIF ABL:B:6 <= 7
+	ELSEIF ABL:B:Ｂ감각 <= 7
 		A += 3
-	ELSEIF ABL:B:6 <= 10
+	ELSEIF ABL:B:Ｂ감각 <= 10
 		A += 4
 	ELSE
-		A += 4 + (ABL:B:6 - 10) / 3
+		A += 4 + (ABL:B:Ｂ감각 - 10) / 3
 	ENDIF
 	;음유
-	SIF TALENT:B:77
+	SIF TALENT:B:음유
 		A += 2
 	;Ｂ민감
-	SIF TALENT:B:108
+	SIF TALENT:B:Ｂ민감
 		A += 1
 	SIF A == 0
 		A = 1
-	IF TALENT:B:149
-		EXP:B:54 += A/2
-		PRINTFORML %EXPNAME:54%＋{A/2}
+	IF TALENT:B:모유체질
+		CALL ADDS_EXP("분유경험", A/2, B)
 	ENDIF
-	JUEL:B:3 += A*60
-	PRINTFORML %PALAMNAME:3%의 구슬＋{A*60}
+	GOTJUEL:B:쾌Ｂ += A*60
 ELSEIF R == 3
 	;V판정（처녀及び재생처녀を持っていない）
-	IF TALENT:B:0 == 0 && TALENT:B:1 == 0
-		TFLAG:13 = 35
-		CALL KOJO_MESSAGE_EVENT
+	IF TALENT:B:처녀 == 0 && TALENT:B:재생처녀 == 0
 		;Ｖ감각
-		IF ABL:B:4 <= 2
+		IF ABL:B:Ｖ감각 <= 2
 			A += 1
-		ELSEIF ABL:B:4 <= 4
+		ELSEIF ABL:B:Ｖ감각 <= 4
 			A += 2
-		ELSEIF ABL:B:4 <= 7
+		ELSEIF ABL:B:Ｖ감각 <= 7
 			A += 3
-		ELSEIF ABL:B:4 <= 10
+		ELSEIF ABL:B:Ｖ감각 <= 10
 			A += 4
 		ELSE
-			A += 4 + (ABL:B:4 - 10) / 3
+			A += 4 + (ABL:B:Ｖ감각 - 10) / 3
 		ENDIF
 		;섹스광
-		SIF TALENT:B:75
+		SIF TALENT:B:섹스광
 			A += 2
 		;Ｖ민감
-		SIF TALENT:B:104
+		SIF TALENT:B:Ｖ민감
 			A += 1
 		SIF A == 0
 			A = 1
-		EXP:B:0 += A/2
-		PRINTFORML %EXPNAME:0%＋{A/2}
-		JUEL:B:1 += A*60
-		PRINTFORML %PALAMNAME:1%의 구슬＋{A*60}
+		CALL ADDS_EXP("Ｖ경험", A/2, B)
+		GOTJUEL:B:쾌Ｖ += A*60
 	ELSE
 		GOTO LOOP_N_M
 	ENDIF
 ENDIF
 
-EXP:B:2 += A/4
-EXP:B:10 += A/2
-JUEL:B:6 += A*50
-JUEL:B:7 += A*30
-JUEL:B:8 += A*40
-JUEL:B:9 += A*30
-PRINTFORML %EXPNAME:2%＋{A/4}
-PRINTFORML %EXPNAME:10%＋{A/2}
-PRINTFORML %PALAMNAME:6%의 구슬＋{A*50}
-PRINTFORML %PALAMNAME:7%의 구슬＋{A*30}
-PRINTFORML %PALAMNAME:8%의 구슬＋{A*40}
-PRINTFORMW %PALAMNAME:9%의 구슬＋{A*30}
-PRINTL 
+CALL ADDS_EXP("절정경험", A/4, B)
+CALL ADDS_EXP("자위경험", A/2, B)
+GOTJUEL:B:욕정 += A*50
+GOTJUEL:B:굴복 += A*30
+GOTJUEL:B:습득 += A*40
+GOTJUEL:B:치정 += A*30
+TFLAG:13 = 35
+CALL KOJO_MESSAGE_EVENT
+PRINTFORML ---%CALLNAME:B%---
+CALL SHOW_ADD_EXP(B, "단순")
+CALL SHOW_JUEL_CHECK, B
+PRINTFORML ---%CALLNAME:E%---
+CALL SHOW_ADD_EXP(E, "단순")
+CALL SHOW_JUEL_CHECK, E
 PRINTFORMW 행위가 끝나자, %조사처리(CALLNAME:B,"는")% 작은 한숨을 내쉬며 잠에 빠져들었다
 
 DRAWLINE
@@ -1059,65 +1005,66 @@ RETURN 0
 ;一緒に寝る
 @SELF_NIGHT36
 DRAWLINE
-TFLAG:13 = 36
-CALL KOJO_MESSAGE_EVENT
 
 ;순종
-IF ABL:B:0 <= 6
+IF ABL:B:순종 <= 6
 	A = 3
-ELSEIF ABL:B:0 <= 8
+ELSEIF ABL:B:순종 <= 8
 	A = 4
-ELSEIF ABL:B:0 <= 10
+ELSEIF ABL:B:순종 <= 10
 	A = 5
 ELSE
-	A = 5 + (ABL:B:0 - 10) / 4
+	A = 5 + (ABL:B:순종 - 10) / 4
 ENDIF
 
 ;봉사정신
-IF ABL:B:7 <= 6
+IF ABL:B:봉사정신 <= 6
 	A += 4
-ELSEIF ABL:B:7 <= 8
+ELSEIF ABL:B:봉사정신 <= 8
 	A += 5
-ELSEIF ABL:B:7 <= 10
+ELSEIF ABL:B:봉사정신 <= 10
 	A += 6
 ELSE
-	A += 6 + (ABL:B:7 - 10) / 3
+	A += 6 + (ABL:B:봉사정신 - 10) / 3
 ENDIF
 
 ;친애
-SIF TALENT:B:6
+SIF TALENT:B:친애
 	A += 1
 ;유아／유아퇴행または유치
-SIF TALENT:B:150 || TALENT:B:151
+SIF TALENT:B:유아／유아퇴행 || TALENT:B:유치
 	A += 2
 ;아내または남편
-SIF TALENT:B:170 || TALENT:B:171
+SIF TALENT:B:아내 || TALENT:B:남편
 	A += 1
 ;아이
-SIF TALENT:B:175
+SIF TALENT:B:아이
 	A += 2
 ;우애
-SIF TALENT:B:201
+SIF TALENT:B:우애
 	A += 1
 
 SIF A == 0
 	A = 1
 
-EXP:B:23 += A/4
-EXP:E:23 += A/4
+CALL ADDS_EXP("애정경험", A/4, B)
+CALL ADDS_EXP("애정경험", A/4, E)
 
 ;유아／유아퇴행または유치且つ대상が가창기능3이상
-IF (TALENT:B:150 || TALENT:B:151) && ABL:E:14 >= 3
-	EXP:E:64 += A/5
-	PRINTFORML %EXPNAME:64%(%CALLNAME:E%)＋{A/5}
+IF (TALENT:B:유아／유아퇴행 || TALENT:B:유치) && ABL:E:가창기능 >= 3
+	CALL ADDS_EXP("가창경험", A/5, E)
 ENDIF
 
-JUEL:B:5 += A*100
-PRINTFORML %EXPNAME:23%＋{A/4}
-PRINTFORML %EXPNAME:23%(%CALLNAME:E%)＋{A/4}
-PRINTFORMW %PALAMNAME:5%의 구슬＋{A*100}
-PRINTL 
-IF TALENT:B:150 || TALENT:B:151
+GOTJUEL:B:복종 += A*100
+TFLAG:13 = 36
+CALL KOJO_MESSAGE_EVENT
+PRINTFORML ---%CALLNAME:B%---
+CALL SHOW_ADD_EXP(B, "단순")
+CALL SHOW_JUEL_CHECK, B
+PRINTFORML ---%CALLNAME:E%---
+CALL SHOW_ADD_EXP(E, "단순")
+CALL SHOW_JUEL_CHECK, E
+IF TALENT:B:유아／유아퇴행 || TALENT:B:유치
 	PRINTFORMW %조사처리(CALLNAME:B,"는")% 편안한 표정으로 숨소리를 내고 있다
 ELSE
 	PRINTFORMW %조사처리(CALLNAME:B,"는")% 작은 목소리로 잘 자라고 말하며 잠들었다
@@ -1143,15 +1090,15 @@ SIF CFLAG:B:상사내습 == 1
 LOCAL = TARGET
 TARGET = B
 $LOOP_M
-IF TALENT:B:6 || TALENT:B:7 || TALENT:B:8
-	R = RAND:9
+IF TALENT:B:친애 || TALENT:B:창부 || TALENT:B:예속
+	R = RAND:10
 ELSE
-	R = RAND:11
+	R = RAND:12
 ENDIF
 ;実行者の主人への호감도が他のキャラへの호감도より高いと必ずハズレ
 	FOR G, 0, CHARANUM
 		SIF G != MASTER && FAVORITE(B,G) > FAVORITE(B,MASTER)
-			R = 11
+			R = 12
 	NEXT
 	
 ;신경썼다플래그
@@ -1161,28 +1108,28 @@ ENDIF
 	
 IF R == 0
 	;朝기승위/貝合わせ판정
-	IF ((TALENT:B:0 == 0 && TALENT:B:1 == 0 && ABL:B:4 >= 3 && ABL:B:7 >= 7 && Y == 1) || (ABL:B:3 >= 3 && ABL:B:7 >= 7 && Y == 0)) && !IS_MALE(B)
+	IF ((TALENT:B:처녀 == 0 && TALENT:B:재생처녀 == 0 && ABL:B:Ｖ감각 >= 3 && ABL:B:봉사정신 >= 7 && Y == 1) || (ABL:B:Ｃ감각 >= 3 && ABL:B:봉사정신 >= 7 && Y == 0)) && !IS_MALE(B)
 		CALL SELF_MORNING_3
 	ELSE
 		GOTO LOOP_M
 	ENDIF
 ELSEIF R == 1
 	;朝기승위A판정(VかAか、처녀か남자か판정以外기본的に기승위と同じ)
-	IF ABL:B:5 >= 3 && ABL:B:7 >= 7 && Y == 1
+	IF ABL:B:Ａ감각 >= 3 && ABL:B:봉사정신 >= 7 && Y == 1
 		CALL SELF_MORNING_24
 	ELSE
 		GOTO LOOP_M
 	ENDIF
 ELSEIF R == 2
 	;朝파이즈리판정
-	IF ABL:B:7 >= 5 && TALENT:B:110 == 0 && !IS_MALE(B) && Y == 1
+	IF ABL:B:봉사정신 >= 5 && TALENT:B:절벽 == 0 && !IS_MALE(B) && Y == 1
 		CALL SELF_MORNING_2
 	ELSE
 		GOTO LOOP_M
 	ENDIF
 ELSEIF R == 3
 	;朝키스판정(봉사정신が6이상、연모または친애が필요)
-	IF ABL:B:7 >= 6 && (TALENT:B:3 || TALENT:B:6)
+	IF ABL:B:봉사정신 >= 6 && (TALENT:B:연모 || TALENT:B:친애)
 		CALL SELF_MORNING_25
 	ELSE
 		GOTO LOOP_M
@@ -1192,21 +1139,21 @@ ELSEIF R == 4
 	CALL SELF_MORNING_1
 ELSEIF R == 5
 	;朝食판정(봉사정신が6이상、요리기능3이상が필요)
-	IF ABL:B:7 >= 6 && ABL:B:12 >= 3
+	IF ABL:B:봉사정신 >= 6 && ABL:B:요리기능 >= 3
 		CALL SELF_MORNING_26
 	ELSE
 		GOTO LOOP_M
 	ENDIF
 ELSEIF R == 6
 	;起きたら隣で寝てる판정(연모または친애が필요)
-	IF TALENT:B:3 || TALENT:B:6
+	IF TALENT:B:연모 || TALENT:B:친애
 		CALL SELF_MORNING_27
 	ELSE
 		GOTO LOOP_M
 	ENDIF
 ELSEIF R == 7
 	;朝の발コキ판정(새드끼1이상が필요)
-	IF ABL:B:10 >= 1 && (HAVE_PENIS(MASTER))
+	IF ABL:B:새드끼 >= 1 && (HAVE_PENIS(MASTER))
 		CALL SELF_MORNING_28
 	ELSE
 		GOTO LOOP_M
@@ -1215,6 +1162,13 @@ ELSEIF R == 8
 	;お寝小판정(오줌싸개버릇が필요)
 	IF TALENT:B:57 == 1
 		CALL SELF_MORNING_30
+	ELSE
+		GOTO LOOP_M
+	ENDIF
+ELSEIF R == 9
+	;朝Vレイプ(対象C攻め MASTER V受け)
+	IF (TALENT:MASTER:처녀 == 0 && TALENT:MASTER:재생처녀 == 0) && (HAVE_PENIS(B)  || (ABL:B:Ｃ감각 >= 3 && ABL:B:레즈중독 >= 3 && ITEM:페니스밴드)) && !IS_MALE(MASTER)
+		CALL SELF_MORNING_68
 	ELSE
 		GOTO LOOP_M
 	ENDIF
@@ -1227,7 +1181,7 @@ ENDIF
 ;朝이벤트2
 ;-------------------------------------------------
 ;上位の함락소질があれば半分の확률로発生
-IF TALENT:B:6 || TALENT:B:7 || TALENT:B:8
+IF TALENT:B:친애 || TALENT:B:창부 || TALENT:B:예속
 	R = RAND:2
 ELSE
 	R = RAND:4
@@ -1235,7 +1189,7 @@ ENDIF
 
 IF R == 0
 	;朝の搾りたてミルク판정(봉사정신が6이상、모유체질、분유중독1이상、が필요)
-	IF ABL:B:7 >= 6 && TALENT:B:149 && ABL:B:19 >= 1
+	IF ABL:B:봉사정신 >= 6 && TALENT:B:모유체질 && ABL:B:분유중독 >= 1
 		CALL SELF_MORNING_29
 	ENDIF
 ENDIF
@@ -1248,184 +1202,177 @@ RETURN 0
 ;朝기승위/貝合わせ
 @SELF_MORNING_3
 DRAWLINE
-TFLAG:13 = 3
-CALL KOJO_MESSAGE_EVENT
 
 ;욕망
-IF ABL:B:1 <= 2
+IF ABL:B:욕망 <= 2
 	A = 1
-ELSEIF ABL:B:1 <= 4
+ELSEIF ABL:B:욕망 <= 4
 	A = 2
-ELSEIF ABL:B:1 <= 7
+ELSEIF ABL:B:욕망 <= 7
 	A = 3
-ELSEIF ABL:B:1 <= 10
+ELSEIF ABL:B:욕망 <= 10
 	A = 4
 ELSE
-	A = 4 + (ABL:B:1 - 10) / 4
+	A = 4 + (ABL:B:욕망 - 10) / 4
 ENDIF
 
 IF Y == 1
 ;기승위
 	;Ｖ감각
-	IF ABL:B:4 <= 2
+	IF ABL:B:Ｖ감각 <= 2
 		A += 1
-	ELSEIF ABL:B:4 <= 4
+	ELSEIF ABL:B:Ｖ감각 <= 4
 		A += 2
-	ELSEIF ABL:B:4 <= 7
+	ELSEIF ABL:B:Ｖ감각 <= 7
 		A += 3
-	ELSEIF ABL:B:4 <= 10
+	ELSEIF ABL:B:Ｖ감각 <= 10
 		A += 4
 	ELSE
-		A += 4 + (ABL:B:4 - 10) / 3
+		A += 4 + (ABL:B:Ｖ감각 - 10) / 3
 	ENDIF
 
 	;정액중독
-	IF ABL:B:16 <= 1
+	IF ABL:B:정액중독 <= 1
 		A += 1
-	ELSEIF ABL:B:16 <= 2
+	ELSEIF ABL:B:정액중독 <= 2
 		A += 2
-	ELSEIF ABL:B:16 <= 5
+	ELSEIF ABL:B:정액중독 <= 5
 		A += 3
-	ELSEIF ABL:B:16 <= 7
+	ELSEIF ABL:B:정액중독 <= 7
 		A += 4
-	ELSEIF ABL:B:16 <= 10
+	ELSEIF ABL:B:정액중독 <= 10
 		A += 5
 	ELSE
-		A += 5 + (ABL:B:16 - 10) / 4
+		A += 5 + (ABL:B:정액중독 - 10) / 4
 	ENDIF
 
 	;섹스중독
-	IF ABL:B:18 <= 1
+	IF ABL:B:섹스중독 <= 1
 		A += 1
-	ELSEIF ABL:B:18 <= 2
+	ELSEIF ABL:B:섹스중독 <= 2
 		A += 2
-	ELSEIF ABL:B:18 <= 4
+	ELSEIF ABL:B:섹스중독 <= 4
 		A += 3
-	ELSEIF ABL:B:18 <= 6
+	ELSEIF ABL:B:섹스중독 <= 6
 		A += 4
-	ELSEIF ABL:B:18 <= 8
+	ELSEIF ABL:B:섹스중독 <= 8
 		A += 5
-	ELSEIF ABL:B:18 <= 10
+	ELSEIF ABL:B:섹스중독 <= 10
 		A += 6
 	ELSE
-		A += 6 + (ABL:B:18 - 10) / 3
+		A += 6 + (ABL:B:섹스중독 - 10) / 3
 	ENDIF
 
 	;섹스광
-	SIF TALENT:B:75
+	SIF TALENT:B:섹스광
 		A += 2
 	;Ｖ민감
-	SIF TALENT:B:104
+	SIF TALENT:B:Ｖ민감
 		A += 1
 ELSE
 ;貝合わせの場合暫定措置で、레즈끼及び레즈중독を代入
 ;コマンド貝合わせは성교경험入らないので…
 	;Ｃ감각
-	IF ABL:B:3 <= 2
+	IF ABL:B:Ｃ감각 <= 2
 		A += 1
-	ELSEIF ABL:B:3 <= 4
+	ELSEIF ABL:B:Ｃ감각 <= 4
 		A += 2
-	ELSEIF ABL:B:3 <= 7
+	ELSEIF ABL:B:Ｃ감각 <= 7
 		A += 3
-	ELSEIF ABL:B:3 <= 10
+	ELSEIF ABL:B:Ｃ감각 <= 10
 		A += 4
 	ELSE
-		A += 4 + (ABL:B:3 - 10) / 3
+		A += 4 + (ABL:B:Ｃ감각 - 10) / 3
 	ENDIF
 
 	;레즈끼
-	IF ABL:B:11 <= 1
+	IF ABL:B:레즈끼 <= 1
 		A += 1
-	ELSEIF ABL:B:11 <= 2
+	ELSEIF ABL:B:레즈끼 <= 2
 		A += 2
-	ELSEIF ABL:B:11 <= 5
+	ELSEIF ABL:B:레즈끼 <= 5
 		A += 3
-	ELSEIF ABL:B:11 <= 7
+	ELSEIF ABL:B:레즈끼 <= 7
 		A += 4
-	ELSEIF ABL:B:11 <= 11
+	ELSEIF ABL:B:레즈끼 <= 11
 		A += 5
 	ELSE
-		A += 5 + (ABL:B:11 - 10) / 4
+		A += 5 + (ABL:B:레즈끼 - 10) / 4
 	ENDIF
 
 	;레즈중독
-	IF ABL:B:17 <= 1
+	IF ABL:B:레즈중독 <= 1
 		A += 1
-	ELSEIF ABL:B:17 <= 2
+	ELSEIF ABL:B:레즈중독 <= 2
 		A += 2
-	ELSEIF ABL:B:17 <= 4
+	ELSEIF ABL:B:레즈중독 <= 4
 		A += 3
-	ELSEIF ABL:B:17 <= 6
+	ELSEIF ABL:B:레즈중독 <= 6
 		A += 4
-	ELSEIF ABL:B:17 <= 8
+	ELSEIF ABL:B:레즈중독 <= 8
 		A += 5
-	ELSEIF ABL:B:17 <= 10
+	ELSEIF ABL:B:레즈중독 <= 10
 		A += 6
 	ELSE
-		A += 6 + (ABL:B:17 - 10) / 3
+		A += 6 + (ABL:B:레즈중독 - 10) / 3
 	ENDIF
 
 	;Ｃ민감
-	SIF TALENT:B:102
+	SIF TALENT:B:Ｃ민감
 		A += 1
 ENDIF
 
 ;창부
-SIF TALENT:B:7
+SIF TALENT:B:창부
 	A += 1
 ;헌신적
-SIF TALENT:B:63
+SIF TALENT:B:헌신적
 	A += 1
 
 SIF A == 0
 	A = 1
 
 IF IS_LESBIAN(B,MASTER)
-	PRINTFORML %EXPNAME:40%+{A}
-	PRINTFORML %EXPNAME:40%(%CALLNAME:MASTER%)+{A}
-	EXP:B:40 += A
-	EXP:MASTER:40 += A
+	CALL ADDS_EXP("레즈경험", A, B)
+	CALL ADDS_EXP("레즈경험", A, MASTER)
+ELSEIF IS_GAY(B,MASTER)
+	CALL ADDS_EXP("ＢＬ경험", A, B)
+	CALL ADDS_EXP("ＢＬ경험", A, MASTER)
 ENDIF
 
 IF Y == 1
 	;기승위
-	EXP:MASTER:3 += A/2
-	PRINTFORML %EXPNAME:3%(%CALLNAME:MASTER%)＋{A/2}
-	IF HAVE_PENIS(B) && !IS_MALE(TARGET)
-		EXP:B:3 += A/2
-		EXP:B:20 += A
-		PRINTFORML %EXPNAME:3%＋{A/2}
-		PRINTFORML %EXPNAME:20%＋{A}
-	ELSE
-		EXP:B:20 += A/2
-		PRINTFORML %EXPNAME:20%＋{A/2}
+	CALL ADDS_EXP("사정경험", A/2, MASTER)
+	IF HAVE_PENIS(B) && !IS_MALE(MASTER)
+		CALL ADDS_EXP("사정경험", A/2, B)
+		CALL ADDS_EXP("정액경험", A, MASTER)
 	ENDIF
 
-	IF CFLAG:B:101 > 1 && CFLAG:B:108 == 0
-		EXP:B:5 += A/2
-		CFLAG:B:101 += A/2
+	IF CFLAG:B:주인의질내사정에의한임신판정 > 1 && CFLAG:B:자궁내피임결계 == 0 && (TALENT:B:연모 || TALENT:B:친애)
+		CALL ADDS_EXP("질사경험", A/2, B)
+		CFLAG:B:주인의질내사정에의한임신판정 += A/2
 	ENDIF
 
-	EXP:B:0 += A/2
-	EXP:B:4 += A/2
-	JUEL:B:1 += A*100
-	PRINTFORML %EXPNAME:0%＋{A/2}
-	PRINTFORML %EXPNAME:4%＋{A/2}
-	SIF EXP:B:5 > 0 && (TALENT:B:3 || TALENT:B:6)
-		PRINTFORML %EXPNAME:5%＋{A/2}
-	PRINTFORML %PALAMNAME:1%의 구슬＋{A*100}
+	CALL ADDS_EXP("정액경험", A/2, B)
+	CALL ADDS_EXP("Ｖ경험", A/2, B)
+	CALL ADDS_EXP("성교경험", A/2, B)
+	GOTJUEL:B:쾌Ｖ += A*100
 ELSE
 	;貝合わせ
-	JUEL:B:0 += A*100
-	PRINTFORML %PALAMNAME:0%의 구슬＋{A*20}
+	GOTJUEL:B:쾌Ｃ += A*100
 ENDIF
 
-JUEL:B:5 += A*70
-JUEL:B:7 += A*30
-JUEL:B:8 += A*40
-PRINTFORML %PALAMNAME:5%의 구슬＋{A*70}
-PRINTFORML %PALAMNAME:7%의 구슬＋{A*30}
-PRINTFORMW %PALAMNAME:8%의 구슬＋{A*40}
+GOTJUEL:B:복종 += A*70
+GOTJUEL:B:굴복 += A*30
+GOTJUEL:B:습득 += A*40
+TFLAG:13 = 3
+CALL KOJO_MESSAGE_EVENT
+PRINTFORML ---%CALLNAME:B%---
+CALL SHOW_ADD_EXP(B, "단순")
+CALL SHOW_JUEL_CHECK, B
+PRINTFORML ---%CALLNAME:MASTER%---
+CALL SHOW_ADD_EXP(MASTER, "단순")
+CALL SHOW_JUEL_CHECK, MASTER
 DRAWLINE
 
 RETURN 0
@@ -1434,120 +1381,111 @@ RETURN 0
 ;朝기승위A
 @SELF_MORNING_24
 DRAWLINE
-TFLAG:13 = 24
-CALL KOJO_MESSAGE_EVENT
 
 ;욕망
-IF ABL:B:1 <= 2
+IF ABL:B:욕망 <= 2
 	A = 1
-ELSEIF ABL:B:1 <= 4
+ELSEIF ABL:B:욕망 <= 4
 	A = 2
-ELSEIF ABL:B:1 <= 7
+ELSEIF ABL:B:욕망 <= 7
 	A = 3
-ELSEIF ABL:B:1 <= 10
+ELSEIF ABL:B:욕망 <= 10
 	A = 4
 ELSE
-	A = 4 + (ABL:B:1 - 10) / 4
+	A = 4 + (ABL:B:욕망 - 10) / 4
 ENDIF
 
 ;Ａ감각
-IF ABL:B:5 <= 2
+IF ABL:B:Ａ감각 <= 2
 	A += 1
-ELSEIF ABL:B:5 <= 4
+ELSEIF ABL:B:Ａ감각 <= 4
 	A += 2
-ELSEIF ABL:B:5 <= 7
+ELSEIF ABL:B:Ａ감각 <= 7
 	A += 3
-ELSEIF ABL:B:5 <= 10
+ELSEIF ABL:B:Ａ감각 <= 10
 	A += 4
 ELSE
-	A += 4 + (ABL:B:5 - 10) / 3
+	A += 4 + (ABL:B:Ａ감각 - 10) / 3
 ENDIF
 
 ;정액중독
-IF ABL:B:16 <= 1
+IF ABL:B:정액중독 <= 1
 	A += 1
-ELSEIF ABL:B:16 <= 2
+ELSEIF ABL:B:정액중독 <= 2
 	A += 2
-ELSEIF ABL:B:16 <= 5
+ELSEIF ABL:B:정액중독 <= 5
 	A += 3
-ELSEIF ABL:B:16 <= 7
+ELSEIF ABL:B:정액중독 <= 7
 	A += 4
-ELSEIF ABL:B:16 <= 10
+ELSEIF ABL:B:정액중독 <= 10
 	A += 5
 ELSE
-	A += 5 + (ABL:B:16 - 10) / 3
+	A += 5 + (ABL:B:정액중독 - 10) / 3
 ENDIF
 
 ;섹스중독
-IF ABL:B:18 <= 1
+IF ABL:B:섹스중독 <= 1
 	A += 1
-ELSEIF ABL:B:18 <= 2
+ELSEIF ABL:B:섹스중독 <= 2
 	A += 2
-ELSEIF ABL:B:18 <= 4
+ELSEIF ABL:B:섹스중독 <= 4
 	A += 3
-ELSEIF ABL:B:18 <= 6
+ELSEIF ABL:B:섹스중독 <= 6
 	A += 4
-ELSEIF ABL:B:18 <= 8
+ELSEIF ABL:B:섹스중독 <= 8
 	A += 5
-ELSEIF ABL:B:18 <= 10
+ELSEIF ABL:B:섹스중독 <= 10
 	A += 6
 ELSE
-	A += 6 + (ABL:B:18 - 10) / 3
+	A += 6 + (ABL:B:섹스중독 - 10) / 3
 ENDIF
 
 ;창부
-SIF TALENT:B:7
+SIF TALENT:B:창부
 	A += 1
 ;헌신적
-SIF TALENT:B:63
+SIF TALENT:B:헌신적
 	A += 1
 ;애널광
-SIF TALENT:B:76
+SIF TALENT:B:애널광
 	A += 2
 ;Ａ민감
-SIF TALENT:B:106
+SIF TALENT:B:Ａ민감
 	A += 1
 
 SIF A == 0
 	A = 1
 
 IF IS_LESBIAN(B,MASTER)
-	PRINTFORML %EXPNAME:40%+{A}
-	PRINTFORML %EXPNAME:40%(%CALLNAME:MASTER%)+{A}
-	EXP:B:40 += A
-	EXP:MASTER:40 += A
+	CALL ADDS_EXP("레즈경험", A, B)
+	CALL ADDS_EXP("레즈경험", A, MASTER)
 ELSEIF IS_GAY(B,MASTER)
-	PRINTFORML %EXPNAME:41%+{A}
-	PRINTFORML %EXPNAME:41%(%CALLNAME:MASTER%)+{A}
-	EXP:B:41 += A
-	EXP:MASTER:41 += A
+	CALL ADDS_EXP("ＢＬ경험", A, B)
+	CALL ADDS_EXP("ＢＬ경험", A, MASTER)
 ENDIF
 
-EXP:MASTER:3 += A/2
-PRINTFORML %EXPNAME:3%(%CALLNAME:MASTER%)＋{A/2}
+CALL ADDS_EXP("사정경험", A/2, MASTER)
 
 IF HAVE_PENIS(B)
-	EXP:B:3 += A/2
-	EXP:B:20 += A
-	PRINTFORML %EXPNAME:3%＋{A/2}
-	PRINTFORML %EXPNAME:20%＋{A}
-ELSE
-	EXP:B:20 += A/2
-	PRINTFORML %EXPNAME:20%＋{A/2}
+	CALL ADDS_EXP("사정경험", A/2, B)
+	CALL ADDS_EXP("정액경험", A, MASTER)
 ENDIF
 
-EXP:B:1 += A/2
-EXP:B:4 += A/2
-JUEL:B:2 += A*100
-JUEL:B:5 += A*70
-JUEL:B:7 += A*30
-JUEL:B:8 += A*40
-PRINTFORML %EXPNAME:1%＋{A/2}
-PRINTFORML %EXPNAME:4%＋{A/2}
-PRINTFORML %PALAMNAME:2%의 구슬＋{A*100}
-PRINTFORML %PALAMNAME:5%의 구슬＋{A*70}
-PRINTFORML %PALAMNAME:7%의 구슬＋{A*30}
-PRINTFORMW %PALAMNAME:8%의 구슬＋{A*40}
+CALL ADDS_EXP("정액경험", A/2, B)
+CALL ADDS_EXP("Ａ경험", A/2, B)
+CALL ADDS_EXP("성교경험", A/2, B)
+GOTJUEL:B:쾌Ａ += A*100
+GOTJUEL:B:복종 += A*70
+GOTJUEL:B:굴복 += A*30
+GOTJUEL:B:습득 += A*40
+TFLAG:13 = 24
+CALL KOJO_MESSAGE_EVENT
+PRINTFORML ---%CALLNAME:B%---
+CALL SHOW_ADD_EXP(B, "단순")
+CALL SHOW_JUEL_CHECK, B
+PRINTFORML ---%CALLNAME:MASTER%---
+CALL SHOW_ADD_EXP(MASTER, "단순")
+CALL SHOW_JUEL_CHECK, MASTER
 DRAWLINE
 
 RETURN 0
@@ -1556,113 +1494,108 @@ RETURN 0
 ;朝파이즈리
 @SELF_MORNING_2
 DRAWLINE
-TFLAG:13 = 2
-CALL KOJO_MESSAGE_EVENT
 
 ;욕망
-IF ABL:B:1 <= 2
+IF ABL:B:욕망 <= 2
 	A = 1
-ELSEIF ABL:B:1 <= 4
+ELSEIF ABL:B:욕망 <= 4
 	A = 2
-ELSEIF ABL:B:1 <= 7
+ELSEIF ABL:B:욕망 <= 7
 	A = 3
-ELSEIF ABL:B:1 <= 10
+ELSEIF ABL:B:욕망 <= 10
 	A = 4
 ELSE
-	A = 4 + (ABL:B:1 - 10) / 4
+	A = 4 + (ABL:B:욕망 - 10) / 4
 ENDIF
 
 ;Ｂ감각
-IF ABL:B:6 <= 2
+IF ABL:B:Ｂ감각 <= 2
 	A += 1
-ELSEIF ABL:B:6 <= 4
+ELSEIF ABL:B:Ｂ감각 <= 4
 	A += 2
-ELSEIF ABL:B:6 <= 7
+ELSEIF ABL:B:Ｂ감각 <= 7
 	A += 3
-ELSEIF ABL:B:6 <= 10
+ELSEIF ABL:B:Ｂ감각 <= 10
 	A += 4
 ELSE
-	A += 4 + (ABL:B:6 - 10) / 3
+	A += 4 + (ABL:B:Ｂ감각 - 10) / 3
 ENDIF
 
 ;정액중독
-IF ABL:B:16 <= 1
+IF ABL:B:정액중독 <= 1
 	A += 1
-ELSEIF ABL:B:16 <= 2
+ELSEIF ABL:B:정액중독 <= 2
 	A += 2
-ELSEIF ABL:B:16 <= 5
+ELSEIF ABL:B:정액중독 <= 5
 	A += 3
-ELSEIF ABL:B:16 <= 7
+ELSEIF ABL:B:정액중독 <= 7
 	A += 4
-ELSEIF ABL:B:16 <= 10
+ELSEIF ABL:B:정액중독 <= 10
 	A += 5
 ELSE
-	A += 5 + (ABL:B:16 - 10) / 3
+	A += 5 + (ABL:B:정액중독 - 10) / 3
 ENDIF
 
 ;분유중독
-IF TALENT:B:149
-	IF ABL:B:19 <= 2
+IF TALENT:B:모유체질
+	IF ABL:B:분유중독 <= 2
 		A += 1
-	ELSEIF ABL:B:19 <= 4
+	ELSEIF ABL:B:분유중독 <= 4
 		A += 2
-	ELSEIF ABL:B:19 <= 7
+	ELSEIF ABL:B:분유중독 <= 7
 		A += 3
-	ELSEIF ABL:B:19 <= 10
+	ELSEIF ABL:B:분유중독 <= 10
 		A += 4
 	ELSE
-		A += 4 + (ABL:B:19 - 10) / 4
+		A += 4 + (ABL:B:분유중독 - 10) / 4
 	ENDIF
 ENDIF
 
 ;예속
-SIF TALENT:B:8
+SIF TALENT:B:예속
 	A += 1
 ;악취둔감
-SIF TALENT:B:61
+SIF TALENT:B:악취둔감
 	A += 1
 ;악취민감
-SIF TALENT:B:62
+SIF TALENT:B:악취민감
 	A -= 1
 ;헌신적
-SIF TALENT:B:63
+SIF TALENT:B:헌신적
 	A += 1
 ;음유
-SIF TALENT:B:77
+SIF TALENT:B:음유
 	A += 2
 ;Ｂ민감
-SIF TALENT:B:108
+SIF TALENT:B:Ｂ민감
 	A += 1
 
 SIF A == 0
 	A = 1
 
 IF IS_LESBIAN(B,MASTER)
-	PRINTFORML %EXPNAME:40%+{A}
-	PRINTFORML %EXPNAME:40%(%CALLNAME:MASTER%)+{A}
-	EXP:B:40 += A
-	EXP:MASTER:40 += A
+	CALL ADDS_EXP("레즈경험", A, B)
+	CALL ADDS_EXP("레즈경험", A, MASTER)
 ENDIF
 
-EXP:MASTER:3 += A/2
-PRINTFORML %EXPNAME:3%(%CALLNAME:MASTER%)＋{A/2}
+CALL ADDS_EXP("사정경험", A/2, MASTER)
 
-EXP:B:22 += A
-EXP:B:20 += A/2
-SIF TALENT:B:149
-	EXP:B:54 += A/2
-JUEL:B:3 += A*80
-JUEL:B:5 += A*100
-JUEL:B:7 += A*30
-JUEL:B:8 += A*70
-PRINTFORML %EXPNAME:22%＋{A}
-PRINTFORML %EXPNAME:20%＋{A/2}
-SIF TALENT:B:149
-	PRINTFORML %EXPNAME:54%＋{A/2}
-PRINTFORML %PALAMNAME:3%의 구슬＋{A*80}
-PRINTFORML %PALAMNAME:5%의 구슬＋{A*100}
-PRINTFORML %PALAMNAME:7%의 구슬＋{A*30}
-PRINTFORMW %PALAMNAME:8%의 구슬＋{A*70}
+CALL ADDS_EXP("펠라경험", A, B)
+CALL ADDS_EXP("정액경험", A/2, B)
+SIF TALENT:B:모유체질
+	CALL ADDS_EXP("분유경험", A/2, B)
+GOTJUEL:B:쾌Ｂ += A*80
+GOTJUEL:B:복종 += A*100
+GOTJUEL:B:굴복 += A*30
+GOTJUEL:B:습득 += A*70
+TFLAG:13 = 2
+CALL KOJO_MESSAGE_EVENT
+PRINTFORML ---%CALLNAME:B%---
+CALL SHOW_ADD_EXP(B, "단순")
+CALL SHOW_JUEL_CHECK, B
+PRINTFORML ---%CALLNAME:MASTER%---
+CALL SHOW_ADD_EXP(MASTER, "단순")
+CALL SHOW_JUEL_CHECK, MASTER
 DRAWLINE
 
 RETURN 0
@@ -1671,61 +1604,61 @@ RETURN 0
 ;朝키스
 @SELF_MORNING_25
 DRAWLINE
-TFLAG:13 = 25
-CALL KOJO_MESSAGE_EVENT
 
 ;순종
-IF ABL:B:0 <= 6
+IF ABL:B:순종 <= 6
 	A = 3
-ELSEIF ABL:B:0 <= 8
+ELSEIF ABL:B:순종 <= 8
 	A = 4
-ELSEIF ABL:B:0 <= 10
+ELSEIF ABL:B:순종 <= 10
 	A = 5
 ELSE
-	A = 5 + (ABL:B:0 - 10) / 3
+	A = 5 + (ABL:B:순종 - 10) / 3
 ENDIF
 
 ;봉사정신
-IF ABL:B:7 == 6
+IF ABL:B:봉사정신 == 6
 	A += 4
-ELSEIF ABL:B:7 <= 8
+ELSEIF ABL:B:봉사정신 <= 8
 	A += 5
-ELSEIF ABL:B:7 <= 10
+ELSEIF ABL:B:봉사정신 <= 10
 	A += 6
 ELSE
-	A += 6 + (ABL:B:7 - 10) / 2
+	A += 6 + (ABL:B:봉사정신 - 10) / 2
 ENDIF
 
 ;친애
-SIF TALENT:B:6
+SIF TALENT:B:친애
 	A += 3
 ;헌신적
-SIF TALENT:B:63
+SIF TALENT:B:헌신적
 	A += 1
 
 SIF A == 0
 	A = 1
 
 IF IS_LESBIAN(B,MASTER)
-	PRINTFORML %EXPNAME:40%+{A}
-	PRINTFORML %EXPNAME:40%(%CALLNAME:MASTER%)+{A}
-	EXP:40 += A
-	EXP:MASTER:40 += A
+	CALL ADDS_EXP("레즈경험", A, B)
+	CALL ADDS_EXP("레즈경험", A, MASTER)
 ELSEIF IS_GAY(B,MASTER)
-	PRINTFORML %EXPNAME:41%+{A}
-	PRINTFORML %EXPNAME:41%(%CALLNAME:MASTER%)+{A}
-	EXP:B:41 += A
-	EXP:MASTER:41 += A
+	CALL ADDS_EXP("ＢＬ경험", A, B)
+	CALL ADDS_EXP("ＢＬ경험", A, MASTER)
 ENDIF
 
-EXP:B:23 += A/2
-EXP:B:키스경험 += A/2
-JUEL:B:5 += A*80
-JUEL:B:8 += A*20
-PRINTFORML %EXPNAME:23%＋{A/2}
-PRINTFORML 키스경험＋{A/2}
-PRINTFORML %PALAMNAME:5%의 구슬＋{A*80}
-PRINTFORMW %PALAMNAME:8%의 구슬＋{A*20}
+CALL ADDS_EXP("애정경험", A/2, B)
+CALL ADDS_EXP("키스경험", A/2, B)
+CALL ADDS_EXP("애정경험", A/2, MASTER)
+CALL ADDS_EXP("키스경험", A/2, MASTER)
+GOTJUEL:B:복종 += A*80
+GOTJUEL:B:습득 += A*20
+TFLAG:13 = 25
+CALL KOJO_MESSAGE_EVENT
+PRINTFORML ---%CALLNAME:B%---
+CALL SHOW_ADD_EXP(B, "단순")
+CALL SHOW_JUEL_CHECK, B
+PRINTFORML ---%CALLNAME:MASTER%---
+CALL SHOW_ADD_EXP(MASTER, "단순")
+CALL SHOW_JUEL_CHECK, MASTER
 DRAWLINE
 
 RETURN 0
@@ -1734,117 +1667,113 @@ RETURN 0
 ;朝フェラ/커닐링구스
 @SELF_MORNING_1
 DRAWLINE
-TFLAG:13 = 1
-CALL KOJO_MESSAGE_EVENT
 
 ;욕망
-IF ABL:B:1 <= 2
+IF ABL:B:욕망 <= 2
 	A = 1
-ELSEIF ABL:B:1 <= 4
+ELSEIF ABL:B:욕망 <= 4
 	A = 2
-ELSEIF ABL:B:1 <= 7
+ELSEIF ABL:B:욕망 <= 7
 	A = 3
-ELSEIF ABL:B:1 <= 10
+ELSEIF ABL:B:욕망 <= 10
 	A = 4
 ELSE
-	A = 4 + (ABL:B:1 - 10) / 4
+	A = 4 + (ABL:B:욕망 - 10) / 4
 ENDIF
 
 ;봉사정신
-IF ABL:B:7 <= 2
+IF ABL:B:봉사정신 <= 2
 	A += 1
-ELSEIF ABL:B:7 <= 4
+ELSEIF ABL:B:봉사정신 <= 4
 	A += 2
-ELSEIF ABL:B:7 <= 7
+ELSEIF ABL:B:봉사정신 <= 7
 	A += 3
-ELSEIF ABL:B:7 <= 10
+ELSEIF ABL:B:봉사정신 <= 10
 	A += 4
 ELSE
-	A += 4 + (ABL:B:7 - 10) / 3
+	A += 4 + (ABL:B:봉사정신 - 10) / 3
 ENDIF
 
 IF Y == 1
 ;フェラ
 	;정액중독
-	IF ABL:B:16 <= 1
+	IF ABL:B:정액중독 <= 1
 		A += 1
-	ELSEIF ABL:B:16 <= 2
+	ELSEIF ABL:B:정액중독 <= 2
 		A += 2
-	ELSEIF ABL:B:16 <= 5
+	ELSEIF ABL:B:정액중독 <= 5
 		A += 3
-	ELSEIF ABL:B:16 <= 7
+	ELSEIF ABL:B:정액중독 <= 7
 		A += 4
-	ELSEIF ABL:B:16 <= 10
+	ELSEIF ABL:B:정액중독 <= 10
 		A += 5
 	ELSE
-		A += 5 + (ABL:B:16 - 10) / 2
+		A += 5 + (ABL:B:정액중독 - 10) / 2
 	ENDIF
 ELSE
 ;커닐링구스
 	;とりあえず레즈중독
-	IF ABL:B:17 <= 1
+	IF ABL:B:레즈중독 <= 1
 		A += 1
-	ELSEIF ABL:B:17 <= 2
+	ELSEIF ABL:B:레즈중독 <= 2
 		A += 2
-	ELSEIF ABL:B:17 <= 4
+	ELSEIF ABL:B:레즈중독 <= 4
 		A += 3
-	ELSEIF ABL:B:17 <= 6
+	ELSEIF ABL:B:레즈중독 <= 6
 		A += 4
-	ELSEIF ABL:B:17 <= 8
+	ELSEIF ABL:B:레즈중독 <= 8
 		A += 5
-	ELSEIF ABL:B:17 <= 10
+	ELSEIF ABL:B:레즈중독 <= 10
 		A += 6
 	ELSE
-		A += 6 + (ABL:B:17 - 10) / 2
+		A += 6 + (ABL:B:레즈중독 - 10) / 2
 	ENDIF
 ENDIF
 
 ;예속
-SIF TALENT:B:8
+SIF TALENT:B:예속
 	A += 1
 ;악취둔감
-SIF TALENT:B:61
+SIF TALENT:B:악취둔감
 	A += 1
 ;악취민감
-SIF TALENT:B:62
+SIF TALENT:B:악취민감
 	A -= 1
 ;헌신적
-SIF TALENT:B:63
+SIF TALENT:B:헌신적
 	A += 1
 
 SIF A == 0
 	A = 1
 
 IF IS_LESBIAN(B,MASTER)
-	PRINTFORML %EXPNAME:40%+{A}
-	PRINTFORML %EXPNAME:40%(%CALLNAME:MASTER%)+{A}
-	EXP:B:40 += A
-	EXP:MASTER:40 += A
+	CALL ADDS_EXP("레즈경험", A, B)
+	CALL ADDS_EXP("레즈경험", A, MASTER)
 ELSEIF (IS_GAY(B,MASTER) && 0)
-	PRINTFORML %EXPNAME:41%+{A}
-	PRINTFORML %EXPNAME:41%(%CALLNAME:MASTER%)+{A}
-	EXP:B:41 += A
-	EXP:MASTER:41 += A
+	CALL ADDS_EXP("ＢＬ경험", A, B)
+	CALL ADDS_EXP("ＢＬ경험", A, MASTER)
 ENDIF
 
 IF Y == 1
 ;フェラ
-	EXP:MASTER:3 += A/2
-	PRINTFORML %EXPNAME:3%(%CALLNAME:MASTER%)＋{A/2}
+	CALL ADDS_EXP("사정경험", A/2, MASTER)
 
-	EXP:B:22 += A
-	EXP:B:20 += A/2
-	PRINTFORML %EXPNAME:22%＋{A}
-	PRINTFORML %EXPNAME:20%＋{A/2}
-;커닐링구스には特に無し
+	CALL ADDS_EXP("펠라경험", A, B)
+	CALL ADDS_EXP("정액경험", A/2, B)
+;クンニには特に無し
 ENDIF
 
-JUEL:B:5 += A*70
-JUEL:B:7 += A*30
-JUEL:B:8 += A*80
-PRINTFORML %PALAMNAME:5%의 구슬＋{A*70}
-PRINTFORML %PALAMNAME:7%의 구슬＋{A*30}
-PRINTFORMW %PALAMNAME:8%의 구슬＋{A*80}
+GOTJUEL:B:복종 += A*70
+GOTJUEL:B:굴복 += A*30
+GOTJUEL:B:습득 += A*80
+TFLAG:13 = 1
+CALL KOJO_MESSAGE_EVENT
+PRINTFORML ---%CALLNAME:B%---
+CALL SHOW_ADD_EXP(B, "단순")
+CALL SHOW_JUEL_CHECK, B
+PRINTFORML ---%CALLNAME:MASTER%---
+CALL SHOW_ADD_EXP(MASTER, "단순")
+CALL SHOW_JUEL_CHECK, MASTER
 DRAWLINE
 
 RETURN 0
@@ -1853,88 +1782,89 @@ RETURN 0
 ;朝食
 @SELF_MORNING_26
 DRAWLINE
-TFLAG:13 = 26
-CALL KOJO_MESSAGE_EVENT
 
 ;순종
-IF ABL:B:0 <= 6
+IF ABL:B:순종 <= 6
 	A = 1
-ELSEIF ABL:B:0 <= 8
+ELSEIF ABL:B:순종 <= 8
 	A = 2
-ELSEIF ABL:B:0 <= 10
+ELSEIF ABL:B:순종 <= 10
 	A = 3
 ELSE
-	A = 3 + (ABL:B:0 - 10) / 4
+	A = 3 + (ABL:B:순종 - 10) / 4
 ENDIF
 
 ;봉사정신
-IF ABL:B:7 <= 6
+IF ABL:B:봉사정신 <= 6
 	A += 2
-ELSEIF ABL:B:7 <= 8
+ELSEIF ABL:B:봉사정신 <= 8
 	A += 3
-ELSEIF ABL:B:7 <= 10
+ELSEIF ABL:B:봉사정신 <= 10
 	A += 4
 ELSE
-	A += 4 + (ABL:B:7 - 10) / 3
+	A += 4 + (ABL:B:봉사정신 - 10) / 3
 ENDIF
 
 ;요리기능
-IF ABL:B:12 <= 2
+IF ABL:B:요리기능 <= 2
 	A += 2
-ELSEIF ABL:B:12 <= 4
+ELSEIF ABL:B:요리기능 <= 4
 	A += 3
-ELSEIF ABL:B:12 <= 7
+ELSEIF ABL:B:요리기능 <= 7
 	A += 4
-ELSEIF ABL:B:12 <= 10
+ELSEIF ABL:B:요리기능 <= 10
 	A += 5
 ELSE
-	A += 5 + (ABL:B:12 - 10) / 2
+	A += 5 + (ABL:B:요리기능 - 10) / 2
 ENDIF
 
 ;낙관적または눈에띄고싶어함且つ가창기능2이상
-IF (TALENT:B:25 || TALENT:B:28) && ABL:B:14 >= 2
-	IF ABL:B:14 <= 4
+IF (TALENT:B:낙관적 || TALENT:B:눈에띄고싶어함) && ABL:B:가창기능 >= 2
+	IF ABL:B:가창기능 <= 4
 		A += 1
-	ELSEIF ABL:B:14 <= 7
+	ELSEIF ABL:B:가창기능 <= 7
 		A += 2
-	ELSEIF ABL:B:14 <= 10
+	ELSEIF ABL:B:가창기능 <= 10
 		A += 3
 	ELSE
-		A += 3 + (ABL:B:14 - 10) / 4
+		A += 3 + (ABL:B:가창기능 - 10) / 4
 	ENDIF
 ENDIF
 
 ;연모
-SIF TALENT:B:3
+SIF TALENT:B:연모
 	A += 1
 ;친애
-SIF TALENT:B:6
+SIF TALENT:B:친애
 	A += 2
 ;헌신적
-SIF TALENT:B:63
+SIF TALENT:B:헌신적
 	A += 1
 
 ;에이프런有り
-SIF ITEM:23 == 1
+SIF ITEM:에이프런 == 1
 	A += 1
 
 SIF A == 0
 	A = 1
 
-IF TALENT:B:3 || TALENT:B:6
-	EXP:B:23 += A/3
-	PRINTFORML %EXPNAME:23%＋{A/3}
+IF TALENT:B:연모 || TALENT:B:친애
+	CALL ADDS_EXP("애정경험", A/3, B)
+	CALL ADDS_EXP("애정경험", A/3, MASTER)
 ENDIF
-EXP:B:61 += A/3
-SIF (TALENT:B:25 || TALENT:B:28) && ABL:B:14 >= 2
-	EXP:B:64 += A/5
-JUEL:B:5 += A*60
-JUEL:B:8 += A*70
-PRINTFORML %EXPNAME:61%＋{A/3}
-SIF (TALENT:B:25 || TALENT:B:28) && ABL:B:14 >= 2
-	PRINTFORML %EXPNAME:64%＋{A/5}
-PRINTFORML %PALAMNAME:5%의 구슬＋{A*60}
-PRINTFORMW %PALAMNAME:8%의 구슬＋{A*70}
+CALL ADDS_EXP("가사경험", A/3, B)
+SIF (TALENT:B:낙관적 || TALENT:B:눈에띄고싶어함) && ABL:B:가창기능 >= 2
+	CALL ADDS_EXP("가창경험", A/5, B)
+GOTJUEL:B:복종 += A*60
+GOTJUEL:B:습득 += A*70
+TFLAG:13 = 26
+CALL KOJO_MESSAGE_EVENT
+PRINTFORML ---%CALLNAME:B%---
+CALL SHOW_ADD_EXP(B, "단순")
+CALL SHOW_JUEL_CHECK, B
+PRINTFORML ---%CALLNAME:MASTER%---
+CALL SHOW_ADD_EXP(MASTER, "단순")
+CALL SHOW_JUEL_CHECK, MASTER
 DRAWLINE
 
 RETURN 0
@@ -1943,55 +1873,58 @@ RETURN 0
 ;起きたら隣で寝てる
 @SELF_MORNING_27
 DRAWLINE
-TFLAG:13 = 27
-CALL KOJO_MESSAGE_EVENT
 
 ;순종
-IF ABL:B:0 <= 2
+IF ABL:B:순종 <= 2
 	A = 2
-ELSEIF ABL:B:0 <= 4
+ELSEIF ABL:B:순종 <= 4
 	A = 3
-ELSEIF ABL:B:0 <= 7
+ELSEIF ABL:B:순종 <= 7
 	A = 4
-ELSEIF ABL:B:0 <= 10
+ELSEIF ABL:B:순종 <= 10
 	A = 5
 ELSE
-	A = 5 + (ABL:B:0 - 10) / 3
+	A = 5 + (ABL:B:순종 - 10) / 3
 ENDIF
 
 ;봉사정신
-IF ABL:B:7 <= 2
+IF ABL:B:봉사정신 <= 2
 	A += 1
-ELSEIF ABL:B:7 <= 4
+ELSEIF ABL:B:봉사정신 <= 4
 	A += 2
-ELSEIF ABL:B:7 <= 7
+ELSEIF ABL:B:봉사정신 <= 7
 	A += 3
-ELSEIF ABL:B:7 <= 10
+ELSEIF ABL:B:봉사정신 <= 10
 	A += 4
 ELSE
-	A += 4 + (ABL:B:7 - 10) / 4
+	A += 4 + (ABL:B:봉사정신 - 10) / 4
 ENDIF
 
 ;친애
-SIF TALENT:B:6
+SIF TALENT:B:친애
 	A += 2
 ;유아／유아퇴행または유치
-SIF TALENT:B:150 || TALENT:B:151
+SIF TALENT:B:유아／유아퇴행 || TALENT:B:유치
 	A += 1
 ;아이
-SIF TALENT:B:175
+SIF TALENT:B:아이
 	A += 2
 
 SIF A == 0
 	A = 1
 
 ;とりあえず레즈경험、ＢＬ경험は無しで
-EXP:B:23 += A/4
-EXP:MASTER:23 += A/4
-JUEL:B:5 += A*60
-PRINTFORML %EXPNAME:23%＋{A/4}
-PRINTFORML %EXPNAME:23%(%CALLNAME:MASTER%)＋{A/4}
-PRINTFORML %PALAMNAME:5%의 구슬＋{A*60}
+CALL ADDS_EXP("애정경험", A/4, B)
+CALL ADDS_EXP("애정경험", A/4, MASTER)
+GOTJUEL:B:복종 += A*60
+TFLAG:13 = 27
+CALL KOJO_MESSAGE_EVENT
+PRINTFORML ---%CALLNAME:B%---
+CALL SHOW_ADD_EXP(B, "단순")
+CALL SHOW_JUEL_CHECK, B
+PRINTFORML ---%CALLNAME:MASTER%---
+CALL SHOW_ADD_EXP(MASTER, "단순")
+CALL SHOW_JUEL_CHECK, MASTER
 DRAWLINE
 
 RETURN 0
@@ -2000,79 +1933,77 @@ RETURN 0
 ;朝の발コキ
 @SELF_MORNING_28
 DRAWLINE
-TFLAG:13 = 28
-CALL KOJO_MESSAGE_EVENT
 
 ;욕망
-IF ABL:B:1 <= 2
+IF ABL:B:욕망 <= 2
 	A = 1
-ELSEIF ABL:B:1 <= 4
+ELSEIF ABL:B:욕망 <= 4
 	A = 2
-ELSEIF ABL:B:1 <= 7
+ELSEIF ABL:B:욕망 <= 7
 	A = 3
-ELSEIF ABL:B:1 <= 10
+ELSEIF ABL:B:욕망 <= 10
 	A = 4
 ELSE
-	A = 4 + (ABL:B:1 - 10) / 4
+	A = 4 + (ABL:B:욕망 - 10) / 4
 ENDIF
 
 ;봉사정신
-IF ABL:B:7 <= 6
+IF ABL:B:봉사정신 <= 6
 	A += 2
-ELSEIF ABL:B:7 <= 8
+ELSEIF ABL:B:봉사정신 <= 8
 	A += 3
-ELSEIF ABL:B:7 <= 10
+ELSEIF ABL:B:봉사정신 <= 10
 	A += 4
 ELSE
-	A += 4 + (ABL:B:7 - 10) / 4
+	A += 4 + (ABL:B:봉사정신 - 10) / 4
 ENDIF
 
 ;새드끼
-IF ABL:B:10 <= 1
+IF ABL:B:새드끼 <= 1
 	A += 2
-ELSEIF ABL:B:10 <= 3
+ELSEIF ABL:B:새드끼 <= 3
 	A += 3
-ELSEIF ABL:B:10 <= 6
+ELSEIF ABL:B:새드끼 <= 6
 	A += 4
-ELSEIF ABL:B:10 <= 10
+ELSEIF ABL:B:새드끼 <= 10
 	A += 5
 ELSE
-	A += 5 + (ABL:B:10 - 10) / 2
+	A += 5 + (ABL:B:새드끼 - 10) / 2
 ENDIF
 
 ;새드
-SIF TALENT:B:83
+SIF TALENT:B:새드
 	A += 1
 
 SIF A == 0
 	A = 1
 
 IF IS_LESBIAN(B,MASTER)
-	PRINTFORML %EXPNAME:40%+{A}
-	PRINTFORML %EXPNAME:40%(%CALLNAME:MASTER%)+{A}
-	EXP:B:40 += A
-	EXP:MASTER:40 += A
+	CALL ADDS_EXP("레즈경험", A, B)
+	CALL ADDS_EXP("레즈경험", A, MASTER)
 ELSEIF IS_GAY(B,MASTER)
-	PRINTFORML %EXPNAME:41%+{A}
-	PRINTFORML %EXPNAME:41%(%CALLNAME:MASTER%)+{A}
-	EXP:B:41 += A
-	EXP:MASTER:41 += A
+	CALL ADDS_EXP("ＢＬ경험", A, B)
+	CALL ADDS_EXP("ＢＬ경험", A, MASTER)
 ENDIF
 
-EXP:MASTER:3 += A/2
-PRINTFORML %EXPNAME:3%(%CALLNAME:MASTER%)＋{A/2}
+CALL ADDS_EXP("사정경험", A/2, MASTER)
 
-IF Y == 1
-	EXP:B:20 += A/2
-	PRINTFORML %EXPNAME:20%＋{A/2}
+IF HAVE_PENIS(MASTER)
+	CALL ADDS_EXP("정액경험", A/2, B)
 ENDIF
 
-EXP:B:32 += A/2
-JUEL:B:5 += A*30
-JUEL:B:8 += A*80
-PRINTFORML %EXPNAME:32%＋{A/2}
-PRINTFORML %PALAMNAME:5%의 구슬＋{A*30}
-PRINTFORMW %PALAMNAME:8%의 구슬＋{A*80}
+CALL ADDS_EXP("가학쾌락경험", A/2, B)
+CALL ADDS_EXP("고통쾌락경험", A/2, MASTER)
+GOTJUEL:B:복종 += A*30
+GOTJUEL:B:습득 += A*80
+TFLAG:13 = 28
+CALL KOJO_MESSAGE_EVENT
+PRINTFORML ---%CALLNAME:B%---
+CALL SHOW_ADD_EXP(B, "단순")
+CALL SHOW_JUEL_CHECK, B
+PRINTFORML ---%CALLNAME:MASTER%---
+CALL SHOW_ADD_EXP(MASTER, "단순")
+CALL SHOW_JUEL_CHECK, MASTER
 DRAWLINE
 
 RETURN 0
@@ -2080,59 +2011,60 @@ RETURN 0
 ;お寝小
 @SELF_MORNING_30
 DRAWLINE
-TFLAG:13 = 30
-CALL KOJO_MESSAGE_EVENT
 
 ;Ｃ감각
-IF ABL:B:3 <= 2
+IF ABL:B:Ｃ감각 <= 2
 	A = 2
-ELSEIF ABL:B:3 <= 4
+ELSEIF ABL:B:Ｃ감각 <= 4
 	A = 3
-ELSEIF ABL:B:3 <= 7
+ELSEIF ABL:B:Ｃ감각 <= 7
 	A = 4
-ELSEIF ABL:B:3 <= 10
+ELSEIF ABL:B:Ｃ감각 <= 10
 	A = 5
 ELSE
-	A = 5 + (ABL:B:3 - 10) / 3
+	A = 5 + (ABL:B:Ｃ감각 - 10) / 3
 ENDIF
 
 ;노출증
-IF ABL:B:8 <= 2
+IF ABL:B:노출증 <= 2
 	A += 2
-ELSEIF ABL:B:8 <= 4
+ELSEIF ABL:B:노출증 <= 4
 	A += 3
-ELSEIF ABL:B:8 <= 7
+ELSEIF ABL:B:노출증 <= 7
 	A += 4
-ELSEIF ABL:B:8 <= 10
+ELSEIF ABL:B:노출증 <= 10
 	A += 5
 ELSE
-	A += 5 + (ABL:B:8 - 10) / 3
+	A += 5 + (ABL:B:노출증 - 10) / 3
 ENDIF
 
 ;자위광
-SIF TALENT:B:74
+SIF TALENT:B:자위광
 	A += 2
 ;Ｃ민감
-SIF TALENT:B:102
+SIF TALENT:B:Ｃ민감
 	A += 1
 ;유아／유아퇴행または유치
-SIF TALENT:B:150 || TALENT:B:151
+SIF TALENT:B:유아／유아퇴행 || TALENT:B:유치
 	A += 2
 ;아이は驚異的な早さで成長するので、TALENT:아이はとりあえず대상外
 
 SIF A == 0
 	A = 1
 
-EXP:B:31 += A/4
-JUEL:B:0 += A*60
-JUEL:B:7 += A*50
-JUEL:B:9 += A*40
-JUEL:B:100 += A*20
-PRINTFORML %EXPNAME:31%＋{A/4}
-PRINTFORML %PALAMNAME:0%의 구슬＋{A*60}
-PRINTFORML %PALAMNAME:7%의 구슬＋{A*50}
-PRINTFORML %PALAMNAME:9%의 구슬＋{A*40}
-PRINTFORMW %PALAMNAME:100%의 구슬＋{A*20}
+CALL ADDS_EXP("방뇨경험", A/4, B)
+GOTJUEL:B:쾌Ｃ += A*60
+GOTJUEL:B:굴복 += A*50
+GOTJUEL:B:치정 += A*40
+GOTJUEL:B:부정 += A*20
+TFLAG:13 = 30
+CALL KOJO_MESSAGE_EVENT
+PRINTFORML ---%CALLNAME:B%---
+CALL SHOW_ADD_EXP(B, "단순")
+CALL SHOW_JUEL_CHECK, B
+PRINTFORML ---%CALLNAME:MASTER%---
+CALL SHOW_ADD_EXP(MASTER, "단순")
+CALL SHOW_JUEL_CHECK, MASTER
 DRAWLINE
 
 RETURN 0
@@ -2141,83 +2073,224 @@ RETURN 0
 ;朝の搾りたてミルク
 @SELF_MORNING_29
 DRAWLINE
-TFLAG:13 = 29
-CALL KOJO_MESSAGE_EVENT
 
 ;봉사정신
-IF ABL:B:7 <= 6
+IF ABL:B:봉사정신 <= 6
 	A = 2
-ELSEIF ABL:B:7 <= 8
+ELSEIF ABL:B:봉사정신 <= 8
 	A = 3
-ELSEIF ABL:B:7 <= 10
+ELSEIF ABL:B:봉사정신 <= 10
 	A = 4
 ELSE
 	A = 4 + (ABL:7 - 10) / 3
 ENDIF
 
 ;분유중독
-IF ABL:B:19 <= 1
+IF ABL:B:분유중독 <= 1
 	A += 1
-ELSEIF ABL:B:19 <= 3
+ELSEIF ABL:B:분유중독 <= 3
 	A += 2
-ELSEIF ABL:B:19 <= 6
+ELSEIF ABL:B:분유중독 <= 6
 	A += 3
-ELSEIF ABL:B:19 <= 10
+ELSEIF ABL:B:분유중독 <= 10
 	A += 4
 ELSE
-	A += 4 + (ABL:B:19 - 10) / 2
+	A += 4 + (ABL:B:분유중독 - 10) / 2
 ENDIF
 
 ;헌신적
-SIF TALENT:B:63
+SIF TALENT:B:헌신적
 	A += 1
 ;음유
-SIF TALENT:B:77
+SIF TALENT:B:음유
 	A += 2
 ;Ｂ민감
-SIF TALENT:B:108
+SIF TALENT:B:Ｂ민감
 	A += 1
 
 SIF A == 0
 	A = 1
 
-EXP:B:54 += A/2
-JUEL:B:3 += A*40
-JUEL:B:5 += A*60
-JUEL:B:9 += A*40
-PRINTFORML %EXPNAME:54%＋{A/2}
-PRINTFORML %PALAMNAME:3%의 구슬＋{A*40}
-PRINTFORML %PALAMNAME:5%의 구슬＋{A*60}
-PRINTFORMW %PALAMNAME:9%의 구슬＋{A*40}
+CALL ADDS_EXP("분유경험", A/2, B)
+GOTJUEL:B:쾌Ｂ += A*40
+GOTJUEL:B:복종 += A*60
+GOTJUEL:B:치정 += A*40
+TFLAG:13 = 29
+CALL KOJO_MESSAGE_EVENT
+PRINTFORML ---%CALLNAME:B%---
+CALL SHOW_ADD_EXP(B, "단순")
+CALL SHOW_JUEL_CHECK, B
+PRINTFORML ---%CALLNAME:MASTER%---
+CALL SHOW_ADD_EXP(MASTER, "단순")
+CALL SHOW_JUEL_CHECK, MASTER
+DRAWLINE
+
+;朝Vレイプ(対象C 相手V)
+@SELF_MORNING_68
+DRAWLINE
+
+;욕망
+IF ABL:B:욕망 <= 2
+	A = 1
+ELSEIF ABL:B:욕망 <= 4
+	A = 2
+ELSEIF ABL:B:욕망 <= 7
+	A = 3
+ELSEIF ABL:B:욕망 <= 10
+RETURN 0
+
+	A = 4
+ELSE
+	A = 4 + (ABL:B:욕망 - 10) / 4
+ENDIF
+
+;Ｖ감각
+IF ABL:MASTER:Ｖ감각 <= 2
+	A += 1
+ELSEIF ABL:MASTER:Ｖ감각 <= 4
+	A += 2
+ELSEIF ABL:MASTER:Ｖ감각 <= 7
+	A += 3
+ELSEIF ABL:MASTER:Ｖ감각 <= 10
+	A += 4
+ELSE
+	A += 4 + (ABL:MASTER:Ｖ감각 - 10) / 3
+ENDIF
+
+;Ｃ감각（対象）
+IF ABL:B:Ｃ감각 <= 2
+	A += 1
+ELSEIF ABL:B:Ｃ감각 <= 4
+	A += 2
+ELSEIF ABL:B:Ｃ감각 <= 7
+	A += 3
+ELSEIF ABL:B:Ｃ감각 <= 10
+	A += 4
+ELSE
+	A += 4 + (ABL:B:Ｃ감각 - 10) / 3
+ENDIF
+
+;정액중독
+IF ABL:MASTER:정액중독 <= 1
+	A += 1
+ELSEIF ABL:MASTER:정액중독 <= 2
+	A += 2
+ELSEIF ABL:MASTER:정액중독 <= 5
+	A += 3
+ELSEIF ABL:MASTER:정액중독 <= 7
+	A += 4
+ELSEIF ABL:MASTER:정액중독 <= 10
+	A += 5
+ELSE
+	A += 5 + (ABL:MASTER:정액중독 - 10) / 4
+ENDIF
+
+;섹스중독
+IF ABL:B:섹스중독 <= 1
+	A += 1
+ELSEIF ABL:B:섹스중독 <= 2
+	A += 2
+ELSEIF ABL:B:섹스중독 <= 4
+	A += 3
+ELSEIF ABL:B:섹스중독 <= 6
+	A += 4
+ELSEIF ABL:B:섹스중독 <= 8
+	A += 5
+ELSEIF ABL:B:섹스중독 <= 10
+	A += 6
+ELSE
+	A += 6 + (ABL:B:섹스중독 - 10) / 3
+ENDIF
+
+;娼婦
+SIF TALENT:B:창부
+	A += 1
+;セックス狂
+SIF TALENT:B:섹스광
+	A += 2
+SIF TALENT:MASTER:섹스광
+	A += 2
+;Ｖ敏感
+SIF TALENT:MASTER:Ｖ민감
+	A += 1
+;献身的
+SIF TALENT:B:헌신적
+	A += 1
+;獰猛もしくは狡猾
+SIF TALENT:B:영맹 || TALENT:B:교활
+	A += 1
+
+SIF A == 0
+	A = 1
+
+IF IS_LESBIAN(B,MASTER)
+	CALL ADDS_EXP("레즈경험", A, B)
+	CALL ADDS_EXP("레즈경험", A, MASTER)
+ELSEIF IS_GAY(B,MASTER)
+	CALL ADDS_EXP("ＢＬ경험", A, B)
+	CALL ADDS_EXP("ＢＬ경험", A, MASTER)
+ENDIF
+
+IF HAVE_PENIS(B)
+	CALL ADDS_EXP("사정경험", A/2, B)
+	IF CFLAG:MASTER:노예의질내사정에의한임신판정 > 1 && CFLAG:MASTER:자궁내피임결계 == 0
+		CALL ADDS_EXP("질사경험", A/2, MASTER)
+		CFLAG:MASTER:노예의질내사정에의한임신판정 += A/2
+	ENDIF
+ENDIF
+
+
+CALL ADDS_EXP("사정경험", A/2, B)
+CALL ADDS_EXP("Ｖ경험", A/2, MASTER)
+CALL ADDS_EXP("절정경험", A/4, B)
+CALL ADDS_EXP("절정경험", A/4, MASTER)
+;CALL ADDS_EXP("성교경험", A/2, B)
+CALL ADDS_EXP("성교경험", A/2, MASTER)
+CALL ADDS_EXP("정액경험", A/2, MASTER)
+GOTJUEL:B:쾌Ｃ += A*100
+GOTJUEL:B:복종 += A*60
+GOTJUEL:B:굴복 += A*40
+GOTJUEL:B:습득 += A*40
+TFLAG:13 = 68
+CALL KOJO_MESSAGE_EVENT
+PRINTFORML ---%CALLNAME:B%---
+CALL SHOW_ADD_EXP(B, "단순")
+CALL SHOW_JUEL_CHECK, B
+PRINTFORML ---%CALLNAME:MASTER%---
+CALL SHOW_ADD_EXP(MASTER, "단순")
+;CALL SHOW_JUEL_CHECK, MASTER
+
+
 DRAWLINE
 
 RETURN 0
-
 
 ;-------------------------------------------------
 ;조교後に起こる이벤트
 ;-------------------------------------------------
 @SELF_CHECK
-;強정신剤の反動
-IF TEQUIP:34 > 0 && (TFLAG:44>0 || TFLAG:45>0 || TFLAG:46>0 || TFLAG:47>0)
+;強精神剤の反動
+IF TEQUIP:강정신약 > 0 && (TFLAG:44>0 || TFLAG:45>0 || TFLAG:46>0 || TFLAG:47>0)
 	CALL SELF_CHECK3
 ;조교後레즈およびＢＬプレイ、조교後섹스どちらか一つ（強정신剤の反動が起こる時は무효）
 ELSE
 	IF ASSI >= 0
 		A = NO:ASSI
-		IF (TALENT:4 || TALENT:7) && GET_RELATION(TARGET, ASSI) > 100 && BASE:0 >= 500 && TEQUIP:34 <= 2 && (IS_LESBIAN(ASSI,TARGET) || IS_GAY(ASSI,TARGET))
+		IF (TALENT:음란 || TALENT:창부) && GET_RELATION(TARGET, ASSI) > 100 && BASE:0 >= 500 && TEQUIP:강정신약 <= 2 && (IS_LESBIAN(ASSI,TARGET) || IS_GAY(ASSI,TARGET))
 			CALL SELF_CHECK1
-		ELSEIF ((TALENT:3 || TALENT:6) || ((TALENT:4 || TALENT:5 || TALENT:7 || TALENT:8) && ABL:4 >= 3)) && TALENT:0 == 0 && TALENT:1 == 0 && BASE:0 >= 500 && TEQUIP:34 <= 2 && CFLAG:MASTER:11 && (HAVE_PENIS(MASTER)) && !IS_MALE(TARGET)
+		ELSEIF ((TALENT:연모 || TALENT:친애) || ((TALENT:음란 || TALENT:복종 || TALENT:창부 || TALENT:예속) && ABL:Ｖ감각 >= 3)) && TALENT:처녀 == 0 && TALENT:재생처녀 == 0 && BASE:체력 >= 500 && TEQUIP:강정신약 <= 2 && CFLAG:MASTER:사정남은수보존 && HAVE_PENIS(MASTER) && !IS_MALE(TARGET)
 			CALL SELF_CHECK2
 		ENDIF
-	ELSEIF ((TALENT:3 || TALENT:6) || ((TALENT:4 || TALENT:5 || TALENT:7 || TALENT:8) && ABL:4 >= 3)) && TALENT:0 == 0 && TALENT:1 == 0 && BASE:0 >= 500 && TEQUIP:34 <= 2 && CFLAG:MASTER:11 && (HAVE_PENIS(MASTER)) && !IS_MALE(TARGET)
+	ELSEIF ((TALENT:연모 || TALENT:친애) || ((TALENT:음란 || TALENT:복종 || TALENT:창부 || TALENT:예속) && ABL:Ｖ감각 >= 3)) && TALENT:처녀 == 0 && TALENT:재생처녀 == 0 && BASE:체력 >= 500 && TEQUIP:강정신약 <= 2 && CFLAG:MASTER:사정남은수보존 && HAVE_PENIS(MASTER) && !IS_MALE(TARGET)
 		CALL SELF_CHECK2
+	ELSEIF ((TALENT:연모 || TALENT:친애) || ((TALENT:음란 || TALENT:복종 || TALENT:창부 || TALENT:예속) && ABL:Ｃ감각 >= 3)) && TALENT:MASTER:처녀 == 0 && TALENT:MASTER:재생처녀 == 0 && BASE:체력 >= 500 && TEQUIP:강정신약 <= 2 && CFLAG:사정남은수보존 && HAVE_PENIS(TARGET) && !IS_MALE(MASTER)
+		CALL SELF_CHECK6
 	ENDIF
 
 	;조교後착유、조교後자위。どれか一つ
-	IF ABL:3 >= 4 && (ABL:19 > ABL:15) && TALENT:149 && !IS_MALE(TARGET)
+	IF ABL:Ｃ감각 >= 4 && (ABL:분유중독 > ABL:자위중독) && TALENT:모유체질 && !IS_MALE(TARGET)
 		CALL SELF_CHECK4
-	ELSEIF ABL:15
+	ELSEIF ABL:자위중독
 		CALL SELF_CHECK5
 	ENDIF
 ENDIF
@@ -2227,32 +2300,55 @@ ENDIF
 @SELF_CHECK1
 ;이벤트구상호출
 DRAWLINE
-TFLAG:13 = 4
-CALL KOJO_MESSAGE_EVENT
 
 ;레즈중독또는ＢＬ중독
 N = 1
-IF ABL:17 == 1 || ABL:21 == 1
-	N += 1
-ELSEIF ABL:17 == 2 || ABL:21 == 2
-	N += 2
-ELSEIF ABL:17 == 3 || ABL:21 == 3
-	N += 3
-ELSEIF ABL:17 == 4 || ABL:21 == 4
-	N += 5
-ELSEIF ABL:17 >= 5 || ABL:21 >= 5
-	N += 7
-ENDIF
-IF ABL:ASSI:17 == 1 || ABL:ASSI:21 == 1
-	N += 1
-ELSEIF ABL:ASSI:17 == 2 || ABL:ASSI:21 == 2
-	N += 2
-ELSEIF ABL:ASSI:17 == 3 || ABL:ASSI:21 == 3
-	N += 5
-ELSEIF ABL:ASSI:17 == 4 || ABL:ASSI:21 == 4
-	N += 8
-ELSEIF ABL:ASSI:17 >= 5 || ABL:ASSI:21 >= 5
-	N += 13
+IF IS_LESBIAN(TARGET,ASSI)
+	IF ABL:레즈중독 == 1
+		N += 1
+	ELSEIF ABL:레즈중독 == 2
+		N += 2
+	ELSEIF ABL:레즈중독 == 3
+		N += 3
+	ELSEIF ABL:레즈중독 == 4
+		N += 5
+	ELSEIF ABL:레즈중독 >= 5
+		N += 7
+	ENDIF
+	IF ABL:ASSI:레즈중독 == 1
+		N += 1
+	ELSEIF ABL:ASSI:레즈중독 == 2
+		N += 2
+	ELSEIF ABL:ASSI:레즈중독 == 3
+		N += 5
+	ELSEIF ABL:ASSI:레즈중독 == 4
+		N += 8
+	ELSEIF ABL:ASSI:레즈중독 >= 5
+		N += 13
+	ENDIF
+ELSEIF IS_GAY(TARGET,ASSI)
+	IF ABL:ＢＬ중독 == 1
+		N += 1
+	ELSEIF ABL:ＢＬ중독 == 2
+		N += 2
+	ELSEIF ABL:ＢＬ중독 == 3
+		N += 3
+	ELSEIF ABL:ＢＬ중독 == 4
+		N += 5
+	ELSEIF ABL:ＢＬ중독 >= 5
+		N += 7
+	ENDIF
+	IF ABL:ASSI:ＢＬ중독 == 1
+		N += 1
+	ELSEIF ABL:ASSI:ＢＬ중독 == 2
+		N += 2
+	ELSEIF ABL:ASSI:ＢＬ중독 == 3
+		N += 5
+	ELSEIF ABL:ASSI:ＢＬ중독 == 4
+		N += 8
+	ELSEIF ABL:ASSI:ＢＬ중독 >= 5
+		N += 13
+	ENDIF
 ENDIF
 
 ;愛称処理
@@ -2261,72 +2357,62 @@ N *= GET_RELATION(TARGET, ASSI)
 N /= 100
 
 ;바이
-SIF TALENT:81
+SIF TALENT:바이
 	M += 3
 
-IF IS_LESBIAN(TARGET,ASSI)
-	PRINTFORML %EXPNAME:40%＋{N*20}
-ELSEIF IS_GAY(TARGET,ASSI)
-	PRINTFORML %EXPNAME:41%＋{N*20}
-ENDIF
-SIF N*100*ABL:0/500 > 0
-	PRINTFORML %EXPNAME:2%＋{N*100*ABL:0/500}
-PRINTFORML %PALAMNAME:0%의 구슬＋{N*100*ABL:0}
-PRINTFORML %PALAMNAME:6%의 구슬＋{N*200}
 
 IF IS_LESBIAN(TARGET,ASSI)
-	EXP:40 += N*20
+	CALL ADDS_EXP("레즈경험", N*20, TARGET)
+	CALL ADDS_EXP("레즈경험", N*20, ASSI)
 ELSEIF IS_GAY(TARGET,ASSI)
-	EXP:41 += N*20
+	CALL ADDS_EXP("ＢＬ경험", N*20, TARGET)
+	CALL ADDS_EXP("ＢＬ경험", N*20, ASSI)
 ENDIF
-EXP:2 += N*100*ABL:0/500
-JUEL:0 += N*100*ABL:0
-JUEL:6 += N*200
+CALL ADDS_EXP("절정경험", N*100*ABL:순종/500, TARGET)
+GOTJUEL:쾌Ｃ += N*100*ABL:순종
+GOTJUEL:욕정 += N*200
 
-IF (TALENT:139 && TALENT:ASSI:139) || (IS_GAY(TARGET,ASSI))
-	PRINTFORML %EXPNAME:3%＋{N}
-	PRINTFORML %EXPNAME:20%＋{N}
-	PRINTFORML %EXPNAME:21%＋{N}
-	PRINTFORML %EXPNAME:22%＋{N}
-	PRINTFORML %PALAMNAME:6%의 구슬＋{N*100}
-	PRINTFORML %PALAMNAME:7%의 구슬＋{N*100}
-	PRINTFORML %PALAMNAME:9%의 구슬＋{N*100}
-	EXP:3 += N
-	EXP:20 += N
-	EXP:21 += N
-	EXP:22 += N
-	JUEL:6 += N*100
-	JUEL:7 += N*100
-	JUEL:9 += N*100
-ELSEIF TALENT:ASSI:139
-	PRINTFORML %EXPNAME:20%＋{N}
-	PRINTFORML %PALAMNAME:7%의 구슬＋{N*100*(ABL:2+ABL:7)}
-	PRINTFORML %PALAMNAME:8%의 구슬＋{N*100*(ABL:2+ABL:7)}
-	EXP:20 += N
-	JUEL:7 += N*100*(ABL:2+ABL:7)
-	JUEL:8 += N*100*(ABL:2+ABL:7)
-ELSEIF TALENT:139
-	PRINTFORML %EXPNAME:3%＋{N}
-	PRINTFORML %PALAMNAME:9%의 구슬＋{N*100}
-	EXP:3 += N
-	JUEL:9 += N*100
+IF HAVE_PENIS(TARGET) && HAVE_PENIS(ASSI)
+	CALL ADDS_EXP("사정경험", N, TARGET)
+	CALL ADDS_EXP("정액경험", N, TARGET)
+	CALL ADDS_EXP("봉사쾌락경험", N, TARGET)
+	CALL ADDS_EXP("펠라경험", N, TARGET)
+	CALL ADDS_EXP("사정경험", N, ASSI)
+	CALL ADDS_EXP("정액경험", N, ASSI)
+	CALL ADDS_EXP("봉사쾌락경험", N, ASSI)
+	CALL ADDS_EXP("펠라경험", N, ASSI)
+	GOTJUEL:욕정 += N*100
+	GOTJUEL:굴복 += N*100
+	GOTJUEL:치정 += N*100
+ELSEIF HAVE_PENIS(ASSI)
+	CALL ADDS_EXP("정액경험", N, TARGET)
+	CALL ADDS_EXP("사정경험", N, ASSI)
+	GOTJUEL:굴복 += N*100*(ABL:기교+ABL:봉사정신)
+	GOTJUEL:습득 += N*100*(ABL:기교+ABL:봉사정신)
+ELSEIF HAVE_PENIS(TARGET)
+	CALL ADDS_EXP("정액경험", N, ASSI)
+	CALL ADDS_EXP("사정경험", N, TARGET)
+	GOTJUEL:치정 += N*100
 ELSE
-	PRINTFORML %PALAMNAME:7%의 구슬＋{N*50*(ABL:2+ABL:7)}
-	PRINTFORML %PALAMNAME:8%의 구슬＋{N*50*(ABL:2+ABL:7)}
-	JUEL:7 += N*50*(ABL:2+ABL:7)
-	JUEL:8 += N*50*(ABL:2+ABL:7)
+	GOTJUEL:굴복 += N*50*(ABL:기교+ABL:봉사정신)
+	GOTJUEL:습득 += N*50*(ABL:기교+ABL:봉사정신)
 ENDIF
 
-IF TALENT:ASSI:83
-	PRINTFORML %EXPNAME:30%＋{N}
-	PRINTFORML %CALLNAME:ASSI%の%EXPNAME:32%＋{N}
-	IF N*100*ABL:8 > 0
-		PRINTFORML %PALAMNAME:10%의 구슬＋{N*100*ABL:9}
-		JUEL:10 += N*100*ABL:9
+IF TALENT:ASSI:새드
+	IF N*100*ABL:노출증 > 0
+		GOTJUEL:고통 += N*100*(1 + ABL:마조끼)
 	ENDIF
-		EXP:30 += N
-		EXP:ASSI:32 += N
+	CALL ADDS_EXP("고통쾌락경험", N, TARGET)
+	CALL ADDS_EXP("가학쾌락경험", N, ASSI)
 ENDIF
+TFLAG:13 = 4
+CALL KOJO_MESSAGE_EVENT
+PRINTFORML ---%CALLNAME:TARGET%---
+CALL SHOW_ADD_EXP(TARGET, "단순")
+CALL SHOW_JUEL_CHECK, TARGET
+PRINTFORML ---%CALLNAME:ASSI%---
+CALL SHOW_ADD_EXP(ASSI, "단순")
+;CALL SHOW_JUEL_CHECK, ASSI
 
 WAIT
 DRAWLINE
@@ -2335,67 +2421,63 @@ DRAWLINE
 @SELF_CHECK2
 ;이벤트구상호출
 DRAWLINE
-TFLAG:13 = 5
-CALL KOJO_MESSAGE_EVENT
 
 S = 1
 ;V감각
-IF ABL:4 == 1
+IF ABL:Ｖ감각 == 1
 	S += 1
-ELSEIF ABL:4 == 2
+ELSEIF ABL:Ｖ감각 == 2
 	S += 2
-ELSEIF ABL:4 == 3
+ELSEIF ABL:Ｖ감각 == 3
 	S += 3
-ELSEIF ABL:4 == 4
+ELSEIF ABL:Ｖ감각 == 4
 	S += 4
-ELSEIF ABL:4 >= 5
+ELSEIF ABL:Ｖ감각 >= 5
 	S += 5
 ENDIF
 
 ;욕망と봉사정신によるボーナス
-IF ABL:1 >= 5 && ABL:7 >= 5 && PALAM:5 >= PALAMLV:5
+IF ABL:욕망 >= 5 && ABL:봉사정신 >= 5 && PALAM:5 >= PALAMLV:5
 	S += 3
-ELSEIF ABL:1 >= 4 && ABL:7 >= 4 && PALAM:5 >= PALAMLV:4
+ELSEIF ABL:욕망 >= 4 && ABL:봉사정신 >= 4 && PALAM:5 >= PALAMLV:4
 	S += 2
-ELSEIF ABL:1 >= 3 && ABL:7 >= 3 && PALAM:5 >= PALAMLV:3
+ELSEIF ABL:욕망 >= 3 && ABL:봉사정신 >= 3 && PALAM:5 >= PALAMLV:3
 	S += 1
 ENDIF
 
-;섹스광い
-SIF TALENT:75
+;섹스광
+SIF TALENT:섹스광
 	S += 3
 
 ;主人の사정제한
-SIF S > CFLAG:MASTER:11
-	S = CFLAG:MASTER:11
+SIF S > CFLAG:MASTER:사정남은수보존
+	S = CFLAG:MASTER:사정남은수보존
 
-PRINTFORML %EXPNAME:0%＋{S}
-PRINTFORML %EXPNAME:4%＋{S}
-SIF CFLAG:101 > 0 && CFLAG:108 == 0
-	PRINTFORML %EXPNAME:5%＋{S/2}
-PRINTFORML %EXPNAME:20%＋{S/2}
-PRINTFORML %PALAMNAME:1%의 구슬＋{S*400}
-PRINTFORML %PALAMNAME:5%의 구슬＋{S*200}
-PRINTFORMW %PALAMNAME:6%의 구슬＋{S*400}
-EXP:0 += S
-EXP:4 += S
-IF CFLAG:101 > 0 && CFLAG:108 == 0
-	EXP:5 += S/2
-	CFLAG:101 += S/2
+CALL ADDS_EXP("Ｖ경험", S, TARGET)
+CALL ADDS_EXP("정액경험", S, TARGET)
+CALL ADDS_EXP("성교경험", S, TARGET)
+IF CFLAG:주인의질내사정에의한임신판정 > 0 && CFLAG:자궁내피임결계 == 0
+	CALL ADDS_EXP("질사경험", S/2, TARGET)
+	CFLAG:주인의질내사정에의한임신판정 += S/2
 ENDIF
-EXP:20 += S/2
-JUEL:1 += S*400
-JUEL:5 += S*200
-JUEL:6 += S*400
-CFLAG:MASTER:11 -= S
+GOTJUEL:쾌Ｖ += S*400
+GOTJUEL:복종 += S*200
+GOTJUEL:욕정 += S*400
+CFLAG:MASTER:사정남은수보존 -= S
+TFLAG:13 = 5
+CALL KOJO_MESSAGE_EVENT
+PRINTFORML ---%CALLNAME:TARGET%---
+CALL SHOW_ADD_EXP(TARGET, "단순")
+CALL SHOW_JUEL_CHECK, TARGET
+;PRINTFORML ---%CALLNAME:MASTER%---
+;CALL SHOW_ADD_EXP(MASTER, "단순")
+;CALL SHOW_JUEL_CHECK, MASTER
 WAIT
 
 
 @SELF_CHECK3
 ;이벤트구상호출
 DRAWLINE
-TFLAG:13 = 6
-CALL KOJO_MESSAGE_EVENT
 
 ;강정신약による절정체크
 D = 0
@@ -2415,143 +2497,194 @@ V = D * TFLAG:45
 A = D * TFLAG:46
 B = D * TFLAG:47
 
-PRINTFORML %EXPNAME:2%＋{TFLAG:44 + TFLAG:45 + TFLAG:46 + TFLAG:47}
-SIF C > 0
-	PRINTFORML %PALAMNAME:0%의 구슬＋{C*1000}
-SIF V > 0
-	PRINTFORML %PALAMNAME:1%의 구슬＋{V*1000}
-SIF A > 0
-	PRINTFORMW %PALAMNAME:2%의 구슬＋{A*1000}
-SIF B > 0
-	PRINTFORML %PALAMNAME:3%의 구슬＋{B*1000}
-PRINTL 
-EXP:2 += TFLAG:44 + TFLAG:45 + TFLAG:46 + TFLAG:47
-JUEL:0 += C*1000
-JUEL:1 += V*1000
-JUEL:2 += A*1000
-JUEL:3 += B*1000
+CALL ADDS_EXP("절정경험", TFLAG:44 + TFLAG:45 + TFLAG:46 + TFLAG:47, TARGET)
+GOTJUEL:쾌Ｃ += C*1000
+GOTJUEL:쾌Ｖ += V*1000
+GOTJUEL:쾌Ａ += A*1000
+GOTJUEL:쾌Ｂ += B*1000
 
 ;리셋
 TFLAG:44 = 0
 TFLAG:45 = 0
 TFLAG:46 = 0
 TFLAG:47 = 0
-TEQUIP:34 = 0
+TEQUIP:강정신약 = 0
 
 ;副作用で체력が500に
-SIF BASE:0 > 500
-	BASE:0 = 500
+SIF BASE:체력 > 500
+	BASE:체력 = 500
+TFLAG:13 = 6
+CALL KOJO_MESSAGE_EVENT
+PRINTFORML ---%CALLNAME:TARGET%---
+CALL SHOW_ADD_EXP(TARGET, "단순")
+CALL SHOW_JUEL_CHECK, TARGET
 WAIT
 
 
 @SELF_CHECK4
 ;이벤트구상호출
 DRAWLINE
-TFLAG:13 = 7
-CALL KOJO_MESSAGE_EVENT
 
 
 ;분유중독による착유체크
 ;남자はだめ。모유체질、분유중독、一定능력、체력が필요
 M = 1
 
-IF ABL:19 == 1
+IF ABL:분유중독 == 1
 	M += 1
-ELSEIF ABL:19 == 2
+ELSEIF ABL:분유중독 == 2
 	M += 2
-ELSEIF ABL:19 == 3
+ELSEIF ABL:분유중독 == 3
 	M += 3
-ELSEIF ABL:19 == 4
+ELSEIF ABL:분유중독 == 4
 	M += 5
-ELSEIF ABL:19 >= 5
+ELSEIF ABL:분유중독 >= 5
 	M += 7
 ENDIF
 ;욕망と봉사정신によるボーナス
-IF ABL:1 >= 5 && ABL:7 >= 5 && PALAM:5 >= PALAMLV:5
+IF ABL:욕망 >= 5 && ABL:봉사정신 >= 5 && PALAM:5 >= PALAMLV:5
 	M += 3
-ELSEIF ABL:1 >= 4 && ABL:7 >= 4 && PALAM:5 >= PALAMLV:4
+ELSEIF ABL:욕망 >= 4 && ABL:봉사정신 >= 4 && PALAM:5 >= PALAMLV:4
 	M += 2
-ELSEIF ABL:1 >= 3 && ABL:7 >= 3 && PALAM:5 >= PALAMLV:3
+ELSEIF ABL:욕망 >= 3 && ABL:봉사정신 >= 3 && PALAM:5 >= PALAMLV:3
 	M += 1
 ENDIF
 ;자위하기쉬움
-SIF TALENT:60
+SIF TALENT:자위하기쉬움
 	M += 2
 ;음유
-SIF TALENT:77
+SIF TALENT:음유
 	M += 3
 
 
-PRINTFORML %EXPNAME:54%＋{M}
-PRINTFORMW %PALAMNAME:3%의 구슬＋{M*300}
-PRINTFORML %PALAMNAME:6%의 구슬＋{M*50}
-PRINTFORML %PALAMNAME:8%의 구슬＋{M*20}
-EXP:54 += M
-JUEL:3 += M*300
-JUEL:6 += M*50
-JUEL:8 += M*20
-IF ABL:0+ABL:8+ABL:9 >= 10
-	PRINTFORML %PALAMNAME:9%의 구슬＋{M*150}
-	JUEL:9 += M*150
+CALL ADDS_EXP("분유경험", M, TARGET)
+GOTJUEL:쾌Ｂ += M*300
+GOTJUEL:욕정 += M*50
+GOTJUEL:습득 += M*20
+IF ABL:순종+ABL:노출증+ABL:마조끼 >= 10
+	GOTJUEL:치정 += M*150
 ENDIF
+TFLAG:13 = 7
+CALL KOJO_MESSAGE_EVENT
+PRINTFORML ---%CALLNAME:TARGET%---
+CALL SHOW_ADD_EXP(TARGET, "단순")
+CALL SHOW_JUEL_CHECK, TARGET
+;PRINTFORML ---%CALLNAME:MASTER%---
+;CALL SHOW_ADD_EXP(MASTER, "단순")
+;CALL SHOW_JUEL_CHECK, MASTER
 WAIT
 
 
 @SELF_CHECK5
 ;이벤트구상호출
 DRAWLINE
-TFLAG:13 = 8
-CALL KOJO_MESSAGE_EVENT
 
 
 ;자위중독による자위체크
 A = 1
 ;자위중독を見る
-IF ABL:15 == 1
+IF ABL:자위중독 == 1
 	A += 1
-ELSEIF ABL:15 == 2
+ELSEIF ABL:자위중독 == 2
 	A += 2
-ELSEIF ABL:15 == 3
+ELSEIF ABL:자위중독 == 3
 	A += 3
-ELSEIF ABL:15 == 4
+ELSEIF ABL:자위중독 == 4
 	A += 5
-ELSEIF ABL:15 >= 5
+ELSEIF ABL:자위중독 >= 5
 	A += 7
 ENDIF
 
 ;욕망とＣ감각によるボーナス
-IF ABL:1 >= 5 && ABL:3 >= 5 && PALAM:5 >= PALAMLV:5
+IF ABL:욕망 >= 5 && ABL:Ｃ감각 >= 5 && PALAM:5 >= PALAMLV:5
 	A += 3
-ELSEIF ABL:1 >= 4 && ABL:3 >= 4 && PALAM:5 >= PALAMLV:4
+ELSEIF ABL:욕망 >= 4 && ABL:Ｃ감각 >= 4 && PALAM:5 >= PALAMLV:4
 	A += 2
-ELSEIF ABL:1 >= 3 && ABL:3 >= 3 && PALAM:5 >= PALAMLV:3
+ELSEIF ABL:욕망 >= 3 && ABL:Ｃ감각 >= 3 && PALAM:5 >= PALAMLV:3
 	A += 1
 ENDIF
 
 ;자위하기쉬움
-SIF TALENT:60
+SIF TALENT:자위하기쉬움
 	A += 2
 ;자위광
-SIF TALENT:74
+SIF TALENT:자위광
 	A += 3
 
 ;조수が고무
 IF ASSI >= 0
-	SIF TALENT:ASSI:136
+	SIF TALENT:ASSI:고무
 		A += 1
 ENDIF
 
-PRINTFORML %EXPNAME:10%＋{A}
-PRINTFORML %PALAMNAME:0%의 구슬＋{A*500}
-PRINTFORML %PALAMNAME:5%의 구슬＋{A*100}
-PRINTFORMW %PALAMNAME:6%의 구슬＋{A*250}
-EXP:10 += A
-JUEL:0 += A*500
-JUEL:5 += A*100
-JUEL:6 += A*250
-IF ABL:0+ABL:8+ABL:9 >= 10 && TIME == 0
-	PRINTFORML %PALAMNAME:9%의 구슬＋{A*200}
-	JUEL:9 += A*200
+CALL ADDS_EXP("자위경험", A, TARGET)
+GOTJUEL:쾌Ｃ += A*500
+GOTJUEL:복종 += A*100
+GOTJUEL:욕정 += A*250
+IF ABL:순종+ABL:노출증+ABL:마조끼 >= 10 && TIME == 0
+	GOTJUEL:치정 += A*200
 ENDIF
+TFLAG:13 = 8
+CALL KOJO_MESSAGE_EVENT
+PRINTFORML ---%CALLNAME:TARGET%---
+CALL SHOW_ADD_EXP(TARGET, "단순")
+CALL SHOW_JUEL_CHECK, TARGET
+WAIT
+
+;調教後セックス(逆転)
+@SELF_CHECK6
+;イベント口上呼び出し
+DRAWLINE
+
+S = 1
+;V感覚
+IF ABL:Ｃ감각 == 1
+	S += 1
+ELSEIF ABL:Ｃ감각 == 2
+	S += 2
+ELSEIF ABL:Ｃ감각 == 3
+	S += 3
+ELSEIF ABL:Ｃ감각 == 4
+	S += 4
+ELSEIF ABL:Ｃ감각 >= 5
+	S += 5
+ENDIF
+
+;욕망と봉사정신によるボーナス
+IF ABL:욕망 >= 5 && ABL:봉사정신 >= 5 && PALAM:5 >= PALAMLV:5
+	S += 3
+ELSEIF ABL:욕망 >= 4 && ABL:봉사정신 >= 4 && PALAM:5 >= PALAMLV:4
+	S += 2
+ELSEIF ABL:욕망 >= 3 && ABL:봉사정신 >= 3 && PALAM:5 >= PALAMLV:3
+	S += 1
+ENDIF
+
+;自慰狂い
+SIF TALENT:자위광
+	S += 3
+
+;主人の射精制限
+SIF S > CFLAG:MASTER:사정남은수보존
+	S = CFLAG:MASTER:사정남은수보존
+
+;CALL ADDS_EXP("Ｃ経験", S, TARGET)
+CALL ADDS_EXP("사정경험", S, TARGET)
+;CALL ADDS_EXP("성교경험", S, MASTER)
+IF CFLAG:MASTER:노예의질내사정에의한임신판정 > 0 && CFLAG:자궁내피임결계 == 0
+	;CALL ADDS_EXP("질사경험", S/2, MASTER)
+	CFLAG:MASTER:노예의질내사정에의한임신판정 += S/2
+ENDIF
+GOTJUEL:쾌Ｃ += S*400
+GOTJUEL:복종 += S*200
+GOTJUEL:욕정 += S*400
+CFLAG:MASTER:사정남은수보존 -= S
+TFLAG:13 = 99
+CALL KOJO_MESSAGE_EVENT
+PRINTFORML ---%CALLNAME:TARGET%---
+CALL SHOW_ADD_EXP(TARGET, "단순")
+CALL SHOW_JUEL_CHECK, TARGET
+;PRINTFORML ---%CALLNAME:MASTER%---
+;CALL SHOW_ADD_EXP(MASTER, "단순")
+;CALL SHOW_JUEL_CHECK, MASTER
 WAIT
 
