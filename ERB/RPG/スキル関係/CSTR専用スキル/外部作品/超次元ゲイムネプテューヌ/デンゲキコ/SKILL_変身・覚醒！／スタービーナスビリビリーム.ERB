@@ -260,6 +260,37 @@ ELSE
 ENDIF
 RETURN 0
 
+;====================================================
+;戦闘終了時の処理
+;====================================================
+@SKILL_BATTLE_END_変身・覚醒！／スタービーナスビリビリーム,ARG
+
+CALL AUTO_PU_SKILL_変身・覚醒！／スタービーナスビリビリーム,ARG,"溜め攻撃処理",,0
+
+;====================================================
+;ターン終了時の処理
+;====================================================
+@SKILL_TURNEND_変身・覚醒！／スタービーナスビリビリーム,ARG
+#DIM SKILL_NUM
+
+SIF ARG < 0 || GET_STATE(CFLAG:ARG:상태이상) == "DYING"
+	RETURN
+SKILL_NUM = PU_SKILLNUM_GET(ARG,"変身・覚醒！／スタービーナスビリビリーム")
+;PRINTW デンビリキャッチしました
+;変身中の場合、Fゲージを減らす
+IF SKILLGAGE_H_GET(ARG,SKILL_NUM) > 0
+	CALL SKILLGAGE_F_ADD,ARG,SKILL_NUM,-10
+	IF SKILLGAGE_F_GET(ARG,SKILL_NUM) < 1
+		CALL SKILLGAGE_F_SET,ARG,SKILL_NUM,0
+		PRINTFORMW %CALLNAME:ARG%의 변신 상태가 종료되어 버렸다……
+		;変身状態終了時の口上
+		SETCOLOR CFLAG:ARG:PT플래그 == 0 ? 0xff0033 # 0x33ffcc
+		CALL SKILLGAGE_H_SET,ARG,SKILL_NUM,103
+		CALL 구상호출 , "BATTLE_MESSAGE" , ARG , ARG
+		RESETCOLOR
+		CALL SKILLGAGE_H_SET,ARG,SKILL_NUM,0
+	ENDIF
+ENDIF
 
 
 ;====================================================
@@ -652,22 +683,22 @@ SELECTCASE ARGS
 				;参照
 				RETURN S_CHARGE
 		ENDSELECT
-	CASE "ターン終了時処理"
-		;変身中の場合、Fゲージを減らす
-		IF SKILLGAGE_H_GET(L_USER,SKILL_NUM) > 0
-			CALL SKILLGAGE_F_ADD,L_USER,SKILL_NUM,-10
-			IF SKILLGAGE_F_GET(L_USER,SKILL_NUM) < 1
-				CALL SKILLGAGE_F_SET,L_USER,SKILL_NUM,0
-				PRINTFORMW %CALLNAME:L_USER%의 변신 상태가 종료되어 버렸다……
-				;変身状態終了時の口上
-				SETCOLOR CFLAG:ARG:PT플래그 == 0 ? 0xff0033 # 0x33ffcc
-				CALL SKILLGAGE_H_SET,L_USER,SKILL_NUM,103
-				CALL 구상호출 , "BATTLE_MESSAGE" , L_USER , L_USER
-				RESETCOLOR
-				CALL SKILLGAGE_H_SET,ARG,SKILL_NUM,0
-			ENDIF
-		ENDIF
-	CASE "戦闘終了時処理"
-		S_CHARGE = 0
+	;CASE "ターン終了時処理"
+	;	;変身中の場合、Fゲージを減らす
+	;	IF SKILLGAGE_H_GET(L_USER,SKILL_NUM) > 0
+	;		CALL SKILLGAGE_F_ADD,L_USER,SKILL_NUM,-10
+	;		IF SKILLGAGE_F_GET(L_USER,SKILL_NUM) < 1
+	;			CALL SKILLGAGE_F_SET,L_USER,SKILL_NUM,0
+	;			PRINTFORMW %CALLNAME:L_USER%의 변신 상태가 종료되어 버렸다……
+	;			;変身状態終了時の口上
+	;			SETCOLOR CFLAG:ARG:PT플래그 == 0 ? 0xff0033 # 0x33ffcc
+	;			CALL SKILLGAGE_H_SET,L_USER,SKILL_NUM,103
+	;			CALL 구상호출 , "BATTLE_MESSAGE" , L_USER , L_USER
+	;			RESETCOLOR
+	;			CALL SKILLGAGE_H_SET,ARG,SKILL_NUM,0
+	;		ENDIF
+	;	ENDIF
+	;CASE "戦闘終了時処理"
+	;	S_CHARGE = 0
 ENDSELECT
 RETURN 0
