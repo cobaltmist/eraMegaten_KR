@@ -41,3 +41,55 @@ RETURN 0
 @계승부위_2411,ARG
 RETURN 1
 
+;ＭＰ自動回復処理における優先度 高いほど優先され、低いと無効化される
+@SKILL_MP_REGEN_RANK_2411,ARG
+RETURN 5
+
+;戦闘開始時に行う処理
+@SKILL_BATTLE_START_2411,ARG
+;どうせやる事一緒だから戦闘終了時の処理呼び出す
+CALL SKILL_TURNEND_2411,ARG
+
+;ターン終了時に行う処理
+@SKILL_TURNEND_2411,ARG
+SIF CPOS(ARG) > 0 && CFLAG:ARG:회복불능플래그 < 1 && CFLAG:ARG:상태이상 != GET_STATE_NUM("DYING") && CFLAG:ARG:상태이상 != GET_STATE_NUM("BRAND") && BASE:ARG:ＨＰ < MAXBASE:ARG:ＨＰ
+	CALL VAR_REGEN,ARG,2411,"ＭＰ",5,MAXBASE:ARG:LV * 50
+;#DIM L_MAG_TARG
+;#DIM MAG_COST
+;#DIMS L_MAG_TARGS
+;;L_MAG_TARG		ＭＡＧの消費先
+;;L_MAG_TARGS	ＭＡＧの消費先の文字列　MAG主人消費 or MAG自己消費 or （空白）
+;;MAG_COST	ＭＡＧ消費量
+;;戦闘参加中であり、回復フラグ、死亡、烙印状態だと自然回復しない
+;;現ＭＰが最大ＭＰ未満で、気功(中)と気功(大)を持たない場合に実行
+;IF CPOS(ARG) > 0 && CFLAG:ARG:回復不能フラグ < 1 && CFLAG:ARG:ステート != GET_STATE_NUM("DYING") && CFLAG:ARG:ステート != GET_STATE_NUM("BRAND") && BASE:ARG:ＭＰ < MAXBASE:ARG:ＭＰ && !HAVE_SKILL(ARG,2412) && !HAVE_SKILL(ARG,2413)
+;	L_MAG_TARG = -1
+;	VARSET L_MAG_TARGS,""
+;	;コストを代入
+;	MAG_COST = MAXBASE:ARG:LV * 50
+;	;パーティキャラなら分岐
+;	IF CFLAG:ARG:PTフラグ > 0
+;		;MAG主人消費の設定ならL_MAG_TARGにMASTERが、違うならARGが代入される
+;		L_MAG_TARG = (CFLAG:ARG:ＭＡＧ自己消費 == 0 && ABL:ARG:種族 != 0 && ABL:ARG:種族 != 45) ? MASTER # ARG
+;		;MAG主人消費であり、MASTERのＭＡＧが消費ＭＡＧ未満ならばL_MAG_TARGをARGに変更
+;		SIF L_MAG_TARG == MASTER && (BASE:MASTER:ＭＡＧ < MAG_COST)
+;			L_MAG_TARG = ARG
+;		;ＭＡＧ不足ならこの時点で終了
+;		SIF BASE:L_MAG_TARG:ＭＡＧ < MAG_COST
+;			RETURN 0
+;		;L_MAG_TARGの値に応じてL_MAG_TARGSに文字列を入れる
+;		L_MAG_TARGS = \@ L_MAG_TARG == MASTER ? MAG自己消費 # MAG主人消費 \@
+;		;IF L_MAG_TARG == ARG
+;		;	L_MAG_TARGS = MAG自己消費
+;		;ELSE
+;		;	L_MAG_TARGS = MAG主人消費
+;		;ENDIF
+;		;このタイミングでＭＡＧを消費
+;		CALL CONTROL_MAG,L_MAG_TARG,-MAG_COST
+;	ENDIF
+;	PRINTFORML 気功(小) %CALLNAME:ARG% >>>>> { 5 }回復 %L_MAG_TARGS%
+;	;SIF CFLAG:ARG:PTフラグ > 0
+;	;	PRINTFORM (MAG\@ L_MAG_TARG == MASTER ? 主人 # 自己\@消費)
+;	;PRINTL
+;	CALL VAR_MP,ARG,5,3
+;ENDIF
