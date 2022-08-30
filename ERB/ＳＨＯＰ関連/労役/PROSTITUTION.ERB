@@ -1,7 +1,7 @@
 ﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
 ;
 ;	Module		:PROSTITUTION.ERB
-;	Facility	:창관(宿屋)での노역に関する関数群です。
+;	Facility	:娼館(宿屋)での労役に関する関数群です。
 ;
 ;	Licence		:ライセンスフリー
 ;
@@ -9,18 +9,20 @@
 ;
 ;	Edit	Date			Author					Reason
 ;	001		20XX/XX/XX		----					新規作成
-;	002		2011/03/21		黒天					노역가능なキャラを一括で노역に従事させる選択肢を추가
-;	003		2011/04/13		黒天					二人미만(一括選択肢비표시)상태でも直接입력することで
-;													一括選択処理が実行できていた問題を수정
-;	005		2011/09/08		黒天					처녀(재생처녀)상실処理を関数を呼ぶように수정
-;	006		2012/05/17		osoji					아야章加筆、色변경
-;	007		2013/11/24		ひみつ					리스트표시수설정
-;	008		2017/06/23		kuni					キャラ표시でINPUT_CHARA_LISTを사용するように변경
-;	009		2020/05/19		がめら					NTR好感度処理をCDFLAGに변경
+;	002		2011/03/21		黒天					労役可能なキャラを一括で労役に従事させる選択肢を追加
+;	003		2011/04/13		黒天					二人未満(一括選択肢非表示)状態でも直接入力することで
+;													一括選択処理が実行できていた問題を修正
+;	005		2011/09/08		黒天					処女(再生処女)喪失処理を関数を呼ぶように修正
+;	006		2012/05/17		osoji					文章加筆、色変更
+;	007		2013/11/24		ひみつ					リスト表示数設定
+;	008		2017/06/23		kuni					キャラ表示でINPUT_CHARA_LISTを使用するように変更
+;	009		2020/05/19		がめら					NTR好感度処理をCDFLAGに変更
 ;	010		2020/06/24		名無し					尻素質が収益に影響するように
 ;	011		2020/09/22		JK好き					娼館で処女喪失した際の異常経験取得処理が正しく行われていなかった問題を修正
 ;	012		2021/04/26		JK好き					娼館で多胎OP時でも妊娠するように修正
 ;	013		2021/12/14		JK好き					盟友は娼館で労役出来ないように修正
+;	014		2022/04/08		JK好き					奴隷選択時に売春人気が表示されるように調整
+;	015		2022/06/07		NEO						NTR防御/誘発服飾追加の関数対応
 ;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
 ;창관で働かせる
 ;奴隷を一日だけ창관に貸して働かせます。客の数だけ収益が上がるため、욕망や레즈が重要視されます
@@ -49,7 +51,7 @@ D = 0
 ;LOCAL配列초기化
 VARSET LOCAL,0
 $PRINT_LIST
-CALL INPUT_CHARA_LIST("매춘시킬 노예를 선택하세요", "CASTING_PROSTITUTION", "", "", "MODECHANGE_PROSTITUTION")
+CALL INPUT_CHARA_LIST("매춘시킬 노예를 선택하세요", "CASTING_PROSTITUTION", "PROSTITUTION_POPULARITY", "", "MODECHANGE_PROSTITUTION")
 IF RESULT == 1000
 	RETURN 0
 ENDIF
@@ -164,6 +166,15 @@ SIF CFLAG:ARG:이자리에없는플래그 == 1
 SIF TALENT:ARG:맹우
 	RETURN 0
 RETURN 1
+
+@PROSTITUTION_POPULARITY
+PRINT 매춘시킬 노예를 선택하세요　　　
+IF ITEM:창관 
+	PRINTFORM 창관인기:{FLAG:매춘인기, 4, RIGHT}
+ELSEIF ITEM:여관
+	PRINTFORM 여관인기:{FLAG:매춘인기, 4, RIGHT}
+ENDIF
+PRINTFORML 
 
 @MODECHANGE_PROSTITUTION, ARG
 SELECTCASE ARG
@@ -1730,10 +1741,9 @@ VARSET LOCAL,0
 
 ;창관ＮＴＲ이벤트がOFFの場合は何もせず戻る
 ;専有奴隷の개목걸이を장비している場合は何もせず戻る
-;남자は弾く
-; 그외 확장패치 주석처리
-; SIF !GETBIT(FLAG:ＮＴＲ기능 , 2) || (CFLAG:ARG:그외 == 1116 || CFLAG:ARG:그외2 == 1116 || CFLAG:ARG:그외3 == 1116 || CFLAG:ARG:그외4 == 1116 || CFLAG:ARG:그외5 == 1116 || CFLAG:ARG:그외6 == 1116) || TALENT:ARG:남자 == 1
-SIF !GETBIT(FLAG:ＮＴＲ기능 , 2) || (CFLAG:ARG:그외 == [[衣装:전속노예의목걸이]] || CFLAG:ARG:그외2 == [[衣装:전속노예의목걸이]] || CFLAG:ARG:그외3 == [[衣装:전속노예의목걸이]]) || TALENT:ARG:남자 == 1
+;→22/06/07：同効果の服を増やして関数にしたので修正
+;オトコは弾く
+SIF !GETBIT(FLAG:ＮＴＲ기능 , 2) || IS_ANTI_NTR_CLOTHES(ARG) == 1 || TALENT:ARG:남자 == 1
 	RETURN
 
 ;NTR好き客からの声掛けられ확률산출
@@ -1756,8 +1766,8 @@ SELECTCASE FLAG:ＮＴＲ손님의설정
 		TIMES LOCAL:2 , 3.00
 		TIMES LOCAL:3 , 4.00
 ENDSELECT
-
-SIF (CFLAG:ARG:그외 == 1117 || CFLAG:ARG:그외2 == 1117 || CFLAG:ARG:그외3 == 1117)
+;背徳の指輪系装備時
+SIF IS_ANTI_NTR_CLOTHES(ARG) == -1
 	PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 뭐라고 말할 수 없는 달콤한 향기를 풍기고 있다……
 ;호감도
 LOCAL:1 = ARG:1/3+ARG:2/3 + ARG:3 + CFLAG:ARG:방치일수
@@ -1770,14 +1780,14 @@ ENDIF
 ;デートのお誘い
 ;방치일수*2（上限30％）の확률로声をかけられる（인기持ちはさらに+10％）
 ;ＮＴＲ상태の場合は50％
-IF RAND:100 < LOCAL:2 || TALENT:ARG:ＮＴＲ > 0 && RAND:100 < 50 || (CFLAG:ARG:그외 == 1117 || CFLAG:ARG:그외2 == 1117 || CFLAG:ARG:그외3 == 1117)
+IF RAND:100 < LOCAL:2 || TALENT:ARG:ＮＴＲ > 0 && RAND:100 < 50 || IS_ANTI_NTR_CLOTHES(ARG) == -1
 	PRINTFORML 
 	PRINTFORML %조사처리(CALLNAME:ARG,"는")% 손님에게 가게 밖 데이트를 신청 받은 것 같다
 	;誘いに乗るか판정
 	;기본치0％+방치일수*2（上限なし）さらに즉각함락持ちは+50で、発情の場合も+10～15
 	;これに함락度*10のマイナス보정を入れる
 	;ＮＴＲ상태の場合は無조건でついていく
-	IF RAND:100 > 100 + 함락(ARG) * 10 - LOCAL:3 || TALENT:ARG:ＮＴＲ > 0 || (CFLAG:ARG:그외 == 1117 || CFLAG:ARG:그외2 == 1117 || CFLAG:ARG:그외3 == 1117)
+	IF RAND:100 > 100 + 함락(ARG) * 10 - LOCAL:3 || TALENT:ARG:ＮＴＲ > 0 || IS_ANTI_NTR_CLOTHES(ARG) == -1
 		PRINTFORML 
 		PRINTFORML %조사처리(CALLNAME:ARG,"는")% 손님과 약속 장소로 향했다……
 		PRINTFORML ・
@@ -1787,7 +1797,7 @@ IF RAND:100 < LOCAL:2 || TALENT:ARG:ＮＴＲ > 0 && RAND:100 < 50 || (CFLAG:ARG
 		;기본치50％+방치일수*2（上限なし）さらに즉각함락持ちは+50
 		;これに함락度*50のマイナス보정を入れる
 		;ＮＴＲ상태の場合は無조건でドピュドピュされる
-		IF RAND:100 > 50 + 함락(ARG) * 50 - LOCAL:3 || TALENT:ARG:ＮＴＲ > 0 || (CFLAG:ARG:그외 == 1117 || CFLAG:ARG:그외2 == 1117 || CFLAG:ARG:그외3 == 1117)
+		IF RAND:100 > 50 + 함락(ARG) * 50 - LOCAL:3 || TALENT:ARG:ＮＴＲ > 0 || IS_ANTI_NTR_CLOTHES(ARG) == -1
 			IF RAND:2 == 0
 				;優しい창관顧客
 				LOCAL:4 = -4

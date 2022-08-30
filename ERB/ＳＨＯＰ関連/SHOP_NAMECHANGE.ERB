@@ -4,14 +4,19 @@
 ;
 ;	Edit	Date			Author					Reason
 ;	001		20xx/xx/xx		----					新規作成
-;	002		2019/09/04		空気					名称/呼び名変更からも얼굴이미지選択できるように
+;	002		2019/09/04		空気					名称/呼び名変更からも顔グラ選択できるように
 ;	003		2020/11/20		SUIHOU					エンディングNo.99を設定
 ;	004		2021/03/01		JK好き					称号を細分化された表向きの職業に対応
 ;	005		2021/04/24		JK好き					スリーサイズ決定時に子宮最大容量が0の時の処理を追加
+;	006		2022/05/29		だま					名称/呼び名変更以外の現在値も表示
+;													名称/呼び名変更に肌の色追加
+;													身長の最大最小値を特徴により増減
+;													スリーサイズ設定時、オートセット選択可に変更
+;	007		2022/06/07		Collared				UI整理プロジェクトにより配置変更
 ;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
 
-@SHOPCOMABLE_107
-RESULT:1 =1
+@SHOPCOMABLE_210
+RESULT:1 = 2
 RESULTS = 이름/호칭변경
 RETURN 1
 
@@ -35,6 +40,40 @@ RETURN 1
 LOCAL = 0
 CUSTOMDRAWLINE = 
 PRINTFORML 이름：%NAME:ARG% 애칭:%CALLNAME:ARG% 일인칭:%CSTR:ARG:11% \@ ARG == MASTER ? 칭호:%CSTR:MASTER:종족명% # %CALLNAME:MASTER%에 대한 이인칭：%CSTR:ARG:12% \@
+PRINT 머리카락색깔：
+CALL SHOW_HAIRCOLOR(ARG)
+PRINT 　머리카락형태：
+CALL SHOW_HAIRSTYLE(ARG)
+PRINT 　눈동자색깔：
+CALL SHOW_EYECOLOR(ARG)
+PRINT 　피부색깔：
+CALL SHOW_SKINCOLOR(ARG)
+PRINTL
+PRINTFORM 신장：
+IF BASE:ARG:신장 == 0
+	PRINTFORM 미설정
+ELSE
+	PRINTFORM {BASE:ARG:신장}cm
+ENDIF
+PRINTFORM 　Ｂ：
+IF BASE:ARG:바스트 == 0 
+	PRINTFORM 불명
+ELSE
+	PRINTFORM {BASE:ARG:바스트}cm
+ENDIF
+PRINTFORM 　Ｗ：
+IF BASE:ARG:웨스트 == 0 
+	PRINTFORM 불명
+ELSE
+	PRINTFORM {BASE:ARG:웨스트}cm
+ENDIF
+PRINTFORM 　Ｈ：
+IF BASE:ARG:힙사이즈 == 0 
+	PRINTFORM 불명
+ELSE
+	PRINTFORM {BASE:ARG:힙사이즈}cm
+ENDIF
+PRINTL
 DRAWLINE
 
 LOCALS = 이름_애칭_이름과애칭_일인칭
@@ -53,6 +92,8 @@ IF SETTING_IS_3SIZE()
 		LOCALS = %LOCALS%_머리카락색깔_머리카락형태
 	SIF TALENT:ARG:눈
 		LOCALS = %LOCALS%_눈동자색깔
+	SIF !TALENT:ARG:하얀피부 && !TALENT:ARG:갈색피부 && !TALENT:ARG:붉은피부 && !TALENT:ARG:푸른피부
+		LOCALS = %LOCALS%_피부색깔
 	;쓰리사이즈は조건厳しめ　人型でサイズ的に일탈していないこと　[큰체형][거체]は今後対処を検討
 	SIF TALENT:ARG:머리 && TALENT:ARG:팔 && TALENT:ARG:발 && !TALENT:ARG:유아／유아퇴행 && !TALENT:ARG:갈퀴 && !TALENT:ARG:갈퀴발 && !TALENT:ARG:모피 && !TALENT:ARG:촉수 && !TALENT:ARG:부리 && !TALENT:ARG:짐승 && !TALENT:ARG:새 && !TALENT:ARG:파충류 && !TALENT:ARG:부정형 && !TALENT:ARG:물고기 && !TALENT:ARG:이형 && !TALENT:ARG:소인체형 && !TALENT:ARG:큰체형 && !TALENT:ARG:거체
 		LOCALS = %LOCALS%_신장_쓰리사이즈
@@ -92,7 +133,7 @@ RESTART
 ;====================================================
 @NAME_CHANGE_이름,ARG
 PRINTFORML %CALLNAME:ARG%의 새로운 이름을 입력해주세요.
-CALL CREATE_RANDOM_NAME_IF
+CALL CREATE_RANDOM_NAME_IF,"",-1,-1,-1,CALLNAME:ARG
 IF TALENT:ARG:아이
 	IF CFLAG:ARG:딸의부친고유번호딸 == MASTER || CFLAG:ARG:딸의친부모고유번호딸 == MASTER
 		IF TALENT:ARG:남자 == 0
@@ -111,16 +152,23 @@ ENDIF
 ;애칭
 ;====================================================
 @NAME_CHANGE_애칭,ARG
-PRINTFORML %CALLNAME:ARG%의 새로운 애칭을 입력해주세요.
-INPUTS
-CALLNAME:ARG = %RESULTS%
+PRINTL [0]새로운 애칭을 붙인다
+PRINTFORML [9]변경없음（현재：%CALLNAME:ARG%）
+INPUT
+IF RESULT == 0
+	PRINTFORML %CALLNAME:ARG%의 새로운 애칭을 입력해주세요.
+	INPUTS
+	CALLNAME:ARG = %RESULTS%
+ELSE
+	RESULTS = %CALLNAME:ARG%
+ENDIF
 
 ;====================================================
 ;이름과애칭
 ;====================================================
 @NAME_CHANGE_이름과애칭,ARG
 PRINTFORML %CALLNAME:ARG%의 새로운 이름과 애칭을 입력해주세요(같은 문자열로 변경됩니다)
-CALL CREATE_RANDOM_NAME_IF
+CALL CREATE_RANDOM_NAME_IF,"",-1,-1,-1,CALLNAME:ARG
 IF TALENT:ARG:아이
 	IF CFLAG:ARG:딸의부친고유번호딸 == MASTER || CFLAG:ARG:딸의친부모고유번호딸 == MASTER
 		IF TALENT:ARG:남자 == 0
@@ -134,7 +182,7 @@ IF TALENT:ARG:아이
 ELSE
 	NAME:ARG = %RESULTS%
 ENDIF
-CALLNAME:ARG = %RESULTS%
+CALL NAME_CHANGE_애칭,ARG
 
 ;====================================================
 ;일인칭
@@ -401,7 +449,7 @@ RESULTS = %CSTR:ARG:종족명%
 IF TALENT:ARG:남자 && !TALENT:ARG:오토코노코 && CFLAG:ARG:머리카락형태 == 1
 	PRINTW 먼저 머리카락 형태를 변경하십시오
 ELSE
-PRINTFORML %NAME:ARG%의 머리카락색을 결정하십시오
+PRINTFORML %NAME:ARG%의 머리카락색을 결정해 주세요
 PRINTL [1]검은색
 PRINTL [2]갈색
 PRINTL [3]금색
@@ -476,7 +524,7 @@ ENDIF
 ;머리카락형태 CFLAG:36に指定 [남자]　[오토코노코or女]で別타입
 ;====================================================
 @NAME_CHANGE_머리카락형태, ARG
-PRINTFORML %NAME:ARG%의 머리카락형태를 결정하십시오
+PRINTFORML %NAME:ARG%의 머리카락형태를 결정해 주세요
 IF TALENT:ARG:남자 && !TALENT:ARG:오토코노코
 	PRINTL [1]스킨 헤드
 	PRINTL [2]스포츠 컷
@@ -588,7 +636,7 @@ ENDIF
 ;눈동자색깔 CFLAG:37に指定
 ;====================================================
 @NAME_CHANGE_눈동자색깔, ARG
-PRINTFORML %NAME:ARG%의 눈동자색을 결정하십시오
+PRINTFORML %NAME:ARG%의 눈동자색을 결정해 주세요
 PRINTL [1]검은색
 PRINTL [2]갈색
 PRINTL [3]금색
@@ -636,51 +684,124 @@ SELECTCASE RESULT
 ENDSELECT
 
 ;====================================================
+;肌の色 CFLAG:38に指定
+;====================================================
+@NAME_CHANGE_피부색깔, ARG
+PRINTFORML %NAME:ARG%의 피부색을 결정해 주세요
+PRINTL [0]미설정
+PRINTL [1]백색
+PRINTL [2]갈색
+PRINTL [3]적색
+PRINTL [4]청색
+PRINTL [5]녹색
+
+$INPUT_LOOP
+CALL INPUTINT,1,2,3,4,5,6,7,8,9,10
+SELECTCASE RESULT
+	CASE 0
+		CFLAG:ARG:피부색깔 = 0
+		RESULTS = 미설정
+	CASE 1
+		CFLAG:ARG:피부색깔 = 1
+		RESULTS = 백색
+	CASE 2
+		CFLAG:ARG:피부색깔 = 2
+		RESULTS = 갈색
+	CASE 3
+		CFLAG:ARG:피부색깔 = 3
+		RESULTS = 적색
+	CASE 4
+		CFLAG:ARG:피부색깔 = 4
+		RESULTS = 청색
+	CASE 5
+		CFLAG:ARG:피부색깔 = 5
+		RESULTS = 녹색
+ENDSELECT
+
+;====================================================
 ;신장 BASE:24に설정
 ;====================================================
 @NAME_CHANGE_신장, ARG
+#DIM MAX身長
+#DIM MIN身長
+MAX身長 = 175
+MIN身長 = 150
+
 IF BASE:ARG:신장 > 0
 	PRINTFORML %NAME:ARG%의 신장은 {BASE:ARG:24}cm로 설정되어 있습니다
 ELSE
 	PRINTFORML %NAME:ARG%의 신장을 설정합니다
 ENDIF
 $INPUT_TALL
-IF TALENT:ARG:남자 && TALENT:ARG:유아체형 && !TALENT:ARG:오토코노코
-	PRINTL 얼마로 하시겠습니까 (120-164)
-	INPUT
-	IF RESULT < 120 || RESULT > 164
-		PRINTL 잘못된 값입니다
-		GOTO INPUT_TALL
-	ELSE
-		BASE:ARG:신장 = RESULT
-	ENDIF
-ELSEIF TALENT:ARG:남자 && !TALENT:ARG:오토코노코
-	PRINTL 얼마로 하시겠습니까 (165-180)
-	INPUT
-	IF RESULT < 165 || RESULT > 180
-		PRINTL 잘못된 값입니다
-		GOTO INPUT_TALL
-	ELSE
-		BASE:ARG:신장 = RESULT
-	ENDIF
-ELSEIF TALENT:ARG:유아체형
-	PRINTL 얼마로 하시겠습니까 (115-149)
-	INPUT
-	IF RESULT < 115 || RESULT > 149
-		PRINTL 잘못된 값입니다
-		GOTO INPUT_TALL
-	ELSE
-		BASE:ARG:신장 = RESULT
-	ENDIF
+IF TALENT:ARG:남자
+	MAX身長 = 185
+ENDIF
+IF TALENT:ARG:소인체형
+	MAX身長 = 20
+	MIN身長 = 1
+ELSEIF TALENT:ARG:큰체형
+	MAX身長 = 220
+	MIN身長 = 170
+ELSEIF TALENT:ARG:거체
+	MAX身長 = 500
+	MIN身長 = 200
 ELSE
-	PRINTL 얼마로 하시겠습니까 (150-175)
-	INPUT
-	IF RESULT < 150 || RESULT > 175
-		PRINTL 잘못된 값입니다
-		GOTO INPUT_TALL
-	ELSE
-		BASE:ARG:신장 = RESULT
+	IF TALENT:ARG:유아체형
+		MAX身長 -= 26
+		MIN身長 -= 35
 	ENDIF
+ENDIF
+
+;IF TALENT:ARG:オトコ && TALENT:ARG:小柄体型 && !TALENT:ARG:男の娘
+;	PRINTL いくつにしますか(120-164)
+;	INPUT
+;	IF RESULT < 120 || RESULT > 164
+;		PRINTL 不適切な値です
+;		GOTO INPUT_TALL
+;	ELSE
+;		BASE:ARG:신장 = RESULT
+;	ENDIF
+;ELSEIF TALENT:ARG:オトコ && !TALENT:ARG:男の娘
+;	PRINTL いくつにしますか(165-180)
+;	INPUT
+;	IF RESULT < 165 || RESULT > 180
+;		PRINTL 不適切な値です
+;		GOTO INPUT_TALL
+;	ELSE
+;		BASE:ARG:신장 = RESULT
+;	ENDIF
+;ELSEIF TALENT:ARG:小柄体型
+;	PRINTL いくつにしますか(115-149)
+;	INPUT
+;	IF RESULT < 115 || RESULT > 149
+;		PRINTL 不適切な値です
+;		GOTO INPUT_TALL
+;	ELSE
+;		BASE:ARG:신장 = RESULT
+;	ENDIF
+;ELSE
+;	PRINTL いくつにしますか(150-175)
+;	INPUT
+;	IF RESULT < 150 || RESULT > 175
+;		PRINTL 不適切な値です
+;		GOTO INPUT_TALL
+;	ELSE
+;		BASE:ARG:신장 = RESULT
+;	ENDIF
+;ENDIF
+
+PRINTFORML 얼마로 하시겠습니까 ({MIN身長}-{MAX身長})
+SIF BASE:ARG:신장 > 0
+	PRINTFORML [{BASE:ARG:신장}] 변경하지 않는다 ({BASE:ARG:신장} cm)
+
+INPUT
+IF BASE:ARG:신장 > 0 && BASE:ARG:신장 == RESULT
+	;変更しない
+ELSEIF RESULT < MIN身長 || RESULT > MAX身長
+	PRINTL 부적절한 값입니다
+	GOTO INPUT_TALL
+ELSE
+	BASE:ARG:신장 = RESULT
 ENDIF
 ;====================================================
 ;쓰리사이즈 BASE:25～27に설정
@@ -694,41 +815,50 @@ IF TALENT:ARG:남자 && !TALENT:ARG:오토코노코
 	PRINTL ？？「…가자　곧 여기도 썩은 바다에 침몰한다」
 	RESULTS = 설정하지않는다
 ELSEIF BASE:ARG:신장 == 0
-	PRINTW 먼저 신장을 결정하십시오
+	PRINTW 먼저 신장을 결정해 주세요
 	RESULTS = 설정하지않는다
 ELSE
-	IF BASE:ARG:바스트 == 0 || BASE:ARG:웨스트 == 0 || BASE:ARG:힙사이즈 == 0
-		PRINTFORML %NAME:ARG%의 쓰리 사이즈를 설정합니다
-	ELSE
-		PRINTFORML %NAME:ARG%의 현재 쓰리 사이즈는 다음과 같습니다
-		CALL SHOW_INFO_BODYSIZE(ARG)
-	ENDIF
-	$INPUT_B
-	PRINTFORML 바스트의 값을 설정하십시오 ({BASE:ARG:신장 * 4 / 9}-{BASE:ARG:신장 * 75 / 100})
+	PRINTFORML [0] 전부 직접 입력
+	PRINTFORML [1] 전부 자동으로 세트
+	PRINTFORML [9] 돌아간다
 	INPUT
-	IF RESULT < BASE:ARG:신장 * 4 / 9 || RESULT > BASE:ARG:신장 * 3 / 4
-		PRINTL 잘못된 값입니다
-		GOTO INPUT_B
+	IF RESULT == 9
+		;
+	ELSEIF RESULT == 1
+		CALL SET_INFO_BODYSIZE, ARG, ""
 	ELSE
-		BASE:ARG:바스트 = RESULT
+		IF BASE:ARG:바스트 == 0 || BASE:ARG:웨스트 == 0 || BASE:ARG:힙사이즈 == 0
+			PRINTFORML %NAME:ARG%의 쓰리 사이즈를 설정합니다
+		ELSE
+			PRINTFORML %NAME:ARG%의 현재 쓰리 사이즈는 다음과 같습니다
+			CALL SHOW_INFO_BODYSIZE(ARG)
+		ENDIF
+		$INPUT_B
+		PRINTFORML 바스트의 값을 설정하십시오 ({BASE:ARG:신장 * 4 / 9}-{BASE:ARG:신장 * 75 / 100})
+		INPUT
+		IF RESULT < BASE:ARG:신장 * 4 / 9 || RESULT > BASE:ARG:신장 * 3 / 4
+			PRINTL 부적절한 값입니다
+			GOTO INPUT_B
+		ELSE
+			BASE:ARG:바스트 = RESULT
+		ENDIF
+		$INPUT_W
+		PRINTFORML 웨스트의 값을 설정하십시오 ({BASE:ARG:신장 * 3 / 10}-{BASE:ARG:신장 / 2})
+		INPUT
+		IF RESULT < BASE:ARG:신장 * 3 / 10 || RESULT > BASE:ARG:신장 * 7 / 12
+			PRINTL 부적절한 값입니다
+			GOTO INPUT_W
+		ELSE
+			BASE:ARG:웨스트 = RESULT
+		ENDIF
+		$INPUT_H
+		PRINTFORML 힙의 값을 설정하십시오 ({BASE:ARG:신장 * 9 / 20}-{BASE:ARG:신장 * 3 / 5})
+		INPUT
+		IF RESULT < BASE:ARG:신장 * 9 / 20 || RESULT > BASE:ARG:신장 * 5 / 8
+			PRINTL 부적절한 값입니다
+			GOTO INPUT_H
+		ELSE
+			BASE:ARG:힙사이즈 = RESULT
+		ENDIF
 	ENDIF
-	$INPUT_W
-	PRINTFORML 웨스트의 값을 설정하십시오 ({BASE:ARG:신장 * 3 / 10}-{BASE:ARG:신장 / 2})
-	INPUT
-	IF RESULT < BASE:ARG:신장 * 3 / 10 || RESULT > BASE:ARG:신장 * 7 / 12
-		PRINTL 잘못된 값입니다
-		GOTO INPUT_W
-	ELSE
-		BASE:ARG:웨스트 = RESULT
-	ENDIF
-	$INPUT_H
-	PRINTFORML 힙의 값을 설정하십시오 ({BASE:ARG:신장 * 9 / 20}-{BASE:ARG:신장 * 3 / 5})
-	INPUT
-	IF RESULT < BASE:ARG:신장 * 9 / 20 || RESULT > BASE:ARG:신장 * 5 / 8
-		PRINTL 잘못된 값입니다
-		GOTO INPUT_H
-	ELSE
-		BASE:ARG:힙사이즈 = RESULT
-	ENDIF
-	CALL 자궁최대용량초기설정,ARG
 ENDIF
