@@ -1,0 +1,250 @@
+﻿;====================================================
+;○コドクノマレビトMOD_殺眼の綾女CSTR専用スキル_「死亡告知」
+;====================================================
+;　呪殺、万能相性複合の特大威力全体攻撃
+;　超高確率の呪殺即死付与
+;　「呪殺と即死付きメギドラオン」、ただし味方側で使うには１ターンの準備が必要
+;　その分性能はチョイチョイ弄る（威力を倍近く上げたりとか）
+;====================================================
+
+;스킬명
+@SKILL_NAME_死亡告知,ARG
+	RESULTS = 사망고지
+
+;　명중
+@SKILL_HITRATE_死亡告知, ARG
+	;必殺攻撃であるため高め
+	RETURN 200
+
+;　위력
+@SKILL_POWER_死亡告知, ARG
+	;敵ボスが使用する場合、チャージナシなので普通にデッドリーバーンの威力（まあ痛いが）
+	SIF ARG >= 0 && CFLAG:ARG:보스플래그
+		RETURN 420
+	;デッドリーバーン級、の１ターンの準備が必要、で単純に倍……
+	;……からはちょっと下げる
+	RETURN 780
+
+;クリティカル率
+@SKILL_CRITICAL_RATE_死亡告知, ARG
+	;魔法攻撃なので意味はない
+	RETURN 5
+
+;　최저공격횟수
+@SKILL_MINATTACKNUMBER_死亡告知,ARG
+	RETURN 1
+
+;　최대공격횟수
+@SKILL_MAXATTACKNUMBER_死亡告知,ARG
+	RETURN 1
+
+;　2 ＨＰ지불　3 ＭＰ지불
+@SKILL_COSTTYPE_死亡告知, ARG
+	RETURN 3
+	;소비없음＝1
+
+;　코스트량
+@SKILL_COST_死亡告知,ARG
+;「出でよ神流五人衆」からコピペしました
+#DIM 死亡告知待機
+	死亡告知待機 = PU_SKILLNUM_GET(ARG, "死亡告知")
+
+	;敵ボスが使用する場合、待機なしかつMP消費極低
+	SIF ARG >= 0 && CFLAG:ARG:보스플래그
+		RETURN 1
+
+	;発射準備済み
+	IF SKILLGAGE_H_GET(ARG, 死亡告知待機)
+		RETURN 0
+	;発射準備まだ（準備のときにMPを消費する）
+	;使用に２ターンかかる威力750の万能攻撃＝１ターンあたり威力375
+	;メギドラが威力295で消費35
+	;増加要因：呪殺相性との複合、高い命中率、超高確率即死
+	;減少要因：呪殺相性のビミョーさ、準備ターンが発生する取り回しの悪さ、専用スキルである
+	;……ということで、消費は40程度に
+	ELSE
+		RETURN 40
+	ENDIF
+
+
+;　상성
+@SKILL_TYPE_死亡告知,ARG
+#LOCALSSIZE 3
+#LOCALSIZE 4
+#DIM 死亡告知待機
+
+死亡告知待機 = PU_SKILLNUM_GET(ARG, "死亡告知")
+IF SKILLGAGE_H_GET(ARG, 死亡告知待機)
+	;万能、呪殺の複合、基本相性は呪殺
+	SIF ARG == -1
+		RETURN GET_TYPE_NUM("주살")
+	SIF CFLAG:ARG:타겟 > 16 || CFLAG:ARG:타겟 < 1
+		RETURN GET_TYPE_NUM("주살")
+	LOCAL = POS(CFLAG:ARG:타겟)
+	SIF LOCAL < 0
+		RETURN GET_TYPE_NUM("주살")
+	LOCAL:2 = -1000
+	LOCALS = 주살
+	LOCALS:1 = 주살
+	LOCALS:2 = 만능
+
+	FOR LOCAL:1, 1, 3
+		;判定用に数値を仕舞う。反射は-200扱い
+		LOCAL:3 = MAXBASE:LOCAL:(LOCALS:(LOCAL:1)) == 999 ? -200 # MAXBASE:LOCAL:(LOCALS:(LOCAL:1))
+		LOCAL:3 = CFLAG:LOCAL:(LOCALS:(LOCAL:1)+"무효화횟수") ? 0 # LOCAL:3
+		IF LOCAL:3 > LOCAL:2
+			LOCAL:2 = LOCAL:3
+			LOCALS = %LOCALS:(LOCAL:1)%
+		ENDIF
+	NEXT
+	RETURN GET_TYPE_NUM(LOCALS)
+ELSE
+	RETURN GET_TYPE_NUM("주살")
+ENDIF
+
+
+;　1 EXTRA　2 MAGIC
+@SKILL_DECIDE_TYPE_死亡告知,ARG
+	RETURN 1
+
+;　1 물리데미지로 계산　2 마법데미지로 계산
+@SKILL_DAMAGETYPE_死亡告知,ARG
+	;魔法
+	RETURN 2
+
+
+;　대상　1 적　2 아군　3 양쪽전체　4 특수
+@SKILL_TARGET_死亡告知,ARG
+	RETURN 1
+
+;　사거리
+@SKILL_RANGE_死亡告知,ARG
+	RETURN 3
+
+;　범위　1 1체　2 1열　3 전체　4 적아군전체
+@SKILL_SPHERE_死亡告知,ARG
+	RETURN 3
+
+;　 효과타입　1 공격、2 회복、3 상태변화、4 특수、5 상태회복
+@SKILL_EFECT_死亡告知,ARG
+	RETURN 1
+
+;　 특수처리 여부 및 처리내용
+;@SKILL_SPECIALEFECT_死亡告知,ARG
+;ARG = 1인 경우는 처리 여부를 반환합니다
+;SIF ARG == 1
+;	RETURN 0
+;아래쪽에 특수처리를 기술합니다
+
+;계승타입
+;@SKILL_SUCCESSION_TYPE_死亡告知,ARG
+;RETURN 23
+;剣撃
+
+;속도보정
+@SKILL_SPEED_死亡告知, ARG = -1
+	RETURN 0
+
+;;　구상의 표시와 그 타입
+;@SKILL_MESSAGE_死亡告知,ARG
+
+
+;전투시 이외에 사용 가능한가
+@SKILL_ACTIONABLE_FIELD_死亡告知, ARG = -1
+	RETURN 0
+
+;没
+;@SKILL_RANK_死亡告知
+;@SKILL_RANKUP_死亡告知
+;@계승불능_死亡告知
+
+;템플릿용、추가효과 시리즈
+;추가효과 스테이터스
+@SKILL_ADDTIONAL_STATE_死亡告知,ARG
+	RETURN GET_STATE_NUM("DYING")
+
+;추가효과 상성
+@SKILL_ADDTIONAL_TYPE_死亡告知,ARG
+	RETURN GET_TYPE_NUM("주살")
+
+;추가효과 기본부여확률
+@SKILL_ADDTIONAL_BASE_RATE_死亡告知,ARG
+	;ボスには効かない、ザコだと１ターンの準備が必要、そもそも呪殺相性で弾かれやすい
+	;その分容赦のない率での即死
+	;ボスバージョンだと驚異の基礎率100％
+	SIF ARG >= 0 && CFLAG:ARG:보스플래그
+		RETURN 100
+
+	RETURN 70
+
+
+;추가효과 부여확률상한
+@SKILL_ADDTIONAL_MAX_RATE_死亡告知,ARG
+	RETURN 95
+
+
+;====================================================
+;스킬 및 행동의 실행
+;====================================================
+@ACTION_死亡告知,ARG,ARG:1,SKILL_NUM
+#LOCALSIZE 4
+#DIM SKILL_NUM
+	;敵ボスが使用する場合
+	;威力は落ちるが普通に連射可能（さすがにAI使って毎ターン連射はさせないが……）
+	IF ARG >= 0 && CFLAG:ARG:보스플래그
+		CALL SKILLGAGE_H_ADD, ARG, SKILL_NUM,1
+		CALL ATTACK_FIELD, ARG, ARG:1, SKILL_NUM, 1
+	;発射準備済み
+	ELSEIF SKILLGAGE_H_GET(ARG, SKILL_NUM)
+		;発射
+		CALL ATTACK_FIELD, ARG, ARG:1, SKILL_NUM, 1
+		;発射準備解除
+		CALL SKILLGAGE_H_SET, ARG, SKILL_NUM,0
+	;発射準備まだ
+	ELSE
+		CALL SKILLGAGE_H_ADD, ARG, SKILL_NUM,1
+		IF RAND:2 == 0
+			PRINTW ＞아야메의 눈동자가 살의에 젖는다！
+		ELSE
+			PRINTW ＞아야메 피부에 뱀 문양이 떠오른다！
+		ENDIF
+	ENDIF
+
+
+
+
+;====================================================
+;실행내용 여기까지
+;====================================================
+;　説明文の表示
+@SKILL_EXPLAIN_死亡告知,ARG
+#DIM 死亡告知待機
+死亡告知待機 = PU_SKILLNUM_GET(ARG, "死亡告知")
+IF CFLAG:(ARG):PT플래그 || U < 0 || U >= CHARANUM
+	PRINTL 적 전체에、주살・만능 복합상성의 극대위력 마법공격을 행한다。
+	PRINTL 야토노카미의 힘을 빌려 행하는 초超급의 주슬。
+	PRINTL 대상이 된 자는 구멍이라는 구멍에서 ＭＡＧ를 분출하여 즉사한다。
+	PRINTL 야토노카미의 힘을 끌어내기 위해、사용에은 １턴의 준비가 필요。
+ELSE
+	;発射準備完了
+	IF SKILLGAGE_H_GET(ARG, 死亡告知待機)
+		PRINTL 적 전체에、주살・만능 복합상성의 극대위력 마법공격을 행한다。
+		PRINTL 야토노카미의 힘을 빌려 행하는 초超급의 주슬。
+		PRINTL 대상이 된 자는 구멍이라는 구멍에서 ＭＡＧ를 분출하여 즉사한다。
+		PRINTL 【거리낌 없이、두려워 말고、도처를 모조리 죽여라！】
+		;KR판 주, 원문 【憚り、懼るることなく、随所に殺し尽くせ！】
+
+	;発射準備まだ
+	ELSE
+		PRINTL 적 전체에、주살・만능 복합상성의 극대위력 마법공격을 행한다。
+		PRINTL 야토노카미의 힘을 빌려 행하는 초超급의 주슬。
+		PRINTL 대상이 된 자는 구멍이라는 구멍에서 ＭＡＧ를 분출하여 즉사한다。
+		PRINTL 야토노카미의 힘을 끌어내기 위해、사용에은 １턴의 준비가 필요。
+	ENDIF
+ENDIF
+
+
+;사용조건
+@SKILL_SPECIAL_ACTIONABLE_死亡告知,ARG
+	RETURN 1
+

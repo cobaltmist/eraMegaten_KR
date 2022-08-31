@@ -14,6 +14,7 @@
 ;	004		2021/07/10		木綿豆腐				表示する相性を電撃に変更（攻撃は雷撃鱗で実行するので）
 ;	005		2021/08/24		木綿豆腐				一度に三回まで実行できるようにした
 ;													念のため継承できないようにした
+;	006		2022/05/12		木綿豆腐				ターゲット処理をより賢くした
 ;
 ;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
 ;スキル名
@@ -96,22 +97,13 @@ RETURN 0
 ;====================================================
 @ACTION_3637, ARG, ARG:1
 #LOCALSIZE 1
-#DIM DART_D
-#DIM 敵座標
-#DIM ゲージ加算値
-#DIM ロック総数
-DART_D = SKILLGAGE_D_GET(ARG, [[스킬:피뢰침]])
-SIF DART_D == 0
-	CALL SKILLGAGE_H_SET, ARG, [[스킬:피뢰침]], 0
+#DIM DART_H
 LOCAL = POS(ARG:1)
-;ARG:1には7～16が入っているので、6を引いて1～10の範囲にする
-敵座標 = ARG:1 - 6
-ゲージ加算値 = POWER(10, 敵座標)
-;これでゲージ加算値には10の(敵座標)乗が入ることになる。1桁目は使わない。
-CALL SKILLGAGE_H_ADD, ARG, [[스킬:피뢰침]], ゲージ加算値
-CALL SKILLGAGE_H_ADD, ARG, [[스킬:피뢰침]], 100000000000
-CALL SKILLGAGE_D_SET, ARG, [[스킬:피뢰침]], 5
-PRINTFORMW 　　%CALLNAME:LOCAL%을 록했다！
+CALL SKILLGAGE_H_ADD, ARG, [[스킬:피뢰침]], 1
+DART_H = SKILLGAGE_H_GET(ARG, [[스킬:피뢰침]])
+CFLAG:ARG:("고유게이지D"+TOSTR(DART_H)) = 5
+CFLAG:ARG:("고유게이지H"+TOSTR(DART_H)) = LOCAL
+PRINTFORMW 　　%CALLNAME:LOCAL%를 록했다！
 ;====================================================
 ;追加コマンド
 ;====================================================
@@ -126,13 +118,11 @@ RETURN LOCAL
 ;====================================================
 @INPUT_COM_13637, ARG
 #LOCALSIZE 1
-#DIM DART_D
 #DIM DART_H
 #DIM DART_TARGET
 CALL TARGET_CHECK_3637, ARG
-DART_D = SKILLGAGE_D_GET(ARG, [[스킬:피뢰침]])
-DART_H = SKILLGAGE_H_GET(ARG, [[스킬:피뢰침]]) / 100000000000
-IF DART_H == 3 && DART_D != 0
+DART_H = SKILLGAGE_H_GET(ARG, [[스킬:피뢰침]])
+IF DART_H == 3
 	PRINTL 록 횟수가 상한에 도달했습니다。
 	PRINTL 현재 록 중인 타겟을 리셋하고 피뢰침을 실행하시겠습니까？
 	CALL INPUT_YN
@@ -178,7 +168,7 @@ DO
 	CALL 구상호출, "BATTLE_MESSAGE", TARGET, TARGET
 	SWAP TARGET, ARG
 	CFLAG:ARG:입력행동 = LOCAL
-	DART_H = SKILLGAGE_H_GET(ARG, [[스킬:피뢰침]]) / 100000000000
+	DART_H = SKILLGAGE_H_GET(ARG, [[스킬:피뢰침]])
 ;DART_H < 3が1(真)である限りDO～LOOPを繰り返す(つまりDART_H=3以上になれば終わるということ)
 LOOP DART_H < 3
 RETURN -1
@@ -188,77 +178,69 @@ RETURN -1
 ;====================================================
 @SKILLGAGE_DISPLAY_3637, ARG
 #LOCALSIZE 3
-#DIM DART_D
 #DIM DART_H
-#DIM EXP_NUM
+#DIM ループ用1
+#DIM ループ用2
+#DIM ターゲット番号
+#DIM ロック時間
 #DIM ロック深度
-#DIM TARGET_NUM
-#DIM TARGET_POS
+#DIM ターゲットリスト, 4
+
+ロック深度 = 0
+VARSET ターゲットリスト,0
 CALL TARGET_CHECK_3637, ARG
-DART_D = SKILLGAGE_D_GET(ARG, [[스킬:피뢰침]])
 DART_H = SKILLGAGE_H_GET(ARG, [[스킬:피뢰침]])
-IF DART_D > 0 && DART_H > 0
-	FOR EXP_NUM, 1, 11
-		LOCAL = POWER(10, EXP_NUM)
-		;ゲージHを10,100,1000……で割る
-		LOCAL:1 = DART_H / LOCAL
-		;割った結果から一桁目を消す emueraの除算は小数点以下切り捨てなので一桁目が残る
-		LOCAL:2 = (LOCAL:1 / 10) * 10
-		;LOCAL:1とLOCAL:2の差がロック深度になる
-		;以上の処理は小梅ちゃんのリビングデッドからパクりました
-		ロック深度 = LOCAL:1 - LOCAL:2
-		;ロック対象のポジションをセット
-		TARGET_POS = EXP_NUM + 6
-		;ロック対象のリスト番号をセット
-		TARGET_NUM = POS(TARGET_POS)
-		IF TARGET_NUM > -1 && GET_STATE(CFLAG:TARGET_NUM:상태이상) != "DYING" && TARGET_POS > 0 && ロック深度 > 0
-			SELECTCASE ロック深度
-			CASE 1
-				SETCOLOR 0x11afe0
-			CASE 2
-				SETCOLOR 0xd2ae40
-			CASE 3
-				SETCOLOR 0xcc365d
-			ENDSELECT
-			PRINTFORML [POS.{TARGET_POS, 2}] %CALLNAME:TARGET_NUM,20,LEFT%　록온 중 (앞으로 {DART_D}턴)　심도 {ロック深度}
-			RESETCOLOR
-		ENDIF
+SIF DART_H == 0
+	RETURN
+DART_H += 1
+FOR ループ用1, 1, DART_H
+	ターゲット番号 = CFLAG:ARG:("고유게이지H"+TOSTR(ループ用1))
+	ロック時間 = CFLAG:ARG:("고유게이지D"+TOSTR(ループ用1))
+	ロック深度 += 1
+	FOR ループ用2, 1, DART_H
+		SIF CFLAG:ARG:("고유게이지H"+TOSTR(ループ用1)) == CFLAG:ARG:("고유게이지H"+TOSTR(ループ用2)) && ループ用1 != ループ用2
+			ロック深度 += 1
 	NEXT
-ENDIF
+	SELECTCASE ロック深度
+	CASE 1
+		SETCOLOR 0x11afe0
+	CASE 2
+		SETCOLOR 0xd2ae40
+	CASE 3
+		SETCOLOR 0xcc365d
+	ENDSELECT
+	IF MATCH(ターゲットリスト, ターゲット番号) == 0
+		PRINTFORML [POS.{CPOS(ターゲット番号), 2}] %CALLNAME:ターゲット番号,20,LEFT%　록온 중 (앞으로 {ロック時間}턴)　심도{ロック深度}
+		ターゲットリスト:ループ用1 = ターゲット番号
+	ENDIF
+	RESETCOLOR
+	ロック深度 = 0
+NEXT
+
 ;====================================================
-;타겟の生死をチェック
+;ターゲットの生死をチェック
 ;====================================================
 @TARGET_CHECK_3637, ARG
-#LOCALSIZE 3
-#DIM DART_D
 #DIM DART_H
-#DIM EXP_NUM
-#DIM ロック深度
-#DIM TARGET_NUM
-#DIM TARGET_POS
-DART_D = SKILLGAGE_D_GET(ARG, [[스킬:피뢰침]])
+#DIM ループ用1
+#DIM ループ用2
+#DIM ターゲット番号
+#DIM ロック時間
+
 DART_H = SKILLGAGE_H_GET(ARG, [[스킬:피뢰침]])
-IF DART_D > 0 && DART_H > 0
-	FOR EXP_NUM, 1, 11
-		LOCAL = POWER(10, EXP_NUM)
-		;ゲージHを10,100,1000……で割る
-		LOCAL:1 = DART_H / LOCAL
-		;割った結果から一桁目を消す emueraの除算は小数点以下切り捨てなので一桁目が残る
-		LOCAL:2 = (LOCAL:1 / 10) * 10
-		;LOCAL:1とLOCAL:2の差がロック深度になる
-		ロック深度 = LOCAL:1 - LOCAL:2
-		;ロック対象のポジションをセット
-		TARGET_POS = EXP_NUM + 6
-		;ロック対象のリスト番号をセット
-		TARGET_NUM = POS(TARGET_POS)
-		IF TARGET_NUM > -1 && GET_STATE(CFLAG:TARGET_NUM:상태이상) != "DYING" && TARGET_POS > 0 && ロック深度 > 0
-		ELSE
-			;こっちに入るということはターゲットが死んだということ
-			CALL SKILLGAGE_H_ADD, ARG, [[스킬:피뢰침]], -ロック深度 * LOCAL
-			CALL SKILLGAGE_H_ADD, ARG, [[스킬:피뢰침]], -ロック深度 * 100000000000
-		ENDIF
-	NEXT
-ENDIF
+SIF DART_H == 0
+	RETURN
+DART_H += 1
+FOR ループ用1, 1, DART_H
+	ターゲット番号 = CFLAG:ARG:("고유게이지H"+TOSTR(ループ用1))
+	ロック時間 = CFLAG:ARG:("고유게이지D"+TOSTR(ループ用1))
+	IF ターゲット番号 > 0 && GET_STATE(CFLAG:ターゲット番号:상태이상) != "DYING" && CPOS(ターゲット番号) > 0 && ロック時間 > 0
+	ELSE
+		CFLAG:ARG:("고유게이지H"+TOSTR(ループ用1)) = 0
+		CFLAG:ARG:("고유게이지D"+TOSTR(ループ用1)) = 0
+		CALL SKILLGAGE_H_ADD, ARG, [[스킬:피뢰침]], -1
+	ENDIF
+NEXT
 ;====================================================
 ;실행내용 여기까지
 ;====================================================

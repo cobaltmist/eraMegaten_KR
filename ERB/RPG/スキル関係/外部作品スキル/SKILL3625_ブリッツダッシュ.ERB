@@ -18,50 +18,161 @@
 ;	007		2022/02/06		木綿豆腐				↑がPRINTLだったのでPRINTFORMLにした
 ;													あと被弾判定にミスがあったので直した
 ;	008		2022/02/26		木綿豆腐				↑の被弾判定が更にミスってたので直した
+;	009		2022/05/12		木綿豆腐				挙動をなるべく原作に近くした（ロックしたらそいつに強制的に攻撃）
+;													イクス2ルートに対応
 ;
 ;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
 ;スキル名
 @SKILL_NAME_3625, ARG
-RESULTS = 블리츠대쉬
+; 使用者指定なし
+IF ARG == -1
+	RESULTS = ブリッツダッシュ
+ELSE
+	IF CFLAG:ARG:809 == 1
+		RESULTS = ブリッツダッシュ
+	ELSE
+		IF SKILL_CHANGE(ARG, [[キャラ:아큐라(X)]]) && CSTR:ARG:100 == "X2"
+			;ロック中の攻撃
+			IF BLITZ_TARGET_JUDG(ARG) == 1
+				RESULTS = ロックオンホイール
+			;非ロック中の攻撃
+			ELSE
+				RESULTS = ブレイクホイール
+			ENDIF
+		ELSE
+			RESULTS = ディヴァイド
+		ENDIF
+	ENDIF
+ENDIF
 
 ;　명중
 @SKILL_HITRATE_3625, ARG
-RETURN 150
+IF SKILL_CHANGE(ARG, [[キャラ:아큐라(X)]]) && CSTR:ARG:100 == "X2"
+	;ロック中の攻撃
+	IF BLITZ_TARGET_JUDG(ARG) == 1
+		RETURN 150
+	;非ロック中の攻撃
+	ELSE
+		RETURN 100
+	ENDIF
+ELSE
+	RETURN 150
+ENDIF
 
 ;　위력
 @SKILL_POWER_3625, ARG
-;攻撃回数期待値は(2+3+4+5+6)*0.2=4　なのでダメージ期待値は4*65=260
-;「これだけでも戦えなくはない」ぐらいのイメージ
-RETURN 65
+IF SKILL_CHANGE(ARG, [[キャラ:아큐라(X)]]) && CSTR:ARG:100 == "X2"
+	;ロック中の攻撃
+	IF BLITZ_TARGET_JUDG(ARG) == 1
+		;攻撃回数期待値は(2+3+4+5)*0.25=3.5　なのでダメージ期待値は3.5*65=245
+		;「これだけでも戦えなくはない」ぐらいのイメージ
+		RETURN 70
+	;非ロック中の攻撃
+	ELSE
+		;攻撃回数3　なのでダメージ期待値は3*100=300
+		;X2はブレイクホイールで殴る接近戦仕様
+		RETURN 100
+	ENDIF
+ELSE
+	;ロック中の攻撃
+	IF BLITZ_TARGET_JUDG(ARG) == 1
+		;攻撃回数期待値は(2+3+4+5+6)*0.2=4　なのでダメージ期待値は4*65=260
+		;「これだけでも戦えなくはない」ぐらいのイメージ
+		RETURN 65
+	;非ロック中の攻撃
+	ELSE
+		;攻撃回数期待値は(1+2+3+4+5)*0.2=3　なのでダメージ期待値は3*50=150
+		;心許ないがロックして使うのが基本と思ってもらえれば
+		RETURN 50
+	ENDIF
+ENDIF
 
 ;　クリティカル率
 ;　ヒット数多いのでクリティカルはしないさせない
-;　-200でもたまにクリティカルしたのでこれで
+;　-200でもたまにクリティカルしたのでこれで←0でいいんだってさ
+;「ブレイクホイール」の場合だけクリティカルするように
 @SKILL_CRITICAL_RATE_3625, ARG
-RETURN -9999
+IF SKILL_CHANGE(ARG, [[キャラ:아큐라(X)]]) && CSTR:ARG:100 == "X2"
+	SIF BLITZ_TARGET_JUDG(ARG) != 1
+		RETURN 5
+	RETURN 0
+ELSE
+	RETURN 0
+ENDIF
 
 ;　최저공격횟수
 @SKILL_MINATTACKNUMBER_3625, ARG
-RETURN 2
+IF SKILL_CHANGE(ARG, [[キャラ:아큐라(X)]]) && CSTR:ARG:100 == "X2"
+	;ロック中の攻撃
+	IF BLITZ_TARGET_JUDG(ARG) == 1
+		RETURN 2
+	;非ロック中の攻撃
+	ELSE
+		RETURN 3
+	ENDIF
+ELSE
+	;ロック中の攻撃
+	IF BLITZ_TARGET_JUDG(ARG) == 1
+		RETURN 2
+	;非ロック中の攻撃
+	ELSE
+		RETURN 1
+	ENDIF
+ENDIF
 
 ;　최대공격횟수
 @SKILL_MAXATTACKNUMBER_3625, ARG
-RETURN 6
+IF SKILL_CHANGE(ARG, [[キャラ:아큐라(X)]]) && CSTR:ARG:100 == "X2"
+	;ロック中の攻撃
+	IF BLITZ_TARGET_JUDG(ARG) == 1
+		RETURN 5
+	;非ロック中の攻撃
+	ELSE
+		RETURN 3
+	ENDIF
+ELSE
+	;ロック中の攻撃
+	IF BLITZ_TARGET_JUDG(ARG) == 1
+		RETURN 6
+	;非ロック中の攻撃
+	ELSE
+		RETURN 5
+	ENDIF
+ENDIF
+;ロック中の攻撃
+IF BLITZ_TARGET_JUDG(ARG) == 1
+	RETURN 6
+;非ロック中の攻撃
+ELSE
+	RETURN 5
+ENDIF
 
 ;　2 ＨＰ지불　3 ＭＰ지불
-;　あくまでＭＰ를 소비한다のはＲｏＲｏの分
-;　アキュラくん自身はＭＰを持たないという解釈でいく
+;　あくまでＭＰを消費するのはＲｏＲｏの分
+;　アキュラくん自身はＭＰを持たないという解釈でいく　←やっぱやめた
 @SKILL_COSTTYPE_3625, ARG
-RETURN 2
-;消費なし＝1
+SIF ARG < 0
+	RETURN 3
+IF CFLAG:ARG:809 == 1
+	RETURN 2
+ELSE
+	RETURN 3
+ENDIF
+;소비없음＝1
 
 ;　코스트량
 @SKILL_COST_3625, ARG
-;ボスとして出た時はHP消費0。敵かつ雑魚としては出ないでしょ
-SIF ARG >= 0 && CFLAG:ARG:보스플래그
-	RETURN 0
-;HP3%消費　気軽に使ってくれるラインはどれくらいだ
-RETURN 3
+SIF ARG < 0
+	RETURN 10
+IF CFLAG:ARG:809 == 1
+	;ボスとして出た時はHP消費0。敵かつ雑魚としては出ないでしょ
+	SIF ARG >= 0 && CFLAG:ARG:보스플래그
+		RETURN 0
+	;HP3%消費　気軽に使ってくれるラインはどれくらいだ
+	RETURN 3
+ELSE
+	RETURN 10
+ENDIF
 
 ;　상성
 @SKILL_TYPE_3625, ARG
@@ -76,17 +187,39 @@ RETURN 1
 @SKILL_DAMAGETYPE_3625, ARG
 RETURN 1
 
-;　対象が1敵か2味方か3場全体か4特殊か
+;　대상　1 적　2 아군　3 양쪽전체　4 특수
 @SKILL_TARGET_3625
-RETURN 1
+#DIM COPEN
+COPEN = 0
+SIF U > 0 && U < CHARANUM && NO:U == [[キャラ:아큐라(X)]]
+	COPEN = U
+SIF COPEN == 0 && FLAG:행동순1 > 0 && NO:(FLAG:행동순1) == [[キャラ:아큐라(X)]]
+	COPEN = FLAG:행동순1
+;ロック中の攻撃・ロック対象に強制
+IF COPEN > 0 && BLITZ_TARGET_JUDG(COPEN) == 1
+	RETURN 4
+;非ロック中の攻撃・敵単体
+ELSE
+	RETURN 1
+ENDIF
 
 ;　사거리
 @SKILL_RANGE_3625, ARG
-RETURN 3
+IF SKILL_CHANGE(ARG, [[キャラ:아큐라(X)]]) && CSTR:ARG:100 == "X2"
+	RETURN 1
+ELSE
+	RETURN 3
+ENDIF
 
 ;　범위　1 1체　2 1열　3 전체　4 적아군전체
 @SKILL_SPHERE_3625, ARG
-RETURN 1
+;ロック中の攻撃・ロック対象に強制
+IF BLITZ_TARGET_JUDG(ARG) == 1
+	RETURN 4
+;非ロック中の攻撃・敵単体
+ELSE
+	RETURN 1
+ENDIF
 
 ;　 효과타입　1 공격、2 회복、3 상태변화、4 특수、5 상태회복
 @SKILL_EFECT_3625
@@ -104,9 +237,8 @@ SIF ARG == 1
 RETURN GET_SUCCESSION_NUM("만능")
 
 ;속도보정
-;블리츠대쉬は光速い
 @SKILL_SPEED_3625, ARG = -1
-RETURN 5
+RETURN 0
 
 ;　口上の表示とそのタイプ
 @SKILL_MESSAGE_3625, ARG
@@ -146,11 +278,11 @@ RETURN 0
 #LOCALSIZE 1
 #DIM 加算クードス
 #DIM 被弾回数
-#DIM ターゲット
+#DIM BLITZ_TARGET
 ;1桁は被弾回数
 被弾回数 = SKILLGAGE_H_GET(ARG, [[스킬:블리츠대쉬]]) % 10
 ;2桁以上はターゲット
-ターゲット = SKILLGAGE_H_GET(ARG, [[스킬:블리츠대쉬]]) / 10
+BLITZ_TARGET = SKILLGAGE_H_GET(ARG, [[스킬:블리츠대쉬]]) / 10
 
 ;死んだら
 IF BASE:ARG:ＨＰ < 1
@@ -165,10 +297,23 @@ IF BASE:ARG:ＨＰ < 1
 		CALL SKILLGAGE_H_SET, ARG, [[스킬:DARKNESS TRIGGER]], 2
 	ENDIF
 ENDIF
+
+SIF CFLAG:ARG:고유게이지D1 == 0
+	CFLAG:ARG:고유게이지H2 = 0
+
+;敵の数が最初に記録した数から変わったら
+IF ENEMY_COUNT() != CFLAG:ARG:고유게이지H1
+	;なおかつ敵の数が最初に記録した数より小さくて、自分の行動だったら
+	IF ENEMY_COUNT() < CFLAG:ARG:고유게이지H1 && ARG == ARG:1
+		;次のターン(D1=1の時)に敵を撃破できれば連続撃破と見なす
+		CFLAG:ARG:고유게이지D1 = 2
+	ENDIF
+	CFLAG:ARG:고유게이지H1 = ENEMY_COUNT()
+ENDIF
+
 ;モード・アウェイクニング中はクードス加算しない
 SIF SKILLGAGE_H_GET(ARG, [[스킬:SONG OF DIVA]]) == 1
 	RETURN 0
-
 加算クードス = 0
 ;自分の行動の場合
 IF ARG == ARG:1
@@ -176,7 +321,7 @@ IF ARG == ARG:1
 	IF CFLAG:ARG:입력행동 == [[스킬:X-ROSS DISASTER]]
 		RETURN 0
 	ENDIF
-	;데미지を受けた敵の数に応じてスキルゲージアップ
+	;ダメージを受けた敵の数に応じてスキルゲージアップ
 	FOR LOCAL, 0, CHARANUM
 		SIF CFLAG:LOCAL:PT플래그 == CFLAG:ARG:PT플래그
 			CONTINUE
@@ -198,7 +343,7 @@ SIF (GETBIT(CFLAG:ARG:받음플래그,18) || GETBIT(CFLAG:ARG:받음플래그,19
 
 IF EQUIP:ARG:악세서리 == [[아이템:무기력의부적]]
 ELSE
-	;3回데미지を受けた又はカウンター、トリガー以外の攻撃を受けたらクードス全没収！0데미지でもダメです
+	;3回ダメージを受けた又はカウンター、トリガー以外の攻撃を受けたらクードス全没収！0ダメージでもダメです
 	;これはアパシーではなくティミッドだ！！
 	IF (CFLAG:ARG:현데미지 >= 0 || GETBIT(CFLAG:ARG:받음플래그,18) || GETBIT(CFLAG:ARG:받음플래그,19)) && CFLAG:ARG:회피실패
 		;クードス1以上なら被弾判定
@@ -262,15 +407,112 @@ ELSE
 	ENDIF
 ENDIF
 CALL SKILLGAGE_H_SET, ARG, [[스킬:블리츠대쉬]], 被弾回数
-CALL SKILLGAGE_H_ADD, ARG, [[스킬:블리츠대쉬]], ターゲット * 10
+CALL SKILLGAGE_H_ADD, ARG, [[스킬:블리츠대쉬]], BLITZ_TARGET * 10
 RETURN 0
+
+;====================================================
+;追加コマンド
+;====================================================
+@SKILL_SPECIAL_COMMAND_3625, ARG, LOCAL
+#LOCALSIZE 1
+IF BLITZ_TARGET_JUDG(ARG) == 1
+	PRINTFORML [{LOCAL}] ロック解除
+ELSE
+	PRINTFORML [{LOCAL}] ブリッツダッシュ
+ENDIF
+C:LOCAL = 13625
+LOCAL += 1
+RETURN LOCAL
+;====================================================
+;コマンド実行
+;====================================================
+@INPUT_COM_13625, ARG
+#LOCALSIZE 2
+#DIM 被弾回数
+#DIM BLITZ_TARGET
+
+被弾回数 = SKILLGAGE_H_GET(ARG, [[스킬:블리츠대쉬]]) % 10
+
+IF BLITZ_TARGET_JUDG(ARG) == 1
+	PRINTL ロックをリセットしますか？
+	CALL INPUT_YN
+	IF RESULT == 1
+		PRINTL ロックをリセットしませんでした。
+	ELSE
+		PRINTL ロックをリセットしました。
+		CALL SKILLGAGE_D_SET, ARG, [[스킬:블리츠대쉬]], 0
+		CALL SKILLGAGE_H_SET, ARG, [[스킬:블리츠대쉬]], 被弾回数
+		CFLAG:ARG:입력행동 = -1
+		CFLAG:ARG:타겟 = 0
+		CFLAG:ARG:ＲＥＰＥＡＴ행동 = CFLAG:ARG:입력행동
+		CFLAG:ARG:ＲＥＰＥＡＴ타겟 = CFLAG:ARG:타겟
+		CFLAG:ARG:방어플래그 = 1
+	ENDIF
+	RETURN -1
+ELSE
+	CFLAG:ARG:809 = 1
+	CALL TRUE_SKILL_COST, ARG, 3625
+	PRINTFORML ブリッツダッシュを使用しますか？(消費：{RESULT}ＨＰ)
+	CALL INPUT_YN
+	IF RESULT == 0
+		$INPUT_LOOP
+		LOCAL = CFLAG:ARG:입력행동
+		CFLAG:ARG:입력행동 = [[스킬:블리츠대쉬]]
+		CALL PAY_COST, ARG, CFLAG:ARG:입력행동
+		DRAWLINE
+		SIF FLAG:스킬속성표시설정 == 1
+			CALL SKILL_EXPLAIN_PERFORMANCE, CFLAG:ARG:입력행동, ARG
+		PRINTL コマンドから使用。
+		PRINTL 空中を高速移動して相手に体当たりし、ロックを行う。ダメージは発生せず、相性によって無効化もされない。
+		PRINTL ロックは敵一体にのみ行うことができ、既にロック済みの場合は一度解除する必要がある。
+		PRINTL ロックした対象は専用スキルのターゲットとなり、性能が変化する。
+		PRINTL ロックオン状態は５ターンの間持続する。
+		PRINTL ＣＡＮＣＥＬで中断することも可能。
+		CALLFORM SKILL_TYPE_3625, ARG
+		CALL SHOW_NOW_FORMATION_E, 0, 2, RESULT
+		PRINTL [0] ＣＡＮＣＥＬ
+		INPUT
+		IF (RESULT < 17 && RESULT > 6) && POS(RESULT) > -1
+		ELSEIF RESULT == 0
+			RETURN -1
+		ELSE
+			CLEARLINE 23
+			SIF FLAG:스킬속성표시설정 == 1
+				CLEARLINE 1
+			GOTO INPUT_LOOP
+		ENDIF
+		BLITZ_TARGET = POS(RESULT) * 10
+		SETCOLOR 0x33ffcc
+		PRINTFORML ┏>CHARA━━━━━━━━━━┓　┏>ACT━━━━━━━━━━━━━━━━━━┓
+		PRINTFORM ┃[{CPOS(ARG),2}] %CALLNAME:ARG,21,LEFT%┃　┃
+		CALLFORM SKILL_NAME_3625, ARG
+		PRINTFORML %RESULTS,40,LEFT%┃
+		PRINTFORMW ┗━━━━━━━━━━━━━┛　┗━━━━━━━━━━━━━━━━━━━━┛
+		CALL SKILLGAGE_H_SET, ARG, [[스킬:블리츠대쉬]], 被弾回数
+		CALL SKILLGAGE_H_ADD, ARG, [[스킬:블리츠대쉬]], BLITZ_TARGET
+		CALL SKILLGAGE_D_SET, ARG, [[스킬:블리츠대쉬]], 5
+		SWAP TARGET, ARG
+		CALL 구상호출, "BATTLE_MESSAGE", TARGET, TARGET
+		SWAP TARGET, ARG
+		RESETCOLOR
+		LOCAL:1 = BLITZ_TARGET / 10
+		PRINTFORMW 　　%CALLNAME:(LOCAL:1)%をロックした！
+		CFLAG:ARG:입력행동 = LOCAL
+		CFLAG:ARG:809 = 0
+		CFLAG:ARG:입력행동 = -1
+		CFLAG:ARG:타겟 = 0
+		CFLAG:ARG:ＲＥＰＥＡＴ행동 = CFLAG:ARG:입력행동
+		CFLAG:ARG:ＲＥＰＥＡＴ타겟 = CFLAG:ARG:타겟
+		CFLAG:ARG:방어플래그 = 1
+	ENDIF
+ENDIF
+RETURN -1
 
 ;====================================================
 ;스킬 및 행동의 실행
 ;====================================================
 @ACTION_3625, ARG, ARG:1
-#DIM 被弾回数
-#DIM ターゲット
+#DIM ROCK_H
 #DIM ループ用
 #DIM 攻撃前敵カウント
 #DIM 攻撃後敵カウント
@@ -290,18 +532,19 @@ IF CFLAG:ARG:PT플래그 > 0
 	NEXT
 ENDIF
 
-;1桁は被弾回数
-被弾回数 = SKILLGAGE_H_GET(ARG, [[스킬:블리츠대쉬]]) % 10
-;面倒なので命中問わずロックオン
-;当たらなかったのはレーザーであってブリッツダッシュではないのだ
-LOCAL = POS(ARG:1) * 10
-;1桁は被弾回数,2桁以上はターゲットを割り当てるようにした
-CALL SKILLGAGE_H_SET, ARG, [[스킬:블리츠대쉬]], 被弾回数
-CALL SKILLGAGE_H_ADD, ARG, [[스킬:블리츠대쉬]], LOCAL
-CALL SKILLGAGE_D_SET, ARG, [[스킬:블리츠대쉬]], 5
-LOCAL /= 10
-PRINTFORML 　　%CALLNAME:LOCAL%をロックした！
-CALL ATTACK_SINGLE, ARG, POS(ARG:1), 3625
+SIF SKILL_CHANGE(ARG, [[キャラ:아큐라(X)]]) && CSTR:ARG:100 == "X2" && CFLAG:ARG:고유게이지D1 == 0
+	CFLAG:ARG:고유게이지H2 = 0
+
+;ロック中かつロック対象が生存中なら強制的にロック対象へ攻撃
+;ターゲットに23が入るのはロック中限定なので
+IF ARG:1 == 23
+	IF BLITZ_TARGET_JUDG(ARG) == 1
+		ROCK_H = SKILLGAGE_H_GET(ARG, [[스킬:블리츠대쉬]]) / 10
+		CALL ATTACK_SINGLE, ARG, ROCK_H, 3625
+	ENDIF
+ELSE
+	CALL ATTACK_SINGLE, ARG, POS(ARG:1), 3625
+ENDIF
 
 IF CFLAG:ARG:PT플래그 > 0
 	FOR ループ用, 7, 17
@@ -317,14 +560,28 @@ ENDIF
 差分 = 攻撃前敵カウント - 攻撃後敵カウント
 
 IF 差分 > 0
-	加算クードス = 20
-	IF EQUIP:ARG:악세서리 == [[아이템:무모함의증거]]
-		TIMES 加算クードス, 1.25
-	ELSEIF EQUIP:ARG:악세서리 == [[아이템:무기력의부적]]
-		TIMES 加算クードス, 0.5
+	加算クードス = 0
+	IF ARG:1 == 23
+		加算クードス += 10
+		IF EQUIP:ARG:악세서리 == [[아이템:무모함의증거]]
+			TIMES 加算クードス, 1.25
+		ELSEIF EQUIP:ARG:악세서리 == [[아이템:무기력의부적]]
+			TIMES 加算クードス, 0.5
+		ENDIF
+		PRINTFORMW AERIAL　Kudos + {加算クードス}
+		CALL SKILLGAGE_F_ADD, ARG, [[스킬:블리츠대쉬]], 加算クードス
+	ELSEIF SKILL_CHANGE(ARG, [[キャラ:아큐라(X)]]) && CSTR:ARG:100 == "X2" && CFLAG:ARG:고유게이지D1 > 0
+		;連鎖数をH2で記録
+		CFLAG:ARG:고유게이지H2 += 1
+		加算クードス += 30
+		IF EQUIP:ARG:악세서리 == [[아이템:무모함의증거]]
+			TIMES 加算クードス, 1.25
+		ELSEIF EQUIP:ARG:악세서리 == [[아이템:무기력의부적]]
+			TIMES 加算クードス, 0.5
+		ENDIF
+		PRINTFORMW QUICK BREAK　Kudos + {加算クードス}
+		CALL SKILLGAGE_F_ADD, ARG, [[스킬:블리츠대쉬]], 加算クードス
 	ENDIF
-	PRINTFORMW AERIAL　Kudos + {加算クードス}
-	CALL SKILLGAGE_F_ADD, ARG, [[스킬:블리츠대쉬]], 加算クードス
 ENDIF
 IF EQUIP:ARG:악세서리 == [[아이템:무기력의부적]]
 	;アパシーマンの上限は1200
@@ -373,12 +630,9 @@ ELSE
 	PRINTFORML Kudos {ROCK_F}
 ENDIF
 
-;超個人用メモ
-;ROCK_H			…ロックオン中のキャラのリスト番号
-;CPOS(ROCK_H)	…ロックオン中のキャラのポジション
 SETCOLOR 0xed1a72
-SIF ROCK_D > 0 && ROCK_H > -1 && GET_STATE(CFLAG:ROCK_H:상태이상) != "DYING" && CPOS(ROCK_H) > 0
-	PRINTFORML [POS.{CPOS(ROCK_H), 2}] %CALLNAME:(ROCK_H),20,LEFT%　록온 중 (나머지 {ROCK_D} 턴)
+SIF BLITZ_TARGET_JUDG(ARG) == 1
+	PRINTFORML [POS.{CPOS(ROCK_H), 2}] %CALLNAME:(ROCK_H),20,LEFT%　ロックオン中(残り{ROCK_D}ターン)
 RESETCOLOR
 ;====================================================
 ;실행내용 여기까지
@@ -386,21 +640,23 @@ RESETCOLOR
 
 ;　 説明文の表示
 @SKILL_EXPLAIN_3625
-#DIM DKTG_F
-;ステータス画面からはこっち表示
-IF CFLAG:(CHARANUM-1):PT플래그 || U < 0 || U >= CHARANUM
-	PRINTL 공중을 고속이동해 적 1체에 몸통박치기를 하고、록온을 한 후에 레이저 총으로 사격한다。
-	PRINTL 록온 상태는 ５턴간 지속된다。
-	PRINTL ＭＰ가 아닌 ＨＰ를 소비한다。
+IF U > 0 && U < CHARANUM && NO:U == [[キャラ:아큐라(X)]] && CSTR:U:100 == "X2"
+	PRINTL キーライフルを改造した武器・ブレイクホイールで攻撃する。
+	PRINTL ＨＰを消費するコマンド「ブリッツダッシュ」によってロック済みの敵がいる場合、強制的にその対象へ攻撃する。
 	PRINTL 
-	PRINTL 적 1체에 ２～６회、만능 상성으로 소 데미지　크리티컬하지 않는다
-	PRINTL ※록온 대상은 1체 뿐。 록온 중에 다른 대상을 록하면、타켓이 바뀐다。
-;戦闘中はこっち表示
+	PRINTL 攻撃対象がロックオン状態の場合…敵単体に２～５回、万能相性で小ダメージを与える。クリティカルしない。
+	PRINTL 　　このスキルで敵を倒した場合、クードスが10加算される。
+	PRINTL 攻撃対象が非ロック状態の場合　…敵単体に３回、万能相性で小ダメージを与える。後列使用不可、対象前列のみ。
+	PRINTL 　　前のターンに敵を倒しており、かつこのスキルで敵を倒した場合、クードスが30加算される。
 ELSE
-	PRINTL 적 1체에 ２～６회、만능 상성으로 소 데미지를 준다。크리티컬하지 않는다。
-	PRINTL 대상을 록온 상태로 만든다。
+	PRINTL 愛用のレーザー銃・ディヴァイドで射撃する。
+	PRINTL ＨＰを消費するコマンド「ブリッツダッシュ」によってロック済みの敵がいる場合、強制的にその対象へ攻撃する。
+	PRINTL 
+	PRINTL 攻撃対象がロックオン状態の場合…敵単体に２～６回、万能相性で小ダメージを与える。
+	PRINTL 　　このスキルで敵を倒した場合、クードスが10加算される。
+	PRINTL 攻撃対象が非ロック状態の場合　…敵単体に１～５回、万能相性で小ダメージを与える。
+	PRINTL どちらの場合もクリティカルしない。
 ENDIF
-PRINTL ※이 스킬로 적을 쓰러뜨렸을 경우、쿠도스가 20 가산된다
 
 ;계승에 필요한 부위
 @계승부위_3625, ARG
@@ -408,6 +664,41 @@ RETURN 0
 
 ;사용조건
 @SKILL_SPECIAL_ACTIONABLE_3625, ARG
+;ターゲット=23が入るのはロック中のみ
+;かつ実行時にターゲットが死んだりするとダメ
+SIF ARG > 0 && CFLAG:ARG:타겟 == 23 && BLITZ_TARGET_JUDG(ARG) != 1
+	RETURN 0
 RETURN 1
-;とくにない
 
+;仕様改変によって必要になったので。
+;要は「現在ブリッツダッシュのターゲットは生きているか」を聞いている
+@BLITZ_TARGET_JUDG, ARG
+#FUNCTION
+#DIM ROCK_D
+#DIM ROCK_H
+ROCK_D = SKILLGAGE_D_GET(ARG, [[스킬:블리츠대쉬]])
+ROCK_H = SKILLGAGE_H_GET(ARG, [[스킬:블리츠대쉬]]) / 10
+;超個人用メモ
+;ROCK_H			…ロックオン中のキャラのリスト番号
+;CPOS(ROCK_H)	…ロックオン中のキャラのポジション
+;IF ROCK_D > 0 && ROCK_H > -1 && GET_STATE(CFLAG:ROCK_H:상태이상) != "DYING" && CPOS(ROCK_H) > 0
+IF ROCK_D > 0
+	;なんか聞く必要がない気もする
+	SIF !(ROCK_H > -1)
+		RETURNF -1
+	;これをやらないとCPOS(ROCK_H)でエラーになることが
+	SIF ROCK_H >= CHARANUM
+		RETURNF -5
+	;ロック対象がPOS1～16のどっかにいなかったら-1
+	SIF !(CPOS(ROCK_H) > 0)
+		RETURNF -2
+	;ロック対象が死んでたら-1
+	SIF GET_STATE(CFLAG:ROCK_H:상태이상) == "DYING"
+		RETURNF -3
+	RETURNF 1
+ENDIF
+RETURNF -4
+
+;戦闘開始時に行う処理　初期配置の敵の数をH1に記録
+@SKILL_BATTLE_START_3625, ARG
+CFLAG:ARG:고유게이지H1 = ENEMY_COUNT()

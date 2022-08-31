@@ -1,0 +1,342 @@
+﻿;스킬명
+@SKILL_NAME_ガトリングスコール, ARG
+RESULTS = ガトリングスコール
+
+;　명중
+@SKILL_HITRATE_ガトリングスコール, ARG
+#DIM SKILL_NUM
+IF SKILL_CHANGE(ARG, [[キャラ:브리게이드(X2)]])
+	RETURN 95
+ELSE
+	SKILL_NUM = PU_SKILLNUM_GET(ARG, "ガトリングスコール")
+	IF SKILLGAGE_D_GET(ARG, SKILL_NUM) > 0
+		RETURN 95
+	ELSE
+		RETURN 50
+	ENDIF
+ENDIF
+
+;　위력
+@SKILL_POWER_ガトリングスコール, ARG
+IF SKILL_CHANGE(ARG, [[キャラ:브리게이드(X2)]])
+	RETURN 120
+ELSE
+	IF SKILL_CHANGE(ARG, [[キャラ:아큐라(X)]]) && EQUIP:ARG:악세서리 == 5349 && FLAG:카운터중
+		;約1.25倍
+		RETURN 150
+	ELSE
+		RETURN 120
+	ENDIF
+ENDIF
+
+;　최저공격횟수
+@SKILL_MINATTACKNUMBER_ガトリングスコール, ARG
+RETURN 2
+
+;　최대공격횟수
+@SKILL_MAXATTACKNUMBER_ガトリングスコール, ARG
+IF SKILL_CHANGE(ARG, [[キャラ:브리게이드(X2)]])
+	RETURN 8
+ELSE
+	RETURN 4
+ENDIF
+
+;一体辺りの最大ＨＩＴ数
+;※ブリガド限定
+@SKILL_MAXATK_PER_ガトリングスコール, ARG
+RETURN 4
+
+;一体辺りの最低ＨＩＴ数
+;※ブリガド限定
+@SKILL_MINATK_PER_ガトリングスコール, ARG
+RETURN 0
+
+;　2 ＨＰ지불　3 ＭＰ지불
+@SKILL_COSTTYPE_ガトリングスコール, ARG
+RETURN 3
+;소비없음＝1
+
+;　코스트량
+@SKILL_COST_ガトリングスコール, ARG
+;다크니스トリガー発動中はコスト1/3
+SIF SKILLGAGE_H_GET(ARG, [[스킬:DARKNESS TRIGGER]]) == 1
+	RETURN 10
+RETURN 32
+
+;　상성
+@SKILL_TYPE_ガトリングスコール, ARG
+RETURN GET_TYPE_NUM("비구")
+
+;　1 EXTRA　2 MAGIC
+@SKILL_DECIDE_TYPE_ガトリングスコール, ARG
+RETURN 1
+
+;　1 물리데미지로 계산　2 마법데미지로 계산
+@SKILL_DAMAGETYPE_ガトリングスコール, ARG
+RETURN 1
+
+;　대상　1 적　2 아군　3 양쪽전체　4 특수
+@SKILL_TARGET_ガトリングスコール, ARG
+#DIM COPEN
+COPEN = 0
+IF U > 0 && U < CHARANUM && NO:U == [[キャラ:아큐라(X)]]
+	COPEN = U
+ELSEIF FLAG:행동순1 > 0 && NO:(FLAG:행동순1) == [[キャラ:아큐라(X)]]
+	COPEN = FLAG:행동순1
+ENDIF
+;ロック中の攻撃・ロック対象に強制
+IF COPEN > 0 && BLITZ_TARGET_JUDG(COPEN) == 1
+	RETURN 4
+;非ロック中の攻撃・敵単体
+ELSE
+	RETURN 1
+ENDIF
+
+;　사거리
+@SKILL_RANGE_ガトリングスコール, ARG
+RETURN 3
+
+;　범위　1 1체　2 1열　3 전체　4 적아군전체
+@SKILL_SPHERE_ガトリングスコール, ARG
+IF SKILL_CHANGE(ARG, [[キャラ:브리게이드(X2)]])
+	RETURN 3
+ELSE
+	;ロック中の攻撃・ロック対象に強制
+	IF BLITZ_TARGET_JUDG(ARG) == 1
+		RETURN 4
+	;非ロック中の攻撃・敵単体
+	ELSE
+		RETURN 1
+	ENDIF
+ENDIF
+
+;　 효과타입　1 공격、2 회복、3 상태변화、4 특수、5 상태회복
+@SKILL_EFECT_ガトリングスコール, ARG
+RETURN 1
+
+;속도보정
+@SKILL_SPEED_ガトリングスコール, ARG = -1
+IF SKILL_CHANGE(ARG, [[キャラ:브리게이드(X2)]])
+	RETURN 0
+ELSE
+	;ロック中の攻撃
+	IF BLITZ_TARGET_JUDG(ARG) == 1
+		RETURN 0
+	;非ロック中の攻撃
+	ELSE
+		RETURN -10
+	ENDIF
+ENDIF
+
+;전투시 이외에 사용 가능한가
+@SKILL_ACTIONABLE_FIELD_ガトリングスコール, ARG = -1
+RETURN 0
+
+;템플릿용、추가효과 시리즈
+;추가효과 스테이터스
+@SKILL_ADDTIONAL_STATE_ガトリングスコール, ARG
+RETURN 0
+
+;추가효과 상성
+@SKILL_ADDTIONAL_TYPE_ガトリングスコール, ARG
+RETURN 0
+
+;추가효과 기본부여확률
+@SKILL_ADDTIONAL_BASE_RATE_ガトリングスコール, ARG
+RETURN 0
+
+;추가효과 부여확률상한
+@SKILL_ADDTIONAL_MAX_RATE_ガトリングスコール, ARG
+RETURN 0
+
+;====================================================
+;トリガー発動条件
+;====================================================
+@SKILL_TRIGGER_ACTIONABLE_ガトリングスコール, ARG, ARG:1
+#DIM SKILL_NUM
+#DIM ROCK_H
+#DIM ループ用
+#DIM 攻撃前敵カウント
+#DIM 攻撃後敵カウント
+#DIM 差分
+#DIM 加算クードス
+
+;自分じゃなければNG
+SIF ARG != ARG:1
+	RETURN 0
+;X-ROSS DISASTER,SONG OF DIVA,DARKNESS TRIGGERならNG
+SIF CFLAG:(ARG:1):입력행동 == [[스킬:X-ROSS DISASTER]] || CFLAG:(ARG:1):입력행동 == [[스킬:SONG OF DIVA]] || CFLAG:(ARG:1):입력행동 == [[스킬:DARKNESS TRIGGER]]
+	RETURN 0
+;EXウェポン10番=ガトリングスコールじゃないとNG
+SIF SKILLGAGE_F_GET(ARG, [[스킬:DARKNESS TRIGGER]]) != 10
+	RETURN 0
+;ロック状態の敵が健在かつダークネストリガー発動中
+IF BLITZ_TARGET_JUDG(ARG) == 1 && SKILLGAGE_H_GET(ARG, [[스킬:DARKNESS TRIGGER]]) == 1
+	;1桁は被弾回数,2桁以上はターゲットを割り当てるようにした
+	ROCK_H = SKILLGAGE_H_GET(ARG, [[스킬:블리츠대쉬]]) / 10
+	攻撃前敵カウント = 0
+	攻撃後敵カウント = 0
+	IF CFLAG:ARG:PT플래그 > 0
+		FOR ループ用, 7, 17
+			LOCALS = 포지션{ループ用}
+			SIF FLAG:LOCALS == -1
+				CONTINUE
+			SIF GET_STATE(CFLAG:(FLAG:LOCALS):상태이상) == "DYING"
+				CONTINUE
+			攻撃前敵カウント += 1
+		NEXT
+	ENDIF
+	
+	SETCOLOR 0x9933cd
+	PRINTFORML ┏>CHARA━━━━━━━━━━┓　┏>ACT━━━━━━━━━━━━━━━━━━┓
+	PRINTFORM ┃[{CPOS(ARG), 2}] %"ＲｏＲｏ",21,LEFT%┃　┃
+	PRINTFORML %"ガトリングスコール",40,LEFT%┃
+	PRINTFORMW ┗━━━━━━━━━━━━━┛　┗━━━━━━━━━━━━━━━━━━━━┛
+	RESETCOLOR
+	SKILL_NUM = PU_SKILLNUM_GET(ARG, "ガトリングスコール")
+	CALL SKILLGAGE_D_SET, ARG, SKILL_NUM, 1
+	CALL ATTACK_SINGLE, ARG, ROCK_H, SKILL_NUM
+	
+	IF CFLAG:ARG:PT플래그 > 0
+		FOR ループ用, 7, 17
+			LOCALS = 포지션{ループ用}
+			SIF FLAG:LOCALS == -1
+				CONTINUE
+			SIF GET_STATE(CFLAG:(FLAG:LOCALS):상태이상) == "DYING"
+				CONTINUE
+			攻撃後敵カウント += 1
+		NEXT
+	ENDIF
+	
+	差分 = 攻撃前敵カウント - 攻撃後敵カウント
+	
+	IF 差分 > 0
+		加算クードス = 20
+		IF EQUIP:ARG:악세서리 == [[아이템:무모함의증거]]
+			TIMES 加算クードス, 1.25
+		ELSEIF EQUIP:ARG:악세서리 == [[아이템:무기력의부적]]
+			TIMES 加算クードス, 0.5
+		ENDIF
+		PRINTFORMW AERIAL EX　Kudos + {加算クードス}
+		CALL SKILLGAGE_F_ADD, ARG, [[스킬:블리츠대쉬]], 加算クードス
+	ENDIF
+	IF EQUIP:ARG:악세서리 == [[아이템:무기력의부적]]
+		;アパシーマンの上限は1200
+		SIF SKILLGAGE_F_GET(ARG, [[스킬:블리츠대쉬]]) > 1200
+			CALL SKILLGAGE_F_SET, ARG, [[스킬:블리츠대쉬]], 1200
+	ELSE
+		;上限は99999
+		SIF SKILLGAGE_F_GET(ARG, [[스킬:블리츠대쉬]]) > 99999
+			CALL SKILLGAGE_F_SET, ARG, [[스킬:블리츠대쉬]], 99999
+	ENDIF
+ENDIF
+RETURN 0
+
+;====================================================
+;스킬 및 행동의 실행
+;====================================================
+@ACTION_ガトリングスコール, ARG, ARG:1, SKILL_NUM
+#DIM SKILL_NUM
+#DIM ROCK_H
+#DIM ループ用
+#DIM 攻撃前敵カウント
+#DIM 攻撃後敵カウント
+#DIM 差分
+#DIM 加算クードス
+
+IF SKILL_CHANGE(ARG, [[キャラ:브리게이드(X2)]])
+	CALL ATTACK_RAND, ARG, ARG:1, SKILL_NUM
+ELSE
+	攻撃前敵カウント = 0
+	攻撃後敵カウント = 0
+	IF CFLAG:ARG:PT플래그 > 0
+		FOR ループ用, 7, 17
+			LOCALS = 포지션{ループ用}
+			SIF FLAG:LOCALS == -1
+				CONTINUE
+			SIF GET_STATE(CFLAG:(FLAG:LOCALS):상태이상) == "DYING"
+				CONTINUE
+			攻撃前敵カウント += 1
+		NEXT
+	ENDIF
+
+	;ロック中かつロック対象が生存中なら強制的にロック対象へ攻撃
+	IF ARG:1 == 23
+		IF BLITZ_TARGET_JUDG(ARG) == 1
+			ROCK_H = SKILLGAGE_H_GET(ARG, [[스킬:블리츠대쉬]]) / 10
+			CALL SKILLGAGE_D_SET, ARG, SKILL_NUM, 1
+			CALL ATTACK_SINGLE, ARG, ROCK_H, SKILL_NUM
+		ENDIF
+	ELSE
+		CALL ATTACK_SINGLE, ARG, POS(ARG:1), SKILL_NUM
+	ENDIF
+
+	IF CFLAG:ARG:PT플래그 > 0
+		FOR ループ用, 7, 17
+			LOCALS = 포지션{ループ用}
+			SIF FLAG:LOCALS == -1
+				CONTINUE
+			SIF GET_STATE(CFLAG:(FLAG:LOCALS):상태이상) == "DYING"
+				CONTINUE
+			攻撃後敵カウント += 1
+		NEXT
+	ENDIF
+
+	差分 = 攻撃前敵カウント - 攻撃後敵カウント
+
+	IF 差分 > 0
+		加算クードス = 20
+		IF EQUIP:ARG:악세서리 == [[아이템:무모함의증거]]
+			TIMES 加算クードス, 1.25
+		ELSEIF EQUIP:ARG:악세서리 == [[아이템:무기력의부적]]
+			TIMES 加算クードス, 0.5
+		ENDIF
+		PRINTFORMW AERIAL EX　Kudos + {加算クードス}
+		CALL SKILLGAGE_F_ADD, ARG, [[스킬:블리츠대쉬]], 加算クードス
+	ENDIF
+	IF EQUIP:ARG:악세서리 == [[아이템:무기력의부적]]
+		;アパシーマンの上限は1200
+		SIF SKILLGAGE_F_GET(ARG, [[스킬:블리츠대쉬]]) > 1200
+			CALL SKILLGAGE_F_SET, ARG, [[스킬:블리츠대쉬]], 1200
+	ELSE
+		;上限は99999
+		SIF SKILLGAGE_F_GET(ARG, [[스킬:블리츠대쉬]]) > 99999
+			CALL SKILLGAGE_F_SET, ARG, [[스킬:블리츠대쉬]], 99999
+	ENDIF
+
+	;EXウェポン10番=ガトリングスコール
+	CALL SKILLGAGE_F_SET, ARG, [[스킬:DARKNESS TRIGGER]], 10
+ENDIF
+;====================================================
+;실행내용 여기까지
+;====================================================
+
+;　説明文の表示
+@SKILL_EXPLAIN_ガトリングスコール, ARG
+IF SKILL_CHANGE(ARG, [[キャラ:브리게이드(X2)]])
+	PRINTL ガトリング砲を展開し、一斉射撃を行う。
+	PRINTL 敵複数体に飛具相性で２～８回小ダメージを与える。
+ELSE
+	PRINTL 重火器を操るワーカー・ブリガドの능력을 재현한 ＥＸ 웨폰。
+	PRINTL ＨＰを消費するコマンド「ブリッツダッシュ」によってロック済みの敵がいる場合、強制的にその対象へ攻撃する。
+	PRINTL 
+	PRINTL 攻撃対象がロックオン状態の場合…敵単体に飛具相性で２～４回小ダメージを与える。
+	PRINTL 攻撃対象が非ロック状態の場合　…敵単体に飛具相性で２～４回小ダメージを与える。発動が遅く、命中率が低い。
+	IF U > 0 && U < CHARANUM && NO:U == [[キャラ:아큐라(X)]] && EQUIP:U:악세서리 == 5349 && SKILLGAGE_H_GET(U, [[스킬:DARKNESS TRIGGER]]) == 1
+		SETCOLOR 0x9933cd
+		PRINTL 다크니스 트리거Ｘ 장비중　ダークネストリガーによる追撃時のダメージ上昇
+		RESETCOLOR
+	ENDIF
+	PRINTL ※이 스킬로 적을 쓰러뜨렸을 경우、쿠도스가 ２０ 가산된다
+ENDIF
+
+;사용조건
+@SKILL_SPECIAL_ACTIONABLE_ガトリングスコール, ARG
+SIF SKILL_CHANGE(ARG, [[キャラ:브리게이드(X2)]])
+	RETURN 1
+;ターゲット=23が入るのはロック中のみ
+;かつ実行時にターゲットが死んだりするとダメ
+SIF ARG > 0 && CFLAG:ARG:타겟 == 23 && BLITZ_TARGET_JUDG(ARG) != 1
+	RETURN 0
+RETURN 1
+
