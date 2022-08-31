@@ -1,0 +1,535 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:FUSION_KANRAKU.ERB
+;	Facility	:함락합체の一連の処理
+;
+;	Licence		:ライセンスフリー。
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		2022/05/26		Collared				新規作成
+;	002		2022/06/01		Collared				経験継承時にそれを選択画面で表示するよう変更＆その他微調整
+;
+;陥落合体は、合体内容が確定した後、キャラ削除のタイミングで挟まるので合体事故にも対応
+;この処理に入ると画像、口上、現在素質、初期経験の何を継承するか決めて完成品からコピーされる。
+;
+;ARG = 完成品
+;ARG:1 = 素材:1
+;ARG:2 = 素材:2
+;ARG:3 = 素材:3
+;=====================================================
+@FUSION_KANRAKU,ARG,ARG:1,ARG:2,ARG:3,ARG:4 = -1
+#LOCALSIZE 5
+#LOCALSSIZE 1
+#DIM IMG_TYPE = 1
+#DIM 調教対象保存
+#DIM カウント , 1
+#DIM リスト , 70
+
+;画像表示にTARGETを利用するので一旦保存する
+調教対象保存 = TARGET
+
+$INPUT_LOOP
+
+
+CALL FUSION_KANRAKU_RESULT,ARG:1
+CALL FUSION_KANRAKU_RESULT,ARG
+
+PRINT [100]画像設定
+IF FLAG:화상계승 == 0
+	SETCOLOR 0x404040
+ELSE
+	SETCOLOR 0x33ffcc
+ENDIF
+PRINT 引き継ぐ
+RESETCOLOR
+PRINT /
+IF FLAG:화상계승 == 1
+	SETCOLOR 0x404040
+ELSE
+	SETCOLOR 0x33ffcc
+ENDIF
+PRINT 引き継がない
+RESETCOLOR
+PRINTL 
+
+
+PRINT [200]口上設定
+IF FLAG:구상계승 == 0
+	SETCOLOR 0x404040
+ELSE
+	SETCOLOR 0x33ffcc
+ENDIF
+PRINT 引き継ぐ
+RESETCOLOR
+PRINT /
+IF FLAG:구상계승 == 1
+	SETCOLOR 0x404040
+ELSE
+	SETCOLOR 0x33ffcc
+ENDIF
+PRINT 引き継がない
+RESETCOLOR
+PRINTL 
+
+PRINT [300]素質固定
+IF FLAG:소질계승 == 0
+	SETCOLOR 0x404040
+ELSE
+	SETCOLOR 0x33ffcc
+ENDIF
+PRINT 固定する
+RESETCOLOR
+PRINT /
+IF FLAG:소질계승 == 1
+	SETCOLOR 0x404040
+ELSE
+	SETCOLOR 0x33ffcc
+ENDIF
+PRINT 固定させない
+RESETCOLOR
+PRINTL 
+
+PRINT [400]初期経験
+IF FLAG:경험계승 == 0
+	SETCOLOR 0x404040
+ELSE
+	SETCOLOR 0x33ffcc
+ENDIF
+PRINT 固定する
+RESETCOLOR
+PRINT /
+IF FLAG:경험계승 == 1
+	SETCOLOR 0x404040
+ELSE
+	SETCOLOR 0x33ffcc
+ENDIF
+PRINT 固定させない
+RESETCOLOR
+PRINTL 
+
+CUSTOMDRAWLINE ･
+
+PRINTL [99]継承を確定する
+
+INPUT
+IF RESULT == 100
+	IF FLAG:화상계승 == 1
+		FLAG:화상계승 = 0
+		GOTO INPUT_LOOP
+	ELSE
+		FLAG:화상계승 = 1
+		GOTO INPUT_LOOP
+	ENDIF
+ELSEIF RESULT == 200
+	IF FLAG:구상계승 == 1
+		FLAG:구상계승 = 0
+		GOTO INPUT_LOOP
+	ELSE
+		FLAG:구상계승 = 1
+		GOTO INPUT_LOOP
+	ENDIF
+ELSEIF RESULT == 300
+	IF FLAG:소질계승 == 1
+		FLAG:소질계승 = 0
+		GOTO INPUT_LOOP
+	ELSE
+		FLAG:소질계승 = 1
+		GOTO INPUT_LOOP
+	ENDIF
+ELSEIF RESULT == 400
+	IF FLAG:경험계승 == 1
+		FLAG:경험계승 = 0
+		GOTO INPUT_LOOP
+	ELSE
+		FLAG:경험계승 = 1
+		GOTO INPUT_LOOP
+	ENDIF
+ELSEIF RESULT == 99
+ELSE
+	GOTO INPUT_LOOP
+ENDIF 
+
+;画像継承する場合、外見番号が設定されてないなら新規に画像を継承。 設定されてるならそのまま。
+IF FLAG:화상계승 == 1
+	IF CFLAG:(ARG:1):외견번호 == 0
+		CFLAG:(ARG:1):외견번호 = NO:(ARG:1)
+	ENDIF
+ELSE
+	CFLAG:(ARG:1):외견번호 = 0
+ENDIF
+
+;口上継承する場合、口上番号が設定されてないなら新規に口上を継承。 設定されてるならそのまま。
+IF FLAG:구상계승 == 1
+	IF CFLAG:(ARG:1):구상번호 == 0
+		CFLAG:(ARG:1):구상번호 = NO:(ARG:1)
+	ENDIF
+ELSE
+	ABL:(ARG:1):회화타입 = ABL:(ARG):회화타입
+	CFLAG:(ARG:1):구상번호 = 0
+	CFLAG:(ARG:1):201 = 0
+	CFLAG:(ARG:1):구상셀렉트 = 0
+ENDIF
+
+;素質継承する場合、素質はコピーされない。 しない場合なら完成品の素質に変化する。
+IF FLAG:소질계승 == 1
+ELSE
+	FOR LOCAL, 10, 161
+	TALENT:(ARG:1):LOCAL = TALENT:(ARG):LOCAL
+	NEXT
+	FOR LOCAL, 201, 219
+	TALENT:(ARG:1):LOCAL = TALENT:(ARG):LOCAL
+	NEXT
+	FOR LOCAL, 281, 283
+	TALENT:(ARG:1):LOCAL = TALENT:(ARG):LOCAL
+	NEXT
+ENDIF
+
+;経験継承する場合、経験番号が設定されてないなら新規に初期経験を継承。 設定されてるならそのまま。
+IF FLAG:경험계승 == 1
+	IF CFLAG:(ARG:1):경험번호 == 0
+		CFLAG:(ARG:1):경험번호 = NO:(ARG:1)
+	ENDIF
+ELSE
+	CFLAG:(ARG:1):경험번호 = 0
+ENDIF
+
+;達人は絶対に継承
+SIF TALENT:(ARG):달인 == 1
+	TALENT:(ARG:1):달인 = 1
+
+;陥落合体を繰り返して陥落ボーナス埋めできないように応急処置
+IF 陥落(ARG) > 0 && RESULTS == "恋慕"
+	FLAG:연모인수 -= 1
+	FLAG:((ARG:1) + 50000) = 0
+ELSEIF 陥落(ARG) > 0 && RESULTS == "淫乱"
+	FLAG:음란인수 -= 1
+	FLAG:((ARG:1) + 50000) = 0
+ELSEIF 陥落(ARG) > 0 && RESULTS == "服従"
+	FLAG:복종인수 -= 1
+	FLAG:((ARG:1) + 50000) = 0
+ELSEIF 陥落(ARG) > 0 && RESULTS == "信頼"
+	FLAG:((ARG:1) + 50000) = 0
+ENDIF
+
+;多くの処理は変異から流用、ここもその一つ
+PRINTFORMW %CALLNAME:(ARG:1)%は%CSVNAME(NO:ARG)%へと生まれ変わった！
+;名称変更(変更されていない場合のみ)
+NAME:(ARG:1) '= \@ NAME:(ARG:1) == CSVNAME(NO:(ARG:1)) ? %CSVNAME(NO:ARG)% # %NAME:(ARG:1)% \@
+CALLNAME:(ARG:1) '= \@ CALLNAME:(ARG:1) == CSVCALLNAME(NO:(ARG:1)) ? %CSVCALLNAME(NO:ARG)% # %CALLNAME:(ARG:1)% \@
+
+;CSV番号を切り替えて別の悪魔になる
+NO:(ARG:1) = NO:ARG
+
+;この辺はハッピーバースデイなどの処理が乗ってる
+BASE:(ARG:1):ＥＸＰ = BASE:(ARG):ＥＸＰ
+BASE:(ARG:1):LV = BASE:(ARG):LV
+BASE:(ARG:1):ＭＡＧ = BASE:(ARG):ＭＡＧ
+BASE:(ARG:1):CP = BASE:(ARG):CP
+
+;能力値
+FOR LOCAL, 31, 36
+	BASE:(ARG:1):LOCAL = BASE:(ARG):LOCAL
+NEXT
+;相性耐性
+FOR LOCAL, 40, 59
+	BASE:(ARG:1):LOCAL = BASE:(ARG):LOCAL
+NEXT
+;バステ耐性
+FOR LOCAL, 60, 80
+	BASE:(ARG:1):LOCAL = BASE:(ARG):LOCAL
+NEXT
+;一応絶頂が定義されてるので採用
+BASE:(ARG:1):99 = BASE:(ARG):99
+
+;スキル＆継承タイプ
+FOR LOCAL, 60, 81
+	ABL:(ARG:1):LOCAL = ABL:(ARG):LOCAL
+NEXT
+
+;会話タイプ抜かしての通常攻撃周りと習得スキル
+FOR LOCAL, 83, 140
+	ABL:(ARG:1):LOCAL = ABL:(ARG):LOCAL
+NEXT
+
+;善悪値と秩混値
+FOR LOCAL, 1010, 1011
+	CFLAG:(ARG:1):LOCAL = CFLAG:(ARG):LOCAL
+NEXT
+
+;初期衣服をコピーする
+FOR LOCAL, 54, 71
+	CFLAG:(ARG:1):LOCAL = CFLAG:(ARG):LOCAL
+NEXT
+
+;バグらないようおまじないで入力行動を初期化する
+CFLAG:(ARG:1):1100 = -1
+
+CSTR:(ARG:1):타이틀 = %CSTR:(ARG):타이틀%
+CSTR:(ARG:1):종족명   = %CSTR:(ARG):종족명%
+
+FOR LOCAL, 1, 21
+	CSTR:(ARG:1):@"解説{LOCAL}" '= CSTR:(ARG):@"解説{LOCAL}"
+NEXT
+
+CSTR:(ARG:1):상성그룹 = CSTR:(ARG):상성그룹
+
+;専用技とかの類
+FOR LOCAL, 52, 74
+	CSTR:(ARG:1):LOCAL = %CSTR:(ARG):LOCAL%
+NEXT
+
+;継承素質
+FOR LOCAL, 320, 342
+	TALENT:(ARG:1):LOCAL = TALENT:(ARG):LOCAL
+NEXT
+
+CALL SYNC_STATUS,(ARG:1)
+CALL HEALTH_CHARA,(ARG:1)
+CALL CHECK_LEVEL_UP,(ARG:1)
+
+;後始末して終了
+U = ARG:1
+TARGET = 調教対象保存
+FLAG:함락합체 = 0
+
+@FUSION_KANRAKU_RESULT,ARG,ARG:1 = -1
+#LOCALSIZE 5
+#LOCALSSIZE 1
+#DIM IMG_TYPE = 1
+#DIM カウント , 1
+#DIM リスト , 70
+#DIM 初期経験用
+
+TARGET = ARG
+;画像表示
+IF FLAG:화상표시설정_능력확인화면 > 0
+	SIF FLAG:화상표시설정_능력확인화면 == 1 || FLAG:화상표시설정_능력확인화면 == 2
+		IMG_TYPE = GET_IMG_TYPE(ARG, 1)
+	FOR LOCAL, 0, 6 
+		IF  FLAG:화상표시설정_능력확인화면 == 1
+			;IF モブ画像_設定確認(ARG, "能力確認")
+			;	CALL モブ画像_表示(ARG, "能力確認", LOCAL + 1, 1)
+			; IF EXIST_PICTURE(NO:ARG)
+			; 	CALL WRITE_IMG_2,NO:ARG,LOCAL + 1
+			IF モブ画像_設定確認(ARG, "能力確認")
+				CALL モブ画像_表示(ARG, "能力確認", LOCAL + 1, 1)
+			;---- EDIT 007 ADD START -------------------------
+			ELSEIF EXIST_PICTURE((CFLAG:ARG:외견번호), IMG_TYPE) && (CFLAG:ARG:외견번호) > 0
+				CALL WRITE_IMG, (CFLAG:ARG:외견번호), IMG_TYPE, LOCAL + 1
+			;---- EDIT 007 ADD END -------------------------
+			ELSEIF EXIST_PICTURE(NO:ARG, IMG_TYPE)
+				CALL WRITE_IMG, NO:ARG, IMG_TYPE, LOCAL + 1
+			ELSE
+				CALL RACE_ICON,NO:ARG,LOCAL + 1,ARG,1
+				;CALL RACE_ICON,NO:ASSI,ARG,ASSI,1
+			ENDIF
+		ELSEIF FLAG:화상표시설정_능력확인화면 == 2
+			;IF モブ画像_設定確認(ARG, "能力確認")
+			;	CALL モブ画像_表示(ARG, "能力確認", LOCAL + 1, 1)
+			; IF EXIST_PICTURE(NO:ARG)
+			; 	CALL WRITE_IMG_2,NO:ARG,LOCAL + 1
+			IF モブ画像_設定確認(ARG, "能力確認")
+				CALL モブ画像_表示(ARG, "能力確認", LOCAL + 1, 1)
+			;---- EDIT 007 ADD START -------------------------
+			ELSEIF EXIST_PICTURE((CFLAG:ARG:외견번호), IMG_TYPE) && (CFLAG:ARG:외견번호) > 0
+				CALL WRITE_IMG, (CFLAG:ARG:외견번호), IMG_TYPE, LOCAL + 1
+			;---- EDIT 007 ADD END -------------------------
+			ELSEIF EXIST_PICTURE(NO:ARG, IMG_TYPE)
+				CALL WRITE_IMG, NO:ARG, IMG_TYPE, LOCAL + 1
+			ELSE
+				CALL ONI_MARK,ARG,LOCAL + 1,1
+			ENDIF
+		ELSEIF FLAG:화상표시설정_능력확인화면 == 3
+			IF モブ画像_設定確認(ARG, "能力確認")
+				CALL モブ画像_表示(ARG, "能力確認", LOCAL + 1, 1)
+			ELSE
+				CALL ONI_MARK,ARG,LOCAL + 1,1
+			ENDIF
+		ENDIF
+		PRINTL
+	NEXT
+ENDIF
+
+LOCAL = -1
+LOCALS = -1
+
+VARSET リスト , -1
+カウント = 0
+FOR LOCAL , 0 , 49
+	IF LOCAL < 50
+		IF CFLAG:(ARG):구상번호 > 0
+			LOCALS = K{(CFLAG:(ARG):구상번호)}
+		ELSE
+			LOCALS = K{NO:(ARG)}
+		ENDIF
+	ELSE
+		TRYCCALLFORM 特殊口上条件_SP{LOCAL - 60}
+			SIF RESULT
+				LOCALS = SP{LOCAL-60}
+		CATCH
+			CONTINUE
+		ENDCATCH
+	ENDIF
+	SIF LOCAL % 50 != 0 && LOCAL < 60
+		LOCALS += @"_{LOCAL%50}"
+	TRYCCALLFORM セレクト口上説明_%LOCALS%, 1
+		SIF RESULT == -1
+			CONTINUE
+		リスト:カウント = LOCAL
+		カウント ++
+	CATCH
+	ENDCATCH
+NEXT
+
+LOCAL = -1
+LOCALS = -1
+
+IF カウント > 0 && MAXARRAY(リスト) < 50
+	PRINTFORM 専用口上：あり({カウント}種) 
+ELSE
+	PRINT 専用口上：なし 
+ENDIF
+
+PRINT 
+
+VARSET リスト , -1
+カウント = 0
+FOR LOCAL , 60 , 70
+	TRYCCALLFORM 特殊口上条件_SP{LOCAL - 60}
+		SIF RESULT
+			LOCALS = SP{LOCAL-60}
+	CATCH
+		CONTINUE
+	ENDCATCH
+	SIF LOCAL % 50 != 0 && LOCAL < 60
+		LOCALS += @"_{LOCAL%50}"
+	TRYCCALLFORM セレクト口上説明_%LOCALS%, 1
+		SIF RESULT == -1
+			CONTINUE
+		リスト:カウント = LOCAL
+		カウント ++
+	CATCH
+	ENDCATCH
+NEXT
+
+SIF MAXARRAY(リスト) >= 60
+	PRINTFORM 特殊口上：あり({カウント}種)
+
+PRINTL
+
+IF ABL:(ARG):회화타입 == 302
+	PRINT 会話タイプ：女_子供 
+ELSEIF ABL:(ARG):회화타입 == 303
+	PRINT 会話タイプ：女_少女 
+ELSEIF ABL:(ARG):회화타입 == 304
+	PRINT 会話タイプ：女_若者 
+ELSEIF ABL:(ARG):회화타입 == 305
+	PRINT 会話タイプ：女_大人 
+ELSEIF ABL:(ARG):회화타입 == 306
+	PRINT 会話タイプ：女_淑女 
+ELSEIF ABL:(ARG):회화타입 == 307
+	PRINT 会話タイプ：女_古風 
+ELSEIF ABL:(ARG):회화타입 == 308
+	PRINT 会話タイプ：女_花魁 
+ELSEIF ABL:(ARG):회화타입 == 311
+	PRINT 会話タイプ：女_武人 
+ELSEIF ABL:(ARG):회화타입 == 314
+	PRINT 会話タイプ：男_少年 
+ELSEIF ABL:(ARG):회화타입 == 315
+	PRINT 会話タイプ：男_ヒーホー 
+ELSEIF ABL:(ARG):회화타입 == 316
+	PRINT 会話タイプ：男_若者 
+ELSEIF ABL:(ARG):회화타입 == 318
+	PRINT 会話タイプ：男_紳士 
+ELSEIF ABL:(ARG):회화타입 == 322
+	PRINT 会話タイプ：男_ガイン 
+ELSEIF ABL:(ARG):회화타입 == 323
+	PRINT 会話タイプ：男_マッド 
+ELSEIF ABL:(ARG):회화타입 == 324
+	PRINT 会話タイプ：男_シニカル 
+ELSEIF ABL:(ARG):회화타입 == 325
+	PRINT 会話タイプ：老人 
+ELSEIF ABL:(ARG):회화타입 == 325
+	PRINT 会話タイプ：獣_ケダモノ 
+ELSEIF ABL:(ARG):회화타입 == 331
+	PRINT 会話タイプ：？_会話不可 
+ELSEIF ABL:(ARG):회화타입 == 332
+	PRINT 会話タイプ：？_シャドウ 
+ELSEIF ABL:(ARG):회화타입 == 333
+	PRINT 会話タイプ：？_ゾンビ 
+ELSE
+	PRINT 会話タイプ：？ 
+ENDIF
+
+IF CFLAG:(ARG):ＴＳ시회화타입 == 302
+	PRINT ＴＳ時会話タイプ：女_子供
+ELSEIF CFLAG:(ARG):ＴＳ시회화타입 == 303
+	PRINT ＴＳ時会話タイプ：女_少女
+ELSEIF CFLAG:(ARG):ＴＳ시회화타입 == 304
+	PRINT ＴＳ時会話タイプ：女_若者
+ELSEIF CFLAG:(ARG):ＴＳ시회화타입 == 305
+	PRINT ＴＳ時会話タイプ：女_大人
+ELSEIF CFLAG:(ARG):ＴＳ시회화타입 == 306
+	PRINT ＴＳ時会話タイプ：女_淑女
+ELSEIF CFLAG:(ARG):ＴＳ시회화타입 == 307
+	PRINT ＴＳ時会話タイプ：女_古風
+ELSEIF CFLAG:(ARG):ＴＳ시회화타입 == 308
+	PRINT ＴＳ時会話タイプ：女_花魁
+ELSEIF CFLAG:(ARG):ＴＳ시회화타입 == 311
+	PRINT ＴＳ時会話タイプ：女_武人
+ELSEIF CFLAG:(ARG):ＴＳ시회화타입 == 314
+	PRINT ＴＳ時会話タイプ：男_少年
+ELSEIF CFLAG:(ARG):ＴＳ시회화타입 == 315
+	PRINT ＴＳ時会話タイプ：男_ヒーホー
+ELSEIF CFLAG:(ARG):ＴＳ시회화타입 == 316
+	PRINT ＴＳ時会話タイプ：男_若者
+ELSEIF CFLAG:(ARG):ＴＳ시회화타입 == 318
+	PRINT ＴＳ時会話タイプ：男_紳士
+ELSEIF CFLAG:(ARG):ＴＳ시회화타입 == 322
+	PRINT ＴＳ時会話タイプ：男_ガイン
+ELSEIF CFLAG:(ARG):ＴＳ시회화타입 == 323
+	PRINT ＴＳ時会話タイプ：男_マッド
+ELSEIF CFLAG:(ARG):ＴＳ시회화타입 == 324
+	PRINT ＴＳ時会話タイプ：男_シニカル
+ELSEIF CFLAG:(ARG):ＴＳ시회화타입 == 325
+	PRINT ＴＳ時会話タイプ：老人
+ELSEIF CFLAG:(ARG):ＴＳ시회화타입 == 325
+	PRINT ＴＳ時会話タイプ：獣_ケダモノ
+ELSEIF CFLAG:(ARG):ＴＳ시회화타입 == 331
+	PRINT ＴＳ時会話タイプ：？_会話不可
+ELSEIF CFLAG:(ARG):ＴＳ시회화타입 == 332
+	PRINT ＴＳ時会話タイプ：？_シャドウ
+ELSEIF CFLAG:(ARG):ＴＳ시회화타입 == 333
+	PRINT ＴＳ時会話タイプ：？_ゾンビ
+ELSE
+	PRINT ＴＳ時会話タイプ：？
+ENDIF
+
+PRINTL
+
+U = ARG
+
+CALL NEW_PRINT_TALENT()
+
+;デフォルトの素質と経験を表示する為に新キャラを入れて消去する。
+U = CHARANUM
+
+CALL ADD_NEW_COMPANION,(NO:(ARG)),200, -1
+
+PRINTL □初期素質/経験
+
+CALL NEW_PRINT_TALENT()
+
+;経験継承している場合、経験番号の悪魔を参照する
+IF CFLAG:(ARG):경험번호 > 0
+	DELCHARA U
+	U = CHARANUM
+	CALL ADD_NEW_COMPANION,(CFLAG:(ARG):경험번호),200, -1
+ENDIF
+
+CALL NEW_PRINT_EXP()
+CALL NEW_PRINT_ABNORMAL_EXP()
+
+DELCHARA U

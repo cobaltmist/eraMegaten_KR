@@ -18,27 +18,29 @@
 ;	011		2020/08/20		Schrott 				特殊変身顔グラ変更の項目にRabi-RibiMOD（ノア）の記述を追加。
 ;	012		2020/12/02		Jガン 					顔グラ変更条件の変更、関数追加、選択できる顔グラを制限含めて99までに
 ;	013		2021/02/07		Rsp暇人					MAG表示にカンマ区切りを導入
-;	014		2021/02/20		亜人いいよね			悪魔用함락보너스강화の追加
+;	014		2021/02/20		亜人いいよね			悪魔用陥落ボーナス強化の追加
 ;	015		2021/04/07		Jガン 					スキルロック処理追加(「スキルロック」で検索すると変更場所がわかります)
+;	016		2022/05/22		Collared 				外見固定処理追加
+;	017		2022/06/07		Collared				UI整理プロジェクトにより配置変更
 ;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
 
-@SHOPCOMABLE_122
-RESULT:1 = 4
+@SHOPCOMABLE_111
+RESULT:1 = 1
 RESULTS = 동료마강화
 RETURN 1
 
-@SHOP_COM_122
+@SHOP_COM_111
 #LOCALSIZE 5
 LOCAL:4 = RESULT
 $INPUT_LOOP
-CALL INPUT_CHARA_LIST("ＭＡＧ를 사용하여 강화할 캐릭터를 선택하세요", "CASTING_SHOP_COM_122")
+CALL INPUT_CHARA_LIST("ＭＡＧ를 사용하여 강화할 캐릭터를 선택하세요", "CASTING_SHOP_COM_111")
 IF RESULT != 1000
 	CALL ENHANCE(RESULT, A)
 	GOTO INPUT_LOOP
 ENDIF
 RETURN LOCAL:4
 
-@CASTING_SHOP_COM_122(ARG)
+@CASTING_SHOP_COM_111(ARG)
 SIF CFLAG:ARG:노역플래그 == 3 || CFLAG:ARG:이자리에없는플래그 || CFLAG:ARG:필터링플래그
 	RETURN 0
 RETURN 1
@@ -148,8 +150,13 @@ DO
 		PRINTFORML [16] 함락 보너스 강화
 	;---- EDIT 014 MOD END -----------------------------
 
-	SIF LOCAL:9
-	PRINTFORML [20] 얼굴 그래픽 변경
+	;---- EDIT 016 MOD START ---------------------------
+	IF CFLAG:ARG:외견번호 > 0
+		PRINTFORML [20] 얼굴 그래픽 변경
+	;---- EDIT 016 MOD END ---------------------------
+	ELSEIF LOCAL:9
+		PRINTFORML [20] 얼굴 그래픽 변경
+	ENDIF
 	PRINTFORM %"\n" * MAX(0, 10 + LOCAL:3 - LINECOUNT)%
 	DRAWLINE
 	PRINTFORMLC \@ LOCAL:2 > 0 ? [107] 이전캐릭터 # %" " * 16% \@
@@ -177,7 +184,7 @@ DO
 		;---- EDIT 014 MOD START ---------------------------
 		LOCAL |= RESULT == 16 && EXTRA강화(11) && IS_HUMAN(ARG) == 0 && 함락(ARG) > 0
 		;---- EDIT 014 MOD END -----------------------------
-		LOCAL |= RESULT == 20 && LOCAL:9
+		LOCAL |= RESULT == 20 && LOCAL:9 || RESULT == 20 && CFLAG:ARG:외견번호 > 0
 		IF !LOCAL
 			CLEARLINE 1
 			;SIF (RESULT == 1 && ARG != MASTER && BASE:ARG:ＭＡＧ < LOCAL:6) || (RESULT == 8 && ABL:ARG:종족 == 45 && BASE:ARG:ＭＡＧ < LOCAL:7)
@@ -2073,7 +2080,7 @@ DRAWLINE
 
 PRINTFORML [1]페르소나 변경・스테이터스 확인
 ;페르소나강화可能판정 START
-CALL SHOPCOMABLE_123
+CALL SHOPCOMABLE_109
 LOCAL = RESULT
 Z = 0
 CALL CASTING_PERSONA_MASTER_LIST(ARG)
@@ -2195,9 +2202,9 @@ VARSET LOCAL
 LOCAL = 얼굴이미지수(ARG,1)
 LOCAL:1 = RESULT:1
 LINE = LINECOUNT
-
-IF LOCAL == 1
-	PRINTFORMW 이 캐릭터의 얼굴 이미지는 한 종류뿐입니다
+;---- EDIT 016 ADD START -------------------------
+IF LOCAL == 1 && CFLAG:외견번호 < 1
+	PRINTFORMW 이 캐릭터의 얼굴 이미지는 1종류뿐입니다
 	SIF !GETBIT(CFLAG:ARG:얼굴이미지고정,1)
 		CFLAG:ARG:얼굴이미지 = LOCAL:1
 	SIF !GETBIT(CFLAG:ARG:얼굴이미지고정,2)
@@ -2211,7 +2218,7 @@ IF LOCAL == 1
 	SIF !GETBIT(CFLAG:ARG:얼굴이미지고정,6)
 		CFLAG:ARG:특수변신얼굴이미지 = LOCAL:1
 	RETURN
-ELSEIF LOCAL == 0
+ELSEIF LOCAL == 0 && CFLAG:외견번호 < 1
 	PRINTFORMW 이 캐릭터에게 얼굴 이미지는 없습니다
 	SIF !GETBIT(CFLAG:ARG:얼굴이미지고정,1)
 		CFLAG:ARG:얼굴이미지 = 0
@@ -2228,6 +2235,12 @@ ELSEIF LOCAL == 0
 		CFLAG:ARG:특수변신얼굴이미지 = 0
 	RETURN
 ;---- EDIT 011 ADD END -------------------------
+ELSEIF EXIST_PICTURE((CFLAG:ARG:외견번호), LOCAL:1 * 100 + 1)
+	IMG_TYPE = 1
+	IMG_SIZE = 6
+ELSEIF EXIST_PICTURE((CFLAG:ARG:외견번호), LOCAL:1 * 100 + 0)
+	IMG_TYPE = 0
+	IMG_SIZE = 4
 ELSEIF EXIST_PICTURE(NO:ARG, LOCAL:1 * 100 + 1)
 	IMG_TYPE = 1
 	IMG_SIZE = 6
@@ -2235,6 +2248,7 @@ ELSEIF EXIST_PICTURE(NO:ARG, LOCAL:1 * 100 + 0)
 	IMG_TYPE = 0
 	IMG_SIZE = 4
 ENDIF
+;---- EDIT 016 ADD END -------------------------
 
 LOCAL:1 = GET_IMG_TYPE(ARG, IMG_TYPE)
 LOCAL:2 = GET_IMG_TYPE(ARG, IMG_TYPE, 0)
@@ -2256,6 +2270,11 @@ FOR LCOUNT:1,0,IMG_SIZE+1
 				PRINT 조교화면용　
 			SIF IMG_TYPE == 1
 				PRINT 　　
+		;---- EDIT 016 ADD START -------------------------
+		ELSEIF CFLAG:ARG:외견번호 > 0
+			CALL WRITE_IMG, (CFLAG:ARG:외견번호), LOCAL:LOCAL, LCOUNT:1
+			PRINT 　　
+		;---- EDIT 016 ADD END -------------------------
 		ELSE
 			CALL WRITE_IMG, NO:ARG, LOCAL:LOCAL, LCOUNT:1
 			PRINT 　　
@@ -2335,7 +2354,57 @@ CALL INPUT_SELECT,LOCAL:LOCAL,LOCALS:(LOCAL ++),LOCAL:LOCAL,LOCALS:(LOCAL ++),LO
 
 	VARSET LOCAL,-1
 	LOCAL:10 = 63 + CFLAG:ARG:제한얼굴이미지개방
-	IF RESULT == 1
+	
+	;---- EDIT 016 ADD START -------------------------
+	IF RESULT == 1 && CFLAG:ARG:외견번호 > 0
+		LOCAL = 1
+		SELECT_P = 0
+		PRINTFORML □%LOCALS:RESULT%
+		PRINTFORML 어떤 얼굴 이미지로 변경하시겠습니까？
+		FOR LCOUNT:1,0,LOCAL:10 + 1
+			IF EXIST_PICTURE((CFLAG:ARG:외견번호), LCOUNT:1 * 100 + IMG_TYPE % 100)
+				IF LCOUNT:1 < 64
+					SETBIT SELECT_P,LCOUNT:1
+				ELSE
+					SETBIT SELECT_P:1,LCOUNT:1 - 64
+				ENDIF
+				LOCAL:(LOCAL ++) = LCOUNT:1
+			ENDIF
+			IF LOCAL:6 >= 0 || ((LCOUNT:1 == LOCAL:10 || LCOUNT:1 == 99) && LOCAL:1 >= 0)
+				FOR LCOUNT,0,IMG_SIZE+1
+					FOR LOCAL,1,7
+						SIF LOCAL:LOCAL < 0
+							CONTINUE
+						IF LCOUNT == 0
+							PRINTFORM [{LOCAL:LOCAL,2}]　　
+							SIF IMG_TYPE == 1
+								PRINT 　　
+						ELSE
+						;LCOUNT > 0
+							CALL WRITE_IMG, (CFLAG:ARG:외견번호), LOCAL:LOCAL * 100 + IMG_TYPE % 100, LCOUNT
+						ENDIF
+						PRINT 　　
+					NEXT
+					PRINTL
+				NEXT
+				PRINTL
+				VARSET LOCAL,-1,0,9
+				LOCAL = 1
+			ENDIF
+			SIF LCOUNT:1 == 99
+				BREAK
+		NEXT
+		PRINTFORML [100]변경하지 않는다
+		;CALL INPUTINT(LOCAL:0,LOCAL:1,LOCAL:2,LOCAL:3,LOCAL:4,LOCAL:5,LOCAL:6,LOCAL:7,LOCAL:8,LOCAL:9,LOCAL:10)
+		INPUT
+		IF (RESULT >= 0 && RESULT < 64 && GETBIT(SELECT_P,RESULT)) || (RESULT >= 64 && RESULT < 100 && GETBIT(SELECT_P:1,RESULT - 64))
+			CFLAG:ARG:얼굴이미지 = RESULT
+		;	CFLAG:ARG:ショップ顔グラ = RESULT
+		;	CFLAG:ARG:調教顔グラ = RESULT
+		;	CFLAG:ARG:悪魔変身顔グラ = RESULT
+		;	CFLAG:ARG:汎用悪魔変身顔グラ = RESULT
+		ENDIF
+	ELSEIF RESULT == 1
 		LOCAL = 1
 		SELECT_P = 0
 		PRINTFORML □%LOCALS:RESULT%
@@ -2385,6 +2454,107 @@ CALL INPUT_SELECT,LOCAL:LOCAL,LOCALS:(LOCAL ++),LOCAL:LOCAL,LOCALS:(LOCAL ++),LO
 		ENDIF
 	ELSEIF RESULT == 9
 		RETURN 0
+	ELSEIF CFLAG:ARG:외견번호 > 0
+		얼굴이미지종류선택 = RESULT
+		LOCAL = 1
+		SELECT_P = 0
+		PRINTFORML □%LOCALS:RESULT%
+		PRINTFORML どの顔グラに変更しますか？
+		FOR LCOUNT:1,0,LOCAL:10 + 1
+			IF EXIST_PICTURE((CFLAG:ARG:외견번호), LCOUNT:1 * 100 + IMG_TYPE % 100)
+				IF LCOUNT:1 < 64
+					SETBIT SELECT_P,LCOUNT:1
+				ELSE
+					SETBIT SELECT_P:1,LCOUNT:1 - 64
+				ENDIF
+				LOCAL:(LOCAL ++) = LCOUNT:1
+			ENDIF
+			IF LOCAL:6 >= 0 || ((LCOUNT:1 == LOCAL:10 || LCOUNT:1 == 99) && LOCAL:1 >= 0)
+				FOR LCOUNT,0,IMG_SIZE+1
+					FOR LOCAL,1,7
+						SIF LOCAL:LOCAL < 0
+							CONTINUE
+						IF LCOUNT == 0
+							PRINTFORM [{LOCAL:LOCAL,2}]　　
+							SIF IMG_TYPE == 1
+								PRINT 　　
+						ELSE
+						;LCOUNT > 0
+							CALL WRITE_IMG, (CFLAG:ARG:외견번호), LOCAL:LOCAL * 100 + IMG_TYPE % 100, LCOUNT
+						ENDIF
+						PRINT 　　
+					NEXT
+					PRINTL
+				NEXT
+				PRINTL
+				VARSET LOCAL,-1,0,9
+				LOCAL = 1
+			ENDIF
+			SIF LCOUNT:1 == 99
+				BREAK
+		NEXT
+		PRINTFORML [100]기본과 동일하게
+		PRINTFORML [200]변경하지 않는다
+		;CALL INPUTINT(LOCAL:0,LOCAL:1,LOCAL:2,LOCAL:3,LOCAL:4,LOCAL:5,LOCAL:6,LOCAL:7,LOCAL:8,LOCAL:9,LOCAL:10)
+		INPUT
+		IF (RESULT >= 0 && RESULT < 64 && GETBIT(SELECT_P,RESULT)) || (RESULT >= 64 && RESULT < 100 && GETBIT(SELECT_P:1,RESULT - 64))
+			IF 얼굴이미지종류선택 == 2
+				CFLAG:ARG:SHOP얼굴이미지 = RESULT
+			ELSEIF 얼굴이미지종류선택 == 3
+				CFLAG:ARG:조교얼굴이미지 = RESULT
+			ELSEIF 얼굴이미지종류선택 == 4
+				CFLAG:ARG:악마변신얼굴이미지 = RESULT
+			ELSEIF 얼굴이미지종류선택 == 5
+				CFLAG:ARG:범용악마변신얼굴이미지 = RESULT
+			;---- EDIT 008 ADD START -------------------------
+			ELSEIF 얼굴이미지종류선택 == 6
+				CFLAG:ARG:특수변신얼굴이미지 = RESULT
+			;---- EDIT 008 ADD END -------------------------
+			ELSEIF 얼굴이미지종류선택 == 8
+				SIF !GETBIT(CFLAG:ARG:얼굴이미지고정,1)
+					CFLAG:ARG:얼굴이미지 = RESULT
+				SIF !GETBIT(CFLAG:ARG:얼굴이미지고정,2)
+					CFLAG:ARG:SHOP얼굴이미지 = RESULT
+				SIF !GETBIT(CFLAG:ARG:얼굴이미지고정,3)
+					CFLAG:ARG:조교얼굴이미지 = RESULT
+				SIF !GETBIT(CFLAG:ARG:얼굴이미지고정,4)
+					CFLAG:ARG:악마변신얼굴이미지 = RESULT
+				SIF !GETBIT(CFLAG:ARG:얼굴이미지고정,5)
+					CFLAG:ARG:범용악마변신얼굴이미지 = RESULT
+				;---- EDIT 008 ADD START -------------------------
+				SIF !GETBIT(CFLAG:ARG:얼굴이미지고정,6)
+					CFLAG:ARG:특수변신얼굴이미지 = RESULT
+				;---- EDIT 008 ADD END -------------------------
+			ENDIF
+		ELSEIF RESULT == 100
+			IF 얼굴이미지종류선택 == 2
+				CFLAG:ARG:SHOP얼굴이미지 = CFLAG:ARG:얼굴이미지
+			ELSEIF 얼굴이미지종류선택 == 3
+				CFLAG:ARG:조교얼굴이미지 = CFLAG:ARG:얼굴이미지
+			ELSEIF 얼굴이미지종류선택 == 4
+				CFLAG:ARG:악마변신얼굴이미지 = CFLAG:ARG:얼굴이미지
+			ELSEIF 얼굴이미지종류선택 == 5
+				CFLAG:ARG:범용악마변신얼굴이미지 = CFLAG:ARG:얼굴이미지
+			;---- EDIT 008 ADD START -------------------------
+			ELSEIF 얼굴이미지종류선택 == 6
+				CFLAG:ARG:특수변신얼굴이미지 = CFLAG:ARG:얼굴이미지
+			;---- EDIT 008 ADD END -------------------------
+			ELSEIF 얼굴이미지종류선택 == 8
+				SIF !GETBIT(CFLAG:ARG:얼굴이미지고정,2)
+					CFLAG:ARG:SHOP얼굴이미지 = CFLAG:ARG:얼굴이미지
+				SIF !GETBIT(CFLAG:ARG:얼굴이미지고정,3)
+					CFLAG:ARG:조교얼굴이미지 = CFLAG:ARG:얼굴이미지
+				SIF !GETBIT(CFLAG:ARG:얼굴이미지고정,4)
+					CFLAG:ARG:악마변신얼굴이미지 = CFLAG:ARG:얼굴이미지
+				SIF !GETBIT(CFLAG:ARG:얼굴이미지고정,5)
+					CFLAG:ARG:범용악마변신얼굴이미지 = CFLAG:ARG:얼굴이미지
+				;---- EDIT 008 ADD START -------------------------
+				SIF !GETBIT(CFLAG:ARG:얼굴이미지고정,6)
+					CFLAG:ARG:특수변신얼굴이미지 = CFLAG:ARG:얼굴이미지
+				;---- EDIT 008 ADD END -------------------------
+			ENDIF
+		ENDIF
+		;---- EDIT 016 ADD END -------------------------
 	ELSE
 		얼굴이미지종류선택 = RESULT
 		LOCAL = 1

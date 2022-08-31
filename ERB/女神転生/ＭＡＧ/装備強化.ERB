@@ -1,4 +1,7 @@
 ﻿
+;魔装術
+;お気に入りの装備を最後まで使い続けたい人の為の機能
+
 @장비강화, ARG, ARG:1 = -1
 #DIM DYNAMIC FIRST_LINE
 #DIM DYNAMIC SECOND_LINE
@@ -22,6 +25,8 @@
 #DIM DYNAMIC 개조장비
 #DIM DYNAMIC 소비ＭＡＧ, 2
 #DIM DYNAMIC 소비Ｐ, 2
+#DIMS DYNAMIC ボタン
+#DIM DYNAMIC INPUT_RESULT
 
 대상 = ARG
 지정 = -1
@@ -49,25 +54,33 @@ RESETCOLOR
 IF 지정 == -1
 	SIF 개념강화불가 == 1
 		SETCOLOR COLOR("gray")
-	PRINTL [ 0] 개념강화
+	PRINTL [  0] 개념강화
 	IF CSTR:대상:장비강화 != ""
-		PRINTL [ 1] 능력강화
-		PRINTL [ 2] 내성강화
+		PRINTL [  1] 능력강화
+		PRINTL [  2] 내성강화
 		SIF 강화불가 == 1
 			SETCOLOR COLOR("gray")
-		PRINTL [ 3] 공격상성강화
-		PRINTL [ 4] 추가효과부여
+		PRINTL [  3] 공격상성강화
+		PRINTL [  4] 추가효과부여
 			RESETCOLOR
-		PRINTL [ 8] 강화해제
+		PRINTL [  8] 강화해제
 	ENDIF
-	PRINTL [99] 사용설명서
-	PRINTL [ 9] 그만둔다
-	;INPUT
-	CALL 장비강화_INPUT,"강화선택",0,1,2,3,4,8,9,99
-	지정 = RESULT
-	SIF 개념강화불가 == 1 && 지정 < 8 && 지정 != 99
+	PRINTL [ 99] 사용설명서
+	PRINTL [999] 그만둔다
+
+	DO
+		INPUT
+		SELECTCASE RESULT
+			CASE 0 TO 4, 8, 99, 999
+				지정 = RESULT
+				BREAK
+			CASEELSE
+			;	RESTART
+		ENDSELECT
+	LOOP 1
+	SIF 개념강화불가 == 1 && 지정 < 8 && 지정 != 99 && 지정 != 999
 		지정 = 10
-	SIF 강화불가 == 1 && (2 < 지정 && 지정 < 8) && 지정 != 99
+	SIF 강화불가 == 1 && (2 < 지정 && 지정 < 8) && 지정 != 99 && 지정 != 999
 		지정 = 10
 ENDIF
 
@@ -101,16 +114,6 @@ SELECTCASE 지정
 		장비번호 = EQUIP:대상:GET_EQUIP(장비부위)
 	CASE 8
 
-	CASE 9
-		CALL SYNC_STATUS,대상
-		;표시させるキャラを리셋（Q:*に표시するキャラの등록번호、LOCAL:2に人수）
-		VARSET Q, -1
-		A = 0
-		FOR LOCAL, 0, CHARANUM
-			SIF !(CFLAG:LOCAL:노역플래그 == 3 || CFLAG:LOCAL:이자리에없는플래그 || CFLAG:LOCAL:필터링플래그)
-				Q:(A++) = LOCAL
-		NEXT
-		RETURN -1
 	CASE 10
 		PRINTL 강화가능한 숫자를 초과했습니다
 		PRINTW 필요없는 강화를 해제해주세요
@@ -118,43 +121,61 @@ SELECTCASE 지정
 			지정 = -1
 			GOTO START_B
 	CASE 99
-		;GOTO MANUAL_TOP
+		
+	CASE 999
+;		CALL SYNC_STATUS,대상
+;		;표시させるキャラをリセット（Q:*に표시するキャラの登録番号、LOCAL:2に人数）
+;		VARSET Q, -1
+;		A = 0
+;		FOR LCOUNT, 0, CHARANUM
+;			SIF !(CFLAG:LCOUNT:노역플래그 == 3 || CFLAG:LCOUNT:이자리에없는플래그 || CFLAG:LCOUNT:필터링플래그)
+;				Q:(A++) = LCOUNT
+;		NEXT
+;		RETURN -1
+		RETURN 0
 ENDSELECT
 
-IF 지정 != 99
+IF 지정 != 9 && 지정 != 99
 	CALL 장비강화_전개, 대상, 장비번호, "강화단계", "LV"
-	IF RESULT == 1 && 지정 > 0 && 지정 != 8
+	강화단계 = RESULT
+	IF 강화단계 == 1 && 지정 > 0 && 지정 != 8
 		PRINTW 장비의 개념을 강화해주세요
 		SIF 지정 == 3 || 지정 == 4
 			지정 = -1
 		CLEARLINE LINECOUNT - THIRD_LINE
 		GOTO START_D
-	ELSEIF RESULT >= BASE:대상:LV && 지정 == 0
-		IF RESULT == 99
-			PRINTFORMW 이 이상 강화할 수 없습니다
-		ELSE
-			PRINTFORMW 강화하기에는 %CALLNAME:대상%의 레벨이 부족합니다
-		ENDIF
+	ELSEIF PUEQ_NUM_CHECK(장비번호)
+		PRINTW 이 장비는 강화할 수 없습니다
 		CLEARLINE LINECOUNT - THIRD_LINE
 		GOTO START_D
-	ELSEIF 개조장비(장비번호) && 지정 == 0
-		IF RESULT >= 2
-			PRINTW 이 이상 강화할 수 없습니다
+	ELSEIF 지정 == 0
+		IF 강화단계 >= 99
+			PRINTFORMW 이 이상 강화할 수 없습니다
 			CLEARLINE LINECOUNT - THIRD_LINE
 			GOTO START_D
-		ELSE
-			PRINTW 개조장비를 강화하는 경우、일부의 강화가 열화해버립니다
-			PRINTL
-			PRINTL 능력강화：불가
-			PRINTL 내성강화：불가
-			PRINTL
-			PRINTL 개념강화를 실행하겠습니까？
-			PRINTL
-			CALL INPUT_YN("네", "아니오", 2)
-			IF RESULT == 1
+		ELSEIF 개조장비(장비번호)
+			IF 강화단계 >= 2
+				PRINTW 이 이상 강화할 수 없습니다
 				CLEARLINE LINECOUNT - THIRD_LINE
 				GOTO START_D
+			ELSE
+				PRINTL 개조장비를 강화하는 경우、일부 강화를 할 수 없습니다
+				PRINTL
+				PRINTL 능력강화：불가
+				PRINTL 내성강화：불가
+				PRINTL
+				PRINTL 개념강화를 실행하겠습니까？
+				PRINTL
+				CALL INPUT_YN("네", "아니오", 2)
+				IF RESULT == 1
+					CLEARLINE LINECOUNT - THIRD_LINE
+					GOTO START_D
+				ENDIF
 			ENDIF
+		ELSEIF 강화단계 >= BASE:대상:LV
+			PRINTFORMW 강화하기에는 %CALLNAME:대상%의 레벨이 부족합니다
+			CLEARLINE LINECOUNT - THIRD_LINE
+			GOTO START_D
 		ENDIF
 	ENDIF
 ENDIF
@@ -171,11 +192,11 @@ SELECTCASE 지정
 		개조장비 = 개조장비(장비번호)
 		PRINTFORML <%장비명%>  Lv:{강화단계}
 		CALL MAKE_SALERPGITEMLIST,장비부위
-		LOCAL:2 = RESULT
+		
 		$PRINT_LIST
 		IF 강화단계 < 99 
 			DRAWLINE
-			;소비ＭＡＧは１回강화の치段。소비ＭＡＧ:1は１０回강화の치段
+			;소비ＭＡＧは１回強化の値段。소비ＭＡＧ:1は１０回強化の値段
 			소비ＭＡＧ = MAX(1, 2 * (강화단계 - 1) * 강화단계 * (강화단계 + 1)*2 ) + 1000
 			소비ＭＡＧ:1 = 0
 			FOR LCOUNT, 0, MIN(10, 99 - 강화단계)
@@ -216,55 +237,30 @@ SELECTCASE 지정
 						강화소재10:(LCOUNT:1) = 다이아몬드
 					CASEELSE
 				ENDSELECT
-
-				;宝石で交換できる合成소재の売却額が目安。大体で良い
-				;ただしルビーとダイヤモンドは入手しにくいので高めに見積もる
+				
+				;宝石で交換できる合成素材の売却額が目安
+				;ただし入手難度高めなので高めに見積もる
+				;あと数が多過ぎても強化に使用しないと思うのでほどほどに
+				;香一つが 30個+30個 というのも念頭に置く
+				;	と考えていたけれど装備一つの強化に宝石を30個等の消費はかなり重く感じたので減らす
 				SELECTCASE 강화소재10:(LCOUNT:1)
 					CASE "다이아몬드"
-						;35個
-						;Lv98までなのでLv91以上は個別に設定
+						;20個
+						;강화횟수が他のレベルと違うのでLv91以上は個別に設定
 						SELECTCASE 강화단계_소재판별루프 % 10
 							CASE 1, 2
+								강화소재개수10:(LCOUNT:1) += 1
+							CASE 3 TO 5
+								강화소재개수10:(LCOUNT:1) += 2
+							CASE 6
 								강화소재개수10:(LCOUNT:1) += 3
-							CASE 3, 4
+							CASE 7
 								강화소재개수10:(LCOUNT:1) += 4
-							CASE 5 TO 7
-								강화소재개수10:(LCOUNT:1) += 5
 							CASE 8
-								강화소재개수10:(LCOUNT:1) += 6
-							CASEELSE
-						ENDSELECT
-					CASE "루비"
-						;30個
-						SELECTCASE 강화단계_소재판별루프 % 10
-							CASE 1
-								강화소재개수10:(LCOUNT:1) += 1
-							CASE 2, 3
-								강화소재개수10:(LCOUNT:1) += 2
-							CASE 4 TO 7
-								강화소재개수10:(LCOUNT:1) += 3
-							CASE 8, 9
-								강화소재개수10:(LCOUNT:1) += 4
-							CASE 0
 								강화소재개수10:(LCOUNT:1) += 5
 							CASEELSE
 						ENDSELECT
-					CASE "토파즈", "진주"
-						;25個
-						SELECTCASE 강화단계_소재판별루프 % 10
-							CASE 1, 2
-								강화소재개수10:(LCOUNT:1) += 1
-							CASE 3 TO 6
-								강화소재개수10:(LCOUNT:1) += 2
-							CASE 7, 8
-								강화소재개수10:(LCOUNT:1) += 3
-							CASE 9
-								강화소재개수10:(LCOUNT:1) += 4
-							CASE 0
-								강화소재개수10:(LCOUNT:1) += 5
-							CASEELSE
-						ENDSELECT
-					CASE "에메랄드"
+					CASE "진주", "루비"
 						;20個
 						SELECTCASE 강화단계_소재판별루프 % 10
 							CASE 1 TO 4
@@ -277,7 +273,7 @@ SELECTCASE 지정
 								강화소재개수10:(LCOUNT:1) += 4
 							CASEELSE
 						ENDSELECT
-					CASE "터키석", "사파이어"
+					CASE "에메랄드", "터키석", "토파즈"
 						;15個
 						SELECTCASE 강화단계_소재판별루프 % 10
 							CASE 1 TO 6
@@ -288,12 +284,12 @@ SELECTCASE 지정
 								강화소재개수10:(LCOUNT:1) += 3
 							CASEELSE
 						ENDSELECT
-					CASE "오팔"
+					CASE "오팔", "사파이어"
 						;10個
 						강화소재개수10:(LCOUNT:1) += 1
 				ENDSELECT
 				
-				;１回강화用
+				;１回強化用
 				IF LCOUNT == 0
 					강화소재1 = %강화소재10:(LCOUNT:1)%
 					강화소재개수1 = 강화소재개수10:(LCOUNT:1)
@@ -305,8 +301,8 @@ SELECTCASE 지정
 			NEXT
 			
 			IF BASE:대상:ＭＡＧ >= 소비ＭＡＧ && MONEY >= 소비ＭＡＧ/10 && ((개조장비 != 1) || (개조장비 == 1 && 강화단계 < 2))
-				LOCALS = [ + 1] 소비ＭＡＧ：{소비ＭＡＧ, 8} / {BASE:대상:ＭＡＧ}　　소비￥：{소비ＭＡＧ/10, 8} / {MONEY}
-				PRINTBUTTON LOCALS, 11
+				버튼 = [ + 1] 소비ＭＡＧ：{소비ＭＡＧ, 8} / {BASE:대상:ＭＡＧ}　　소비￥：{소비ＭＡＧ/10, 8} / {MONEY}
+				PRINTBUTTON 버튼, 11
 			ELSE
 				SETCOLOR COLOR("gray")
 				PRINTPLAINFORM [ × ] 소비ＭＡＧ：{소비ＭＡＧ, 8} / {BASE:대상:ＭＡＧ}　　소비￥：{소비ＭＡＧ/10, 8} / {MONEY}
@@ -315,8 +311,8 @@ SELECTCASE 지정
 			PRINTL
 			
 			IF BASE:대상:ＭＡＧ >= 소비ＭＡＧ:1 && MONEY >= 소비ＭＡＧ:1/10 && 개조장비 != 1
-				LOCALS = [ +10] 소비ＭＡＧ：{소비ＭＡＧ:1, 8} / {BASE:대상:ＭＡＧ}　　소비￥：{소비ＭＡＧ:1/10, 8} / {MONEY}
-				PRINTBUTTON LOCALS, 12
+				버튼 = [ +10] 소비ＭＡＧ：{소비ＭＡＧ:1, 8} / {BASE:대상:ＭＡＧ}　　소비￥：{소비ＭＡＧ:1/10, 8} / {MONEY}
+				PRINTBUTTON 버튼, 12
 			ELSE
 				SETCOLOR COLOR("gray")
 				PRINTPLAINFORM [ × ] 소비ＭＡＧ：{소비ＭＡＧ:1, 8} / {BASE:대상:ＭＡＧ}　　소비￥：{소비ＭＡＧ:1/10, 8} / {MONEY}
@@ -325,18 +321,18 @@ SELECTCASE 지정
 			PRINTL
 			
 			IF 개념강화포인트 > 소비Ｐ && ((개조장비 != 1) || (개조장비 == 1 && 강화단계 < 2))
-				LOCALS = [ + 1] 소비포인트 ：{소비Ｐ, 8} / {개념강화포인트,8}
-				PRINTBUTTON LOCALS, 13
+				버튼 = [ + 1] 소비포인트 ：{소비Ｐ, 8} / {개념강화포인트,8}
+				PRINTBUTTON 버튼, 13
 			ELSE
 				SETCOLOR COLOR("gray")
 				PRINTPLAINFORM [ × ] 소비포인트 ：{소비Ｐ, 8} / {개념강화포인트,8}
 				RESETCOLOR
 			ENDIF
 			PRINTL
-
+			
 			IF 개념강화포인트 > 소비Ｐ:1 && 개조장비 != 1
-				LOCALS = [ +10] 소비포인트 ：{소비Ｐ:1, 8} / {개념강화포인트,8}
-				PRINTBUTTON LOCALS, 14			
+				버튼 = [ +10] 소비포인트 ：{소비Ｐ:1, 8} / {개념강화포인트,8}
+				PRINTBUTTON 버튼, 14
 			ELSE
 				SETCOLOR COLOR("gray")
 				PRINTPLAINFORM [ × ] 소비포인트 ：{소비Ｐ:1, 8} / {개념강화포인트,8}
@@ -346,8 +342,8 @@ SELECTCASE 지정
 			
 			IF 강화단계 > 20
 				IF ITEM:강화소재1 >= 강화소재개수1 && ((개조장비 != 1) || (개조장비 == 1 && 강화단계 < 2))
-					LOCALS = [ + 1] 소비소재  ：%강화소재1, 12, RIGHT% × {강화소재개수1, 2, RIGHT} / {ITEM:강화소재1, 2, RIGHT}
-					PRINTBUTTON LOCALS, 15
+					버튼 = [ + 1] 소비소재  ：%강화소재1, 12, RIGHT% × {강화소재개수1, 2, RIGHT} / {ITEM:강화소재1, 2, RIGHT}
+					PRINTBUTTON 버튼, 15
 				ELSE
 					SETCOLOR COLOR("gray")
 					PRINTPLAINFORM [ × ] 소비보석  ：%강화소재1, 12, RIGHT% × {강화소재개수1, 2, RIGHT} / {ITEM:강화소재1, 2, RIGHT}
@@ -356,8 +352,8 @@ SELECTCASE 지정
 				PRINTL
 				
 				IF ITEM:강화소재10 >= 강화소재개수10 && 개조장비 != 1
-					LOCALS = [ +10] 소비보석１：%강화소재10, 12, RIGHT% × {강화소재개수10, 2, RIGHT} / {ITEM:강화소재10, 2, RIGHT}
-					PRINTBUTTON LOCALS, 16
+					버튼 = [ +10] 소비보석１：%강화소재10, 12, RIGHT% × {강화소재개수10, 2, RIGHT} / {ITEM:강화소재10, 2, RIGHT}
+					PRINTBUTTON 버튼, 16
 				ELSE
 					SETCOLOR COLOR("gray")
 					PRINTPLAINFORM [ × ] 소비보석１：%강화소재10, 12, RIGHT% × {강화소재개수10, 2, RIGHT} / {ITEM:강화소재10, 2, RIGHT}
@@ -369,50 +365,52 @@ SELECTCASE 지정
 						SETCOLOR COLOR("gray")
 					PRINTFORML        소비보석２：%강화소재10:1, 12, RIGHT% × {강화소재개수10:1, 2, RIGHT} / {ITEM:(강화소재10:1), 2, RIGHT}
 					RESETCOLOR
+				ELSE
+					PRINTL
 				ENDIF
 			ELSE
+				;버튼連打していたら解禁された時に列がズレてうっかり別の버튼を押してしまう事があるので空行を入れておく
+				PRINTL
 				SETCOLOR COLOR("gray")
 				PRINTL [ × ] 소비보석  ：Lv21이상부터 사용 가능
 				RESETCOLOR
+				PRINTL
 			ENDIF
-
+			
 			;デバッグ用処理。
-			;IF FLAG:DEBUG
-			;	PRINTL
-			;	LOCALS = [ + 1] デバッグ用処理：強化＋１
-			;	PRINTBUTTON LOCALS, 90
-			;	PRINTL
-			;	LOCALS = [ +10] デバッグ用処理：強化＋１０
-			;	PRINTBUTTON LOCALS, 91
-			;	PRINTL
-			;ENDIF
+		;	IF FLAG:DEBUG
+		;		PRINTL
+		;		버튼 = [ + 1] デバッグ用処理：強化＋１
+		;		PRINTBUTTON 버튼, 90
+		;		PRINTL
+		;		버튼 = [ +10] デバッグ用処理：強化＋１０
+		;		PRINTBUTTON 버튼, 91
+		;		PRINTL
+		;	ENDIF
+		ELSE
+			CLEARLINE LINECOUNT - THIRD_LINE
+			GOTO START_D
 		ENDIF
 		DRAWLINE
-		PRINTL [0]개념강화로 돌아간다
-		PRINTL [1]메뉴로 돌아간다
+		PRINT [0]개념강화로 돌아간다    
+		PRINT [1]메뉴로 돌아간다
 		INPUT
-		LOCAL:3 = RESULT
+		INPUT_RESULT = RESULT
 		
-		SELECTCASE RESULT
+		SELECTCASE INPUT_RESULT
 			CASE 0
 				CLEARLINE LINECOUNT - THIRD_LINE
 				GOTO START_D
 			CASE 1
 				CLEARLINE LINECOUNT - FIRST_LINE
 				지정 = -1
-			GOTO START_B
-		; ELSEIF RESULT == 7 && P > 0
-		; 	P -= 1
-		; 	GOTO PRINT_LIST
-		; ELSEIF RESULT == 9 && P < LOCAL:2/20
-		; 	P += 1
-		; 	GOTO PRINT_LIST
+				GOTO START_B
 			CASE 11, 13, 15
 				CALL 장비강화_전개, 대상, 장비번호, "강화단계", "NEXT"
 				강화치 = RESULT + 1
 				;CALL 장비강화_전개, 대상, 0, "강화단계", "보존강화치"
 				;강화치 = 5 * (강화단계) * (강화단계+1) * (강화단계+2) / 3 + 1
-				SELECTCASE LOCAL:3
+				SELECTCASE INPUT_RESULT
 					CASE 11
 						BASE:대상:ＭＡＧ -= 소비ＭＡＧ
 						MONEY -= 소비ＭＡＧ / 10
@@ -426,7 +424,7 @@ SELECTCASE 지정
 			CASE 12, 14, 16
 				CALL 장비강화_전개, 대상, 장비번호, "강화단계", "EXP"
 				강화치 = 5 * (강화단계+9) * (강화단계+1+9) * (강화단계+2+9) / 3 + 1 - RESULT
-				SELECTCASE LOCAL:3
+				SELECTCASE INPUT_RESULT
 					CASE 12
 						BASE:대상:ＭＡＧ -= 소비ＭＡＧ:1
 						MONEY -= 소비ＭＡＧ:1 / 10
@@ -445,7 +443,7 @@ SELECTCASE 지정
 		;			CALL 장비강화_전개, 대상, 장비번호, "강화단계", "NEXT"
 		;			강화치 = RESULT + 1
 		;		ENDIF
-			;デバッグ用処理
+		;	;デバッグ用処理
 		;	CASE 91
 		;		IF FLAG:DEBUG
 		;			CALL 장비강화_전개, 대상, 장비번호, "강화단계", "EXP"
@@ -514,11 +512,15 @@ SELECTCASE 지정
 			지정 = -1
 			GOTO START_B
 		ENDIF
+;	CASE 9
+;		CLEARLINE LINECOUNT - SECOND_LINE
+;		
+;		지정 = -1
+;		GOTO START_B
 	CASE 99
 		CLEARLINE LINECOUNT - SECOND_LINE
 		FIRST_LINE = LINECOUNT
 		DO
-			PRINTL
 			PRINTL [ 0] 강화방법
 			PRINTL [ 1] 개념강화
 			PRINTL [ 2] 능력강화
@@ -528,6 +530,7 @@ SELECTCASE 지정
 			PRINTL [ 6] 강화해제
 			PRINTL [ 7] 경쟁하는것에 대하여
 			PRINTL [ 8] 그외
+		;	PRINTL [ 9]
 			PRINTL [99] 돌아간다
 			INPUT
 			DRAWLINE
@@ -539,10 +542,10 @@ SELECTCASE 지정
 					PRINTL   1.『개념강화』에서 장비의 레벨을 높인다。
 					PRINTL   2. 하의 몇 가지 강화를 행한다。
 					PRINTL
-					PRINTL    『능력강화』    전투 능력의 강화。장비의 레벨에 비례한다
-					PRINTL    『내성강화』    방어상성의 강화。약점의 많음에 비례한다
-					PRINTL    『공격상성강화』검에 공격상성을 추가하는 강화。악마 1체의 소비가 필요
-					PRINTL    『추가효과부여』검에 상태이상 효과를 추가하는 강화。악마 1체의 소비가 필요
+					PRINTL     『능력강화』    전투 능력의 강화。장비의 레벨에 비례한다
+					PRINTL     『내성강화』    방어상성의 강화。약점의 많음에 비례한다
+					PRINTL     『공격상성강화』검에 공격상성을 추가하는 강화。악마 1체의 소비가 필요
+					PRINTL     『추가효과부여』검에 상태이상 효과를 추가하는 강화。악마 1체의 소비가 필요
 					PRINTL
 					PRINTL   각 강화의 자세한 내용을 알고 싶다면 다른 항목을 보시기 바랍니다。
 				CASE 1
@@ -550,16 +553,10 @@ SELECTCASE 지정
 					PRINTL   개념강화는 장비의 레벨을 높이는 강화입니다。사용자의 레벨과 동등한 값까지 올릴 수 있습니다。
 					PRINTL   이것만으로는 아무것도 강화되지 않지만、사용자와 장비를 연결하는 역할도 있는 관계상、다른 강화를 실시하기 위해서는 필수불가결한 강화입니다。
 					PRINTL
-					; PRINTL 『개념강화』만으로는 성능이 변화하지 않습니다。그러나 별항에서 설명하는 강화를 실행하기 위해、한 번이라도 할 필요가 있습니다。
-					; PRINTL
-					; PRINTL 비고：연결은 장비의 종류에 대한 것입니다。
-					; PRINTL 예를 들어、당신이 『어택나이프』를 강화한 경우、새로 구매한 별도의 『어택나이프』를 장비할 때에도 강화가 적용됩니다。
-					; PRINTL
-					PRINTL 강화에는 MAG와 금전이 필요합니다。전부는 아니지만、보석으로도 대용 가능합니다。
+					PRINTL   강화에는 MAG와 금전이 필요합니다。전부는 아니지만、보석으로도 대용 가능합니다。
 				CASE 2
 					PRINTL  『능력강화』
 					PRINTL   장비의 전투능력을 강화하는 것이 가능합니다。
-					; PRINTL 예를 들어 강화하는 장비가 검이라면、공격・명중・마법위력・마법효과 등、그 장비에 원래 갖추어져 있는 능력의 강화가 가능합니다。
 					PRINTL
 					PRINTL   능력강화용의 포인트를 분배하는 것으로 강화가 이뤄집니다。다만 장비에 따라 한계치가 있고、그 이상 분배하는 것은 불가능합니다。
 					PRINTL   포인트의 한계치는、그 장비의 레벨을 올리는 것으로 증가합니다。
@@ -585,11 +582,9 @@ SELECTCASE 지정
 					PRINTL   일반 공격은 물론、원래 상성과 동일한 상성의 물리계 스킬을 사용하려고 하는 경우도 변화합니다.
 					PRINTL   또한、총과 방어구는 이 강화를 할 수 없습니다。
 					PRINTL
-					PRINTL   강화에는 악마를 일체 소비합니다。
+					PRINTL   강화에는 악마를 1체 소비합니다。
 					PRINTL   기본적으로 그 악마의 "상성소질"이 추가되는 상성의 후보가 됩니다。
-					PRINTL   기억하고 있는 스킬과 향후 레벨업에서 습득할 스킬 중에서 후보와 상성이 같고, 가장 등급이 높은 스킬의 상성이 추가되는 상성이 됩니다。
 					PRINTL   상성과 "계승타입" 같은 상성의 스킬이 많을수록, 또 그 스킬의 등급이 높을수록 확률이 높아집니다。
-					PRINTL   또한, 상성소질이 없는 경우는 소지스킬과 습득스킬 중 가장 등급이 높은 스킬의 상성이 추가됩니다。
 					PRINTL
 					PRINTL   주의: 만능, 회복, 지원, 방어, 자동 효과, 전투 시 이외에 사용할 수 있는 스킬은 제외됩니다。
 				CASE 5
@@ -606,17 +601,24 @@ SELECTCASE 지정
 					PRINTL   비고:목표하는 추가효과가 표시되지 않는 경우에는 악마가 기억하고 있는 다른 스킬을 소거해보십시오。반드시 표시될 것입니다。
 				CASE 6
 					PRINTL  『강화해제』
-					PRINTL   마장술에 의해 시행된 강화를 해제합니다。
-					PRINTL   마장술로 강화된 장비를 선택하면、그 장비의 "개념강화를 포함한" 모든 강화가 해제됩니다。
-					PRINTL   이때, 장비의 레벨에 따라 개념강화용 포인트를 얻을 수 있습니다。
-					PRINTL   그 포인트는 자신은 물론 다른 사람의 장비를 개념강화할 경우에도 사용할 수 있으니 꼭 활용하시기 바랍니다。
 					PRINTL
-					PRINTL   "강화가능수"가 한계에 이르렀을 경우、강화를 없애고 싶을 경우에 이 기능을 사용해주십시오。
+					PRINTL   【全解除】
+					PRINTL   魔装術によって施された強化を解除します。
+					PRINTL   魔装術で強化された装備を選ぶと、その装備の"概念強化を含む"すべての強化が解除されます。
 					PRINTL
-					PRINTL   비고：능력강화와 내성강화는 할당한 포인트를 0으로 하면 강화를 하지 않은 취급으로 돌아갑니다。
+					PRINTL   【能力強化・耐性強化のみ解除】
+					PRINTL   能力強化、並びに耐性強化で施された強化を解除します。
+					PRINTL   これを行っても、概念強化や攻撃相性強化、追加効果付与で施された強化はなくなりません。
+					PRINTL
+					PRINTL
+					PRINTL   全解除を行った場合、装備のレベルに応じた概念強化用のポイントが手に入ります。
+					PRINTL   そのポイントは自分はもちろん、他人の装備の概念強化を行う場合にも使用する事ができるので、ぜひ活用してください。
+					PRINTL
+					PRINTL   強化可能数が限界に達した場合等、強化をなくしたい場合にこの機能をお使いください。
+					PRINTL
+					PRINTL   備考：能力強化と耐性強化は、一つの項目に割り振ったポイントを0にすると、強化可能数が一つ回復します。
 				CASE 7
-					PRINTL   현재、마장술과 병용했을 경우、경쟁을 일으키는것이 몇가지 확인되고 있습니다。
-					;        という事にして併用不可にする。強くなり過ぎるので。COMPを58%も使って併用する人がいるかは知らん
+					PRINTL   현재、마장술과 경합하는 것이 몇가지 확인되고 있습니다。
 					PRINTL   확인된것은 다음과 같습니다。주의해주세요。
 					PRINTL
 					PRINTL  『하모나이저』
@@ -626,7 +628,6 @@ SELECTCASE 지정
 					PRINTL
 					PRINTL  『드워프의대장간』
 					PRINTL   드워프의 대장간에서 작성한『개조장비』를 『마장술』로 강화하는 경우、일부 강화가 제한됩니다。
-					PRINTL
 					PRINTL   개념강화    ：LV2까지 가능
 					PRINTL   능력강화    ：불가능
 					PRINTL   내성강화    ：불가능
@@ -642,6 +643,9 @@ SELECTCASE 지정
 					PRINTL   ・어떠한 이유로 장비의 원래 레벨이 사용자 레벨보다 높을 수 있습니다。
 					PRINTL     그 경우는 장비의 레벨이 사용자의 레벨과 동등한 수치까치 내려갑니다。
 					PRINTL     그러나 사용자의 레벨이 올라갈때마다 장비의 레벨도 원래 레벨까지 자동으로 올라가니 안심하시기 바랍니다。
+			;	CASE 9
+			;		
+			;		WAIT
 				CASE 99
 					BREAK
 				CASEELSE
@@ -660,14 +664,6 @@ ENDSELECT
 	CLEARLINE LINECOUNT - FIRST_LINE
 	GOTO START_B
 
-@장비강화_INPUT,ARGS, ARG, ARG:1, ARG:2, ARG:3, ARG:4, ARG:5, ARG:6, ARG:7, ARG:8, ARG:9, ARG:10
-INPUT
-SELECTCASE RESULT
-CASE 0 TO ARG - 1, ARG:1, ARG:2, ARG:3, ARG:4, ARG:5, ARG:6, ARG:7, ARG:8, ARG:9, ARG:10
-	RETURN RESULT
-ENDSELECT
-RESTART
-
 @장비강화_능력강화, ARG, ARG:1
 #DIM DYNAMIC FIRST_LINE
 #DIM DYNAMIC 대상
@@ -684,7 +680,7 @@ RESTART
 #DIM DYNAMIC 할당종료
 #DIM DYNAMIC 할당후, 8
 #DIMS DYNAMIC 선택지
-#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT,2
 
 #DIM DYNAMIC 강화포인트_최대, 8
 #DIM DYNAMIC 강화포인트합계_최대
@@ -695,10 +691,10 @@ RESTART
 #DIM DYNAMIC 성능변동판정
 #DIM DYNAMIC 성능변동보정
 #DIM DYNAMIC 내성無
-#DIM DYNAMIC 기초능력비율
-#DIM DYNAMIC 미배분_최대, 8
+#DIM DYNAMIC 기초능력비율,8
 #DIM DYNAMIC 미배분, 8
-;#DIM DYNAMIC 装備品_必要レベル
+#DIM DYNAMIC 대응능력
+#DIM DYNAMIC 장비비교,2
 
 VARSET 포인트
 VARSET 할당후
@@ -706,14 +702,14 @@ VARSET 기초합계치
 VARSET 기초능력
 VARSET 강화포인트
 VARSET 할당종료
-;	기초能力:0 = BASE:대상:공격
-;	기초能力:1 = BASE:대상:명중
-;	기초能力:2 = BASE:대상:방어
-;	기초能力:3 = BASE:대상:회피
-;	기초能力:4 = BASE:대상:마법위력
-;	기초能力:5 = BASE:대상:마법효과
-;	기초能力:6 = BASE:대상:총공격
-;	기초能力:7 = BASE:대상:총명중
+;	기초능력:0 = BASE:대상:공격
+;	기초능력:1 = BASE:대상:명중
+;	기초능력:2 = BASE:대상:방어
+;	기초능력:3 = BASE:대상:회피
+;	기초능력:4 = BASE:대상:마법위력
+;	기초능력:5 = BASE:대상:마법효과
+;	기초능력:6 = BASE:대상:총공격
+;	기초능력:7 = BASE:대상:총명중
 VARSET 강화포인트합계
 
 VARSET 강화포인트_최대
@@ -729,14 +725,28 @@ CALLFORM 장비부위_{장비번호}
 장비부위 = RESULT
 CALL 장비강화_전개, 대상, 장비번호, "강화단계", "LV"
 강화단계 = RESULT
-CALL 장비강화_성능변동판정, 대상, 장비번호, 장비부위
-IF RESULT:8 > 0
-	FOR LCOUNT, 0, 8
-		성능변동:LCOUNT = RESULT:LCOUNT
-	NEXT
-	성능변동판정 = RESULT:8
-	성능변동보정 = RESULT:9
-ENDIF
+
+;2022/05/01.陳腐化。半年くらい経って不具合が出ない場合に消す----------------
+;CALL 装備強化_성능변동판정, 대상, 장비번호, 장비부위
+;IF RESULT:8 > 0
+;	FOR LCOUNT, 0, 8
+;		성능변동:LCOUNT = RESULT:LCOUNT
+;	NEXT
+;	성능변동판정 = RESULT:8
+;ENDIF
+;---------------------------------------------------------------------------
+
+FOR LCOUNT, 0, FLAG:전투능력수 + 2
+	CALLFORM 전투능력수정_{장비번호}, LCOUNT, -1
+	장비비교 = RESULT
+	CALLFORM 전투능력수정_{장비번호}, LCOUNT, 대상
+	장비비교:1 = RESULT
+	
+	IF 장비비교 != 장비비교:1
+		성능변동판정 = 1
+		BREAK
+	ENDIF
+NEXT
 
 FOR LCOUNT,0,FLAG:전투능력수
 	CALLFORM 전투능력수정_{장비번호}, LCOUNT, -1
@@ -757,16 +767,20 @@ FOR LCOUNT,0,FLAG:전투능력수 +2
 	할당종료 += RESULT
 NEXT
 
+내성無 = 0
 ;防具のみ
 IF 장비부위 > 1 && 장비부위 < 6 && 성능변동판정 == 0
-	내성無 = 0
-	FOR LCOUNT, 0, FLAG:상성수
-		CALLFORM 방어상성_{장비번호}, LCOUNT, 대상
-		IF RESULT != 100
-			내성無 = 2
-			BREAK
-		ENDIF
-	NEXT
+	SIF TALENT:대상:페르소나구사자
+		내성無 = 2
+	IF 내성無 < 2
+		FOR LCOUNT, 0, FLAG:상성수
+			CALLFORM 방어상성_{장비번호}, LCOUNT, 대상
+			IF RESULT != 100
+				내성無 = 2
+				BREAK
+			ENDIF
+		NEXT
+	ENDIF
 	IF 내성無 < 2
 		RESULT = 0
 		FOR LCOUNT, 0, FLAG:상태이상수
@@ -788,119 +802,113 @@ SIF 기초합계치 < 1
 	기초합계치 = 1
 	
 FOR LCOUNT, 0, FLAG:전투능력수 +2
-	기초능력비율 = 기초능력:LCOUNT *100 / 기초합계치
-;	IF 강화포인트:LCOUNT < 10
-;		강화포인트:LCOUNT += 20
-;	ELSEIF 강화포인트:LCOUNT < 20
-;		강화포인트:LCOUNT += 10
-;	ELSEIF 강화포인트:LCOUNT > 50
-;		강화포인트:LCOUNT = 50 - (강화포인트:LCOUNT / 10)
-;	ELSEIF 강화포인트:LCOUNT > 80
-;		강화포인트:LCOUNT -= 20
-;	ELSEIF 강화포인트:LCOUNT > 60
-;		강화포인트:LCOUNT -= 10
-;	ENDIF
-;	RESULT = 0
-;	CALLFORM 장비부위_{장비번호}
-;	SIF RESULT == GET_EQUIPNUM("검") || RESULT == GET_EQUIPNUM("총")
-;		강화포인트:LCOUNT = 50
+	기초능력비율:LCOUNT = 기초능력:LCOUNT *100 / 기초합계치
 
 	CALL 장비강화_강화포인트산출, 장비번호, 장비부위, 99
-	강화포인트_최대:LCOUNT = RESULT * 기초능력비율 / 100
-	CALL 장비강화_강화포인트제한, 99, 장비부위, GET_BATTLESTATUS(LCOUNT)
-	;割り振る事ができる포인트の최대値。기초능력と振った포인트の합계値ではない
+	강화포인트_최대:LCOUNT = RESULT * 기초능력비율:LCOUNT / 100
+	CALL 장비강화_강화포인트제한, 99, 장비부위, GET_BATTLESTATUS(LCOUNT), 장비번호
+	;割り振る事ができる포인트の最大値。기초능력と振った포인트の合計値ではない
 	IF 강화포인트_최대:LCOUNT + 기초능력:LCOUNT > RESULT
-		미배분_최대:LCOUNT = 강화포인트_최대:LCOUNT
+		미배분:LCOUNT = 강화포인트_최대:LCOUNT
 		강화포인트_최대:LCOUNT = RESULT - 기초능력:LCOUNT + MIN(20, 강화포인트_최대:LCOUNT/10)
-		미배분_최대:LCOUNT -= 강화포인트_최대:LCOUNT
+		IF 강화포인트_최대:LCOUNT > 0
+			미배분:LCOUNT -= 강화포인트_최대:LCOUNT
+		ELSE
+			미배분:LCOUNT = 0
+		ENDIF
 	ENDIF
 	
-	강화포인트:LCOUNT = 포인트 * 기초능력비율 / 100
-	CALL 장비강화_강화포인트제한, 강화단계, 장비부위, GET_BATTLESTATUS(LCOUNT)
+	강화포인트:LCOUNT = 포인트 * 기초능력비율:LCOUNT / 100
+	CALL 장비강화_강화포인트제한, 강화단계, 장비부위, GET_BATTLESTATUS(LCOUNT), 장비번호
 	;こっちは現段階
 	SIF 강화포인트:LCOUNT + 기초능력:LCOUNT > RESULT
 		강화포인트:LCOUNT = RESULT - 기초능력:LCOUNT + MIN(20, 강화포인트:LCOUNT/10)
 
-	;自前の강화があるので魔装術での강화は控えめに
-	IF 성능변동판정 == 1 || (성능변동판정 == 2 && 성능변동:LCOUNT == 1)
-		강화포인트_최대:LCOUNT = 강화포인트_최대:LCOUNT * 성능변동보정 / 100
-		강화포인트:LCOUNT = 강화포인트:LCOUNT * 성능변동보정 / 100
-	ENDIF
+;2022/05/01.陳腐化。半年くらい経って不具合が出ない場合に消す---------------------
+	;自前の強化があるので魔装術での強化は控えめに
+;	IF 성능변동판정 > 0
+;		강화포인트_최대:LCOUNT = 강화포인트_최대:LCOUNT * 성능변동:LCOUNT / 100
+;		강화포인트:LCOUNT = 강화포인트:LCOUNT * 성능변동:LCOUNT / 100
+;	ENDIF
+;--------------------------------------------------------------------------------
 	
-	;何かしらボーナスがないと내성のない防具は装備しないだろうと思うので。+20%くらいがちょうど良い
+	;何かしらボーナスがないと耐性のない防具は装備しないだろうと思うので。+20%くらいがちょうど良い
 	IF 내성無 == 1
 		강화포인트_최대:LCOUNT += (기초능력:LCOUNT + 강화포인트_최대:LCOUNT) / 5
 		강화포인트:LCOUNT += (기초능력:LCOUNT + 강화포인트:LCOUNT) / 5
 	ENDIF
+	
+	;デバッグ用표시
+	;PRINTFORML %GET_BATTLESTATUS(LCOUNT), 8, LEFT%:{강화포인트:LCOUNT}
 NEXT
 
-;강화포인트の計算式的に偏った性能の装備が割を食っているので、尖がった性能がより尖るようにする
-;防具は不可。내성無しや性能がゼロの部分へのボーナスがあるから강화が過剰になる
-IF SUMARRAY(미배분_최대, 0) > 0 && 장비부위 < 2
+;性能が偏っている場合、対応する戦闘能力の強化にボーナスを付ける
+;例えば攻撃に偏っているのであれば命中に、魔法威力に偏っていれば魔法効果にボーナスが付く
+;강화포인트の計算式的に偏った性能の装備が割を食っているので救済措置
+;防具は不可。내성無しや性能がゼロの部分へのボーナスがあるから強化が過剰になる
+IF SUMARRAY(미배분, 0) > 0 && 장비부위 < 2
 	IF 성능변동판정 > 0
-		VARSET 미배분_최대
+		VARSET 미배분
 	ELSE
 		FOR LCOUNT, 0, FLAG:전투능력수 + 2
-			IF 미배분_최대:LCOUNT > 0
+			IF 미배분:LCOUNT > 0
 				IF LCOUNT % 2 == 0
-					LOCAL = LCOUNT + 1
+					대응능력 = LCOUNT + 1
 				ELSE
-					LOCAL = LCOUNT - 1
+					대응능력 = LCOUNT - 1
 				ENDIF
 				
-				IF 기초능력:LOCAL == 0
-					미배분_최대:LCOUNT = 0
-				ELSE
-					CALL 장비강화_강화포인트제한, 99, 장비부위, GET_BATTLESTATUS(LOCAL)
-					LOCAL:1 = 100 - ((강화포인트_최대:LOCAL + 기초능력:LOCAL) * 100 / ((RESULT + 20)))
-					SIF LOCAL:1 < 0
-						LOCAL:1 = 0
-					미배분_최대:LCOUNT = 미배분_최대:LCOUNT * LOCAL:1 / 100
-					;銃は강화できる능력の수が半分なので
-					SIF 장비부위 == GET_EQUIPNUM("총")
-						미배분_최대:LCOUNT /= 2
-					미배분:LCOUNT = 미배분_최대:LCOUNT * 강화단계 / 99
-				;	디버그용
-				;	IF 미배분_최대:LCOUNT > 0
-				;		PRINTFORML %GET_BATTLESTATUS(LCOUNT)%_최대：{미배분_최대:LCOUNT}
-				;		PRINTFORML %GET_BATTLESTATUS(LCOUNT)%     ：{미배분:LCOUNT}
-				;	ENDIF
-				ENDIF
+				SIF 대응능력 == GET_BATTLESTATUS_NUM("마법효과")
+					미배분:LCOUNT = 미배분:LCOUNT * 4 / 7
+				CALL 장비강화_강화포인트제한, 99, 장비부위, GET_BATTLESTATUS(대응능력), 장비번호
+				SIF 강화포인트_최대:대응능력 + 기초능력:대응능력 + 미배분:LCOUNT > RESULT + 20
+					미배분:LCOUNT = RESULT + 20 - 강화포인트_최대:대응능력 - 기초능력:대응능력
+				미배분:LCOUNT = 미배분:LCOUNT * (강화단계+1) / 100
+				
 			ELSE
-				미배분_최대:LCOUNT = 0
+				미배분:LCOUNT = 0
 			ENDIF
 		NEXT
-		;↑のFOR文内で加算するとLOCAL:1が正確に計算されないのでここで加算
+		;↑のFOR文内で加算すると正確に計算されないのでここで加算
 		FOR LCOUNT, 0, FLAG:전투능력수 + 2
-			IF 미배분_최대:LCOUNT > 0
-				강화포인트_최대:LCOUNT += 미배분_최대:LCOUNT
-				강화포인트:LCOUNT += 미배분:LCOUNT
+			IF 미배분:LCOUNT > 0
+				IF LCOUNT % 2 == 0
+					대응능력 = LCOUNT + 1
+				ELSE
+					대응능력 = LCOUNT - 1
+				ENDIF
+				
+				강화포인트_최대:대응능력 += 미배분:LCOUNT
+				강화포인트:대응능력 += 미배분:LCOUNT
 			ENDIF
 		NEXT
 	ENDIF
+ELSE
+	VARSET 미배분
 ENDIF
 
 강화포인트합계_최대 = SUMARRAY(강화포인트_최대, 0)
 강화포인트합계 = SUMARRAY(강화포인트, 0)
 포인트 -= 기초합계치
 
-;防具の元々の性能がゼロの部分に포인트られる포인트の上限を設定
+;防具の元々の性能がゼロの部分に振り分けられる포인트の上限を設定
 IF (포인트 - 강화포인트합계) > 0 && 장비부위 != GET_EQUIPNUM("검") && 장비부위 != GET_EQUIPNUM("총")
 	FOR LCOUNT,0,FLAG:전투능력수 +2
 		IF 기초능력:LCOUNT == 0 && (LCOUNT >= 2 && LCOUNT <= 5)
 			강화포인트:LCOUNT += (포인트 - 강화포인트합계) / 4
+			강화포인트합계 += 강화포인트:LCOUNT
 			강화포인트합계_최대 += 강화포인트:LCOUNT
 		ENDIF
 	NEXT
 ENDIF
 
-포인트 = 강화포인트합계 * (50 + SQRT(강화단계 + 1) * 5) / 100
+포인트 = 강화포인트합계 * (50 + (강화단계 + 1) / 2) / 100
 
-;全く강화できないのも寂しいので少しだけ강화できるように
+;全く強化できないのも寂しいので少しだけ強化できるように
 SIF 강화포인트합계_최대 < 15 && 성능변동판정 == 0
 	포인트 = (강화단계 + 1) * 15 / 100
 
-;개조장비は강화불가。鍛冶屋での강화だけで、魔装術での능력강화の上限近くになる為
+;개조장비は강화불가。鍛冶屋での強化だけで、魔装術での能力強化の上限近くになる為
 SIF 개조장비(장비번호)
 	포인트 = 0
 
@@ -909,6 +917,7 @@ SIF 개조장비(장비번호)
 FIRST_LINE = LINECOUNT
 REDRAW 0
 $S_LOOP
+
 DRAWLINE
 IF 개조장비(장비번호)
 	PRINTFORM <%개조장비명칭(개조장비번호(장비번호))%>
@@ -927,6 +936,17 @@ IF 50 - 강화수 == 0
 	PRINT  [한계]
 	RESETCOLOR
 ENDIF
+IF 성능변동판정 == 1
+	SETCOLOR COLOR("yellow")
+	IF 장비부위 == GET_EQUIPNUM("검") || 장비부위 == GET_EQUIPNUM("총")
+		LCOUNT = 4
+	ELSE
+		LCOUNT = 2
+	ENDIF
+	PRINTFORM   [강화치 1/{LCOUNT}]
+	RESETCOLOR
+ENDIF
+
 PRINTL
 DRAWLINE
 IF 개조장비(장비번호)
@@ -941,7 +961,7 @@ FOR LCOUNT,0,FLAG:전투능력수 +2
 	IF 기초능력:LCOUNT || 강화포인트:LCOUNT
 		변화량_Max:LCOUNT = LIMIT(강화포인트:LCOUNT - 할당후:LCOUNT, 1, MAX(포인트, 1))
 		변화량_Min:LCOUNT = MAX(할당후:LCOUNT, 1) * -1
-		PRINTFORM %GET_BATTLESTATUS(LCOUNT),8,LEFT%:{기초능력:LCOUNT, 3} + {할당후:LCOUNT, 3} = {기초능력:LCOUNT + 할당후:LCOUNT, 3}
+		PRINTFORM %GET_BATTLESTATUS(LCOUNT),8,LEFT%:{기초능력:LCOUNT, 3} + {할당후:LCOUNT, 3} = {기초능력:LCOUNT + 할당후:LCOUNT, 3}    
 		CALL BUTTON_강화포인트("[ +1]", 200+(LCOUNT*10), 할당후:LCOUNT, 포인트, 1, 강화포인트:LCOUNT, 대상, 강화수)
 		SIF RESULT != -1
 			선택지 += TOSTR( 200+(LCOUNT*10) ) + "/"
@@ -970,7 +990,7 @@ FOR LCOUNT,0,FLAG:전투능력수 +2
 NEXT
 
 DRAWLINE
-PRINTFORML [0] 결정
+PRINTFORML [  0] 결정
 	선택지 += "0/"
 PRINTFORML [998] 포인트 재조정
 	선택지 += "998/"
@@ -986,21 +1006,15 @@ IF RESULT == 999
 	RETURN 0
 ELSEIF RESULT == 0
 	REDRAW 1
-	PRINTFORML 능력 강화를 마치시겠습니까？
-	CALL INPUT_YN,"예","아니오"
-	IF RESULT == 0
-		FOR LCOUNT,0,FLAG:전투능력수 +2
-			CALL 장비강화_CSTR, "書き込み", 대상, 장비번호, "능력강화", GET_BATTLESTATUS(LCOUNT), 할당후:LCOUNT
-		NEXT
-		RETURN 0
-	ELSEIF RESULT == 1
-		CLEARLINE LINECOUNT - FIRST_LINE
-		GOTO S_LOOP
-	ENDIF
+	FOR LCOUNT,0,FLAG:전투능력수 +2
+		CALL 장비강화_CSTR, "書き込み", 대상, 장비번호, "능력강화", GET_BATTLESTATUS(LCOUNT), 할당후:LCOUNT
+	NEXT
+	CLEARLINE LINECOUNT - FIRST_LINE
+	RETURN 0
 ELSEIF RESULT == 998
 	REDRAW 1
 	PRINTFORML 포인트를 재분배하시겠습니까？
-	CALL INPUT_YN,"예","아니오"
+	CALL INPUT_YN,"네","아니오"
 	IF RESULT == 0
 		FOR LCOUNT,0,FLAG:전투능력수 +2
 			할당후:LCOUNT = 0
@@ -1045,16 +1059,21 @@ ENDIF
 CLEARLINE LINECOUNT - FIRST_LINE
 GOTO S_LOOP
 
-@장비강화_강화포인트제한, ARG, ARG:1, ARGS
-;ARG 강화단계레벨  ARG:1 부위  ARGS 능력
-;実際はここで出した한계치にいくらか足した수値が上限になる
+@장비강화_강화포인트제한, ARG, ARG:1, ARGS, ARG:2 = -1
+;ARG 강화단계レベル  ARG:1 部位  ARGS 能力
+;実際はここで出した한계치にいくらか足した数値が上限になる
 #DIM DYNAMIC 한계치
 #DIM DYNAMIC 장비부위
 #DIMS DYNAMIC 지정능력
+#DIM DYNAMIC 장비번호
+#DIM DYNAMIC 최저공격횟수
+#DIM DYNAMIC 최대공격횟수
+#DIM DYNAMIC 공격횟수합계
 
 한계치 = ARG
 장비부위 = ARG:1
 지정능력 = %ARGS%
+장비번호 = ARG:2
 
 SELECTCASE 장비부위
 	CASE GET_EQUIPNUM("검")
@@ -1063,18 +1082,36 @@ SELECTCASE 장비부위
 				TIMES 한계치, 3.5
 				SIF 한계치 > 260
 					한계치 = 260 + (한계치-260)/6
+					
+				CALLFORM 최저공격횟수_{장비번호}
+				최저공격횟수 = RESULT
+				CALLFORM 최대공격횟수_{장비번호}
+				최대공격횟수 = RESULT
+				공격횟수합계 = 최저공격횟수 + 최대공격횟수
+				;공격횟수합계が奇数の場合でも正確に計算したいので、合計を10倍にして計算する
+				SIF 공격횟수합계 > 2
+					한계치 = 한계치 * (공격횟수합계 * 10 / 2 + 10) / (공격횟수합계 * 10)
 			CASE "명중"
 				TIMES 한계치, 3.5
 				SIF 한계치 > 250
 					한계치 = 250 + (한계치-250)/6
+			;	TIMES 한계치, 3.0
+			;	SIF 한계치 > 220
+			;		한계치 = 220 + (한계치-220)/6
 			CASE "마법위력"
 				TIMES 한계치, 3.5
 				SIF 한계치 > 260
 					한계치 = 260 + (한계치-260)/6
 			CASE "마법효과"
-				TIMES 한계치, 3.0
-				SIF 한계치 > 200
-					한계치 = 200 + (한계치-200)/6
+			;	TIMES 한계치, 3.0
+			;	SIF 한계치 > 200
+			;		한계치 = 200 + (한계치-200)/6
+;				TIMES 한계치, 2.0
+;				SIF 한계치 > 140
+;					한계치 = 140 + (한계치-140)/4
+				한계치 = 한계치 * 7 / 4
+				SIF 한계치 > 140
+					한계치 = 140 + (한계치-140)/4
 			CASEELSE
 				TIMES 한계치, 1.0
 		ENDSELECT
@@ -1183,9 +1220,11 @@ RETURN 한계치
 #DIM DYNAMIC 할당종료
 #DIM DYNAMIC 할당후
 #DIMS DYNAMIC 선택지
+#DIMS DYNAMIC 상성명
 #DIM DYNAMIC 강화수 = 0
 #DIM DYNAMIC 변화량_Max
 #DIM DYNAMIC 변화량_Min
+#DIM DYNAMIC LCOUNT,2
 
 VARSET 포인트
 VARSET 할당후
@@ -1200,8 +1239,8 @@ VARSET 약점합계
 CALL 장비강화_CSTR, "강화수", 대상
 강화수 = RESULT
 
-FOR LOCAL, 0, FLAG:상성수 - 1
-	CALLFORM 방어상성_{장비번호},LOCAL,대상
+FOR LCOUNT, 0, FLAG:상성수 - 1
+	CALLFORM 방어상성_{장비번호}, LCOUNT, 대상
 	SELECTCASE RESULT
 		CASE 999
 			내성합계 += 15 
@@ -1226,7 +1265,7 @@ FIRST_LINE = LINECOUNT
 REDRAW 0
 	$START_3
 	IF (약점합계 + 내성합계) == 0
-		PRINTW 강화できる내성がありません
+		PRINTW 강화할 수 있는 내성이 없습니다
 		RETURN
 	ENDIF
 	포인트 = (약점합계 - 내성합계) * 5 / 5
@@ -1243,13 +1282,13 @@ REDRAW 0
 	DRAWLINE
 	;現在상성を표시
 	PRINTL □전체상성
-	FOR LOCAL, 0, FLAG:상성수 - 1
-		PRINTFORM %GET_TYPE(LOCAL)% 
-		현재치 = MAXBASE:대상:GET_TYPE(LOCAL)
+	FOR LCOUNT, 0, FLAG:상성수 - 1
+		PRINTFORM %GET_TYPE(LCOUNT)% 
+		현재치 = MAXBASE:대상:GET_TYPE(LCOUNT)
 		CALL SET_AISYOU_COLOR(현재치)
 		PRINTFORM \@ 현재치 < 0 ? 흡 # 　 \@
 		PRINTFORM \@ 현재치 != 999 ? {ABS(현재치), 3}％ # %" "%반사 \@　
-		PRINTFORM \@ LOCAL % 6 == 5 ? \n # \@
+		PRINTFORM \@ LCOUNT % 6 == 5 ? \n # \@
 		RESETCOLOR
 	NEXT
 
@@ -1257,40 +1296,41 @@ REDRAW 0
 	DRAWLINE
 	PRINTFORML □내성강화  <%ITEMNAME:장비번호%>  (Lv：{강화단계})
 	DRAWLINE
-	PRINTL 어느 내성을 변경하시겠습니까？
+	PRINTL 어느 상성을 변경하시겠습니까？
 	DRAWLINE
-	PRINTFORML 강화가능횟수:{50 - 강화수}
+	PRINTFORM 강화가능횟수:{50 - 강화수}
 	IF 50 - 강화수 == 0
 		SETCOLOR COLOR("yellow")
 		PRINT  [한계]
 		RESETCOLOR
 	ENDIF
+	PRINTL
 	DRAWLINE
-	LOCAL:1 = 0
+	LCOUNT:1 = 0
 	선택지 = 
-	FOR LOCAL, 0, FLAG:상성수 - 1
-		CALLFORM 방어상성_{장비번호},LOCAL,대상
+	FOR LCOUNT, 0, FLAG:상성수 - 1
+		CALLFORM 방어상성_{장비번호},LCOUNT,대상
 		기초치 = RESULT
 		SIF 기초치 == 100 ;|| 기초치 <= 0 || 기초치 == 999
 			CONTINUE
-		CALL 장비강화_전개, 대상, 장비번호, "방어상성", GET_TYPE(LOCAL), RESULT
+		CALL 장비강화_전개, 대상, 장비번호, "방어상성", GET_TYPE(LCOUNT), RESULT
 		포인트 -= 기초치 - RESULT
 		현재치 = RESULT
 		IF 기초치 <= 0 || 기초치 == 999
-			PRINTFORM [XX]%GET_TYPE(LOCAL)%
+			PRINTFORM [XX]%GET_TYPE(LCOUNT)%
 		ELSE
-			PRINTFORM [{LOCAL, 2}]%GET_TYPE(LOCAL)%
-			선택지 += TOSTR(LOCAL) + "/"
+			PRINTFORM [{LCOUNT, 2}]%GET_TYPE(LCOUNT)%
+			선택지 += TOSTR(LCOUNT) + "/"
 		ENDIF
-		LOCALS =   
+		상성명 =   
 		SIF (RESULT - 기초치) != 0
-			LOCALS = ◇
-		PRINTFORM %LOCALS%
+			상성명 = ◇
+		PRINTFORM %상성명%
 		RESETCOLOR
 		CALL SET_AISYOU_COLOR(RESULT)
 		PRINTFORM \@ 현재치 < 0 ? 흡 #    \@
 		PRINTFORM \@ 현재치 != 999 ? {ABS(현재치), 3}％ # %" "%반사 \@  
-	PRINTL
+		PRINTL
 		RESETCOLOR
 	NEXT
 	PRINTL
@@ -1306,16 +1346,16 @@ REDRAW 0
 	ELSEIF RESULT == 998
 		REDRAW 1
 		PRINTFORML 포인트를 재분배하시겠습니까？
-		CALL INPUT_YN,"예","아니오"
+		CALL INPUT_YN,"네","아니오"
 		IF RESULT == 0
-			FOR LOCAL, 0, FLAG:상성수 - 1
-				CALLFORM 방어상성_{장비번호}, LOCAL, 대상
-				LOCAL:1 = RESULT
-				SIF LOCAL:1 == 100 || LOCAL:1 <= 0 || LOCAL:1 == 999
+			FOR LCOUNT, 0, FLAG:상성수 - 1
+				CALLFORM 방어상성_{장비번호}, LCOUNT, 대상
+				LCOUNT:1 = RESULT
+				SIF LCOUNT:1 == 100 || LCOUNT:1 <= 0 || LCOUNT:1 == 999
 					CONTINUE
-				CALL 장비강화_전개, 대상, 장비번호, "방어상성", GET_TYPE(LOCAL), RESULT
-				IF (RESULT - LOCAL:1) != 0
-					CALL 장비강화_CSTR, "書き込み", 대상, 장비번호, "내성강화", GET_TYPE(LOCAL), 0
+				CALL 장비강화_전개, 대상, 장비번호, "방어상성", GET_TYPE(LCOUNT), RESULT
+				IF (RESULT - LCOUNT:1) != 0
+					CALL 장비강화_CSTR, "書き込み", 대상, 장비번호, "내성강화", GET_TYPE(LCOUNT), 0
 				ENDIF
 			NEXT
 		ENDIF
@@ -1463,6 +1503,8 @@ GOTO START_2
 #DIMS DYNAMIC 부여상성
 #DIM DYNAMIC 부여확률
 #DIMS DYNAMIC 장비명
+#DIM DYNAMIC 변화강도
+#DIMS DYNAMIC 스킬번지
 #DIM DYNAMIC SKILL_RANK
 #DIM DYNAMIC LCOUNT
 
@@ -1472,88 +1514,94 @@ GOTO START_2
 FIRST_LINE = LINECOUNT
 $START_1
 
-	PRINTL □공격상성강화    (공격시 확률로 공격 상성을 변화시킨다)
-	RESULT = 0
-	TRYCALLFORM 공격상성_{장비번호}
-	PRINTFORM   공격상성 [%GET_TYPE(RESULT),4%]
-	기초치 = RESULT
-	CALL 장비강화_전개, 대상, 장비번호, "공격상성", "부여상성"
-	IF RESULT > -1
-		PRINTFORM   ／  속성부여 [%GET_TYPE(RESULT),4%]
-		CALL 장비강화_전개, 대상, 장비번호, "공격상성", "부여확률"
-		PRINTFORM   부여확률 [{RESULT,2}]　
-	ENDIF
-	PRINTL
-	DRAWLINE
+PRINTL □공격상성강화    (공격시 확률로 공격 상성을 변화시킨다)
+RESULT = 0
+TRYCALLFORM 공격상성_{장비번호}
+PRINTFORM   공격상성 [%GET_TYPE(RESULT),4%]
+기초치 = RESULT
+CALL 장비강화_전개, 대상, 장비번호, "공격상성", "부여상성"
+IF RESULT > -1
+	PRINTFORM   ／  속성부여 [%GET_TYPE(RESULT),4%]
+	CALL 장비강화_전개, 대상, 장비번호, "공격상성", "부여확률"
+	PRINTFORM   부여확률 [{RESULT,2}]　
+ENDIF
+PRINTL
+DRAWLINE
 
 SECOND_LINE = LINECOUNT
 $START_2
 
-	;キャラリストを표시・선택
-	CALL SHOW_CHARA_LIST_장비강화,"공격상성",대상
-	SIF RESULT == -1
-		RETURN -1
-	소재악마 = RESULT
-	CALL 적정상성_강화용,RESULT
-	IF 기초치 == RESULT
-		PRINTW 원래의 상성과 같습니다
-		CLEARLINE LINECOUNT - SECOND_LINE
-		GOTO START_2
-	ENDIF
-	DRAWLINE
-	PRINTFORML 마정변화:%CALLNAME:소재악마%
-	PRINTL
+;キャラリストを표시・선택
+CALL SHOW_CHARA_LIST_장비강화,"공격상성",대상
+SIF RESULT == -1
+	RETURN -1
+소재악마 = RESULT
+CALL 적정상성_강화용,RESULT
+IF 기초치 == RESULT
+	PRINTW 원래의 상성과 같습니다
+	CLEARLINE LINECOUNT - SECOND_LINE
+	GOTO START_2
+ENDIF
+DRAWLINE
+PRINTFORML 마정변화:%CALLNAME:소재악마%
+PRINTL
 
-	부여상성 = %GET_TYPE(RESULT)%
-	LOCAL:1 = 0
-	FOR LCOUNT, 1, FLAG:스킬수 + 1
-		LOCALS = 스킬{LCOUNT}
-		SIF ABL:소재악마:LOCALS == 0
-			CONTINUE
-		CALLFORM SKILL_SUCCESSION_TYPE_{ABL:소재악마:LOCALS}
-		SIF GET_SUCCESSION(RESULT) != 부여상성
-			CONTINUE
-		CALLFORM SKILL_RANK_{ABL:소재악마:LOCALS}
-		SIF RESULT > 4
-			LOCAL:1 += 1
-		SIF RESULT > 9
-			LOCAL:1 += 1
-		LOCAL:1 += 1
-		SKILL_RANK = MIN(RESULT / 5 + 1, 3)
-		CALLFORM SKILL_NAME_{ABL:소재악마:LOCALS}
-		SETCOLOR COLOR("yellow")
-		PRINTFORM %"★"*SKILL_RANK, 6, LEFT%
-		RESETCOLOR
-		PRINTFORML :%RESULTS%
-	NEXT
-	부여확률 = 5
-	FOR LCOUNT, 0, LOCAL:1
-		SELECTCASE LCOUNT
-			CASE 0 TO 1
-				부여확률 += 15
-			CASE 2 TO 6
-				부여확률 += 10
-			CASE 7 TO 9
-				부여확률 += 5
-			CASEELSE
-		ENDSELECT
-	NEXT
+부여상성 = %GET_TYPE(RESULT)%
 
-	PRINTL
-	PRINTFORM 변화강도:
+FOR LCOUNT, 1, FLAG:스킬수 + 1
+	스킬번지 = 스킬{LCOUNT}
+	SIF ABL:소재악마:스킬번지 == 0
+		CONTINUE
+	CALLFORM SKILL_SUCCESSION_TYPE_{ABL:소재악마:스킬번지}
+	SIF GET_SUCCESSION(RESULT) != 부여상성
+		CONTINUE
+	CALLFORM SKILL_RANK_{ABL:소재악마:스킬번지}
+	SELECTCASE RESULT
+		CASE IS >= 10
+			변화강도 += 3
+		CASE IS >= 5
+			변화강도 += 2
+		CASEELSE
+			변화강도 += 1
+	ENDSELECT
+	SKILL_RANK = MIN(RESULT / 5 + 1, 3)
+	CALLFORM SKILL_NAME_{ABL:소재악마:스킬번지}
 	SETCOLOR COLOR("yellow")
-	PRINTFORM %"★" * MIN(LOCAL:1, 10)%
+	PRINTFORM %"★"*SKILL_RANK, 6, LEFT%
 	RESETCOLOR
-	
-	IF LOCAL:1 >= 10
-		SETCOLOR COLOR("yellow")
-		PRINT (MAX)
-		RESETCOLOR
-	ELSE
-		PRINTFORM ({LOCAL:1})
-	ENDIF
-	
-	PRINTL
+	PRINTFORML :%RESULTS%
+NEXT
+
+부여확률 = 5
+FOR LCOUNT, 0, 변화강도
+	SELECTCASE LCOUNT
+		CASE 0 TO 1
+			부여확률 += 15
+		CASE 2 TO 6
+			부여확률 += 10
+		CASE 7 TO 9
+			부여확률 += 5
+		CASEELSE
+	ENDSELECT
+NEXT
+;부여확률 = MIN (10 + (15 * LOCAL:1), 95)
+;SIF LOCAL:1 > 9
+;	부여확률 += 5
+PRINTL
+PRINTFORM 변화강도:
+SETCOLOR COLOR("yellow")
+PRINTFORM %"★" * MIN(변화강도, 10)%
+RESETCOLOR
+
+IF 변화강도 >= 10
+	SETCOLOR COLOR("yellow")
+	PRINT (MAX)
+	RESETCOLOR
+ELSE
+	PRINTFORM ({변화강도})
+ENDIF
+
+PRINTL
 DRAWLINE
 
 IF 개조장비(장비번호)
@@ -1575,7 +1623,7 @@ CALL SYNC_STATUS,대상
 PRINTFORMW %장비명%に%CALLNAME:소재악마%が融合した！
 
 CALL FUSION_LETTER,소재악마,1
-;合体소재の악마を消去
+;合体素材の悪魔を消去
 CALL 캐릭터삭제, 소재악마
 	RETURN -1
 
@@ -1586,14 +1634,12 @@ CALL 캐릭터삭제, 소재악마
 #DIM DYNAMIC 대상
 #DIM DYNAMIC 장비번호
 #DIM DYNAMIC 소재악마
-#DIM DYNAMIC 부여ステート
+#DIM DYNAMIC 부여상태이상
 #DIM DYNAMIC 기본명중
 #DIM DYNAMIC 추가효과스테이터스
 #DIMS DYNAMIC 장비명
 #DIM DYNAMIC 스킬평가, 4
 #DIM DYNAMIC 변화강도
-
-#DIMS DYNAMIC 테스트
 
 대상 = ARG
 장비번호 = ARG:1
@@ -1632,7 +1678,7 @@ $START_1
 		PRINTL
 		DRAWLINE
 		IF GET_STATE(추가효과스테이터스) != "GOOD"
-			PRINTW もともと추가효과を持っています
+			PRINTW 원래 추가효과를 가지고 있습니다
 			RETURN -1
 		ENDIF
 	ENDIF
@@ -1642,13 +1688,13 @@ $START_1
 SECOND_LINE = LINECOUNT
 $START_2
 
-		;キャラリストを표시・선택
-		CALL SHOW_CHARA_LIST_장비강화,"추가효과",대상
-		SIF RESULT == -1
-			RETURN -1
-		소재악마 = RESULT
-		CALL 소지스킬추가효과_강화용,RESULT
-		부여ステート = RESULT
+	;キャラリストを표시・선택
+	CALL SHOW_CHARA_LIST_장비강화,"추가효과",대상
+	SIF RESULT == -1
+		RETURN -1
+	소재악마 = RESULT
+	CALL 소지스킬추가효과_강화용,RESULT
+	부여상태이상 = RESULT
 
 	DRAWLINE
 	PRINTFORML 마정변화:%CALLNAME:소재악마%
@@ -1661,7 +1707,7 @@ $START_2
 			CONTINUE
 
 		TRYCCALLFORM SKILL_ADDTIONAL_STATE_{ABL:소재악마:LOCALS}
-			SIF RESULT != 부여ステート
+			SIF RESULT != 부여상태이상
 				CONTINUE
 		CATCH
 			CONTINUE
@@ -1676,6 +1722,7 @@ $START_2
 			CASEELSE
 				스킬평가 = 3
 		ENDSELECT
+		
 		CALLFORM SKILL_ADDTIONAL_MAX_RATE_{ABL:소재악마:LOCALS}, 소재악마
 		SELECTCASE RESULT
 			CASE IS < 71
@@ -1685,6 +1732,7 @@ $START_2
 			CASEELSE
 				스킬평가:1 = 3
 		ENDSELECT
+		
 		CALLFORM SKILL_RANK_{ABL:소재악마:LOCALS}
 		SELECTCASE RESULT
 			CASE IS < 6
@@ -1720,16 +1768,16 @@ $START_2
 	PRINTL
 	DRAWLINE
 
-;추가효과 스테이터스
+;추가효과스테이터스
 ;추가효과_{장비번호},ARG
 ;RETURN GET_STATE_NUM("DYING")
 
-;추가효과 상성
-;추가효과 상성_{장비번호},ARG
-;RETURN GET_TYPE_NUM("만능")
+;추가효과상성
+;추가효과상성_{장비번호},ARG
+;RETURN GET_TYPE_NUM("万能")
 
-;추가효과기본付与確率
-;추가효과명중률_{장비번호},ARG
+;추가효과基本부여확률
+;추가효과命中率_{장비번호},ARG
 ;RETURN 20
 ;	GET_STATE_NUM("FREEZE")	20%
 ;	GET_STATE_NUM("SHOCK")	20%
@@ -1740,8 +1788,8 @@ $START_2
 ;	BIND 	２５％
 ;	CHARM 	２０％
 
-;추가효과付与確率上限
-;추가효과최대명중률_{장비번호},ARG
+;추가효과부여확률上限
+;추가효과最大命中率_{장비번호},ARG
 ;RETURN 95
 IF 개조장비(장비번호)
 	장비명 =  %개조장비명칭(개조장비번호(장비번호))%
@@ -1749,14 +1797,14 @@ ELSE
 	장비명 = %ITEMNAME:장비번호%
 ENDIF
 
-PRINTFORML %장비명%에[%GET_STATE(부여ステート)%]({기본명중, 3}％)을 부여하시겠습니까？
+PRINTFORML %장비명%에[%GET_STATE(부여상태이상)%]({기본명중, 3}％)을 부여하시겠습니까？
 CALL INPUT_YN,"Yes","No",2
 	IF RESULT == 1
 		PRINTL 
 		CLEARLINE LINECOUNT - SECOND_LINE
 		GOTO START_2
 	ENDIF
-	CALL 장비강화_CSTR, "書き込み", 대상, 장비번호, "추가효과", GET_STATE(부여ステート), 기본명중
+	CALL 장비강화_CSTR, "書き込み", 대상, 장비번호, "추가효과", GET_STATE(부여상태이상), 기본명중
 	CALL SYNC_STATUS,대상
 
 PRINTFORMW %장비명%에 %조사처리(CALLNAME:소재악마, "가")% 융합했다！ 
@@ -1789,16 +1837,39 @@ ENDIF
 
 @장비강화_강화해제,ARG,ARG:1 = -1
 #DIM DYNAMIC FIRST_LINE
+#DIM DYNAMIC SECOND_LINE
 #DIM DYNAMIC 대상
 #DIM DYNAMIC 장비번호
+#DIM DYNAMIC 해제모드
 
 대상 = ARG
 장비번호 = ARG:1
 
+DRAWLINE
 LOCALS = 
-$START_B
 FIRST_LINE = LINECOUNT
-PRINTL 강화를 해제할 장비을(를) 선택하십시오
+PRINTL [ 1] 全解除
+PRINTL [ 2] 能力強化・내성강화のみ解除
+PRINTL [99] やめる
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 99
+			RETURN -1
+		CASE 1, 2
+			CLEARLINE LINECOUNT - FIRST_LINE
+			해제모드 = RESULT
+			BREAK
+	ENDSELECT
+LOOP 1
+
+$START_B
+IF 해제모드 == 1
+	PRINT 強化をすべて
+ELSEIF 해제모드 == 2
+	PRINT 一部の強化を
+ENDIF
+PRINTL 解除する装備を選択してください
 DRAWLINE
 PRINTFORML %CALLNAME:대상%
 PRINTL □장비강화상태
@@ -1808,7 +1879,7 @@ CALL 장비강화_CSTR, "표시", 대상,0,"선택"
 LOCALS = %RESULTS%
 PRINTL ▼비장비
 RESULTS = 
-CALL 장비강화_CSTR, "표시：不장비", 대상,0,"선택"
+CALL 장비강화_CSTR, "표시：不装備", 대상,0,"선택"
 LOCALS += RESULTS
 PRINTL
 PRINTL [9999] 그만둔다
@@ -1828,21 +1899,30 @@ IF 개조장비(장비번호)
 ELSE
 	PRINTFORM %ITEMNAME:장비번호%
 ENDIF
-PRINTL 의 강화상태를 전부 해제합니다
-CALL INPUT_YN,"예","아니오"
+IF 해제모드 == 1
+	PRINTL の強化状態をすべて解除します
+ELSEIF 해제모드 == 2
+	PRINTL の一部の強化を解除します
+ENDIF
+CALL INPUT_YN,"네","아니오"
 IF RESULT == 1
 	CLEARLINE LINECOUNT - FIRST_LINE
 	GOTO START_B
 ENDIF
 
 IF 개조장비(장비번호)
-	PRINTFORM [%개조장비명칭(개조장비번호(장비번호))%]
+	PRINTFORM %개조장비명칭(개조장비번호(장비번호))%
 ELSE
-	PRINTFORM [%ITEMNAME:장비번호%]
+	PRINTFORM %ITEMNAME:장비번호%
 ENDIF
-PRINT 의 강화를 해제
-CALL 장비강화_CSTR, "해제", 대상, 장비번호
-RETURN
+IF 해제모드 == 1
+	PRINTL のすべて強化を解除
+	CALL 장비강화_CSTR, "해제", 대상, 장비번호
+ELSEIF 해제모드 == 2
+	PRINTL の一部の強化を解除
+	CALL 장비강화_CSTR, "해제：능력만", 대상, 장비번호
+ENDIF
+;RETURN
 	CLEARLINE LINECOUNT - FIRST_LINE
 	GOTO START_B
 
@@ -1862,7 +1942,7 @@ LOCAL:3 = CURRENTREDRAW(), RESULT
 SIF LOCAL:3 != 2
 	REDRAW 2
 P = 0
-;表示させるキャラを抽出（Q:*に表示するキャラの登録番号、LOCAL:2に人数）
+;표시させるキャラを抽出（Q:*に표시するキャラの登録번호、LOCAL:2に人数）
 VARSET Q, -1
 A = 0
 IF 지정 == "공격상성"
@@ -1939,7 +2019,7 @@ FOR LCOUNT, 0, 리스트표시수()
 				스킬평가 += 1
 			스킬평가 += 1
 		NEXT
-		;PRINTFORM ({MIN (10 + (15 * 강화:2), 95)})    
+		;PRINTFORM ({MIN (10 + (15 * 強化:2), 95)})    
 		확률표시 = 5
 		FOR LCOUNT:1, 0, 스킬평가
 			SELECTCASE LCOUNT:1
@@ -1968,6 +2048,7 @@ FOR LCOUNT, 0, 리스트표시수()
 			CATCH
 				CONTINUE
 			ENDCATCH
+			
 			CALLFORM SKILL_ADDTIONAL_BASE_RATE_{ABL:LOCAL:LOCALS}, LOCAL
 			SELECTCASE RESULT
 				CASE IS < 31
@@ -1977,6 +2058,7 @@ FOR LCOUNT, 0, 리스트표시수()
 				CASEELSE
 					스킬평가 = 3
 			ENDSELECT
+			
 			CALLFORM SKILL_ADDTIONAL_MAX_RATE_{ABL:LOCAL:LOCALS}, LOCAL
 			SELECTCASE RESULT
 				CASE IS < 71
@@ -1986,6 +2068,7 @@ FOR LCOUNT, 0, 리스트표시수()
 				CASEELSE
 					스킬평가:1 = 3
 			ENDSELECT
+			
 			CALLFORM SKILL_RANK_{ABL:LOCAL:LOCALS}
 			SELECTCASE RESULT
 				CASE IS < 6
@@ -2049,7 +2132,10 @@ LOCALS:1 =
 		ELSEIF 마정장비(EQUIP:ARG:GET_EQUIP(LOCAL))
 			PRINTFORML [XX] %"[" + GET_EQUIP(LOCAL) + "]",14,LEFT% %EQ_GETNAME_마정장비_CHARA(ARG, LOCAL)%
 		ELSEIF GET_EQUIP(LOCAL) == "악세서리"
-			PRINTFORML [XX] %"[" + GET_EQUIP(LOCAL) + "]",14,LEFT% %ITEMNAME:(EQUIP:ARG:GET_EQUIP(LOCAL)),14,LEFT%
+			PRINTFORML [XX] %"[" + GET_EQUIP(LOCAL) + "]",14,LEFT% %장비의명칭(EQUIP:ARG:GET_EQUIP(LOCAL), ARG),14,LEFT%
+		ELSEIF PUEQ_NUM_CHECK(EQUIP:ARG:GET_EQUIP(LOCAL))
+			;CSTR専用装備は×。強化の必要がないくらい性能を盛るだろうし
+			PRINTFORML [XX] %"[" + GET_EQUIP(LOCAL) + "]",14,LEFT% %장비의명칭(EQUIP:ARG:GET_EQUIP(LOCAL), ARG),16,LEFT%  %LOCALS%
 		ELSE
 			CALL 장비강화_전개, ARG, EQUIP:ARG:GET_EQUIP(LOCAL), "강화단계", "LV"
 			LOCALS = 
@@ -2086,8 +2172,8 @@ RETURN LOCAL
 ;   ARGS 선택지のリスト문자열
 ;-------------------------------------------------
 @장비강화_INPUT_LIST,ARGS
-;#DIM LCOUNT, 2
-;#DIM DYNAMIC 전개, 10
+;#DIM DYNAMIC LCOUNT, 2
+;#DIM DYNAMIC DYNAMIC 展開, 10
 	STRFIND ARGS, "/"
 	SIF RESULT == -1
 		RETURN -1
@@ -2098,7 +2184,7 @@ RETURN LOCAL
 ;	FOR LCOUNT, 0, 100
 ;		SIF LOCALS:LCOUNT == ""
 ;			BREAK
-;		전개:LCOUNT = TOINT(LOCALS:LCOUNT)
+;		展開:LCOUNT = TOINT(LOCALS:LCOUNT)
 ;	NEXT
 ;PRINTFORML %ARGS%
 INPUT
@@ -2119,17 +2205,18 @@ RESTART
 ;   적정상성
 ;-------------------------------------------------
 ;  ARG:0 대상者　ARGS:0 지정
-;1.소지している스킬を見る
-;2.습득스킬を見る。ただし一度습득した스킬は見ない（습득の際に0が入るようになっている）
-;3.これまで見た스킬の상성と상성素質が同じならば적정상성フラグオン
-;4.３の中で一番스킬のランクが高い상성を返す。
-;  적정상성がない場合は소지している스킬と습득스킬の中で一番ランクが高い스킬の상성を返す
+;1.所持しているスキルを見る
+;2.習得スキルを見る。ただし一度習得したスキルは見ない（習得の際に0が入るようになっている）
+;3.これまで見たスキルの상성と상성素質が同じならば적정상성フラグオン
+;4.３の中で一番スキルのランクが高い상성を返す。
+;  적정상성がない場合は所持しているスキルと習得スキルの中で一番ランクが高いスキルの상성を返す
 ;-------------------------------------------------
 @적정상성_강화용,ARG,ARGS = ""
 #DIM DYNAMIC 대상
 #DIMS DYNAMIC 지정
 #DIM DYNAMIC 소지상성,18
 #DIM DYNAMIC 적정상성,18
+#DIM DYNAMIC 스킬상성
 #DIM DYNAMIC 최고랭크,18
 #DIM DYNAMIC LCOUNT, 4
 대상 = ARG
@@ -2154,19 +2241,19 @@ RESTART
 		SIF RESULT == 4 || RESULT == 5 || RESULT == 6 || RESULT == 20 || RESULT == 22
 			CONTINUE
 		CALLFORM SKILL_TYPE_{ABL:대상:LOCALS}
-		LCOUNT:1 = RESULT
-		소지상성:(LCOUNT:1) += 1
+		스킬상성 = RESULT
+		소지상성:스킬상성 += 1
 		CALLFORM SKILL_RANK_{ABL:대상:LOCALS}
-		SIF 최고랭크:(LCOUNT:1) < RESULT
-			최고랭크:(LCOUNT:1) = RESULT
+		SIF 최고랭크:스킬상성 < RESULT
+			최고랭크:스킬상성 = RESULT
 	NEXT
 ;	PRINTL
 	IF 지정 != "소지한정"
-		;습득스킬
+		;習得スキル
 		FOR LCOUNT,1,21
 			LOCALS = 습득스킬{LCOUNT}
-	;		LOCALS:1 = 적정LV{LCOUNT}
-	;		SIF BASE:LCOUNT:LV >= 습득LV{LCOUNT}
+	;		LOCALS:1 = 習得LV{LCOUNT}
+	;		SIF BASE:LCOUNT:LV >= 習得LV{LCOUNT}
 	;			CONTINUE
 			SIF ABL:대상:LOCALS == 0
 				BREAK
@@ -2180,11 +2267,11 @@ RESTART
 			SIF RESULT == 4 || RESULT == 5 || RESULT == 6 || RESULT == 22
 				CONTINUE
 			CALLFORM SKILL_TYPE_{ABL:대상:LOCALS}
-			LCOUNT:1 = RESULT
-			소지상성:(LCOUNT:1) += 1
+			스킬상성 = RESULT
+			소지상성:스킬상성 += 1
 			CALLFORM SKILL_RANK_{ABL:대상:LOCALS}
-			SIF 최고랭크:(LCOUNT:1) < RESULT
-				최고랭크:(LCOUNT:1) = RESULT
+			SIF 최고랭크:스킬상성 < RESULT
+				최고랭크:스킬상성 = RESULT
 	;		SIF LCOUNT % 4 == 0
 	;			PRINTL
 		NEXT
@@ -2205,19 +2292,19 @@ RESTART
 ;			SIF RESULT == 4 || RESULT == 5 || RESULT == 6 || RESULT == 22
 ;				CONTINUE
 			CALLFORM SKILL_TYPE_{ABL:대상:LOCALS}
-			LCOUNT:1 = RESULT
-			소지상성:(LCOUNT:1) += 1
+			스킬상성 = RESULT
+			소지상성:스킬상성 += 1
 			CALLFORM SKILL_RANK_{ABL:대상:LOCALS}
-			SIF 최고랭크:(LCOUNT:1) < RESULT
-				최고랭크:(LCOUNT:1) = RESULT
+			SIF 최고랭크:스킬상성 < RESULT
+				최고랭크:스킬상성 = RESULT
 		NEXT
 		PRINTL
 		IF 지정 != "소지스킬"
-			;습득스킬
+			;習得スキル
 			FOR LCOUNT,1,21
 				LOCALS = 초기변신악마습득스킬{LCOUNT}
-	;			LOCALS:1 = 습득LV{LOCAL}
-	;			SIF BASE:LOCAL:LV >= 초기변신악마습득LV{LOCAL}
+	;			LOCALS:1 = 習得LV{LCOUNT}
+	;			SIF BASE:LCOUNT:LV >= 初期変身悪魔習得LV{LCOUNT}
 	;				CONTINUE
 				SIF ABL:대상:LOCALS == 0
 					BREAK
@@ -2231,11 +2318,11 @@ RESTART
 				SIF RESULT == 4 || RESULT == 5 || RESULT == 6 || RESULT == 22
 					CONTINUE
 				CALLFORM SKILL_TYPE_{ABL:대상:LOCALS}
-				LCOUNT:1 = RESULT
-				소지상성:(LCOUNT:1) += 1
+				스킬상성 = RESULT
+				소지상성:스킬상성 += 1
 				CALLFORM SKILL_RANK_{ABL:대상:LOCALS}
-				SIF 최고랭크:(LCOUNT:1) < RESULT
-					최고랭크:(LCOUNT:1) = RESULT
+				SIF 최고랭크:스킬상성 < RESULT
+					최고랭크:스킬상성 = RESULT
 				SIF LCOUNT % 4 == 0
 					PRINTL
 			NEXT
@@ -2244,18 +2331,18 @@ RESTART
 ;	PRINTW 
 ;	DRAWLINE
 
-;	PRINTL □소지상성
+;	PRINTFORML □소지상성
 	FOR LCOUNT, 0, FLAG:상성수 - 1
 		IF 소지상성:LCOUNT > 0
 ;			PRINTFORM %GET_TYPE(LCOUNT)% 
 ;			PRINTFORM = {소지상성:LCOUNT} 
 			IF TALENT:대상:GET_TYPE(LCOUNT) 
-;				PRINTFORM 적정　
+;				PRINTFORM 適正　
 				적정상성:LCOUNT = 1
 			ELSE
 ;				PRINTFORM 　　　
 			ENDIF
-;			PRINTFORM \@ LOCAL % 6 == 5 ? \n # \@
+;			PRINTFORM \@ LCOUNT % 6 == 5 ? \n # \@
 		ENDIF
 	NEXT
 ;	PRINTW 
@@ -2305,90 +2392,92 @@ ENDIF
 RETURN 적정상성
 
 ;-------------------------------------------------
-;   소지스테이터스추가효과
+;   所持ステータス추가효과
 ;-------------------------------------------------
 ;  ARG:0 대상者　ARGS:0 지정
 ;-------------------------------------------------
 @소지스킬추가효과_강화용,ARG
 #DIM DYNAMIC 대상
 #DIMS DYNAMIC 지정
-#DIM DYNAMIC 소지ステート,21
-#DIM DYNAMIC 적정ステート
+#DIM DYNAMIC 所持ステート,21
+#DIM DYNAMIC 適正ステート
 #DIM DYNAMIC 최고랭크,21
+#DIM DYNAMIC 추가효과스테이터스
 #DIM DYNAMIC LCOUNT,4
 
-대상		= ARG
-;지정		= %ARGS%
-	VARSET 소지ステート
-	VARSET 적정ステート
-	VARSET 최고랭크
-	; VARSET LOCAL
+대상 = ARG
+VARSET 所持ステート
+VARSET 適正ステート
+VARSET 최고랭크
 
+;소지스킬
+FOR LCOUNT, 1, FLAG:스킬수 + 1
+	LOCALS = 스킬{LCOUNT}
+	SIF ABL:대상:LOCALS == 0
+		CONTINUE
+	TRYCCALLFORM SKILL_ADDTIONAL_STATE_{ABL:대상:LOCALS}
+		추가효과스테이터스 = RESULT
+	CATCH
+	;	추가효과스테이터스 = 0
+		CONTINUE
+	ENDCATCH
+	SIF GET_STATE(추가효과스테이터스) == "GOOD" || GET_STATE(추가효과스테이터스) == "BOMB" || GET_STATE(추가효과스테이터스) == "STONE" || GET_STATE(추가효과스테이터스) == "DYING" || GET_STATE(추가효과스테이터스) == "FLY"
+		CONTINUE
+	所持ステート:(추가효과스테이터스) += 1
+	CALLFORM SKILL_RANK_{ABL:대상:LOCALS}
+	SIF 최고랭크:(추가효과스테이터스) < RESULT
+		최고랭크:(추가효과스테이터스) = RESULT
+NEXT
+IF CFLAG:대상:초기링크악마
 	;소지스킬
-	FOR LCOUNT, 1, FLAG:스킬수 + 1
-		LOCALS = 스킬{LCOUNT}
+	FOR LCOUNT,1,12
+		LOCALS = 초기변신악마스킬{LCOUNT}
 		SIF ABL:대상:LOCALS == 0
 			CONTINUE
 		TRYCCALLFORM SKILL_ADDTIONAL_STATE_{ABL:대상:LOCALS}
-			LCOUNT:1 = RESULT
+			추가효과스테이터스 = RESULT
 		CATCH
-			LCOUNT:1 = 0
+			추가효과스테이터스 = 0
 		ENDCATCH
-		SIF GET_STATE(RESULT) == "GOOD" || GET_STATE(RESULT) == "BOMB" || GET_STATE(RESULT) == "STONE" || GET_STATE(RESULT) == "DYING" || GET_STATE(RESULT) == "FLY"
-			CONTINUE
-		소지ステート:(LCOUNT:1) += 1
-		CALLFORM SKILL_RANK_{ABL:대상:LOCALS}
-		SIF 최고랭크:(LCOUNT:1) < RESULT
-			최고랭크:(LCOUNT:1) = RESULT
-	NEXT
-	IF CFLAG:대상:초기링크악마
-		;소지스킬
-		FOR LCOUNT,1,12
-			LOCALS = 초기변신악마스킬{LCOUNT}
-			SIF ABL:대상:LOCALS == 0
+		SIF GET_STATE(추가효과스테이터스) == "GOOD" || GET_STATE(추가효과스테이터스) == "BOMB" || GET_STATE(추가효과스테이터스) == "STONE" || GET_STATE(추가효과스테이터스) == "DYING" || GET_STATE(추가효과스테이터스) == "FLY"
 				CONTINUE
-			LCOUNT:1 = 0
-			TRYCALLFORM SKILL_ADDTIONAL_STATE_{ABL:대상:LOCALS}
-			LCOUNT:1 = RESULT
-			SIF GET_STATE(RESULT) == "GOOD" || GET_STATE(RESULT) == "BOMB" || GET_STATE(RESULT) == "STONE" || GET_STATE(RESULT) == "DYING" || GET_STATE(RESULT) == "FLY"
-					CONTINUE
-			소지ステート:RESULT += 1
-			CALLFORM SKILL_RANK_{ABL:대상:LOCALS}
-			SIF 최고랭크:(LCOUNT:1) < RESULT
-				최고랭크:(LCOUNT:1) = RESULT
-		NEXT
-		PRINTL
-	ENDIF
+		所持ステート:추가효과스테이터스 += 1
+		CALLFORM SKILL_RANK_{ABL:대상:LOCALS}
+		SIF 최고랭크:(추가효과스테이터스) < RESULT
+			최고랭크:(추가효과스테이터스) = RESULT
+	NEXT
+	PRINTL
+ENDIF
 
-IF SUMARRAY(소지ステート, 1, (FLAG:상태이상수)) == 1
+IF SUMARRAY(所持ステート, 1, (FLAG:상태이상수)) == 1
 	FOR LCOUNT, 1, FLAG:상태이상수
-		IF 소지ステート:LCOUNT > 0
-			VARSET 적정ステート
-			적정ステート = LCOUNT
+		IF 所持ステート:LCOUNT > 0
+			VARSET 適正ステート
+			適正ステート = LCOUNT
 			BREAK
 		ENDIF
 	NEXT
-ELSEIF SUMARRAY(소지ステート, 1, (FLAG:상태이상수)) > 0
+ELSEIF SUMARRAY(所持ステート, 1, (FLAG:상태이상수)) > 0
 	FOR LCOUNT, 1, FLAG:상태이상수
-		IF 소지ステート:LCOUNT > 0
+		IF 所持ステート:LCOUNT > 0
 			IF LCOUNT:3 == 최고랭크:LCOUNT
-				SIF LCOUNT:2 > 소지ステート:LCOUNT
+				SIF LCOUNT:2 > 所持ステート:LCOUNT
 					CONTINUE
 			ENDIF
 			IF 최고랭크:LCOUNT >= LCOUNT:3
 				LCOUNT:1 = LCOUNT
-				LCOUNT:2 = 소지ステート:LCOUNT
+				LCOUNT:2 = 所持ステート:LCOUNT
 				LCOUNT:3 = 최고랭크:LCOUNT 
 			ENDIF
 		ENDIF
 	NEXT
-	VARSET 적정ステート
-	적정ステート = LCOUNT:1
+	VARSET 適正ステート
+	適正ステート = LCOUNT:1
 ELSE
-	VARSET 적정ステート
-	적정ステート = 0
+	VARSET 適正ステート
+	適正ステート = 0
 ENDIF
-RETURN 적정ステート
+RETURN 適正ステート
 
 ;====================================================
 ;장비강화
@@ -2417,8 +2506,8 @@ SIF ARG < 0
 	RETURN
 IF !SOFT_ON("마장술")
 	SIF ARGS != "모두해제：능력만"
-	RETURN
-ENDIF	
+		RETURN
+ENDIF
 
 SELECTCASE ARGS
 	CASE "강화수"
@@ -2466,26 +2555,26 @@ SELECTCASE ARGS
 
 			;지정と同じものを
 			IF MEMOS == 장비번호
-					IF 포인트 == 0
-						CALL 장비강화_전개, ARG, TOINT(장비번호), "강화단계", "LV"
-						FOR LCOUNT:1, 1, RESULT
-							포인트 += MAX(1, 2 * (LCOUNT:1 - 1) * LCOUNT:1 * (LCOUNT:1 + 1) * 2) + 1000
-						NEXT
-						;(강화に使った金銭+10%)/4
-						;+10%はＭＡＧの分
-						포인트 = 포인트 / 9 * 11 / 100 / 4
-						PRINTFORMW これにより개념강화で使用できる포인트を {포인트} 入手しました
-						개념강화포인트 += 포인트
-					ENDIF
-				CONTINUE
+				IF 포인트 == 0
+					CALL 장비강화_전개, ARG, TOINT(장비번호), "강화단계", "LV"
+					FOR LCOUNT:1, 1, RESULT
+						포인트 += MAX(1, 2 * (LCOUNT:1 - 1) * LCOUNT:1 * (LCOUNT:1 + 1) * 2) + 1000
+					NEXT
+					;(強化に使った金銭+10%)/4
+					;+10%はＭＡＧの分
+					포인트 = 포인트 / 9 * 11 / 100 / 4
+					PRINTFORMW これにより概念強化で使用できる포인트を {포인트} 入手しました
+					개념강화포인트 += 포인트
+				ENDIF
+			CONTINUE
 			ELSE
 				MEMOS:9 = %MEMOS:9%%LOCALS:LCOUNT%/
 			ENDIF
 		NEXT
 
 		CSTR:ARG:장비강화 = %MEMOS:9%
-		;PRINTFORML 장비강화 = %CSTR:ARG:장비강화%
-
+		;PRINTFORML 装備強化 = %CSTR:ARG:장비강화%
+		
 	CASE "모두해제：능력만"
 		SIF CSTR:ARG:장비강화 == ""
 			RETURN
@@ -2522,7 +2611,45 @@ SELECTCASE ARGS
 		NEXT
 
 		CSTR:ARG:장비강화 = %MEMOS:9%
-		;PRINTFORML 장비강화 = %CSTR:ARG:장비강화%
+		;PRINTFORML 装備強化 = %CSTR:ARG:장비강화%
+	
+	CASE "해제：능력만"
+		SIF CSTR:ARG:장비강화 == ""
+			RETURN
+		VARSET LOCALS
+		;分解
+		SPLIT CSTR:ARG:장비강화, "/", LOCALS
+
+		;지정記録
+		IF MEMOS == ""
+				MEMOS = %TOSTR(ARG:1)%
+				MEMOS:1 = %ARGS:1%
+		;		MEMOS:2 = %ARGS:2%
+		;		MEMOS:3 = %TOSTR(ARG:2)%
+		ENDIF
+		MEMOS:9 = 
+
+		;100まで
+		FOR LCOUNT, 0, 100
+			SIF LOCALS:LCOUNT == ""
+				BREAK
+			VARSET 강화전개
+			SPLIT LOCALS:LCOUNT, ":", 강화전개
+			장비번호 = %강화전개:0%
+			분류 = %강화전개:1%
+		;	지정 = %강화전개:2%
+		;	강화치 = TOINT(강화전개:3)
+
+			;지정
+			IF MEMOS == 장비번호 && (분류 == "능력강화" || 분류 == "내성강화")
+				CONTINUE
+			ELSE
+				MEMOS:9 = %MEMOS:9%%LOCALS:LCOUNT%/
+			ENDIF
+		NEXT
+
+		CSTR:ARG:장비강화 = %MEMOS:9%
+		;PRINTFORML 装備強化 = %CSTR:ARG:장비강화%
 
 	CASE "書き込み"
 		SIF ARG:2 == -1
@@ -2564,17 +2691,17 @@ SELECTCASE ARGS
 				SIF 분류 == "강화단계" && ARG:2 != 0
 					MEMO = 강화치 + ARG:2
 				IF MEMO == 0 
-					;MEMOS초기化
+					;MEMOS初期化
 					MEMOS = 
 					CONTINUE
 				ENDIF
-				;개조장비は장비번호が同じでもベース장비が違う事があるので
+				;개조장비は장비번호が同じでもベース装備が違う事があるので
 				IF MEMOS:10 != "" && MEMOS:10 == 기록_개조장비베이스
 					LOCALS:LCOUNT = %MEMOS%:%MEMOS:1%:%MEMOS:2%:%TOSTR(MEMO)%:%MEMOS:10%
 				ELSE
 					LOCALS:LCOUNT = %MEMOS%:%MEMOS:1%:%MEMOS:2%:%TOSTR(MEMO)%
 				ENDIF
-				;MEMOSは초기化
+				;MEMOSは初期化
 				MEMOS = 
 				;記録する문자열を再構築
 				MEMOS:9 = %LOCALS:LCOUNT%/%MEMOS:9%
@@ -2591,7 +2718,7 @@ SELECTCASE ARGS
 		ENDIF
 
 		CSTR:ARG:장비강화 = %MEMOS:9%
-		;PRINTFORML 장비강화 = %CSTR:ARG:장비강화%
+		;PRINTFORML 装備強化 = %CSTR:ARG:장비강화%
 
 	CASE "표시"
 		SIF CSTR:ARG:장비강화 == ""
@@ -2682,7 +2809,7 @@ SELECTCASE ARGS
 					IF RESULT == 999
 						PRINT   반사  
 					ELSE
-						PRINTFORM  %\@(RESULT < 0) ? 吸 #   \@%{ABS(RESULT),3}  
+						PRINTFORM  %\@(RESULT < 0) ? 흡 #   \@%{ABS(RESULT),3}  
 					ENDIF
 					RESETCOLOR
 				ENDIF
@@ -2693,7 +2820,7 @@ SELECTCASE ARGS
 		SIF ARGS:1 == "선택"
 			RESULTS = %선택지%
 
-	CASE "표시：不장비"
+	CASE "표시：不装備"
 		SIF CSTR:ARG:장비강화 == ""
 			RETURN
 		VARSET LOCALS
@@ -2797,7 +2924,7 @@ SELECTCASE ARGS
 						IF RESULT == 999
 							PRINT   반사  
 						ELSE
-							PRINTFORM  %\@(RESULT < 0) ? 吸 #   \@%{ABS(RESULT),3}  
+							PRINTFORM  %\@(RESULT < 0) ? 흡 #   \@%{ABS(RESULT),3}  
 						ENDIF
 						RESETCOLOR
 					ENDIF
@@ -2868,7 +2995,7 @@ SELECTCASE ARGS
 				IF RESULT == 999
 					PRINT   반사  
 				ELSE
-					PRINTFORM  %\@(RESULT < 0) ? 吸 #   \@%{ABS(RESULT),3}  
+					PRINTFORM  %\@(RESULT < 0) ? 흡 #   \@%{ABS(RESULT),3}  
 				ENDIF
 				RESETCOLOR
 			ENDIF
@@ -2877,22 +3004,29 @@ SELECTCASE ARGS
 			PRINTL
 ENDSELECT
 
-@장비강화_전개, ARG, ARG:1, ARGS:1, ARGS:2, ARG:2 = -1
-;ARG 캐릭터번호  ARG:1 장비번호  ARGS:1 분류  ARGS:2 지정  ARG:2 장비기본치(これにプラス)
-#DIM DYNAMIC LCOUNT, 2
+@장비강화_전개, ARG, ARG:1, ARGS:1, ARGS:2, ARG:2 = -1, ARG:3 = -1
+;ARG キャラ번호  ARG:1 장비번호  ARGS:1 분류  ARGS:2 지정  ARG:2 装備基本値(これにプラス)  ARG:3 例外フラグ
+#DIM DYNAMIC LCOUNT, 3
 #DIM DYNAMIC MEMO, 10
 #DIMS DYNAMIC MEMOS, 10
 
 #DIMS DYNAMIC 강화전개, 10
 #DIM DYNAMIC 캐릭터번호
 #DIMS DYNAMIC 장비번호
+#DIM DYNAMIC 장비번호_INT
+#DIM DYNAMIC 장비번호_ARRAY,100
 #DIMS DYNAMIC 분류
 #DIMS DYNAMIC 지정
 #DIM DYNAMIC 강화치
 #DIM DYNAMIC 능력강화치,10
-;0 공격  1 명중  2 방어  3 회피  4 마법위력  5 마법효과
+;0 攻撃  1 命中  2 防御  3 回避  4 魔法威力  5 魔法効果
 
-#DIM DYNAMIC 장비기본치
+#DIM DYNAMIC 전투능력
+#DIM DYNAMIC 장비기본치,2
+#DIM DYNAMIC 성능변동,100
+#DIM DYNAMIC 예외
+;今のところ、能力強化の포인트割り振り時のみ
+
 #DIMS DYNAMIC 기록_개조장비베이스
 #DIMS DYNAMIC 대상_개조장비베이스
 
@@ -2941,19 +3075,19 @@ ELSE
 	ENDSELECT
 ENDIF
 
-;디버그용
 ;PRINTFORML {ARG}/{ARG:1}/%ARGS:1%/%ARGS:2%/{ARG:2}
 캐릭터번호 = ARG
 
 SELECTCASE ARGS:1
 	CASE "전투능력수정"
-		장비기본치 = ARG:2
+		전투능력 = ARG:2
+		예외 = ARG:3
 		
 		SIF ARG:1 == 0
 			RETURN 0
-		SIF CSTR:캐릭터번호:장비강화 == "" && ARG:2 != -1
-			RETURN ARG:2
-		SIF CSTR:캐릭터번호:장비강화 == "" && ARG:2 == -1
+		SIF CSTR:캐릭터번호:장비강화 == "" && 전투능력 != -1
+			RETURN 전투능력
+		SIF CSTR:캐릭터번호:장비강화 == "" && 전투능력 == -1
 			RETURN 0
 
 		VARSET LOCALS
@@ -2966,7 +3100,7 @@ SELECTCASE ARGS:1
 		;	MEMOS:1 = %ARGS:1%
 			MEMOS:1 = 능력강화
 			MEMOS:2 = %ARGS:2%
-			MEMOS:3 = %TOSTR(ARG:2)%
+			MEMOS:3 = %TOSTR(전투능력)%
 		ENDIF
 		
 		;100まで
@@ -2976,22 +3110,53 @@ SELECTCASE ARGS:1
 			VARSET 강화전개
 			SPLIT LOCALS:LCOUNT, ":", 강화전개
 			장비번호 = %강화전개:0%
+			장비번호_INT = TOINT(장비번호)
 			분류 = %강화전개:1%
 			지정 = %강화전개:2%
 			강화치 = TOINT(강화전개:3)
+			
+			IF MATCH(장비번호_ARRAY, 장비번호_INT, 0) == 0
+				장비번호_ARRAY:(LCOUNT:2) = 장비번호_INT
+				FOR LCOUNT:1, 0, FLAG:전투능력수 + 2
+					CALLFORM 전투능력수정_{장비번호_INT}, LCOUNT:1, -1
+					장비기본치 = RESULT
+					CALLFORM 전투능력수정_{장비번호_INT}, LCOUNT:1, 캐릭터번호
+					장비기본치:1 = RESULT
+					
+					IF 장비기본치 != 장비기본치:1
+						성능변동:(LCOUNT:2) = 1
+						BREAK
+					ENDIF
+				NEXT
+				LCOUNT:2++
+			ENDIF
 
 			;지정と同じものを
 			IF MEMOS != "" && MEMOS == 장비번호 && MEMOS:1 == 분류 && MEMOS:2 == 지정
-				;장비번호:분류:지정:강화치 となっているので抜き出しす
-				SIF 개조장비(TOINT(장비번호))
+				;장비번호:분류:지정:강화치 となっているので抜き出す
+				SIF 개조장비(장비번호_INT)
 					CONTINUE
-				SIF 장비기본치 != -1
-					RETURN 장비기본치 + 강화치
-				RETURN 강화치
+					
+				IF 성능변동:(FINDELEMENT(장비번호_ARRAY, 장비번호_INT, 0, 100, 1)) == 0 || 예외 == 1
+					SIF 전투능력 == -1
+						RETURN 강화치
+					RETURN 전투능력 + 강화치
+				ELSE
+					CALLFORM 장비부위_{장비번호_INT}
+					IF RESULT == GET_EQUIPNUM("검") || RESULT == GET_EQUIPNUM("총")
+						SIF 전투능력 == -1
+							RETURN 강화치 / 4
+						RETURN 전투능력 + 강화치 / 4
+					ELSE
+						SIF 전투능력 == -1
+							RETURN 강화치 / 2
+						RETURN 전투능력 + 강화치 / 2
+					ENDIF
+				ENDIF
 			ENDIF
 		NEXT
-		SIF 장비기본치 != -1
-			RETURN 장비기본치
+		SIF 전투능력 != -1
+			RETURN 전투능력
 		RETURN 0
 
 	CASE "방어상성"
@@ -3004,7 +3169,7 @@ SELECTCASE ARGS:1
 		VARSET LOCALS
 		;分解
 		SPLIT CSTR:캐릭터번호:장비강화, "/", LOCALS
-		;指定の記録
+		;지정の記録
 		IF MEMOS == ""
 				MEMOS = %TOSTR(ARG:1)%
 			;	MEMOS:1 = %ARGS:1%
@@ -3040,13 +3205,13 @@ SELECTCASE ARGS:1
 				RETURN 0
 
 	CASE "공격상성"
-	;ARG 캐릭터번호　ARG:1 장비번호　ARGS:1 분류　ARGS:2 지정　ARG:2 장비기본치
+	;ARG 캐릭터번호  ARG:1 장비번호  ARGS:1 분류  ARGS:2 지정  ARG:2 장비기본치
 		SIF ARG:1 == 0
 			RETURN 0
 		VARSET LOCALS
 		;分解
 		SPLIT CSTR:캐릭터번호:장비강화, "/", LOCALS
-		;지정의 기록
+		;지정の記録
 		IF MEMOS == ""
 				MEMOS = %TOSTR(ARG:1)%
 				MEMOS:1 = %ARGS:1%
@@ -3073,7 +3238,11 @@ SELECTCASE ARGS:1
 						CONTINUE
 				ENDIF
 				IF MEMOS:2 == "부여상성"
-					RETURN GET_TYPE_NUM(지정)
+					IF CFLAG:캐릭터번호:악마변신
+						RETURN -1
+					ELSE
+						RETURN GET_TYPE_NUM(지정)
+					ENDIF
 				ElSEIF MEMOS:2 == "부여확률"
 					RETURN 강화치
 				ElSEIF MEMOS:2 == "속성부여"
@@ -3107,7 +3276,7 @@ SELECTCASE ARGS:1
 		VARSET LOCALS
 		;分解
 		SPLIT CSTR:캐릭터번호:장비강화, "/", LOCALS
-		;指定の記録
+		;지정の記録
 		IF MEMOS == ""
 				MEMOS = %TOSTR(ARG:1)%
 				MEMOS:1 = %ARGS:1%
@@ -3135,7 +3304,11 @@ SELECTCASE ARGS:1
 						CONTINUE
 				ENDIF
 				IF MEMOS:2 == "상태이상"
-					RETURN GET_STATE_NUM(지정)
+					IF CFLAG:캐릭터번호:악마변신
+						RETURN GET_STATE_NUM("GOOD")
+					ELSE
+						RETURN GET_STATE_NUM(지정)
+					ENDIF
 				ElSEIF MEMOS:2 == "효과상성"
 					IF 지정 == "FLAME"
 						RETURN GET_TYPE_NUM("화염")
@@ -3161,9 +3334,9 @@ SELECTCASE ARGS:1
 				ENDIF
 			ENDIF
 		NEXT
-				SIF ARGS:2 != ""
-						RETURN 0
-				RETURN 0
+		SIF ARGS:2 != ""
+			RETURN 0
+		RETURN 0
 
 	CASE "강화단계"
 		SIF CSTR:캐릭터번호:장비강화 == ""
@@ -3172,7 +3345,7 @@ SELECTCASE ARGS:1
 		;分解
 		SPLIT CSTR:캐릭터번호:장비강화, "/", LOCALS
 
-		;指定記録
+		;지정記録
 		IF MEMOS == ""
 				MEMOS = %TOSTR(ARG:1)%
 			;	MEMOS:1 = %ARGS:1%
@@ -3203,7 +3376,7 @@ SELECTCASE ARGS:1
 					WHILE 강화치 > MEMO:1
 						MEMO += 1
 						MEMO:1 = 5 * MEMO * (MEMO+1) * (MEMO+2) / 3
-					;	PRINTFORML Lv：{MEMO}　　NEXT:{MEMO:1}/EXP:{강화치}
+					;	PRINTFORML Lv：{MEMO}    NEXT:{MEMO:1}/EXP:{강화치}
 						SIF MEMO >= 99
 							BREAK
 					WEND
@@ -3272,7 +3445,7 @@ IF 장비부위 == GET_EQUIPNUM("검")
 ELSEIF 장비부위 == GET_EQUIPNUM("총")
 	CALLFORM 공격범위_{장비번호}
 	LOCALS = %GET_SPHERE(RESULT)%
-	CALLFORM 최대공격횟수_{장비번호}
+	CALLFORM 최저공격횟수_{장비번호}
 	LOCAL = RESULT
 	CALLFORM 최대공격횟수_{장비번호}
 	;LOCAL:1 = (LOCAL + RESULT) / 2
@@ -3291,8 +3464,8 @@ ELSEIF 장비부위 == GET_EQUIPNUM("총")
 		포인트 = 강화단계 * 4
 	ENDIF
 	;SIF LOCAL:1 > 1
-	;	ポイント = ポイント / (LOCAL:1 / 2) * 120 /100
-	;攻撃回数合計が奇数の装備の計算の為にポイントと攻撃回数合計を10倍にする
+	;	포인트 = 포인트 / (LOCAL:1 / 2) * 120 /100
+	;공격횟수합계が奇数の装備の計算の為に포인트と공격횟수합계を10倍にする
 	SIF 공격횟수합계 > 2
 		포인트 = 포인트 * 10 / (공격횟수합계 * 10 / 2) * 120 / 100
 	CALLFORM 특수탄창_{장비번호}
@@ -3311,99 +3484,112 @@ ELSE
 ENDIF
 RETURN 포인트
 
-@장비강화_성능변동판정, ARG, ARG:1, ARG:2
-;性能が変化する装備は後々増えるかもしれないのでまとめて管理する
-#DIM DYNAMIC 대상
-#DIM DYNAMIC 장비번호
-#DIM DYNAMIC 장비부위
-#DIM DYNAMIC 성능비교, 3
-#DIM DYNAMIC 성능변동, 8
-#DIM DYNAMIC 성능변동판정
-#DIM DYNAMIC 성능변동_보정
-#DIM DYNAMIC LCOUNT, 2
-
-대상 = ARG
-장비번호 = ARG:1
-장비부위 = ARG:2
-
-;まず特定の装備と一緒に装備していると性能が変動する装備の判定
-;基本的にLVに比例して上がるもの
-;アイテム名の直接지정とかやりたくないけど、これくらいしか方法が思いつかない
-;他に良い方法があったら起用したい
-IF 장비부위 == GET_EQUIPNUM("검")
-ELSEIF 장비부위 == GET_EQUIPNUM("총")
-ELSEIF 장비부위 == GET_EQUIPNUM("머리")
-ELSEIF 장비부위 == GET_EQUIPNUM("몸통")
-	SELECTCASE 장비번호
-		CASE [[아이템:치유하는백의]]
-			성능변동판정 = 1
-		CASE [[아이템:티타니아의원피스]]
-			성능변동판정 = 1
-		CASE [[아이템:프레이아의날개옷]]
-			성능변동판정 = 1
-		CASE [[아이템:윗치레이디원피스]]
-			성능변동판정 = 1
-		CASE [[아이템:네코마타수트]]
-			성능변동판정 = 1
-		CASE [[아이템:메이드원피스]]
-			성능변동판정 = 1
-		CASE [[아이템:쿠훌린갑옷]]
-			성능변동판정 = 1
-		CASE [[아이템:데빌서바이버]]
-			성능변동판정 = 1
-		CASE [[아이템:프로스트수트]]
-			성능변동판정 = 1
-		CASE [[아이템:롱기누스아머]]
-			성능변동판정 = 1
-	ENDSELECT
-ELSEIF 장비부위 == GET_EQUIPNUM("팔")
-	SELECTCASE 장비번호
-		CASE [[아이템:모래시계방패]]
-			;LVに比例するものではないけれど、魔装術側での강화が重なると強くなり過ぎるので
-			성능변동판정 = 1
-	ENDSELECT
-ELSEIF 장비부위 == GET_EQUIPNUM("발")
-ELSE
-ENDIF
-
-SIF 성능변동판정 == 1
-	GOTO 성능변동판정
-
-;特殊な条件なく性能が変動する装備はこれで判別できる、筈
-ADDCHARA 대상
-FOR LCOUNT, 0, FLAG:전투능력수 + 2
-	CALLFORM 전투능력수정_{장비번호}, LCOUNT, -1
-	성능비교:0 = RESULT
-	BASE:(CHARANUM - 1):LV = BASE:대상:LV + 50
-	CALLFORM 전투능력수정_{장비번호}, LCOUNT, CHARANUM - 1
-	성능비교:1 = RESULT
-	BASE:(CHARANUM - 1):LV = BASE:대상:LV + 100
-	FOR LCOUNT:1, 1, 7
-		BASE:(CHARANUM - 1):(30 + LCOUNT:1) += 5
-	NEXT
-	CALLFORM 전투능력수정_{장비번호}, LCOUNT, CHARANUM - 1
-	성능비교:2 = RESULT
-	
-	IF (성능비교:0 != 성능비교:1) && (성능비교:1 != 성능비교:2)
-		성능변동:LCOUNT = 1
-	ELSE
-		성능변동:LCOUNT = 0
-	ENDIF
-NEXT
-CALL 캐릭터삭제, CHARANUM - 1
-
-SIF SUMARRAY(성능변동, 0, FLAG:전투능력수 + 2) > 0
-	성능변동판정 = 2
-
-IF 성능변동판정 > 0
-	$성능변동판정
-	
-	;補整値が違うのは強化の上限が違う為
-	IF 장비부위 == GET_EQUIPNUM("검") || 장비부위 == GET_EQUIPNUM("총")
-		성능변동_보정 = 25
-	ELSE
-		성능변동_보정 = 50
-	ENDIF
-ENDIF
-
-RETURN 성능변동:0, 성능변동:1, 성능변동:2, 성능변동:3, 성능변동:4, 성능변동:5, 성능변동:6, 성능변동:7, 성능변동판정, 성능변동_보정
+;2022/05/01.陳腐化。半年くらい経って不具合が出ない場合に消す---------------------
+;@装備強化_성능변동판정, ARG, ARG:1, ARG:2
+;;性能が変化する装備は後々増えるかもしれないのでまとめて管理する
+;#DIM DYNAMIC 대상
+;#DIM DYNAMIC 장비번호
+;#DIM DYNAMIC 장비부위
+;#DIM DYNAMIC 性能比較, 3
+;#DIM DYNAMIC 성능변동, 8
+;#DIM DYNAMIC 성능변동판정
+;#DIM DYNAMIC 성능변동_補整
+;#DIM DYNAMIC LCOUNT, 2
+;
+;대상 = ARG
+;장비번호 = ARG:1
+;장비부위 = ARG:2
+;
+;;まず特定の装備と一緒に装備していると性能が変動する装備の判定
+;;基本的にLVに比例して上がるもの
+;;アイテム名の直接지정とかやりたくないけど、これくらいしか方法が思いつかない
+;;他に良い方法があったら起用したい
+;IF 장비부위 == GET_EQUIPNUM("검")
+;	SELECTCASE 장비번호
+;		CASE [[아이템:폭동진압방패]]
+;			;防御性能特化の武器なので
+;			성능변동판정 = 1
+;	ENDSELECT
+;ELSEIF 장비부위 == GET_EQUIPNUM("총")
+;ELSEIF 장비부위 == GET_EQUIPNUM("頭")
+;ELSEIF 장비부위 == GET_EQUIPNUM("胴")
+;	SELECTCASE 장비번호
+;		CASE [[아이템:치유하는백의]]
+;			성능변동판정 = 1
+;		CASE [[아이템:티타니아의원피스]]
+;			성능변동판정 = 1
+;		CASE [[아이템:프레이아의날개옷]]
+;			성능변동판정 = 1
+;		CASE [[아이템:윗치레이디원피스]]
+;			성능변동판정 = 1
+;		CASE [[아이템:네코마타수트]]
+;			성능변동판정 = 1
+;		CASE [[아이템:메이드원피스]]
+;			성능변동판정 = 1
+;		CASE [[아이템:쿠훌린갑옷]]
+;			성능변동판정 = 1
+;		CASE [[아이템:데빌서바이버]]
+;			성능변동판정 = 1
+;		CASE [[아이템:프로스트수트]]
+;			성능변동판정 = 1
+;		CASE [[아이템:롱기누스아머]]
+;			성능변동판정 = 1
+;	ENDSELECT
+;ELSEIF 장비부위 == GET_EQUIPNUM("腕")
+;	SELECTCASE 장비번호
+;		CASE [[아이템:모래시계방패]]
+;			;LVに比例するものではないけれど、魔装術の強化が重なると強くなり過ぎるので
+;			성능변동판정 = 1
+;	ENDSELECT
+;ELSEIF 장비부위 == GET_EQUIPNUM("足")
+;ELSE
+;ENDIF
+;
+;SIF 성능변동판정 == 1
+;	GOTO 성능변동판정
+;
+;;特殊な条件なく性能が変動する装備はこれで判別できる、筈
+;ADDCHARA 대상
+;FOR LCOUNT, 0, FLAG:전투능력수 + 2
+;	CALLFORM 전투능력수정_{장비번호}, LCOUNT, -1
+;	性能比較:0 = RESULT
+;	BASE:(CHARANUM - 1):LV = BASE:대상:LV + 50
+;	CALLFORM 전투능력수정_{장비번호}, LCOUNT, CHARANUM - 1
+;	性能比較:1 = RESULT
+;	BASE:(CHARANUM - 1):LV = BASE:대상:LV + 100
+;	FOR LCOUNT:1, 1, 7
+;		BASE:(CHARANUM - 1):(30 + LCOUNT:1) += 5
+;	NEXT
+;	CALLFORM 전투능력수정_{장비번호}, LCOUNT, CHARANUM - 1
+;	性能比較:2 = RESULT
+;	
+;	IF (性能比較:0 != 性能比較:1) && (性能比較:1 != 性能比較:2)
+;		성능변동:LCOUNT = 1
+;	ELSE
+;		성능변동:LCOUNT = 0
+;	ENDIF
+;NEXT
+;CALL 캐릭터삭제, CHARANUM - 1
+;
+;SIF SUMARRAY(성능변동, 0, FLAG:전투능력수 + 2) > 0
+;	성능변동판정 = 2
+;
+;IF 성능변동판정 > 0
+;	$성능변동판정
+;	
+;	;補整値が違うのは強化の上限が違う為
+;	IF 장비부위 == GET_EQUIPNUM("검") || 장비부위 == GET_EQUIPNUM("총")
+;		FOR LCOUNT, 0, FLAG:전투능력수+2
+;			SIF 성능변동판정 == 1 || 성능변동:LCOUNT == 1
+;				성능변동:LCOUNT = 25
+;		NEXT
+;	ELSE
+;		FOR LCOUNT, 0, FLAG:전투능력수+2
+;			SIF 성능변동판정 == 1 || 성능변동:LCOUNT == 1
+;				성능변동:LCOUNT = 50
+;		NEXT
+;	ENDIF
+;ENDIF
+;
+;RETURN 성능변동:0, 성능변동:1, 성능변동:2, 성능변동:3, 성능변동:4, 성능변동:5, 성능변동:6, 성능변동:7, 성능변동判;定
+;--------------------------------------------------------------------------------
