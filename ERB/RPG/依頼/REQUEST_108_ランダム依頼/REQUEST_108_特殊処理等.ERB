@@ -1,0 +1,342 @@
+﻿
+;
+;란다ム依頼modで使用するフラグ
+;의뢰플래그:108:1		依頼の分岐に使用
+;의뢰플래그:108:2		依頼の受諾判定に使用
+;의뢰플래그:108:3		ダンジョン依頼の場所判定に使用
+;						（1、ビル、３、無人工場）
+;의뢰플래그:108:4		依頼中の状況判定に使用
+
+
+
+;=================================================
+;	EVENT_BATTLE_ACTEND_REQUEST108
+;=================================================
+;	戦闘中行動終了時処理
+;-------------------------------------------------
+@EVENT_BATTLE_ACTEND_REQUEST108
+SELECTCASE 의뢰플래그:108:1
+	;28では行動終了時に火炎ダメージ
+	CASE 28
+		LOCAL = FLAG:행동순1
+		SIF CFLAG:LOCAL:PT플래그 == 0
+			RETURN 0
+		SIF LOCAL < 0
+			RETURN 0
+		SIF CFLAG:LOCAL:상태이상 == GET_STATE_NUM("DYING")
+			RETURN 0
+		IF MAXBASE:LOCAL:화염 == 999
+			LOCAL:1 = 0
+		ELSE
+			LOCAL:1 = RAND:20 + 50
+			IF CFLAG:LOCAL:화염무효화횟수 > 0
+				LOCAL:1 = 0
+				CFLAG:LOCAL:화염무효화횟수 -= 1
+			ELSE
+				LOCAL:1 = LOCAL:1 * MAXBASE:LOCAL:화염 / 100
+			ENDIF
+		ENDIF
+		IF LOCAL:1 < 0
+			LOCALS:1 = {-LOCAL:1}회복
+		ELSEIF LOCAL:1 == 0
+			LOCALS:1 = BLOCK
+		ELSE
+			LOCALS:1 = {LOCAL:1}데미지
+		ENDIF
+		;表示テキスト
+		SELECTCASE 의뢰플래그:108:1
+			CASE 28
+				LOCALS = 폭발이 %조사처리(CALLNAME:LOCAL,"를")% 덮친다!
+		ENDSELECT
+		CALL MESSAGE_B(1, LOCALS)
+		PRINTFORMW TARGET:[{LOCAL,2}] %CALLNAME:LOCAL,20,LEFT%　>>>>>>　%LOCALS:1%
+		CALL VAR_HP, LOCAL, -(LOCAL:1), 0
+	;依頼14では行動終了時に飛具ダメージ
+	CASE 14
+		LOCAL = FLAG:행동순1
+		SIF CFLAG:LOCAL:PT플래그 == 0
+			RETURN 0
+		SIF LOCAL < 0
+			RETURN 0
+		SIF CFLAG:LOCAL:상태이상 == GET_STATE_NUM("DYING")
+			RETURN 0
+		IF MAXBASE:LOCAL:비구 == 999
+			LOCAL:1 = 0
+		ELSE
+			LOCAL:1 = RAND:20 + 50
+			IF CFLAG:LOCAL:비구무효화횟수 > 0
+				LOCAL:1 = 0
+				CFLAG:LOCAL:비구무효화횟수 -= 1
+			ELSE
+				LOCAL:1 = LOCAL:1 * MAXBASE:LOCAL:비구 / 100
+			ENDIF
+		ENDIF
+		IF LOCAL:1 < 0
+			LOCALS:1 = {-LOCAL:1}회복
+		ELSEIF LOCAL:1 == 0
+			LOCALS:1 = BLOCK
+		ELSE
+			LOCALS:1 = {LOCAL:1}데미지
+		ENDIF
+		;表示テキスト
+		SELECTCASE 의뢰플래그:108:1
+			CASE 14
+				LOCALS = 헬기의 기총 소사가 %조사처리(CALLNAME:LOCAL,"를")% 덮친다!
+			ENDSELECT
+		CALL MESSAGE_B(1, LOCALS)
+		PRINTFORMW TARGET:[{LOCAL,2}] %CALLNAME:LOCAL,20,LEFT%　>>>>>>　%LOCALS:1%
+		CALL VAR_HP, LOCAL, -(LOCAL:1), 0
+	;依頼35では行動終了時に神経ダメージ
+	CASE 35
+		LOCAL = FLAG:행동순1
+		SIF CFLAG:LOCAL:PT플래그 == 0
+			RETURN 0
+		SIF LOCAL < 0
+			RETURN 0
+		SIF CFLAG:LOCAL:상태이상 == GET_STATE_NUM("DYING")
+			RETURN 0
+		IF MAXBASE:LOCAL:신경 == 999
+			LOCAL:1 = 0
+		ELSE
+			LOCAL:1 = RAND:20 + 50
+			IF CFLAG:LOCAL:신경무효화횟수 > 0
+				LOCAL:1 = 0
+				CFLAG:LOCAL:신경무효화횟수 -= 1
+			ELSE
+				LOCAL:1 = LOCAL:1 * MAXBASE:LOCAL:신경 / 100
+			ENDIF
+		ENDIF
+		IF LOCAL:1 < 0
+			LOCALS:1 = {-LOCAL:1}회복
+		ELSEIF LOCAL:1 == 0
+			LOCALS:1 = BLOCK
+		ELSE
+			LOCALS:1 = {LOCAL:1}데미지
+		ENDIF
+		;表示テキスト
+		SELECTCASE 의뢰플래그:108:1
+			CASE 35
+				LOCALS = 유독 가스가 %조사처리(CALLNAME:LOCAL,"를")% 덮친다!
+		ENDSELECT
+		CALL MESSAGE_B(1, LOCALS)
+		PRINTFORMW TARGET:[{LOCAL,2}] %CALLNAME:LOCAL,20,LEFT%　>>>>>>　%LOCALS:1%
+		CALL VAR_HP, LOCAL, -(LOCAL:1), 0
+		
+		CASE 63
+			CALL EVENT_BATTLE_ACTEND_REQUEST108_63
+		
+ENDSELECT
+
+
+
+
+
+
+
+
+;=================================================
+;EVENT_BATTLE_TURNEND_REQUEST_108
+;=================================================
+;戦闘中・ターン終了時処理
+;-------------------------------------------------
+;FLAG:승리플래그に1をセットすると、戦闘を強制終了出来る
+;FLAG:패배플래그に1をセットすると、ゲームオーバーに出来る
+;-------------------------------------------------
+@EVENT_BATTLE_TURNEND_REQUEST108
+SELECTCASE 의뢰플래그:108:1
+	CASE 43
+		;3ターン経過でゲームオーバー
+		SELECTCASE FLAG:경과턴수
+			CASE 3
+				CUSTOMDRAWLINE =
+				CALL MESSAGE_WINDOW, "" , 	@"차량이 통과해 버렸다…", , , , , 4
+				FLAG:승리플래그 = 1
+				의뢰플래그:108:4 = 1
+		ENDSELECT
+	CASE 47, 50
+	;経過ターン数をカウント
+		의뢰플래그:108:4 += 1
+	
+ENDSELECT
+
+
+
+
+
+
+
+;===================================================================================
+;報酬判定
+;의뢰플래그:108:1		依頼の分岐に使用
+;의뢰플래그:108:2		依頼の受諾判定に使用
+;의뢰플래그:108:5		依頼の難易度判定に使用
+;의뢰플래그:108:7		依頼主（1:メシア教、2:ガイア教、0:그외）の判定に使用
+;의뢰플래그:108:11		メシア教の戦力値
+;의뢰플래그:108:12		ガイア教の戦力値
+;의뢰플래그:108:13		依頼の達成状況によるボーナス値
+;의뢰플래그:108:14		固定報酬フラグ（0:変動報酬、1：固定報酬）の判定に使用　※固定報酬の場合、「의뢰플래그:108:13」の依頼達成状況によるボーナス値のみで報酬を算出する
+;
+;===================================================================================
+@PRIZE_REQUEST_108
+;-------------------
+;変数定義
+;-------------------
+#DIM RAN_POINT					;依頼の報酬計算に使用される乱数部分
+#DIM POWER_BALANCE_PERCENTAGE	;メシア教・ガイア教依頼の場合、戦力値によって報酬が増減する。この増減のパーセンテージ(%)
+#DIM BONUS_POINT				;依頼の達成状況によるボーナス値(一部の依頼においてのみ使用する)
+#DIM REWARD_BASE				;報酬の基本値
+#DIM GET_MEISEI					;獲得名声
+
+;-------------------
+;変数の初期化
+;-------------------
+RAN_POINT = 0					;依頼の報酬計算に使用される乱数部分
+POWER_BALANCE_PERCENTAGE = 100	;メシア教・ガイア教依頼の場合、戦力値によって報酬が増減する。この増減のパーセンテージ(%)
+BONUS_POINT = 0					;依頼の達成状況によるボーナス値(一部の依頼においてのみ使用する)
+REWARD_BASE = 0					;報酬の基本値
+GET_MEISEI = 0					;獲得名声
+
+;-------------------
+;ここから本処理
+;-------------------
+
+;-------------------
+;前提となる各種計算
+;-------------------
+;報酬の乱数部分を計算
+IF 의뢰플래그:108:14 != 1
+	;固定報酬ではない場合
+	SELECTCASE 의뢰플래그:108:1
+		CASE 2, 17, 43
+			;輸送襲撃系は報酬の幅を大きく
+			RAN_POINT = RAND:10
+		CASEELSE
+			;その他の場合
+			RAN_POINT = RAND:5
+	ENDSELECT
+ENDIF
+
+;メシア教・ガイア教の依頼の場合の、戦力値による報酬の増減(%)を設定する
+;※不利な陣営ほど報酬の支払いがよくなる。
+SELECTCASE 의뢰플래그:108:7
+	CASE 1
+		;メシア教の場合
+		POWER_BALANCE_PERCENTAGE = (100 * MAX(의뢰플래그:108:12, 1) + 20) / (MAX(의뢰플래그:108:11, 1) + 20)
+	CASE 2
+		;ガイア教の場合
+		POWER_BALANCE_PERCENTAGE = (100 * MAX(의뢰플래그:108:11, 1) + 20) / (MAX(의뢰플래그:108:12, 1) + 20)
+	CASEELSE
+		;その他の場合
+		POWER_BALANCE_PERCENTAGE = 100
+ENDSELECT
+;倍率は50%～200%とする
+POWER_BALANCE_PERCENTAGE = MAX(POWER_BALANCE_PERCENTAGE, 50)	;倍率の最小値を50%に設定
+POWER_BALANCE_PERCENTAGE = MIN(POWER_BALANCE_PERCENTAGE, 200)	;倍率の最大値を200%に設定
+
+;依頼の達成状況によるボーナス値
+BONUS_POINT = 의뢰플래그:108:13
+
+;-------------------
+;報酬の計算
+;-------------------
+IF 의뢰플래그:108:14 == 1
+	;固定報酬の場合
+	;報酬の基本値　※(ボーナスポイント)
+	REWARD_BASE = BONUS_POINT
+
+	;獲得名声　※(ボーナスポイント)
+	GET_MEISEI = BONUS_POINT
+
+ELSE
+	;その他の場合
+	;報酬の基本値　※(依頼難易度 + 乱数 + ボーナスポイント) * (メシア教・ガイア教の戦力値による倍率)
+	REWARD_BASE = ((의뢰플래그:108:5 + RAN_POINT + BONUS_POINT) * POWER_BALANCE_PERCENTAGE) / 100
+
+	;獲得名声　※(依頼難易度 + 乱数)
+	GET_MEISEI = 의뢰플래그:108:5 + RAN_POINT + BONUS_POINT
+
+	;ダンジョンの依頼の場合、通常の2倍の報酬
+	IF 의뢰플래그:108:2 == 1
+		REWARD_BASE = REWARD_BASE * 2
+		GET_MEISEI = GET_MEISEI * 2
+	ENDIF
+ENDIF
+
+;上限値設定(2万5千円まで)
+REWARD_BASE = MIN(REWARD_BASE, 25)		;日本円は2万5千円まで
+GET_MEISEI = MIN(GET_MEISEI,25)			;名声は25まで
+
+;-------------------
+;報酬の支払いなど
+;-------------------
+PRINTFORML ＞%마스터는% 보수로서 {REWARD_BASE},000엔과 {GET_MEISEI}의 명성을 얻었다。
+CUSTOMDRAWLINE =
+WAIT
+MONEY:0 += 1000 * REWARD_BASE
+FLAG:명성 += GET_MEISEI
+
+;@のアライメント、およびメシア教・ガイア教の戦力値の変化
+SELECTCASE 의뢰플래그:108:7
+	CASE 1
+		;メシア教からの依頼
+		CALL INCREASE_LC, 10										;@のアライメントがLaw側に変動
+		의뢰플래그:108:11 += (RAND:3 + 1)							;メシア教の戦力値変動
+		의뢰플래그:108:12 = MAX((의뢰플래그:108:12 - RAND:3), 0)	;ガイア教の戦力値変動　※最小値は0。マイナスにはならない
+	CASE 2
+		;ガイア教からの依頼の場合
+		CALL INCREASE_LC, -10										;@のアライメントがChaos側に変動
+		의뢰플래그:108:11 = MAX((의뢰플래그:108:11 - RAND:3), 0)	;メシア教の戦力値変動　※最小値は0。マイナスにはならない
+		의뢰플래그:108:12 += (RAND:3 + 1)							;ガイア教の戦力値変動
+	CASEELSE
+		;その他の場合
+ENDSELECT
+
+;ライバルイベント
+CALL RIVAL_TALK_RANDOM_REQUEST
+
+
+;===================================================================================
+;排日の戦力値辺土イベント
+;의뢰플래그:108:11	メシア教の戦力値
+;의뢰플래그:108:12	ガイア教の戦力値
+;===================================================================================
+@DAIRY_EVENT_REQUEST_108
+CUSTOMDRAWLINE -
+IF RAND:2 == 0
+	PRINTFORMW 메시아교 활동이 활발해지고 있는 것 같습니다。
+	의뢰플래그:108:11 += 10 + RAND:10
+ENDIF
+IF RAND:2 == 0 && 의뢰플래그:108:11 <= 20
+	PRINTFORMW 새로운 로우 히어로가 나타나、활약하고 있는것 같습니다。
+	의뢰플래그:108:11 += 50 + RAND:10
+ENDIF
+IF RAND:2 == 0
+	PRINTFORMW 가이아교의 활동이 활발해지고 있는 것 같습니다。
+	의뢰플래그:108:12 += 10 + RAND:10
+ENDIF
+IF RAND:2 == 0 && 의뢰플래그:108:12 <= 20
+	PRINTFORMW 새로운 카오스 히어로가 나타나、활약하고 있는것 같습니다。
+	의뢰플래그:108:12 += 50 + RAND:10
+ENDIF
+IF RAND:2 == 0 && (의뢰플래그:108:11 >= 80 && 의뢰플래그:108:12 >= 80)
+	PRINTFORMW 야타가라스가 적극적으로 활동하고 있는 것 같습니다。
+	의뢰플래그:108:11 -= 30 +RAND:10
+	의뢰플래그:108:12 -= 30 +RAND:10
+ENDIF
+IF RAND:2 == 0 && (의뢰플래그:108:11 >= 40 && 의뢰플래그:108:12 >= 40)
+	PRINTFORMW 메시아교와 가이아교의 충돌이 발생했습니다！
+	SELECTCASE RAND:3
+		CASE 0
+			PRINTFORMW 메시아교가 우세한 것 같습니다。
+			의뢰플래그:108:11 -= 10 +RAND:10
+			의뢰플래그:108:12 -= 10 +RAND:20
+		CASE 1
+			PRINTFORMW 가이아교가 우세한 것 같습니다。
+			의뢰플래그:108:11 -= 10 +RAND:20
+			의뢰플래그:108:12 -= 10 +RAND:10
+		CASE 2
+			PRINTFORMW 양측이 팽팽한 것 같습니다。
+			의뢰플래그:108:11 -= 15 +RAND:10
+			의뢰플래그:108:12 -= 15 +RAND:10
+	ENDSELECT
+ENDIF
