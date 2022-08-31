@@ -1,0 +1,888 @@
+﻿;-------------------------------------------------
+;히지리剣伝説３　リース個別イベント
+;-------------------------------------------------
+@INDIVIDUAL_EVENT_K5210, ARG, ARG:1 = 0, ARG:2 = -1
+;ARG:0　キャラ番号
+;ARG:1　関数種類　1,開放条件　2,タイトル　3,イベント
+;ARG:2　イベント番号（0～63まで）
+
+;最初にデビオクで売られていた戦闘素質のない方のアップデート処理。
+;条件は異能者の有無。
+IF TALENT:ARG:이능자 == 0
+	PRINTFORML 異能者素質のない、初期型の状態の『%CALLNAME:ARG%』のアップデート処理を行います。
+	PRINTFORML 
+	PRINTFORML ＞アップデートで変更される内容
+	PRINTFORML 　調教後天素質・陥落・契約・陥落履歴以外の全素質（戦闘素質を含む）
+	PRINTFORML 　CSTR：悪魔解説
+	PRINTFORML 　習得スキル（人間の異能者用戦闘素質に合わせた習得ラインナップ）
+	PRINTFORML 　種族（人間にリセット）
+	PRINTFORML 　戦闘参加不能状態である場合、調教するまで戦闘参加可能化
+	PRINTFORML 
+	PRINTFORML ＞上書きされない内容
+	PRINTFORML 　ABL・EXP（調教ステータス・経験・体力等）
+
+		SIF CFLAG:(ARG):전투참가불가능 == 1
+			CFLAG:(ARG):전투참가불가능 = -1
+		
+		;種族(ABL80)の人間化リセット
+		ABL:ARG:종족 = CSVABL(NO:ARG,GETNUM(ABL,"종족"),0)
+
+		;素質をCSVから読み込んだステータスで上書き。
+		;ただし、陥落素質3-8と契約素質170-173、信頼系素質180-182、陥落履歴270-273は対象外！
+		FOR LOCAL,0,343
+			SIF LOCAL >= 3 && LOCAL <= 8
+				CONTINUE
+			SIF LOCAL >= 74 && LOCAL <= 77
+				CONTINUE
+			SIF LOCAL >= 170 && LOCAL <= 173
+				CONTINUE
+			SIF LOCAL >= 180 && LOCAL <= 182
+				CONTINUE
+			SIF LOCAL >= 270 && LOCAL <= 273
+				CONTINUE
+			TALENT:ARG:(LOCAL) = CSVTALENT(NO:ARG,LOCAL,0)
+		NEXT
+
+		;悪魔解説のCSVからの読み込みで上書き。
+		FOR LOCAL, 1, 21
+			CSTR:ARG:@"해설{LOCAL}" '= CSVCSTR(NO:ARG, GETNUM(CSTR, @"해설{LOCAL}"))
+		NEXT
+		
+		;習得予定スキルをCSVから読み直し。
+		FOR LOCAL,1,21
+			ABL:ARG:("습득스킬" + TOSTR(LOCAL)) = CSVABL(NO:ARG,(GETNUM(ABL,"습득스킬" + TOSTR(LOCAL))),0)
+			ABL:ARG:("습득LV" + TOSTR(LOCAL)) = CSVABL(NO:ARG,(GETNUM(ABL,"습득LV" + TOSTR(LOCAL))),0)
+			;ABL:LOCAL:("初期変身悪魔習得スキル" + TOSTR(LOCAL:1)) = CSVABL(NO:LOCAL,(GETNUM(ABL,"初期変身悪魔習得スキル" + TOSTR(LOCAL:1))),0)
+			;ABL:LOCAL:("初期変身悪魔習得LV" + TOSTR(LOCAL:1)) = CSVABL(NO:LOCAL,(GETNUM(ABL,"初期変身悪魔習得LV" + TOSTR(LOCAL:1))),0)
+		NEXT
+	PRINTFORML 
+	PRINTFORMW 処理を完了しました。詳細は能力確認より確認してください。
+ENDIF
+
+SELECTCASE ARG:2
+CASE 0
+	;解放条件
+	;리스陥落済みであり、Lv30以上
+	IF ARG:1 == 1
+		SIF 함락(ARG) == 0
+			RETURN 0
+		SIF BASE:ARG:LV < 30
+			RETURN 0
+		RETURN 1
+	ELSEIF ARG:1 == 2
+	;タイトル
+		IF GETBIT(CFLAG:ARG:개별이벤트개방,ARG:2)
+			;タイトル
+			RESULTS = 『ローラントの王女・リース』
+		ELSE
+			;未開放時のタイトル（解放条件を入れておく）
+			RESULTS = ※%CALLNAME:ARG%の陥落と、戦闘Lv30以上が必要。
+		ENDIF
+	;イベント
+	ELSEIF ARG:1 == 3
+		;どう陥落させたか１
+		IF TALENT:ARG:신뢰 || TALENT:ARG:동료 || TALENT:ARG:연모 || TALENT:ARG:친애
+			PRINTFORMW ふと思い至って、%CALLNAME:ARG%の部屋を訪れた。
+			PRINTFORML 
+			PRINTFORMW 「あぁ、%CALLNAME:MASTER%。いらっしゃったんですか？」
+			PRINTFORML 
+			PRINTFORMW ノックをすると、出迎えにきた%CALLNAME:ARG%が笑顔を浮かべた。
+			PRINTFORML 
+			PRINTFORML 「あなたはあくまでここの主人なのだから、
+			PRINTFORMW 　特にノックなどで断りを入れる必要もありませんのに」
+			PRINTFORML 
+			PRINTFORMW そう言うと、握っていた布を後ろ手に隠した%CALLNAME:ARG%は手を引いて、%CALLNAME:MASTER%を部屋に招き入れる。
+			PRINTFORMW 机の上の状況から察するに、ちょうど槍を磨いていたところらしい。
+			PRINTFORML 
+			PRINTFORML 買い取った%CALLNAME:ARG%の付属品扱いとしてついてきた
+			PRINTFORMW ……先端が斜めに切り飛ばされた、トライデントだった。
+			PRINTFORML 
+			PRINTFORMW 「……お恥ずかしながら、あなたに出会う前のことですね」
+			PRINTFORML 
+			PRINTFORMW 槍を立て、１本しか先端が残っていない刃先を眺めながらつぶやく。
+			PRINTFORML 
+			PRINTFORMW 「すみません、思い出話に付き合ってくれますか？」
+			PRINTFORML 
+			PRINTFORMW そういうと、%CALLNAME:ARG%は訥々と語りだした。
+			PRINTFORML 
+			PRINTFORMW 彼女の故郷であったローラント王国は、奇襲してきたナバール忍者軍の手で一日にして滅ぼされた。
+			PRINTFORMW 弟エリオットを攫われ、父は殺され、復讐と弟の手がかりを探して彼女は旅に出た。
+			PRINTFORML 
+			PRINTFORML 導きを求めてウェンデルと呼ばれる聖都についた頃には、一足早く
+			PRINTFORMW 『フェアリーに選ばれた者』も訪れていたというが、ついぞ出会うことはなかったという。
+			PRINTFORML 
+			PRINTFORMW その後のローラントは、ナバール忍者軍によって占拠されており、
+			PRINTFORML わずかに生き残ったアマゾネス達をかき集め、城を奪還するべく
+			PRINTFORMW 準備を進めていたのだが……。
+			PRINTFORML 
+			PRINTFORMW 「力及ばず、%CSTR:일인칭%は囚われの身となってしまいました」
+			PRINTFORML 
+			PRINTFORMW ブラックマーケットの奴隷市場に売り飛ばされ、また売り飛ばされ……
+			PRINTFORMW そのようなことを繰り返すうちに、見知らぬところにたどり着いていたのだという。
+			PRINTFORML 
+			PRINTFORMW ……彼女は、伝説に謳われる勇者ではなかった。
+			PRINTFORMW 身近なものを奪われ、ただそれを取り戻したかったが、叶わなかったのだ。
+			PRINTFORML 
+			;状況的には多分無いはずなんだが、一応。戦闘参加可能であること。
+			IF CFLAG:ARG:전투참가불가능 > 0
+				PRINTFORMW 「……今でこそ、あなたの横で武器を構えて戦うことは出来ていますが……
+				PRINTFORMW 　夜になると未だに、あの敗れた時と、縄の感覚を思い出してしまうのです」
+				PRINTFORML 
+				PRINTFORMW 両腕を前に回し、手首を合わせながら、
+			ENDIF
+			PRINTFORMW 目を伏せる%CALLNAME:ARG%の顔に指す影は暗く、そして深かった。
+			PRINTFORML 
+			WAIT
+			PRINTFORMW 今、かけられる言葉の一つもあるだろうか……。
+			PRINTFORML 
+			IF 함락(ARG) > 2
+				PRINTFORML [0] 「伴侶を頼るぐらいしろ」
+			ELSE
+				PRINTFORML [0] 「主人を頼るぐらいしろ」
+			ENDIF
+			PRINTFORML [1] 「修練が足りないようだな！」
+			PRINTFORML [2] ……抱っこでもしてやろうか
+			;契約
+			CALL INPUTINT, 0, 1, 2
+			;頼るぐらいしろ
+			IF RESULT == 0
+				PRINTFORML 折れて売り飛ばされただけでなく、弟が気がかりなのもあるだろう。
+				PRINTFORMW 足取りをたどるなりして、心残りを解消させるぐらいならできる。
+				PRINTFORML 
+				IF 함락(ARG) > 2
+					PRINTFORMW だから、伴侶を頼るぐらいは、しろ。
+					PRINTFORML 
+					PRINTFORMW そういうと、%CALLNAME:ARG%は薬指の光るものに手を触れた。
+				ELSE
+					PRINTFORMW だから、主人を頼るぐらいは、しろ。
+					PRINTFORML 
+					PRINTFORMW そういうと、%CALLNAME:ARG%はバツが悪そうに頬をかいた。
+				ENDIF
+				PRINTFORML 
+				PRINTFORMW 異世界奴隷商といったらラグである。
+				PRINTFORML 
+				PRINTFORMW 『はいはい、こちらGINZAじゅわいおくちゅーる・ラグ……ってアンタかい？』
+				PRINTFORML 
+				PRINTFORMW 目を見開いて立体映像通信に手をかざしたりつかもうとしている
+				PRINTFORMW %CALLNAME:ARG%をよそに問い合わせを行うことにした。
+				PRINTFORML 
+				PRINTFORMW …………。
+				PRINTFORML 
+				PRINTFORMW 『仕入れ』の失敗につき入荷時期未定、だという。
+				PRINTFORMW 足取りをたどってもらったところ、情報が錯綜しているらしく
+				PRINTFORMW 断片的な情報しか入ってこなかった。
+				;便利に使ってすまんなラグくん。
+				PRINTFORML 
+				PRINTFORML １：%CALLNAME:ARG%の弟は、一度はブラックマーケットに売られていたのだが、
+				PRINTFORMW 　　現地の同業他社に先に買い取られてしまった。
+				PRINTFORML 
+				PRINTFORML ２：この世の破壊を目論む三つ巴の勢力の何処かに居たようだが、
+				PRINTFORMW 　　争いに敗れた２つのうちのどれかだったと推測され、今は日の当たるところに帰っている。
+				PRINTFORML 
+				PRINTFORMW ３：ちなみにこの%CALLNAME:ARG%の居た元の世界では今やマナを巡る大決戦の真っ最中。らしい
+				PRINTFORML 
+				PRINTFORML ……一連の通信の間、事の顛末を横で聞きながら、
+				PRINTFORMW 悲しんだり、怒ったり、涙を目に浮かべたりハラハラしたりと百面相を見せる%CALLNAME:ARG%であったが
+				PRINTFORML 
+				PRINTFORMW 「つまり、エリオットは……無事？」
+				PRINTFORML 
+				PRINTFORMW 終話すると同時に口を挟んできた。
+				PRINTFORML 
+				PRINTFORMW ……ローラント王国は、マナの勇者たちの活躍により奪還されているとも言っていた。
+				PRINTFORMW おそらくは、そういうことなのだろう。
+				PRINTFORML 
+				PRINTFORMW 「アルマ……エリオット……」
+				PRINTFORML 
+				PRINTFORMW 組んだ両手と、漏れる声が震えていた。
+				PRINTFORMW ……やがて上げた顔は、
+				PRINTFORML 
+				PRINTFORMW 「ありがとう、ございました」
+				PRINTFORML 
+				PRINTFORMW 「エリオットが居れば、ローラントは途絶えません。
+				PRINTFORMW 　成長を見届けてあげられないのは心残りですが……」
+				PRINTFORML 
+				IF 함락(ARG) > 2
+					PRINTFORMW 『契約』なんて、初めてだったんですからね。と、
+					PRINTFORMW そうして笑顔を見せた%CALLNAME:ARG%に、迷いはなかった。
+				ELSEIF 함락(ARG) > 1
+					PRINTFORMW これでも、身元引受をしてくれた恩義は、感じているんですよ。と
+					PRINTFORMW そうして笑顔を見せた%CALLNAME:ARG%に、迷いはなかった。
+				ENDIF
+				PRINTFORML 
+				PRINTFORMW 「……ここにきてようやく、晴れやかな気持ちになれた気がします」
+				PRINTFORML 
+				PRINTFORMW 言う通り、%CALLNAME:ARG%がまるで日本晴れの様に光に包まれて……　えっ？
+				PRINTFORML 
+				PRINTFORMW 当人も驚いて両手を見つめている……うちに、光は霧散していった。
+				PRINTFORMW なんだ今のは。
+				PRINTFORML 
+				PRINTFORMW 「……クラス、チェンジ……でしょうか？」
+				PRINTFORML 
+				PRINTFORMW %CALLNAME:ARG%からはそのような単語が飛んできた。
+				PRINTFORML 
+				PRINTFORMW 「こちらのところに伝わる……なんでしょう、秘術？　なのですが……
+				PRINTFORMW 　なんでも、十分な経験を積み、マナストーンから力を授かるのだとか」
+				PRINTFORML 
+				PRINTFORMW マナストーンとは要するに、何らかの『力』がある石なのだろう。
+				PRINTFORMW そして、その『力』はどうやらマグネタイトと近しい性質を持つらしい。
+				PRINTFORML 
+				PRINTFORMW ……然るべき方法で試してみれば、あるいは道が開けるかもしれない。
+				PRINTFORML 
+				RETURN 1
+			;修行が足りないようだな
+			ELSEIF RESULT == 1
+				PRINTFORML 
+				PRINTFORMW よしわかった。%CALLNAME:ARG%には修行が足りないのだ！
+				PRINTFORML 
+				PRINTFORMW 「……。……えっ？」
+				PRINTFORML 
+				PRINTFORMW 命と心さえ残っていれば、何でもできる！
+				PRINTFORML 
+				PRINTFORMW 一度や二度の敗北で折れるなど若い証だ！
+				SIF TALENT:MASTER:복종
+					PRINTFORMW 現に、こうして命がある%CALLNAME:MASTER%自身が、それを証明しているッ！
+				PRINTFORML 
+				PRINTFORMW だから……折れている場合ではない、今からでも鍛え直せ！
+				PRINTFORML 
+				PRINTFORML 『そ、そういう流れでしたか……？』　と顔に書いてある%CALLNAME:ARG%の手をつかんで
+				PRINTFORMW 地下訓練場へ叩き込み、手すきの仲間と仲魔を呼びつけた。
+				PRINTFORML 
+				PRINTFORMW …………
+				PRINTFORML 
+				PRINTFORMW ………
+				PRINTFORML 
+				PRINTFORMW ……
+				PRINTFORML 
+				PRINTFORMW …
+				PRINTFORML 
+				CUSTOMDRAWLINE =
+				PRINTFORML 
+				PRINTFORMW 「く、ぅ……っ」
+				PRINTFORML 
+				PRINTFORML 代わる代わる、仲魔の交代・回復をはさみ、
+				PRINTFORMW %CALLNAME:ARG%１００本掛かり稽古を執り行った。
+				IF BASE:ARG:LV >= 99
+					PRINTFORMW 全員分終わる頃には、%CALLNAME:ARG%は肩で息をしていた。
+				ELSEIF BASE:ARG:LV >= 70
+					PRINTFORMW ……惜しくも、９０本目で力尽きたようだ。
+				ELSEIF BASE:ARG:LV >= 55
+					PRINTFORMW ……６０本目ぐらいで弾き飛ばされた槍が宙を舞った。
+				ELSE
+					PRINTFORMW ……半分いかずに倒れてしまった。
+				ENDIF
+				PRINTFORML 
+				PRINTFORML 稽古を中断し、休憩だと伝えると、
+				PRINTFORMW マグネタイトを込めた魔石をグリグリとねじ込んでやる。
+				PRINTFORML 
+				PRINTFORML 「むぐぐぐ……っ。こんな味気ない石なんて無体です
+				PRINTFORMW 　ドリンクかチョコ……せめて、ドロップを……」
+				;レギュレーションが違うからね、仕方ないね。
+				PRINTFORML 
+				PRINTFORMW 聞くだに甘さ１００％な組み合わせだ。回復手段に常用していたら太ってしまうのではないか？
+				PRINTFORML 
+				PRINTFORMW 「う、運動……してましたし……」
+				PRINTFORML 
+				PRINTFORMW 汗を浮かべながら、バツが悪そうに魔石をしゃぶる%CALLNAME:ARG%。
+				PRINTFORMW 魔石の使い方としては間違っているが、使えば砕けて魔力を放って消えるのだからアメのようなものだ。
+				PRINTFORMW ……無論、味など無い。
+				PRINTFORML 
+				PRINTFORMW で、どうするのだ。もうギブアップか？
+				PRINTFORML 
+				PRINTFORMW 「……いえ。まだ、やります」
+				PRINTFORML 
+				PRINTFORMW 実戦と訓練の違いの一つは、『安全に負けられる』ことだ。
+				PRINTFORML 立ち上がることを許されず頭から抑えつけられる敗北を喫した%CALLNAME:ARG%だったが、
+				PRINTFORMW ここにきて火がついた。この若さで、実質的な軍隊のリーダーを努めていただけのことはある。
+				PRINTFORML 
+				PRINTFORMW 「%CSTR:일인칭%が、やるんです……%CSTR:일인칭%が……っ！？」
+				PRINTFORML 
+				PRINTFORMW そうして、%CALLNAME:ARG%に、変化が起きた。
+				WAIT
+				PRINTFORML ……どうやら、先程食わせた魔石のマグネタイトに%CALLNAME:ARG%の肉体が反応しているらしい。
+				PRINTFORMW 何か、眠っていたものが起きるかのような、
+				PRINTFORMW 孵化を待つ卵を見ているような、ざわついたものを感じる。
+				PRINTFORML 
+				PRINTFORMW 「……クラス、チェンジ……でしょうか？」
+				PRINTFORML 
+				PRINTFORMW %CALLNAME:ARG%からはそのような単語が飛んできた。
+				PRINTFORML 
+				PRINTFORMW 「%CSTR:일인칭%達のところに伝わる……なんでしょう、秘術？　なのですが……
+				PRINTFORMW 　なんでも、十分な経験を積み、マナストーンから力を授かるのだとか」
+				PRINTFORML 
+				PRINTFORMW マナストーンとは要するに、何らかの『力』がある石なのだろう。
+				PRINTFORMW そして、その『力』はどうやらマグネタイトと近しい性質を持つらしい。
+				PRINTFORML 
+				PRINTFORMW ……然るべき方法で試してみれば、あるいは道が開けるかもしれない。
+				PRINTFORML 
+				PRINTFORMW 「……ところで、その……」
+				PRINTFORML 
+				PRINTFORMW %CALLNAME:ARG%の声に、思案から引き戻された。
+				PRINTFORML 
+				PRINTFORMW 「続き、しないんですか？」
+				PRINTFORML 
+				PRINTFORMW 目を向けると、元アマゾネスリーダーはすっかり元気になっていた。
+				PRINTFORML 
+				PRINTFORMW ……今度は加減しないことを伝え、１００本掛り稽古を再開した。
+				PRINTFORML 
+				CUSTOMDRAWLINE =
+				PRINTFORMW 
+				RETURN 1
+			;抱っこ
+			ELSEIF RESULT == 2
+				PRINTFORML 
+				PRINTFORMW こういう時は言葉以外の方法もある。
+				PRINTFORML 
+				PRINTFORML %CALLNAME:ARG%の腕を引っ張って、羽兜を取り、ベッドまで引き寄せる。
+				SIF TALENT:ARG:신뢰 || TALENT:ARG:동료
+					PRINTFORML 今までされたことの無い直接的な身体接触に強ばるのを無視し、
+				PRINTFORMW 頭を撫で、胸に抱き込みながら、ベッドに座ると、
+				PRINTFORMW 逆立ちそうだった髪が、気配とともに元に戻っていく。
+				PRINTFORML 
+				PRINTFORMW 「…………」
+				PRINTFORML 
+				PRINTFORMW …………。
+				PRINTFORML 
+				PRINTFORMW 仰向けになった%CALLNAME:MASTER%の胸元に抱きすくめられた姿勢のまま、
+				PRINTFORMW %CALLNAME:ARG%はもがきもせずじっとしている。
+				PRINTFORML 
+				PRINTFORML やがて、すりすりと、頬をすりよせてみたり、
+				PRINTFORMW 顔を上げて目を合わせようとしてみたり、
+				;＠の胸が巨乳かそれよりデカイ
+				SIF BUST(MASTER) >= 4
+					PRINTFORML %CALLNAME:MASTER%の胸を揉んでみたり、つかんでみたり、
+				PRINTFORMW 手を回してしがみついてみたり……。
+				PRINTFORML 
+				PRINTFORML サラサラとした金髪を梳きながら、背を軽くタッピングしていると、
+				;親愛＝愛情経験積み込み済み
+				IF TALENT:ARG:친애
+					PRINTFORMW あんしん……します。と普段よりか細いつぶやきが胸を通して響いた。
+				ELSE
+					PRINTFORMW ゆったりとした吐息が、胸をくすぐった。
+				ENDIF
+				PRINTFORML 
+				PRINTFORMW 平時が平時故に、たまにはこうして気を緩める時があってもいい。
+				PRINTFORML 
+				PRINTFORMW そうして、%CALLNAME:ARG%がうつらうつらし、やがて目を閉じるまで、
+				PRINTFORMW %CALLNAME:MASTER%は背をさすり続けた。
+				PRINTFORML 
+				PRINTFORMW …………
+				PRINTFORML 
+				PRINTFORMW ………
+				PRINTFORML 
+				PRINTFORMW ……
+				PRINTFORML 
+				PRINTFORMW …
+				PRINTFORML 
+				PRINTFORMW しばらくすると、寝息を立てはじめた%CALLNAME:ARG%が、じんわりと光を帯びていた。
+				PRINTFORML 
+				PRINTFORMW ……まだ、何らかの秘められた力があるのかもしれない。
+				PRINTFORML 
+				CUSTOMDRAWLINE =
+				PRINTFORML 
+				PRINTFORMW その後、目を覚ました%CALLNAME:ARG%と話をしていてある可能性が浮上した。
+				PRINTFORML 
+				PRINTFORMW 『クラスチェンジ』と呼ばれる、%CALLNAME:ARG%の世界の秘術らしい。
+				PRINTFORMW 経験と、マナストーンなる石から力を授かることで、力を得るのだと。
+				PRINTFORML 
+				PRINTFORMW そして、そのマナストーンの力は
+				PRINTFORMW マグネタイトで代替することが、可能なようだった。
+				PRINTFORML 
+				RETURN 1
+			ENDIF
+		;どう陥落させたか２
+		ELSEIF TALENT:ARG:음란 || TALENT:ARG:창부 || TALENT:ARG:복종 || TALENT:ARG:예속
+			PRINTFORML 
+			PRINTFORMW 「うっ……ぁ、ぐ……っ」
+			PRINTFORML 
+			PRINTFORMW 衣服を裂かれた%CALLNAME:ARG%の体に巻き付く無数の触手。
+			PRINTFORML うめき声にも構わず全身を弄り、時に締め付ける緑色のそれは、
+			PRINTFORMW 魔王 マーラの触腕だった。
+			PRINTFORML 
+			PRINTFORMW 「ひっ、うぁぁ、やめ……ぇ」
+			PRINTFORML 
+			PRINTFORML そしてかすかな駆動音を立てながら、触腕に胸を弄くられ、
+			PRINTFORMW 股間を撫で回される様を、粘着質の音と共に映像に捉えていくカメラ。
+			PRINTFORML 
+			PRINTFORML 「ひょひょひょ……めんこいお嬢ちゃんじゃて。
+			PRINTFORMW 　ワシがたっぷり、ねっぷり、かわいがってくれようぞ」
+			PRINTFORMW 「ん……ぁ。やだ……やだぁぁっ」
+			PRINTFORML 
+			PRINTFORML レンタル竿役としての役割を立派に果たし、
+			PRINTFORML ご立派な（亀）頭を少女特有のすべすべした頬にこすりつける、気色の悪い悪魔を嬉々として演じるマーラと、
+			PRINTFORMW 折って一線を越えさせたとはいえ、割と本気で嫌がってフルフルと首を振る%CALLNAME:ARG%。
+			PRINTFORML 
+			PRINTFORMW そう、これは悪魔AVの撮影現場である。
+			PRINTFORML 
+			PRINTFORML %CALLNAME:ARG%には全く知らせず（ぶっつけ本番の）突然の調教触手召喚であるが、
+			PRINTFORMW R-18にGを付けたら対象層が狭くなるので、マーラとだけしっかり事前打ち合わせをしてある。
+			PRINTFORML 
+			PRINTFORML １：反魂香禁止（中身を出してはいけない。痕が残るような傷をつけてはいけない）
+			PRINTFORML ２：身体に異常をきたす技禁止（石にしてはいけない。魔封で喋れなくしてはいけない）
+			PRINTFORM ３：貫通式禁止（消化器官を逆行してはいけない。
+			SIF TALENT:ARG:처녀
+				PRINTFORM 前穴に入れてはいけない
+			PRINTFORML ）
+			PRINTFORML 
+			PRINTFORMW と言った具合だ。
+			PRINTFORML 
+			PRINTFORMW 「あぁ、みなまで言わずともよいぞ、嫌よ嫌よも好きのうち、ぢゃ」
+			PRINTFORMW 「ちが……%CSTR:일인칭%は本当に……きゃぅっ！」
+			PRINTFORML 
+			PRINTFORML わざと否定したくなるような屈辱的なことを言い放ち、
+			PRINTFORMW 否定しようと気を取られたスキに、防ごうとしていたところを責め立てる手口で羞恥心を煽り、
+			PRINTFORML それでいて（%CALLNAME:ARG%は全力で逃れようとしているのだが）うまいこと抑えつけて、
+			PRINTFORMW かつ、ちゃんと局部が暴れる足で隠れたりしないように巧みに開いてカメラに向けている。
+			PRINTFORMW このあたりは流石、多腕の為せる技といったところだ。
+			;PRINTFORMW それにしてもオーダー通りとは言え本当に気持ち悪いなこのマーラ。AVの爺か。AVだ。
+			PRINTFORML 
+			PRINTFORMW 「ほれほれ、こちらの頑張って守ろうとしている入り口が弱いんじゃろ」
+			PRINTFORML 
+			PRINTFORMW ご丁寧に魔羅そっくりな触腕をあてがい、クニクニとこすりつけている。
+			PRINTFORML 
+			PRINTFORML 触腕からは、緑色をした粘着質の物体が分泌されはじめており、
+			PRINTFORMW それを塗りつけられた%CALLNAME:ARG%の反応は、明らかにおかしくなった。
+			PRINTFORML 
+			PRINTFORMW 「ひっ！？　ぁ……！　熱っ……っ！？」
+			PRINTFORML 
+			PRINTFORMW 魔王マーラ、お得意のマララギダインと呼ばれる魔術である。
+			PRINTFORML 
+			PRINTFORML 本来は敵を焼くのに使う技だが、
+			PRINTFORML 炎なのに粘液状、おまけに低温蝋燭に近い熱量、
+			PRINTFORMW 更には、体に浸透して精神攻撃のおまけ付き。
+			PRINTFORML 
+			PRINTFORML 『うまいこと温度やらを操れば、このとおりぢゃ』
+			PRINTFORMW と、打ち合わせ時に少量出してもらったが、少し触れただけで大変なことになりかけた。
+			PRINTFORMW %CALLNAME:ARG%は今それを原液で、大量に、粘膜に塗られている。
+			PRINTFORML 
+			PRINTFORMW ……つらいだろうなぁ。
+			PRINTFORML 
+			PRINTFORMW 「何ですか、これっ……！　焼け……てっ」
+			PRINTFORMW 「ほれほれ、じきに気持ちよくなるワイ。よくなじませてやろうかの」
+			PRINTFORML 
+			PRINTFORML 局部を焼く意味不明な熱い物体にくわえ、
+			PRINTFORMW そのようなことをのたまうマーラの舌に耳を舐め回されて身震いする%CALLNAME:ARG%。
+			PRINTFORML 
+			PRINTFORML 『そろそろ前戯終了でいい』とハンドサインを飛ばす。
+			;淫乱・服従で尻も前もやってないってありうるんだろうか？
+			IF TALENT:ARG:처녀 && ABL:ARG:Ａ감각 == 0
+				PRINTFORMW 『そうじゃのぉ、お口と、強制素股ぐらいかのぉ』と＊ンコサインが胴体の後ろから返ってきた。器用である。
+				PRINTFORML 
+				PRINTFORML 開通式は前後とも禁止しているのでやむないことではあるが、
+				PRINTFORMW 難しいオーダーに応える様はまごうことなきAV男優悪魔のプロフェッショナルだった。
+				PRINTFORML 
+				PRINTFORMW 「そろそろ、ワシのモノもかわいがってもらおうかのぉ、お嬢ちゃん？」
+				PRINTFORMW 「……ひっ！！」
+				PRINTFORML 
+				PRINTFORML 加減して収縮しているのだろうが、口に入れるには大分デカイ、フランクフルトのような触腕が出てきた
+				PRINTFORMW ……顎外したらNGだからな？
+				PRINTFORML 
+				PRINTFORMW 「んっ、ん～～～ぅっ」
+				PRINTFORML 
+				PRINTFORML 口を閉じて抵抗する%CALLNAME:ARG%に、またしてもマララギダインローションを唇に塗り付けるマーラ。
+				PRINTFORMW 悲しいかな、唇は口腔粘膜の露出部分であり、ああいったモノは浸透してしまうのだ。
+				PRINTFORMW であるからして……
+				PRINTFORML 
+				PRINTFORMW 「く、ぁ……ングぅぅ！」
+				PRINTFORML 
+				PRINTFORMW 抵抗虚しく、マーラの魔羅は口に容赦なく入り込んでしまう。
+				PRINTFORML 
+				PRINTFORMW 「んっ、　ぶ。　ぐ……　ごふっ、ぢゅぷ！　ごぷっ！！」
+				PRINTFORML 
+				PRINTFORML 激しく注挿されて咳き込み、口の端から唾液が漏れるのも
+				PRINTFORMW お構いなしに、別の触腕が%CALLNAME:ARG%の股間にあてがわれた。……『長い』。
+				PRINTFORML 
+				PRINTFORMW 「下もお留守じゃしのぉ……こういうのはどうじゃ？」
+				PRINTFORML 
+				PRINTFORML 先ほどと同様全面粘液まみれのそれが、
+				PRINTFORMW ぐちゅと音を立てながら勢いよく股を擦り上げる。
+				PRINTFORMW 弾かれたように全身を大きくのけぞらせるところを見ると、例の粘液はよほど効いていたようだ。
+				PRINTFORML 
+				PRINTFORMW 「んぐぅぅ……！　ぐ！！　ぐぅっ！」
+				PRINTFORML 「楽しんでくれている所悪いんじゃが、ワシさっきからビンビンでのぉ……
+				PRINTFORMW 　まずは駆けつけ三杯で、たっぷり飲んでもらおうかの」
+				PRINTFORML 
+				PRINTFORMW そうこうしているうちに一射目が出た。
+				PRINTFORML 
+				PRINTFORMW 常人には無理だろうな、という程の量が%CALLNAME:ARG%の喉と全身にぶちまけられる。
+				;まぁ＠なら行けます行けます。
+				PRINTFORMW ご丁寧に発射途中に口から抜いて、顔にもかける、ぶっかけ需要も満たすサービス付きだ。
+				PRINTFORMW 話運びのセンス以外は、割と完璧なのだが……。
+				PRINTFORML 
+				PRINTFORMW 「ごぶっ！　ごぼっ！　ハァ、ハァ……かはっ……！」
+				PRINTFORML 
+				PRINTFORMW 口から精液を垂らしながら賢明に息を吸い込む%CALLNAME:ARG%。
+				PRINTFORML 
+			;お尻がNG
+			ELSEIF ABL:ARG:Ａ감각 == 0
+				PRINTFORMW 『そうじゃのぉ、そろそろいこうかのぉ』と＊ンコサインが胴体の後ろから返ってきた。器用である。
+				PRINTFORML 
+				PRINTFORMW 「それではお次は、ついに本番ぢゃ。ワシと子作りしようかの？」
+				PRINTFORMW 「っ……！」
+				PRINTFORML 
+				PRINTFORML 言うが早いか、胴に巻き付いていた、見るからにたくましい大きめの魔羅が、
+				PRINTFORMW スルスルとうねりながら股間へあてがわれた。
+				PRINTFORML 
+				PRINTFORMW ……アレだけ開通されても、やはり異形の悪魔に挿入されるのは嫌、らしい。
+				PRINTFORML もがいたところで逃げられはしないのであるが、
+				PRINTFORMW 顔を背けながら、なんとかして足を閉じようとしている。
+				PRINTFORML 
+				PRINTFORMW 「やめ……や、こわい……」
+				PRINTFORMW 「大丈夫じゃ、すぐによくなるわい！」
+				PRINTFORML 
+				PRINTFORMW が、抵抗虚しく足は全開にされ、入り口をぐちぐちと
+				PRINTFORML 
+				PRINTFORML 本人からもよく見えるように、わざわざ体を持ち上げて行われる、
+				PRINTFORML 屈辱的で恥辱を煽る合体に、%CALLNAME:ARG%がポロポロと涙をこぼすのにも構わず、
+				PRINTFORMW 緑色の触腕はズブズブと%CALLNAME:ARG%の女陰へ入り込んでいく。
+				PRINTFORML 
+				PRINTFORMW 「あぁぁっ！　～～～ぅぅう！！　……！　～～ッ！！」
+				PRINTFORML 
+				PRINTFORML 粘液によって焦らされ、情欲を煽られた体に
+				PRINTFORMW 文字通り突き刺さった魔羅の効果は絶大で、
+				PRINTFORMW 喘ぎとも悲鳴ともつかぬ声を上げながら、縛り付けられた体が暴れ狂った。
+				PRINTFORML 
+				PRINTFORML 「ん～～、良い反応じゃ！　ワシもよりビンビンしてきたでの、
+				PRINTFORMW 　年甲斐もなくすぐ一発行けそうじゃわ！」
+				PRINTFORML 
+				PRINTFORML 言うが早いか、いきなり合体中の魔羅と
+				PRINTFORMW 縛り上げている魔羅が一斉に脈打ち始めた。
+				PRINTFORML 
+				PRINTFORMW ……まてまて、このタイミングでイかれても視聴者困るぞ？
+				PRINTFORMW まぁ、マーラのことだし中折れしたりはしないだろうが……。
+				PRINTFORML 
+				PRINTFORML 懸念をよそに、%CALLNAME:ARG%の眼前に、体に、胸に、突きつけるかのように
+				PRINTFORMW 準備していた触腕は遠慮なく、%CALLNAME:ARG%に汁をぶちまけた。
+				PRINTFORML 
+				PRINTFORMW 「んぐ、んぁ……！　っ！　うっ……！」
+				PRINTFORML 
+				PRINTFORMW もちろん、刺さっているモノからも、逆流するぐらいにドバドバ出ている。
+				PRINTFORMW というか、出ている先からなお注挿しており、腹部は大変なことになっている。
+				PRINTFORML 
+			;前処女⇒お尻のみ
+			ELSEIF TALENT:ARG:처녀
+				PRINTFORMW 『よしよし、前が駄目じゃし……お尻いじめちゃうかの』と＊ンコサインが胴体の後ろから返ってきた。器用である。
+				PRINTFORML 
+				PRINTFORMW 「それではお次は……お尻遊びの時間じゃ！！」
+				PRINTFORMW 「っ……！！？？！」
+				PRINTFORML 
+				PRINTFORML 言うが早いか、胴に巻き付いていた、見るからにたくましい大きめの魔羅が、
+				PRINTFORMW 下半身を吊るし上げる様に持ち上げられた%CALLNAME:ARG%の、尻に挟まり始めた。
+				PRINTFORMW 鈴口のようなものの奥に眼球のようなものが見えるのは気のせいか？
+				PRINTFORML 
+				PRINTFORMW 「や、やめてください！　こんなもの入れたら……！」
+				PRINTFORML 
+				PRINTFORMW これまで%CALLNAME:ARG%にはそこそこお尻いじめをしてきたが、ちょっと趣向を変えるとこの調子だ。
+				PRINTFORML 
+				PRINTFORMW 『裂けちゃう』とまでは言わなかったが、先程、前をいじられているときより早口だ。
+				PRINTFORMW まぁ普通なら裂ける。マーラほど柔軟性のある触腕ならではの所業だ。
+				SIF ABL:MASTER:Ａ감각 != 0
+					PRINTFORMW ……大丈夫。慣れちゃえば気持ちいいから。
+				PRINTFORML 
+				PRINTFORMW 「ゆるして、許して……こんなのあんまり……」
+				PRINTFORMW 「大丈夫じゃ、すぐによくなるわい！」
+				PRINTFORML 
+				PRINTFORMW 引きつった顔が、挿入でこわばるのは時間の問題であった。
+				PRINTFORML ズブズブと、音が聞こえてきそうなぐらいの勢いで入り込む触腕と、
+				PRINTFORMW 異物感に全身を硬直させ、動けなくなる%CALLNAME:ARG%。
+				PRINTFORML 
+				PRINTFORMW 「あ……ああ……っ　く、　かはっ」
+				PRINTFORML 
+				PRINTFORMW どうやら、直腸通り越して大腸まで入っているらしい。
+				PRINTFORML 多分、無理に動くと気持ち悪いのだろうが、
+				PRINTFORMW 浅い呼吸しか出来ないまま、反射的に跳ねるのすら辛そうな表情を見せている。
+				PRINTFORML 
+				PRINTFORMW 涙をにじませ、苦悶する表情を、目のない鬼頭が観察しながら舐め回す。
+				PRINTFORML 
+				PRINTFORML 「残念ながら、お嬢ちゃんほどのめんこい子が苦しんでいる顔も、ワシは好きでのぉ……
+				PRINTFORMW 　滾ってくるわい、もっといろんな顔をワシに見せておくれ」
+				PRINTFORMW 「ぅ……、まだ……？　もう抜いて……くるし……」
+				PRINTFORML 
+				PRINTFORML 言うが早いか、挿入中の魔羅と縛り上げている魔羅が一斉に脈打ち始めた。
+				PRINTFORMW 次のコンセプトは、『無理やり汁をぶっかけられて嫌悪する様』である。
+				PRINTFORML 
+				PRINTFORMW ……事前打ち合わせの際、マーラはこの下りに割と嫌そうな口元をしていたことをここに付記しておく。
+				PRINTFORML 
+				PRINTFORMW 「抜いてやっても良いぞぉ、まずはたっぷり出してからじゃがのぉ……っ！」
+				PRINTFORML 
+				PRINTFORML %CALLNAME:ARG%の眼前に、体に、胸に、突きつけるかのように
+				PRINTFORMW 準備していた触腕は遠慮なく、%CALLNAME:ARG%に汁をぶちまけた。
+				PRINTFORML 
+				PRINTFORMW 「んぐ、んぁ……！　っ！　うっ　う、えっ……！」
+				PRINTFORML 
+				PRINTFORML 腸の中に直接液体が吐きつけられる、形容しがたい感触に
+				PRINTFORMW 身悶えする%CALLNAME:ARG%の体を、白濁液が汚しつくしていく……。
+				PRINTFORML 
+			ENDIF
+			PRINTFORML 
+			WAIT
+			PRINTFORMW と、そのようなことをしている最中だった。
+			PRINTFORML 
+			PRINTFORMW 全身、緑と白の粘液まみれになった%CALLNAME:ARG%の体が淡い光をまとってきているのに気づいた。
+			PRINTFORML 
+			PRINTFORMW 『……のう監督。　この小娘、何か目覚めかけちょるぞ？』
+			PRINTFORML 
+			PRINTFORMW 同じく気づいたらしい、撮影中故に影で送られるマーラのサインにも焦りが見えた。
+			PRINTFORML 本来はまだ続けてドバドバやって８カット６時間ぐらい行う予定だったのだが……
+			PRINTFORMW 仕方ない。予定を変えて、適当に誘惑の霧で精神汚染ちゃんぽんしてカットだ。
+			PRINTFORML 
+			PRINTFORMW 「いい子じゃから、この霧を吸うんじゃ。すぐ楽になるわい」
+			PRINTFORMW 「ぐ！　っ　げほっげほっ……く……ぁ……」
+			PRINTFORML 
+			PRINTFORML 『打ち切り』の仕草を察したマーラから霧を吹き付けられ、
+			PRINTFORMW 吸い込み、ぐったりする%CALLNAME:ARG%。
+			PRINTFORML 
+				CUSTOMDRAWLINE =
+			PRINTFORML 
+			PRINTFORMW その後も、%CALLNAME:ARG%の体をいじくり回していて、面白いコトがわかった。
+			PRINTFORMW なんでも、%CALLNAME:ARG%のような者は、十分な経験とマグネタイトで、力を目覚めさせる下地が有るらしい。
+			PRINTFORML 
+			PRINTFORMW それはすなわち、戦闘の駒としても、使い道があるということを示していた。
+			PRINTFORML 
+			PRINTFORMW ……ビデオの収益は、男優マーラへのギャラでトントンとなった。
+			PRINTFORML 
+			RETURN 1
+		ELSE
+			PRINTL 陥落しているのに参照されていないものが出てしまったのでバグかもしれません。報告してください。
+		ENDIF
+	ENDIF
+	RETURN 1
+CASE 1
+	;解放条件
+	IF ARG:1 == 1
+		;前イベント既読後
+		SIF GETBIT(CFLAG:ARG:개별이벤트읽음,0)
+			RETURN 1
+	ELSEIF ARG:1 == 2
+	;タイトル
+		IF GETBIT(CFLAG:ARG:개별이벤트개방,ARG:2)
+			;タイトル
+			RESULTS = 『クラスチェンジ』
+		ELSE
+			;未開放時のタイトル（解放条件を入れておく）
+			RESULTS = ※第１イベントを閲覧し、一度ショップへ戻る必要がある。
+		ENDIF
+	;イベント
+	ELSEIF ARG:1 == 3
+		PRINTFORMW 『クラスチェンジ』の準備が整った。
+		SETCOLOR 0x33ffcc
+			PRINTFORML 
+			PRINTFORML 「Lv30以上」で第２クラスが、
+			PRINTFORML 「Lv55以上＋第２クラス覚醒」で第３クラスが、
+			PRINTFORML 「Lv70以上＋第３クラス覚醒」で第４クラスが覚醒可能になります。
+			PRINTFORML 
+			PRINTFORML ＊覚醒と同時にクラス固有スキルを習得し、
+			PRINTFORML 　クラス３は２との組み合わせによって固有スキルの性能が変化します。
+		RESETCOLOR
+		PRINTFORML 
+		PRINTFORMW どうしようか。
+		PRINTFORML 
+		$INPUT_LOOP_EVENT_K5210CC
+
+		IF CFLAG:ARG:900 == 0
+			SETCOLOR 0x33ffcc
+				PRINTFORML [0] 『クラス２の覚醒』
+			RESETCOLOR
+		ELSEIF CFLAG:ARG:900 == 1
+			PRINTFORM [0] 『クラス２の変更』（
+			SETCOLOR 0x33ffcc
+				PRINTFORM ワルキューレ
+			RESETCOLOR
+			PRINTFORML ／ルーンメイデン）
+		ELSEIF CFLAG:ARG:900 == 2
+			PRINTFORM [0] 『クラス２の変更』（ワルキューレ／
+			SETCOLOR 0x33ffcc
+				PRINTFORM ルーンメイデン
+			RESETCOLOR
+			PRINTFORML ）
+		ENDIF
+		IF CFLAG:ARG:900 == 0 && BASE:ARG:LV < 55 || CFLAG:ARG:900 == 0
+			SETCOLOR 0x999999
+				PRINTFORML [1] （クラス３覚醒にはLv55以上＋クラス２の覚醒が必要）
+			RESETCOLOR
+		ELSEIF CFLAG:ARG:901 == 0 && BASE:ARG:LV >= 55
+			SETCOLOR 0x33ffcc
+				PRINTFORML [1] 『クラス３の覚醒』
+			RESETCOLOR
+		ELSEIF CFLAG:ARG:900 == 1 && CFLAG:ARG:901 == 1
+			PRINTFORM [1] 『クラス３の変更』（
+			SETCOLOR 0x33ffcc
+				PRINTFORM ヴァナディース
+			RESETCOLOR
+			PRINTFORML ／スターランサー）
+		ELSEIF CFLAG:ARG:900 == 1 && CFLAG:ARG:901 == 2
+			PRINTFORM [1] 『クラス３の変更』（ヴァナディース／
+			SETCOLOR 0x33ffcc
+				PRINTFORM スターランサー
+			RESETCOLOR
+			PRINTFORML ）
+		ELSEIF CFLAG:ARG:900 == 2 && CFLAG:ARG:901 == 1
+			PRINTFORM [1] 『クラス３の変更』（
+			SETCOLOR 0x33ffcc
+				PRINTFORM ドラゴンマスター
+			RESETCOLOR
+			PRINTFORML ／フェンリルナイト）
+		ELSEIF CFLAG:ARG:900 == 2 && CFLAG:ARG:901 == 2
+			PRINTFORM [1] 『クラス３の変更』（ドラゴンマスター／
+			SETCOLOR 0x33ffcc
+				PRINTFORM フェンリルナイト
+			RESETCOLOR
+			PRINTFORML ）
+		ENDIF
+		IF CFLAG:ARG:902 == 0 &&  BASE:ARG:LV < 70 || CFLAG:ARG:901 == 0
+			SETCOLOR 0x999999
+				PRINTFORML [2] （クラス４覚醒にはLv70以上＋クラス３の覚醒が必要）
+			RESETCOLOR
+		ELSEIF CFLAG:ARG:902 == 0 &&  BASE:ARG:LV >= 70
+			SETCOLOR 0x33ffcc
+				PRINTFORML [2] 『クラス４の覚醒』
+			RESETCOLOR
+		ELSEIF CFLAG:ARG:902 == 1
+			PRINTFORM [2] 『クラス４の変更』（
+			SETCOLOR 0x33ffcc
+				PRINTFORM ミーティア
+			RESETCOLOR
+			PRINTFORML ／フレースヴェルグ）
+		ELSEIF CFLAG:ARG:902 == 2
+			PRINTFORM [2] 『クラス４の変更』（ミーティア／
+			SETCOLOR 0x33ffcc
+				PRINTFORM フレースヴェルグ
+			RESETCOLOR
+			PRINTFORML ）
+		ENDIF
+			PRINTFORML [3] 終了する
+			;５５以下あるいはクラス２未覚醒だと２のみ
+			IF BASE:ARG:LV < 55 || CFLAG:ARG:900 == 0
+				CALL INPUTINT, 0 , 3
+			;７０以下あるいはクラス３未覚醒だと２，３まで
+			ELSEIF BASE:ARG:LV < 70 || CFLAG:ARG:901 == 0
+				CALL INPUTINT, 0 , 1 , 3
+			ELSE
+				CALL INPUTINT, 0 , 1 , 2 , 3
+			ENDIF
+			IF RESULT == 0
+				IF CFLAG:ARG:900 == 0
+					PRINTFORMW 『クラス２』を覚醒させます。
+					PRINTFORML 
+					PRINTFORML 光、闇の２種からクラスを選択出来、選択は個別イベントよりいつでも変更可能です。
+					PRINTFORML 
+					PRINTFORML [0] 光・ワルキューレ
+					PRINTFORML [1] 闇・ルーンメイデン
+					CALL INPUTINT, 0 , 1
+					IF RESULT == 0
+						PRINTFORML 
+						PRINTFORML %CALLNAME:ARG%は、ワルキューレに覚醒しました。
+						CFLAG:ARG:900 = 1
+					ELSEIF RESULT == 1
+						PRINTFORML 
+						PRINTFORML %CALLNAME:ARG%は、ルーンメイデンに覚醒しました。
+						CFLAG:ARG:900 = 2
+					ENDIF
+					;クラス２スキルの定義付与。
+					CSTR:ARG:전용기1 = クラス２スキル（聖剣３）
+				ELSEIF CFLAG:ARG:900 == 1
+					CFLAG:ARG:900 = 2
+					CLEARLINE 5
+				ELSEIF CFLAG:ARG:900 == 2
+					CFLAG:ARG:900 = 1
+					CLEARLINE 5
+				ENDIF
+				;何れの分岐もこちらに戻る。同時にクラス２スキル削除時は再習得する為に分岐統合後のここへ置く。
+				CALL LEARN_PU_SKILL(ARG,"クラス２スキル（聖剣３）")
+			ELSEIF RESULT == 1
+				;光・３未覚醒
+				IF CFLAG:ARG:900 == 1 && CFLAG:ARG:901 == 0
+					PRINTFORMW 『クラス３』を覚醒させます。
+					PRINTFORML 
+					PRINTFORML 光を基準にした更に２分岐を選択出来、選択は個別イベントよりいつでも変更可能です。
+					PRINTFORML 
+					PRINTFORML [0] 光光・ヴァナディース
+					PRINTFORML [1] 光闇・スターランサー
+					CALL INPUTINT, 0 , 1
+					IF RESULT == 0
+						PRINTFORML 
+						PRINTFORML %CALLNAME:ARG%は、ヴァナディースに覚醒しました。
+						CFLAG:ARG:901 = 1
+					ELSEIF RESULT == 1
+						PRINTFORML 
+						PRINTFORML %CALLNAME:ARG%は、スターランサーに覚醒しました。
+						CFLAG:ARG:901 = 2
+					ENDIF
+					;クラス３スキルの定義。
+					CSTR:ARG:전용기2 = クラス３スキル（聖剣３）
+				;闇・３未覚醒
+				ELSEIF CFLAG:ARG:900 == 2 && CFLAG:ARG:901 == 0
+					PRINTFORMW 『クラス３』を覚醒させます。
+					PRINTFORML 
+					PRINTFORML 闇を基準にした更に２分岐を選択出来、選択は個別イベントよりいつでも変更可能です。
+					PRINTFORML 
+					PRINTFORML [0] 闇光・ドラゴンマスター
+					PRINTFORML [1] 闇闇・フェンリルナイト
+					CALL INPUTINT, 0 , 1
+					IF RESULT == 0
+						PRINTFORML 
+						PRINTFORML %CALLNAME:ARG%は、ドラゴンマスターに覚醒しました。
+						CFLAG:ARG:901 = 1
+					ELSEIF RESULT == 1
+						PRINTFORML 
+						PRINTFORML %CALLNAME:ARG%は、フェンリルナイトに覚醒しました。
+						CFLAG:ARG:901 = 2
+					ENDIF
+				;光光⇒光闇
+				ELSEIF CFLAG:ARG:900 == 1 && CFLAG:ARG:901 == 1
+					CFLAG:ARG:901 = 2
+					CLEARLINE 5
+				;光闇⇒光光
+				ELSEIF CFLAG:ARG:900 == 1 && CFLAG:ARG:901 == 2
+					CFLAG:ARG:901 = 1
+					CLEARLINE 5
+				;闇光⇒闇闇
+				ELSEIF CFLAG:ARG:900 == 2 && CFLAG:ARG:901 == 1
+					CFLAG:ARG:901 = 2
+					CLEARLINE 5
+				;闇闇⇒闇光
+				ELSEIF CFLAG:ARG:900 == 2 && CFLAG:ARG:901 == 2
+					CFLAG:ARG:901 = 1
+					CLEARLINE 5
+				ENDIF
+				CALL LEARN_PU_SKILL(ARG,"クラス３スキル（聖剣３）")
+			ELSEIF RESULT == 2
+				;クラス４分岐未定義時
+				IF CFLAG:ARG:902 == 0
+					PRINTFORMW 『クラス４』を覚醒させます。
+					PRINTFORML 
+					PRINTFORML クラス２、３とは独立した２分岐を選択出来、選択は個別イベントよりいつでも変更可能です。
+					PRINTFORML 
+					PRINTFORML [0] 光４・ミーティア
+					PRINTFORML [1] 闇４・フレースヴェルグ
+					CALL INPUTINT, 0 , 1
+					IF RESULT == 0
+						PRINTFORML 
+						PRINTFORML %CALLNAME:ARG%は、ミーティアに覚醒しました。
+						CFLAG:ARG:902 = 1
+					ELSEIF RESULT == 1
+						PRINTFORML 
+						PRINTFORML %CALLNAME:ARG%は、フレースヴェルグに覚醒しました。
+						CFLAG:ARG:902 = 2
+					ENDIF
+					CSTR:ARG:전용기3 = クラス４スキル（聖剣３）
+				ELSEIF CFLAG:ARG:902 == 1
+					CFLAG:ARG:902 = 2
+					CLEARLINE 5
+				ELSEIF CFLAG:ARG:902 == 2
+					CFLAG:ARG:902 = 1
+					CLEARLINE 5
+				ENDIF
+				CALL LEARN_PU_SKILL(ARG,"クラス４スキル（聖剣３）")
+			ELSEIF RESULT == 3
+				PRINTFORMW 処理を終えた。
+				RETURN 0
+			ENDIF
+			GOTO INPUT_LOOP_EVENT_K5210CC
+		;好感度以外は後に上昇値が表示される
+		;CFLAG:ARG:(MASTER + 2100) += (好感度)
+		;TCVAR:ARG:획득의존도 += 
+		;TCVAR:ARG:획득충성도 += 
+		;CALL ADDS_EXP("○○経験", 1, ARG)
+	ENDIF
+ENDSELECT
+RETURN 0

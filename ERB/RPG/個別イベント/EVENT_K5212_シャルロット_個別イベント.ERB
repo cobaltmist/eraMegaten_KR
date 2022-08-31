@@ -1,0 +1,528 @@
+﻿;-------------------------------------------------
+;히지리剣伝説３　%CALLNAME:ARG%個別イベント
+;-------------------------------------------------
+@INDIVIDUAL_EVENT_K5212, ARG, ARG:1 = 0, ARG:2 = -1
+;ARG:0　キャラ番号
+;ARG:1　関数種類　1,開放条件　2,タイトル　3,イベント
+;ARG:2　イベント番号（0～63まで）
+
+;最初にデビオクで売られていた戦闘素質のない方のアップデート処理。
+;条件は異能者の有無。
+IF TALENT:ARG:이능자 == 0
+	PRINTFORML 異能者素質のない、初期型の状態の『%CALLNAME:ARG%』のアップデート処理を行います。
+	PRINTFORML 
+	PRINTFORML ＞アップデートで変更される内容
+	PRINTFORML 　調教後天素質・陥落・契約・陥落履歴以外の全素質（戦闘素質を含む）
+	PRINTFORML 　CSTR：悪魔解説
+	PRINTFORML 　習得スキル（人間の異能者用戦闘素質に合わせた習得ラインナップ）
+	PRINTFORML 　種族（人間にリセット）
+	PRINTFORML 　戦闘参加不能状態である場合、調教するまで戦闘参加可能化
+	PRINTFORML 
+	PRINTFORML ＞上書きされない内容
+	PRINTFORML 　ABL・EXP（調教ステータス・経験・体力等）
+
+		SIF CFLAG:(ARG):전투참가불가능 == 1
+			CFLAG:(ARG):전투참가불가능 = -1
+
+		;種族(ABL80)の再読み込み
+		ABL:ARG:종족 = CSVABL(NO:ARG,GETNUM(ABL,"종족"),0)
+
+		;素質をCSVから読み込んだステータスで上書き。
+		;ただし、陥落素質3-8と契約素質170-173、信頼系素質180-182、陥落履歴270-273は対象外！
+		FOR LOCAL,0,343
+			SIF LOCAL >= 3 && LOCAL <= 8
+				CONTINUE
+			SIF LOCAL >= 74 && LOCAL <= 77
+				CONTINUE
+			SIF LOCAL >= 170 && LOCAL <= 173
+				CONTINUE
+			SIF LOCAL >= 180 && LOCAL <= 182
+				CONTINUE
+			SIF LOCAL >= 270 && LOCAL <= 273
+				CONTINUE
+			TALENT:ARG:(LOCAL) = CSVTALENT(NO:ARG,LOCAL,0)
+		NEXT
+
+		;悪魔解説のCSVからの読み込みで上書き。
+		FOR LOCAL, 1, 21
+			CSTR:ARG:@"해설{LOCAL}" '= CSVCSTR(NO:ARG, GETNUM(CSTR, @"해설{LOCAL}"))
+		NEXT
+
+		;習得予定スキルをCSVから読み直し。
+		FOR LOCAL,1,21
+			ABL:ARG:("습득스킬" + TOSTR(LOCAL)) = CSVABL(NO:ARG,(GETNUM(ABL,"습득스킬" + TOSTR(LOCAL))),0)
+			ABL:ARG:("습득LV" + TOSTR(LOCAL)) = CSVABL(NO:ARG,(GETNUM(ABL,"습득LV" + TOSTR(LOCAL))),0)
+			;ABL:LOCAL:("初期変身悪魔習得スキル" + TOSTR(LOCAL:1)) = CSVABL(NO:LOCAL,(GETNUM(ABL,"初期変身悪魔習得スキル" + TOSTR(LOCAL:1))),0)
+			;ABL:LOCAL:("初期変身悪魔習得LV" + TOSTR(LOCAL:1)) = CSVABL(NO:LOCAL,(GETNUM(ABL,"初期変身悪魔習得LV" + TOSTR(LOCAL:1))),0)
+		NEXT
+	PRINTFORML 
+	PRINTFORMW 処理を完了しました。詳細は能力確認より確認してください。
+ENDIF
+
+SELECTCASE ARG:2
+CASE 0
+	;解放条件
+	;%CALLNAME:ARG%陥落済みであり、Lv30以上
+	IF ARG:1 == 1
+		SIF 함락(ARG) == 0
+			RETURN 0
+		SIF BASE:ARG:LV < 30
+			RETURN 0
+		RETURN 1
+	ELSEIF ARG:1 == 2
+	;タイトル
+		IF GETBIT(CFLAG:ARG:개별이벤트개방,ARG:2)
+			;タイトル
+			RESULTS = 『司祭の孫娘・シャルロット』
+		ELSE
+			;未開放時のタイトル（解放条件を入れておく）
+			RESULTS = ※%CALLNAME:ARG%の陥落と、戦闘Lv30以上が必要。
+		ENDIF
+	;イベント
+	ELSEIF ARG:1 == 3
+		;どう陥落させたか１
+		IF TALENT:ARG:신뢰 || TALENT:ARG:동료 || TALENT:ARG:연모 || TALENT:ARG:친애
+			PRINTFORML 
+			PRINTFORMW %CALLNAME:ARG%を引き取ってしばらく経過した。
+			PRINTFORML 
+			PRINTFORML 事務の合間にちょっとした空き時間が出来たため、
+			PRINTFORMW %CALLNAME:ARG%を連れて外に出て、散歩することにした。
+			PRINTFORML 
+			PRINTFORMW 普段着は多少奇抜ではあるが、不審者に見られることはない。
+			PRINTFORMW 当人もこちらのほうが落ち着くようだ。
+			PRINTFORML 
+			PRINTFORMW しばらくそばで見ていてわかったことは……。
+			PRINTFORML 特殊な血を引いており、見た目よりは年齢を重ねていること。
+			PRINTFORML 懸想していた神官がさらわれ、それを探す旅に出て、奴隷商に捕まったこと。
+			PRINTFORMW そして、買い取られた今の状況であってもあっけらかんとしている事だ。
+			PRINTFORML 
+			PRINTFORMW 発育測定をしてみたところ、実年齢に比して、半分ぐらいの成長度だった。
+			PRINTFORML 
+			PRINTFORML 「……どうしたんですか%CSTR:이인칭%。さっきからじっとみて。
+			PRINTFORMW 　%CSTR:일인칭%のかおに、なにかついているでちか？」
+			PRINTFORML 
+			PRINTFORMW 体型に見合った大きめな頭と、大きめの目と口以外目立つものは何もない。
+			PRINTFORMW そのような事を返すと、%CALLNAME:ARG%はにひひ、と形容できそうな笑みを浮かべた。
+			PRINTFORML 
+			PRINTFORML 「%CSTR:이인칭%ったらおせじがうまいでちねぇ。
+			PRINTFORMW 　%CSTR:일인칭%をほめても、なにもでないでちよ」
+			PRINTFORML 
+			PRINTFORML 一応は主人であるところの＠にこのようなジョークを飛ばし
+			PRINTFORMW 更には笑って見せる。並の者には出来ないことだ。
+			PRINTFORML 
+			PRINTFORMW %CALLNAME:ARG%は、知らない場所で、不安を覚えたりはしないのだろうか。
+			PRINTFORML 
+			PRINTFORML 「んー、そうでちねぇ……
+			PRINTFORMW 　たとえばのはなしでちが、%CSTR:일인칭%はうられてしまうんでちか？」
+			PRINTFORML 
+			;契約済み
+			IF 함락(ARG) > 2
+				PRINTFORMW 指にはめられた指輪をひらひらさせながら、逆に問い返してくる%CALLNAME:ARG%。
+				PRINTFORML 
+				PRINTFORMW 分かっていて訊き返しているようだ。
+				PRINTFORML 
+				PRINTFORMW 否定を返すと、またしてもにしにし笑っている。
+			ELSE
+				PRINTFORMW なくはない。
+				PRINTFORML 
+				PRINTFORMW 「でも、いまはこうしておいてくれてるでちよ？」
+			ENDIF
+			PRINTFORML 
+			PRINTFORML 「%CSTR:이인칭%は、べつにそこまでわるいやつではないみたいでちからねぇ。
+			PRINTFORMW 　こうみえて、%CSTR:일인칭%はひとをみるめは、しっかりしているんでち！」
+			PRINTFORML 
+			PRINTFORMW 根拠が見えないが、自信満々に胸を張る%CALLNAME:ARG%。
+			PRINTFORMW 悪魔調教師業であるところの＠に言うには、少し無防備というか。
+			PRINTFORML 
+			;信頼系統＝調教してない
+			IF TALENT:ARG:신뢰 || TALENT:ARG:동료 
+				PRINTFORMW 「ほら、そうはいっても、%CSTR:일인칭%にはさわってないでちね？」
+				PRINTFORML 
+				PRINTFORMW ……どうもそのあたりから、信用を置いているようだ。
+				PRINTFORML 
+				PRINTFORMW 「べつに、%CSTR:이인칭%がそういうしゅみがあるなら、こたえてもいいでちが……」
+				PRINTFORML 
+				PRINTFORMW できれば、やさしくしてちょ……？　と上目遣いで見つめてくる。
+			;こっちは調教して恋慕・親愛にした。
+			ELSE
+				PRINTFORMW 「まぁ……ちょっとえっちなのがたまにきずでちが……」
+				PRINTFORML 
+				PRINTFORML そう言いながら、もじもじとしつつ手を絡ませてくる。
+				PRINTFORMW 調教をちょっとえっち、で済ませる奴も珍しい。
+				PRINTFORML 
+				PRINTFORMW 「しょうがないでち、きもちいいものはきもちいいんでち……」
+			ENDIF
+			PRINTFORML 
+			PRINTFORMW と、多少問答していたが……
+			PRINTFORML 
+			PRINTFORMW 「%CSTR:이인칭%だからこそ、はらをわっていうでちが」
+			PRINTFORML 
+			PRINTFORML 茶化した後で、本音を語りにきたようだ。
+			PRINTFORMW そのまま黙っていると……
+			PRINTFORML 
+			PRINTFORML 「ヒースのことはもちろんだいじでち。
+			PRINTFORMW 　とはいえ、なにもわからぬばしょに、ひとりほっぽりだされたら、%CSTR:일인칭%でもどうにもなりまちぇん。
+			PRINTFORMW 　そういういみでは、かくまってくれる%CSTR:이인칭%は、じっさいいのちのおんじんなんでちよ」
+			PRINTFORML 
+			PRINTFORML まぁ、%CSTR:일인칭%はびしょうじょですから、%CSTR:이인칭%がそばにおきたがるのもとうぜんでちね！
+			PRINTFORMW などとふんぞり返る。美少女かどうかは、一旦置いておくとして。
+			PRINTFORML 
+			PRINTFORML 「しょうじきなところ、%CSTR:일인칭%がこのあとどうなるかなんて、
+			PRINTFORMW 　%CSTR:이인칭%のむねさんずんでちから、ふかいことかんがえてもしかたないってだけでち」
+			PRINTFORML 
+			PRINTFORML ……寿命の差もあるだろうが、
+			PRINTFORMW 楽観的というべきか、肝が座っているというべきか。
+			PRINTFORML 
+			PRINTFORMW 「ところで、%CSTR:일인칭%からもききたいでちが」
+			PRINTFORML 
+			PRINTFORMW 思案していると、くりくりとした目が覗き込んできた。
+			PRINTFORML 
+			PRINTFORMW 「%CSTR:일인칭%は、いつクラスチェンジできるでちか？」
+			PRINTFORML 
+			PRINTFORMW クラスチェンジ。……転職？
+			PRINTFORML 
+			PRINTFORML 「おじいちゃんがいってたでち。　けいけんとマナストーン？　のちからで
+			PRINTFORMW 　つよくなれるそしつが、そなわっているんじゃ、って。
+			PRINTFORML 　もっとつよくなれれば、%CSTR:일인칭%はみをまもれるし、
+			PRINTFORMW 　%CSTR:이인칭%はてぜいがばんじゃくになって、ういんとういんでち！」
+			PRINTFORML 
+				IF BASE:ARG:LV >= 99
+					PRINTFORMW ……正直、これ以上強くなる必要はないのではないか？
+					PRINTFORMW などと思っていると、『あまい！　はちみつドリンクよりあまいでちよ！』と説教を食らった。
+					PRINTFORMW 強くなる、その理由・目的を見失っていないだろうか。
+				ELSEIF BASE:ARG:LV >= 70
+					PRINTFORML 現在の%CALLNAME:ARG%は並の悪魔程度なら鼻歌交じりにミンチに出来るが、
+					PRINTFORMW ……向上心は尽きるところを知らぬようだ。
+				ELSEIF BASE:ARG:LV >= 55
+					PRINTFORML 上位の悪魔とも渡り合えるようにはなってきている%CALLNAME:ARG%だが、
+					PRINTFORMW さりとて、更なる戦力増強がありうるのであれば、吝かではないところだ。
+				ELSE
+					PRINTFORMW なるほど、%CALLNAME:ARG%もある程度の経験は積んで来ている。
+					PRINTFORML しかし、命を落とせばそれまでのこの世界において、
+					PRINTFORMW 力を得るチャンスがあるのであれば、それはつかんでおきたいところだ。
+				ENDIF
+			PRINTFORML 
+			PRINTFORMW とにかく、マナストーンとやらについて訊くことにした。
+			PRINTFORML 
+			PRINTFORML 「それが……%CSTR:일인칭%もおじいちゃんのはなしでしかしらないんでち……
+			PRINTFORMW 　しってるのは、おおむかしの……しんじゅー？　がふうじられてて、すごいパワーってことぐらいでち」
+			PRINTFORML 
+			PRINTFORMW しんじゅー。神獣か。
+			PRINTFORMW 悪魔や神などが封じられている石であれば、マグネタイトの力に近しいものである可能性は高い。
+			PRINTFORML 
+			PRINTFORMW すなわち、マグネタイトと戦闘経験。これらがあれば、似たようなことは起こせるということだ……
+			PRINTFORML 
+				IF TALENT:ARG:처녀
+					PRINTFORML 「むー、むずかしいはなしはやめてほしいでち。
+					PRINTFORMW 　%CSTR:일인칭%はまだきむすめなんでちよ！？」
+					PRINTFORML 
+					PRINTFORMW ……生娘じゃなくしてやってもいいが。
+					PRINTFORML 
+					SIF ABL:ARG:Ａ감각 != 0
+						PRINTFORMW 「……おしりいじめと、どっちがマシなんでちかね」
+					PRINTFORML 
+					PRINTFORMW なんにせよ、セーフハウスに帰ったら、検証しなければならない。
+					PRINTFORMW ……帰路につくために繋いだ%CALLNAME:ARG%の手は、緊張で湿っていた。
+				ELSE
+					PRINTFORMW と、ここまで検討していると、%CALLNAME:ARG%はゆでダコにクラスチェンジしていた。
+					PRINTFORML 
+					PRINTFORMW 「……おせっくす、するんでちか……？」
+					PRINTFORML 
+					PRINTFORML 急にしおらしくなったとおもったら、直球のセリフを吐いてきた。
+					PRINTFORMW ……したくないのか？
+					PRINTFORML 
+					PRINTFORMW 「いたくしたら、かむでち……」
+					PRINTFORML 
+					PRINTFORML ＠の服を、じっとりと手汗のにじむ掌で握りしめながら、
+					PRINTFORMW 首まで真っ赤になった%CALLNAME:ARG%は、そのようなことをのたまった。
+					PRINTFORML 
+					PRINTFORMW 帽子の上から頭をクシャクシャになるまで撫で回しながら、%CALLNAME:ARG%と帰路についた。
+				ENDIF
+			RETURN 1
+		;どう陥落させたか２
+		ELSEIF  TALENT:ARG:복종 || TALENT:ARG:예속 || TALENT:ARG:음란 || TALENT:ARG:창부
+			PRINTFORML 
+			PRINTFORMW %CALLNAME:ARG%の部屋に入ると、半開きの力のない目でベッドにぐったりしていた。
+			SIF TALENT:ARG:음란 || TALENT:ARG:창부
+				PRINTFORMW 先日、さんざん足腰立たないまでトバしてやったから無理もないが。
+			PRINTFORML 
+			PRINTFORML 異なる場所からやってきただけあり、戦い方の癖が強く、
+			PRINTFORMW 時折妙なことを初めて混乱を起こすことがあった%CALLNAME:ARG%は、ようやく命令通りに動くようになった。
+			PRINTFORML 奔放さとも言えるそれは、チーム単位で動く場合、邪魔なだけであり、
+			PRINTFORMW 徹底的に『矯正』されることとなった。
+			PRINTFORML 
+			PRINTFORML ……折り終えた以上特に考える必要もないことであったが、
+			PRINTFORMW 戦い方の『癖』は何処から来たものなのであろうか。ふとした疑問が脳裏をよぎった。
+			PRINTFORML 
+			PRINTFORMW %CALLNAME:ARG%はかつて異世界の者で、奴隷商に捕まっていたのをラグが買い取りこちらに来て、紆余曲折起こしたらしい。
+			PRINTFORML 
+			PRINTFORMW 異世界で、あの戦い方を醸成した世界の法則とはなんなのか。
+			PRINTFORML 
+			PRINTFORML ぐったりしていた%CALLNAME:ARG%を起こし、座らせて目を合わせ、
+			PRINTFORMW どういう戦い方をしてきたのか、根掘り葉掘り聞き出すことにした。
+			PRINTFORML 
+			PRINTFORMW 結果、興味深いことがわかった。
+			PRINTFORML 精霊……こちらでは悪魔の一種だが、向こうでは「マナの力」を司る８種類の霊、なるものがいて
+			PRINTFORMW それらから力を借りて戦っていたのだという。
+			PRINTFORML 
+			PRINTFORMW 悪魔の力を使いこなす、異能者や達人に近い戦闘スタイル……にしては独特だったが。
+			PRINTFORML 
+			PRINTFORMW であれば、マグネタイトと戦闘経験さえあれば、精霊を使わずとも単独でそういった力を行使できるはずだ。
+			PRINTFORML 
+			PRINTFORMW 反発しない手駒の戦力は高く、多いに越したことはない。
+			PRINTFORML 
+			PRINTFORMW 実験を始めようとしたが、%CALLNAME:ARG%は半開きの目でこちらを見るだけであった。
+			IF TALENT:ARG:음란 || TALENT:ARG:창부
+				PRINTFORMW 【うまく実験が成功したら、また気絶するまで気持ちよくしてやる】
+				PRINTFORML 
+				PRINTFORMW そういうと、一瞬顔を歪めた%CALLNAME:ARG%が、すがりつくように＠に抱きついた。
+			ELSE
+				PRINTFORMW 【立て。ついてこい】
+				PRINTFORML 
+				PRINTFORMW そういうと、%CALLNAME:ARG%はガラス玉のように生気の失せた目で、頷いた。
+			ENDIF
+			RETURN 1
+		ELSE
+			PRINTL 陥落内容の参照で想定内のものがヒットしなかったようです。バグとして報告してください。
+		ENDIF
+	ENDIF
+CASE 1
+	;解放条件
+	IF ARG:1 == 1
+		;前イベント既読後
+		SIF GETBIT(CFLAG:ARG:개별이벤트읽음,0)
+			RETURN 1
+	ELSEIF ARG:1 == 2
+	;タイトル
+		IF GETBIT(CFLAG:ARG:개별이벤트개방,ARG:2)
+			;タイトル
+			RESULTS = 『クラスチェンジ』
+		ELSE
+			;未開放時のタイトル（解放条件を入れておく）
+			RESULTS = ※第１イベントを閲覧し、一度ショップへ戻る必要がある。
+		ENDIF
+	;イベント
+	ELSEIF ARG:1 == 3
+		PRINTFORMW 『クラスチェンジ』の準備が整った。
+		SETCOLOR 0x33ffcc
+			PRINTFORML 
+			PRINTFORML 「Lv30以上」で第２クラスが、
+			PRINTFORML 「Lv55以上＋第２クラス覚醒」で第３クラスが、
+			PRINTFORML 「Lv70以上＋第３クラス覚醒」で第４クラスが覚醒可能になります。
+			PRINTFORML 
+			PRINTFORML ＊覚醒と同時にクラス固有スキルを習得し、
+			PRINTFORML 　クラス３は２との組み合わせによって固有スキルの性能が変化します。
+		RESETCOLOR
+		PRINTFORML 
+		PRINTFORMW どうしようか。
+		PRINTFORML 
+		$INPUT_LOOP_EVENT_K5212CC
+
+		IF CFLAG:ARG:900 == 0
+			SETCOLOR 0x33ffcc
+				PRINTFORML [0] 『クラス２の覚醒』
+			RESETCOLOR
+		ELSEIF CFLAG:ARG:900 == 1
+			PRINTFORM [0] 『クラス２の変更』（
+			SETCOLOR 0x33ffcc
+				PRINTFORM プリーステス
+			RESETCOLOR
+			PRINTFORML ／エンチャントレス）
+		ELSEIF CFLAG:ARG:900 == 2
+			PRINTFORM [0] 『クラス２の変更』（プリーステス／
+			SETCOLOR 0x33ffcc
+				PRINTFORM エンチャントレス
+			RESETCOLOR
+			PRINTFORML ）
+		ENDIF
+		IF CFLAG:ARG:900 == 0 && BASE:ARG:LV < 55 || CFLAG:ARG:900 == 0
+			SETCOLOR 0x999999
+				PRINTFORML [1] （クラス３覚醒にはLv55以上＋クラス２の覚醒が必要）
+			RESETCOLOR
+		ELSEIF CFLAG:ARG:901 == 0 && BASE:ARG:LV >= 55
+			SETCOLOR 0x33ffcc
+				PRINTFORML [1] 『クラス３の覚醒』
+			RESETCOLOR
+		ELSEIF CFLAG:ARG:900 == 1 && CFLAG:ARG:901 == 1
+			PRINTFORM [1] 『クラス３の変更』（
+			SETCOLOR 0x33ffcc
+				PRINTFORM ビショップ
+			RESETCOLOR
+			PRINTFORML ／セージ）
+		ELSEIF CFLAG:ARG:900 == 1 && CFLAG:ARG:901 == 2
+			PRINTFORM [1] 『クラス３の変更』（ビショップ／
+			SETCOLOR 0x33ffcc
+				PRINTFORM セージ
+			RESETCOLOR
+			PRINTFORML ）
+		ELSEIF CFLAG:ARG:900 == 2 && CFLAG:ARG:901 == 1
+			PRINTFORM [1] 『クラス３の変更』（
+			SETCOLOR 0x33ffcc
+				PRINTFORM ネクロマンサー
+			RESETCOLOR
+			PRINTFORML ／イビルシャーマン）
+		ELSEIF CFLAG:ARG:900 == 2 && CFLAG:ARG:901 == 2
+			PRINTFORM [1] 『クラス３の変更』（ネクロマンサー／
+			SETCOLOR 0x33ffcc
+				PRINTFORM イビルシャーマン
+			RESETCOLOR
+			PRINTFORML ）
+		ENDIF
+		IF CFLAG:ARG:902 == 0 &&  BASE:ARG:LV < 70 || CFLAG:ARG:901 == 0
+			SETCOLOR 0x999999
+				PRINTFORML [2] （クラス４覚醒にはLv70以上＋クラス３の覚醒が必要）
+			RESETCOLOR
+		ELSEIF CFLAG:ARG:902 == 0 &&  BASE:ARG:LV >= 70
+			SETCOLOR 0x33ffcc
+				PRINTFORML [2] 『クラス４の覚醒』
+			RESETCOLOR
+		ELSEIF CFLAG:ARG:902 == 1
+			PRINTFORM [2] 『クラス４の変更』（
+			SETCOLOR 0x33ffcc
+				PRINTFORM ハイプリーステス
+			RESETCOLOR
+			PRINTFORML ／カオスメイカー）
+		ELSEIF CFLAG:ARG:902 == 2
+			PRINTFORM [2] 『クラス４の変更』（ハイプリーステス／
+			SETCOLOR 0x33ffcc
+				PRINTFORM カオスメイカー
+			RESETCOLOR
+			PRINTFORML ）
+		ENDIF
+			PRINTFORML [3] 終了する
+			;５５以下あるいはクラス２未覚醒だと２のみ
+			IF BASE:ARG:LV < 55 || CFLAG:ARG:900 == 0
+				CALL INPUTINT, 0 , 3
+			;７０以下あるいはクラス３未覚醒だと２，３まで
+			ELSEIF BASE:ARG:LV < 70 || CFLAG:ARG:901 == 0
+				CALL INPUTINT, 0 , 1 , 3
+			ELSE
+				CALL INPUTINT, 0 , 1 , 2 , 3
+			ENDIF
+			IF RESULT == 0
+				IF CFLAG:ARG:900 == 0
+					PRINTFORMW 『クラス２』を覚醒させます。
+					PRINTFORML 
+					PRINTFORML 光、闇の２種からクラスを選択出来、選択は個別イベントよりいつでも変更可能です。
+					PRINTFORML 
+					PRINTFORML [0] 光・プリーステス
+					PRINTFORML [1] 闇・エンチャントレス
+					CALL INPUTINT, 0 , 1
+					IF RESULT == 0
+						PRINTFORML 
+						PRINTFORML %CALLNAME:ARG%は、プリーステスに覚醒しました。
+						CFLAG:ARG:900 = 1
+					ELSEIF RESULT == 1
+						PRINTFORML 
+						PRINTFORML %CALLNAME:ARG%は、エンチャントレスに覚醒しました。
+						CFLAG:ARG:900 = 2
+					ENDIF
+					;クラス２スキルの定義付与。
+					CSTR:ARG:전용기1 = クラス２スキル（聖剣３）
+				ELSEIF CFLAG:ARG:900 == 1
+					CFLAG:ARG:900 = 2
+					CLEARLINE 5
+				ELSEIF CFLAG:ARG:900 == 2
+					CFLAG:ARG:900 = 1
+					CLEARLINE 5
+				ENDIF
+				;何れの分岐もこちらに戻る。同時にクラス２スキル削除時は再習得する為に分岐統合後のここへ置く。
+				CALL LEARN_PU_SKILL(ARG,"クラス２スキル（聖剣３）")
+			ELSEIF RESULT == 1
+				;光・３未覚醒
+				IF CFLAG:ARG:900 == 1 && CFLAG:ARG:901 == 0
+					PRINTFORMW 『クラス３』を覚醒させます。
+					PRINTFORML 
+					PRINTFORML 光を基準にした更に２分岐を選択出来、選択は個別イベントよりいつでも変更可能です。
+					PRINTFORML 
+					PRINTFORML [0] 光光・ビショップ
+					PRINTFORML [1] 光闇・セージ
+					CALL INPUTINT, 0 , 1
+					IF RESULT == 0
+						PRINTFORML 
+						PRINTFORML %CALLNAME:ARG%は、ビショップに覚醒しました。
+						CFLAG:ARG:901 = 1
+					ELSEIF RESULT == 1
+						PRINTFORML 
+						PRINTFORML %CALLNAME:ARG%は、セージに覚醒しました。
+						CFLAG:ARG:901 = 2
+					ENDIF
+					;クラス３スキルの定義。
+					CSTR:ARG:전용기2 = クラス３スキル（聖剣３）
+				;闇・３未覚醒
+				ELSEIF CFLAG:ARG:900 == 2 && CFLAG:ARG:901 == 0
+					PRINTFORMW 『クラス３』を覚醒させます。
+					PRINTFORML 
+					PRINTFORML 闇を基準にした更に２分岐を選択出来、選択は個別イベントよりいつでも変更可能です。
+					PRINTFORML 
+					PRINTFORML [0] 闇光・ネクロマンサー
+					PRINTFORML [1] 闇闇・イビルシャーマン
+					CALL INPUTINT, 0 , 1
+					IF RESULT == 0
+						PRINTFORML 
+						PRINTFORML %CALLNAME:ARG%は、ネクロマンサーに覚醒しました。
+						CFLAG:ARG:901 = 1
+					ELSEIF RESULT == 1
+						PRINTFORML 
+						PRINTFORML %CALLNAME:ARG%は、イビルシャーマンに覚醒しました。
+						CFLAG:ARG:901 = 2
+					ENDIF
+				;光光⇒光闇
+				ELSEIF CFLAG:ARG:900 == 1 && CFLAG:ARG:901 == 1
+					CFLAG:ARG:901 = 2
+					CLEARLINE 5
+				;光闇⇒光光
+				ELSEIF CFLAG:ARG:900 == 1 && CFLAG:ARG:901 == 2
+					CFLAG:ARG:901 = 1
+					CLEARLINE 5
+				;闇光⇒闇闇
+				ELSEIF CFLAG:ARG:900 == 2 && CFLAG:ARG:901 == 1
+					CFLAG:ARG:901 = 2
+					CLEARLINE 5
+				;闇闇⇒闇光
+				ELSEIF CFLAG:ARG:900 == 2 && CFLAG:ARG:901 == 2
+					CFLAG:ARG:901 = 1
+					CLEARLINE 5
+				ENDIF
+				CALL LEARN_PU_SKILL(ARG,"クラス３スキル（聖剣３）")
+			ELSEIF RESULT == 2
+				;クラス４分岐未定義時
+				IF CFLAG:ARG:902 == 0
+					PRINTFORMW 『クラス４』を覚醒させます。
+					PRINTFORML 
+					PRINTFORML クラス２、３とは独立した２分岐を選択出来、選択は個別イベントよりいつでも変更可能です。
+					PRINTFORML 
+					PRINTFORML [0] 光４・ハイプリーステス
+					PRINTFORML [1] 闇４・カオスメイカー
+					CALL INPUTINT, 0 , 1
+					IF RESULT == 0
+						PRINTFORML 
+						PRINTFORML %CALLNAME:ARG%は、ハイプリーステスに覚醒しました。
+						CFLAG:ARG:902 = 1
+					ELSEIF RESULT == 1
+						PRINTFORML 
+						PRINTFORML %CALLNAME:ARG%は、カオスメイカーに覚醒しました。
+						CFLAG:ARG:902 = 2
+					ENDIF
+					CSTR:ARG:전용기3 = クラス４スキル（聖剣３）
+				ELSEIF CFLAG:ARG:902 == 1
+					CFLAG:ARG:902 = 2
+					CLEARLINE 5
+				ELSEIF CFLAG:ARG:902 == 2
+					CFLAG:ARG:902 = 1
+					CLEARLINE 5
+				ENDIF
+				CALL LEARN_PU_SKILL(ARG,"クラス４スキル（聖剣３）")
+			ELSEIF RESULT == 3
+				PRINTFORMW 処理を終えた。
+				RETURN 0
+			ENDIF
+			GOTO INPUT_LOOP_EVENT_K5212CC
+		;好感度以外は後に上昇値が表示される
+		;CFLAG:ARG:(MASTER + 2100) += (好感度)
+		;TCVAR:ARG:획득의존도 += 
+		;TCVAR:ARG:획득충성도 += 
+		;CALL ADDS_EXP("○○経験", 1, ARG)
+	ENDIF
+ENDSELECT
+RETURN 0

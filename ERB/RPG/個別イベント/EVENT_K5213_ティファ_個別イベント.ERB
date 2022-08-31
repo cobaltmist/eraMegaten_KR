@@ -1,0 +1,226 @@
+﻿;-------------------------------------------------
+;ＦＦ７　ティファ個別イベント
+;-------------------------------------------------
+@INDIVIDUAL_EVENT_K5213, ARG, ARG:1 = 0, ARG:2 = -1
+;ARG:0　キャラ番号
+;ARG:1　関数種類　1,開放条件　2,タイトル　3,イベント
+;ARG:2　イベント番号（0～63まで）
+
+;最初にデビオクで売られていた戦闘素質のない方のアップデート処理。
+;条件は異能者の有無。
+IF TALENT:ARG:이능자 == 0
+	PRINTFORML 異能者素質のない、初期型の状態の『%CALLNAME:ARG%』のアップデート処理を行います。
+	PRINTFORML 
+	PRINTFORML ＞アップデートで変更される内容
+	PRINTFORML 　調教後天素質・陥落・契約・陥落履歴以外の全素質（戦闘素質を含む）
+	PRINTFORML 　CSTR：悪魔解説
+	PRINTFORML 　習得スキル（人間の異能者用戦闘素質に合わせた習得ラインナップ）
+	PRINTFORML 　種族（人間にリセット）
+	PRINTFORML 　戦闘参加不能状態である場合、調教するまで戦闘参加可能化
+	PRINTFORML 
+	PRINTFORML ＞上書きされない内容
+	PRINTFORML 　ABL・EXP（調教ステータス・経験・体力等）
+
+		SIF CFLAG:(ARG):전투참가불가능 == 1
+			CFLAG:(ARG):전투참가불가능 = -1
+		
+		;種族(ABL80)の再読み込み
+		ABL:ARG:종족 = CSVABL(NO:ARG,GETNUM(ABL,"종족"),0)
+
+		;素質をCSVから読み込んだステータスで上書き。
+		;ただし、陥落素質3-8と契約素質170-173、信頼系素質180-182、陥落履歴270-273は対象外！
+		FOR LOCAL,0,343
+			SIF LOCAL >= 3 && LOCAL <= 8
+				CONTINUE
+			SIF LOCAL >= 74 && LOCAL <= 77
+				CONTINUE
+			SIF LOCAL >= 170 && LOCAL <= 173
+				CONTINUE
+			SIF LOCAL >= 180 && LOCAL <= 182
+				CONTINUE
+			SIF LOCAL >= 270 && LOCAL <= 273
+				CONTINUE
+			TALENT:ARG:(LOCAL) = CSVTALENT(NO:ARG,LOCAL,0)
+		NEXT
+
+		;悪魔解説のCSVからの読み込みで上書き。
+		FOR LOCAL, 1, 21
+			CSTR:ARG:@"해설{LOCAL}" '= CSVCSTR(NO:ARG, GETNUM(CSTR, @"해설{LOCAL}"))
+		NEXT
+		
+		;習得予定スキルをCSVから読み直し。
+		FOR LOCAL,1,21
+			ABL:ARG:("습득스킬" + TOSTR(LOCAL)) = CSVABL(NO:ARG,(GETNUM(ABL,"습득스킬" + TOSTR(LOCAL))),0)
+			ABL:ARG:("습득LV" + TOSTR(LOCAL)) = CSVABL(NO:ARG,(GETNUM(ABL,"습득LV" + TOSTR(LOCAL))),0)
+			;ABL:LOCAL:("初期変身悪魔習得スキル" + TOSTR(LOCAL:1)) = CSVABL(NO:LOCAL,(GETNUM(ABL,"初期変身悪魔習得スキル" + TOSTR(LOCAL:1))),0)
+			;ABL:LOCAL:("初期変身悪魔習得LV" + TOSTR(LOCAL:1)) = CSVABL(NO:LOCAL,(GETNUM(ABL,"初期変身悪魔習得LV" + TOSTR(LOCAL:1))),0)
+		NEXT
+	PRINTFORML 
+	PRINTFORMW 処理を完了しました。詳細は能力確認より確認してください。
+ENDIF
+
+SELECTCASE ARG:2
+CASE 0
+	;解放条件
+	;陥落済みであり、Lv30以上
+	IF ARG:1 == 1
+		SIF 함락(ARG) == 0
+			RETURN 0
+		SIF BASE:ARG:LV < 30
+			RETURN 0
+		RETURN 1
+	ELSEIF ARG:1 == 2
+	;タイトル
+		IF GETBIT(CFLAG:ARG:개별이벤트개방,ARG:2)
+			;タイトル
+			RESULTS = 『ティファ・ロックハート』
+		ELSE
+			;未開放時のタイトル（解放条件を入れておく）
+			RESULTS = ※%CALLNAME:ARG%の陥落と、戦闘Lv30以上が必要。
+		ENDIF
+	;イベント
+	ELSEIF ARG:1 == 3
+		PRINTFORML 
+		PRINTFORMW ＞検査室
+		PRINTFORML 
+		PRINTFORMW 検査台上の%CALLNAME:ARG%は、目を閉じた状態で横たわっている。
+		PRINTFORML 
+		PRINTFORML 引き取られた状態と比べると、多少は活気があるのだが、
+		PRINTFORMW それを契機に、本格的に体を検めることにしたのだ。
+		PRINTFORML 
+		PRINTFORML 体の組成、マグネタイト貯蔵能力、戦闘能力……
+		PRINTFORMW それらを調べているうちに、変わったデータがはじき出された。
+		PRINTFORML 
+		PRINTFORMW ……純粋な人間と言うよりは、合体・吸収能力をなくした造魔に近い結果が出たのだ。
+		PRINTFORML 
+		PRINTFORML 純度１００％の異世界の者、とするにはこちらの世界のロジックに近い技能もあるし、
+		PRINTFORMW こちらで１から作り出された、とするには未知の能力も混じっている。
+		PRINTFORML 
+		PRINTFORML 「……なんでだろう。覚えている事はいっぱいあるのに
+		PRINTFORMW 　どうしてここにいるのか、全然わからないんだ」
+		PRINTFORML 
+		PRINTFORML このとおり、当人も全く覚えておらず、
+		PRINTFORMW 気がついたら奴隷商品として店に並んでいたらしい。
+		PRINTFORML 
+		PRINTFORMW ――ラグショップに問い合わせてみたところ
+		PRINTFORML 
+		PRINTFORMW 『あ～？　あ～その子ねぇ、ワケありらしいよ？
+		;健在な戦闘参加メンバー(2) > 健在でない戦闘参加メンバー(12) > 健在なCOMP内悪魔OR探索不参加人間(1) > 健在でない～(11) > 自宅サーバーに保存してある悪魔(0)
+		;デモナイズしたらマジで使いようがなくなるはずだが一応。
+		SIF FINDCHARA_B([[キャラ:치키（＃FE）]]) >= 0
+			PRINTFORML 　以前買ってった竜の娘と同じ感じでさ、
+		PRINTFORML 　あらゆる情報が集まる何かから引き出された、異界の情報をもとに、
+		PRINTFORMW 　どっかの誰かが心血注いで誕生させた『英雄』なんだとさ』
+		PRINTFORML 
+		PRINTFORMW ……異界の情報から造りだされた、『英雄』ときた。
+		PRINTFORML 
+		PRINTFORML 『……まぁそのどっかの誰かもくたばっちゃったらしくて、
+		PRINTFORMW 　巡り廻って、最終的にアンタのとこに行き着いたみたいだねぇ』
+		PRINTFORML 
+		PRINTFORML ――ヨタ話か箔付けの一種だと思っていたが、
+		PRINTFORML 実際に%CALLNAME:ARG%が異なる世界とこちらの世界の法則が混ざりあった
+		PRINTFORMW 奇妙な存在であると証明された以上、認めざるをえないようだ。
+		PRINTFORML 
+		;ローカパーラ収容所クリア＝太陽が情報の集合体であることを知っている
+		SIF 던전플래그:13:1 > 2
+			PRINTFORMW 情報（コトバ）。……つまりは、あの太陽と交信した何者かが居たのだろう。
+		PRINTFORMW 産み出され、そして創造主を失い流されて今に至るというわけだ。
+		PRINTFORML 
+		PRINTFORML ……業魔殿の某主人の耳に入ったら
+		PRINTFORML 
+		PRINTFORMW 『ゆずってくれ！　たのむ！　100万マッカ！　いや言い値で買おう！！！』
+		PRINTFORML 
+		PRINTFORMW などとしつこく食いつかれるのは目に見えているだろう。
+		PRINTFORML 
+		PRINTFORMW 「……%CSTR:일인칭%は、また売られるの？」
+		PRINTFORML 
+		PRINTFORMW 状況を整理しながら思案していると、か細い声が＠を現実に呼び戻した。
+		PRINTFORMW ……目を向けると、検査室のガラス越しに目があった。
+		PRINTFORML 
+		;IF 함락(ARG) > 2
+		IF TALENT:ARG:신뢰 || TALENT:ARG:동료
+			PRINTFORMW 「一緒に肩を並べていられるの、嬉しいって思ってた……」
+			PRINTFORML 
+			PRINTFORML 自分に決定権がないことを理解しているが、
+			PRINTFORMW こうして語られた一言は、おそらく本音なのだろう。
+		ELSEIF TALENT:ARG:연모 || TALENT:ARG:친애
+			PRINTFORMW 「……やだ……な」
+			PRINTFORML 
+			PRINTFORMW 惚れ込ませた分、離れろと言われたとして、素直にきくとは限らない。
+			PRINTFORMW それでも、小声とは言え真っ向から異を唱えるのは初めてであった。
+			PRINTFORML 
+			PRINTFORMW %CALLNAME:ARG%の、考え込み、溜め込む癖を考えればこれは割と驚異的な進歩と言える。
+		ELSEIF TALENT:ARG:음란 || TALENT:ARG:창부
+			PRINTFORMW 「売られた先は、%CSTR:일인칭%といっぱいシてくれる所なの……？」
+			PRINTFORML 
+			PRINTFORML もっと、気持ちいい事、知りたい。と呟く%CALLNAME:ARG%の目に、色欲が見えた。
+			PRINTFORML アブノーマルなことも含め教えこんできた分、
+			PRINTFORMW 関心はそちらに有るようだった。
+		ELSEIF TALENT:ARG:복종 || TALENT:ARG:예속
+			PRINTFORMW 「ご主人がそれを望むなら、仕方ないけど……」
+			PRINTFORML 
+			PRINTFORMW ちょっと、嫌だな。と目線を外した%CALLNAME:ARG%の目は、憂の色を漏らしていた。
+			PRINTFORML これまで散々いじくり倒して命令には逆らえなくしたが、
+			PRINTFORMW それでもそう感じるぐらいには、その心は根深い、あるいは本音なのだろう。
+		ENDIF
+		PRINTFORML 
+		IF 함락(ARG) > 2
+			SIF TALENT:ARG:맹우
+				PRINTFORMW 別れることはない。盟約は永遠だ。
+			SIF TALENT:ARG:아내 || TALENT:ARG:남편
+				PRINTFORMW そのようなことはしない。指輪に誓う。
+			SIF TALENT:ARG:음마
+				PRINTFORMW 大丈夫だ、ここでいくらでも満足させてやる。
+			SIF TALENT:ARG:노리개
+				PRINTFORMW もちろん手放しはしない。逃さない。
+			PRINTFORML 
+			PRINTFORMW そのようなことを伝えると、%CALLNAME:ARG%はか弱いながらも、安心したような笑みを返してきた。
+		ENDIF
+		PRINTFORML 
+		PRINTFORMW ……手元の計測器から、新たな解析完了を伝える着信音が響いた。
+		PRINTFORMW 目を通してみると、%CALLNAME:ARG%の情報の中に、ある武器のデータが眠っていた事がわかった。
+		PRINTFORML 
+		PRINTFORMW ……武器コードは『プレミアムハート』。
+		PRINTFORML 
+		PRINTFORML %CALLNAME:ARG%の得意とする格闘術を補助する為の設計がなされ、
+		PRINTFORMW 打撃、投げ技、遠当て……様々な攻撃を無駄なく相手に叩き込めるようになっている。
+		PRINTFORML 
+		PRINTFORML 検査が完了した所で興味を示した%CALLNAME:ARG%と一緒に、
+		PRINTFORMW 早速、開発に取り掛かることにした。
+		PRINTFORML 
+		PRINTFORMW …………。
+		PRINTFORML 
+			;1 = 도검　2 =레이피어　　3 = 활　　　　　　4 = 검　  5 = 창　　　6 = 도끼、둔기
+			;7 = 채찍　8 =투척(投具)　9 = 지팡이、제구　10= 곤봉　11= 권투구
+			;専用剣の末尾XXは武器タイプらしいぞ！番号もその種類によって2378から2389まで振り分けられてるらしいぞ！
+		CALL PUEQ_ADD, ARG, "プレミアムハート", [[아이템:전용장비검11]], 0
+		SETCOLOR 0x33ffcc
+			PRINTFORML ＞%CALLNAME:ARG%専用武器『プレミアムハート』を入手しました。
+			PRINTFORML ＞装備中、自分の行動でのリミットゲージ上昇量が増加します。
+		RESETCOLOR
+		FORCEWAIT
+		RETURN 1
+	ENDIF
+	RETURN 1
+CASE 1
+	;解放条件
+	IF ARG:1 == 1
+		;現状オフ状態にする。
+		;SIF GETBIT(CFLAG:CAST:개별이벤트읽음,0)
+		;	RETURN 1
+	ELSEIF ARG:1 == 2
+	;タイトル
+		IF GETBIT(CFLAG:ARG:개별이벤트개방,ARG:2)
+			;タイトル
+			RESULTS = 
+		ELSE
+			;未開放時のタイトル（解放条件）
+			;RESULTS = 
+		ENDIF
+	;イベント
+	ELSEIF ARG:1 == 3
+		
+	ELSEIF ARG:1 == 3
+	ENDIF
+ENDSELECT
+RETURN 0
