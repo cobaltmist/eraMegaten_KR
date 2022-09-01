@@ -1,0 +1,189 @@
+﻿;======================================================
+;スキルのデータ
+;銃器変形
+;
+;複数のモードを切り替える銃器とかあると格好良いだろうなって事で作成。
+;eratenにおいていつか他の誰かが使うことも想定して二段変形は汎用化しておきました。
+;
+;by Collared(非戦闘レポとかミルクガンとか銃オバホとか触装デモニカとかイオ個別の人)
+;======================================================
+
+;스킬명
+@SKILL_NAME_3981,ARG
+RESULTS = 총기변형
+IF ARG > -1
+	IF EQUIP:ARG:총 == 2840
+		SIF SKILLGAGE_F_GET(ARG,3981) == 0
+			RESULTS = 銃器変形：火焔放射器
+		SIF SKILLGAGE_F_GET(ARG,3981) == 1
+			RESULTS = 銃器変形：パイルハンマー
+		SIF SKILLGAGE_F_GET(ARG,3981) == 2
+			RESULTS = 銃器変形：レーザーブレード
+	ELSE
+		SIF SKILLGAGE_F_GET(ARG,3981) == 0
+			RESULTS = 銃器変形：Ａモード
+		SIF SKILLGAGE_F_GET(ARG,3981) == 1
+			RESULTS = 銃器変形：Ｂモード
+	ENDIF
+ELSE
+	RESULTS = 銃器変形
+ENDIF
+
+;　1 EXTRA　2 MAGIC
+@SKILL_DECIDE_TYPE_3981, ARG
+RETURN 0
+;どちらでもない
+
+;　 효과타입　1 공격、2 회복、3 상태변화、4 특수、5 상태회복
+@SKILL_EFECT_3981
+RETURN 6
+
+;　 특수처리 여부 및 처리내용
+@SKILL_SPECIALEFECT_3981,ARG
+;ARG = 1인 경우는 처리 여부를 반환합니다
+SIF ARG == 1
+	RETURN 0
+;아래쪽에 특수처리를 기술합니다
+
+;계승타입
+@SKILL_SUCCESSION_TYPE_3981
+RETURN 0
+
+;속도보정
+@SKILL_SPEED_3981, ARG = -1
+RETURN 0
+
+;　구상의 표시와 그 타입
+@SKILL_MESSAGE_3981,ARG
+
+
+;전투시 이외에 사용 가능한가
+@SKILL_ACTIONABLE_FIELD_3981
+RETURN 0
+
+;스킬변화？용 랭크
+@SKILL_RANK_3981
+RETURN 0
+
+
+;템플릿용、추가효과 시리즈
+;추가효과 스테이터스
+@SKILL_ADDTIONAL_STATE_3981,ARG
+RETURN 0
+
+;추가효과 상성
+@SKILL_ADDTIONAL_TYPE_3981,ARG
+RETURN 0
+
+;추가효과 기본부여확률
+@SKILL_ADDTIONAL_BASE_RATE_3981,ARG
+RETURN 0
+
+;추가효과 부여확률상한
+@SKILL_ADDTIONAL_MAX_RATE_3981,ARG
+RETURN 0
+
+;====================================================
+;스킬 및 행동의 실행
+;====================================================
+
+;====================================================
+;실행내용 여기까지
+;====================================================
+
+;====================================================
+;追加コマンド(一番下)
+;====================================================
+@SKILL_SPECIAL_COMMAND_3981,ARG,LOCAL
+#LOCALSIZE 1
+SIF EQUIP:ARG:총 == 0 || CFLAG:ARG:악마변신
+	RETURN 0
+PRINTFORML [{LOCAL}] 銃器変形
+C:LOCAL = 13981
+LOCAL += 1
+RETURN LOCAL
+;====================================================
+;コマンド実行
+;====================================================
+@INPUT_COM_13981,ARG
+#LOCALSIZE 2
+
+;現在のモードは文字色を変える。
+;装備している武器を確認し、専用の変形があるならその処理に、そうでないなら0と1、AモードとBモードの2段変形。
+IF EQUIP:ARG:총 == 2840
+	PRINTL 銃器を変形させますか？
+	SIF SKILLGAGE_F_GET(ARG,3981) == 0
+		SETCOLOR 0x33ffcc
+	PRINTL [0]火焔放射器
+	RESETCOLOR
+	SIF SKILLGAGE_F_GET(ARG,3981) == 1
+		SETCOLOR 0x33ffcc
+	PRINTL [1]パイルハンマー
+	RESETCOLOR
+	SIF SKILLGAGE_F_GET(ARG,3981) == 2
+		SETCOLOR 0x33ffcc
+	PRINTL [2]レーザーブレード
+	RESETCOLOR
+	PRINTL [99]やめる
+	CALL INPUTINT, 0 , 1 , 2 , 99
+	IF RESULT == 0
+		CALL SKILLGAGE_F_SET,ARG,3981,0
+	ELSEIF RESULT == 1
+		CALL SKILLGAGE_F_SET,ARG,3981,1
+	ELSEIF RESULT == 2
+		CALL SKILLGAGE_F_SET,ARG,3981,2
+	ELSE
+		RETURN -1
+	ENDIF
+ELSE
+	IF SKILLGAGE_F_GET(ARG,3981) == 0
+		CALL SKILLGAGE_F_SET,ARG,3981,1
+	ELSE
+		CALL SKILLGAGE_F_SET,ARG,3981,0
+	ENDIF
+ENDIF
+
+CFLAG:ARG:입력행동 = 3981
+SETCOLOR 0x33ffcc
+PRINTFORML ┏>CHARA━━━━━━━━━━┓　┏>ACT━━━━━━━━━━━━━━━━━━┓
+PRINTFORM ┃[{CPOS(ARG),2}] %CALLNAME:ARG,21,LEFT%┃　┃
+CALLFORM SKILL_NAME_3981,ARG
+PRINTFORML %RESULTS,40,LEFT%┃
+PRINTFORMW ┗━━━━━━━━━━━━━┛　┗━━━━━━━━━━━━━━━━━━━━┛
+RESETCOLOR
+SWAP TARGET,ARG
+CALL 구상호출 , "BATTLE_MESSAGE" , TARGET , TARGET
+SWAP TARGET,ARG
+CFLAG:ARG:입력행동 = -1
+CFLAG:ARG:방어플래그 = 1
+CFLAG:ARG:ＲＥＰＥＡＴ행동 = -1
+CALL SYNC_STATUS,ARG
+
+RETURN -1
+
+;　 설명문 표시
+@SKILL_EXPLAIN_3981,ARG
+PRINTL コマンドで使用でき、装備している銃器のモードを変更する。
+IF ARG > -1
+	IF EQUIP:ARG:총 == 2840
+		PRINTL この銃器の場合、火焔放射器、パイルハンマー、レーザーブレードの三種類を切り替える。
+	ELSE
+		PRINTL この銃器の場合、二つのモードを切り替える。
+	ENDIF
+ENDIF
+
+;계승에 필요한 부위
+@계승부위_3981,ARG
+RETURN 1
+;とくにない
+
+@SKILL_ACTIONABLE_BATTLE_3981
+RETURN 0
+
+;사용조건
+@SKILL_SPECIAL_ACTIONABLE_3981,ARG
+SIF EQUIP:ARG:총 == 0 || CFLAG:ARG:악마변신
+	RETURN 0
+RETURN 1
+;とくにない
+

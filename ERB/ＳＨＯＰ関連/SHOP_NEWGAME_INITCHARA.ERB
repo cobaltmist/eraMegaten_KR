@@ -1,13 +1,14 @@
 ﻿;=================================================================
-;指定キャラの스테이터스を主に引き継ぎ用に초기化する
-;;引き継いだキャラの레벨を인간なら5、악마なら1にして能力をＣＳＶから読み込んでから레벨に合わせて増減、습득스킬をＣＳＶから再読み込み。인계플래그に応じて素質や能力변경
+;指定キャラのステータスを主に引き継ぎ用に初期化する
+;;引き継いだキャラのレベルを人間なら5、悪魔なら1にして能力をＣＳＶから読み込んでからレベルに合わせて増減、習得スキルをＣＳＶから再読み込み。引継ぎフラグに応じて素質や能力変更
 ;ARG:0 キャラの登録番号
-;RESULT 真:성공 偽:실패
+;RESULT 真:成功 偽:失敗
 ;=================================================================
-;2021/04/10	NEO		受胎アイテム取得状況をリセットできるよう変更
-;2021/04/26 軽木	「周回で喰奴を引き継いだ場合、無条件で習得状況が引き継がれる」ように
-;2021/09/ 5 JK好き	引き継いだキャラの体力回復・ストレス回復・気絶解除処理を追加
-;2022/01/ 3 JK好き	引き継いだキャラの専用技の覚えなおし処理を追加
+;2021/04/10	NEO			受胎アイテム取得状況をリセットできるよう変更
+;2021/04/26 軽木		「周回で喰奴を引き継いだ場合、無条件で習得状況が引き継がれる」ように
+;2021/09/ 5 JK好き		引き継いだキャラの体力回復・ストレス回復・気絶解除処理を追加
+;2022/01/ 3 JK好き		引き継いだキャラの専用技の覚えなおし処理を追加
+;2022/05/26 Collared	陥落合体の処理追加
 ;=================================================================
 @SHOP_NEWGAME_INITCHARA, ARG
 LOCAL = ARG
@@ -695,7 +696,7 @@ IF NO:LOCAL == 4998
 				ABL:LOCAL:초기변신악마습득LV6 = 33
 				ABL:LOCAL:초기변신악마습득스킬7 = [[스킬:소닉윙]]
 				ABL:LOCAL:초기변신악마습득LV7 = 37
-				ABL:LOCAL:초기변신악마습득스킬8 = [[스킬:암흑쌍비조]]
+				ABL:LOCAL:초기변신악마습득스킬8 = [[스킬:암파쌍비조]]
 				ABL:LOCAL:초기변신악마습득LV8 = 45
 				ABL:LOCAL:초기변신악마습득스킬9 = [[스킬:회오리]]
 				ABL:LOCAL:초기변신악마습득LV9 = 50
@@ -1337,8 +1338,15 @@ IF CFLAG:LOCAL:인계플래그 > 1
 ;		CFLAG:LOCAL:캐릭터고유번호 = FLAG:今までのキャラ数
 ;		FLAG:今までのキャラ数 += 1
 	IF CFLAG:LOCAL:인계플래그 > 2
-			;元男なら처녀に戻す
-		IF EXP:LOCAL:ＴＳ경험 % 2 == 1 && !IS_MALE(LOCAL)
+			;経験番号が設定されているならそちらを参照する。
+		IF CFLAG:(LOCAL):경험번호 > 0
+			IF EXP:LOCAL:ＴＳ경험 % 2 == 1 && !IS_MALE(LOCAL)
+				TALENT:LOCAL:처녀 = 1
+			ELSE
+				TALENT:LOCAL:처녀 = CSVTALENT((CFLAG:LOCAL:경험번호),0,0)
+			ENDIF
+			;元男なら処女に戻す
+		ELSEIF EXP:LOCAL:ＴＳ경험 % 2 == 1 && !IS_MALE(LOCAL)
 			TALENT:LOCAL:처녀 = 1
 		ELSE
 			TALENT:LOCAL:처녀 = CSVTALENT(NO:LOCAL,0,0)
@@ -1347,23 +1355,44 @@ IF CFLAG:LOCAL:인계플래그 > 1
 		CFLAG:LOCAL:자궁최대용량 = 0
 		CALL 자궁최대용량초기설정,LOCAL
 		
-		FOR LOCAL:1,0,85
-			EXP:LOCAL:(LOCAL:1) = CSVEXP(NO:LOCAL,LOCAL:1,0)
-			CFLAG:LOCAL:이상경험기록 = 0
-		NEXT
+		;経験番号が設定されているならそちらを参照する。
+		IF CFLAG:(LOCAL):경험번호 > 0
+			FOR LOCAL:1,0,85
+				EXP:LOCAL:(LOCAL:1) = CSVEXP((CFLAG:LOCAL:경험번호),LOCAL:1,0)
+				CFLAG:LOCAL:이상경험기록 = 0
+			NEXT
+		ELSE
+			FOR LOCAL:1,0,85
+				EXP:LOCAL:(LOCAL:1) = CSVEXP(NO:LOCAL,LOCAL:1,0)
+				CFLAG:LOCAL:이상경험기록 = 0
+			NEXT
+		ENDIF
 		CFLAG:LOCAL:피조교횟수 = 0
 		CFLAG:LOCAL:비디오매각수 = 0
 		CFLAG:LOCAL:비디오매각합계금액 = 0
 		IF CFLAG:LOCAL:인계플래그 == 4
-			FOR LOCAL:1,0,30
-				ABL:LOCAL:(LOCAL:1) = CSVABL(NO:LOCAL,LOCAL:1,0)
-			NEXT
-			FOR LOCAL:1,0,5
-				MARK:LOCAL:(LOCAL:1) = CSVMARK(NO:LOCAL,LOCAL:1,0)
-			NEXT
-			FOR LOCAL:1,0,101
-				JUEL:LOCAL:(LOCAL:1) = 0
-			NEXT
+			;経験番号が設定されているならそちらを参照する。
+			IF CFLAG:(LOCAL):경험번호 > 0
+				FOR LOCAL:1,0,30
+					ABL:LOCAL:(LOCAL:1) = CSVABL((CFLAG:LOCAL:경험번호),LOCAL:1,0)
+				NEXT
+				FOR LOCAL:1,0,5
+					MARK:LOCAL:(LOCAL:1) = CSVMARK((CFLAG:LOCAL:경험번호),LOCAL:1,0)
+				NEXT
+				FOR LOCAL:1,0,101
+					JUEL:LOCAL:(LOCAL:1) = 0
+				NEXT
+			ELSE
+				FOR LOCAL:1,0,30
+					ABL:LOCAL:(LOCAL:1) = CSVABL(NO:LOCAL,LOCAL:1,0)
+				NEXT
+				FOR LOCAL:1,0,5
+					MARK:LOCAL:(LOCAL:1) = CSVMARK(NO:LOCAL,LOCAL:1,0)
+				NEXT
+				FOR LOCAL:1,0,101
+					JUEL:LOCAL:(LOCAL:1) = 0
+				NEXT
+			ENDIF
 		ENDIF
 	ENDIF
 ENDIF

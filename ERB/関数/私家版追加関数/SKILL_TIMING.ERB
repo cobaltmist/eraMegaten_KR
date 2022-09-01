@@ -9,47 +9,42 @@
 ;
 ;	Edit	Date			Author					Reason
 ;	001		2022/03/20		しゃけ					新規作成
+;	002		2022/05/25		しゃけ					エラー修正、別スキル番号の同じ専用技は発動しないように変更、もう使わないであろうコメント部分削除
 ;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
 
 ;通常スキル用 専用技は別の呼び方で呼ぶので、専用技1 ~ 専用技12に関数を追加しないように注意
 
 ;習得済みスキルの中からスキルERBにある特定の関数を呼び出す奴
 @SEARCH_SKILL_FUNCTION,ARG,ARGS,ARG:1 = 0
-#LOCALSIZE 2
-#LOCALSSIZE 1
+#LOCALSIZE 3
+#DIM SKILL_STOCK,41
 ;ARG	対象のキャラ
 ;ARGS	呼び出す関数名
 ;ARG:1	0なら装備スキルと通常スキルを、1なら装備スキルのみを、-1以下なら通常スキルのみ検索
 ;キャラが存在しない場合は終了
-SIF ARG < 0
+;あなたの番号が0なの普通に忘れてたので変更
+SIF ARG < 0 || ARG >= CHARANUM
 	RETURN
-LOCAL:1 = CHARA_SKILLCOUNT(ARG)
-FOR LOCAL,0,LOCAL:1
-	SIF ARG:1 > 0
+VARSET SKILL_STOCK
+LOCAL:2 = CHARA_SKILLCOUNT(ARG)
+FOR LOCAL,1,42
+	SIF (ARG:1 > 0 && LOCAL > 20) || (ARG:1 < 0 && LOCAL < 21)
+		CONTINUE
+	LOCAL = LOCAL == LOCAL:2 + 1 ? 21 # LOCAL
+	LOCAL:1 = ABL:ARG:@"\@ LOCAL > 20 ? 장비 # \@스킬{LOCAL > 20 ? LOCAL - 20 # LOCAL}"
+	SIF !LOCAL:1 && LOCAL > LOCAL:2	;装備スキルの終端まで行ったら抜ける
 		BREAK
-	;呼び出すスキル枠を用意。F_EQ_SKLが偽なら通常スキルを、真なら装備スキルを検索する
-	LOCALS = 스킬{LOCAL+1}
-	;CSTR専用技なら分岐する
-	IF INRANGE(ABL:ARG:LOCALS,[[스킬:전용기1]],[[스킬:전용기12]])
-		;CSTRに書かれてる文字列を参照する為に該当する専用技（１～１２）の名前を代入
-		CALLFORM SKILL_NAME_{ABL:ARG:LOCALS},-1
-		TRYCALLFORM SKILL_%ARGS%_%CSTR:ARG:RESULTS%,ARG
-	ELSE
-		TRYCALLFORM SKILL_%ARGS%_{ABL:ARG:LOCALS},ARG
+	SIF MATCH(SKILL_STOCK,LOCAL:1)
+		CONTINUE
+	SKILL_STOCK:LOCAL = LOCAL:1
+	RESULTS = 
+	IF INRANGE(LOCAL:1,[[스킬:전용기1]],[[스킬:전용기12]])
+		RESULTS = %CSTR:ARG:GETNUM(CSTR,@"전용기{LOCAL:1 - 3903}")%
+		SIF PU_SKILLNUM_GET(ARG,RESULTS) != LOCAL:1
+			CONTINUE
 	ENDIF
-NEXT
-FOR LOCAL,0,21
-	SIF ARG:1 < 0
-		BREAK
-	LOCALS = 장비스킬{LOCAL+1}
-	;CSTR専用技なら分岐する
-	IF INRANGE(ABL:ARG:LOCALS,[[스킬:전용기1]],[[스킬:전용기12]])
-		;CSTRに書かれてる文字列を参照する為に該当する専用技（１～１２）の名前を代入
-		CALLFORM SKILL_NAME_{ABL:ARG:LOCALS},-1
-		TRYCALLFORM SKILL_%ARGS%_%CSTR:ARG:RESULTS%,ARG
-	ELSE
-		TRYCALLFORM SKILL_%ARGS%_{ABL:ARG:LOCALS},ARG
-	ENDIF
+	RESULTS = \@ RESULTS == "" ? %TOSTR(LOCAL:1)% # %RESULTS% \@
+	TRYCALLFORM SKILL_%ARGS%_%RESULTS%,ARG
 NEXT
 
 ;複数のキャラでSEARCH_SKILL_FUNCTONする時に使う。戦闘中に参加しているキャラと調教助手キャラのみ対応
@@ -87,381 +82,21 @@ SIF !GROUPMATCH(ARGS,"BATTLE_START","BATTLE_END","TURNSTART","TURNEND","INITIALI
 ;PRINTFORMW キャラ検索上限値 {LCOUNT:1}
 ;PRINTW 戦闘開始時のスキル効果の確認をします
 CALL MULTI_SEARCH_SKILL_FUNCTION,0,ARGS,0,1,ARGS == "INITIALIZE" ? 7 # 17
-;FOR LCOUNT,1,LCOUNT:1 + 1
-;	;LCOUNTがLCOUNT:1以外ならL_USERに該当するポジションのキャラ番号を代入、LCOUNT:1ならば助手のキャラ番号を代入
-;	L_USER = LCOUNT != LCOUNT:1 ? POS(LCOUNT) # ASSI
-;	;PRINTFORMW L_USER {L_USER}
-;	;キャラが存在しない、助手検索中以外のタイミングで助手が選択された場合は次のループへ
-;	SIF L_USER < 0 || (LCOUNT != LCOUNT:1 && L_USER == ASSI)
-;		CONTINUE
-;	$SKILL_LOOP
-;	;キャラが所持できるスキル数を確保。装備スキルを検索するなら上限は21に設定
-;	LOCAL:1 = F_EQ_SKL == 0 ? CHARA_SKILLCOUNT(L_USER) # 21
-;	;PRINTFORMW \@ F_EQ_SKL == 0 ? 通常スキル検索中 # 装備スキル検索中\@ 上限値 {LOCAL:1}
-;	FOR LOCAL,0,LOCAL:1
-;		;呼び出す変数名を作る。F_EQ_SKLが偽なら通常スキルを、真なら装備スキルを検索する
-;		LOCALS = \@ F_EQ_SKL == 0 ? スキル{LOCAL+1} # 装備スキル{LOCAL+1}\@
-;		;PRINTFORMW 現在検索中変数名 %LOCALS%
-;		;CSTR専用技なら分岐する
-;		IF INRANGE(ABL:L_USER:LOCALS,[[スキル:専用技1]],[[スキル:専用技12]])
-;			;CSTRに書かれてる文字列を参照する為に該当する専用技（１～１２）の名前を代入
-;			CALLFORM SKILL_NAME_{ABL:L_USER:LOCALS},-1
-;			TRYCALLFORM SKILL_%ARGS%_%CSTR:L_USER:RESULTS%,L_USER
-;		ELSE
-;			TRYCALLFORM SKILL_%ARGS%_{ABL:L_USER:LOCALS},L_USER
-;		ENDIF
-;	NEXT
-;	F_EQ_SKL = F_EQ_SKL == 0 ? 1 # 0
-;	;PRINTFORMW F_EQ_SKLが{F_EQ_SKL}になりました
-;	SIF F_EQ_SKL == 1
-;		GOTO SKILL_LOOP
-;NEXT
 
 ;;戦闘開始時の処理。 発生タイミングはオートカジャや装備の戦闘開始時効果の後
 ;@SKILL_BATTLE_START
-;#LOCALSIZE 2
-;#LOCALSSIZE 1
-;#DIM LCOUNT
-;#DIM L_USER
-;;PRINTW 戦闘開始時のスキル効果の確認をします
-;FOR LCOUNT,1,18
-;	;LCOUNTが17以外ならL_USERに該当するポジションのキャラ番号を代入、17ならば助手のキャラ番号を代入
-;	L_USER = LCOUNT != 17 ? POS(LCOUNT) # ASSI
-;	;PRINTW L_USERを設定しました
-;	;キャラが存在しない、助手検索中以外のタイミングで助手が選択された場合は次のループへ
-;	SIF L_USER < 0 || (LCOUNT != 17 && L_USER == ASSI)
-;		CONTINUE
-;	;キャラが所持できるスキル数を確保
-;	LOCAL:1 = CHARA_SKILLCOUNT(L_USER)
-;	FOR LOCAL,0,LOCAL:1
-;		;呼び出す変数名を作る
-;		LOCALS = スキル{LOCAL+1}
-;		;CSTR専用技なら分岐する
-;		IF INRANGE(ABL:L_USER:LOCALS,[[スキル:専用技1]],[[スキル:専用技12]])
-;			;CSTRに書かれてる文字列を参照する為に該当する専用技（１～１２）の名前を代入
-;			CALLFORM SKILL_NAME_{ABL:L_USER:LOCALS},-1
-;			TRYCALLFORM SKILL_BATTLE_START_%CSTR:L_USER:RESULTS%,L_USER
-;		ELSE
-;			TRYCALLFORM SKILL_BATTLE_START_{ABL:L_USER:LOCALS},L_USER
-;		ENDIF
-;	NEXT
-;	FOR LOCAL,0,21
-;		LOCALS = 装備スキル{LOCAL+1}
-;		;CSTR専用技なら分岐する
-;		IF INRANGE(ABL:L_USER:LOCALS,[[スキル:専用技1]],[[スキル:専用技12]])
-;			;CSTRに書かれてる文字列を参照する為に該当する専用技（１～１２）の名前を代入
-;			CALLFORM SKILL_NAME_{ABL:L_USER:LOCALS},-1
-;			TRYCALLFORM SKILL_BATTLE_START_%CSTR:L_USER:RESULTS%,L_USER
-;		ELSE
-;			TRYCALLFORM SKILL_BATTLE_START_{ABL:L_USER:LOCALS},L_USER
-;		ENDIF
-;	NEXT
-;NEXT
-;;FOR LCOUNT,0,CHARANUM
-;;	;戦闘に参加していない味方（ＣＯＭＰ内の悪魔以外）は除外
-;;	SIF (CFLAG:LCOUNT:PTフラグ == 1 && ABL:LCOUNT:種族 == 0) || (CFLAG:LCOUNT:所属ＣＯＭＰ == -1 && CFLAG:LCOUNT:PTフラグ < 2)
-;;		CONTINUE
-;;	;キャラが所持できるスキル数を確保
-;;	LOCAL:1 = CHARA_SKILLCOUNT(LCOUNT)
-;;	FOR LOCAL,0,LOCAL:1
-;;		;呼び出す変数名を作る
-;;		LOCALS = スキル{LOCAL+1}
-;;		;CSTR専用技なら分岐する
-;;		IF INRANGE(ABL:LCOUNT:LOCALS,[[スキル:専用技1]],[[スキル:専用技12]])
-;;			;CSTRに書かれてる文字列を参照する為に該当する専用技（１～１２）の名前を代入
-;;			CALLFORM SKILL_NAME_{ABL:LCOUNT:LOCALS},-1
-;;			TRYCALLFORM SKILL_BATTLE_START_%CSTR:LCOUNT:RESULTS%,LCOUNT
-;;		ELSE
-;;			TRYCALLFORM SKILL_BATTLE_START_{ABL:LCOUNT:LOCALS},LCOUNT
-;;		ENDIF
-;;	NEXT
-;;	FOR LOCAL,0,21
-;;		LOCALS = 装備スキル{LOCAL+1}
-;;		;CSTR専用技なら分岐する
-;;		IF INRANGE(ABL:LCOUNT:LOCALS,[[スキル:専用技1]],[[スキル:専用技12]])
-;;			;CSTRに書かれてる文字列を参照する為に該当する専用技（１～１２）の名前を代入
-;;			CALLFORM SKILL_NAME_{ABL:LCOUNT:LOCALS},-1
-;;			TRYCALLFORM SKILL_BATTLE_START_%CSTR:LCOUNT:RESULTS%,LCOUNT
-;;		ELSE
-;;			TRYCALLFORM SKILL_BATTLE_START_{ABL:LCOUNT:LOCALS},LCOUNT
-;;		ENDIF
-;;	NEXT
-;;NEXT
-;
+
 ;;戦闘終了時の処理。 発生タイミングは敵キャラ削除処理と行動順表のリセットとORGY,HEAT,FLYの自動回復処理の後。
 ;@SKILL_BATTLE_END
-;#LOCALSIZE 2
-;#LOCALSSIZE 1
-;#DIM LCOUNT
-;#DIM L_USER
-;FOR LCOUNT,1,18
-;	;LCOUNTが17以外ならL_USERに該当するポジションのキャラ番号を代入、17ならば助手のキャラ番号を代入
-;	L_USER = LCOUNT != 17 ? POS(LCOUNT) # ASSI
-;	;キャラが存在しない、助手検索中以外のタイミングで助手が選択された場合は次のループへ
-;	SIF L_USER < 0 || (LCOUNT != 17 && L_USER == ASSI)
-;		CONTINUE
-;	;キャラが所持できるスキル数を確保
-;	LOCAL:1 = CHARA_SKILLCOUNT(L_USER)
-;	FOR LOCAL,0,LOCAL:1
-;		;呼び出す変数名を作る
-;		LOCALS = スキル{LOCAL+1}
-;		;CSTR専用技なら分岐する
-;		IF INRANGE(ABL:L_USER:LOCALS,[[スキル:専用技1]],[[スキル:専用技12]])
-;			;CSTRに書かれてる文字列を参照する為に該当する専用技（１～１２）の名前を代入
-;			CALLFORM SKILL_NAME_{ABL:L_USER:LOCALS},-1
-;			TRYCALLFORM SKILL_BATTLE_END_%CSTR:L_USER:RESULTS%,L_USER
-;		ELSE
-;			TRYCALLFORM SKILL_BATTLE_END_{ABL:L_USER:LOCALS},L_USER
-;		ENDIF
-;	NEXT
-;	FOR LOCAL,0,21
-;		LOCALS = 装備スキル{LOCAL+1}
-;		;CSTR専用技なら分岐する
-;		IF INRANGE(ABL:L_USER:LOCALS,[[スキル:専用技1]],[[スキル:専用技12]])
-;			;CSTRに書かれてる文字列を参照する為に該当する専用技（１～１２）の名前を代入
-;			CALLFORM SKILL_NAME_{ABL:L_USER:LOCALS},-1
-;			TRYCALLFORM SKILL_BATTLE_END_%CSTR:L_USER:RESULTS%,L_USER
-;		ELSE
-;			TRYCALLFORM SKILL_BATTLE_END_{ABL:L_USER:LOCALS},L_USER
-;		ENDIF
-;	NEXT
-;NEXT
-;
+
 ;;ターン開始時の処理。 発生タイミングはBATTLE_TURNSTARTの$ACTION_LOOPより前。「行動順一人目が存在しない場合ターンエンドする」より前に処理が行われる点に注意。
 ;@SKILL_TURNSTART
-;#LOCALSIZE 2
-;#LOCALSSIZE 1
-;#DIM LCOUNT
-;#DIM L_USER
-;FOR LCOUNT,1,18
-;	;LCOUNTが17以外ならL_USERに該当するポジションのキャラ番号を代入、17ならば助手のキャラ番号を代入
-;	L_USER = LCOUNT != 17 ? POS(LCOUNT) # ASSI
-;	;キャラが存在しない、助手検索中以外のタイミングで助手が選択された場合は次のループへ
-;	SIF L_USER < 0 || (LCOUNT != 17 && L_USER == ASSI)
-;		CONTINUE
-;	;キャラが所持できるスキル数を確保
-;	LOCAL:1 = CHARA_SKILLCOUNT(L_USER)
-;	FOR LOCAL,0,LOCAL:1
-;		;呼び出す変数名を作る
-;		LOCALS = スキル{LOCAL+1}
-;		;CSTR専用技なら分岐する
-;		IF INRANGE(ABL:L_USER:LOCALS,[[スキル:専用技1]],[[スキル:専用技12]])
-;			;CSTRに書かれてる文字列を参照する為に該当する専用技（１～１２）の名前を代入
-;			CALLFORM SKILL_NAME_{ABL:L_USER:LOCALS},-1
-;			TRYCALLFORM SKILL_TURNSTART_%CSTR:L_USER:RESULTS%,L_USER
-;		ELSE
-;			TRYCALLFORM SKILL_TURNSTART_{ABL:L_USER:LOCALS},L_USER
-;		ENDIF
-;	NEXT
-;	FOR LOCAL,0,21
-;		LOCALS = 装備スキル{LOCAL+1}
-;		;CSTR専用技なら分岐する
-;		IF INRANGE(ABL:L_USER:LOCALS,[[スキル:専用技1]],[[スキル:専用技12]])
-;			;CSTRに書かれてる文字列を参照する為に該当する専用技（１～１２）の名前を代入
-;			CALLFORM SKILL_NAME_{ABL:L_USER:LOCALS},-1
-;			TRYCALLFORM SKILL_TURNSTART_%CSTR:L_USER:RESULTS%,L_USER
-;		ELSE
-;			TRYCALLFORM SKILL_TURNSTART_{ABL:L_USER:LOCALS},L_USER
-;		ENDIF
-;	NEXT
-;NEXT
-;;;ARG	スキルの所有者
-;;;キャラが所持できるスキル数を確保
-;;LOCAL:1 = CHARA_SKILLCOUNT(ARG)
-;;
-;;FOR LOCAL,0,LOCAL:1
-;;	;呼び出す変数名を作る
-;;	LOCALS = スキル{LOCAL+1}
-;;	;CSTR専用技なら分岐する
-;;	IF INRANGE(ABL:ARG:LOCALS,[[スキル:専用技1]],[[スキル:専用技12]])
-;;		;CSTRに書かれてる文字列を参照する為に該当する専用技（１～１２）の名前を代入
-;;		CALLFORM SKILL_NAME_{ABL:ARG:LOCALS},-1
-;;		TRYCALLFORM SKILL_TURNSTART_%CSTR:ARG:RESULTS%,ARG
-;;	ELSE
-;;		TRYCALLFORM SKILL_TURNSTART_{ABL:ARG:LOCALS},ARG
-;;	ENDIF
-;;NEXT
-;;FOR LOCAL,0,21
-;;	LOCALS = 装備スキル{LOCAL+1}
-;;	;CSTR専用技なら分岐する
-;;	IF INRANGE(ABL:ARG:LOCALS,[[スキル:専用技1]],[[スキル:専用技12]])
-;;		;CSTRに書かれてる文字列を参照する為に該当する専用技（１～１２）の名前を代入
-;;		CALLFORM SKILL_NAME_{ABL:ARG:LOCALS},-1
-;;		TRYCALLFORM SKILL_TURNSTART_%CSTR:ARG:RESULTS%,ARG
-;;	ELSE
-;;		TRYCALLFORM SKILL_TURNSTART_{ABL:ARG:LOCALS},ARG
-;;	ENDIF
-;;NEXT
-;
+
 ;;ターン終了時の処理。 発生タイミングはガードキル効果ターン減少とDゲージ減少の直後
 ;@SKILL_TURNEND
-;#LOCALSIZE 2
-;#LOCALSSIZE 1
-;#DIM LCOUNT
-;#DIM L_USER
-;FOR LCOUNT,1,18
-;	;LCOUNTが17以外ならL_USERに該当するポジションのキャラ番号を代入、17ならば助手のキャラ番号を代入
-;	L_USER = LCOUNT != 17 ? POS(LCOUNT) # ASSI
-;	;キャラが存在しない、助手検索中以外のタイミングで助手が選択された場合は次のループへ
-;	SIF L_USER < 0 || (LCOUNT != 17 && L_USER == ASSI)
-;		CONTINUE
-;	;キャラが所持できるスキル数を確保
-;	LOCAL:1 = CHARA_SKILLCOUNT(L_USER)
-;	FOR LOCAL,0,LOCAL:1
-;		;呼び出す変数名を作る
-;		LOCALS = スキル{LOCAL+1}
-;		;CSTR専用技なら分岐する
-;		IF INRANGE(ABL:L_USER:LOCALS,[[スキル:専用技1]],[[スキル:専用技12]])
-;			;CSTRに書かれてる文字列を参照する為に該当する専用技（１～１２）の名前を代入
-;			CALLFORM SKILL_NAME_{ABL:L_USER:LOCALS},-1
-;			TRYCALLFORM SKILL_TURNEND_%CSTR:L_USER:RESULTS%,L_USER
-;		ELSE
-;			TRYCALLFORM SKILL_TURNEND_{ABL:L_USER:LOCALS},L_USER
-;		ENDIF
-;	NEXT
-;	FOR LOCAL,0,21
-;		LOCALS = 装備スキル{LOCAL+1}
-;		;CSTR専用技なら分岐する
-;		IF INRANGE(ABL:L_USER:LOCALS,[[スキル:専用技1]],[[スキル:専用技12]])
-;			;CSTRに書かれてる文字列を参照する為に該当する専用技（１～１２）の名前を代入
-;			CALLFORM SKILL_NAME_{ABL:L_USER:LOCALS},-1
-;			TRYCALLFORM SKILL_TURNEND_%CSTR:L_USER:RESULTS%,L_USER
-;		ELSE
-;			TRYCALLFORM SKILL_TURNEND_{ABL:L_USER:LOCALS},L_USER
-;		ENDIF
-;	NEXT
-;NEXT
-;;;ARG	スキルの所有者
-;;;キャラが所持できるスキル数を確保
-;;LOCAL:1 = CHARA_SKILLCOUNT(ARG)
-;;
-;;FOR LOCAL,0,LOCAL:1
-;;	;呼び出す変数名を作る
-;;	LOCALS = スキル{LOCAL+1}
-;;	;CSTR専用技なら分岐する
-;;	IF INRANGE(ABL:ARG:LOCALS,[[スキル:専用技1]],[[スキル:専用技12]])
-;;		;CSTRに書かれてる文字列を参照する為に該当する専用技（１～１２）の名前を代入
-;;		CALLFORM SKILL_NAME_{ABL:ARG:LOCALS},-1
-;;		TRYCALLFORM SKILL_TURNEND_%CSTR:ARG:RESULTS%,ARG
-;;	ELSE
-;;		TRYCALLFORM SKILL_TURNEND_{ABL:ARG:LOCALS},ARG
-;;	ENDIF
-;;NEXT
-;;FOR LOCAL,0,21
-;;	LOCALS = 装備スキル{LOCAL+1}
-;;	;CSTR専用技なら分岐する
-;;	IF INRANGE(ABL:ARG:LOCALS,[[スキル:専用技1]],[[スキル:専用技12]])
-;;		;CSTRに書かれてる文字列を参照する為に該当する専用技（１～１２）の名前を代入
-;;		CALLFORM SKILL_NAME_{ABL:ARG:LOCALS},-1
-;;		TRYCALLFORM SKILL_TURNEND_%CSTR:ARG:RESULTS%,ARG
-;;	ELSE
-;;		TRYCALLFORM SKILL_TURNEND_{ABL:ARG:LOCALS},ARG
-;;	ENDIF
-;;NEXT
-;
+
 ;;SHOP到着時に行う処理。 発生タイミングはFゲージリセットの直後。
 ;@SKILL_INITIALIZE
-;#LOCALSIZE 2
-;#LOCALSSIZE 1
-;#DIM LCOUNT
-;#DIM L_USER
-;FOR LCOUNT,1,8
-;	;LCOUNTが7以外ならL_USERに該当するポジションのキャラ番号を代入、7ならば助手のキャラ番号を代入
-;	L_USER = LCOUNT != 7 ? POS(LCOUNT) # ASSI
-;	;キャラが存在しない、助手検索中以外のタイミングで助手が選択された場合は次のループへ
-;	SIF L_USER < 0 || (LCOUNT != 7 && L_USER == ASSI)
-;		CONTINUE
-;	;キャラが所持できるスキル数を確保
-;	LOCAL:1 = CHARA_SKILLCOUNT(L_USER)
-;	FOR LOCAL,0,LOCAL:1
-;		;呼び出す変数名を作る
-;		LOCALS = スキル{LOCAL+1}
-;		;CSTR専用技なら分岐する
-;		IF INRANGE(ABL:L_USER:LOCALS,[[スキル:専用技1]],[[スキル:専用技12]])
-;			;CSTRに書かれてる文字列を参照する為に該当する専用技（１～１２）の名前を代入
-;			CALLFORM SKILL_NAME_{ABL:L_USER:LOCALS},-1
-;			TRYCALLFORM SKILL_INITIALIZE_%CSTR:L_USER:RESULTS%,L_USER
-;		ELSE
-;			TRYCALLFORM SKILL_INITIALIZE_{ABL:L_USER:LOCALS},L_USER
-;		ENDIF
-;	NEXT
-;	FOR LOCAL,0,21
-;		LOCALS = 装備スキル{LOCAL+1}
-;		;CSTR専用技なら分岐する
-;		IF INRANGE(ABL:L_USER:LOCALS,[[スキル:専用技1]],[[スキル:専用技12]])
-;			;CSTRに書かれてる文字列を参照する為に該当する専用技（１～１２）の名前を代入
-;			CALLFORM SKILL_NAME_{ABL:L_USER:LOCALS},-1
-;			TRYCALLFORM SKILL_INITIALIZE_%CSTR:L_USER:RESULTS%,L_USER
-;		ELSE
-;			TRYCALLFORM SKILL_INITIALIZE_{ABL:L_USER:LOCALS},L_USER
-;		ENDIF
-;	NEXT
-;NEXT
-;;FOR LCOUNT,0,CHARANUM
-;;	;キャラが所持できるスキル数を確保
-;;	LOCAL:1 = CHARA_SKILLCOUNT(ARG)
-;;	FOR LOCAL,0,LOCAL:1
-;;		;呼び出す変数名を作る
-;;		LOCALS = スキル{LOCAL+1}
-;;		;CSTR専用技なら分岐する
-;;		IF INRANGE(ABL:ARG:LOCALS,[[スキル:専用技1]],[[スキル:専用技12]])
-;;			;CSTRに書かれてる文字列を参照する為に該当する専用技（１～１２）の名前を代入
-;;			CALLFORM SKILL_NAME_{ABL:ARG:LOCALS},-1
-;;			TRYCALLFORM SKILL_INITIALIZE_%CSTR:ARG:RESULTS%,ARG
-;;		ELSE
-;;			TRYCALLFORM SKILL_INITIALIZE_{ABL:ARG:LOCALS},ARG
-;;		ENDIF
-;;	NEXT
-;;	FOR LOCAL,0,21
-;;		LOCALS = 装備スキル{LOCAL+1}
-;;		;CSTR専用技なら分岐する
-;;		IF INRANGE(ABL:ARG:LOCALS,[[スキル:専用技1]],[[スキル:専用技12]])
-;;			;CSTRに書かれてる文字列を参照する為に該当する専用技（１～１２）の名前を代入
-;;			CALLFORM SKILL_NAME_{ABL:ARG:LOCALS},-1
-;;			TRYCALLFORM SKILL_INITIALIZE_%CSTR:ARG:RESULTS%,ARG
-;;		ELSE
-;;			TRYCALLFORM SKILL_INITIALIZE_{ABL:ARG:LOCALS},ARG
-;;		ENDIF
-;;	NEXT
-;;NEXT
-
-
-;;----------------------------------------------------
-;;CSTR専用技用の処理 どっちが速いのかよくわからんので、一旦保留
-;
-;@PU_SKILL_TURNSTART,ARG
-;#LOCALSIZE 2
-;#LOCALSSIZE 1
-;;ARG	スキルの所有者
-;;キャラが所持できるスキル数を確保
-;LOCAL:1 = CHARA_SKILLCOUNT(ARG)
-;
-;FOR LOCAL,0,LOCAL:1
-;	;呼び出す変数名を作る
-;	LOCALS = スキル{LOCAL+1}
-;	TRYCALLFORM SKILL_TURNSTART_{ABL:ARG:LOCALS},ARG
-;NEXT
-;FOR LOCAL,0,21
-;	LOCALS = 装備スキル{LOCAL+1}
-;	TRYCALLFORM SKILL_TURNSTART_{ABL:ARG:LOCALS},ARG
-;NEXT
-;
-;@PU_SKILL_TURNEND,ARG
-;#LOCALSIZE 2
-;#LOCALSSIZE 1
-;;ARG	スキルの所有者
-;;キャラが所持できるスキル数を確保
-;LOCAL:1 = CHARA_SKILLCOUNT(ARG)
-;
-;FOR LOCAL,0,LOCAL:1
-;	;呼び出す変数名を作る
-;	LOCALS = スキル{LOCAL+1}
-;	TRYCALLFORM SKILL_TURNEND_{ABL:ARG:LOCALS},ARG
-;NEXT
-;FOR LOCAL,0,21
-;	LOCALS = 装備スキル{LOCAL+1}
-;	TRYCALLFORM SKILL_TURNEND_{ABL:ARG:LOCALS},ARG
-;NEXT
 
 ;--------------------------------------------------
 ;おまけ
@@ -478,12 +113,15 @@ CALL MULTI_SEARCH_SKILL_FUNCTION,0,ARGS,0,1,ARGS == "INITIALIZE" ? 7 # 17
 ;ARG:4	真で回復時に汎用メッセージを表示しない。 独自のメッセージを表示するなら真にしておくように
 ;L_MAG_TARG		ＭＡＧの消費先
 ;L_MAG_TARGS	ＭＡＧの消費先の文字列　MAG主人消費 or MAG自己消費 or （空白）
-PRINTFORMW %ARGS% 자동회복의 처리 체크를 실행합니다
+;PRINTFORMW %ARGS% 자동회복의 처리 체크를 실행합니다
 ;該当する自動回復の優先度を確認
 CALL VAR_REGENABLE_CHECK,ARG,ARG:1,TOHALF(ARGS)
-;優先度がより高いスキルがいるなら終了
+;該当する自動回復の優先度を確認
+;CALLFORM SKILL_NAME_{ARG:1},ARG
+;PRINTFORMW %RESULTS%によるVAR_REGEN処理を開始
 SIF RESULT == 0
 	RETURN
+;PRINTFORMW 達成
 L_MAG_TARG = ARG
 VARSET L_MAG_TARGS,""
 ;パーティキャラで、尚且つＭＡＧコストが1以上なら分岐
@@ -525,16 +163,18 @@ TRYCALLFORM VAR_%TOHALF(ARGS)%,ARG,ARG:2,3
 ;ARG:1	スキル番号
 ;ARGS	回復するパラメータの種類。 デフォルトは"HP"。 ＭＰを回復したいなら"MP"と書く。 全角ではなく半角文字な点に注意
 ;キャラが存在しない or スキル番号が存在しない場合は終了
-PRINTFORMW %ARGS% 자동회복의 우선도를 체크합니다
+;PRINTFORMW %ARGS% 자동회복의 우선도를 체크합니다
 SIF ARG < 0 || ARG:1 < 0
 	RETURN
 VARSET REGEN_RANK
 TRYCALLFORM SKILL_%ARGS%_REGEN_RANK_{ARG:1},ARG
 REGEN_RANK:0 = RESULT
+;PRINTFORMW REGEN_RANK:0 {REGEN_RANK:0}
 VARSET RESULT,0,0,20
 LOCAL:1 = CHARA_SKILLCOUNT(ARG)
 FOR LOCAL,0,LOCAL:1
-	SIF ARG:1 > 0
+	RESULT = 0
+	SIF ARG:1 < 0
 		BREAK
 	;呼び出すスキル枠を用意。F_EQ_SKLが偽なら通常スキルを、真なら装備スキルを検索する
 	LOCALS = 스킬{LOCAL+1}
@@ -546,9 +186,11 @@ FOR LOCAL,0,LOCAL:1
 	ELSE
 		TRYCALLFORM SKILL_%ARGS%_REGEN_RANK_{ABL:ARG:LOCALS},ARG
 	ENDIF
+	;PRINTFORMW スキル{LOCAL+1}  RESULT {RESULT}
 	REGEN_RANK:1 = MAX(REGEN_RANK:1,RESULT)
 NEXT
 FOR LOCAL,0,21
+	RESULT = 0
 	SIF ARG:1 < 0
 		BREAK
 	LOCALS = 장비스킬{LOCAL+1}
@@ -560,8 +202,10 @@ FOR LOCAL,0,21
 	ELSE
 		TRYCALLFORM SKILL_%ARGS%_REGEN_RANK_{ABL:ARG:LOCALS},ARG
 	ENDIF
+	;PRINTFORMW 装備スキル{LOCAL}  RESULT {RESULT}
 	REGEN_RANK:1 = MAX(REGEN_RANK:1,RESULT)
 NEXT
+;PRINTFORMW REGEN_RANK:0 {REGEN_RANK:0}  REGEN_RANK:1 {REGEN_RANK:1}
 SIF REGEN_RANK:0 < REGEN_RANK:1
 	RETURN 0
 RETURN 1

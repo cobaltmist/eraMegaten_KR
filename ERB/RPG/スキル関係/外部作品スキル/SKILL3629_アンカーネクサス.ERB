@@ -15,6 +15,7 @@
 ;	005		2021/07/10		木綿豆腐				説明文が戦技だったので直した
 ;	006		2021/08/24		木綿豆腐				専用アクセサリ装備時の処理追加
 ;													念のため継承できないようにした
+;	007		2022/05/12		木綿豆腐				挙動をなるべく原作に近くした（ロックしたらそいつに強制的に攻撃）
 ;
 ;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
 ;スキル名
@@ -77,9 +78,21 @@ RETURN 1
 @SKILL_DAMAGETYPE_3629, ARG
 RETURN 1
 
-;　対象が1敵か2味方か3場全体か4特殊か
+;　대상　1 적　2 아군　3 양쪽전체　4 특수
 @SKILL_TARGET_3629
-RETURN 1
+#DIM COPEN
+COPEN = 0
+SIF U > 0 && U < CHARANUM && NO:U == [[キャラ:아큐라(X)]]
+	COPEN = U
+SIF COPEN == 0 && FLAG:행동순1 > 0 && NO:(FLAG:행동순1) == [[キャラ:아큐라(X)]]
+	COPEN = FLAG:행동순1
+;ロック中の攻撃・ロック対象に強制
+IF COPEN > 0 && BLITZ_TARGET_JUDG(COPEN) == 1
+	RETURN 4
+;非ロック中の攻撃・敵単体
+ELSE
+	RETURN 1
+ENDIF
 
 ;　사거리
 @SKILL_RANGE_3629, ARG
@@ -87,7 +100,13 @@ RETURN 3
 
 ;　범위　1 1체　2 1열　3 전체　4 적아군전체
 @SKILL_SPHERE_3629, ARG
-RETURN 1
+;ロック中の攻撃・ロック対象に強制
+IF BLITZ_TARGET_JUDG(ARG) == 1
+	RETURN 4
+;非ロック中の攻撃・敵単体
+ELSE
+	RETURN 1
+ENDIF
 
 ;　 효과타입　1 공격、2 회복、3 상태변화、4 특수、5 상태회복
 @SKILL_EFECT_3629
@@ -136,7 +155,6 @@ RETURN 0
 ;トリガー発動条件
 ;====================================================
 @SKILL_TRIGGER_ACTIONABLE_3629, ARG, ARG:1
-#DIM ROCK_D
 #DIM ROCK_H
 #DIM ループ用
 #DIM 攻撃前敵カウント
@@ -144,22 +162,6 @@ RETURN 0
 #DIM 差分
 #DIM 加算クードス
 
-攻撃前敵カウント = 0
-攻撃後敵カウント = 0
-IF CFLAG:ARG:PT플래그 > 0
-	FOR ループ用, 7, 17
-		LOCALS = 포지션{ループ用}
-		SIF FLAG:LOCALS == -1
-			CONTINUE
-		SIF GET_STATE(CFLAG:(FLAG:LOCALS):상태이상) == "DYING"
-			CONTINUE
-		攻撃前敵カウント += 1
-	NEXT
-ENDIF
-
-ROCK_D = SKILLGAGE_D_GET(ARG, [[스킬:블리츠대쉬]])
-;1桁は被弾回数,2桁以上はターゲットを割り当てるようにした
-ROCK_H = SKILLGAGE_H_GET(ARG, [[스킬:블리츠대쉬]]) / 10
 ;自分じゃなければNG
 SIF ARG != ARG:1
 	RETURN 0
@@ -170,7 +172,22 @@ SIF CFLAG:(ARG:1):입력행동 == [[스킬:X-ROSS DISASTER]] || CFLAG:(ARG:1):�
 SIF SKILLGAGE_F_GET(ARG, [[스킬:DARKNESS TRIGGER]]) != 1
 	RETURN 0
 ;ロック状態の敵が健在かつダークネストリガー発動中
-IF ROCK_D > 0 && ROCK_H > -1 && GET_STATE(CFLAG:ROCK_H:상태이상) != "DYING" && CPOS(ROCK_H) > 0 && SKILLGAGE_H_GET(ARG, [[스킬:DARKNESS TRIGGER]]) == 1
+IF BLITZ_TARGET_JUDG(ARG) == 1 && SKILLGAGE_H_GET(ARG, [[스킬:DARKNESS TRIGGER]]) == 1
+	;1桁は被弾回数,2桁以上はターゲットを割り当てるようにした
+	ROCK_H = SKILLGAGE_H_GET(ARG, [[스킬:블리츠대쉬]]) / 10
+	攻撃前敵カウント = 0
+	攻撃後敵カウント = 0
+	IF CFLAG:ARG:PT플래그 > 0
+		FOR ループ用, 7, 17
+			LOCALS = 포지션{ループ用}
+			SIF FLAG:LOCALS == -1
+				CONTINUE
+			SIF GET_STATE(CFLAG:(FLAG:LOCALS):상태이상) == "DYING"
+				CONTINUE
+			攻撃前敵カウント += 1
+		NEXT
+	ENDIF
+	
 	SETCOLOR 0x9933cd
 	PRINTFORML ┏>CHARA━━━━━━━━━━┓　┏>ACT━━━━━━━━━━━━━━━━━━┓
 	PRINTFORM ┃[{CPOS(ARG), 2}] %"ＲｏＲｏ",21,LEFT%┃　┃
@@ -193,18 +210,7 @@ IF ROCK_D > 0 && ROCK_H > -1 && GET_STATE(CFLAG:ROCK_H:상태이상) != "DYING" 
 	差分 = 攻撃前敵カウント - 攻撃後敵カウント
 	
 	IF 差分 > 0
-		SELECTCASE 差分
-		CASE 1
-			加算クードス = 20
-		CASE 2
-			加算クードス = 40
-		CASE 3
-			加算クードス = 60
-		CASE 4
-			加算クードス = 80
-		CASEELSE
-			加算クードス = 100
-		ENDSELECT
+		加算クードス = 20
 		IF EQUIP:ARG:악세서리 == [[아이템:무모함의증거]]
 			TIMES 加算クードス, 1.25
 		ELSEIF EQUIP:ARG:악세서리 == [[아이템:무기력의부적]]
@@ -244,6 +250,7 @@ PRINTFORML 　　%CALLNAME:LOCAL%をロックした！
 ;스킬 및 행동의 실행
 ;====================================================
 @ACTION_3629, ARG, ARG:1
+#DIM ROCK_H
 #DIM ループ用
 #DIM 攻撃前敵カウント
 #DIM 攻撃後敵カウント
@@ -263,7 +270,15 @@ IF CFLAG:ARG:PT플래그 > 0
 	NEXT
 ENDIF
 
-CALL ATTACK_SINGLE, ARG, POS(ARG:1), 3629
+IF ARG:1 == 23 
+	IF BLITZ_TARGET_JUDG(ARG) == 1
+		ROCK_H = SKILLGAGE_H_GET(ARG, [[스킬:블리츠대쉬]]) / 10
+		CALL SKILLGAGE_D_SET, ARG, [[스킬:앵커넥서스]], 1
+		CALL ATTACK_SINGLE, ARG, ROCK_H, 3629
+	ENDIF
+ELSE
+	CALL ATTACK_SINGLE, ARG, POS(ARG:1), 3629
+ENDIF
 
 IF CFLAG:ARG:PT플래그 > 0
 	FOR ループ用, 7, 17
@@ -279,18 +294,7 @@ ENDIF
 差分 = 攻撃前敵カウント - 攻撃後敵カウント
 
 IF 差分 > 0
-	SELECTCASE 差分
-	CASE 1
-		加算クードス = 20
-	CASE 2
-		加算クードス = 40
-	CASE 3
-		加算クードス = 60
-	CASE 4
-		加算クードス = 80
-	CASEELSE
-		加算クードス = 100
-	ENDSELECT
+	加算クードス = 20
 	IF EQUIP:ARG:악세서리 == [[아이템:무모함의증거]]
 		TIMES 加算クードス, 1.25
 	ELSEIF EQUIP:ARG:악세서리 == [[아이템:무기력의부적]]
@@ -315,24 +319,18 @@ CALL SKILLGAGE_F_SET, ARG, [[스킬:DARKNESS TRIGGER]], 1
 ;실행내용 여기까지
 ;====================================================
 
-;　 説明文の表示
+;　 설명문 표시
 @SKILL_EXPLAIN_3629
-;ステータス画面からはこっち表示
-IF CFLAG:(CHARANUM-1):PT플래그 || U < 0 || U >= CHARANUM
-	PRINTL 실 형태의 에너지를 조종하는 셉티마・편사세공（크래프트 울）을 재현한 ＥＸ 웨폰。
-	PRINTL 실로 짜낸 드릴을 돌격시키면서、록온한다。
-	PRINTL 
-	PRINTL 공격대상이 록온 되었을 경우/록온 되지 않았을 경우 상관 없이、적 1체에 타격 상성으로 중 데미지
-	PRINTL ※록온 대상은 1체 뿐。 록온 중에 다른 대상을 록하면、타켓이 바뀐다。
-;戦闘中はこっち表示
-ELSE
-	PRINTL 적 1체에 타격 상성으로 중 데미지를 준다。
-	PRINTL 공격이 명중했을 경우、대상을 록온 상태로 만든다。
-	IF U > 0 && U < CHARANUM && NO:U == [[キャラ:아큐라(X)]] && EQUIP:U:악세서리 == 5349 && SKILLGAGE_H_GET(U, [[스킬:DARKNESS TRIGGER]]) == 1
-		SETCOLOR 0x9933cd
-		PRINTL 다크니스 트리거 Ｘ 장비중　다크니스 트리거에 의한 추격 시 데미지・공격횟수 변경
-		RESETCOLOR
-	ENDIF
+PRINTL 糸状のエネルギーを操るセプティマ・編糸細工（クラフトウール）を再現したＥＸウェポン。
+PRINTL 攻撃命中時のみ、対象にロックオンを行う。
+PRINTL ＨＰを消費するコマンド「ブリッツダッシュ」によってロック済みの敵がいる場合、強制的にその対象へ攻撃する。
+PRINTL 
+PRINTL 攻撃対象がロック/非ロックに関わらず、敵単体に打撃相性で中ダメージを与える。
+PRINTL ※ロックオン対象は一体のみ。ロックオン中に別の対象をロックすると、ターゲットが切り替わる。
+IF U > 0 && U < CHARANUM && NO:U == [[キャラ:아큐라(X)]] && EQUIP:U:악세서리 == 5349 && SKILLGAGE_H_GET(U, [[스킬:DARKNESS TRIGGER]]) == 1
+	SETCOLOR 0x9933cd
+	PRINTL 다크니스 트리거Ｘ 장비중　ダークネストリガーによる追撃時のダメージ・攻撃回数変更
+	RESETCOLOR
 ENDIF
 PRINTL ※이 스킬로 적을 쓰러뜨렸을 경우、쿠도스가 ２０ 가산된다
 

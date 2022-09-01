@@ -1,0 +1,430 @@
+﻿;스킬명
+@SKILL_NAME_オプティックラウンド, ARG
+IF FLAG:행동순1 == ARG
+	RESULTS = オプティックラウンド
+ELSE
+	RESULTS = ｵﾌﾟﾃｨｯｸﾗｳﾝﾄﾞ
+ENDIF
+
+;　명중
+@SKILL_HITRATE_オプティックラウンド, ARG
+#DIM SKILL_NUM
+SKILL_NUM = PU_SKILLNUM_GET(ARG, "オプティックラウンド")
+IF SKILLGAGE_D_GET(ARG, SKILL_NUM) > 0
+	RETURN 100
+ELSE
+	RETURN 95
+ENDIF
+
+;　위력
+@SKILL_POWER_オプティックラウンド, ARG
+#DIM SKILL_NUM
+IF SKILL_CHANGE(ARG, [[キャラ:오토크롬(X2)]])
+	RETURN 210
+ELSE
+	IF SKILLGAGE_D_GET(ARG, SKILL_NUM) > 0
+		IF SKILL_CHANGE(ARG, [[キャラ:아큐라(X)]]) && EQUIP:ARG:악세서리 == 5349 && FLAG:카운터중
+			;約1.25倍
+			RETURN 370
+		ELSE
+			RETURN 300
+		ENDIF
+	ELSE
+		RETURN 200
+	ENDIF
+ENDIF
+
+;　최저공격횟수
+@SKILL_MINATTACKNUMBER_オプティックラウンド, ARG
+RETURN 1
+
+;　최대공격횟수
+@SKILL_MAXATTACKNUMBER_オプティックラウンド, ARG
+RETURN 1
+
+;　2 ＨＰ지불　3 ＭＰ지불
+@SKILL_COSTTYPE_オプティックラウンド, ARG
+RETURN 3
+;소비없음＝1
+
+;　코스트량
+@SKILL_COST_オプティックラウンド, ARG
+;다크니스トリガー発動中はコスト1/3
+SIF SKILLGAGE_H_GET(ARG, [[스킬:DARKNESS TRIGGER]]) == 1
+	RETURN 5
+RETURN 15
+
+;　상성
+@SKILL_TYPE_オプティックラウンド, ARG
+#LOCALSSIZE 3
+#LOCALSIZE 4
+SIF ARG < 0 || 스킬속성표시중
+	RETURN GET_TYPE_NUM("비구")
+SIF CFLAG:ARG:타겟 > 16 || CFLAG:ARG:타겟 < 1
+	RETURN GET_TYPE_NUM("비구")
+LOCAL = POS(CFLAG:ARG:타겟)
+SIF LOCAL < 0
+	RETURN GET_TYPE_NUM("비구")
+LOCAL:2 = -1000
+LOCALS = 비구
+LOCALS:1 = 비구
+LOCALS:2 = 핵열
+FOR LOCAL:1, 1, 3
+	;判定用に数値を仕舞う。反射は-200扱い
+	LOCAL:3 = MAXBASE:LOCAL:(LOCALS:(LOCAL:1)) == 999 ? -200 # MAXBASE:LOCAL:(LOCALS:(LOCAL:1))
+	LOCAL:3 = !(HAVE_SKILL(ARG, [[스킬:영세라이도우]]) || HAVE_SKILL(ARG, 2947)) && CFLAG:LOCAL:(LOCALS:(LOCAL:1)+"무효화횟수") ? -5 # LOCAL:3
+	LOCAL:3 = CFLAG:LOCAL:(LOCALS:(LOCAL:1)+"가드킬") && LOCAL:3 < 100 ? 100 # LOCAL:3
+	IF LOCAL:3 > LOCAL:2
+		LOCAL:2 = LOCAL:3
+		LOCALS = %LOCALS:(LOCAL:1)%
+	ENDIF
+NEXT
+RETURN GET_TYPE_NUM(LOCALS)
+
+;　1 EXTRA　2 MAGIC
+@SKILL_DECIDE_TYPE_オプティックラウンド, ARG
+RETURN 1
+
+;　1 물리데미지로 계산　2 마법데미지로 계산
+@SKILL_DAMAGETYPE_オプティックラウンド, ARG
+RETURN 1
+
+;　대상　1 적　2 아군　3 양쪽전체　4 특수
+@SKILL_TARGET_オプティックラウンド, ARG
+#DIM COPEN
+COPEN = 0
+IF U > 0 && U < CHARANUM && NO:U == [[キャラ:아큐라(X)]]
+	COPEN = U
+ELSEIF FLAG:행동순1 > 0 && NO:(FLAG:행동순1) == [[キャラ:아큐라(X)]]
+	COPEN = FLAG:행동순1
+ENDIF
+;ロック中の攻撃・ロック対象に強制
+IF COPEN > 0 && BLITZ_TARGET_JUDG(COPEN) == 1
+	RETURN 4
+;非ロック中の攻撃・敵単体
+ELSE
+	RETURN 1
+ENDIF
+
+;　사거리
+@SKILL_RANGE_オプティックラウンド, ARG
+RETURN 2
+
+;　범위　1 1체　2 1열　3 전체　4 적아군전체
+@SKILL_SPHERE_オプティックラウンド, ARG
+IF SKILL_CHANGE(ARG, [[キャラ:오토크롬(X2)]])
+	RETURN 2
+ELSE
+	;ロック中の攻撃・ロック対象に強制
+	IF BLITZ_TARGET_JUDG(ARG) == 1
+		RETURN 4
+	;非ロック中の攻撃・敵単体
+	ELSE
+		RETURN 2
+	ENDIF
+ENDIF
+
+;　 효과타입　1 공격、2 회복、3 상태변화、4 특수、5 상태회복
+@SKILL_EFECT_オプティックラウンド, ARG
+RETURN 1
+
+;속도보정
+@SKILL_SPEED_オプティックラウンド, ARG = -1
+RETURN 0
+
+;전투시 이외에 사용 가능한가
+@SKILL_ACTIONABLE_FIELD_オプティックラウンド, ARG = -1
+RETURN 0
+
+;템플릿용、추가효과 시리즈
+;추가효과 스테이터스
+@SKILL_ADDTIONAL_STATE_オプティックラウンド, ARG
+RETURN 0
+
+;추가효과 상성
+@SKILL_ADDTIONAL_TYPE_オプティックラウンド, ARG
+RETURN 0
+
+;추가효과 기본부여확률
+@SKILL_ADDTIONAL_BASE_RATE_オプティックラウンド, ARG
+RETURN 0
+
+;추가효과 부여확률상한
+@SKILL_ADDTIONAL_MAX_RATE_オプティックラウンド, ARG
+RETURN 0
+
+;====================================================
+;トリガー発動条件
+;====================================================
+@SKILL_TRIGGER_ACTIONABLE_オプティックラウンド, ARG, ARG:1
+#DIM SKILL_NUM
+#DIM ROCK_H
+#DIM ループ用
+#DIM 攻撃前敵カウント
+#DIM 攻撃後敵カウント
+#DIM 差分
+#DIM 加算クードス
+
+;自分じゃなければNG
+SIF ARG != ARG:1
+	RETURN 0
+;X-ROSS DISASTER,SONG OF DIVA,DARKNESS TRIGGERならNG
+SIF CFLAG:(ARG:1):입력행동 == [[스킬:X-ROSS DISASTER]] || CFLAG:(ARG:1):입력행동 == [[스킬:SONG OF DIVA]] || CFLAG:(ARG:1):입력행동 == [[스킬:DARKNESS TRIGGER]]
+	RETURN 0
+;EXウェポン12番=オプティックラウンドじゃないとNG
+SIF SKILLGAGE_F_GET(ARG, [[스킬:DARKNESS TRIGGER]]) != 12
+	RETURN 0
+;ロック状態の敵が健在かつダークネストリガー発動中
+IF BLITZ_TARGET_JUDG(ARG) == 1 && SKILLGAGE_H_GET(ARG, [[스킬:DARKNESS TRIGGER]]) == 1
+	;1桁は被弾回数,2桁以上はターゲットを割り当てるようにした
+	ROCK_H = SKILLGAGE_H_GET(ARG, [[스킬:블리츠대쉬]]) / 10
+	攻撃前敵カウント = 0
+	攻撃後敵カウント = 0
+	IF CFLAG:ARG:PT플래그 > 0
+		FOR ループ用, 7, 17
+			LOCALS = 포지션{ループ用}
+			SIF FLAG:LOCALS == -1
+				CONTINUE
+			SIF GET_STATE(CFLAG:(FLAG:LOCALS):상태이상) == "DYING"
+				CONTINUE
+			攻撃前敵カウント += 1
+		NEXT
+	ENDIF
+	
+	SETCOLOR 0x9933cd
+	PRINTFORML ┏>CHARA━━━━━━━━━━┓　┏>ACT━━━━━━━━━━━━━━━━━━┓
+	PRINTFORM ┃[{CPOS(ARG), 2}] %"ＲｏＲｏ",21,LEFT%┃　┃
+	PRINTFORML %"オプティックラウンド",40,LEFT%┃
+	PRINTFORMW ┗━━━━━━━━━━━━━┛　┗━━━━━━━━━━━━━━━━━━━━┛
+	RESETCOLOR
+	SKILL_NUM = PU_SKILLNUM_GET(ARG, "オプティックラウンド")
+	CALL SKILLGAGE_D_SET, ARG, SKILL_NUM, 1
+	LOCAL = CFLAG:ARG:타겟
+	CFLAG:ARG:타겟 = CPOS(ROCK_H)
+	CALL SKILL_TYPE_オプティックラウンド, ARG
+	PRINT 相性判定：
+	SELECTCASE RESULT
+		CASE 1
+			PRINT 飛具
+		CASE 16
+			PRINT 核熱
+	ENDSELECT
+	PRINTL ！
+	CALL ATTACK_SINGLE, ARG, ROCK_H, SKILL_NUM
+	CFLAG:ARG:타겟 = LOCAL
+	
+	IF CFLAG:ARG:PT플래그 > 0
+		FOR ループ用, 7, 17
+			LOCALS = 포지션{ループ用}
+			SIF FLAG:LOCALS == -1
+				CONTINUE
+			SIF GET_STATE(CFLAG:(FLAG:LOCALS):상태이상) == "DYING"
+				CONTINUE
+			攻撃後敵カウント += 1
+		NEXT
+	ENDIF
+	
+	差分 = 攻撃前敵カウント - 攻撃後敵カウント
+	
+	IF 差分 > 0
+		加算クードス = 20
+		IF EQUIP:ARG:악세서리 == [[아이템:무모함의증거]]
+			TIMES 加算クードス, 1.25
+		ELSEIF EQUIP:ARG:악세서리 == [[아이템:무기력의부적]]
+			TIMES 加算クードス, 0.5
+		ENDIF
+		PRINTFORMW AERIAL EX　Kudos + {加算クードス}
+		CALL SKILLGAGE_F_ADD, ARG, [[스킬:블리츠대쉬]], 加算クードス
+	ENDIF
+	IF EQUIP:ARG:악세서리 == [[아이템:무기력의부적]]
+		;アパシーマンの上限は1200
+		SIF SKILLGAGE_F_GET(ARG, [[스킬:블리츠대쉬]]) > 1200
+			CALL SKILLGAGE_F_SET, ARG, [[스킬:블리츠대쉬]], 1200
+	ELSE
+		;上限は99999
+		SIF SKILLGAGE_F_GET(ARG, [[스킬:블리츠대쉬]]) > 99999
+			CALL SKILLGAGE_F_SET, ARG, [[스킬:블리츠대쉬]], 99999
+	ENDIF
+ENDIF
+RETURN 0
+
+;====================================================
+;스킬 및 행동의 실행
+;====================================================
+@ACTION_オプティックラウンド, ARG, ARG:1, SKILL_NUM
+#LOCALSIZE 3
+#DIM SKILL_NUM
+#DIM ROCK_H
+#DIM ループ用
+#DIM 攻撃前敵カウント
+#DIM 攻撃後敵カウント
+#DIM 差分
+#DIM 加算クードス
+
+IF SKILL_CHANGE(ARG, [[キャラ:오토크롬(X2)]])
+	IF CFLAG:ARG:포지션 < 7
+		LOCAL:1 = 7
+		LOCAL:2 = 12
+	ELSE
+		LOCAL:1 = 1
+		LOCAL:2 = 4
+	ENDIF
+	FOR LOCAL, LOCAL:1, LOCAL:2
+		LOCALS = 포지션{LOCAL}
+		SIF FLAG:LOCALS < 0
+			CONTINUE
+		SIF GET_STATE(CFLAG:(FLAG:LOCALS):상태이상) == "DYING"
+			CONTINUE
+		CFLAG:ARG:타겟 = LOCAL
+		CALL SKILL_TYPE_オプティックラウンド, ARG
+		PRINT 相性判定：
+		SELECTCASE RESULT
+			CASE 1
+				PRINT 飛具
+			CASE 16
+				PRINT 核熱
+		ENDSELECT
+		PRINTL ！
+		CALL ATTACK_SINGLE, ARG, FLAG:LOCALS, SKILL_NUM
+	NEXT
+ELSE
+	攻撃前敵カウント = 0
+	攻撃後敵カウント = 0
+	IF CFLAG:ARG:PT플래그 > 0
+		FOR ループ用, 7, 17
+			LOCALS = 포지션{ループ用}
+			SIF FLAG:LOCALS == -1
+				CONTINUE
+			SIF GET_STATE(CFLAG:(FLAG:LOCALS):상태이상) == "DYING"
+				CONTINUE
+			攻撃前敵カウント += 1
+		NEXT
+	ENDIF
+	
+	;ロック中かつロック対象が生存中なら強制的にロック対象へ攻撃
+	IF ARG:1 == 23
+		IF BLITZ_TARGET_JUDG(ARG) == 1
+			ROCK_H = SKILLGAGE_H_GET(ARG, [[스킬:블리츠대쉬]]) / 10
+			CALL SKILLGAGE_D_SET, ARG, SKILL_NUM, 1
+			LOCAL = CFLAG:ARG:타겟
+			CFLAG:ARG:타겟 = CPOS(ROCK_H)
+			CALL SKILL_TYPE_オプティックラウンド, ARG
+			PRINT 相性判定：
+			SELECTCASE RESULT
+				CASE 1
+					PRINT 飛具
+				CASE 16
+					PRINT 核熱
+			ENDSELECT
+			PRINTL ！
+			CALL ATTACK_SINGLE, ARG, ROCK_H, SKILL_NUM
+			CFLAG:ARG:타겟 = 23
+		ENDIF
+	ELSE
+		IF CFLAG:ARG:포지션 < 7
+			LOCAL:1 = 7
+			LOCAL:2 = 12
+		ELSE
+			LOCAL:1 = 1
+			LOCAL:2 = 4
+		ENDIF
+		FOR LOCAL, LOCAL:1, LOCAL:2
+			LOCALS = 포지션{LOCAL}
+			SIF FLAG:LOCALS < 0
+				CONTINUE
+			SIF GET_STATE(CFLAG:(FLAG:LOCALS):상태이상) == "DYING"
+				CONTINUE
+			CFLAG:ARG:타겟 = LOCAL
+			CALL SKILL_TYPE_オプティックラウンド, ARG
+			PRINT 相性判定：
+			SELECTCASE RESULT
+				CASE 1
+					PRINT 飛具
+				CASE 16
+					PRINT 核熱
+			ENDSELECT
+			PRINTL ！
+			CALL ATTACK_SINGLE, ARG, FLAG:LOCALS, SKILL_NUM
+		NEXT
+	ENDIF
+	
+	IF CFLAG:ARG:PT플래그 > 0
+		FOR ループ用, 7, 17
+			LOCALS = 포지션{ループ用}
+			SIF FLAG:LOCALS == -1
+				CONTINUE
+			SIF GET_STATE(CFLAG:(FLAG:LOCALS):상태이상) == "DYING"
+				CONTINUE
+			攻撃後敵カウント += 1
+		NEXT
+	ENDIF
+	
+	差分 = 攻撃前敵カウント - 攻撃後敵カウント
+	
+	IF 差分 > 0
+		SELECTCASE 差分
+		CASE 1
+			加算クードス = 20
+		CASE 2
+			加算クードス = 40
+		CASE 3
+			加算クードス = 60
+		CASE 4
+			加算クードス = 80
+		CASEELSE
+			加算クードス = 100
+		ENDSELECT
+		IF EQUIP:ARG:악세서리 == [[아이템:무모함의증거]]
+			TIMES 加算クードス, 1.25
+		ELSEIF EQUIP:ARG:악세서리 == [[아이템:무기력의부적]]
+			TIMES 加算クードス, 0.5
+		ENDIF
+		PRINTFORMW AERIAL EX　Kudos + {加算クードス}
+		CALL SKILLGAGE_F_ADD, ARG, [[스킬:블리츠대쉬]], 加算クードス
+	ENDIF
+	IF EQUIP:ARG:악세서리 == [[아이템:무기력의부적]]
+		;アパシーマンの上限は1200
+		SIF SKILLGAGE_F_GET(ARG, [[스킬:블리츠대쉬]]) > 1200
+			CALL SKILLGAGE_F_SET, ARG, [[스킬:블리츠대쉬]], 1200
+	ELSE
+		;上限は99999
+		SIF SKILLGAGE_F_GET(ARG, [[스킬:블리츠대쉬]]) > 99999
+			CALL SKILLGAGE_F_SET, ARG, [[스킬:블리츠대쉬]], 99999
+	ENDIF
+	
+	;EXウェポン12番=オプティックラウンド
+	CALL SKILLGAGE_F_SET, ARG, [[스킬:DARKNESS TRIGGER]], 12
+ENDIF
+;====================================================
+;실행내용 여기까지
+;====================================================
+
+;　説明文の表示
+@SKILL_EXPLAIN_オプティックラウンド, ARG
+IF SKILL_CHANGE(ARG, [[キャラ:오토크롬(X2)]])
+	PRINTL 自らの周囲および上下左右へとレーザーを放射する。
+	PRINTL 敵一列に核熱と飛具の複合で中ダメージを与える。後列使用可。
+ELSE
+	PRINTL 光学兵器を操るワーカー・オートクロムの능력을 재현한 ＥＸ 웨폰。
+	PRINTL ＨＰを消費するコマンド「ブリッツダッシュ」によってロック済みの敵がいる場合、強制的にその対象へ攻撃する。
+	PRINTL 
+	PRINTL 攻撃対象がロックオン状態の場合…敵単体に核熱と飛具の複合相性で大ダメージを与える。
+	PRINTL 攻撃対象が非ロック状態の場合　…敵一列に核熱と飛具の複合相性で中ダメージを与える。後列使用可。
+	IF U > 0 && U < CHARANUM && NO:U == [[キャラ:아큐라(X)]] && EQUIP:U:악세서리 == 5349 && SKILLGAGE_H_GET(U, [[스킬:DARKNESS TRIGGER]]) == 1
+		SETCOLOR 0x9933cd
+		PRINTL 다크니스 트리거Ｘ 장비중　ダークネストリガーによる追撃時のダメージ上昇
+		RESETCOLOR
+	ENDIF
+	PRINTL ※このスキルで敵を倒した場合、一体ごとにクードスが２０加算される（最大５体までカウント）
+ENDIF
+
+;사용조건
+@SKILL_SPECIAL_ACTIONABLE_オプティックラウンド, ARG
+SIF SKILL_CHANGE(ARG, [[キャラ:오토크롬(X2)]])
+	RETURN 1
+;ターゲット=23が入るのはロック中のみ
+;かつ実行時にターゲットが死んだりするとダメ
+SIF ARG > 0 && CFLAG:ARG:타겟 == 23 && BLITZ_TARGET_JUDG(ARG) != 1
+	RETURN 0
+RETURN 1
+

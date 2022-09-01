@@ -1,0 +1,466 @@
+﻿;更新履歴
+;001	2022/05/01		kamedakeisuke(ﾟдﾟ)			新規作成
+;002	2022/06/05		kamedakeisuke(ﾟдﾟ)			非CR時威力調整、エラー避けのおまじない追加
+
+;스킬명
+@SKILL_NAME_呼応の斬撃,ARG
+;CR展開時
+IF SKILLGAGE_D_GET(ARG,3588)
+	RESULTS = 재생찬송곡
+;それ以外
+ELSE
+	RESULTS = 호응의참격
+ENDIF
+
+;　명중
+@SKILL_HITRATE_呼応の斬撃, ARG
+;CR展開時
+IF SKILLGAGE_D_GET(ARG,3588)
+	RETURN 999
+;通常時
+ELSE
+	RETURN 100
+ENDIF
+
+;　위력
+@SKILL_POWER_呼応の斬撃, ARG
+;CR展開時
+IF SKILLGAGE_D_GET(ARG,3588)
+	;3回攻撃
+	RETURN 215
+ELSE
+	RETURN 380
+ENDIF
+
+;クリティカル率
+@SKILL_CRITICAL_RATE_呼応の斬撃, ARG
+;CR展開時
+IF SKILLGAGE_D_GET(ARG,3588)
+	RETURN 5
+;それ以外
+ELSE
+	RETURN 5
+ENDIF
+
+;　최저공격횟수
+@SKILL_MINATTACKNUMBER_呼応の斬撃,ARG
+;CR展開時
+IF SKILLGAGE_D_GET(ARG,3588)
+	;3回攻撃
+	RETURN 3
+;通常時
+ELSE
+	RETURN 1
+ENDIF
+
+;　최대공격횟수
+@SKILL_MAXATTACKNUMBER_呼応の斬撃,ARG
+;CR展開時
+IF SKILLGAGE_D_GET(ARG,3588)
+	;3回攻撃
+	RETURN 3
+;通常時
+ELSE
+	RETURN 1
+ENDIF
+
+;　2 ＨＰ지불　3 ＭＰ지불
+@SKILL_COSTTYPE_呼応の斬撃, ARG
+RETURN 3
+;소비없음＝1
+
+;　코스트량
+@SKILL_COST_呼応の斬撃,ARG
+;CR展開時
+IF SKILLGAGE_D_GET(ARG,3588)
+	;消費無し（代わりにゲージをゼロに）
+	RETURN 0
+;通常時
+ELSE
+	RETURN 15
+ENDIF
+
+;　상성
+@SKILL_TYPE_呼応の斬撃,ARG
+#LOCALSSIZE 5
+#LOCALSIZE 4
+;CR展開時、複合属性
+;剣劇・核熱・重力のうち、最も効果のある相性で攻撃
+IF SKILLGAGE_D_GET(ARG,3588)
+	SIF ARG < 0 || 스킬속성표시중
+		RETURN GET_TYPE_NUM("검격")
+	SIF CFLAG:ARG:타겟 > 16 || CFLAG:ARG:타겟 < 1
+		RETURN GET_TYPE_NUM("검격")
+	LOCAL = POS(CFLAG:ARG:타겟)
+	SIF LOCAL < 0
+		RETURN GET_TYPE_NUM("검격")
+		
+	LOCAL:2 = -300
+	;全部-400とかないとおもうけど、あったらあれなんで、剣撃をいれとく
+	LOCALS = 검격
+	LOCALS:1 = 검격
+	LOCALS:2 = 핵열
+	LOCALS:3 = 중력
+	FOR LOCAL:1, 1, 4
+		;判定用に数値を仕舞う。反射は-200扱い
+		LOCAL:3 = MAXBASE:LOCAL:(LOCALS:(LOCAL:1)) == 999 ? -200 # MAXBASE:LOCAL:(LOCALS:(LOCAL:1))
+		LOCAL:3 = !(HAVE_SKILL(ARG,[[스킬:영세라이도우]]) || HAVE_SKILL(ARG,2947)) && CFLAG:LOCAL:(LOCALS:(LOCAL:1)+"무효화횟수") ? -5 # LOCAL:3
+		LOCAL:3 = CFLAG:LOCAL:(LOCALS:(LOCAL:1)+"가드킬") && LOCAL:3 < 100 ? 100 # LOCAL:3
+		SELECTCASE LOCAL:1
+			CASE 1 TO 2
+				LOCAL:3 = CFLAG:LOCAL:물리반사플래그 ? -200 # LOCAL:3
+			CASE 3
+				LOCAL:3 = CFLAG:LOCAL:마법반사플래그 ? -200 # LOCAL:3
+			CASEELSE
+		ENDSELECT
+		IF LOCAL:3 > LOCAL:2
+			LOCAL:2 = LOCAL:3
+			LOCALS = %LOCALS:(LOCAL:1)%
+		ENDIF
+	NEXT
+	PRINT 속성상성：
+	PRINTS LOCALS
+	PRINTL ！
+	RETURN GET_TYPE_NUM(LOCALS)
+	
+;通常時は剣撃
+ELSE
+	RETURN 0
+ENDIF
+
+;　1 EXTRA　2 MAGIC
+@SKILL_DECIDE_TYPE_呼応の斬撃,ARG
+RETURN 1
+
+;　1 물리데미지로 계산　2 마법데미지로 계산
+@SKILL_DAMAGETYPE_呼応の斬撃,ARG
+RETURN 1
+
+
+;　대상　1 적　2 아군　3 양쪽전체　4 특수
+@SKILL_TARGET_呼応の斬撃,ARG
+RETURN 1
+
+;　사거리
+@SKILL_RANGE_呼応の斬撃,ARG
+RETURN 2
+
+;　범위　1 1체　2 1열　3 전체　4 적아군전체
+@SKILL_SPHERE_呼応の斬撃,ARG
+;CR展開時
+IF SKILLGAGE_D_GET(ARG,3588)
+	RETURN 3
+;通常時
+ELSE
+	RETURN 1
+ENDIF
+
+;　 효과타입　1 공격、2 회복、3 상태변화、4 특수、5 상태회복
+@SKILL_EFECT_呼応の斬撃,ARG
+RETURN 1
+
+;　 특수처리 여부 및 처리내용
+;@SKILL_SPECIALEFECT_呼応の斬撃,ARG
+;ARG = 1인 경우는 처리 여부를 반환합니다
+;SIF ARG == 1
+;	RETURN 0
+;아래쪽에 특수처리를 기술합니다
+
+;계승타입
+;@SKILL_SUCCESSION_TYPE_呼応の斬撃,ARG
+;RETURN 23
+;剣撃
+
+;속도보정
+@SKILL_SPEED_呼応の斬撃, ARG = -1
+RETURN 0
+
+;;　구상의 표시와 그 타입
+;@SKILL_MESSAGE_呼応の斬撃,ARG
+
+
+;전투시 이외에 사용 가능한가
+@SKILL_ACTIONABLE_FIELD_呼応の斬撃, ARG = -1
+RETURN 0
+
+;没
+;@SKILL_RANK_呼応の斬撃
+;@SKILL_RANKUP_呼応の斬撃
+;@계승불능_呼応の斬撃
+
+;템플릿용、추가효과 시리즈
+;추가효과 스테이터스
+;@SKILL_ADDTIONAL_STATE_呼応の斬撃,ARG
+;RETURN GET_STATE_NUM("PANIC")
+
+;추가효과 상성
+;@SKILL_ADDTIONAL_TYPE_呼応の斬撃,ARG
+;RETURN 9
+
+;추가효과 기본부여확률
+;@SKILL_ADDTIONAL_BASE_RATE_呼応の斬撃,ARG
+;RETURN 40
+
+;추가효과 부여확률상한
+;@SKILL_ADDTIONAL_MAX_RATE_呼応の斬撃,ARG
+;RETURN 70
+
+;;拡散攻撃用追加処理
+;;ブレスなどの拡散攻撃に使う
+;@SKILL_SPREAD_呼応の斬撃,ARG
+;RETURN 0
+
+;====================================================
+;스킬 및 행동의 실행
+;====================================================
+@ACTION_呼応の斬撃,ARG,ARG:1,SKILL_NUM
+#DIM SKILL_NUM
+;CR展開時
+IF SKILLGAGE_D_GET(ARG,3588)
+	;ガードブレイク処理
+	IF ARG:1 == 19
+		LOCAL:2 = 1
+		LOCAL:3 = 7
+	ELSE
+		LOCAL:2 = 7
+		LOCAL:3 = 17
+	ENDIF
+
+	FOR LOCAL, LOCAL:2, LOCAL:3
+		SIF POS(LOCAL) == -1 || CFLAG:POS(LOCAL):상태이상 == GET_STATE_NUM("DYING")
+			CONTINUE
+		LOCAL:1 = 2
+		SIF CFLAG:ARG:PT플래그 == 0
+			LOCAL:1 = 4
+		IF LOCAL:1 > CFLAG:POS(LOCAL):검격무효화횟수
+			LOCAL:1 -= CFLAG:POS(LOCAL):검격무효화횟수
+			CFLAG:POS(LOCAL):검격무효화횟수 = 0
+			IF LOCAL:1 >= CFLAG:POS(LOCAL):검격가드킬
+				CFLAG:POS(LOCAL):검격가드킬 = LOCAL:1
+				PRINTFORML [{LOCAL}]%CALLNAME:POS(LOCAL),20% >>>>> {LOCAL:1}턴、검격내성을 무효화！
+			ENDIF
+		ELSE
+			CFLAG:POS(LOCAL):검격무효화횟수 -= LOCAL:1
+			PRINTFORML [{LOCAL}]%CALLNAME:POS(LOCAL),20% >>>>> 검격무효화횟수 감소！
+		ENDIF
+	NEXT
+
+	ALIGNMENT CENTER
+	SETCOLOR 0xfdca57
+	PRINTL 【ＣＬＩＭＡＸ　ＡＣＴ】
+	RESETCOLOR
+	ALIGNMENT LEFT
+
+	;파워アップイベント中かつボスが最終形態時のみ、ボスの不死フラグを剥がして攻撃
+	IF GETBIT(이벤트플래그:93:17, 5) && (이벤트플래그:93:0 == 12 || 이벤트플래그:93:0 == 13) && (이벤트플래그:93:10 && [[キャラ:나나]])
+		;HPが1まで削れていたら不死身フラグを外して攻撃
+		SIF BASE:(CHARANUM-1):ＨＰ < 2
+			CFLAG:(CHARANUM-1):불사신플래그 = 0
+	ENDIF
+	
+	;切り落としフラグ付与
+	CFLAG:ARG:베어내기플래그 = 1
+	
+	;何らかの事情によりターゲットが22未満だったら
+	IF CFLAG:ARG:타겟 < 22
+		;22（全体）をセット
+		CFLAG:ARG:타겟 = 22
+	ENDIF
+	
+	;全体攻撃処理
+	LOCAL = 22
+	;ぶん殴る
+	CALL ATTACK_FIELD,ARG,LOCAL,SKILL_NUM
+	
+	;파워アップイベント中かつボスが最終形態時のみ、撃破時に敵が喋る
+	IF GETBIT(이벤트플래그:93:17, 5) && (이벤트플래그:93:0 == 12 || 이벤트플래그:93:0 == 13) && (이벤트플래그:93:10 && [[キャラ:나나]])
+
+		;ボスのHPがぴったり1の場合、『すでに削り切ったけど、攻撃をミスってとどめを刺せていない』状況と見る
+		;という処理が他のCAスキルには入っているのだが、これは必中なので起こりえない
+		IF BASE:(CHARANUM-1):ＨＰ == 1 && CFLAG:(CHARANUM-1):불사신플래그 < 1
+			;PRINTL
+			;SETCOLOR 0xfdca57
+			;PRINTFORML ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+			;PRINTFORML ┃%"",72,LEFT%┃
+			;PRINTFORML ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+			;PRINTL
+			;ALIGNMENT CENTER
+			;PRINTFORML ┏━━━━━━━━━━┓
+			;PRINTFORML ┃　　 　1more！　　　┃
+			;PRINTFORMW ┗━━━━━━━━━━┛
+			;RESETCOLOR
+			;ALIGNMENT LEFT
+			;
+			;テイクツー
+			;CFLAG:(CHARANUM-1):불사신플래그 = 0
+			;CFLAG:ARG:베어내기플래그 = 1
+			;
+			;CALL ATTACK_SINGLE,ARG,LOCAL,SKILL_NUM
+			;
+		ENDIF
+		
+		;ボス撃破
+		IF BASE:(CHARANUM-1):ＨＰ < 1
+			ALIGNMENT CENTER
+			PRINTL ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━┓
+			PRINTL ┃　　　　　　　　　　　　　　　　　　　　　　　　　　　　　┃
+			PRINTL ┃　　　　　　 純那ちゃんッ――星見、純那ぁっ！ 　　　　　　┃
+			PRINTL ┃　　　　　　　　　　　　　　　　　　　　　　　　　　　　　┃
+			PRINTL ┃　　　　　　　　　 私は、あなたがッ…… 　　　　　　　　　┃
+			PRINTL ┃　　　　　　　　　　　　　　　　　　　　　　　　　　　　　┃
+			PRINTL ┃　　　　　　　 純那ちゃんのことがああぁッ！ 　　　　　　　┃
+			PRINTL ┃　　　　　　　　　　　　　　　　　　　　　　　　　　　　　┃
+			PRINTW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+			ALIGNMENT LEFT
+			PRINTL
+			SETCOLOR 0x8ac4ec
+			PRINTW 　　　――いつかだれかその言葉で――
+			PRINTL
+			
+			ALIGNMENT CENTER
+			PRINTL ┏>MESSAGE━━━━━━━━━━━━━━━━━━━━━━━━━┓
+			PRINTL ┃　　　　　　　　　　　　　　　　　　　　　　　　　　　　　┃
+			PRINTL ┃　　　　　　　　　　舞台で、待ってる　　　　　　　　　　　┃
+			PRINTL ┃　　　　　　　　　　　　　　　　　　　　　　　　　　　　　┃
+			PRINTW ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+			PRINTL 
+			ALIGNMENT LEFT
+			SETCOLOR 0xfdca57
+			PRINTW 　　　――その温度で私を　救うの――
+			SETCOLOR 0x33ffcc
+			
+		ENDIF
+	ENDIF
+
+	ALIGNMENT CENTER
+	SETCOLOR 0xfdca57
+	PRINTW 【ＣＬＩＭＡＸ　ＲＥＶＵＥ／ＦＩＮＩＳＨ】
+	PRINTL
+	RESETCOLOR
+	ALIGNMENT LEFT
+	
+	;場にいるキャラを総当たりで見る
+	FOR LOCAL,1, 17
+		;そこにだれも居なければスキップ
+		SIF POS(LOCAL) == -1
+			CONTINUE
+		;自分自身もスキップ
+		SIF POS(LOCAL) == ARG
+			CONTINUE
+		;死んでるやつもスキップ
+		SIF GET_STATE(CFLAG:POS(LOCAL):상태이상) == "DYING"
+			CONTINUE
+		;種族名が舞台少女で、星のティアラを装備している
+		IF CSTR:POS(LOCAL):종족명 == "무대소녀" && EQUIP:POS(LOCAL):악세서리 == [[아이템:별의티아라]]
+			;スキルゲージDがある（クライマックスレヴュー展開中は離脱）
+			SIF SKILLGAGE_D_GET(POS(LOCAL),3588) > 0
+				CONTINUE
+			;キラめき20増加
+			CALL SKILLGAGE_H_ADD, POS(LOCAL), 3588, 20
+			;100以上になってたら100にする
+			IF SKILLGAGE_H_GET(POS(LOCAL),3588) > 99
+				CALL SKILLGAGE_H_SET, POS(LOCAL), 3588, 100
+				PRINTFORML ＞%NAME:POS(LOCAL)%　【ＣＬＩＭＡＸ　ＲＥＶＵＥ】ＲＥＡＤＹ
+			ELSE
+				PRINTFORML ＞%CALLNAME:POS(LOCAL)%의 반짝임이 20 상승했다
+			ENDIF
+		ENDIF
+	NEXT
+	
+	;クライマックスレヴュー終了
+	;CALL SKILLGAGE_D_SET,ARG,3588,0
+
+;それ以外
+ELSE
+	;ガーキルして相手をぶん殴る処理
+	LOCAL = POS(ARG:1)
+
+	LOCAL:1 = 1
+	IF LOCAL:1 > CFLAG:LOCAL:검격무효화횟수*2
+		LOCAL:1 -= CFLAG:LOCAL:검격무효화횟수
+		IF LOCAL:1 >= CFLAG:LOCAL:검격가드킬
+			CFLAG:LOCAL:검격가드킬 = LOCAL:1
+			PRINTFORML [{ARG:1}]%CALLNAME:LOCAL,20% >>>>> {LOCAL:1}턴、검격내성을 무효화！
+		ENDIF
+	ELSE
+		CFLAG:LOCAL:검격무효화횟수 -= LOCAL:1
+		PRINTFORML [{ARG:1}]%CALLNAME:LOCAL,20% >>>>> 검격무효화횟수 감소！
+	ENDIF
+	CALL ATTACK_SINGLE,ARG,LOCAL,SKILL_NUM
+	
+	;場にいるキャラを総当たりで見る
+	FOR LOCAL,1, 17
+		;そこにだれも居なければスキップ
+		SIF POS(LOCAL) == -1
+			CONTINUE
+		;自分自身もスキップ
+		SIF POS(LOCAL) == ARG
+			CONTINUE
+		;死んでるやつもスキップ
+		SIF GET_STATE(CFLAG:POS(LOCAL):상태이상) == "DYING"
+			CONTINUE
+		;種族名が舞台少女で、星のティアラを装備している
+		IF CSTR:POS(LOCAL):종족명 == "舞台少女" && EQUIP:POS(LOCAL):악세서리 == [[아이템:별의티아라]]
+			;スキルゲージDがある（クライマックスレヴュー展開中は離脱）
+			SIF SKILLGAGE_D_GET(POS(LOCAL),3588) > 0
+				CONTINUE
+			;キラめき20増加
+			CALL SKILLGAGE_H_ADD, POS(LOCAL), 3588, 20
+			;100以上になってたら100にする
+			IF SKILLGAGE_H_GET(POS(LOCAL),3588) > 99
+				CALL SKILLGAGE_H_SET, POS(LOCAL), 3588, 100
+				PRINTFORML ＞%NAME:POS(LOCAL)%　【ＣＬＩＭＡＸ　ＲＥＶＵＥ】ＲＥＡＤＹ
+			ELSE
+				PRINTFORML ＞%CALLNAME:POS(LOCAL)%의 반짝임이 20 상승했다
+			ENDIF
+		ENDIF
+	NEXT
+	
+ENDIF
+
+;====================================================
+;실행내용 여기까지
+;====================================================
+
+;　説明文の表示
+@SKILL_EXPLAIN_呼応の斬撃,ARG
+#LOCALSIZE 1
+IF CFLAG:(CHARANUM-1):PT플래그 || U < 0 || U >= CHARANUM
+	PRINTL 【통상시】
+	PRINTL 적 1체에 1턴 검격가드킬＋검격 대 데미지
+	PRINTL ＋【무대소녀】 전원의 반짝임을 20 늘린다
+	PRINTL 
+	PRINTL 【클라이맥스・레뷰　발동시】
+	PRINTL 적 전체에、검격가드브레이크＋『검격・핵열・중력』필중 초특대 데미지
+	PRINTL ＋【무대소녀】 전원의 반짝임을 20 늘린다
+ELSE
+	;CR展開時
+	IF SKILLGAGE_D_GET(U,3588)
+		SETCOLOR 0xfdca57
+		PRINTL 【ＣＬＩＭＡＸ　ＡＣＴ】
+		RESETCOLOR
+		PRINTL 끝없는 재연의 끝에서 얻은 반짝임이、재생을 구가하는 칼날이 된다
+		PRINTL 적 전체에、검격가드브레이크＋『검격・핵열・중력』필중 초특대 데미지
+		PRINTL ＋【무대소녀】 전원의 반짝임을 20 늘린다
+		;大場ななパワーアップイベント中かつボスが最終形態時のみ、撃ち放題
+		IF GETBIT(이벤트플래그:93:17, 7) && (이벤트플래그:93:0 == 12 || 이벤트플래그:93:0 == 13) && (이벤트플래그:93:10 && [[キャラ:나나]])
+			SETCOLOR 0xfdca57
+			PRINTL 혼신의 일격으로 이 레뷰에 결착을！
+			RESETCOLOR
+		;通常
+		ELSE
+			PRINTL 사용하면 클라이맥스 레뷰는 종료된다
+		ENDIF
+	ELSE
+		PRINTL 적 1체에 1턴 검격가드킬＋검격 대 데미지
+		PRINTL ＋【무대소녀】 전원의 반짝임을 20 늘린다
+		PRINTL 클라이맥스 레뷰 발동 중에는 성능이 변화한다。
+	ENDIF
+ENDIF
+
+;没
+;@계승부위_呼応の斬撃,ARG
+
+;사용조건
+@SKILL_SPECIAL_ACTIONABLE_呼応の斬撃,ARG
+RETURN 1

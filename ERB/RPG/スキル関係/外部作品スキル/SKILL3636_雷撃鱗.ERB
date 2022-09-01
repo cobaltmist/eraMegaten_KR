@@ -18,6 +18,7 @@
 ;	006		2022/02/06		木綿豆腐				↑がPRINTLだったのでPRINTFORMLにした
 ;													あと被弾判定にミスがあったので直した
 ;	007		2022/02/26		木綿豆腐				↑の被弾判定が更にミスってたので直した
+;	008		2022/05/12		木綿豆腐				ターゲット処理をより賢くした
 ;
 ;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
 ;スキル名
@@ -174,7 +175,7 @@ SIF (GETBIT(CFLAG:ARG:받음플래그,18) || GETBIT(CFLAG:ARG:받음플래그,19
 	加算クードス += 10
 IF EQUIP:ARG:악세서리 == [[아이템:무기력의부적]]
 ELSE
-	;3회 데미지を受けた又はカウンター、トリガー以外の攻撃を受けたらクードス全没収！0ダメージでもダメです
+	;3回ダメージを受けた又はカウンター、トリガー以外の攻撃を受けたらクードス全没収！0ダメージでもダメです
 	;これはアパシーではなくティミッドだ！！
 	IF (CFLAG:ARG:현데미지 >= 0 || GETBIT(CFLAG:ARG:받음플래그,18) || GETBIT(CFLAG:ARG:받음플래그,19)) && CFLAG:ARG:회피실패
 		;クードス1以上なら被弾判定
@@ -246,16 +247,16 @@ RETURN 0
 #LOCALSIZE 3
 #DIM DART_D
 #DIM DART_H
-#DIM EXP_NUM
-#DIM ロック深度
-#DIM TARGET_NUM
-#DIM TARGET_POS
+#DIM TEMP
 #DIM ループ用
+#DIM ループ用1
+#DIM ループ用2
 #DIM 攻撃前敵カウント
 #DIM 攻撃後敵カウント
 #DIM 差分
 #DIM 加算クードス
-#DIM TEMP
+#DIM ターゲット番号
+#DIM ターゲットリスト, 4
 
 攻撃前敵カウント = 0
 攻撃後敵カウント = 0
@@ -272,29 +273,27 @@ IF CFLAG:ARG:PT플래그 > 0
 ENDIF
 
 FLAG:확산플래그 = 0
-DART_D = SKILLGAGE_D_GET(ARG, [[스킬:피뢰침]])
+TEMP = 0
+VARSET ターゲットリスト,0
+CALL TARGET_CHECK_3637, ARG
 DART_H = SKILLGAGE_H_GET(ARG, [[스킬:피뢰침]])
-IF DART_D > 0 && DART_H > 0
-	FOR EXP_NUM, 1, 11
-		LOCAL = POWER(10, EXP_NUM)
-		;ゲージHを10,100,1000……で割る
-		LOCAL:1 = DART_H / LOCAL
-		;割った結果から一桁目を消す
-		LOCAL:2 = (LOCAL:1 / 10) * 10
-		;LOCAL:1とLOCAL:2の差がロック深度になる
-		ロック深度 = LOCAL:1 - LOCAL:2
-		;ロック対象のポジションをセット
-		TARGET_POS = EXP_NUM + 6
-		;ロック対象のリスト番号をセット
-		TARGET_NUM = POS(TARGET_POS)
-		IF TARGET_NUM > -1 && GET_STATE(CFLAG:TARGET_NUM:상태이상) != "DYING" && TARGET_POS > 0 && ロック深度 > 0
-			FLAG:확산플래그 = ロック深度
-			TEMP = ロック深度
-			CALL ATTACK_SINGLE, ARG, TARGET_NUM, 3636
-		ENDIF
+SIF DART_H == 0
+	RETURN
+DART_H += 1
+FOR ループ用1, 1, DART_H
+	ターゲット番号 = CFLAG:ARG:("고유게이지H"+TOSTR(ループ用1))
+	FLAG:확산플래그 += 1
+	FOR ループ用2, 1, DART_H
+		SIF CFLAG:ARG:("고유게이지H"+TOSTR(ループ用1)) == CFLAG:ARG:("고유게이지H"+TOSTR(ループ用2)) && ループ用1 != ループ用2
+			FLAG:확산플래그 += 1
 	NEXT
-ENDIF
-FLAG:확산플래그 = 0
+	IF MATCH(ターゲットリスト, ターゲット番号) == 0
+		CALL ATTACK_SINGLE, ARG, ターゲット番号, 3636
+		TEMP = FLAG:확산플래그
+		FLAG:확산플래그 = 0
+		ターゲットリスト:ループ用1 = ターゲット番号
+	ENDIF
+NEXT
 
 IF CFLAG:ARG:PT플래그 > 0
 	FOR ループ用, 7, 17
@@ -311,14 +310,14 @@ ENDIF
 
 SELECTCASE 差分
 CASE 1
-	加算クードス = 30
-	IF EQUIP:ARG:악세서리 == [[아이템:무모함의증거]]
-		TIMES 加算クードス, 1.25
-	ELSEIF EQUIP:ARG:악세서리 == [[아이템:무기력의부적]]
-		TIMES 加算クードス, 0.5
-	ENDIF
 	;原作だと+10だけど慈悲を与える
 	IF TEMP == 3
+		加算クードス = 30
+		IF EQUIP:ARG:악세서리 == [[아이템:무모함의증거]]
+			TIMES 加算クードス, 1.25
+		ELSEIF EQUIP:ARG:악세서리 == [[아이템:무기력의부적]]
+			TIMES 加算クードス, 0.5
+		ENDIF
 		PRINTFORMW FULL-STRIKE　Kudos + {加算クードス}
 		CALL SKILLGAGE_F_ADD, ARG, [[스킬:뇌격린]], 加算クードス
 	ENDIF
@@ -504,36 +503,12 @@ RETURN 0
 
 ;사용조건
 @SKILL_SPECIAL_ACTIONABLE_3636, ARG
-#LOCALSIZE 3
-#DIM DART_D
 #DIM DART_H
-#DIM EXP_NUM
-#DIM ロック深度
-#DIM TARGET_NUM
-#DIM TARGET_POS
-#DIM TARGET_CTR
-TARGET_CTR = 0
-DART_D = SKILLGAGE_D_GET(ARG, [[스킬:피뢰침]])
-DART_H = SKILLGAGE_H_GET(ARG, [[스킬:피뢰침]])
-IF DART_D > 0 && DART_H > 0
-	FOR EXP_NUM, 1, 11
-		LOCAL = POWER(10, EXP_NUM)
-		;ゲージHを10,100,1000……で割る
-		LOCAL:1 = DART_H / LOCAL
-		;割った結果から一桁目を消す
-		LOCAL:2 = (LOCAL:1 / 10) * 10
-		;LOCAL:1とLOCAL:2の差がロック深度になる
-		ロック深度 = LOCAL:1 - LOCAL:2
-		;ロック対象のポジションをセット
-		TARGET_POS = EXP_NUM + 6
-		;ロック対象のリスト番号をセット
-		TARGET_NUM = POS(TARGET_POS)
-		IF TARGET_NUM > -1 && GET_STATE(CFLAG:TARGET_NUM:상태이상) != "DYING" && TARGET_POS > 0 && ロック深度 > 0
-			TARGET_CTR += 1
-		ENDIF
-	NEXT
-ENDIF
-SIF TARGET_CTR > 0
-	RETURN 1
-RETURN 0
 
+CALL TARGET_CHECK_3637, ARG
+DART_H = SKILLGAGE_H_GET(ARG, [[스킬:피뢰침]])
+IF DART_H > 0
+	RETURN 1
+ELSE
+	RETURN 0
+ENDIF
