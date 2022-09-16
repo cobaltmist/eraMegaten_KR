@@ -37,6 +37,8 @@
 ;													主人が妊娠によって崩壊する事がある不具合を修正
 ;	021		2022/04/16		JK好き					@PREGNANCY_CHECK 多胎OPによる確定妊娠条件を満たした際に必ず主人の子を妊娠してしまう問題を修正
 ;	022		2022/06/07		Collared				UI整理プロジェクトにより配置変更
+;	023		2022/06/23		JK好き					@CHANGE_N_STATUS 妊娠時の乳サイズ変動時のIF分岐が間違っていた問題を修正
+;	024		2022/06/28		JK好き					@CHILD_BIRTH 乳母に任せた際に父親名称を受け渡していなかった問題を修正
 ;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
 ;EVENT_P、EVENT_PREGNANCY、임신関連の이벤트
 
@@ -178,219 +180,17 @@ FOR CHARA, 0 , CHARANUM
 	ENDSELECT
 NEXT
 
-;@IN_VAGINA
-;#DIM LCOUNT
-;;임신기능オフなら何もせずに帰る
-;;…と、あとでONにしたときに一斉임신かますんでここで임신판정リセット
-;IF FLAG:임신기능 == 0
-;	CVARSET CFLAG,"주인의질내사정에의한임신판정",0
-;	CVARSET CFLAG,"조수의질내사정에의한임신판정",0
-;	CVARSET CFLAG,"노예의질내사정에의한임신판정",0
-;	CVARSET CFLAG,"고객의질내사정에의한임신판정",0
-;	CVARSET CFLAG,"촉수의질내사정에의한임신판정",0
-;	RETURN 0
-;ENDIF
-;FOR LCOUNT, 0, CHARANUM
-;	T = LCOUNT
-;	;主人の中田氏による임신판정
-;	IF CFLAG:T:주인의질내사정에의한임신판정 > 0
-;		P = 1
-;		CALL NAKADASHI_CHECK
-;	ENDIF
-;	;조수→奴隷への中田氏による임신판정
-;	IF CFLAG:T:조수의질내사정에의한임신판정 > 0 && ASSI > -1
-;		P = 2
-;		CALL NAKADASHI_CHECK
-;	ENDIF
-;	;奴隷→조수への中田氏による임신판정
-;	IF CFLAG:T:노예의질내사정에의한임신판정 > 0 && TARGET > -1
-;		P = 3
-;		CALL NAKADASHI_CHECK
-;	ENDIF
-;	;창관や렌탈時に客に질사された場合の임신판정
-;	IF CFLAG:T:고객의질내사정에의한임신판정 > 0
-;		P = 4
-;		CALL NAKADASHI_CHECK
-;	ENDIF
-;	;촉수→奴隷への中田氏による임신판정
-;	IF CFLAG:T:촉수의질내사정에의한임신판정 > 0
-;		P = 5
-;		CALL NAKADASHI_CHECK
-;	ENDIF
-;NEXT
-;
-;;임신確定時の処理
-;FOR LCOUNT, 0, CHARANUM
-;	T = LCOUNT
-;	;임신確定時の処理
-;	IF TALENT:T:임신 == 0 && CFLAG:T:임신시부친판정 != 0 && CFLAG:T:출산예정일 == 0
-;		SIF 위험일(T) > 1
-;			CFLAG:T:발정임신 = 1
-;		CFLAG:T:출산예정일 = DAY + 6
-;		;父親が主人
-;		IF CFLAG:T:임신시부친판정 == 1
-;			CFLAG:T:임신확정후의부친판정 = NO:MASTER
-;			LOCAL = MASTER
-;		ENDIF
-;		;父親が조수
-;		IF CFLAG:T:임신시부친판정 == 2 && ASSI > -1
-;			CFLAG:T:임신확정후의부친판정 = NO:ASSI
-;			LOCAL = ASSI
-;		ENDIF
-;		;父親が奴隷
-;		IF CFLAG:T:임신시부친판정 == 3 && TARGET > -1
-;			CFLAG:T:임신확정후의부친판정 = NO:TARGET
-;			LOCAL = TARGET
-;		ENDIF
-;		;父親が顧客
-;		IF CFLAG:T:임신시부친판정 == 4
-;			CFLAG:T:임신확정후의부친판정 = -1
-;		ENDIF
-;		;父親が촉수
-;		IF CFLAG:T:임신시부친판정 == 5
-;			CFLAG:T:임신확정후의부친판정 = -2
-;		ENDIF
-;		IF CFLAG:T:임신확정후의부친판정 >= 0
-;			CFLAG:T:부친의고유번호부모 = CFLAG:LOCAL:캐릭터고유번호
-;		ELSEIF CFLAG:T:임신확정후의부친판정 == -1
-;			CSTR:T:부친명칭 = 名も知らぬ인간
-;			SELECTCASE RAND:100
-;				;이능자
-;				CASE IS < 25
-;					WHILE 1
-;						LOCAL = 4701 + RAND:100
-;						SIF !EXISTCSV(LOCAL, 0)
-;							CONTINUE
-;						CFLAG:T:임신확정후의부친판정 = LOCAL
-;						BREAK
-;					WEND
-;					CFLAG:T:부친의고유번호부모 = -3
-;				;비전투원
-;				CASE IS < 50	
-;					CFLAG:T:부친의고유번호부모 = -4
-;				;석세서
-;				CASE IS < 60
-;					CFLAG:T:부친의고유번호부모 = -5
-;				;페르소나구사자
-;				CASE IS < 70
-;					CFLAG:T:부친의고유번호부모 = RAND:2 ? -7 # -8
-;				;데빌시프터
-;				CASE IS < 75
-;					CFLAG:T:부친의고유번호부모 = -8
-;				;악마
-;				CASEELSE
-;					WHILE 1
-;						LOCAL = RAND:1900 + 1
-;						SIF !EXISTCSV(LOCAL, 0)
-;							CONTINUE
-;						SIF !CSVABL(LOCAL, GETNUM(ABL, "종족"), 0)
-;							CONTINUE
-;						SIF CSVCFLAG(LOCAL, GETNUM(CFLAG, "특수합체만"), 0)
-;							CONTINUE
-;						SIF CSVCFLAG(LOCAL, GETNUM(CFLAG, "합체조건있음"), 0)
-;							CONTINUE
-;						SIF CSVCFLAG(LOCAL, GETNUM(CFLAG, "전서소환불가"), 0)
-;							CONTINUE
-;						CFLAG:T:임신확정후의부친판정 = LOCAL
-;						BREAK
-;					WEND
-;					CSTR:T:부친명칭 = 名も知らぬ악마
-;					CFLAG:T:부친의고유번호부모 = -1
-;			ENDSELECT
-;		ELSE
-;			CFLAG:T:부친의고유번호부모 = -2
-;		ENDIF
-;	ENDIF
-;NEXT
-;
-;@NAKADASHI_CHECK
-;;中出しされた精子量に応じて확률処理
-;;체크するフラグ설정
-;F = 101 + P
-;SIF P == 1
-;	F = 101
-;SIF P == 5
-;	F = 112
-;
-;;中だしされてないなら関数終了
-;SIF CFLAG:T:F == 0
-;	RETURN 0
-;
-;;대상が男なら関数終了
-;IF TALENT:T:140 && TALENT:T:오토코노코 == 0
-;	CFLAG:T:F = 0
-;	RETURN 0
-;ENDIF
-;
-;;자궁내피임결계をを使っている場合は関数終了
-;IF CFLAG:T:108 == 1
-;	CFLAG:T:F = 0
-;	RETURN 0
-;ENDIF
-;
-;;임신が既に確定している場合は関数終了
-;IF CFLAG:T:110 > 0
-;	CFLAG:T:F = 0
-;	RETURN 0
-;ENDIF
-;
-;;임신中もしくは육아중は関数終了
-;IF TALENT:T:153 || TALENT:T:154
-;	CFLAG:T:F = 0
-;	RETURN 0
-;ENDIF
-;
-;;排卵剤の有無による定数설정
-;C = 1 + (CFLAG:T:배란유발제 > 0)
-;IF CFLAG:T:배란유발제 == 0 || (위험일(T) == 0) 
-;	SIF RAND:100 < MIN(50, CFLAG:T:F)
-;		CFLAG:T:임신시부친판정 = P
-;ELSE
-;	SIF RAND:100 < CFLAG:T:F*C * ((위험일(T) > 0) + 1)
-;		CFLAG:T:임신시부친판정 = P
-;ENDIF
-;;IF CFLAG:T:F >= 50
-;;	SIF RAND:(1 * C) == 0
-;;		CFLAG:T:임신시부친판정 = P
-;;ELSEIF CFLAG:T:F >= 30
-;;	SIF RAND:(2 * C) == 0
-;;		CFLAG:T:임신시부친판정 = P
-;;ELSEIF CFLAG:T:F >= 20
-;;	SIF RAND:(3 * C) == 0
-;;		CFLAG:T:임신시부친판정 = P
-;;ELSEIF CFLAG:T:F >= 15
-;;	SIF RAND:(4 * C) == 0
-;;		CFLAG:T:임신시부친판정 = P
-;;ELSEIF CFLAG:T:F >= 5
-;;	SIF RAND:(5 * C) == 0
-;;		CFLAG:T:임신시부친판정 = P
-;;ELSEIF CFLAG:T:F >= 1
-;;	SIF RAND:(6 * C) == 0
-;;		CFLAG:T:임신시부친판정 = P
-;;ENDIF
-;
-;;판정を行った질사のリセット
-;CFLAG:T:F = 0
-
-
 ;임신処理
 @GET_CHILD
 FOR LOCAL,0,CHARANUM
-;	IF TALENT:LOCAL:153 == 0 && CFLAG:LOCAL:102 > 0 && CFLAG:LOCAL:110 <= DAY+15 && CFLAG:LOCAL:12 == 0
 	IF TALENT:LOCAL:임신 == 0 && CFLAG:LOCAL:임신시부친판정 > 0
-;		T = LOCAL
-;		A = CFLAG:T:임신확정후의부친판정
 		CALL GET_CHILD_MESSAGE, LOCAL
 	ENDIF
 NEXT
 
 @GET_CHILD_MESSAGE, ARG
 #DIM LCOUNT
-;C = -1
-;FOR LCOUNT, 0, CHARANUM
-;	SIF NO:LCOUNT == A
-;		C = LCOUNT
-;NEXT
+
 PRINTFORMW %CALLNAME:ARG%의 상태가 이상하다……
 ;この時点で親の名前を持ってない場合は취득する
 IF !STRLENS(CSTR:ARG:부친명칭)
@@ -425,21 +225,6 @@ IF FLAG:쌍둥이플래그 > 0 && CFLAG:ARG:이번수태인수 > 1
 	ENDIF
 ENDIF
 
-;IF CFLAG:T:임신확정후의부친판정 >= 0 && C >= 0
-;	PRINTFORML %CALLNAME:T%は%CALLNAME:ARG%の아이を身篭った様だ
-;	CSTR:T:부친명칭 = %CALLNAME:ARG%
-;ELSEIF CFLAG:T:임신확정후의부친판정 <= 3414 && CFLAG:T:임신확정후의부친판정 >= 3401
-;	PRINTFORML %CALLNAME:T%は名も知らぬ男の아이を身篭った様だ
-;ELSEIF CFLAG:T:임신확정후의부친판정 >= 0
-;	PRINTFORML %CALLNAME:T%は%CSVCALLNAME((CFLAG:T:임신확정후의부친판정),0)%の아이を身篭った様だ
-;	SIF !STRLENS(CSTR:T:부친명칭)
-;		CSTR:T:부친명칭 = %CSVCALLNAME((CFLAG:T:임신확정후의부친판정),0)%
-;ELSEIF CFLAG:T:임신확정후의부친판정 == -2
-;	PRINTFORML %CALLNAME:T%は촉수の아이を身篭った様だ
-;	CSTR:T:부친명칭 = 촉수
-;ELSE
-;	PRINTFORML %CALLNAME:T%は名も知らぬ男の아이を身篭った様だ
-;ENDIF
 PRINTFORML %조사처리(NAME:ARG,"는")% [임신]했다
 
 CFLAG:ARG:임신횟수 += 1
@@ -483,7 +268,7 @@ ELSEIF TALENT:ARG:빈유 == 1
 	PRINTFORMW [빈유]에서 보통으로 커졌다
 	PRINTFORMW 　
 	TALENT:ARG:빈유 = 0
-ELSEIF TALENT:ARG:거유 == 0 && TALENT:ARG:폭유 == 0
+ELSEIF TALENT:ARG:거유 == 0 && TALENT:ARG:폭유 == 0 && TALENT:ARG:마유 == 0
 	PRINTFORMW %CALLNAME:ARG%의 가슴이 보통 크기에서 
 	PRINTFORMW [거유]정도로 커졌다
 	PRINTFORMW 　
@@ -598,28 +383,6 @@ IF GROUPMATCH(CFLAG:ARG:임신시부친판정, 1, 2, 3)
 			ENDIF
 		ENDIF
 	ENDIF
-;父親が主人
-;IF CFLAG:ARG:임신시부친판정 == 1
-;	;연모もしくは친애
-;	SIF TALENT:ARG:3 || TALENT:ARG:6
-;		TIMES B , 0.01
-;	;음란もしくは창부
-;	SIF TALENT:ARG:4 || TALENT:ARG:7
-;		TIMES B , 0.40
-;	;복종もしくは예속
-;	SIF TALENT:ARG:5 || TALENT:ARG:8
-;		TIMES B , 0.10
-;父親が奴隷または조수
-;ELSEIF CFLAG:ARG:임신시부친판정 == 2 || CFLAG:ARG:임신시부친판정 == 3
-;	;연모もしくは친애
-;	SIF TALENT:ARG:3 || TALENT:ARG:6
-;		TIMES B , 0.60
-;	;음란もしくは창부
-;	SIF TALENT:ARG:4 || TALENT:ARG:7
-;		TIMES B , 0.40
-;	;복종もしくは예속
-;	SIF TALENT:ARG:5 || TALENT:ARG:8
-;		TIMES B , 0.60
 ;父親が顧客
 ELSEIF CFLAG:ARG:임신시부친판정 == 4
 	;연모もしくは친애
@@ -871,6 +634,7 @@ IF TALENT:ARG:붕괴
 			CFLAG:RESULT:딸의친부모캐릭터번호부모 = NO:ARG
 			CFLAG:RESULT:딸의친부모고유번호부모 = CFLAG:ARG:캐릭터고유번호
 			CFLAG:RESULT:부친의고유번호부모 = CFLAG:ARG:부친의고유번호부모
+			CSTR:RESULT:부친명칭 = %CSTR:ARG:부친명칭%
 			CFLAG:RESULT:유모인가？ = 1
 			IF TALENT:RESULT:육아중 == 0
 				TALENT:RESULT:육아중 = 1
@@ -955,6 +719,7 @@ ELSE
 			CFLAG:RESULT:딸의친부모캐릭터번호부모 = NO:ARG
 			CFLAG:RESULT:딸의친부모고유번호부모 = CFLAG:ARG:캐릭터고유번호
 			CFLAG:RESULT:부친의고유번호부모 = CFLAG:ARG:부친의고유번호부모
+			CSTR:RESULT:부친명칭 = %CSTR:ARG:부친명칭%
 			CFLAG:RESULT:유모인가？ = 1
 			IF TALENT:RESULT:육아중 == 0
 				TALENT:RESULT:육아중 = 1
