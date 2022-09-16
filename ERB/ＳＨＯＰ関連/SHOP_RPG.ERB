@@ -11,10 +11,13 @@
 ;	005		2019/07/11		名無し					現金使用でしあわせチケットが貰えるように
 ;	006		2019/01/13		Jガン					装備購入時にステータスを比較できるように
 ;	007		2022/06/10		Collared				UI整理プロジェクトにより配置変更＆ショップ番号参照に変更
+;	008		2022/08/17		NEO						マウスUIモードなどをこの場でいじれる表示切替処理実装
+;													コマンド番号や配置の整理
+;
 ;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
 ; 特記:
-;  メモが필요な変数一覧
-;  M:0		SHOP_RPG_2.ERB内の『화면モード関連』にある説明を参照
+;  メモが必要な変数一覧
+;  M:0		SHOP_RPG_2.ERB内の『画面モード関連』にある説明を参照
 ;  M:1		同上
 ;-------------------------------------------------
 
@@ -30,12 +33,24 @@ RETURN 1
 
 
 @SHOP_COM_113
-;マウスUISHOPが有効
-IF MouseUIStore_Enable == 1
-	CALL MouseUIStore("JUNK")
-	RETURN RESULT
-ENDIF
+	$mouseUiOnOff
+	;マウスUIショップが有効
+	IF MouseUIStore_Enable == 1
+		CALL MouseUIStore("JUNK")
+		;画面表示モードの切り替えがあった場合、ショップを再表示
+		SIF MouseUIStore_Enable == 0
+			GOTO mouseUiOnOff
+	ELSE
+		CALL DefaultJunkShop
+		;画面表示モードの切り替えがあった場合、ショップを再表示
+		SIF MouseUIStore_Enable == 1
+			GOTO mouseUiOnOff
+	ENDIF
 
+	RETURN RESULT
+
+
+@DefaultJunkShop
 RESULT = 0
 CUSTOMDRAWLINE =
 PRINTL 점주：
@@ -62,16 +77,13 @@ DRAWLINE
 CALL RPG_SHOP_SCREENMODE_PRINT
 ;---- EDIT 002 ADD END ---------------------------
 IF FLAG:SHOP화면모드설정 == 0
-	PRINTFORML 장비자비교설정[802]\@ GETBIT(FLAG:정크숍설정,0) ? ON # OFF \@
+	PRINTFORML [801] 장비자비교설정：\@ GETBIT(FLAG:정크숍설정,0) ? ON # OFF \@
 ELSE
-	PRINTL 
+	PRINTFORML [801] 장비자비교설정：변경불가（단품구입모드에서만 변경 가능합니다）
 ENDIF
-IF FLAG:정크포인트미사용 == 0;+1
-	PRINTL JP사용  [801]전환
-ELSE
-	PRINTL JP비사용[801]전환
-ENDIF
-	
+	PRINTFORML [802] JP사용전환（현재：\@ FLAG:정크포인트미사용 ? 사용한다 # 사용하지 않는다 \@）
+
+
 PRINTL [1] 아이템 구입
 PRINTL [2] 아이템 매각
 PRINTL [9] 행복티켓 사용
@@ -103,21 +115,28 @@ ELSEIF RESULT == 800
 	RESULT = -1
 ;---- EDIT 002 ADD END ---------------------------
 ELSEIF RESULT == 801
-	FLAG:정크포인트미사용 = !FLAG:정크포인트미사용
+	;装備比較ON/OFF
+	;非まとめ買いモードでのみ変更可能
+	SIF FLAG:SHOP화면모드설정 == 0
+		INVERTBIT FLAG:정크숍설정,0
 	CUSTOMDRAWLINE =
 	GOTO SHOP_START
 ELSEIF RESULT == 802
-	INVERTBIT FLAG:정크숍설정,0
+	FLAG:정크포인트미사용 = !FLAG:정크포인트미사용
 	CUSTOMDRAWLINE =
 	GOTO SHOP_START
 ELSEIF RESULT == 1
 ;---- EDIT 002 MOD START -------------------------
 ;	CALL BUY_RPG
 
+	;まとめ買いモードかどうかはここで分岐
+
+	;装備比較もアリのモード
 	IF FLAG:SHOP화면모드설정 == 0
 		CALL BUY_RPG
+	;まとめ買いモード
 	ELSE
-		;아이템구입:通常 (0:ジャンクSHOP)
+		;アイテム購入:通常 (0:ジャンクSHOP)
 		CALL RPG_SHOP_NOMAL,FLAG:SHOP화면모드설정,0
 	ENDIF
 ;---- EDIT 002 MOD END ---------------------------
@@ -155,7 +174,10 @@ IF RESULT == 0
 ENDIF
 IF RESULT == -1
 	CUSTOMDRAWLINE =
-	GOTO SHOP_START
+	;UI切り替えでマウスモードになったら戻らない
+	;＝マウスUIモードフラグが立っていなければ、SHOP_STARTへ戻る
+	SIF MouseUIStore_Enable == 0
+		GOTO SHOP_START
 ENDIF
 
 @BUY_RPG
@@ -166,21 +188,27 @@ FOR LOCAL,0,8
 	PRINTFORML [{LOCAL}] %GET_EQUIP(LOCAL)%
 NEXT
 PRINTL [8] 아이템
-PRINTL [99] 돌아간다
-PRINTL [100] 가게를 나간다　[101]정렬조건변경
+PRINTL [99] 정렬조건변경
+PRINTL [100] 돌아간다
+PRINTL 
+PRINTL [999] 가게를 나간다
 
 $INPUT_LOOP
 INPUT
 
-IF RESULT == 99
+IF RESULT == 100
+	;戻る
 	RETURN -1
-ELSEIF RESULT == 100
+ELSEIF RESULT == 999
+	;店を出る
 	RETURN 0
-ELSEIF RESULT == 101
+ELSEIF RESULT == 99
+	;ソート条件変更
 	CALL CHANGE_CONDITION_EQUIP_SORT
 	CALL EQUIP_SORT
 	RESTART
 ELSEIF RESULT >= 0 && RESULT < 9
+	;武器防具アイテム購入
 	LOCAL = RESULT
 	CALL MAKE_RPGITEMLIST,RESULT
 	LOCAL:1 = RESULT
@@ -1228,16 +1256,19 @@ FOR LOCAL,0,8
 	PRINTFORML [{LOCAL}] %GET_EQUIP(LOCAL)%
 NEXT
 PRINTL [8] 아이템
-PRINTL [99] 돌아간다
-PRINTL [100] 가게를 나온다
+PRINTL [100] 돌아간다
+PRINTL 
+PRINTL [999] 가게를 나간다
 
 $INPUT_LOOP
 INPUT
 
 IF RESULT == 100
-	RETURN 0
-ELSEIF RESULT == 99
+	;戻る
 	RETURN -1
+ELSEIF RESULT == 999
+	;店を出る
+	RETURN 0
 ELSEIF RESULT >= 0 && RESULT < 9
 	LOCAL = RESULT
 ELSE

@@ -35,6 +35,7 @@
 ;	020		2021/12/14		JK好き					信頼陥落はNTRイベントが発生しないように修正
 ;	021		2022/04/08		JK好き					奴隷選択時に料理人気が表示されるように調整
 ;	022		2022/06/07		NEO						NTR防御服飾追加の関数対応
+;	023		2022/06/11		JK好き					NTRイベントでの処女喪失による異常経験獲得処理が間違っていた問題を修正
 ;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
 
 ;포장마차(식당)で働かせる
@@ -133,12 +134,16 @@ ELSE
 ENDIF
 
 IF LOCAL:3 == 0
-	IF ITEM:식당
+	IF ITEM:식당 && LOCAL == MASTER
+		PRINTFORML %조사처리(CALLNAME:LOCAL,"는")% 자신이 식당에 나가기로 했습니다.
+	ELSEIF ITEM:포장마차 && LOCAL == MASTER
+		PRINTFORML %조사처리(CALLNAME:LOCAL,"는")% 자신이 포장마차에 나가기로 했습니다. 
+	ELSEIF ITEM:식당
 		PRINTFORML %CALLNAME:LOCAL%에게 식당에 나오도록 시켰습니다.
 	ELSEIF ITEM:포장마차
 		PRINTFORML %CALLNAME:LOCAL%에게 포장마차에 나오도록 시켰습니다.
 	ELSE
-		PRINTFORML %조사처리(CALLNAME:LOCAL,"는")% 식당에서 아르바이트하도록 시켰습니다.
+		PRINTFORML %조사처리(CALLNAME:LOCAL,"는")% 식당에서 아르바이트를 하게 되었습니다.
 	ENDIF
 	;이벤트구상
 	T = TARGET
@@ -2132,13 +2137,15 @@ SIF CFLAG:ARG:자궁내피임결계 == 0
 	CFLAG:ARG:고객의질내사정에의한임신판정 = TCVAR:ARG:획득질사경험*2
 ;처녀상실処理
 IF TALENT:ARG:처녀 && CFLAG:ARG:본방횟수
-	CALL ADDS_ABNORMAL_EXP, "처녀상실（윤간）", ARG
-	CALL ADDS_ABNORMAL_EXP, "처녀상실（촬영）", ARG
+	CALL 처녀상실, ARG
 	SETCOLOR COLOR("red")
 	IF LOCAL:3 == 2
+		CALL ADDS_ABNORMAL_EXP, "처녀상실（윤간）", ARG
+		CALL ADDS_ABNORMAL_EXP, "처녀상실（촬영）", ARG
 		PRINTFORML 【＋２】   처녀상실（윤간）
 		PRINTFORML 【＋２】   처녀상실（촬영）
 	ELSEIF LOCAL:3 == 1
+		CALL ADDS_ABNORMAL_EXP, "처녀상실（ＮＴＲ）", ARG
 		PRINTFORML 【＋２】   처녀상실(ＮＴＲ)
 	ENDIF
 	RESETCOLOR
@@ -2193,7 +2200,7 @@ ENDIF
 
 ;호감도減少処理
 CALL NTR_SHOOT , ARG, ARG:1, LOCAL:7
-
 CALL SHOW_ADD_EXP, ARG
+CALL SHOW_ABNORMAL_EXP, ARG, 0
 
 

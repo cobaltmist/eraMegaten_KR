@@ -4,8 +4,12 @@
 ;YEAR: 2020
 ;REGION: 日本
 ;-------------------------------------------------
+;001	2020/MM/DD	？？？	（新規作成）
+;002	2022/08/17	NEO		表示変更やJP使用切り替えなどを追加（処理の追加の仕方が恐ろしく美しくなくてマジで申し訳なさしかない）
+;
+
 ;-------------------------------------------------
-;マウス専用統合型SHOPUI
+;マウス専用統合型ショップUI
 ;-------------------------------------------------
 @MouseUIStore(aShopName)
 #DIMS aShopName
@@ -44,7 +48,7 @@ CALL MouseUIStore_Trades(lDisplays, lCategories, lCurrencies, "BUY")
 ;-------------------------------------------------
 @MouseUIStore_JunkShop()
 #DIM DYNAMIC lOnSales, 20000
-#DIMS lMenu = "산다", "귀중품을 판다", "불용품을 트레이드인한다", "행복티켓을 사용한다", "티켓에 대해 듣는다", "JP에 대해 듣는다", "가게를 나간다"
+#DIMS lMenu = "표시변경", "JP사용전환", "산다", "귀중품을 판다", "불용품을 트레이드인한다", "행복티켓을 사용한다", "티켓에 대해 듣는다", "JP에 대해 듣는다", "가게를 나간다"
 #DIM lShopper
 #DIMS lCategories = "검", "총", "머리", "몸통", "팔", "발", "악세서리", "탄환", "아이템"
 #DIMS lBuyCurrencies = "JP", "YEN"
@@ -54,6 +58,7 @@ CALL MouseUIStore_Trades(lDisplays, lCategories, lCurrencies, "BUY")
 #DIM DYNAMIC lTradeIn, 9, 1000
 #DIM DYNAMIC lSells, 9, 1000
 lShopper = 0
+
 CALL MouseUIStore_Set_Value()
 CALL MouseUIStore_Yen_OnSales(lOnSales)
 CALL MouseUIStore_Displays(lOnSales, lCategories, lDisplays)
@@ -63,6 +68,13 @@ DO
 	lShopper = 1
 	CALL MouseUIStore_JunkShop_Menu(lMenu, lBuyCurrencies)
 	SELECTCASE lMenu:RESULT
+		CASE "표시변경"
+			CALL RPG_SHOP_SCREENMODE_CHANGE
+			;マウスUIモード→非マウスUIモードになるはずなのでいったんリセット
+			RETURN 0
+		CASE "JP사용전환"
+			;※購入画面側でも変更は可能です
+			FLAG:정크포인트미사용 = !FLAG:정크포인트미사용
 		CASE "산다"
 			CALL MouseUIStore_Trades(lDisplays, lCategories, lBuyCurrencies, "BUY")
 		CASE "귀중품을 판다"
@@ -96,7 +108,22 @@ REDRAW 0
 CALL MouseUIStore_Shows_WalletBar(rCurrencies)
 HTML_PRINT GETLINESTR("━") + "<br>"
 FOR LOCAL, 0, VARSIZE("rMenu")
-	PRINTFORML [{LOCAL, 2}] %rMenu:LOCAL, 30, LEFT%
+	IF rMenu:LOCAL == "표시변경"
+		;ADD 002:表示切替設定な
+		PRINTL 【화면모드：마우스UI모드】
+		;半角スペースは「別モードの表示変更ボタン」と判定を同じにするためのもの
+		PRINTFORML [{LOCAL, 2}] %rMenu:LOCAL + "→비마우스UI모드       ", 30, LEFT%
+	ELSEIF rMenu:LOCAL == "JP사용전환"
+		;ADD 002:半分くらいは表示位置合わせのための意味のない行な
+		PRINTFORML [--] 장비자비교설정：변경불가（단품구입모드에서만 변경 가능합니다）
+		PRINTFORML [{LOCAL, 2}] %rMenu:LOCAL + "（현재：" + \@ FLAG:정크포인트미사용 ? 사용한다 # 사용하지 않는다 \@ + "）", 30, LEFT%
+	ELSEIF rMenu:LOCAL == "가게를 나간다"
+		;ADD 002:誤クリック対策に１行開く
+		HTML_PRINT GETLINESTR("━") + "<br>"
+		PRINTFORML [{LOCAL, 2}] %rMenu:LOCAL, 30, LEFT%
+	ELSE
+		PRINTFORML [{LOCAL, 2}] %rMenu:LOCAL, 30, LEFT%
+	ENDIF
 NEXT
 DO
 	INPUT
