@@ -2,7 +2,7 @@
 ;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
 ;
 ;	Module		:LINKAGE_ECS.ERB
-;	Facility	:エクスリンケージ用関数置き場
+;	Facility	:엑스링케이지用関数置き場
 ;
 ;	Licence		:ライセンスフリー。
 ;
@@ -12,6 +12,7 @@
 ;	001		20XX/XX/XX		----					新規作成
 ;	002		2021/04/22		Rsp暇人 				WAIT表示が誰のリンケージ参加中かわかるようにするための変更に対応
 ;	003		2021/11/23		kamedakeisuke(ﾟдﾟ)		他人気合フラグ・他人集中フラグに対応
+;	004		2022/06/24		JK好き					エラー落ち対策にFLAG:행동순1にARGを入れる処理を追加
 
 ;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
 ;=================================================
@@ -21,13 +22,13 @@
 
 ;---- EDIT 023 ADD START ---------------------------
 ;=================================================
-;입력結果：ＥＣＳＬＩＮＫＡＧＥ
+;入力結果：ＥＣＳＬＩＮＫＡＧＥ
 ;=================================================
-;링케이지の内容コピって別に立てたる
+;リンケージの内容コピって別に立てたる
 @INPUT_COM_19,ARG
 #DIM 元リンケージ , 1
 #DIM 元人数 , 1
-;LOCAL:1-5 참가予定者
+;LOCAL:1-5 参加予定者
 FOR LOCAL,1,6
 	LOCAL:LOCAL = -1
 NEXT
@@ -39,7 +40,7 @@ IF 元リンケージ < 4000
 		CFLAG:ARG:("링케이지참가자"+ TOSTR(LOCAL)) = -1
 	NEXT
 ENDIF
-;元참가予定者
+;元参加予定者
 FOR LOCAL,11,16
 	LOCAL:LOCAL = -1
 	IF CFLAG:ARG:("링케이지참가자"+ TOSTR(LOCAL-10)) > -1 && CFLAG:ARG:("링케이지참가자"+ TOSTR(LOCAL-10)) < CHARANUM && CFLAG:ARG:링케이지발동
@@ -50,7 +51,7 @@ FOR LOCAL,11,16
 		ENDIF
 	ENDIF
 NEXT
-;まず、Ｓに使える링케이지を立てる
+;まず、Ｓに使えるリンケージを立てる
 VARSET S , 0
 FOR LOCAL,4000,5000
 	TRYCCALLFORM LINKAGE_{LOCAL}
@@ -112,7 +113,7 @@ PRINTL [1000]ＣＡＮＣＥＬ [999]ＲＥＰＥＡＴ [1001] ＡＮＡＬＹ�
 $INPUT_LOOP1
 INPUT
 IF RESULT == 1000
-	;참가予定者関係を元に戻す
+	;参加予定者関係を元に戻す
 	FOR LOCAL,11,16
 		IF LOCAL:LOCAL > -1
 			;PRINTFORML LOCAL:{LOCAL} = {LOCAL:LOCAL}
@@ -127,7 +128,7 @@ IF RESULT == 1000
 ELSEIF RESULT == 999
 	SIF CFLAG:ARG:사용링케이지 < 4000
 		GOTO INPUT_LOOP1
-	;전회사용したメンバーで사용できるか체크
+	;前回使用したメンバーで使用できるかチェック
 	LOCAL:7 = CFLAG:ARG:사용링케이지
 	CALL CHECK_ACTIONABLE,ARG,LOCAL:7
 	SIF RESULT == 0
@@ -158,20 +159,20 @@ ELSEIF RESULT == 1001
 ELSEIF RESULT < 4000 || RESULT > 5000 || S:(RESULT-4000) == 0
 	GOTO INPUT_LOOP1
 ENDIF
-;LOCLA:7の스킬を사용
+;LOCLA:7のスキルを使用
 LOCAL:7 = RESULT
-;発動者が사용できるか체크
+;発動者が使用できるかチェック
 CALL CHECK_ACTIONABLE,ARG,LOCAL:7
 SIF RESULT == 0
 	GOTO INPUT_LOOP1
-;참가者표시
+;参加者表示
 $PRINT_MENE
 DRAWLINE
 CALLFORM 참가인수_{LOCAL:7}
 LOCAL:8 = RESULT
-;---- EDIT 010 MOD START -------------------------
+	;---- EDIT 010 MOD START -------------------------
 	CALLFORM SKILL_EXPLAIN_{LOCAL:7}
-;---- EDIT 010 MOD END   -------------------------
+	;---- EDIT 010 MOD END   -------------------------
 
 FOR LOCAL,1,LOCAL:8+1
 	PRINTFORM [{LOCAL}]
@@ -200,20 +201,20 @@ IF RESULT == 10
 	NEXT
 	GOTO PRINT_ECSLINKAGE
 ELSEIF RESULT == 0
-	;全部埋まってないと駄눈
+	;全部埋まってないと駄目
 	IF MATCH(LOCAL,-1,1,LOCAL:8+1)
 		PRINTFORMW 참가자가 부족합니다
 		CLEARLINE 2
 		GOTO INPUT_LOOP2
 	ENDIF
-	;타겟決定＋行動입력
+	;ターゲット決定＋行動入力
 	
 	CALLFORM SELECT_SKILL_TARGET,LOCAL:7,ARG
 	SIF RESULT == -1
 		GOTO PRINT_ECSLINKAGE
 
 
-	;--- ここから엑스링케이지実行
+	;--- ここからエクスリンケージ実行
 	CFLAG:(ARG):타겟 = RESULT
 	CFLAG:(ARG):입력행동 = LOCAL:7
 	CFLAG:ARG:사용링케이지 = LOCAL:7
@@ -255,17 +256,17 @@ ELSEIF RESULT == 0
 		CATCH
 		ENDCATCH
 	ELSE
-	;전투행동대응충성도상승から呼び出すように변경
+	;戦闘行動対応忠誠度上昇から呼び出すように変更
 	;	TRYCCALLFORM BATTLE_MESSAGE_K{NO:(ARG)},ARG
 	;	CATCH
 	;		TRYCALLFORM BATTLE_MESSAGE_PUB{ABL:(ARG):회화타입},ARG
 	;	ENDCATCH
-		;性格素質に応じて충성도が増える
-;		CALL 전투행동대응충성도상승,ARG _|_|バグるのでオミット
+		;性格素質に応じて忠誠度が増える
+;		CALL 戦闘行動対応忠誠度上昇,ARG _|_|バグるのでオミット
 		IF TALENT:(ARG):페르소나구사자
 			RESULT = 0
 			TRYCALLFORM 참가인수_{CFLAG:(ARG):입력행동}
-			;페르소나구사자は공격참가で2の페르소나経験値を得る(링케이지の場合は참가人数*2)
+			;ペルソナ使いは攻撃参加で2のペルソナ経験値を得る(リンケージの場合は参加人数*2)
 			CALL INCREASE_PERSONA_EXP, ARG, (RESULT+1)*2, CFLAG:(ARG):타겟
 		ENDIF
 	ENDIF
@@ -274,7 +275,10 @@ ELSEIF RESULT == 0
 	RESETCOLOR
 
 	CALL PAY_COST, ARG, CFLAG:(ARG):입력행동
-
+	
+	;エラー落ち対策
+	FLAG:행동순1 = ARG
+	
 	CALLFORM ACTION_{CFLAG:(ARG):입력행동}, ARG, CFLAG:(ARG):타겟
 	RESULT = 0
 
@@ -282,7 +286,7 @@ ELSEIF RESULT == 0
 		CALLFORM SKILL_EFECT_{CFLAG:(ARG):입력행동}
 	SIF RESULT == 1
 		CALL BATTLE_EVENT_ATTACK
-	;기합・집중플래그の終了
+	;気合・集中フラグの終了
 	IF CFLAG:(ARG):입력행동 > -1
 		RESULT = 0
 		TRYCALLFORM SKILL_DAMAGETYPE_{CFLAG:(ARG):입력행동}, ARG
@@ -299,7 +303,7 @@ ELSEIF RESULT == 0
 		ENDIF
 		;---- EDIT 003 MOD END ---------------------------
 	ENDIF
-	;HP흡수処理
+	;HP吸収処理
 	SIF CFLAG:(ARG):상태이상 == GET_STATE_NUM("BRAND") && CFLAG:(ARG):HP흡수량 > 0
 		CFLAG:(ARG):HP흡수량 = 1
 	SIF CFLAG:(ARG):회복불능플래그 && CFLAG:(ARG):HP흡수량 > 0
@@ -322,7 +326,7 @@ ELSEIF RESULT == 0
 	ENDIF
 	CFLAG:(ARG):HP흡수량 = 0
 	
-	;무효화횟수を減らす処理
+	;無効化回数を減らす処理
 	FOR LOCAL:10,0,CHARANUM
 		FOR LOCAL:11,0,FLAG:상성수
 			IF CFLAG:(LOCAL:10):(GET_TYPE(LOCAL:11) + "피탄")
@@ -344,7 +348,7 @@ ELSEIF RESULT == 0
 		ENDIF
 	NEXT
 	
-	;마이ト化による爆発フラグが立っているキャラが居たら爆発する
+	;マイト化による爆発フラグが立っているキャラが居たら爆発する
 	SIF FINDCHARA(CFLAG:BOMB인화플래그,1) != -1
 		CALL BOMB_BANG
 	
@@ -352,7 +356,7 @@ ELSEIF RESULT == 0
 		CALL REMOVE_POSITION, CPOS(ARG)
 
 
-	;行動終了後이벤트呼び出し
+	;行動終了後イベント呼び出し
 ;	CALLFORM EVENT_BATTLE_ACTEND バグりそうなので外す
 	
 
@@ -365,7 +369,7 @@ ELSEIF RESULT == 0
 	BASE:ARG:체력 -= 100
 	BASE:ARG:기력 -= 100
 
-	;참가予定者関係を元に戻す
+	;参加予定者関係を元に戻す
 	FOR LOCAL,1,6
 		IF CFLAG:ARG:("링케이지참가자" + TOSTR(LOCAL)) > -1
 			CFLAG:(CFLAG:ARG:("링케이지참가자" + TOSTR(LOCAL))):입력행동 = -1
@@ -378,13 +382,13 @@ ELSEIF RESULT == 0
 		ENDIF
 	NEXT
 
-	;勝敗を체크
+	;勝敗をチェック
 	CALL FIGHT_IT_OUT
 	
-	;패배플래그立ってたらゲームオーバー呼び出し
+	;敗北フラグ立ってたらゲームオーバー呼び出し
 	SIF FLAG:패배플래그 == 1
 		CALL BATTLE_LOSE
-	;승리플래그立ってたら関数を抜ける
+	;勝利フラグ立ってたら関数を抜ける
 	SIF FLAG:승리플래그 == 1
 		RETURN 0
 
@@ -392,7 +396,7 @@ ELSEIF RESULT == 0
 ELSEIF RESULT < 1 || RESULT > LOCAL:8
 	GOTO INPUT_LOOP2
 ENDIF
-;LOCAL:9番눈の참가者
+;LOCAL:9番目の参加者
 LOCAL:9 = RESULT
 
 CALL SHOW_NOW_FORMATION_P,0,2
@@ -404,15 +408,15 @@ IF RESULT == 10
 ELSEIF RESULT < 1 || RESULT > 6 || POS(RESULT) == -1
 	GOTO INPUT_LOOP3
 ENDIF
-;LOCAL:10のキャラが참가
+;LOCAL:10のキャラが参加
 LOCAL:10 = POS(RESULT)
 CALLFORM 참가자조건_{LOCAL:7}, LOCAL:10 , LOCAL:9
 SIF RESULT == 0
 	GOTO INPUT_LOOP3
-;ＣＨＡＮＧＥ대상は弾く
+;ＣＨＡＮＧＥ対象は弾く
 SIF CFLAG:(LOCAL:10):ＣＨＡＮＧＥ대상플래그
 	GOTO INPUT_LOOP3
-;既に他の링케이지に참가しているキャラは弾く
+;既に他のリンケージに参加しているキャラは弾く
 SIF CFLAG:(LOCAL:10):링케이지참가
 	GOTO INPUT_LOOP3
 ;発動者ははじく
@@ -421,7 +425,7 @@ SIF ARG == LOCAL:10
 ;他の場所に入ってるキャラも弾く
 SIF MATCH(LOCAL,LOCAL:10,1,6)
 	GOTO INPUT_LOOP3
-;입력できないキャラも弾く
+;入力できないキャラも弾く
 CALL INPUTABLE_CHARA , LOCAL:10
 	
 LOCAL:(LOCAL:9) = LOCAL:10
@@ -432,13 +436,13 @@ GOTO PRINT_MENE
 
 
 ;=================================================
-;엑스링케이지사용可能판정
+;エクスリンケージ使用可能判定
 ;================================================
 @ACTIONABLE_ECSLINKAGE,ARG,ARG:1
-;まず옵션他が조건にあってなかったら帰る
+;まずオプション他が条件にあってなかったら帰る
 SIF !(FLAG:무후후전개) || !(EQUIP:MASTER:엑스링케이지)
 	RETURN 0
-;대상스킬がそもそも링케이지じゃなかったら帰る
+;対象スキルがそもそもリンケージじゃなかったら帰る
 ;この処理はより上の階層に逃がす予定
 TRYCCALLFORM LINKAGE_{ARG}
 	SIF RESULT == 0
@@ -446,16 +450,16 @@ TRYCCALLFORM LINKAGE_{ARG}
 CATCH
 	RETURN 0
 ENDCATCH
-;発動者が発情しておらず、체력기력が100以下だったら帰る
+;発動者が発情しておらず、体力気力が100以下だったら帰る
 SIF CFLAG:(ARG:1):던전내발정용욕정치 < 10000 || BASE:(ARG:1):체력 <= 100 || BASE:(ARG:1):기력 <= 100
 	RETURN 0
 
-;発動者が조건を満たしているか체크
+;発動者が条件を満たしているかチェック
 CALLFORM 발동자조건_{ARG},ARG:1
 SIF RESULT == 0
 	RETURN 0
 
-;참가者の人数を체크
+;参加者の人数をチェック
 CALLFORM 참가인수_{ARG}
 LOCAL:1 = RESULT
 
@@ -465,41 +469,41 @@ FOR LOCAL, 1 , LOCAL:1+1
 	FOR LOCAL:2 , 1 , 7
 		SIF POS(LOCAL:2) == -1
 			CONTINUE
-		;発動者は참가者になれない
+		;発動者は参加者になれない
 		SIF POS(LOCAL:2) == ARG:1
 			CONTINUE
-		;입력できない상태の人はそもそも無理
+		;入力できない状態の人はそもそも無理
 		CALL INPUTABLE_CHARA , POS(LOCAL:2)
 		SIF RESULT == 0
 			CONTINUE
 		CALLFORM 참가자조건_{ARG},POS(LOCAL:2),LOCAL
 		SIF RESULT == 0
 			CONTINUE
-		;엑스링케이지は発情してかつ체력기력なきゃ참가者になれない
+		;エクスリンケージは発情してかつ体力気力なきゃ参加者になれない
 		SIF CFLAG:POS(LOCAL:2):던전내발정용욕정치 < 10000 || BASE:POS(LOCAL:2):체력 <= 100 || BASE:POS(LOCAL:2):기력 <= 100
 			CONTINUE
 		D:LOCAL |= POWER(2,LOCAL:2)
 	NEXT
 NEXT
 
-;0があると駄눈
+;0があると駄目
 SIF MINARRAY(D,1,LOCAL:1+1) == 0
 	RETURN 0
 
 
 
-;重複せずに全てが埋まる組み合わせがあるかを체크
+;重複せずに全てが埋まる組み合わせがあるかをチェック
 ;どうすんだこれ
 VARSET E , 0
 
-;まずLOCAL番눈の조건を満たせるキャラが一人しか居ない場合、참가者LOCAL番눈はそのキャラに決定
+;まずLOCAL番目の条件を満たせるキャラが一人しか居ない場合、参加者LOCAL番目はそのキャラに決定
 ;FOR LOCAL , 1 , LOCAL:1+1
 ;	SIF C:LOCAL > 0
 ;		CONTINUE
 ;	FOR LOCAL:2 , 1 , 7
 ;		IF D:LOCAL = POWER(2,LOCAL:2)
 ;			C:LOCAL = POWER(2,LOCAL:2)
-;			;全てのDからLOCAL:2番눈のビットを削除
+;			;全てのDからLOCAL:2番目のビットを削除
 ;			FOR LOCAL:3 , 1 , LOCAL:1+1
 ;				D:(LOCAL:3) &= ~(POWER(2,LOCAL:2))
 ;			NEXT
@@ -510,12 +514,12 @@ VARSET E , 0
 
 FOR LOCAL:4 , 1 , 7
 	$LOOP1
-	;LOCAL番눈の조건をLOCAL:4人が満たしている場合、番号の若い順に当てはめ
-	;当てはめたらまた一人から체크
+	;LOCAL番目の条件をLOCAL:4人が満たしている場合、番号の若い順に当てはめ
+	;当てはめたらまた一人からチェック
 	FOR LOCAL , 1 , LOCAL:1 + 1
 		SIF E:LOCAL > 0
 			CONTINUE
-		;人数を판정
+		;人数を判定
 		LOCAL:3 = 0
 		FOR LOCAL:2 , 1 , 7
 			LOCAL:3 += GETBIT(D:LOCAL, LOCAL:2)
@@ -526,7 +530,7 @@ FOR LOCAL:4 , 1 , 7
 		FOR LOCAL:2 , 1 , 7
 			IF D:LOCAL & POWER(2,LOCAL:2)
 				E:LOCAL = POWER(2,LOCAL:2)
-				;全てのDからLOCAL:2番눈のビットを削除
+				;全てのDからLOCAL:2番目のビットを削除
 				FOR LOCAL:3 , 1 , LOCAL:1+1
 					D:(LOCAL:3) &= ~(POWER(2,LOCAL:2))
 				NEXT
@@ -538,7 +542,7 @@ FOR LOCAL:4 , 1 , 7
 NEXT
 
 
-;Eに0が残ってたら駄눈
+;Eに0が残ってたら駄目
 
 SIF MINARRAY(E,1,LOCAL:1+1) == 0
 	RETURN 0
