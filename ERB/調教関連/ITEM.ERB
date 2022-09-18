@@ -42,6 +42,9 @@
 ;	038		2022/04/16		JK好き					@USE_DRUGABLE　シャセトマの使用条件を再修正
 ;	039		2022/06/07		Collared				UI整理プロジェクトにより配置変更
 ;	040		2022/08/16		Schrott					eraMegaten_5914(性別色々パッチ)バグに対する急遽対応として該当の薬の機能を消去＋虹飴の機能に外見・性器素質があった場合削除だけする処理追加。
+;	041		2022/08/25		NEO						eraMegaten_5914(性別色々パッチ)バグに対する差戻処置。ただしEdit40での緊急対応は事故対応として残しておくことにする。
+;	042		2022/09/02		JK好き					@LAY_EGG 処女のまま黄色のキャンディを使用した場合の処理を追加
+;	043		2022/09/04		JK好き					@TRAINITEM_SALEABLE 調合知識の購入条件がコメントアウトと食い違っていた問題を修正
 ;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
 
 
@@ -104,21 +107,21 @@ FOR LOCAL, 0, 128
 			SETCOLOR COLOR("gray")
 			SELECTCASE LOCAL
 				CASE IS < 40
-					PRINTFORM [{LOCAL,2}] %ITEMNAME:LOCAL,24,LEFT%%"(구입완료)",10,RIGHT%　
+					PRINTFORM [{LOCAL,3}] %ITEMNAME:LOCAL,24,LEFT%%"(구입완료)",10,RIGHT%　
 				CASE IS < 60
-					PRINTFORM [{LOCAL,2}] %ITEMNAME:LOCAL+"(소지:"+@"{ITEM:LOCAL}"+")",24,LEFT%%"(소지한계)",10, RIGHT%　
+					PRINTFORM [{LOCAL,3}] %ITEMNAME:LOCAL+"(소지:"+@"{ITEM:LOCAL}"+")",24,LEFT%%"(소지한계)",10, RIGHT%　
 				CASE IS < 70
-					PRINTFORM [{LOCAL,2}] %ITEMNAME:LOCAL,24,LEFT%%"(습득완료)",10,RIGHT%　
+					PRINTFORM [{LOCAL,3}] %ITEMNAME:LOCAL,24,LEFT%%"(습득완료)",10,RIGHT%　
 				CASEELSE
-					PRINTFORM [{LOCAL,2}] %ITEMNAME:LOCAL,24,LEFT%%"(대상없음)",10,RIGHT%　
+					PRINTFORM [{LOCAL,3}] %ITEMNAME:LOCAL,24,LEFT%%"(대상없음)",10,RIGHT%　
 			ENDSELECT
 		CASE 1
 			SIF MONEY < ITEMPRICE:LOCAL
 				SETCOLOR COLOR("gray")
 			IF LOCAL >= 40 && LOCAL < 60
-				PRINTFORM [{LOCAL,2}] %ITEMNAME:LOCAL+"(소지:"+@"{ITEM:LOCAL}"+")",24,LEFT%%"￥"+@"{ITEMPRICE:LOCAL}",10, RIGHT%　
+				PRINTFORM [{LOCAL,3}] %ITEMNAME:LOCAL+"(소지:"+@"{ITEM:LOCAL}"+")",24,LEFT%%"￥"+@"{ITEMPRICE:LOCAL}",10, RIGHT%　
 			ELSE
-				PRINTFORM [{LOCAL,2}] %ITEMNAME:LOCAL,24,LEFT%%"￥"+@"{ITEMPRICE:LOCAL}",10, RIGHT%　
+				PRINTFORM [{LOCAL,3}] %ITEMNAME:LOCAL,24,LEFT%%"￥"+@"{ITEMPRICE:LOCAL}",10, RIGHT%　
 			ENDIF
 	ENDSELECT
 	RESETCOLOR
@@ -628,7 +631,7 @@ SELECTCASE LOCAL
 							;	ADDCHARA NO:RESULT
 							;	TARGET = CHARANUM-1
 							;	SIF TALENT:RESULT:0
-							;		TALENT:TARGET:0 = 1
+							;		TALENT:TARGET:처녀 = 1
 							;	SIF TALENT:RESULT:1
 							;		TALENT:TARGET:1 = 1
 							;	SIF TALENT:RESULT:139
@@ -664,7 +667,7 @@ SELECTCASE LOCAL
 							;	EXP:TARGET:63 = EXP:RESULT:63
 							;	EXP:TARGET:64 = EXP:RESULT:64
 							;	EXP:TARGET:70 = EXP:RESULT:70
-							;	ABL:TARGET:3 = ABL:RESULT:3
+							;	ABL:TARGET:Ｃ감각 = ABL:RESULT:3
 							;	ABL:TARGET:4 = ABL:RESULT:4
 							;	ABL:TARGET:5 = ABL:RESULT:5
 							;	ABL:TARGET:6 = ABL:RESULT:6
@@ -1255,8 +1258,8 @@ SIF USE_DRUGABLE(Z, ARG)
 RETURN 0
 @TRAINITEM_SALEABLE, ARG
 #FUNCTION
-;販売조건の체크
-;戻り値は1が販売、0が구입済みなどの理由で구입不能、-1が販売リストにのらない
+;販売条件のチェック
+;戻り値は1が販売、0が購入済みなどの理由で購入不能、-1が販売リストにのらない
 SIF ITEMPRICE:ARG <= 0
 	RETURNF -1
 SELECTCASE ITEMNAME:ARG
@@ -1274,9 +1277,9 @@ SELECTCASE ITEMNAME:ARG
 		FOR LOCAL, 1, CHARANUM
 			SIF !TALENT:LOCAL:조합지식
 				CONTINUE
-			SIF ABL:LOCAL:기교 > 4
-				CONTINUE
 			SIF !함락(LOCAL)
+				CONTINUE
+			SIF ABL:LOCAL:기교 < 4
 				CONTINUE
 			SIF !ISASSI:LOCAL
 				CONTINUE
@@ -1428,9 +1431,15 @@ SELECTCASE ITEMNAME:ARG
 		SIF IS_MALE(ARG:1)
 			RETURNF 0
 	CASE "파란사탕"
+		;オトコだとダメ
+		SIF IS_MALE(ARG:1)
+			RETURNF 0
+		;既に母乳体質でもダメ
 		SIF TALENT:(ARG:1):모유체질
 			RETURNF 0
 	CASE "프롤락틴억제약"
+		;母乳体質でないとダメ
+		;止める方は男も通す
 		SIF !TALENT:(ARG:1):모유체질
 			RETURNF 0
 	CASE "빨간사탕"
@@ -1491,8 +1500,8 @@ SELECTCASE ITEMNAME:ARG
 		;	RETURNF 0
 		RETURNF 1
 	CASE "오토코노코캔디"
-		SIF XGENDER(ARG:1)
-			RETURNF 0
+;		SIF XGENDER(ARG:1)
+;			RETURNF 0
 		SIF TALENT:(ARG:1):짐승
 			RETURNF 0
 		SIF TALENT:(ARG:1):새
@@ -1530,19 +1539,19 @@ SELECTCASE ITEMNAME:ARG
 		SIF TALENT:(ARG:1):육아중
 			RETURNF 0
 	CASE "야생의사탕"
-;		SIF TALENT:(ARG:1):남자
-;			RETURNF 0
+		SIF TALENT:(ARG:1):남자
+			RETURNF 0
 		SIF TALENT:(ARG:1):발정가능
 			RETURNF 0
 		RETURNF 1
 	CASE "자제의캔디"
 		SIF !TALENT:(ARG:1):발정가능
 			RETURNF 0
-;		SIF IS_MALE(ARG:1)
-;			RETURNF 0
+		SIF IS_MALE(ARG:1)
+			RETURNF 0
 	CASE "달의사탕"
-;		SIF TALENT:(ARG:1):남자
-;			RETURNF 0
+		SIF TALENT:(ARG:1):남자
+			RETURNF 0
 		RETURNF 1
 	CASE "바람꽃의이슬"
 		SIF CFLAG:(ARG:1):바람꽃의이슬
@@ -1582,60 +1591,60 @@ SELECTCASE ITEMNAME:ARG
 			RETURNF 1
 		RETURNF 0
 	CASE "변색약(하얀피부)"
-		; SIF TALENT:(ARG:1):하얀피부
-		; 	RETURNF 0
-		; SIF TALENT:(ARG:1):갈색피부
-		; 	RETURNF 0
-		; SIF TALENT:(ARG:1):붉은피부
-		; 	RETURNF 0
-		; SIF TALENT:(ARG:1):푸른피부
-		; 	RETURNF 0
-		; SIF CFLAG:(ARG:1):피부색깔 > 0
-		; 	RETURNF 0
+;		SIF TALENT:(ARG:1):하얀피부
+;			RETURNF 0
+;		SIF TALENT:(ARG:1):갈색피부
+;			RETURNF 0
+;		SIF TALENT:(ARG:1):붉은피부
+;			RETURNF 0
+;		SIF TALENT:(ARG:1):푸른피부
+;			RETURNF 0
+;		SIF CFLAG:(ARG:1):피부색깔 > 0
+;			RETURNF 0
 	CASE "변색약(갈색피부)"
-		; SIF TALENT:(ARG:1):하얀피부
-		; 	RETURNF 0
-		; SIF TALENT:(ARG:1):갈색피부
-		; 	RETURNF 0
-		; SIF TALENT:(ARG:1):붉은피부
-		; 	RETURNF 0
-		; SIF TALENT:(ARG:1):푸른피부
-		; 	RETURNF 0
-		; SIF CFLAG:(ARG:1):피부색깔 > 0
-		; 	RETURNF 0
+;		SIF TALENT:(ARG:1):하얀피부
+;			RETURNF 0
+;		SIF TALENT:(ARG:1):갈색피부
+;			RETURNF 0
+;		SIF TALENT:(ARG:1):붉은피부
+;			RETURNF 0
+;		SIF TALENT:(ARG:1):푸른피부
+;			RETURNF 0
+;		SIF CFLAG:(ARG:1):피부색깔 > 0
+;			RETURNF 0
 	CASE "변색약(붉은피부)"
-		; SIF TALENT:(ARG:1):하얀피부
-		; 	RETURNF 0
-		; SIF TALENT:(ARG:1):갈색피부
-		; 	RETURNF 0
-		; SIF TALENT:(ARG:1):붉은피부
-		; 	RETURNF 0
-		; SIF TALENT:(ARG:1):푸른피부
-		; 	RETURNF 0
-		; SIF CFLAG:(ARG:1):피부색깔 > 0
-		; 	RETURNF 0
+;		SIF TALENT:(ARG:1):하얀피부
+;			RETURNF 0
+;		SIF TALENT:(ARG:1):갈색피부
+;			RETURNF 0
+;		SIF TALENT:(ARG:1):붉은피부
+;			RETURNF 0
+;		SIF TALENT:(ARG:1):푸른피부
+;			RETURNF 0
+;		SIF CFLAG:(ARG:1):피부색깔 > 0
+;			RETURNF 0
 	CASE "변색약(푸른피부)"
-		; SIF TALENT:(ARG:1):하얀피부
-		; 	RETURNF 0
-		; SIF TALENT:(ARG:1):갈색피부
-		; 	RETURNF 0
-		; SIF TALENT:(ARG:1):붉은피부
-		; 	RETURNF 0
-		; SIF TALENT:(ARG:1):푸른피부
-		; 	RETURNF 0
-		; SIF CFLAG:(ARG:1):피부색깔 > 0
-		; 	RETURNF 0
+;		SIF TALENT:(ARG:1):하얀피부
+;			RETURNF 0
+;		SIF TALENT:(ARG:1):갈색피부
+;			RETURNF 0
+;		SIF TALENT:(ARG:1):붉은피부
+;			RETURNF 0
+;		SIF TALENT:(ARG:1):푸른피부
+;			RETURNF 0
+;		SIF CFLAG:(ARG:1):피부색깔 > 0
+;			RETURNF 0
 	CASE "변색약(녹색피부)"
-		; SIF TALENT:(ARG:1):하얀피부
-		; 	RETURNF 0
-		; SIF TALENT:(ARG:1):갈색피부
-		; 	RETURNF 0
-		; SIF TALENT:(ARG:1):붉은피부
-		; 	RETURNF 0
-		; SIF TALENT:(ARG:1):푸른피부
-		; 	RETURNF 0
-		; SIF CFLAG:(ARG:1):피부색깔 > 0
-		; 	RETURNF 0
+;		SIF TALENT:(ARG:1):하얀피부
+;			RETURNF 0
+;		SIF TALENT:(ARG:1):갈색피부
+;			RETURNF 0
+;		SIF TALENT:(ARG:1):붉은피부
+;			RETURNF 0
+;		SIF TALENT:(ARG:1):푸른피부
+;			RETURNF 0
+;		SIF CFLAG:(ARG:1):피부색깔 > 0
+;			RETURNF 0
 	CASE "밤국화의눈물"
 		SIF TALENT:(ARG:1):바람기 == 0
 			RETURNF 0
@@ -1718,6 +1727,7 @@ SELECTCASE ITEMNAME:ARG
 ;		SIF IS_MALE(ARG:1)
 ;			RETURNF 0
 	CASE "풍근제"
+		;ちんちんを持っている場合のみ有効
 		IF TALENT:(ARG:1):남자 == 1
 		ELSEIF TALENT:(ARG:1):오토코노코 == 1
 		ELSEIF TALENT:(ARG:1):후타나리 == 1
@@ -1729,6 +1739,7 @@ SELECTCASE ITEMNAME:ARG
 		SIF TALENT:(ARG:1):페니스사이즈 == 5
 			RETURNF 0
 	CASE "축근제"
+		;ちんちんを持っている場合のみ有効
 		IF TALENT:(ARG:1):남자 == 1
 		ELSEIF TALENT:(ARG:1):오토코노코 == 1
 		ELSEIF TALENT:(ARG:1):후타나리 == 1
@@ -1740,6 +1751,7 @@ SELECTCASE ITEMNAME:ARG
 		SIF TALENT:(ARG:1):페니스사이즈 == 1
 			RETURNF 0
 	CASE "광근제"
+		;ちんちんを持っている場合のみ有効
 		IF TALENT:(ARG:1):남자 == 1
 		ELSEIF TALENT:(ARG:1):오토코노코 == 1
 		ELSEIF TALENT:(ARG:1):후타나리 == 1
@@ -1795,13 +1807,17 @@ TARGET = T
 SIF U
 	ASSI = RESULT
 PRINTFORMW 알을 낳자마자 %NAME:LOCAL%의 배는 임신하기 전의 크기로 돌아왔다
-;수태아이템の입수
+;受胎アイテムの入手
+SIF TALENT:LOCAL:처녀 || TALENT:LOCAL:재생처녀
+	PRINTFORM \@ TALENT:LOCAL:처녀 ? 처녀 # 재생처녀 \@로 
 PRINTFORMW %조사처리(NAME:LOCAL,"는")% [%TALENTNAME:153%]을 잃었다
 TALENT:LOCAL:임신 = 0
 CFLAG:LOCAL:발정임신 = 0
-;임신이벤트で減った체력の최대値が회복（少なめ）
+TALENT:LOCAL:처녀 = 0
+TALENT:LOCAL:재생처녀 = 0
+;妊娠イベントで減った体力の最大値が回復（少なめ）
 ;MAXBASE:LOCAL:0 += 300
-;가슴の縮小処理を実行
+;胸の縮小処理を実行
 PRINTW 그리고 가슴의 크기도 작아진 것 같다
 ;C = LOCAL:0
 CALL REVERSE_B_SIZE(LOCAL:0)
@@ -2105,6 +2121,7 @@ TRYCCALLFORM SPECIAL_TRANCE_SEXIAL_{NO:ARG}
 CATCH
 	IF XGENDER(ARG)
 		;EDIT 40 緊急処置としてXGENDERがついている場合TSは行われず、関連の素質を削除する。
+		;EDIT 41 差戻パッチとは言いつつ、なんか事故が将来的に発生しうるため、この処理は残しておく
 		TALENT:ARG:남성 = 0
 		TALENT:ARG:여성 = 0
 		TALENT:ARG:중성 = 0

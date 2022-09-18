@@ -10,8 +10,9 @@
 ;	Edit	Date			Author					Reason
 ;	001		2011/03/10		Ｎ鳥					新規作成
 ;	002		2022/06/07		Collared				UI整理プロジェクトにより配置変更
+;	003		2022/09/10		JK好き					性別毎に一括変更出来るボタンを追加
 ;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
-;요바이가능なキャラを管理する
+;夜這い可能なキャラを管理する
 
 @SHOPCOMABLE_212
 RESULT:1 = 2
@@ -25,13 +26,15 @@ RETURN 1
 #LOCALSIZE 1
 REDRAW 0
 
-CALL INPUT_CHARA_LIST("밤 이벤트 설정을 변경할 캐릭터를 선택해주세요","CASTING_SELF")
+CALL INPUT_CHARA_LIST("밤 이벤트 설정을 변경할 캐릭터를 선택해주세요", "CASTING_SELF", "", "", "GENDERCONTROL_SELF_SELECT")
 IF RESULT == 1000
 	REDRAW 1
+	VARSET LOCAL
 	RETURN 0
+ELSEIF RESULT <= CHARANUM
+	INVERTBIT CFLAG:RESULT:요바이불허가 , 0
+	CLEARLINE 1
 ENDIF
-INVERTBIT CFLAG:RESULT:요바이불허가 , 0
-
 CLEARLINE 1 + 3 + 2 + ( (P+1*20) <= A ? 20 # A - P*20 )
 RESTART
 
@@ -47,3 +50,52 @@ SIF ARG == MASTER
 SIF CFLAG:ARG:이자리에없는플래그 == 1
 	RETURN 0
 RETURN 1
+
+;================================================================
+;性別毎に一括変更出来るボタン;INPUT_CHARA_LISTの都合で1500～1600番にしないと上手くいかない
+;================================================================
+@GENDERCONTROL_SELF_SELECT, ARG
+SELECTCASE ARG
+	CASE -1
+		PRINTL
+		PRINT [1500]모든 동료마　ON/OFF
+		PRINT 　[1501]순수 여성　ON/OFF
+		PRINT 　[1502]순수 남성　ON/OFF
+		PRINT 　[1503]후타나리   ON/OFF
+		PRINT 　[1504]오토코노코 ON/OFF
+		PRINTL
+	CASE 1500 TO 1504
+		CALL COLLECT_SELF_SELECT(RESULT - 1500)
+ENDSELECT
+RETURN ARG , 1
+
+;================================================================
+;性別毎に一括変更実行部分
+;================================================================
+@COLLECT_SELF_SELECT, ARG
+#DIM LCOUNT
+#LOCALSIZE 1
+FOR LCOUNT, 1, CHARANUM
+	IF ARG == 0
+		IF GETBIT(LOCAL, ARG)
+			CLEARBIT CFLAG:LCOUNT:요바이불허가 , 0
+		ELSE
+			SETBIT CFLAG:LCOUNT:요바이불허가 , 0
+		ENDIF
+	ELSEIF ARG == 1 && TALENT:LCOUNT:남자 == 0 && TALENT:LCOUNT:후타나리 == 0
+		INVERTBIT CFLAG:LCOUNT:요바이불허가 , 0
+;		IF GETBIT(LOCAL, ARG)
+;			CLEARBIT CFLAG:LCOUNT:요바이불허가 , 0
+;		ELSE
+;			SETBIT CFLAG:LCOUNT:요바이불허가 , 0
+;		ENDIF
+	ELSEIF ARG == 2 && TALENT:LCOUNT:남자 == 1 && TALENT:LCOUNT:오토코노코 == 0
+		INVERTBIT CFLAG:LCOUNT:요바이불허가 , 0
+	ELSEIF ARG == 3 && TALENT:LCOUNT:후타나리 == 1
+		INVERTBIT CFLAG:LCOUNT:요바이불허가 , 0
+	ELSEIF ARG == 4 && TALENT:LCOUNT:남자 == 1 && TALENT:LCOUNT:오토코노코 == 1
+		INVERTBIT CFLAG:LCOUNT:요바이불허가 , 0
+	ENDIF
+NEXT
+INVERTBIT LOCAL , ARG
+CLEARLINE 1

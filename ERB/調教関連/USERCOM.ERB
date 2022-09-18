@@ -1,6 +1,8 @@
 ﻿;001	20YY/MM/DD	？？？	（新規作成）
 ;002	2022/08/17	NEO		「コマンド群全開放」「コマンド群全閉じ」「全脱衣」「全着衣」ボタンを追加
 ;							オプションのコマンド番号を一部入れ替え（調教メニュー関連が一番下に来るように）（ある程度位置が固定になるように）
+;003	2022/08/19	NEO		全脱衣・全着衣の胸解放フラグや下着ずらしフラグをいじってなかったので修正
+;004	2022/08/25	JK好き	全コマンド解放を全コマンド開放に修正
 
 @CALLTRAINEND
 TFLAG:CALLTRAIN = 0
@@ -106,11 +108,11 @@ RESETCOLOR
 			FILTERCOUNT += 1
 	NEXT
 
-	;半分以上閉じてたら「解放」
+	;半分以上閉じてたら「開放」
 	;（現状、「183、184」番のフィルタがないため「大半が開いてないと閉鎖は出てこない」仕様）
 	;↑で「CASE 13,14」はコンティニューな、としてる部分な
 	IF FILTERCOUNT > 8
-		PRINTC 모든커맨드해방[750]
+		PRINTC 모든커맨드개방[750]
 	;閉じてるのが半分以下なら「閉鎖」
 	ELSE
 		PRINTC 모든커맨드폐쇄[750]
@@ -182,9 +184,9 @@ IF !CFLAG:TARGET:옵션필터
 	ENDIF
 
 	IF ASSI >= 0
-		IF ASSIPLAY && TEQUIP:25 == 0
+		IF ASSIPLAY && TEQUIP:촉수 == 0
 			PRINTC 마스터가 조교한다[900]
-		ELSEIF TEQUIP:25 == 0
+		ELSEIF TEQUIP:촉수 == 0
 			PRINTC 조수가 조교한다[900]
 		ENDIF
 		CALL CHECK_NEWLINE
@@ -292,7 +294,7 @@ IF RESULT < 0 || RESULT > 999
 ;「愛撫系」などコマンド群を開放するコマンドの場合、入力ごとに反転
 ELSEIF (RESULT >= 700 && RESULT <= 712) || RESULT == 715
 	INVERTBIT CFLAG:TARGET:(RESULT + 170 - 700), 0
-;「全コマンド解放」の場合
+;「全コマンド開放」の場合
 ELSEIF RESULT == 750
 	;いくつ閉じているかをカウント（※フラグが１で閉じる）
 	FILTERCOUNT = 0
@@ -305,7 +307,7 @@ ELSEIF RESULT == 750
 		;現在フィルタとして設定されてない部分は触らない
 		IF LCOUNT == 183 || LCOUNT == 184
 			CONTINUE
-		;半分以上閉じてたら「解放」
+		;半分以上閉じてたら「開放」
 		;（現状、「183、184」番のフィルタがないため「大半が開いてないと閉鎖は出てこない」仕様）
 		ELSEIF FILTERCOUNT > 8
 			CFLAG:TARGET:LCOUNT = 0
@@ -338,7 +340,21 @@ ELSEIF RESULT == 804
 		TEQUIP:TARGET:(GET_CLOTHESNAME(LCOUNT)) = CFLAG:TARGET:(GET_CLOTHESNAME(LCOUNT))
 		TEQUIP:PLAYER:(GET_CLOTHESNAME(LCOUNT)) = CFLAG:PLAYER:(GET_CLOTHESNAME(LCOUNT))
 	NEXT
-	
+
+	CALL 가슴오픈체크(TARGET)
+	CALL CHECK_EXPOSE(TARGET)
+	CALL 고간구조체크,TARGET
+	CALL 촉각체크(TARGET)
+	CALL 비켜놓기체크(TARGET)
+
+	CALL 가슴오픈체크(PLAYER)
+	CALL CHECK_EXPOSE(PLAYER)
+	CALL 고간구조체크,PLAYER
+	CALL 촉각체크(PLAYER)
+	CALL 비켜놓기체크(PLAYER)
+
+	;口上チェックは行わない（簡易コマンドであるため）
+
 	RETURN 1
 ;全員全脱衣
 ELSEIF RESULT == 805
@@ -347,6 +363,21 @@ ELSEIF RESULT == 805
 		TEQUIP:TARGET:(GET_CLOTHESNAME(LCOUNT)) = 0
 		TEQUIP:PLAYER:(GET_CLOTHESNAME(LCOUNT)) = 0
 	NEXT
+
+	CALL 가슴오픈체크(TARGET)
+	CALL CHECK_EXPOSE(TARGET)
+	CALL 고간구조체크,TARGET
+	CALL 촉각체크(TARGET)
+	CALL 비켜놓기체크(TARGET)
+
+	CALL 가슴오픈체크(PLAYER)
+	CALL CHECK_EXPOSE(PLAYER)
+	CALL 고간구조체크,PLAYER
+	CALL 촉각체크(PLAYER)
+	CALL 비켜놓기체크(PLAYER)
+
+	;口上チェックは行わない（簡易コマンドであるため）
+
 	RETURN 1
 
 ;コンドーム設定
@@ -368,7 +399,7 @@ ELSEIF RESULT == 809 && ((!(CFLAG:초기주도권 || TALENT:쾌감을부정 || T
 	INVERTBIT TEQUIP:주도권 , 0
 	RETURN 1
 ;マスター/助手と交代
-ELSEIF RESULT == 900 && ASSI > 0 && TEQUIP:25 == 0
+ELSEIF RESULT == 900 && ASSI > 0 && TEQUIP:촉수 == 0
 	IF ASSIPLAY
 		ASSIPLAY = 0
 		PLAYER = MASTER
@@ -456,7 +487,7 @@ ELSEIF TEQUIP:34 > 1
 	PRINTL [강정신약효과발휘중]
 ENDIF
 
-SIF TEQUIP:28
+SIF TEQUIP:비디오카메라
 	PRINTFORML [비디오촬영중({TFLAG:70 - 1}/10)]
 SIF TEQUIP:29
 	PRINTL [야외플레이중]
@@ -464,37 +495,37 @@ SIF TEQUIP:46 >= 1
 	PRINTFORML [구경꾼 {TEQUIP:46}인]
 SIF TEQUIP:30
 	PRINTL [수치플레이중]
-SIF TEQUIP:31
+SIF TEQUIP:목욕탕
 	PRINTL [목욕탕플레이중]
 SIF TEQUIP:33
 	PRINTL [신혼플레이중]
-SIF TEQUIP:25
+SIF TEQUIP:촉수
 	PRINTL [촉수조교중]
 
-IF TEQUIP:13 && TEQUIP:25
+IF TEQUIP:13 && TEQUIP:촉수
 	PRINTL [촉수삽입]
 ELSEIF TEQUIP:13
 	PRINTL [바이브삽입중]
 ENDIF
 
-IF TEQUIP:14 && TEQUIP:25
+IF TEQUIP:14 && TEQUIP:촉수
 	PRINTL [촉수애널삽입]
 ELSEIF TEQUIP:14
 	PRINTL [애널바이브삽입중]
 ENDIF
 
-IF TEQUIP:11 && TEQUIP:25
+IF TEQUIP:11 && TEQUIP:촉수
 	PRINTL [촉수클리자극]
 ELSEIF TEQUIP:11
 	PRINTL [클리캡장착중]
 ENDIF
 
-IF TEQUIP:16 && TEQUIP:25
+IF TEQUIP:16 && TEQUIP:촉수
 	PRINTL [촉수유두자극]
 ELSEIF TEQUIP:16
 	PRINTL [유두캡장착중]
 ENDIF
-IF TEQUIP:17 && TEQUIP:25
+IF TEQUIP:17 && TEQUIP:촉수
 	PRINTL [촉수착유]
 ELSEIF TEQUIP:17
 	PRINTL [착유기장착중]
@@ -502,7 +533,7 @@ ENDIF
 SIF TEQUIP:24
 	PRINTL [유방전극장착중]
 
-IF TEQUIP:12 && TEQUIP:25
+IF TEQUIP:12 && TEQUIP:촉수
 	PRINTL [촉수페니스자극]
 ELSEIF TEQUIP:12
 	PRINTL [오나홀장착중]
@@ -512,13 +543,13 @@ IF TEQUIP:32
 	PRINTL [샤워사용중]
 ENDIF
 
-IF TEQUIP:19 && TEQUIP:25
+IF TEQUIP:밧줄 && TEQUIP:촉수
 	PRINTL [촉수긴박]
-ELSEIF TEQUIP:19
+ELSEIF TEQUIP:밧줄
 	PRINTL [밧줄로긴박]
 ENDIF
 
-IF TEQUIP:21 && TEQUIP:25
+IF TEQUIP:21 && TEQUIP:촉수
 	PRINTL [촉수관장]
 ELSEIF TEQUIP:21
 	PRINTL [관장＋애널플러그장비중]
@@ -538,7 +569,7 @@ SIF TEQUIP:22
 SIF TEQUIP:23
 	PRINTL [애널전극삽입중]
 
-SIF TEQUIP:41
+SIF TEQUIP:삼각목마
 	PRINTL [삼각목마기승중]
 SIF TEQUIP:42
 	PRINTL [사정억제중]
@@ -546,36 +577,36 @@ SIF TEQUIP:42
 SIF TEQUIP:PLAYER:26
 	PRINTL [미약효과발휘중(조교자)]
 	
-IF TEQUIP:PLAYER:13 && TEQUIP:25
+IF TEQUIP:PLAYER:13 && TEQUIP:촉수
 	PRINTL [촉수삽입(조교자)]
 ELSEIF TEQUIP:PLAYER:13
 	PRINTL [바이브삽입중(조교자)]
 ENDIF
 
-IF TEQUIP:PLAYER:14 && TEQUIP:25
+IF TEQUIP:PLAYER:14 && TEQUIP:촉수
 	PRINTL [촉수애널삽입(조교자)]
 ELSEIF TEQUIP:PLAYER:14
 	PRINTL [애널바이브삽입중(조교자)]
 ENDIF
 
-IF TEQUIP:PLAYER:11 && TEQUIP:25
+IF TEQUIP:PLAYER:11 && TEQUIP:촉수
 	PRINTL [촉수클리자극(조교자)]
 ELSEIF TEQUIP:PLAYER:11
 	PRINTL [클리캡장착중(조교자)]
 ENDIF
 
-IF TEQUIP:PLAYER:16 && TEQUIP:25
+IF TEQUIP:PLAYER:16 && TEQUIP:촉수
 	PRINTL [촉수유두자극(조교자)]
 ELSEIF TEQUIP:PLAYER:16
 	PRINTL [유두캡장착중(조교자)]
 ENDIF
-IF TEQUIP:PLAYER:17 && TEQUIP:25
+IF TEQUIP:PLAYER:17 && TEQUIP:촉수
 	PRINTL [촉수착유(조교자)]
 ELSEIF TEQUIP:PLAYER:17
 	PRINTL [착유기장착중(조교자)]
 ENDIF
 
-IF TEQUIP:PLAYER:12 && TEQUIP:25
+IF TEQUIP:PLAYER:12 && TEQUIP:촉수
 	PRINTL [촉수페니스자극(조교자)]
 ELSEIF TEQUIP:PLAYER:12
 	PRINTL [오나홀장착중(조교자)]
@@ -714,7 +745,7 @@ IF RESULT == 0
 ELSEIF RESULT == 1
 	IF TEQUIP:T:35 == 0
 		;淫乱・娼婦持ち
-		IF TALENT:PLAYER:4 || TALENT:PLAYER:7
+		IF TALENT:PLAYER:음란 || TALENT:PLAYER:7
 			IF PLAYER != T
 				IF RAND:2 == 0
 					PRINTFORMW %조사처리(CALLNAME:PLAYER,"는")% 음란한 미소를 띠면서 콘돔을 꺼내、%CALLNAME:T%의 페니스에 입으로 장착시켰다…

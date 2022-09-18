@@ -39,8 +39,11 @@
 ;	022		2022/06/07		Collared				UI整理プロジェクトにより配置変更
 ;	023		2022/06/23		JK好き					@CHANGE_N_STATUS 妊娠時の乳サイズ変動時のIF分岐が間違っていた問題を修正
 ;	024		2022/06/28		JK好き					@CHILD_BIRTH 乳母に任せた際に父親名称を受け渡していなかった問題を修正
+;	025		2022/08/16		JK好き					@CHILD_BIRTH 乳母に任せた際に今回受胎人数を受け渡していなかった問題を修正
+;	026		2022/09/01		JK好き					@CHILD_BIRTH 処女のまま出産した場合の処理を追加
+;	027		2022/09/06		JK好き					@IN_VAGINA 労役中の妊娠時に無関係の人間の子を妊娠してしまう場合があった問題を修正
 ;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
-;EVENT_P、EVENT_PREGNANCY、임신関連の이벤트
+;EVENT_P、EVENT_PREGNANCY、妊娠関連のイベント
 
 @SHOPCOMABLE_209
 LOCAL:1 = 0
@@ -62,15 +65,15 @@ ENDIF
 RETURN 1
 
 ;---------------------------------------------------------
-;中田氏・임신フラグ체크
-;中出しされた精子量に応じて확률処理
+;中田氏・妊娠フラグチェック
+;中出しされた精子量に応じて確率処理
 ;---------------------------------------------------------
 @IN_VAGINA
 #LOCALSIZE 3
 #LOCALSSIZE 1
 #DIM CHARA, 1
-;임신기능オフなら何もせずに帰る
-;…と、あとでONにしたときに一斉임신かますんでここで임신판정リセット
+;妊娠機能オフなら何もせずに帰る
+;…と、あとでONにしたときに一斉妊娠かますんでここで妊娠判定リセット
 IF FLAG:임신기능 == 0
 	CALL CLEAR_PREGNANCY_DATERMINATION
 	RETURN 0
@@ -78,12 +81,12 @@ ENDIF
 FOR CHARA, 0 , CHARANUM
 	CALL PREGNANCY_CHECK,CHARA
 
-	;結果체크(임신していない場合はスルーされるはず)
+	;結果チェック(妊娠していない場合はスルーされるはず)
 	SELECTCASE RESULT
 		;父親が主人
 		CASE 1
 			CALL SET_FATHERINFO, CHARA, NO:MASTER, CFLAG:MASTER:캐릭터고유번호, CALLNAME:MASTER
-		;父親が조수
+		;父親が助手
 		CASE 2
 			CALL SET_FATHERINFO, CHARA, NO:ASSI, CFLAG:ASSI:캐릭터고유번호, CALLNAME:ASSI
 		;父親が奴隷
@@ -111,11 +114,11 @@ FOR CHARA, 0 , CHARANUM
 					;이능자
 					CASE IS < 25
 						DO
-							LOCAL = 4701 + RAND:99
-						LOOP ( !EXISTCSV(LOCAL, 0) )
+							LOCAL = 4701 + RAND:60
+						LOOP ( !EXISTCSV(LOCAL, 0) ) || LOCAL == 4750
 						CALL SET_FATHERINFO, CHARA, LOCAL, -3, LOCALS
 					;비전투원
-					CASE IS < 50	
+					CASE IS < 50
 						CALL SET_FATHERINFO, CHARA, -1, -4, LOCALS
 					;석세서
 					CASE IS < 60
@@ -549,22 +552,25 @@ FOR LOCAL, 0, CHARANUM
 NEXT
 
 ;多胎妊娠の場合、チョイとメッセージ変更
-;쌍둥이플래그はここでは使わない
+;ふたごちゃんフラグはここでは使わない
+PRINTFORM %ARG는%, 
+SIF TALENT:ARG:처녀 || TALENT:ARG:재생처녀
+	PRINTFORM \@ TALENT:ARG:처녀 ? 처녀 # 재생처녀 \@인채로 
 IF CFLAG:ARG:이번수태인수 > 1
 	IF F >= 0
-		PRINTFORMW %조사처리(CALLNAME:ARG,"는")%、%CALLNAME:F%의 아이들을 무사히 출산했습니다
+		PRINTFORMW %CALLNAME:F%의 아이들을 무사히 출산했습니다
 	ELSEIF CFLAG:ARG:임신확정후의부친판정 == -2
-		PRINTFORMW %조사처리(CALLNAME:ARG,"는")%、촉수의 아이들을 무사히 출산했습니다
+		PRINTFORMW 촉수의 아이들을 무사히 출산했습니다
 	ELSE
-		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 아이들을 무사히 출산했습니다
+		PRINTFORMW 아이들을 무사히 출산했습니다
 	ENDIF
 ELSE
 	IF F >= 0
-		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% %CALLNAME:F%의 아이를 무사히 출산했습니다
+		PRINTFORMW %CALLNAME:F%의 아이를 무사히 출산했습니다
 	ELSEIF CFLAG:ARG:임신확정후의부친판정 == -2
-		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 촉수의 아이를 무사히 출산했습니다
+		PRINTFORMW 촉수의 아이를 무사히 출산했습니다
 	ELSE
-		PRINTFORMW %조사처리(CALLNAME:ARG,"는")% 아이를 무사히 출산했습니다
+		PRINTFORMW 아이를 무사히 출산했습니다
 	ENDIF
 ENDIF
 
@@ -584,6 +590,14 @@ SIF U
 ;임신を失う
 TALENT:ARG:임신 = 0
 CFLAG:ARG:발정임신 = 0
+IF TALENT:ARG:처녀 || TALENT:ARG:재생처녀
+	IF TALENT:ARG:처녀
+		CALL ADDS_ABNORMAL_EXP("처녀출산", ARG)
+		CALL SHOW_ABNORMAL_EXP , ARG, 1
+	ENDIF
+	TALENT:ARG:처녀 = 0
+	TALENT:ARG:재생처녀 = 0
+ENDIF
 
 ;双子以上を孕んでいた場合、出産経験がドバりと増える（かもしれない）……出産回数で言えば1回だって？かもね！！！！
 IF CFLAG:ARG:이번수태인수 > 1
@@ -627,7 +641,7 @@ IF TALENT:ARG:붕괴
 			GOTO INPUT_LOOP_CHILD_BIRTH
 		ELSE
 			PRINTFORMW %조사처리(CALLNAME:MASTER,"는")% %CALLNAME:RESULT%에게 유모가 되어달라고 부탁했습니다
-			;育児期間を설정する
+			;育児期間を設定する
 			CFLAG:RESULT:출산예정일 = DAY+1
 			CFLAG:RESULT:출산일 = DAY
 			CFLAG:RESULT:임신확정후의부친판정 = CFLAG:ARG:임신확정후의부친판정
@@ -635,6 +649,7 @@ IF TALENT:ARG:붕괴
 			CFLAG:RESULT:딸의친부모고유번호부모 = CFLAG:ARG:캐릭터고유번호
 			CFLAG:RESULT:부친의고유번호부모 = CFLAG:ARG:부친의고유번호부모
 			CSTR:RESULT:부친명칭 = %CSTR:ARG:부친명칭%
+			CFLAG:RESULT:이번수태인수 = CFLAG:ARG:이번수태인수
 			CFLAG:RESULT:유모인가？ = 1
 			IF TALENT:RESULT:육아중 == 0
 				TALENT:RESULT:육아중 = 1
@@ -712,7 +727,7 @@ ELSE
 			GOTO INPUT_LOOP_CHILD_BIRTH_1
 		ELSE
 			PRINTFORMW %조사처리(CALLNAME:MASTER,"는")% %CALLNAME:RESULT%에게 유모가 되어달라고 부탁했습니다
-			;育児期間を설정する
+			;育児期間を設定する
 			CFLAG:RESULT:출산예정일 = DAY+1
 			CFLAG:RESULT:출산일 = DAY
 			CFLAG:RESULT:임신확정후의부친판정 = CFLAG:ARG:임신확정후의부친판정
@@ -720,6 +735,7 @@ ELSE
 			CFLAG:RESULT:딸의친부모고유번호부모 = CFLAG:ARG:캐릭터고유번호
 			CFLAG:RESULT:부친의고유번호부모 = CFLAG:ARG:부친의고유번호부모
 			CSTR:RESULT:부친명칭 = %CSTR:ARG:부친명칭%
+			CFLAG:RESULT:이번수태인수 = CFLAG:ARG:이번수태인수
 			CFLAG:RESULT:유모인가？ = 1
 			IF TALENT:RESULT:육아중 == 0
 				TALENT:RESULT:육아중 = 1
@@ -1567,7 +1583,7 @@ ENDIF
 
 ;==========================================================
 ;@SET_FATHERINFO
-;임신したキャラに아이の父親に関する情報を설정する。
+;임신したキャラに아이の父親に関する情報を設定する。
 ;<引数>
 ;	ARG   = 임신したキャラの登録番号
 ;	ARG:1 = 父親のCSV番号

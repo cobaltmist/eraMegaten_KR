@@ -3,7 +3,8 @@
 ;	001		20XX/XX/XX								新規作成
 ;	002		2021/02/22		亜人いいよね			スキルカード拡張枠の追加
 ;	003		2021/12/25		JK好き					@MAKE_SKILLCARD 一文字関数Uにスキル保有者を代入
-;	004		2022/07/ 5		JK好き					@SHOW_LEARN_SKILL ベルベットルームと青い蝶でペルソナスキルカード処理が違っていた問題を修正
+;	004		2022/07/05		JK好き					@SHOW_LEARN_SKILL ベルベットルームと青い蝶でペルソナスキルカード処理が違っていた問題を修正
+;	005		2022/07/10		JK好き					@SHOW_LEARN_SKILL @スキルカード在庫確認 デビルシフター変身後が取得済みのスキルをスキルカードで追加習得出来た問題を修正
 ;==========================================================
 ;スキル基本性能説明
 ;==========================================================
@@ -256,8 +257,9 @@ GOTO START
 ;==============================================================
 ;スキル習得用・リスト表示
 ;==============================================================
-@SHOW_LEARN_SKILL(ARG)
+@SHOW_LEARN_SKILL(ARG, どっちの強化？)
 #LOCALSIZE 6
+#DIM どっちの強化？ , 1
 LOCAL:3 = LINECOUNT
 IF !LOCAL:5
 	LOCAL:4 = CURRENTREDRAW()
@@ -266,7 +268,8 @@ IF !LOCAL:5
 	LOCAL:5 = 1
 ENDIF
 PRINTL 어떤 계통의 스킬을 습득합니까?
-CALL 스킬카드재고확인(, ARG)
+;CALL 스킬카드재고확인(, ARG)
+CALL 스킬카드재고확인(, ARG, , どっちの強化？)
 FOR LOCAL, 0, 21
 	SIF FLAG:SHOP커맨드 == [[SHOP:동료마강화]] && !TALENT:ARG:GET_SUCCESSION(LOCAL)
 		SETCOLOR 0xDDDDDD
@@ -315,7 +318,7 @@ ENDIF
 
 RESULT:10 = RESULT
 
-CALL 스킬카드재고확인(RESULT:10, ARG)
+CALL 스킬카드재고확인(RESULT:10, ARG, , どっちの強化？)
 LOCAL:1 = RESULT
 IF !LOCAL:1
 	CLEARLINE 1
@@ -711,7 +714,8 @@ RESTART
 ;==========================================
 ;スキルカード一覧用 스킬카드재고확인
 ;==========================================
-@스킬카드재고확인, ARG = -1, ARG:1 = -1, ARG:2
+@스킬카드재고확인, ARG = -1, ARG:1 = -1, ARG:2, どっちの強化？
+#DIM どっちの強化？ , 1
 ;계승타입=ARGのスキルカードの所持を調べ、所持していたらS:に代入
 ;ARG が指定されていない場合、各継承タイプの所持種類数をZ:に代入して返す
 ;ARG:1 が指定されている場合、ARG:1の習得できるスキルのみを調べる
@@ -752,9 +756,16 @@ FOR LOCAL, 1 ,4000
 			CONTINUE
 	ENDIF
 	
-	;스킬소지による판정
-	;ARG:1>=0なら、ARG:1のキャラが持ってて重複습득上限に達した스킬は弾く
-	IF ARG:1 > -1 && HAVE_SKILL(ARG:1 , LOCAL)
+	;スキル所持による判定
+	;デビルシフター変身後用処理
+	IF ARG:1 > -1 && HAVE_SKILL_C(ARG:1 , LOCAL)
+		TRYCCALLFORM 중복습득수_{LOCAL}
+			SIF HAVE_SKILL_OVERLAP(ARG:1,LOCAL,どっちの強化？) + 1 > RESULT
+				CONTINUE
+		CATCH
+			CONTINUE
+		ENDCATCH
+	ELSEIF ARG:1 > -1 && HAVE_SKILL(ARG:1 , LOCAL)
 		TRYCCALLFORM 중복습득수_{LOCAL}
 			SIF HAVE_SKILL_OVERLAP(ARG:1,LOCAL) + 1 > RESULT
 				CONTINUE
