@@ -534,37 +534,25 @@ CASE 4
 
 CASE 5
 	IF ARG:1 == 0
-		RESULTS = 바로우즈와 같이
+		;バロウズ入手済み＝２周め以降は別のものを送りつけてくる。
+		IF ITEM:[[아이템:플러그인／라이크바로우즈]] >= 1
+			RESULTS = 또 다시
+		ELSE
+			RESULTS = 바로우즈와 같이
+		ENDIF
 	ELSEIF ARG:1 == 1
-		;貢献度50000이상で出現　※貢献度についてはSHOP.ERB参照
-		SIF FLAG:조직공헌도 + FLAG:명성 * 100 >= 50000
-			RETURN 1
+		IF ITEM:[[아이템:플러그인／라이크바로우즈]] >= 1
+			;ライクバロウズ入手済みの場合貢献度500000以上＋主人戦闘レベル５０以上に
+			SIF FLAG:조직공헌도 + FLAG:명성 * 100 >= 500000 && BASE:MASTER:LV >= 50
+				RETURN 1
+		ELSE
+			;貢献度50000以上で出現　※貢献度についてはSHOP.ERB参照
+			SIF FLAG:조직공헌도 + FLAG:명성 * 100 >= 50000
+				RETURN 1
+		ENDIF
 	ELSEIF ARG:1 == 2
-		PRINTFORML %CALLNAME:MASTER%의 PC에 발신인 불명의 메일이 도착해있었다.
-		PRINTFORMW 정중하게도 수상한 첨부 파일 포함이다.
-		PRINTFORML 
-		PRINTFORMW ＞친애하는 그대에게。
-		PRINTFORML ＞
-		PRINTFORMW ＞지원 AI의 존재를 알고 있는가.
-		PRINTFORML ＞이번에 그대에게 보내는 프로그램은, 장비한 악마에게 이와 같은 기능을 할 수 있도록 최적화하는 것이다.
-		PRINTFORML ＞그대의 악마가 마음만 먹으면, 사람과 같은 식으로 네비게이션을 해줄 것이다.
-		PRINTFORMW ＞잘 써주게나.
-		PRINTFORML 
-		PRINTFORMW ……
-		PRINTFORMW 터무니없이 수상한 메일이었다만, 바이러스 체크를 해보면 이상은 없는 것 같다……。
-		ITEM:[[아이템:플러그인／라이크바로우즈]] += 1
-		PRINTFORML 
-		PRINTFORMW 플러그인『라이크바로우즈』를 입수했다。
-		PRINTFORML 
-			SETCOLOR 0x33ffcc
-			PRINTFORML ※이 플러그인을 『조수로 설정한 악마』에게 장비하면, 장비한 악마가
-			PRINTFORMW 　『헤드셋』과 같이 전투 중의 네비게이션을 할 수 있게 됩니다.
-				FORCEWAIT
-			PRINTFORML
-			PRINTFORMW 　상세한 내용은 플러그인 장비 화면에서 확인 가능합니다. 임의의 악마의 장비화면에서 참조해주세요.
-				FORCEWAIT
-			RESETCOLOR
-		RETURN 1
+		;別ファイル呼び出し形式に変更
+		CALL 怪しい車椅子のメガネの贈り物
 	ENDIF
 
 ;번호にこだわりは無いので邪魔なら適当な場所に移動してくだち
@@ -1915,10 +1903,8 @@ CASE 20
 			PRINTFORML 
 			;GENDER判定に使う、1で男性、それ以外で0を返す。
 			IF IS_MALE(MASTER) == 1
-				PRINTL （男性チェック）
 				PRINTFORML 「見れば、なかなかにたくましい体つきに、
 			ELSE
-				PRINTL （女性チェック）
 				PRINTFORML 「見れば、なかなかに美しい体つきに、
 			ENDIF
 			PRINTFORMW 　立ち振舞からも伝わる強者の気配。うむ、素晴らしい」
@@ -2582,7 +2568,7 @@ CASE 4
 		;「まどマギイベントでほむらルートでない、またはまだクリアしてない」かつ、エンドを見たことがない
 		;＝今現在まどマギ最終段階くらいにいる、またはエンドを見たことがあるなら発生
 		IF 이벤트플래그:99:1 == 0 || 이벤트플래그:99:0 <= 5
-			IF GETBIT(FLAG:발견ED, 63) == 0 && GETBIT(FLAG:발견ED, 18) == 0
+			IF GETBIT(FLAG:발견ED2, 8) == 0 && GETBIT(FLAG:발견ED2, 9) == 0
 				RETURN 0
 			ENDIF
 		ENDIF
@@ -2727,25 +2713,47 @@ CASE 8
 			RETURN 1
 		ENDIF
 	ENDIF
-;スルト（ＡＮ）イベント
+;アークナイツイベント
 CASE 9
 	IF ARG:1 == 0
-		RESULTS = Reconnect-Ragnarok
+		SELECTCASE Reconnect_Ragnarok진행
+			CASE 0
+				RESULTS = Reconnect-Ragnarok
+			CASE 1
+				RESULTS = A message from Beyond
+			;CASE 2
+			;	RESULTS = Preparing for the calamity
+		ENDSELECT
 	ELSEIF ARG:1 == 1
 		;EXTRAイベントOFFの場合は出ない
 		SIF GETBIT(FLAG:EXTRA이벤트설정, 0) == 0
 			RETURN 0
-		;ナイト・テイル：666END達成で出現
-		SIF GETBIT(FLAG:발견ED,52) == 1
-			RETURN 1
 		;LV50未満だと出ない
 		SIF BASE:MASTER:LV < 50
 			RETURN 0
+		SELECTCASE Reconnect_Ragnarok진행
+			CASE 0
+				;ナイト・テイル：666END達成で出現
+				SIF GETBIT(FLAG:발견ED,52) == 1
+					RETURN 1
+			CASE 1
+				RETURN 1
+			;CASE 2
+			;	RETURN 1
+			CASEELSE
+				RETURN 0
+		ENDSELECT
 	ELSEIF ARG:1 == 2
-		CALL Reconnect_Ragnarok
-		RETURN RESULT
-	ENDIF
-	
+		SELECTCASE Reconnect_Ragnarok진행
+			CASE 0
+				CALL Reconnect_Ragnarok
+			CASE 1
+				CALL A_message_from_Beyond
+			;CASE 2
+			;	CALL Preparing_for_the_Calamity
+		ENDSELECT
+		;RETURN RESULT
+	ENDIF	
 ;奇妙なバルバトス、モラクス、バアルイベント
 CASE 10
 	IF ARG:1 == 0

@@ -1,0 +1,1630 @@
+﻿;-------------------------------------------------
+;アーミヤ個人イベント
+;-------------------------------------------------
+@INDIVIDUAL_EVENT_K812, ARG, ARG:1 = 0, ARG:2 = -1
+#LOCALSIZE 1
+#LOCALSSIZE 1
+#DIM 導入フラグ
+#DIM 現個人イベントバージョン = 100
+;ARG:0　キャラ番号
+;ARG:1　関数種類　1,開放条件　2,タイトル　3,イベント
+;ARG:2　イベント番号（0～63まで）
+
+SELECTCASE ARG:2
+CASE 0
+	;解放条件
+	IF ARG:1 == 1
+		;SIF CFLAG:ARG:전투참가불가능 > 0
+		;	RETURN 0
+		;アークナイツ版の条件はこっち
+		IF CSTR:ARG:종족명 == "コータス"
+			IF 아미야개인이벤트버전 < 現個人イベントバージョン && GETBIT(이벤트플래그:19:19, 9) != 1
+				RETURN 1
+			ELSE
+				IF CFLAG:ARG:이자리에없는플래그 > 0
+					RETURN 0
+				;ELSEIF BASE:MASTER:LV < 30
+				;	RETURN 0
+				ELSE
+					RETURN 1
+				ENDIF
+			ENDIF
+		ENDIF
+	ELSEIF ARG:1 == 2
+	;タイトル
+		IF CSTR:ARG:종족명 == "コータス"
+			IF 아미야개인이벤트버전 < 現個人イベントバージョン && GETBIT(이벤트플래그:19:19, 9) != 1
+				RESULTS = （重要）データリセット:アーミヤ
+			ELSE
+				IF GETBIT(CFLAG:ARG:개별이벤트개방, ARG:2)
+					;タイトル
+					RESULTS = スキル訓練：アーミヤ
+				ELSE
+					;未開放時のタイトル（解放条件を入れておく）
+					RESULTS = (%CALLNAME:ARG%の加入　で解放)
+				ENDIF
+			ENDIF
+		ENDIF
+	;イベント
+	ELSEIF ARG:1 == 3
+		IF CSTR:ARG:종족명 == "コータス"
+			IF 아미야개인이벤트버전 < 現個人イベントバージョン && !GETBIT(CFLAG:ARG:개별이벤트개방, ARG:2)
+				PRINTL
+				PRINTL ※個人イベントのバージョンが更新された為、スキルの強化と昇華の進行度が初期化されます
+				PRINTW 　これに伴い、強化に使われたアイテムが返却されます
+				PRINTL
+				PRINTL ※なお、アイテムの返却の際、周回ボーナスの
+				PRINTL 『武具アイテム引継ぎ』『防具アイテム引継ぎ』
+				PRINTW 　等を選択していない場合、該当する類のアイテムが返却されない点にご注意ください。
+				PRINTL
+				PRINTW 初期化を行いますか？
+				CALL INPUT_YN
+				SELECTCASE RESULT
+					CASE 0
+						CALL PU_SKILL_ENHANCE_MATERIAL_ROLLBACK_K812,ARG
+						아미야개인이벤트버전 = 現個人イベントバージョン
+						RETURN 0
+					CASE 1
+						RETURN 0
+				ENDSELECT
+			ELSE
+				$INDIVIDUAL_EVENT_K812_GOTO
+				CUSTOMDRAWLINE =
+				IF 導入フラグ == 0 
+					導入フラグ = 1
+					PRINTFORMW %CALLNAME:ARG%のスキル強化のため、訓練室を訪れた。
+					PRINTFORMW ここでは%CALLNAME:ARG%のスキルを強化、変更することができる。
+					PRINTL
+					PRINTW ただし、スキルの強化には特殊な材料が必要になる。探すのに骨が折れる代物ばかりだが、根気よく集めよう。
+					IF 現個人イベントバージョン > 아미야개인이벤트버전
+						PRINTL
+						PRINTL ※個人イベントのバージョンが更新された為、スキルの強化と昇華の進行度が初期化が可能になります
+						PRINTL 　初期化した場合、強化に使われたアイテムが返却されます
+						PRINTW 　初期化を行わないと、予期せぬトラブルが発生しかねないので、初期化する事を強くおすすめします
+						PRINTL
+						PRINTL ※なお、アイテムの返却の際、周回ボーナスの
+						PRINTL 『武具アイテム引継ぎ』『防具アイテム引継ぎ』
+						PRINTW 　等を選択していない場合、該当する類のアイテムが返却されない点にご注意ください。
+						PRINTL
+					ENDIF
+				ENDIF
+				PRINTL
+				PRINTFORML さて、どうしようか？
+				PRINTL
+				PRINTL
+				PRINTFORML [0] スキルを変更する
+				PRINTFORML [1] 昇華の儀式を行う
+				PRINTFORML [2] 専用技のリセットを行う
+				IF 現個人イベントバージョン > 아미야개인이벤트버전
+					PRINTFORML [3] ！ 個人イベントバージョン更新によるスキル強化度と昇華初期化、素材返却
+				ELSEIF (CSTR:ARG:104 != "" && GETBIT(CFLAG:ARG:개별이벤트읽음,1)) || CSTR:ARG:105 != ""
+					;昇華２達成、追想：魔王を継ぐ者クリア or 前衛クラスチェンジが解禁済みで解禁
+					PRINTFORML [3] クラス変更を行う
+				ENDIF
+				DRAWLINE
+				PRINTFORML [99] 所持品を確認する
+				DRAWLINE
+				PRINTFORML [100] 帰る
+				CALL INPUTINT(0,1,2,3,99,100)
+				SELECTCASE RESULT
+					CASE 0
+						CALL EVENT_PU_SKILL_CHECK_K812(ARG)
+					CASE 1
+						CALL PROMOTION_K812(ARG)
+					CASE 2
+						CALL PU_SKILL_POSITION_RESET_266,ARG
+					CASE 3
+						IF 現個人イベントバージョン > 아미야개인이벤트버전
+							PRINTL
+							PRINTL ※個人イベントのバージョンが更新された為、スキルの強化と昇華の進行度が初期化されます
+							PRINTW 　これに伴い、強化に使われたアイテムが返却されます
+							PRINTL
+							PRINTL
+							PRINTL ※なお、アイテムの返却の際、周回ボーナスの
+							PRINTL 『武具アイテム引継ぎ』『防具アイテム引継ぎ』
+							PRINTW 　等を選択していない場合、該当する類のアイテムが返却されない点にご注意ください。
+							PRINTL
+							PRINTW 初期化を行いますか？
+							CALL INPUT_YN
+							SELECTCASE RESULT
+								CASE 0
+									CALL PU_SKILL_ENHANCE_MATERIAL_ROLLBACK_K812,ARG
+									아미야개인이벤트버전 = 現個人イベントバージョン
+									GOTO INDIVIDUAL_EVENT_K812_GOTO
+								CASE 1
+									GOTO INDIVIDUAL_EVENT_K812_GOTO
+							ENDSELECT
+						ELSEIF (TOINT(CSTR:ARG:104) > 0 && GETBIT(CFLAG:ARG:개별이벤트읽음,1)) || CSTR:ARG:105 != ""
+							CALL CLASS_ALTERNATE_K812,ARG
+						ELSE
+							GOTO INDIVIDUAL_EVENT_K812_GOTO
+						ENDIF
+					CASE 99
+						CALL SHOP_COM_112
+						GOTO INDIVIDUAL_EVENT_K812_GOTO
+					CASE 100
+						PRINTFORMW 用事は済んだ。セーフハウスに戻るとしよう。
+						PRINTL
+						導入フラグ = 0
+						RETURN 0
+				ENDSELECT
+			ENDIF
+		ENDIF
+	ENDIF
+CASE 1
+	;解放条件
+	IF ARG:1 == 1
+		;SIF CFLAG:ARG:전투참가불가능 > 0
+		;	RETURN 0
+		;アークナイツ版の条件はこっち
+		IF CSTR:ARG:종족명 == "コータス"
+			IF CFLAG:ARG:이자리에없는플래그 > 0
+				RETURN 0
+			;アーミヤのレベルが70未満、昇華２を達成できていない場合は不可
+			ELSEIF BASE:ARG:LV < 70 || CSTR:ARG:104 == ""
+				RETURN 0
+			;未陥落の場合は不可
+			ELSEIF 함락(ARG) < 1
+				RETURN 0
+			ELSE
+				RETURN 1
+			ENDIF
+		ENDIF
+	ELSEIF ARG:1 == 2
+	;タイトル
+		IF CSTR:ARG:종족명 == "コータス"
+			IF GETBIT(CFLAG:ARG:개별이벤트개방, ARG:2)
+				;タイトル
+				;英語版はたぶん『Soul Surrender』とかになると思う（ヒカセン並感）
+				RESULTS = 『魔王』を継ぐ者
+			ELSE
+				;未開放時のタイトル（解放条件を入れておく）
+				RESULTS = (%CALLNAME:ARG%のレベルが70以上、霊格昇華２達成、陥落済み　で解放)
+			ENDIF
+		ENDIF
+	;イベント
+	ELSEIF ARG:1 == 3
+		IF CSTR:ARG:종족명 == "コータス"
+			SETCOLOR COLOR("RED")
+			PRINTL ※注意！
+			RESETCOLOR
+			PRINTFORML このイベントでは%CALLNAME:MASTER%が不在での戦闘が発生します
+			PRINTW 進行を進めても大丈夫ですか？
+			CALL INPUT_YN
+			IF RESULT == 0
+				CALL INDIVIDUAL_EVENT_K812_AN_SOULSURRENDER,ARG
+				RESULT = 1
+				RETURN 1
+			ELSE
+				PRINTW イベントを一時中断します
+				RETURN 0
+			ENDIF
+		ENDIF
+	ENDIF
+ENDSELECT
+
+@EVENT_PU_SKILL_CHECK_K812,ARG
+#LOCALSIZE 1
+#DIM 計算用変数,5
+#DIM 必要アイテム不足変数
+#DIM 必要アイテム = -1
+#DIMS 確認するスキル
+#DIMS 必要条件 = ""
+
+VARSET 必要アイテム不足変数,0
+VARSET 必要アイテム,-1
+$EVENT_PU_SKILL_CHECK_K812_GOTO
+PRINTFORML 現在の%CALLNAME:ARG%が使用している専用技は%CSTR:ARG:전용기1%だ。
+PRINTL
+PRINTFORML どうする？
+PRINTL
+SELECTCASE CSTR:ARG:101
+	CASE "アーミヤ",""
+		PRINTFORML [0] 戦術詠唱γを確認する
+		IF CSTR:ARG:103 == ""
+			SETCOLOR COLOR("GRAY")
+			PRINTFORML [1] -
+			RESETCOLOR
+		ELSE
+			PRINTFORML [1] ソウルブーストを確認する
+		ENDIF
+		IF CSTR:ARG:104 == ""
+			SETCOLOR COLOR("GRAY")
+			PRINTFORML [2] -
+			RESETCOLOR
+		ELSE
+			PRINTFORML [2] キメラを確認する
+		ENDIF
+	CASE "アーミヤ（前衛）"
+		PRINTFORML [0] 影霄・奔夜を確認する
+		PRINTFORML [1] 影霄・絶影を確認する
+ENDSELECT
+PRINTFORML [99] 戻る
+$EVENT_PU_SKILL_CHECK_K812_GOTO2
+CALL INPUTINT(0,1,2,99)
+SELECTCASE RESULT
+	CASE 0
+		IF CSTR:ARG:101 == "アーミヤ" || CSTR:ARG:101 == ""
+			確認するスキル = 戦術詠唱γ
+			計算用変数 = TOINT(CSTR:ARG:102)
+		ELSEIF CSTR:ARG:101 == "アーミヤ（前衛）"
+			確認するスキル = 影霄・奔夜
+			計算用変数 = TOINT(CSTR:ARG:105)
+		ELSE
+			GOTO EVENT_PU_SKILL_CHECK_K812_GOTO2
+		ENDIF
+	CASE 1
+		IF CSTR:ARG:103 != "" && (CSTR:ARG:101 == "アーミヤ" || CSTR:ARG:101 == "")
+			確認するスキル = ソウルブースト
+			計算用変数 = TOINT(CSTR:ARG:103)
+		ELSEIF CSTR:ARG:101 == "アーミヤ（前衛）"
+			確認するスキル = 影霄・絶影
+			計算用変数 = TOINT(CSTR:ARG:106)
+		ELSE
+			GOTO EVENT_PU_SKILL_CHECK_K812_GOTO2
+		ENDIF
+	CASE 2
+		IF CSTR:ARG:104 != "" && (CSTR:ARG:101 == "アーミヤ" || CSTR:ARG:101 == "")
+			確認するスキル = キメラ
+			計算用変数 = TOINT(CSTR:ARG:104)
+		ELSE
+			GOTO EVENT_PU_SKILL_CHECK_K812_GOTO2
+		ENDIF
+	CASE 99
+		JUMP INDIVIDUAL_EVENT_K812,ARG,3,0
+ENDSELECT
+$EVENT_PU_SKILL_CHECK_K812_GOTO3
+;計算用変数:0 = スキルランク
+;計算用変数:1 = 初期ＳＰ
+;計算用変数:2 = 必要ＳＰ
+;計算用変数:3 = ダメージ倍率
+;計算用変数:4 = 戦術詠唱γは魔法命中・回避上昇の段階、ソウルブーストは攻撃回数、キメラは最大ＨＰ増加倍率
+FOR COUNT,1,5
+	SELECTCASE COUNT
+		CASE 1
+			SELECTCASE 確認するスキル
+				CASE "ソウルブースト","キメラ","影霄・絶影"
+					LOCAL = 0
+				CASE "戦術詠唱γ"
+					SELECTCASE 計算用変数
+						CASE 1
+							LOCAL = 0
+						CASE 2
+							LOCAL = 5
+						CASE 3
+							LOCAL = 10
+						CASE 4
+							LOCAL = 15
+					ENDSELECT
+				CASE "影霄・奔夜"
+					LOCAL = 10
+			ENDSELECT
+		CASE 2
+			SELECTCASE 確認するスキル
+				CASE "戦術詠唱γ"
+					SELECTCASE 計算用変数
+						CASE 1
+							LOCAL = 40
+						CASE 2
+							LOCAL = 35
+						CASE 3
+							LOCAL = 32
+						CASE 4
+							LOCAL = 30
+					ENDSELECT
+				CASE "ソウルブースト"
+					LOCAL = 100
+				CASE "キメラ"
+					LOCAL = 120
+				CASE "影霄・奔夜"
+					SELECTCASE 計算用変数
+						CASE 1
+							LOCAL = 45
+						CASE 2
+							LOCAL = 42
+						CASE 3
+							LOCAL = 39
+						CASE 4
+							LOCAL = 35
+					ENDSELECT
+				CASE "影霄・絶影"
+					LOCAL = 20
+			ENDSELECT
+		CASE 3
+			SELECTCASE 確認するスキル
+				CASE "戦術詠唱γ"
+					SELECTCASE 計算用変数
+						CASE 1
+							LOCAL = 10
+						CASE IS > 1
+							LOCAL = 20
+					ENDSELECT
+				CASE "ソウルブースト"
+					SELECTCASE 計算用変数
+						CASE 1
+							LOCAL = 33
+						CASE 2
+							LOCAL = 39
+						CASE 3
+							LOCAL = 45
+						CASE 4
+							LOCAL = 60
+					ENDSELECT
+				CASE "キメラ"
+					SELECTCASE 計算用変数
+						CASE 1
+							LOCAL = 50
+						CASE 2
+							LOCAL = 65
+						CASE 3
+							LOCAL = 80
+						CASE 4
+							LOCAL = 115
+					ENDSELECT
+				CASE "影霄・奔夜"
+					SELECTCASE 計算用変数
+						CASE 1
+							LOCAL = 10
+						CASE 2
+							LOCAL = 18
+						CASE 3
+							LOCAL = 25
+						CASE 4
+							LOCAL = 40
+					ENDSELECT
+				CASE "影霄・絶影"
+					;絶影はスキル威力
+					SELECTCASE 計算用変数
+						CASE 1
+							LOCAL = 120
+						CASE 2
+							LOCAL = 140
+						CASE 3
+							LOCAL = 160
+						CASE 4
+							LOCAL = 220
+					ENDSELECT
+			ENDSELECT
+		CASE 4
+			SELECTCASE 確認するスキル
+				CASE "戦術詠唱γ"
+					SELECTCASE 計算用変数
+						CASE 1,2
+							LOCAL = 1
+						CASE IS > 2
+							LOCAL = 2
+					ENDSELECT
+				CASE "ソウルブースト"
+					SELECTCASE 計算用変数
+						CASE 1
+							LOCAL = 5
+						CASE 2,3
+							LOCAL = 6
+						CASE 4
+							LOCAL = 7
+					ENDSELECT
+				CASE "キメラ"
+					SELECTCASE 計算用変数
+						CASE 1
+							LOCAL = 25
+						CASE 2
+							LOCAL = 50
+						CASE 3
+							LOCAL = 75
+						CASE 4
+							LOCAL = 100
+					ENDSELECT
+				CASE "影霄・絶影"
+					;ダメージ上昇
+					SELECTCASE 計算用変数
+						CASE IS < 3
+							LOCAL = 10
+						CASE 3
+							LOCAL = 13
+						CASE 4
+							LOCAL = 20
+					ENDSELECT
+			ENDSELECT
+	ENDSELECT
+	計算用変数:(COUNT) = LOCAL
+NEXT
+DRAWLINE
+PRINTL
+PRINTFORML %確認するスキル%　初期ＳＰ:{計算用変数:1}　必須ＳＰ:{計算用変数:2}
+PRINTL
+SELECTCASE 確認するスキル
+	CASE "戦術詠唱γ"
+		PRINTL ターン経過でＳＰ5上昇。
+		PRINTL 必須ＳＰを満たしていた時、コマンドを選択する事で起動できる。
+		PRINTFORML スキル起動中、攻撃のダメージが{計算用変数:3}％アップし、
+		PRINTFORML 魔法攻撃の命中・回避が{計算用変数:4}段階上昇、物理攻撃の回避が1段階上昇する。
+		SIF 計算用変数 > 3
+			PRINTL 更にスキル起動中の間、任意の魔法攻撃を追加で発動する『ＥＸ－ＣＡＳＴ』コマンドが選択可能になる。
+	CASE "ソウルブースト"
+		PRINTL ターン経過でＳＰ5上昇。
+		PRINTL 必須ＳＰを満たした時点で自動的に発動する。
+		PRINTFORML スキル起動中、自身のカウンター、及び追撃系の攻撃のダメージが{計算用変数:3}％まで低下。
+		PRINTFORML その代わり、自身の魔法攻撃後に敵全体をランダムに対象とした追撃を{計算用変数:4}回行う。
+		PRINTL 追撃の威力と相性は直前に使用した魔法攻撃の物を引き継ぐ。
+		PRINTL 効果終了時に自身に自然回復まで2ターン掛かるSLIPを付与。
+	CASE "キメラ"
+		PRINTL ターン経過でＳＰ5上昇。
+		PRINTL 必須ＳＰを満たしていた時、コマンドを選択する事で起動できる。
+		PRINTFORML スキル起動中、魔法攻撃のダメージが{計算用変数:3}％アップし、最大ＨＰが{計算用変数:4}％増加、ＨＰも増加分回復。
+		PRINTL 効果が持続している間、魔法攻撃スキルを使った時に限り、対象の反射or吸収以外の耐性と無効化系スキルを貫通し、
+		PRINTL 攻撃対象の被ダメージ補正の影響を受けなくなる。
+		PRINTL スキル起動中に攻撃魔法を使用した時、「攻撃対象を敵全体からランダム一体」、「ダメージタイプなし」に変更し、行動を「キメラ」に上書きする。
+		PRINTL 「キメラ」は入力した魔法攻撃の性能を引き継ぐが、攻撃回数は1回で固定される。
+		PRINTL 起動中に戦闘離脱、もしくは戦闘不能になった時にゲージリセット、更にクールタイムゲージ追加。
+		PRINTL クールタイムゲージが消滅するまで、スキル発動に必要なＳＰは増加しない。
+		SETCOLOR COLOR("RED")
+		PRINTL 効果終了、もしくはゲージリセットが発生した場合、使用者は強制的にDYINGになる。
+		RESETCOLOR
+	CASE "影霄・奔夜"
+		PRINTL ターン経過でＳＰ5上昇。
+		PRINTL 必須ＳＰを満たしていた時、コマンドを選択する事で起動できる。
+		PRINTFORML スキル起動中、自身の与ダメージが{計算用変数:3}％アップし、魔法攻撃に対する回避率が２段階上昇する。
+		PRINTL 更にスキル起動中の間、任意の物理攻撃を追加で発動する『ＥＸ－ＭＯＶＥ』コマンドが選択可能になる。
+	CASE "影霄・絶影"
+		PRINTL ターン経過でＳＰ5上昇。
+		PRINTL 必須ＳＰを満たしていた時、コマンドを選択する事で通常の行動の代わりに発動する事ができる。
+		PRINTFORML 敵全体の中から最もＨＰが低い敵に{計算用変数:3}程度の威力の物理剣撃相性の攻撃を10回行う。
+		PRINTL この攻撃は魔法威力強化の影響を受け、更に最後の一撃は威力が倍増し、「ダメージタイプなし」として扱われる代わりに
+		PRINTL 相手の無効以下の相性とスキルによる無効化を貫通する。
+		PRINTFORML この攻撃で敵を倒す度、自身に「与ダメージ{計算用変数:4}％増加、魔法被ダメージ15％軽減」のバフを３回まで付与する。
+		PRINTL
+		PRINTL この攻撃を終えた後、スキルゲージが空になるまで自身の物理ダメージを与える攻撃が「ダメージタイプなし」として扱われ、
+		PRINTL 相手の無効以下の相性とスキルによる無効化を貫通する状態になる。
+		PRINTL
+		SETCOLOR COLOR("RED")
+		PRINTL このスキルはダンジョン探索中に一度しか発動できない。
+		RESETCOLOR
+ENDSELECT
+PRINTL
+DRAWLINE
+CALL PU_SKILL_ENHANCE_K812,ARG,確認するスキル,計算用変数:0
+IF RESULT != -1
+	必要アイテム = RESULT
+	必要条件 = %PU_SKILL_ENHANCE_REQUIREMENTS_CHECK_K812(ARG,確認するスキル,計算用変数:0)%
+ENDIF
+;IF ITEM:必要アイテム > 0
+;	PRINTL 足りてる
+;ELSE
+;	PRINTL 足りぬ
+;ENDIF
+SIF CSTR:ARG:전용기1 == 確認するスキル
+	SETCOLOR COLOR("GRAY")
+PRINTFORML [0] このスキルに変更する
+RESETCOLOR
+IF 計算用変数 >= 4
+	SETCOLOR COLOR("GRAY")
+	PRINTFORML [1] このスキルは既に最大まで強化されている
+ELSE
+	SIF ITEM:必要アイテム <= 0 || (計算用変数 == 2 && CSTR:ARG:103 == "") || (計算用変数 == 3 && CSTR:ARG:104 == "")
+		SETCOLOR COLOR("GRAY")
+	PRINTFORML [1] このスキルを強化する　必要アイテム：%ITEMNAME:必要アイテム%　%必要条件%
+ENDIF
+RESETCOLOR
+DRAWLINE
+PRINTFORML [99] 戻る
+;PRINTW でばっぐすとっぷ
+$EVENT_PU_SKILL_CHECK_K812_GOTO4
+CALL INPUTINT(0,1,99)
+SELECTCASE RESULT
+	CASE 0
+		SIF CSTR:ARG:전용기1 == 確認するスキル
+			GOTO EVENT_PU_SKILL_CHECK_K812_GOTO4
+		PRINTL 
+		PRINTFORMW %CALLNAME:ARG%のスキルを%確認するスキル%に変更した。
+		CSTR:ARG:전용기1 = %確認するスキル%
+		GOTO EVENT_PU_SKILL_CHECK_K812_GOTO
+	CASE 1
+		SIF 計算用変数 >= 4 || ITEM:必要アイテム < 1 || (計算用変数 == 2 && CSTR:ARG:103 == "") || (計算用変数 == 3 && CSTR:ARG:104 == "")
+			GOTO EVENT_PU_SKILL_CHECK_K812_GOTO4
+		PRINTFORML %ITEMNAME:必要アイテム%を消費して%CALLNAME:ARG%の%確認するスキル%を強化しますか？
+		CALL INPUT_YN
+		SIF RESULT == 1
+			GOTO EVENT_PU_SKILL_CHECK_K812_GOTO3
+		PRINTL 
+		計算用変数 += 1
+		PRINTFORMW %CALLNAME:ARG%の%確認するスキル%が強化され、スキルランクが{計算用変数}になった。
+		ITEM:必要アイテム -= 1
+		SELECTCASE 確認するスキル
+			CASE "戦術詠唱γ"
+				CSTR:ARG:102 = %TOSTR(計算用変数)%
+			CASE "ソウルブースト"
+				CSTR:ARG:103 = %TOSTR(計算用変数)%
+			CASE "キメラ"
+				CSTR:ARG:104 = %TOSTR(計算用変数)%
+			CASE "影霄・奔夜"
+				CSTR:ARG:105 = %TOSTR(計算用変数)%
+			CASE "影霄・絶影"
+				CSTR:ARG:106 = %TOSTR(計算用変数)%
+		ENDSELECT
+		GOTO EVENT_PU_SKILL_CHECK_K812_GOTO
+	CASE 99
+		GOTO EVENT_PU_SKILL_CHECK_K812_GOTO
+ENDSELECT
+
+@PU_SKILL_ENHANCE_REQUIREMENTS_CHECK_K812,ARG,ARGS,ARG:1
+#FUNCTIONS
+; ARG   = 対象キャラ
+; ARGS  = 対象スキル
+; ARG:1 = スキルランク
+SELECTCASE ARGS
+	CASE "戦術詠唱γ"
+		SELECTCASE ARG:1
+			CASE 2
+				RETURNF "必要条件：" + CALLNAME:ARG + "の昇華１到達"
+			CASE 3
+				RETURNF "必要条件：" + CALLNAME:ARG + "の昇華２到達"
+		ENDSELECT
+	CASE "ソウルブースト"
+		SELECTCASE ARG:1
+			CASE 3
+				RETURNF "必要条件：" + CALLNAME:ARG + "の昇華２到達"
+		ENDSELECT
+ENDSELECT
+
+@PU_SKILL_ENHANCE_K812,ARG,ARGS = "",ARG:1
+#DIM 必要アイテム
+
+必要アイテム = -1
+SELECTCASE ARGS
+	CASE "戦術詠唱γ"
+		SELECTCASE ARG:1
+			CASE 1
+				必要アイテム = [[아이템:파이어라빈트-]]
+			CASE 2
+				必要アイテム = [[아이템:잊혀진연금매체]]
+			CASE 3
+				必要アイテム = [[아이템:블랙배럴・레플리카]]
+		ENDSELECT
+	CASE "ソウルブースト"
+		SELECTCASE ARG:1
+			CASE 1
+				必要アイテム = [[아이템:검은암륜]]
+			CASE 2
+				必要アイテム = [[아이템:정적의반지]]
+			CASE 3
+				必要アイテム = [[아이템:흑신의돌]]
+		ENDSELECT
+	CASE "キメラ"
+		SELECTCASE ARG:1
+			CASE 1
+				必要アイテム = [[아이템:스킬카드【포미러버】]]
+			CASE 2
+				必要アイテム = [[아이템:스킬카드【암흑마하・아쿠에스】]]
+			CASE 3
+				必要アイテム = [[아이템:스킬카드【브류나크】]]
+		ENDSELECT
+	CASE "影霄・奔夜"
+		SELECTCASE ARG:1
+			CASE 1
+				必要アイテム = [[아이템:히트나이프]]
+			CASE 2
+				必要アイテム = [[아이템:정령대장장이의검]]
+			CASE 3
+				必要アイテム = [[아이템:화룡검]]
+		ENDSELECT
+	CASE "影霄・絶影"
+		SELECTCASE ARG:1
+			CASE 1
+				必要アイテム = [[아이템:극화괴]]
+			CASE 2
+				必要アイテム = [[아이템:완전신주]]
+			CASE 3
+				必要アイテム = [[아이템:구철검]]
+		ENDSELECT
+ENDSELECT
+SIF 必要アイテム == -1
+	RETURN -1
+RETURN 必要アイテム
+
+
+@PROMOTION_K812,ARG
+#DIM LCOUNT
+$PROMOTION_K812_GOTO
+PRINTFORML どうやら%CALLNAME:ARG%の霊格を昇華させる事ができるようだ。
+PRINTL 
+PRINTL どうする？
+PRINTL
+IF CSTR:ARG:103 == ""
+	CUSTOMDRAWLINE =
+	PRINTFORML 昇華時に以下の恩恵を得る。
+	PRINTL
+	PRINTL スキル解禁：ソウルブースト
+	PRINTL
+	PRINTL 効果発動中、カウンター及び追撃で与えるダメージが60％まで低下。魔法攻撃後、敵全体にランダムで魔法ダメージを与える追撃を行う。
+	PRINTL 追撃は直前に使用した魔法攻撃の威力と相性を参照する。
+	PRINTL
+	PRINTL
+	PRINTL 習得スキル更新
+	PRINTL 
+	PRINTL 霊格昇華時、習得スキルが更新される。
+	PRINTL 霊格昇華後時点で既に習得に必要なレベルを満たしている場合、その場でスキルを習得する。
+	CUSTOMDRAWLINE =
+ELSEIF CSTR:ARG:104 == ""
+	CUSTOMDRAWLINE =
+	PRINTFORML 昇華時に以下の恩恵を得る。
+	PRINTL
+	PRINTL スキル解禁：キメラ
+	PRINTL
+	PRINTL スキル起動中、魔法攻撃ダメージが50％アップ、最大ＨＰが25％増加、ＨＰ増加分回復。
+	PRINTL 効果持続中、魔法攻撃スキルを使った時に限り、対象の反射or吸収以外の耐性と無効化系スキルを貫通し、
+	PRINTL 攻撃対象の被ダメージ補正の影響を受けなくなる。
+	PRINTL スキル起動中に攻撃魔法を使用した時、攻撃対象を「敵全体からランダム一体」に変更し、行動を「キメラ」に上書きする。
+	PRINTL 「キメラ」は入力した魔法攻撃の性能を引き継ぐが、攻撃回数は1回で固定される。
+	PRINTL 起動中に戦闘離脱、もしくは戦闘不能になった時にゲージリセット、更にクールタイムゲージ追加。
+	PRINTL クールタイムゲージが消滅するまで、スキル発動に必要なＳＰは増加しない。
+	SETCOLOR COLOR("RED")
+	PRINTL 効果終了、もしくはゲージリセットが発生した場合、使用者は強制的にDYINGになる。
+	RESETCOLOR
+	PRINTL
+	PRINTL
+	PRINTL スキル解禁：？？？　→　アブソープション
+	PRINTL
+	PRINTL 自動効果。攻撃行動を行う度にＳＰを＋3加算する。更にその攻撃で敵を倒せばＳＰ＋10加算する。
+	PRINTFORML このスキルを所持していない場合、%CALLNAME:ARG%はキメラを使用できない。
+	PRINTL
+	PRINTL
+	PRINTL 習得スキル更新
+	PRINTL 
+	PRINTL 霊格昇華時、習得スキルが更新される。
+	PRINTL 霊格昇華後時点で既に習得に必要なレベルを満たしている場合、その場でスキルを習得する。
+	CUSTOMDRAWLINE =
+ENDIF
+PRINTL
+PRINTL
+IF CSTR:ARG:104 != ""
+	SETCOLOR COLOR("GRAY")
+	PRINTFORML [-] %CALLNAME:ARG%の霊格はこれ以上昇華できないようだ…
+ELSE
+	SIF (CSTR:ARG:103 == "" && (ITEM:[[아이템:반혼의반지]] < 1 || BASE:ARG:LV < 50 || MONEY:1 < 2000)) || (CSTR:ARG:103 != "" && CSTR:ARG:104 == "" && (ITEM:[[아이템:고고함의반지]] < 1 || BASE:ARG:LV < 70 || MONEY:1 < 12000))
+		SETCOLOR COLOR("GRAY")
+	PRINTFORML [0] %CALLNAME:ARG%の霊格を昇華する　必要アイテム：\@ CSTR:ARG:103 == "" ? 絆魂の指輪 # 孤高の指輪 \@　必要レベル：\@ CSTR:ARG:103 == "" ? 50 # 70 \@　必要魔貨：\@ CSTR:ARG:103 == "" ? 2000 # 12000 \@
+ENDIF
+RESETCOLOR
+PRINTFORML [99] 戻る
+$PROMOTION_K812_GOTO2
+CALL INPUTINT (0,99)
+SELECTCASE RESULT
+	CASE 0
+		IF CSTR:ARG:103 == ""
+			SIF ITEM:[[아이템:반혼의반지]] < 1 || BASE:ARG:LV < 50 || MONEY:1 < 2000
+				GOTO PROMOTION_K812_GOTO2
+			PRINTFORML 絆魂の指輪と魔貨を消費して%CALLNAME:ARG%の霊格を昇華しますか？
+			CALL INPUT_YN
+			SIF RESULT == 1
+				GOTO PROMOTION_K812_GOTO
+			PRINTL
+			PRINTFORMW %CALLNAME:ARG%の霊格を昇華した！
+			PRINTFORMW %CALLNAME:ARG%はソウルブーストを使用できるようになった！
+			PRINTFORMW %CALLNAME:ARG%は新しいスキルを習得できるようになった！
+			PRINTW ソウルブーストを使用するには一度スキルを変更する必要がある。忘れないでおこう。
+			CSTR:ARG:103 = 1
+			ITEM:[[아이템:반혼의반지]] -= 1
+			MONEY:1 -= 2000
+			LCOUNT = TOINT(CSTR:ARG:152)
+			CLEARBIT LCOUNT,0
+			CSTR:ARG:152 = %TOSTR(LCOUNT)%
+			;CLEARBIT アーミヤ習得スキルテーブル適用フラグ,1
+			CALL SKILL_LEARNSET_UPDATE_K812,ARG,0,"昇華１"
+			CALL EVENT_LEVELUP,ARG
+			GOTO PROMOTION_K812_GOTO
+		ELSEIF CSTR:ARG:104 == ""
+			SIF ITEM:[[아이템:고고함의반지]] < 1 || BASE:ARG:LV < 80 || MONEY:1 < 12000
+				GOTO PROMOTION_K812_GOTO2
+			PRINTFORML 孤高の指輪と魔貨を消費して%CALLNAME:ARG%の霊格を昇華しますか？
+			CALL INPUT_YN
+			SIF RESULT == 1
+				GOTO PROMOTION_K812_GOTO
+			PRINTL
+			PRINTFORMW %CALLNAME:ARG%の霊格を更に昇華した！
+			PRINTFORMW %CALLNAME:ARG%はキメラを使用できるようになった！
+			PRINTFORMW %CALLNAME:ARG%はアブソープションを習得した！
+			PRINTFORMW %CALLNAME:ARG%は新しいスキルを習得できるようになった！
+			PRINTW キメラを使用するには一度スキルを変更し、更にアブソープションを習得している必要がある。忘れないでおこう。
+			CSTR:ARG:104 = 1
+			ITEM:[[아이템:고고함의반지]] -= 1
+			MONEY:1 -= 12000
+			LCOUNT = TOINT(CSTR:ARG:152)
+			CLEARBIT LCOUNT,0
+			CSTR:ARG:152 = %TOSTR(LCOUNT)%
+			;CLEARBIT アーミヤ習得スキルテーブル適用フラグ,1
+			CALL SKILL_LEARNSET_UPDATE_K812,ARG,0,"昇華２"
+			CALL EVENT_LEVELUP,ARG
+			GOTO PROMOTION_K812_GOTO
+		ENDIF
+	CASE 99
+		JUMP INDIVIDUAL_EVENT_K812,ARG,3,0
+ENDSELECT
+
+@PU_SKILL_POSITION_RESET_812,ARG
+#LOCALSSIZE 13
+#DIMS 一時確保スキル名,13
+;専用技が1以外に登録されるバグを直すために専用技を一旦初期化して改めて1から順に記入する処理
+;LOCAL:0 = 第一ループ
+;LOCAL:1 = 第二ループ
+;LOCAL:2 = 一時確保スキル名の配列数
+PRINTL
+PRINTL 専用技を一から順に書き直すよう、リセットを行います
+PRINTL リセットを行いますか？
+CALL INPUT_YN
+IF RESULT == 0
+	FOR LOCAL:0,0,3
+		FOR LOCAL:1,1,13
+			;最初は専用技のスキル名確保、及び専用技欄のリセット
+			IF LOCAL:0 == 0
+				;専用技欄が空白だった場合は飛ばす
+				IF CSTR:ARG:("전용기"+TOSTR(LOCAL:1)) == ""
+					CONTINUE
+				;専用技欄が記載されていた場合、一旦DIMで確保した上で専用技欄を空欄にする
+				ELSEIF CSTR:ARG:("전용기"+TOSTR(LOCAL:1)) != ""
+					一時確保スキル名:(LOCAL:2) = %CSTR:ARG:("전용기"+TOSTR(LOCAL:1))%
+					CSTR:ARG:("전용기"+TOSTR(LOCAL:1)) = ""
+					LOCAL:2 += 1
+				ENDIF
+			;こちらは専用技を1から埋めなおす処理
+			ELSEIF LOCAL:0 == 1
+				;スキル名確保変数が空白だった場合、その時点で処理を終える
+				IF 一時確保スキル名:(LOCAL:2) == ""
+					BREAK
+				;一旦DIMで確保したスキル名を専用技欄に書き直す
+				ELSE
+					CSTR:ARG:("전용기"+TOSTR(LOCAL:1)) = %一時確保スキル名:(LOCAL:2)%
+					LOCAL:2 += 1
+				ENDIF
+			ENDIF
+		NEXT
+		;第二ループ終了後に一時確保スキル名の配列数をリセット
+		SIF LOCAL:2 != 0
+			LOCAL:2 = 0
+	NEXT
+	;最後に一時確保スキル名をリセットする
+	VARSET 一時確保スキル名,""
+	PRINTL
+	PRINTL リセットが完了しました
+	PRINTW 未設定の専用技がスキル欄に残っていた場合、お手数ですが削除をお願いします
+	JUMP INDIVIDUAL_EVENT_K812,ARG,3,0
+ELSEIF RESULT == 1
+	JUMP INDIVIDUAL_EVENT_K812,ARG,3,0
+ENDIF
+
+@PU_SKILL_ENHANCE_MATERIAL_ROLLBACK_K812,ARG
+#DIM LOOP_C
+#DIM L_COUNT,3
+#DIM 昇華返却フラグ,2
+
+;強化と昇華に使った素材の返却
+;103と104,105,106は0ではなく""にする
+;スキルレベルの初期化
+
+FOR L_COUNT,102,107
+	L_COUNT:1 = TOINT(CSTR:ARG:L_COUNT)
+	IF (아미야개인이벤트버전 < 101 && L_COUNT:1 > 1 && 昇華返却フラグ < 2) || (L_COUNT:1 > 2 && 昇華返却フラグ < 2)
+		IF 아미야개인이벤트버전 < 101
+			SELECTCASE LOCAL:1
+				CASE 3
+					昇華返却フラグ:0 = 1
+					昇華返却フラグ:1 = 1
+				CASE 2
+					昇華返却フラグ:0 = 1
+			ENDSELECT
+		ELSE
+			SELECTCASE LOCAL:1
+				CASE 4
+					昇華返却フラグ:0 = 1
+					昇華返却フラグ:1 = 1
+				CASE 3
+					昇華返却フラグ:0 = 1
+			ENDSELECT
+		ENDIF
+	ENDIF
+	FOR L_COUNT:2,L_COUNT:1,-1,-1
+		;LOOP_C += 1
+		CALL MATERIAL_ROLLBACK_LIST_K812,L_COUNT:0,L_COUNT:2
+		;PRINTFORMW Bループ{LOOP_C}回目
+	NEXT
+	;LOOP_C = 0
+	SIF L_COUNT == 102
+		CSTR:ARG:L_COUNT = 1
+	SIF L_COUNT != 102
+		CSTR:ARG:L_COUNT = 
+NEXT
+;IF HAVE_PU_SKILL(ARG,"アブソープション",1)
+;	RESULT = HAVE_PU_SKILL(ARG,"アブソープション",1)
+;	ABL:ARG:("스킬" + TOSTR(RESULT)) = 0
+;	CSTR:ARG:전용기2 =
+;ENDIF
+IF 昇華返却フラグ:0 == 1
+	ITEM:[[아이템:반혼의반지]] += 1
+ENDIF
+IF 昇華返却フラグ:1 == 1
+	ITEM:[[아이템:고고함의반지]] += 1
+ENDIF
+PRINTW 初期化が完了しました
+
+@MATERIAL_ROLLBACK_LIST_K812,ARG,ARG:1
+;ARG:0 = 該当スキル
+;ARG:1 = スキルランク
+
+SELECTCASE 아미야개인이벤트버전
+	CASE IS < 101
+		SELECTCASE ARG:1
+			CASE 3
+				SIF ARG == 102
+					ITEM:[[아이템:블랙배럴・레플리카]] += 1
+				SIF ARG == 103
+					;よくよく考えれば合成武器は常に引き継がれる代物だった
+					ITEM:[[아이템:흑신의돌]] += 1
+				SIF ARG == 104
+					ITEM:[[아이템:스킬카드【브류나크】]] += 1
+				SIF ARG == 105
+					ITEM:[[아이템:화룡검]] += 1
+				SIF ARG == 106
+					ITEM:[[아이템:구철검]] += 1
+			CASE 2
+				SIF ARG == 102
+					ITEM:[[아이템:잊혀진연금매체]] += 1
+				SIF ARG == 103
+					ITEM:[[아이템:정적의반지]] += 1
+				SIF ARG == 104
+					ITEM:[[아이템:스킬카드【암흑마하・아쿠에스】]] += 1
+				SIF ARG == 105
+					ITEM:[[아이템:정령대장장이의검]] += 1
+				SIF ARG == 106
+					ITEM:[[아이템:완전신주]] += 1
+			CASE 1
+				SIF ARG == 102
+					ITEM:[[아이템:파이어라빈트-]] += 1
+				SIF ARG == 103
+					ITEM:[[아이템:검은암륜]] += 1
+				SIF ARG == 104
+					ITEM:[[아이템:스킬카드【포미러버】]] += 1
+				SIF ARG == 105
+					ITEM:[[아이템:히트나이프]] += 1
+				SIF ARG == 106
+					ITEM:[[아이템:극화괴]] += 1
+		ENDSELECT
+	CASEELSE
+		SELECTCASE ARG:1
+			CASE 4
+				SIF ARG == 102
+					ITEM:[[아이템:블랙배럴・레플리카]] += 1
+				SIF ARG == 103
+					ITEM:[[아이템:흑신의돌]] += 1
+				SIF ARG == 104
+					ITEM:[[아이템:스킬카드【브류나크】]] += 1
+				SIF ARG == 105
+					ITEM:[[아이템:화룡검]] += 1
+				SIF ARG == 106
+					ITEM:[[아이템:구철검]] += 1
+			CASE 3
+				SIF ARG == 102
+					ITEM:[[아이템:잊혀진연금매체]] += 1
+				SIF ARG == 103
+					ITEM:[[아이템:정적의반지]] += 1
+				SIF ARG == 104
+					ITEM:[[아이템:스킬카드【암흑마하・아쿠에스】]] += 1
+				SIF ARG == 105
+					ITEM:[[아이템:정령대장장이의검]] += 1
+				SIF ARG == 106
+					ITEM:[[아이템:완전신주]] += 1
+			CASE 2
+				SIF ARG == 102
+					ITEM:[[아이템:파이어라빈트-]] += 1
+				SIF ARG == 103
+					ITEM:[[아이템:검은암륜]] += 1
+				SIF ARG == 104
+					ITEM:[[아이템:스킬카드【포미러버】]] += 1
+				SIF ARG == 105
+					ITEM:[[아이템:히트나이프]] += 1
+				SIF ARG == 106
+					ITEM:[[아이템:극화괴]] += 1
+		ENDSELECT
+ENDSELECT
+
+@CLASS_ALTERNATE_K812,ARG
+#DIMS クラスチェンジ先
+#DIM LCOUNT
+;面倒なのでCSTR:ARG:150で各クラスのステータスを管理
+;空白ならセットしなおす
+SIF CSTR:ARG:150 == ""
+	CSTR:ARG:150 = _『CASTER』_LV_0001_力_0001_知恵_0005_魔力_0005_耐力_0002_速さ_0002_運_0002_：_『GUARD』_LV_0001_力_0004_知恵_0002_魔力_0003_耐力_0004_速さ_0004_運_0003
+;CSTR:151は各クラスに所有していたスキルを保存するのに使う
+SIF CSTR:ARG:151 == ""
+	CSTR:ARG:151 = 『CASTER』_スキル1_0_スキル2_0_スキル3_0_スキル4_0_スキル5_0_スキル6_0_スキル7_0_スキル8_0_スキル9_0_スキル10_0_スキル11_0_スキル12_0_：_『GUARD』_スキル1_0_スキル2_0_スキル3_0_スキル4_0_スキル5_0_スキル6_0_スキル7_0_スキル8_0_スキル9_0_スキル10_0_スキル11_0_スキル12_0
+	;CSTR:ARG:151 = 『CASTER』_スキル1_2403_8_スキル2_2011_14_スキル3_1237_18_スキル4_1424_24_スキル5_1502_28_スキル6_2404_34_スキル7_2001_38_スキル8_2411_45_スキル9_2012_50_スキル10_1207_58_スキル11_1420_60_スキル12_1503_62_スキル13_2405_64_スキル14_2002_66_スキル15_2412_68_スキル16_2013_70_スキル17_2008_74_スキル18_2413_77_スキル19_2437_80_：_『GUARD』_スキル1_14_8_スキル2_763_14_スキル3_1438_18_スキル4_511_24_スキル5_13_28_スキル6_719_34_スキル7_534_38_スキル8_5_45_スキル9_2449_50_スキル10_729_58_スキル11_38_60_スキル12_2407_62_スキル13_29_64_スキル14_2012_66_スキル15_6_68_スキル16_2067_70_スキル17_2484_74_スキル18_525_77_スキル19_2097_80_
+;CSTR:ARG:153は各クラス時に持っていた耐性を保存、装備やプラグイン等で付与された耐性は保存しないものとする
+SIF CSTR:ARG:153 == ""
+	CSTR:ARG:153 = 『CASTER』_剣撃_125_飛具_125_打撃_125_戦技_125_火炎_75_氷結_75_電撃_75_衝撃_75_神経_100_精神_999_破魔_100_呪殺_0_地変_75_水撃_75_疾風_75_重力_100_核熱_100_万能_100_：_『GUARD』_剣撃_50_飛具_75_打撃_75_戦技_75_火炎_50_氷結_125_電撃_75_衝撃_75_神経_100_精神_999_破魔_100_呪殺_0_地変_75_水撃_125_疾風_75_重力_100_核熱_50_万能_100_
+$CLASS_ALTERNATE_K812_GOTO
+PRINTFORML ここでは%CALLNAME:ARG%のクラスを変更する事ができるようだ。
+PRINTL ……どうやら各クラス毎に能力値や所持スキル、習得スキル等が保存されている。
+PRINTL
+PRINTFORML クラスを変更すると現在のクラスに今の%CALLNAME:ARG%の情報が保存され、
+PRINTFORML その後今の%CALLNAME:ARG%の情報が変更先のクラスの物に置き換わる仕組みらしい。
+PRINTL
+PRINTFORML どうする？
+PRINTL
+IF CSTR:ARG:101 == "アーミヤ" || CSTR:ARG:101 == ""
+	SETCOLOR COLOR("GRAY")
+	PRINTFORML [0] -
+	RESETCOLOR
+ELSE
+	PRINTFORML [0] 『術師』に変更する
+ENDIF
+IF CSTR:ARG:101 == "アーミヤ（前衛）"
+	SETCOLOR COLOR("GRAY")
+	PRINTFORML [1] -
+	RESETCOLOR
+ELSE
+	PRINTFORML [1] 『前衛』に変更する
+ENDIF
+PRINTFORML [99] 戻る
+$CLASS_ALTERNATE_K812_GOTO2
+CALL INPUTINT(0,1,99)
+SELECTCASE RESULT
+	CASE 0
+		IF CSTR:ARG:101 == "アーミヤ" || CSTR:ARG:101 == ""
+			GOTO CLASS_ALTERNATE_K812_GOTO2
+		ELSE
+			クラスチェンジ先 = 術師
+			CALL CLASS_ALTERNATE_PROCESS_K812,ARG,0
+		ENDIF
+	CASE 1
+		IF CSTR:ARG:101 == "アーミヤ（前衛）"
+			GOTO CLASS_ALTERNATE_K812_GOTO2
+		ELSE
+			クラスチェンジ先 = 前衛
+			CALL CLASS_ALTERNATE_PROCESS_K812,ARG,1
+		ENDIF
+	CASE 99
+		JUMP INDIVIDUAL_EVENT_K812,ARG,3,0
+ENDSELECT
+PRINTFORML %CALLNAME:ARG%のクラスが『%クラスチェンジ先%』に変更された
+PRINTL
+PRINTFORML どうやら変更に伴い、%CALLNAME:ARG%の性能が変化したようだ
+PRINTFORML ……クラス変更の弊害か、専用技が初期習得の物に変更されている
+PRINTFORMW 忘れずに確認しておこう
+JUMP INDIVIDUAL_EVENT_K812,ARG,3,0
+
+@CLASS_ALTERNATE_PROCESS_K812,ARG,ARG:1
+#DIM LCOUNT,4
+;#DIM 汎用
+#DIMS 汎用字,10
+#DIMS LCLASS,2
+;アーミヤに限り、所謂クラスチェンジの処理を行える
+;この場合、102 ~ 104のCSTRはそのまま、105 ~ 106のCSTRを別クラスのスキルランクとして扱う
+;原作だと今後の展開次第では前衛以外のクラスチェンジ先も増える可能性があるので
+;いっそCSTRではなく、ERHで保存できる専用イベント用の変数でも用意して、そこにクラス毎のスキル欄を保存する事にした方が良さそう
+;問題はクラス毎に適したステータス振り分けを行うか否かなんだけどぉ……
+;もう面倒くさいし、シフターのステ振り分けの要領で振り分け値を設定して、SYNC_STATUSで呼び出せるように設定すればいいや……（
+;と思ったけど。クラス毎に専用のステータス値を設けるのがいい気がしてきた、もちろんレベル連動で。
+;クラスチェンジ時にキャラレベルを参照して、イベント側で確保しているレベルより上だったらＥＸＰ以外イベント側で確保したステータス値と交換した上でレベルアップ処理をして
+;キャラレベルがイベント側で確保してるレベルより下だった場合はレベル1からスタートしたステータス値に交換してレベルアップ処理を呼び出すことにする
+;メモ：SPLIT機能で疑似的にリストを作れるのを最近知ったので、CSTRで管理する方法を試みる
+VARSET LCOUNT,0
+VARSET LCLASS
+;VARSET 汎用,-1
+;LCOUNT:0 = 現クラス
+;LCOUNT:1 = クラスチェンジ先
+;LCOUNT:2 = BASE能力値。 0 = LV,以降は基本能力値
+;LCOUNT:3 = 初期値代入用変数、etc
+SELECTCASE ARG:1
+	CASE 0
+	;術師
+		SIF CSTR:ARG:101 == "アーミヤ" || CSTR:ARG:101 == ""
+			RETURN -1
+		LCOUNT:1 = 0
+		LCLASS:1 += "CASTER"
+		;LCLASS:1 += "『術師』"
+	CASE 1
+	;前衛
+		SIF CSTR:ARG:101 == "アーミヤ（前衛）"
+			RETURN -1
+		LCOUNT:1 = 1
+		LCLASS:1 += "GUARD"
+		;LCLASS:1 += "『前衛』"
+ENDSELECT
+SELECTCASE CSTR:ARG:101
+	CASE "アーミヤ",""
+	;術師（仮に空白だった場合は術師を初期クラスとして扱う）
+		LCOUNT:0 = 0
+		LCLASS:0 += "CASTER"
+		;LCLASS:0 += "『術師』"
+	CASE "アーミヤ（前衛）"
+	;前衛
+		LCOUNT:0 = 1
+		LCLASS:0 += "GUARD"
+		;LCLASS:0 += "『前衛』"
+ENDSELECT
+;IF BASE:ARG:LV > アーミヤクラスステータス:(LCOUNT:1):0
+;PRINTW ステータス更新ループに入ります
+;汎用字 = AUTO_SPLIT(CSTR:ARG:150,"：",LCOUNT:0)
+;;『（クラス名）』の文字数 + 『術師』『前衛』等を検索した位置の分だけ小さい添え字の方へとずらす
+;;ずらさないと選択クラスが前衛の時に、先にある術師のステータス値を参照してしまう事故が起こる
+;汎用字 = %SHIFT_SPLIT(汎用字,"_",-(STRLENS(LCLASS:0) + FINDELEMENT(汎用字,LCLASS:0)))%
+;汎用字 = %CSTR:ARG:150%
+SPLIT CSTR:ARG:150,"：",汎用字
+FOR LCOUNT:2,0,FLAG:기본능력수
+	; "_"で区切った汎用字の内、『（クラス名）』+ 1の位置 + 該当する基本ステータスの配列に現在のステータス値を保存
+	;例：現クラス（術師）、該当ステータス（魔力5 → 魔力15）の場合は下のように変更する
+	;『術師』_LV_0001_力_0001_知恵_0005_魔力_0005_耐力_0002_速さ_0002_運_0002　→　『術師』_LV_0001_力_0001_知恵_0005_魔力_0015_耐力_0002_速さ_0002_運_0002
+	; CHANGE_SPLIT(CSTR:ARG:150,"_",1,"魔力",BASE:ARG:마력)		わかりやすくしたらたぶんこんな感じになると思う
+	汎用字:(LCOUNT:0) = %CHANGE_SPLIT(汎用字:(LCOUNT:0),"_",1,GET_BASESTATUS(LCOUNT:2),"0" *(4 - STRLENS(TOSTR(BASE:ARG:GET_BASESTATUS(LCOUNT:2)))) + TOSTR(BASE:ARG:GET_BASESTATUS(LCOUNT:2)))%
+	;PRINTFORMW %LCLASS:0% %GET_BASESTATUS(LCOUNT:2)% = {AUTO_SPLIT_INT(汎用字:(LCOUNT:0),"_",1,GET_BASESTATUS(LCOUNT:2))}
+	;現ステータス値に保存されている変更先のクラスのステータス値に上書き
+	BASE:ARG:GET_BASESTATUS(LCOUNT:2) = AUTO_SPLIT_INT(汎用字:(LCOUNT:1),"_",1,GET_BASESTATUS(LCOUNT:2))
+	;PRINTFORMW 現在 %GET_BASESTATUS(LCOUNT:2)% = {BASE:ARG:GET_BASESTATUS(LCOUNT:2)}
+NEXT
+VARSET CSTR:ARG:150,"",150,151
+FOR LCOUNT:2,0,10
+	SIF LCOUNT:2 > 0 && 汎用字:(LCOUNT:2) != ""
+		CSTR:ARG:150 += "_："
+	CSTR:ARG:150 += 汎用字:(LCOUNT:2)
+NEXT
+;;引継ぎ先のレベルが1未満なら該当グローバル変数をリセット
+;TRYCALLFORM CLASS_ALTERNATE_STATUS_CONTROL_K812_%LCLASS:1%(ARG,0,"RETURN")
+;SIF RESULT < 1
+;	CALL RESET_ALL_CLASS_STATUS_K812
+;FOR LCOUNT:2,0,FLAG:기본능력수
+;	PRINTFORMW 現在の能力種は%GET_BASESTATUS(LCOUNT:2)%です
+;	;IF LCOUNT:2 == 0
+;	;	;現クラスの変数に現在のレベルを確保させる
+;	;	アーミヤクラステータス:(LCOUNT:0):(LCOUNT:2) = BASE:ARG:LV
+;	;	;現在のレベルがクラスチェンジ先のレベル以上だった場合、現在のレベルをクラスチェンジ先の変数で確保したレベルに置き換える
+;	;	SIF  アーミヤクラスステータス:(LCOUNT:0):0 >= アーミヤクラスステータス:(LCOUNT:1):(LCOUNT:2)
+;	;		BASE:ARG:LV = アーミヤクラステータス:(LCOUNT:1):(LCOUNT:2)
+;	;ENDIF
+;	
+;	;現クラスの変数に現在のステータス値を確保させる
+;	;アーミヤクラスステータス:(LCOUNT:2) = BASE:ARG:(GET_BASESTATUS(LCOUNT:2))
+;	CALLFORM CLASS_ALTERNATE_STATUS_CONTROL_K812_%LCLASS:0%(ARG,LCOUNT:2,"RETURN")
+;	PRINTFORMW 現在の保存先の値は{RESULT}です
+;	CALLFORM CLASS_ALTERNATE_STATUS_CONTROL_K812_%LCLASS:0%(ARG,LCOUNT:2,"SET",BASE:ARG:(GET_BASESTATUS(LCOUNT:2)))
+;	CALLFORM CLASS_ALTERNATE_STATUS_CONTROL_K812_%LCLASS:0%(ARG,LCOUNT:2,"RETURN")
+;	PRINTFORMW 保存先の値が{RESULT}に変更されました
+;	PRINTW 引継ぎ先の能力値を現在のステータスに上書きします
+;	CALLFORM CLASS_ALTERNATE_STATUS_CONTROL_K812_%LCLASS:1%(ARG,LCOUNT:2,"RETURN")
+;	PRINTFORMW 現在の引継ぎ元の値は{RESULT}です
+;	CALLFORM CLASS_ALTERNATE_STATUS_CONTROL_K812_%LCLASS:1%(ARG,LCOUNT:2,"RETURN")
+;	BASE:ARG:(GET_BASESTATUS(LCOUNT:2)) = RESULT
+;	PRINTFORMW 現ステータスの%GET_BASESTATUS(LCOUNT:2)%が{BASE:ARG:(GET_BASESTATUS(LCOUNT:2))}に変更されました
+;	;;現在のレベルがクラスチェンジ先のレベル以上だった場合、クラスチェンジ先のステータス値を現在のステータス値に変更する
+;	;;SIF アーミヤクラスステータス:(LCOUNT:0):0 >= アーミヤクラスステータス:(LCOUNT:1):0
+;	;SIF CLASS_ALTERNATE_STATUS_CONTROL_K812_CASTER(ARG,0,"RETURN") >= CLASS_ALTERNATE_STATUS_CONTROL_K812_GUARD(ARG,0,"RETURN")
+;	;	BASE:ARG:(GET_BASESTATUS(LCOUNT:2)) = CLASS_ALTERNATE_STATUS_CONTROL_K812_GUARD(ARG,LCOUNT:2,"RETURN")
+;	;	;BASE:ARG:(GET_BASESTATUS(LCOUNT:2)) = アーミヤクラスステータス:(LCOUNT:1):(LCOUNT:2)
+;	;;IF BASE:ARG:(GET_BASESTATUS(LCOUNT:2)) <= 0 || BASE:ARG:LV < アーミヤクラスステータス:(LCOUNT:1):0
+;	;IF BASE:ARG:(GET_BASESTATUS(LCOUNT:2)) <= 0 || BASE:ARG:LV < CLASS_ALTERNATE_STATUS_CONTROL_K812_GUARD(ARG,0,"RETURN")
+;	;;交換した能力値が0以下orクラスチェンジ先のLVよりキャラLVが低ければクラスに応じた初期値を設定する
+;	;	SELECTCASE LCOUNT:1
+;	;		CASE 0
+;	;		;術師
+;	;			SELECTCASE LCOUNT:2
+;	;				CASE 1
+;	;					LCOUNT:3 = 1
+;	;				CASE 2
+;	;					LCOUNT:3 = 5
+;	;				CASE 3
+;	;					LCOUNT:3 = 5
+;	;				CASE 4
+;	;					LCOUNT:3 = 2
+;	;				CASE 5
+;	;					LCOUNT:3 = 5
+;	;				CASE 6
+;	;					LCOUNT:3 = 2
+;	;			ENDSELECT
+;	;		CASE 1
+;	;		;前衛
+;	;			SELECTCASE LCOUNT:2
+;	;				CASE 1
+;	;					LCOUNT:3 = 4
+;	;				CASE 2
+;	;					LCOUNT:3 = 2
+;	;				CASE 3
+;	;					LCOUNT:3 = 3
+;	;				CASE 4
+;	;					LCOUNT:3 = 4
+;	;				CASE 5
+;	;					LCOUNT:3 = 4
+;	;				CASE 6
+;	;					LCOUNT:3 = 3
+;	;			ENDSELECT
+;	;	ENDSELECT
+;	;	BASE:ARG:(GET_BASESTATUS(LCOUNT:2)) = LCOUNT:3
+;	;	;クラスチェンジ先のLVよりキャラLVが低ければクラスチェンジ先の初期値も設定しなおす
+;	;	SIF BASE:ARG:LV < CLASS_ALTERNATE_STATUS_CONTROL_K812_GUARD(ARG,0,"RETURN")
+;	;		CALLF CLASS_ALTERNATE_STATUS_CONTROL_K812_GUARD(ARG,LCOUNT:2,"SET",LCOUNT:3)
+;	;		;アーミヤクラスステータス:(LCOUNT:1):(LCOUNT:2) = LCOUNT:3
+;	;	LCOUNT:3 = 0
+;	;ENDIF
+;NEXT
+;;ELSEIF BASE:ARG:LV < アーミヤクラスステータス:(LCOUNT:1):0
+;;	FOR LCOUNT:2,0,FLAG:기본능력수
+;;		;現クラスの変数に現在のステータス値を確保させる
+;;		アーミヤクラステータス:(LCOUNT:0):(LCOUNT:2) = BASE:ARG:(GET_BASESTATUS(LCOUNT:2))
+;;		;クラスに応じた初期値を設定する
+;;		SELECTCASE LCOUNT:1
+;;			CASE 0
+;;			;術師
+;;				SELECTCASE LCOUNT:2
+;;					CASE 1
+;;						LCOUNT:3 = 1
+;;					CASE 2
+;;						LCOUNT:3 = 5
+;;					CASE 3
+;;						LCOUNT:3 = 5
+;;					CASE 4
+;;						LCOUNT:3 = 2
+;;					CASE 5
+;;						LCOUNT:3 = 5
+;;					CASE 6
+;;						LCOUNT:3 = 2
+;;				ENDSELECT
+;;			CASE 1
+;;			;前衛
+;;				SELECTCASE LCOUNT:2
+;;					CASE 1
+;;						LCOUNT:3 = 4
+;;					CASE 2
+;;						LCOUNT:3 = 2
+;;					CASE 3
+;;						LCOUNT:3 = 3
+;;					CASE 4
+;;						LCOUNT:3 = 4
+;;					CASE 5
+;;						LCOUNT:3 = 4
+;;					CASE 6
+;;						LCOUNT:3 = 3
+;;				ENDSELECT
+;;		ENDSELECT
+;;		BASE:ARG:(GET_BASESTATUS(LCOUNT:2)) = LCOUNT:3
+;;		アーミヤクラステータス:(LCOUNT:1):(LCOUNT:2) = LCOUNT:3
+;;		LCOUNT:3 = 0
+;;	NEXT
+;;ENDIF
+;ズレによる事故が起こると面倒なので専用技1と専用技2をスキル枠1とスキル枠2にソートしなおす
+IF HAVE_SKILL(ARG,[[스킬:전용기1]])
+	SWAP ABL:ARG:스킬1,ABL:ARG:@"스킬{HAVE_SKILL(ARG,[[스킬:전용기1]],1)}"
+ENDIF
+IF HAVE_SKILL(ARG,[[스킬:전용기2]])
+	SWAP ABL:ARG:스킬2,ABL:ARG:@"스킬{HAVE_SKILL(ARG,[[스킬:전용기2]],1)}"
+ENDIF
+;スキル欄、及び習得スキルをクラス毎に再セット
+SPLIT CSTR:ARG:151,"：",汎用字
+FOR LCOUNT:2,1,FLAG:스킬수+1
+	SIF ABL:ARG:@"스킬{LCOUNT:2}" == [[스킬:전용기1]] || ABL:ARG:@"스킬{LCOUNT:2}" == [[스킬:전용기2]]
+		CONTINUE
+	;現クラスの所有スキルをSPLITで確保した文字列に上書き
+	汎用字:(LCOUNT:0) = %CHANGE_SPLIT(汎用字:(LCOUNT:0),"_",1,@"스킬{LCOUNT:2}",TOSTR(ABL:ARG:@"스킬{LCOUNT:2}"))%
+	;CALLFORM CLASS_ALTERNATE_STATUS_CONTROL_K812_%LCLASS:0%(ARG,LCOUNT:2 + 6,"SET",ABL:ARG:@"스킬{LCOUNT:2}")
+	;アーミヤクラスステータス:(LCOUNT:0):(LCOUNT:2 + 6) = ABL:ARG:@"스킬{LCOUNT:2}"
+	;引継ぎ先のSPLITリストからスキルを抽出
+	ABL:ARG:@"스킬{LCOUNT:2}" = AUTO_SPLIT_INT(汎用字:(LCOUNT:1),"_",1,@"스킬{LCOUNT:2}")
+	;CALLFORM CLASS_ALTERNATE_STATUS_CONTROL_K812_%LCLASS:1%(ARG,LCOUNT:2 + 6,"RETURN")
+	;ABL:ARG:@"스킬{LCOUNT:2}" = RESULT
+	;ABL:ARG:@"스킬{LCOUNT:2}" = アーミヤクラスステータス:(LCOUNT:1):(LCOUNT:2 + 6)
+	CALL SKILL_LEARNSET_UPDATE_K812,ARG,LCOUNT:1
+NEXT
+VARSET CSTR:ARG:151,"",151,152
+FOR LCOUNT:2,0,10
+	SIF LCOUNT:2 > 0 && 汎用字:(LCOUNT:2) != ""
+		CSTR:ARG:151 += "_："
+	CSTR:ARG:151 += 汎用字:(LCOUNT:2)
+NEXT
+SPLIT CSTR:ARG:153,"：",汎用字
+FOR LCOUNT:2,0,FLAG:상성수
+	;現クラスの相性値を確保
+	汎用字:(LCOUNT:0) = %CHANGE_SPLIT(汎用字:(LCOUNT:0),"_",1,GET_TYPE(LCOUNT:2),TOSTR(BASE:ARG:GET_TYPE(LCOUNT:2)))%
+	;CSTR:153に保存されてる相性値を抽出
+	BASE:ARG:GET_TYPE(LCOUNT:2) = AUTO_SPLIT_INT(汎用字:(LCOUNT:1),"_",1,GET_TYPE(LCOUNT:2))
+	SIF GET_TYPE(LCOUNT:2) == "만능" && BASE:ARG:GET_TYPE(LCOUNT:2) < 100
+		BASE:ARG:GET_TYPE(LCOUNT:2) = 100
+NEXT
+VARSET CSTR:ARG:153,"",153,154
+FOR LCOUNT:2,0,10
+	SIF LCOUNT:2 > 0 && 汎用字:(LCOUNT:2) != ""
+		CSTR:ARG:153 += "_："
+	CSTR:ARG:153 += 汎用字:(LCOUNT:2)
+NEXT
+;識別に使うCSTR,CFLAGを変更
+;------------------------------------------------------------
+;継承素質などの初期化
+FOR LCOUNT:2,0,22
+	TALENT:ARG:GET_SUCCESSION(LCOUNT:2) = 0
+NEXT
+TALENT:ARG:무기 = 0
+FOR LCOUNT:2,0,6
+	TALENT:ARG:(TALENTNAME:(GETNUM(TALENT,"우애")+LCOUNT:2)) = 0
+	;TALENT:ARG:우애 = 0
+	;TALENT:ARG:영맹 = 0
+	;TALENT:ARG:우둔 = 0
+	;TALENT:ARG:교만 = 0
+	;TALENT:ARG:교활 = 0
+	;TALENT:ARG:냉정 = 0
+NEXT
+;専用技の分まで変数用意するの面倒だからスキル1は初期技に固定するね…
+SELECTCASE LCOUNT:1
+	CASE 0
+		CSTR:ARG:101 = アーミヤ
+		CSTR:ARG:전용기1 = 戦術詠唱γ
+		CSTR:ARG:전용기2 = アブソープション
+		TALENT:ARG:주살 = 1
+		TALENT:ARG:정신 = 1
+		TALENT:ARG:지변 = 1
+		TALENT:ARG:만능 = 1
+		TALENT:ARG:냉정 = 1
+		CSTR:ARG:46 = 戦闘での性能は純マジックユーザー。
+		CSTR:ARG:47 = ベースである原作キマイラとはまったく異なるスキル習得テーブルを持ち、換装可能な専用技と未解析の専用技の二つを習得している。
+		CSTR:ARG:48 = 専用技はオーソドックスな自己強化系だが、スキル強化を行う事で独自の効果を持つ性能へと進化していく。
+		CSTR:ARG:49 = その性質上、低威力連続攻撃系や範囲攻撃系の魔法より高威力の単体魔法技を得意とする。
+	CASE 1
+		CSTR:ARG:101 = アーミヤ（前衛）
+		CSTR:ARG:전용기1 = 影霄・奔夜
+		CSTR:ARG:전용기2 = 蒼き怒火
+		TALENT:ARG:검격 = 1
+		TALENT:ARG:화염 = 1
+		TALENT:ARG:주살 = 1
+		TALENT:ARG:만능 = 1
+		TALENT:ARG:무기 = 1
+		TALENT:ARG:영맹 = 1
+		CSTR:ARG:46 = 戦闘での性能は支援もできる物理アタッカー。
+		CSTR:ARG:47 = クラスチェンジしたことで術師とは異なるスキル習得テーブルを持ち、専用技もクラスチェンジ先に合わせて変更された。
+		CSTR:ARG:48 = 専用技は自己強化をするものとは別に、ペナルティを受ける代わりに大技を放ちつつ強力な支援効果を付与する物が存在する。
+		CSTR:ARG:49 = 術師とは違い、物理攻撃であれば単発威力を重視しなくていい為、構成に比較的自由が効く性能をしている。
+ENDSELECT
+;影霄・奔夜が習得されてない = 初クラスチェンジなので影霄・奔夜と影霄・絶影のスキルレベルを1に設定
+IF CSTR:ARG:105 == ""
+	CSTR:ARG:105 = 1
+	CSTR:ARG:106 = 1
+ENDIF
+;------------------------------------------------------------
+CALL SYNC_STATUS,ARG
+CALL CHECK_LEVEL_UP,ARG
+
+
+@SKILL_LEARNSET_UPDATE_K812,ARG,ARG:1,ARGS = ""
+#LOCALSSIZE 1
+#DIM LCOUNT,2
+#DIM SKILL_TABLE_NUM
+#DIMS 汎用字,10
+SKILL_TABLE_NUM = -1
+;習得スキルの更新処理
+;ARG = 使用キャラ
+;ARG:1 = 対応するクラス
+;ARGS 昇華経由だった場合、とりあえず何か書いておく事で昇華用の処理にする and 引継ぎ周回時の処理も担当
+;術師系なら一桁目、前衛なら二桁目のビットを使用
+SIF ARGS == "昇華１" || ARGS == "昇華２" || ARG:1 == 0
+	SKILL_TABLE_NUM = 0
+SIF ARG:1 == 1
+	SKILL_TABLE_NUM = 1
+SIF SKILL_TABLE_NUM == -1
+	RETURN
+;習得スキルと習得スキルLVの表を作成
+LOCALS = _『CASTER』_スキル1_2403_8_スキル2_2011_14_スキル3_1237_18_スキル4_1424_24_スキル5_1502_28_スキル6_2404_34_スキル7_2001_38_スキル8_2411_45_スキル9_2012_50_スキル10_1207_58_スキル11_1420_60_スキル12_1503_62_スキル13_2405_64_スキル14_2002_66_スキル15_2412_68_スキル16_2013_70_スキル17_2008_74_スキル18_2413_77_スキル19_2437_80_：_『GUARD』_スキル1_14_8_スキル2_763_14_スキル3_1438_18_スキル4_511_24_スキル5_13_28_スキル6_719_34_スキル7_534_38_スキル8_5_45_スキル9_2449_50_スキル10_729_58_スキル11_38_60_スキル12_2407_62_スキル13_29_64_スキル14_2012_66_スキル15_6_68_スキル16_2067_70_スキル17_2484_74_スキル18_525_77_スキル19_2097_80_
+SPLIT LOCALS,"：",汎用字
+;習得済みフラグが立ってたら終了
+SIF GETBIT(TOINT(CSTR:ARG:152),SKILL_TABLE_NUM) && ARGS != "周回処理"
+	RETURN
+;SIF GETBIT(アーミヤ習得スキルテーブル適用フラグ,SKILL_TABLE_NUM)
+;	RETURN
+FOR LCOUNT,1,20
+	;昇華１から呼び出されたら1~8番目の習得スキルは跳ばす
+	SIF ARGS == "昇華１" && LCOUNT < 9
+		CONTINUE
+	;昇華２から呼び出されたら9~16番目の習得スキルは跳ばす
+	SIF ARGS == "昇華２" && LCOUNT < 17
+		CONTINUE
+	IF ABL:ARG:@"습득LV{LCOUNT}" < 1 && (LCOUNT < 9 || CSTR:ARG:103 != "" && LCOUNT < 17 || CSTR:ARG:104 != "")
+		ABL:ARG:@"습득LV{LCOUNT}" = AUTO_SPLIT_INT(汎用字:(SKILL_TABLE_NUM),"_",2,@"스킬{LCOUNT}")
+		ABL:ARG:@"습득스킬{LCOUNT}" = AUTO_SPLIT_INT(汎用字:(SKILL_TABLE_NUM),"_",1,@"스킬{LCOUNT}")
+		;SELECTCASE LCOUNT
+		;	CASE 1
+		;		LCOUNT:1 = 8
+		;	CASE 2
+		;		LCOUNT:1 = 14
+		;	CASE 3
+		;		LCOUNT:1 = 18
+		;	CASE 4
+		;		LCOUNT:1 = 24
+		;	CASE 5
+		;		LCOUNT:1 = 28
+		;	CASE 6
+		;		LCOUNT:1 = 34
+		;	CASE 7
+		;		LCOUNT:1 = 38
+		;	CASE 8
+		;		LCOUNT:1 = 45
+		;	CASE 9
+		;		SIF CSTR:ARG:103 != ""
+		;			LCOUNT:1 = 50
+		;	CASE 10
+		;		SIF CSTR:ARG:103 != ""
+		;			LCOUNT:1 = 58
+		;	CASE 11
+		;		SIF CSTR:ARG:103 != ""
+		;			LCOUNT:1 = 60
+		;	CASE 12
+		;		SIF CSTR:ARG:103 != ""
+		;			LCOUNT:1 = 62
+		;	CASE 13
+		;		SIF CSTR:ARG:103 != ""
+		;			LCOUNT:1 = 64
+		;	CASE 14
+		;		SIF CSTR:ARG:103 != ""
+		;			LCOUNT:1 = 66
+		;	CASE 15
+		;		SIF CSTR:ARG:103 != ""
+		;			LCOUNT:1 = 68
+		;	CASE 16
+		;		SIF CSTR:ARG:103 != ""
+		;			LCOUNT:1 = 70
+		;	CASE 17
+		;		SIF CSTR:ARG:104 != ""
+		;			LCOUNT:1 = 74
+		;	CASE 18
+		;		SIF CSTR:ARG:104 != ""
+		;			LCOUNT:1 = 77
+		;	CASE 19
+		;		SIF CSTR:ARG:104 != ""
+		;			LCOUNT:1 = 80
+		;ENDSELECT
+		;ABL:ARG:@"습득LV{LCOUNT}" = LCOUNT:1
+		;LCOUNT:1 = 0
+	ENDIF
+	;IF !GETBIT(アーミヤ習得スキルテーブル適用フラグ,SKILL_TABLE_NUM)
+		;SELECTCASE ARG:1
+		;	CASE 0
+		;	;術師
+		;		SELECTCASE LCOUNT
+		;			CASE 1
+		;				LCOUNT:1 = 2403
+		;				;一分の魔脈
+		;			CASE 2
+		;				LCOUNT:1 = 2011
+		;				;ネクロ・ドグマ
+		;			CASE 3
+		;				LCOUNT:1 = 1237
+		;				;プリンパダイン
+		;			CASE 4
+		;				LCOUNT:1 = 1424
+		;				;呪いの言葉
+		;			CASE 5
+		;				LCOUNT:1 = 1502
+		;				;マグナス
+		;			CASE 6
+		;				LCOUNT:1 = 2404
+		;				;二分の魔脈
+		;			CASE 7
+		;				LCOUNT:1 = 2001
+		;				;メギド
+		;			CASE 8
+		;				LCOUNT:1 = 2411
+		;				;気功（小）
+		;			;--------------------------
+		;			;ここからは昇華１を達成している場合のみ習得する
+		;			CASE 9
+		;				SIF CSTR:ARG:103 != ""
+		;					LCOUNT:1 = 2012
+		;				;メギドクロス
+		;			CASE 10
+		;				SIF CSTR:ARG:103 != ""
+		;					LCOUNT:1 = 1207
+		;				;メガストライク
+		;			CASE 11
+		;				SIF CSTR:ARG:103 != ""
+		;					LCOUNT:1 = 1420
+		;				;エイガオン
+		;			CASE 12
+		;				SIF CSTR:ARG:103 != ""
+		;					LCOUNT:1 = 1503
+		;				;マグダイン
+		;			CASE 13
+		;				SIF CSTR:ARG:103 != ""
+		;					LCOUNT:1 = 2405
+		;				;三分の魔脈
+		;			CASE 14
+		;				SIF CSTR:ARG:103 != ""
+		;					LCOUNT:1 = 2002
+		;				;メギドラ
+		;			CASE 15
+		;				SIF CSTR:ARG:103 != ""
+		;					LCOUNT:1 = 2412
+		;				;気功（中）
+		;			CASE 16
+		;				SIF CSTR:ARG:103 != ""
+		;					LCOUNT:1 = 2013
+		;				;吸血
+		;			;--------------------------
+		;			;ここからは昇華２を達成している場合のみ習得する
+		;			CASE 17
+		;				SIF CSTR:ARG:104 != ""
+		;					LCOUNT:1 = 2008
+		;				;大いなるロゴス
+		;			CASE 18
+		;				SIF CSTR:ARG:104 != ""
+		;					LCOUNT:1 = 2413
+		;				;気功（大）
+		;			CASE 19
+		;				SIF CSTR:ARG:104 != ""
+		;					LCOUNT:1 = 2437
+		;				;魔術の素養
+		;		ENDSELECT
+		;		IF LCOUNT:1 > 0
+		;			ABL:ARG:@"습득스킬{LCOUNT}" = LCOUNT:1
+		;		ELSE
+		;			ABL:ARG:@"습득LV{LCOUNT}" = 0
+		;		ENDIF
+		;		LCOUNT:1 = 0
+		;	CASE 1
+		;	;前衛
+		;		SELECTCASE LCOUNT
+		;			CASE 1
+		;				LCOUNT:1 = 14
+		;				;一文字斬り
+		;			CASE 2
+		;				LCOUNT:1 = 763
+		;				;ヘルファイヤー
+		;			CASE 3
+		;				LCOUNT:1 = 1438
+		;				;ドムディ
+		;			CASE 4
+		;				LCOUNT:1 = 511
+		;				;気合
+		;			CASE 5
+		;				LCOUNT:1 = 13
+		;				;ツインスラッシュ
+		;			CASE 6
+		;				LCOUNT:1 = 719
+		;				;火砕烈風破
+		;			CASE 7
+		;				LCOUNT:1 = 534
+		;				;切り落とし
+		;			CASE 8
+		;				LCOUNT:1 = 5
+		;				;唐竹割り
+		;			CASE 9
+		;				LCOUNT:1 = 2449
+		;				;見切り
+		;			CASE 10
+		;				LCOUNT:1 = 729
+		;				;焼灼拳
+		;			CASE 11
+		;				LCOUNT:1 = 38
+		;				;武者車
+		;			CASE 12
+		;				LCOUNT:1 = 2407
+		;				;不屈の闘志
+		;			CASE 13
+		;				LCOUNT:1 = 29
+		;				;天驚地爆断
+		;			CASE 14
+		;				LCOUNT:1 = 2012
+		;				;メギドクロス
+		;			CASE 15
+		;				LCOUNT:1 = 6
+		;				;虚空斬波
+		;			CASE 16
+		;				LCOUNT:1 = 2067
+		;				;終わる世界
+		;			CASE 17
+		;				LCOUNT:1 = 2484
+		;				;ダッジカウンター
+		;			CASE 18
+		;				LCOUNT:1 = 525
+		;				;ヒートライザ
+		;			CASE 19
+		;				LCOUNT:1 = 2097
+		;				;極光大破斬
+		;		ENDSELECT
+		;		ABL:ARG:@"습득스킬{LCOUNT}" = LCOUNT:1
+		;		LCOUNT:1 = 0
+		;ENDSELECT
+	;ELSE
+	;	BREAK
+	;	;ABL:ARG:@"습득LV{LCOUNT}" = 0
+	;	;ABL:ARG:@"습득스킬{LCOUNT}" = 0
+	;ENDIF
+NEXT
+LCOUNT = 0
+SETBIT LCOUNT,SKILL_TABLE_NUM
+CSTR:ARG:152 = %TOSTR(LCOUNT)%
+;SETBIT アーミヤ習得スキルテーブル適用フラグ,SKILL_TABLE_NUM
+
+;@CLASS_ALTERNATE_STATUS_CONTROL_K812_CASTER,ARG,ARG:1,ARGS,ARG:2
+;;ARG キャラ番号
+;;ARG:1 参照する能力の種別orスキル
+;;ARGS 行う命令 現状は"ADD","SET","RETURN"などが可能
+;;ARG:2 加算、設定する値など
+;SELECTCASE ARGS
+;	CASE "SET"
+;		アーミヤクラスステータス術師:(ARG:1) = ARG:2
+;	CASE "ADD"
+;		アーミヤクラスステータス術師:(ARG:1) += ARG:2
+;	CASE "RETURN"
+;		RETURN アーミヤクラスステータス術師:(ARG:1)
+;ENDSELECT
+;RETURN
+
+;@CLASS_ALTERNATE_STATUS_CONTROL_K812_GUARD,ARG,ARG:1,ARGS,ARG:2
+;;ARG キャラ番号
+;;ARG:1 参照する能力の種別orスキル
+;;ARGS 行う命令 現状は"ADD","SET","RETURN"などが可能
+;;ARG:2 加算、設定する値など
+;SELECTCASE ARGS
+;	CASE "SET"
+;		アーミヤクラスステータス前衛:(ARG:1) = ARG:2
+;	CASE "ADD"
+;		アーミヤクラスステータス前衛:(ARG:1) += ARG:2
+;	CASE "RETURN"
+;		RETURN アーミヤクラスステータス前衛:(ARG:1)
+;ENDSELECT
+;RETURN
+
+@RESET_ALL_CLASS_STATUS_K812
+#DIM LCOUNT
+;;アーミヤのクラスチェンジのグローバル変数をスキル以外初期値に戻す処理
+;VARSET LCOUNT
+;ついでだからスキル習得済みフラグもリセットだ！
+;VARSET 
+LCOUNT = FINDCHARA(CSTR:종족명,"コータス")
+SIF LCOUNT < 0 || NO:LCOUNT != 812
+	RETURN 0
+CSTR:LCOUNT:150 = _『CASTER』_LV_0001_力_0001_知恵_0005_魔力_0005_耐力_0002_速さ_0002_運_0002_：_『GUARD』_LV_0001_力_0004_知恵_0002_魔力_0003_耐力_0004_速さ_0004_運_0003
+VARSET CSTR:LCOUNT:152,"",152,153
+;CSTR:ARG:151 = _『CASTER』_スキル1_2403_スキル2_2011_スキル3_1237_スキル4_1424_スキル5_1502_スキル6_2404_スキル7_2001_スキル8_2411_スキル9_2012_スキル10_1207_スキル11_1420_スキル12_1503_スキル13_2405_スキル14_2002_スキル15_2412_スキル16_2013_スキル17_2008_スキル18_2413_スキル19_2437_：_『GUARD』_スキル1_14_スキル2_763_スキル3_1438_スキル4_511_スキル5_13_スキル6_719_スキル7_534_スキル8_5_スキル9_2449_スキル10_729_スキル11_38_スキル12_2407_スキル13_29_スキル14_2012_スキル15_6_スキル16_2067_スキル17_2484_スキル18_525_スキル19_2097_
+;FOR LCOUNT:0,0,2
+;	SELECTCASE LCOUNT:0
+;		CASE 0
+;			FOR LCOUNT:1,0,FLAG:기본능력수
+;				SELECTCASE LCOUNT:1
+;					CASE 0
+;						LCOUNT:2 = 1
+;					CASE 1
+;						LCOUNT:2 = 1
+;					CASE 2
+;						LCOUNT:2 = 5
+;					CASE 3
+;						LCOUNT:2 = 5
+;					CASE 4
+;						LCOUNT:2 = 2
+;					CASE 5
+;						LCOUNT:2 = 5
+;					CASE 6
+;						LCOUNT:2 = 2
+;				ENDSELECT
+;				アーミヤクラスステータス術師:(LCOUNT:1) = LCOUNT:2
+;			NEXT
+;		CASE 1
+;			FOR LCOUNT:1,0,FLAG:기본능력수
+;				SELECTCASE LCOUNT:1
+;					CASE 0
+;						LCOUNT:2 = 1
+;					CASE 1
+;						LCOUNT:2 = 4
+;					CASE 2
+;						LCOUNT:2 = 2
+;					CASE 3
+;						LCOUNT:2 = 3
+;					CASE 4
+;						LCOUNT:2 = 4
+;					CASE 5
+;						LCOUNT:2 = 4
+;					CASE 6
+;						LCOUNT:2 = 3
+;				ENDSELECT
+;				アーミヤクラスステータス前衛:(LCOUNT:1) = LCOUNT:2
+;			NEXT
+;	ENDSELECT
+;NEXT
+
+@EVENT_BATTLE_ACTEND_INDIVIDUALEVENT_K812
+SIF FINDCHARA(CSTR:사고패턴,"TALULAH") > 0
+	CALL EVENT_BATTLE_ACTEND_INDIVIDUALEVENT_K812_1_AN
+
+@EVENT_BATTLE_TURNEND_INDIVIDUALEVENT_K812
+SIF FINDCHARA(CSTR:사고패턴,"帝国砲撃誘導機") > 0
+	CALL EVENT_BATTLE_TURNEND_INDIVIDUALEVENT_K812_1_AN

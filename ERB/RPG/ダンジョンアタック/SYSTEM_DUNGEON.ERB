@@ -81,6 +81,8 @@
 ;	060		2021/12/30			JK好き				@ENEMY_TABLE 御霊招来でエラー落ちする場合がある問題を修正
 ;	061		2022/03/07			JK好き				@SHOW_DUNGEONLIST及び@FILTER_DUNGEONLIST ダンジョンを128個まで表示できるように修正、ボタンの番号を変更
 ;	062		2022/06/07			Collared			UI整理プロジェクトにより配置変更 & ショップコマンド番号の呼び出しに
+;	063		2022/07/17			ロッド@カヤノソト	デバッグモードでは出現条件を満たしていないダンジョンに突入できるが、「ダンジョン108：ランダム依頼のダンジョン」は対象外に変更(依頼を受注していない状態だとフラグの問題でバグるため)
+;	064		2022/07/24			NEO					@AFTER_EXPLORATION：ダンジョン脱出時（探索終了後）に発生するイベント……を呼び出すように
 ;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
 ;=====================================================================
 ;던전ＲＰＧモジュール
@@ -256,8 +258,11 @@ FOR LOCAL,1 ,128
 		SIF GETBIT(FLAG:던전필터2,LOCAL - 64)
 			CONTINUE
 	ENDIF
+	;ダンジョンの出現条件を満たしているか確認する
 	TRYCCALLFORM PREREQUISITE_DUNGEON_{LOCAL}
-		IF RESULT || FLAG:DEBUG
+		IF RESULT || (FLAG:DEBUG && LOCAL != 108)
+			;ダンジョンの出現条件を満たしている、もしくはデバッグモードの場合、ダンジョンを出現させる
+			;※「ダンジョン108：ランダム依頼のダンジョン」はデバッグモードでも無条件で出現させることはできない。
 			LOCAL:(LOCAL:99) = LOCAL
 			LOCAL:99 ++
 		ENDIF
@@ -350,7 +355,8 @@ ELSEIF RESULT == 998
 ELSE
 	LOCAL = RESULT
 	TRYCCALLFORM PREREQUISITE_DUNGEON_{RESULT}
-		SIF RESULT == 0 && FLAG:DEBUG == 0
+		SIF RESULT == 0 && (FLAG:DEBUG == 0 || LOCAL == 108)
+			;※「ダンジョン108：ランダム依頼のダンジョン」はデバッグモードでも無条件で出現させることはできない。
 			GOTO INPUT_LOOP
 		RETURN LOCAL
 	CATCH
@@ -363,7 +369,7 @@ ENDIF
 ;=====================================================================
 @FILTER_DUNGEONLIST
 LOCAL:99 = 0
-FOR LOCAL,0,128
+FOR LOCAL,0,129
 	TRYCCALLFORM PREREQUISITE_DUNGEON_{LOCAL}
 		IF RESULT || FLAG:DEBUG
 			LOCAL:1 = 0
@@ -783,7 +789,7 @@ SELECTCASE FLAG:던전내조작설정
 		PRINTL
 		CUSTOMDRAWLINE =
 		PRINTL
-		CASEELSE
+	CASEELSE
 		FLAG:던전내조작설정 = 0
 		CALL SHOW_DUNGEON_COMMAND
 ENDSELECT
@@ -815,6 +821,12 @@ WHILE 1 == 1
 		CALL CD_CLEAR_PARAMETERS				;地形自動生成・F.O.E.制御用の各種パラメータをクリアする
 		CALL CD_CREAR_TIME_AND_TURN, 0			;던전内の経過時間・経過ターン数カウントをクリアする
 		;-- タルタロスにF.O.E.『刈り取るもの』を追加するパッチ --------
+
+		;探索後イベントを呼び出す
+		;各ダンジョンの、ダンジョン脱出時イベントの後に発生する、特定のダンジョンに限らない、ダンジョン脱出時のイベント
+		;（初めてダンジョンに行ったあとに発生する「マヨーネ様のマッカチュートリアルイベント」など）
+		CALL AFTER_EXPLORATION
+
 		BREAK
 	ENDIF
 	REDRAW 0

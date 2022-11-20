@@ -1,0 +1,55 @@
+﻿;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;
+;	Module		:顔グラ追加.erb
+;	Facility	:表示する情報が表示欄を越えてしまいレイアウトが崩れることを防ぐための関数群
+;
+;	Licence		:ライセンスフリー。
+;
+;	Modification Data:
+;
+;	Edit	Date			Author					Reason
+;	001		2022/07/28		Rsp暇人					新規作成
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
+;resources\%フォルダ名%にA(キャラ番号)_(通し番号).pngの画像ファイルが存在したら、その画像をもとに顔グラを作成する
+;resourcesフォルダ内のCSVファイルで登録されているキャラは通し番号を適当に増やしてください（上限63）
+;gIDはXXXXYY（キャラ番号ｘ100+通し番号）
+@顔グラ追加(cNUM)
+#LOCALSIZE 1
+#LOCALSSIZE 1
+#DIM cNUM
+#DIM gID
+#DIM LCNT, 3
+#DIM gH
+#DIM gW
+#DIMS フォルダ名 = "画像_自家製"
+#DIMS sNAME
+
+FOR LCNT, 0, 64
+	;すでにその番号のスプライトが設定されていれば無視
+	SIF EXIST_PICTURE(cNUM, LCNT*100, 1)
+		CONTINUE
+	gID = cNUM * 100 + LCNT
+	SIF GCREATED(gID)
+		CONTINUE
+	LOCALS '= フォルダ名 + "\\" + "A" + TOSTR(cNUM) + "_" + TOSTR(LCNT) + ".png"
+	SIF !GCREATEFROMFILE(gID, LOCALS)
+		CONTINUE
+	LOCAL = 0
+	FOR LCNT:1, 0, 64
+		IF EXIST_PICTURE(cNUM, LCNT:1*100, 1)
+			LOCAL ++
+		ELSE
+			BREAK
+		ENDIF
+	NEXT
+	DEBUGPRINTFORML %LOCALS%からgID{gID}のグラフィックを作成し、それを元にA{cNUM}_{LOCAL*100}_1から始まるスプライトを作成します
+	;スプライト作成
+	FOR LCNT:1, 0, 2
+		gW = MIN(GHEIGHT(gID), GWIDTH(gID))
+		gH = MIN(GHEIGHT(gID), GWIDTH(gID))  / (LCNT:1 == 1 ? 6 # 4)
+		FOR LCNT:2, 1, 5+LCNT:1*2
+			sNAME '= "A" + TOSTR(cNUM) + "_" + TOSTR(LOCAL*100 + LCNT:1) + "_" + TOSTR(LCNT:2)
+			SPRITECREATE sNAME, gID, 0, gH * (LCNT:2 - 1), gW, gH
+		NEXT
+	NEXT
+NEXT

@@ -11,19 +11,19 @@ SIF  !USE_PENIS(TARGET) && !USE_PBAND(TARGET)
 	RETURN 0
 
 ;촉수조교中はダメ
-SIF TEQUIP:25
+SIF TEQUIP:촉수
 	RETURN 0
 
 ;밧줄・拘束中はダメ
-SIF TEQUIP:19
+SIF TEQUIP:밧줄
 	RETURN 0
 
 ;삼각목마騎乗中はダメ
-SIF TEQUIP:41
+SIF TEQUIP:삼각목마
 	RETURN 0
 
 ;목욕탕플레이中は플레이매트が無いとダメ
-IF TEQUIP:31
+IF TEQUIP:목욕탕
 	SIF !EXIST_ITEM(20)
 		RETURN 0
 ENDIF
@@ -46,10 +46,10 @@ TFLAG:28 = 3
 ;-------------------------------------------------
 ;ソースの計算
 ;-------------------------------------------------
-LOSEBASE:0 += 50
-LOSEBASE:1 += 100
+LOSEBASE:체력 += 50
+LOSEBASE:기력 += 100
 
-SOURCE:0 = 450
+SOURCE:TARGET:쾌Ｃ = 450
 IF TALENT:PLAYER:유아체형
 	TIMES SOURCE:쾌Ｃ , 1.50
 	SOURCE:아픔 += 50
@@ -65,36 +65,34 @@ ELSEIF TALENT:거체
 	SOURCE:아픔 += 100
 ENDIF
 
-SOURCE:5 = 500
-SOURCE:6 = 1000
-SOURCE:17 = 500
-SOURCE:18 = 500
+SOURCE:TARGET:성행위 = 500
+SOURCE:TARGET:달성 = 1000
+SOURCE:TARGET:일탈 = 500
+SOURCE:TARGET:반감 = 500
 SIF IS_MALE(TARGET) && (TALENT:쾌감을부정 == 0 || ABL:욕망 > 2)
-	SOURCE:18 /= 10
+	SOURCE:TARGET:반감 /= 10
 
 ;조교자に쾌Ｖ
-SOURCE:PLAYER:1 = 400
+SOURCE:PLAYER:쾌Ｖ = 400
 
 ;-------------------------------------------------
 ;特殊ソース処理
 ;-------------------------------------------------
 ;억압、저항持ちには、억울ソース추가
-SIF TALENT:32 || TALENT:34
-	SOURCE:16 += 700
+SIF TALENT:억압 || TALENT:저항
+	SOURCE:TARGET:울굴 += 700
 
-SIF (TALENT:PLAYER:0 == 1 || TALENT:PLAYER:1 == 1)
+SIF (TALENT:PLAYER:처녀 == 1 || TALENT:PLAYER:재생처녀 == 1)
 	TFLAG:31 = 1
 	
 ;조교자が처녀か재생처녀（이상경험は一回のみ）
-IF (TALENT:PLAYER:0 == 1 || TALENT:PLAYER:1 == 1)
-	TIMES SOURCE:13 , 20.00
-	TIMES SOURCE:14 , 3.00
+IF (TALENT:PLAYER:처녀 == 1 || TALENT:PLAYER:재생처녀 == 1)
+	TIMES SOURCE:TARGET:노출 , 20.00
+	TIMES SOURCE:TARGET:굴종 , 3.00
 	PRINTFORM ＜%조사처리(CALLNAME:PLAYER,"는")% 
-	SIF TALENT:PLAYER:1 == 1
+	SIF TALENT:PLAYER:재생처녀 == 1
 		PRINT 재생
 	PRINTL 처녀를 잃었다＞
-	;TALENT:PLAYER:0 = 0
-	;TALENT:PLAYER:1 = 0
 
 	;이상경험추가
 	SIF !IS_MALE(TARGET)
@@ -117,7 +115,7 @@ TFLAG:704 = 0
 ;-------------------------------------------------
 ;사정に関係なく行われる処理はここから
 ;질내に파과혈の불결を付加
-SIF TALENT:PLAYER:0 == 1 || TALENT:PLAYER:1 == 1
+SIF TALENT:PLAYER:처녀 == 1 || TALENT:PLAYER:재생처녀 == 1
 	CALL SET_STAIN("질내", "파과혈", PLAYER)
 ;奴隷の질내⇔조교자のＰの불결が移動
 CALL MOVE_STAIN("질내", TARGET, "페니스", PLAYER)
@@ -139,16 +137,15 @@ ENDIF
 ;조교자のV경험
 CALL ADDS_EXP("Ｖ경험", 1, PLAYER)
 
-;PRINTFORML 봉사쾌락경험(조교자) + 1
-;EXP:PLAYER:봉사쾌락경험 += 1
-;PRINTFORML 성교경험(조교자) + 1
-;EXP:PLAYER:성교경험 += 1
 CALL ADDS_EXP("봉사쾌락경험", 1, PLAYER)
 CALL ADDS_EXP("성교경험", 1, PLAYER)
+
+;挿入経験
+CALL ADDS_EXP("삽입경험", 1, TARGET)
+
 ;수간경험
 IF (TALENT:TARGET:짐승 || TALENT:TARGET:새) && !(TALENT:PLAYER:짐승 || TALENT:PLAYER:새)
 	CALL ADDS_EXP("수간경험", 1, PLAYER)
-	
 ENDIF
 
 ;처녀で동성の場合이상경험
@@ -165,30 +162,20 @@ ENDIF
 ;레즈경험
 A = 4
 IF IS_LESBIAN(TARGET,PLAYER)
-;	PRINTFORML %EXPNAME:40%+{A}
-;	PRINTFORML %EXPNAME:40%(조교자)+{A}
-;	EXP:40 += A
-;	EXP:PLAYER:40 += A
 	CALL ADDS_EXP("레즈경험", A, TARGET)
 	CALL ADDS_EXP("레즈경험", A, PLAYER)
 ELSEIF IS_GAY(TARGET,PLAYER)
-;	PRINTFORML %EXPNAME:41%+{A}
-;	PRINTFORML %EXPNAME:41%(조교자)+{A}
-;	EXP:41 += A
-;	EXP:PLAYER:41 += A
 	CALL ADDS_EXP("ＢＬ경험", A, TARGET)
 	CALL ADDS_EXP("ＢＬ경험", A, PLAYER)
-	
-	
 ENDIF
 
 ;의존도ベクトル
 TFLAG:33 = 1
 
 ;의존도보정値(主人かつ연모、음란、복종で1。친애、창부、예속で2）
-IF (TALENT:3 || TALENT:4 || TALENT:5) && ASSIPLAY == 0
+IF (TALENT:연모 || TALENT:음란 || TALENT:복종) && ASSIPLAY == 0
 	TFLAG:30 += 1
-ELSEIF (TALENT:6 || TALENT:7 || TALENT:8) && ASSIPLAY == 0
+ELSEIF (TALENT:친애 || TALENT:창부 || TALENT:예속) && ASSIPLAY == 0
 	TFLAG:30 += 2
 ENDIF
 

@@ -16,6 +16,8 @@
 ;	011		2021/05/20		Jガン					マッカによるCOMP容量増加をしやすくするため新しいフラグを追加
 ;	012		2022/01/01		kamedakeisuke(ﾟдﾟ)		おススメインストールソフト枠を新設
 ;	013		2022/06/07		Collared				UI整理プロジェクトにより配置変更
+;	014		2022/08/17		NEO						アイテム交換について、表示変更処理を追加
+;
 ;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
 ; 特記:
 ;  メモが必要な変数一覧
@@ -48,14 +50,16 @@ DRAWLINE
 ;화면モード:初回訪問時
 ;CALL RPG_SHOP_SCREENMODE_DEFAULT
 
-;화면モード:표시
-IF !MouseUIStore_Enable
+	;画面モード:表示
 	CALL RPG_SHOP_SCREENMODE_PRINT
-	SIF FLAG:SHOP화면모드설정 == 0
-		PRINTFORML 장비자비교설정[802]\@ GETBIT(FLAG:정크숍설정,0) ? ON # OFF \@
-PRINTL ("아이템과 교환"화면에 적용됩니다)
+
+	IF FLAG:SHOP화면모드설정 == 0
+		PRINTFORML [801] 장비자비교설정：\@ GETBIT(FLAG:정크숍설정,0) ? ON # OFF \@
+	ELSE
+		PRINTFORML [801] 장비자비교설정：변경불가（단품구입모드에서만 변경 가능합니다）
+	ENDIF
+	PRINTL ("아이템과 교환"화면에 적용됩니다)
 	PRINTL 
-ENDIF
 
 ;---- EDIT 002 ADD END ---------------------------
 ;---- EDIT 011 ADD START -------------------------
@@ -92,8 +96,12 @@ ELSEIF RESULT == 800
 	CALL RPG_SHOP_SCREENMODE_CHANGE
 	RESTART
 ;---- EDIT 002 ADD END ---------------------------
-ELSEIF RESULT == 802
-	INVERTBIT FLAG:정크숍설정,0
+ELSEIF RESULT == 801
+	;装備比較ON/OFF
+	;非まとめ買いモードでのみ変更可能
+	SIF FLAG:SHOP화면모드설정 == 0
+		INVERTBIT FLAG:정크숍설정,0
+	CUSTOMDRAWLINE =
 ELSEIF RESULT == 1
 	CALL EXCHANGE_MONEY
 	RESTART
@@ -102,14 +110,14 @@ ELSEIF RESULT == 2
 ;	CALL EXCHANGE_ITEM
 ;-------------------------------------------------
 	IF MouseUIStore_Enable
+		;マウスUIモード
 		CALL MouseUIStore("MACCA")
 		RESTART
-	ENDIF
-;-------------------------------------------------
-	IF FLAG:SHOP화면모드설정 == 0
+	ELSEIF FLAG:SHOP화면모드설정 == 0
+		;比較OK画面
 		CALL EXCHANGE_ITEM
 	ELSE
-		;아이템구입:通常 (1:마카교환)
+		;アイテム購入:纏め買いモード (1:魔貨交換)
 		CALL RPG_SHOP_NOMAL,FLAG:SHOP화면모드설정,1
 	ENDIF
 ;---- EDIT 002 MOD END ---------------------------
@@ -178,7 +186,7 @@ RESTART
 @EXCHANGE_MONEY
 ; 마카환율変動설정が有効
 IF SETTING_IS_MAKKA_RATE()
-	;レートが0の場合は30に修正し、他のレートも再설정する
+	;レートが0の場合は30に修正し、他のレートも再設定する
 	IF FLAG:마카환율1 == 0
 		FLAG:마카환율1 = 30
 		FLAG:마카환율2 = 10+RAND:51
@@ -263,7 +271,8 @@ FOR LOCAL,500,600
 	SIF !SOFT_SELLABLE(LOCAL)
 		CONTINUE
 	IF ITEMPRICE:LOCAL > 0 && ITEM:LOCAL == 0
-		PRINTFORM [{LOCAL}] %ITEMNAME:LOCAL,22,LEFT% {ITEMPRICE:LOCAL,7}마카　　
+		;KR판 레이아웃 수정, DOT_CHANGE 처리 추가
+		PRINTFORM [{LOCAL}] %DOT_CHANGE(ITEMNAME:LOCAL),22,LEFT% {ITEMPRICE:LOCAL,7}마카　　
 		ITEMSALES:LOCAL = 1
 		LOCAL:1 += 1
 	ELSE

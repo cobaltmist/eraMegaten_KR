@@ -1,0 +1,255 @@
+﻿;コンセプト：六回確定乱舞（属性は火炎、疾風、核熱、飛具、氷結、剣撃からランダムな順番で）
+;冷静に考えると普通に使いづらい
+
+;스킬명
+@SKILL_NAME_セラフィックデス, ARG
+RESULTS = SERAPHIC DEATH
+
+;　명중
+@SKILL_HITRATE_セラフィックデス, ARG
+RETURN 100
+
+;　위력
+@SKILL_POWER_セラフィックデス, ARG
+SELECTCASE FLAG:확산플래그
+CASE 99
+	;メギド級
+	RETURN 210
+CASE 100
+	;メギドラ級
+	RETURN 290
+CASEELSE
+	;コスト60の複合全体攻撃だとクレセント／イクリプスミラーがある
+	;追撃が発動すると同コストのエクスカリバーを微妙に超える程度に
+	RETURN 320
+ENDSELECT
+
+;　최저공격횟수
+@SKILL_MINATTACKNUMBER_セラフィックデス, ARG
+RETURN 1
+
+;　최대공격횟수
+@SKILL_MAXATTACKNUMBER_セラフィックデス, ARG
+RETURN 1
+
+;一体辺りの最大ＨＩＴ数
+@SKILL_MAXATK_PER_セラフィックデス, ARG
+RETURN 1
+
+;一体辺りの最低ＨＩＴ数
+@SKILL_MINATK_PER_セラフィックデス, ARG
+RETURN 0
+
+;　2 ＨＰ지불　3 ＭＰ지불
+@SKILL_COSTTYPE_セラフィックデス, ARG
+RETURN 3
+;소비없음＝1
+
+;　코스트량
+@SKILL_COST_セラフィックデス, ARG
+RETURN 60
+
+;　상성
+@SKILL_TYPE_セラフィックデス, ARG
+#LOCALSSIZE 7
+#LOCALSIZE 4
+
+IF FLAG:확산플래그 < 99
+	SELECTCASE RAND:6
+	CASE 0
+		LOCALS = 화염
+	CASE 1
+		LOCALS = 질풍
+	CASE 2
+		LOCALS = 핵열
+	CASE 3
+		LOCALS = 비구
+	CASE 4
+		LOCALS = 빙결
+	CASE 5
+		LOCALS = 검격
+	ENDSELECT
+	
+	SIF ARG < 0 || 스킬속성표시중
+		RETURN GET_TYPE_NUM(LOCALS)
+	SIF CFLAG:ARG:타겟 > 16 || CFLAG:ARG:타겟 < 1
+		RETURN GET_TYPE_NUM(LOCALS)
+	LOCAL = POS(CFLAG:ARG:타겟)
+	SIF LOCAL < 0
+		RETURN GET_TYPE_NUM(LOCALS)
+	LOCAL:2 = -300
+	LOCALS:1 = 화염
+	LOCALS:2 = 질풍
+	LOCALS:3 = 핵열
+	LOCALS:4 = 비구
+	LOCALS:5 = 빙결
+	LOCALS:6 = 검격
+	FOR LOCAL:1, 1, 7
+		;判定用に数値を仕舞う。反射は-200扱い
+		LOCAL:3 = MAXBASE:LOCAL:(LOCALS:(LOCAL:1)) == 999 ? -200 # MAXBASE:LOCAL:(LOCALS:(LOCAL:1))
+		LOCAL:3 = !(HAVE_SKILL(ARG,[[스킬:영세라이도우]]) || HAVE_SKILL(ARG,2947)) && CFLAG:LOCAL:(LOCALS:(LOCAL:1)+"무효화횟수") ? -5 # LOCAL:3
+		LOCAL:3 = CFLAG:LOCAL:(LOCALS:(LOCAL:1)+"가드킬") && LOCAL:3 < 100 ? 100 # LOCAL:3
+		SELECTCASE LOCAL:1
+			CASE 1
+				LOCAL:3 = CFLAG:LOCAL:물리반사플래그 ? -200 # LOCAL:3
+			CASE 2
+				LOCAL:3 = CFLAG:LOCAL:마법반사플래그 ? -200 # LOCAL:3
+			CASEELSE
+		ENDSELECT
+		IF LOCAL:3 > LOCAL:2
+			LOCAL:2 = LOCAL:3
+			LOCALS = %LOCALS:(LOCAL:1)%
+		ENDIF
+	NEXT
+	RETURN GET_TYPE_NUM(LOCALS)
+ELSE
+	RETURN GET_TYPE_NUM("만능")
+ENDIF
+
+;　1 EXTRA　2 MAGIC
+@SKILL_DECIDE_TYPE_セラフィックデス, ARG
+RETURN 1
+
+;　1 물리데미지로 계산　2 마법데미지로 계산
+@SKILL_DAMAGETYPE_セラフィックデス, ARG
+RETURN 1
+
+;　대상　1 적　2 아군　3 양쪽전체　4 특수
+@SKILL_TARGET_セラフィックデス, ARG
+RETURN 1
+
+;　사거리
+@SKILL_RANGE_セラフィックデス, ARG
+RETURN 3
+
+;　범위　1 1체　2 1열　3 전체　4 적아군전체
+@SKILL_SPHERE_セラフィックデス, ARG
+RETURN 3
+
+;　 효과타입　1 공격、2 회복、3 상태변화、4 특수、5 상태회복
+@SKILL_EFECT_セラフィックデス, ARG
+RETURN 1
+
+;속도보정
+@SKILL_SPEED_セラフィックデス, ARG = -1
+;ドゥームズデイブラストが-10ならこっちは-20ぐらいいくでしょ
+RETURN -20
+
+;전투시 이외에 사용 가능한가
+@SKILL_ACTIONABLE_FIELD_セラフィックデス, ARG = -1
+RETURN 0
+
+;템플릿용、추가효과 시리즈
+;추가효과 스테이터스
+@SKILL_ADDTIONAL_STATE_セラフィックデス, ARG
+RETURN 0
+
+;추가효과 상성
+@SKILL_ADDTIONAL_TYPE_セラフィックデス, ARG
+RETURN 0
+
+;추가효과 기본부여확률
+@SKILL_ADDTIONAL_BASE_RATE_セラフィックデス, ARG
+RETURN 0
+
+;추가효과 부여확률상한
+@SKILL_ADDTIONAL_MAX_RATE_セラフィックデス, ARG
+RETURN 0
+
+;====================================================
+;스킬 및 행동의 실행
+;====================================================
+@ACTION_セラフィックデス, ARG, ARG:1, SKILL_NUM
+#LOCALSIZE 3
+#DIM SKILL_NUM
+#DIM 追撃スイッチ
+
+追撃スイッチ = 0
+SIF 현HP비율(ARG) < 34
+	追撃スイッチ = 1
+
+IF CFLAG:ARG:포지션 < 7
+	LOCAL:1 = 7
+	LOCAL:2 = 17 
+ELSE
+	LOCAL:1 = 1
+	LOCAL:2 = 7
+ENDIF
+
+FLAG:확산플래그 = 0
+FOR LOCAL, LOCAL:1, LOCAL:2
+	LOCALS = 포지션{LOCAL}
+	SIF FLAG:LOCALS < 0
+		CONTINUE
+	SIF GET_STATE(CFLAG:(FLAG:LOCALS):상태이상) == "DYING"
+		CONTINUE
+	CFLAG:ARG:타겟 = LOCAL
+	CALL SKILL_TYPE_セラフィックデス, ARG
+	PRINT 상성판정：
+	SELECTCASE RESULT
+	CASE 0
+		PRINT 검격
+	CASE 1
+		PRINT 비구
+	CASE 4
+		PRINT 화염
+	CASE 5
+		PRINT 빙결
+	CASE 14
+		PRINT 질풍
+	CASE 16
+		PRINT 핵열
+	ENDSELECT
+	PRINTL ！
+	CALL ATTACK_SINGLE, ARG, FLAG:LOCALS, SKILL_NUM
+NEXT
+
+IF BASE:ARG:ＨＰ > 0 && GET_STATE(CFLAG:ARG:상태이상) != "DYING" && 追撃スイッチ
+	FLAG:확산플래그 = 99
+	IF CFLAG:ARG:포지션 < 7
+		TRYCALLFORM BATTLE_MESSAGE_K5465, ARG
+	ELSE
+		TRYCALLFORM ENEMY_BATTLE_MESSAGE_K5465, ARG
+	ENDIF
+	FOR LOCAL, LOCAL:1, LOCAL:2
+		FLAG:확산플래그 = 99
+		LOCALS = 포지션{LOCAL}
+		SIF FLAG:LOCALS < 0
+			CONTINUE
+		SIF GET_STATE(CFLAG:(FLAG:LOCALS):상태이상) == "DYING"
+			CONTINUE
+		;中央にいたら
+		SELECTCASE LOCAL
+		CASE 2, 5, 8, 9, 10, 13, 14, 15
+			FLAG:확산플래그 = 100
+		CASEELSE
+		ENDSELECT
+		CALL ATTACK_SINGLE, ARG, FLAG:LOCALS, SKILL_NUM
+	NEXT
+ENDIF
+
+CFLAG:ARG:타겟 = CFLAG:ARG:포지션 < 7 ? 22 # 19
+
+CALL SKILLGAGE_D_SET, ARG, SKILL_NUM ,5
+;====================================================
+;실행내용 여기까지
+;====================================================
+
+;　説明文の表示
+@SKILL_EXPLAIN_セラフィックデス, ARG
+PRINTFORML 파괴된 묘지기의 힘을 빌려、여섯 빛깔의 광선을 퍼붓는 %CALLNAME:ARG%의 ＳＰ스킬。
+;オリジナルです
+PRINTL 일찍이 스러졌던 동포들의 혼、그 유지로 지금 이 순간의 극한을 넘어서리。
+PRINTL 　
+PRINTL 적 전체에 화염・질풍・핵열・비구・빙결・검격의 복합상성으로 대 데미지를 준다。발동이 느리다。
+PRINTL 추가로、사용자의 ＨＰ가 １／３을 밑돌 경우、적 전체에게 만능 속성으로 중～대 데미지의 추격을 행한다。
+PRINTL 한번 사용하면、재사용까지 ５턴의 쿨타임을 요구한다.
+
+;사용조건
+@SKILL_SPECIAL_ACTIONABLE_セラフィックデス, ARG
+#DIM SKILL_NUM
+SKILL_NUM = PU_SKILLNUM_GET(ARG, "セラフィックデス")
+SIF SKILLGAGE_D_GET(ARG, SKILL_NUM)
+	RETURN 0
+RETURN 1
+

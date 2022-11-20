@@ -4,7 +4,7 @@
 ;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
 ;
 ;	Module		:SYSTEM_DAUGHTER.ERB
-;	Facility	:아이の作成処理
+;	Facility	:子供の作成処理
 ;
 ;	Licence		:ライセンスフリー。
 ;
@@ -36,42 +36,49 @@
 ;	017		2020/12/19		JK好き					子供のバステ耐性が弱点だらけになる問題を修正
 ;	018		2021/01/19		JK好き					@CHILD_GROWTHと@CHILD_GROWTH2で成長中の子供の数だけDRAWLINEしていた問題を修正
 ;	019		2021/02/21		Rsp暇人					子供のバステ耐性決定に親の属性相性を参照していたバグを修正
-;	020		2021/03/23		名無し					スキル継承で異能者の親はFLAG:이능자스킬수を使うように分岐
+;	020		2021/03/23		名無し					スキル継承で異能者の親はFLAG:異能者スキル数を使うように分岐
 ;	021		2022/01/01		kamedakeiuske(ﾟдﾟ)		特定の条件下で戦闘素質の継承が凄まじいことになっていた部分を修正
 ;													シフターのバリエーションを追加、異能シフター、ガンスリンガーシフター、サクセサーシフターが生まれるように暫定変更
 ;													（既知の問題点：初期変身悪魔が貧弱で兼業シフターの強みを生かしづらい）
 ;													ペルソナ使いは未整備のままだったため遺伝結果から除外
 ;													（ペルソナの指定がないので異常な値になる＆ペルソナは遺伝するものではないという意見に従い）
 ;													他、ロールまわりの構文の整理と遺伝率、遺伝条件を調整
+;	022		2022/05/28		JK好き					親のスキル継承時にCSTR専用技を半端に引き継がないように修正
+;	023		2022/06/28		JK好き					父親が触手の場合のスキル・素質等の処理を整備
+;	024		2022/09/01		JK好き					ヤリチン用の処理を追加
+;	025		2022/09/06		JK好き					@DAUGHTER_TALENT_SET2 父親がいない場合に子供の能力決定時にエラーを吐く問題を修正
 ;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/#
 ;-------------------------------------------------
-;아이誕生판정処理
+;子供誕生判定処理
 ;他に呼び出すこともないようだし、この場合、飛ばすより一本道でやったほうが流れを把握しやすいと思うので
 ;-------------------------------------------------
 @DAUGHTER_CHECK, 育ての親
 #DIM DYNAMIC 育ての親, 1
 #DIM DYNAMIC 母親, 1
 #DIM DYNAMIC 父親, 1
-;急成長するか、それは娘か息子かなどを판정します。
+;急成長するか、それは娘か息子かなどを判定します。
 ;ARGは育ての親の登録番号
 TFLAG:600 = 0
 SIF MONEY <= 50000
 	CFLAG:育ての親:딸교육 = 0
 母親 = FINDCHARA_ID(CFLAG:育ての親:딸의친부모고유번호부모)
-父親 = FINDCHARA_ID(CFLAG:育ての親:부친의고유번호부모)
-
-;産んだ아이の数をサーチした産みの親に추가
+IF CFLAG:育ての親:부친의고유번호부모 >= 0
+	父親 = FINDCHARA_ID(CFLAG:育ての親:부친의고유번호부모)
+ELSE
+	父親 = CFLAG:育ての親:부친의고유번호부모
+ENDIF
+;産んだ子供の数をサーチした産みの親に追加
 SIF 母親 != -1
 	CFLAG:母親:몇번째아이까지낳았는가 += 1
 SIF 父親 >= 0
 	CFLAG:父親:몇번째아이까지낳았는가 += 1
 
 ;-------------------------------------------------
-;아이の性別を판정
-;男×女　오토코노코×男→男:女：오토코노코 = 4:5:1
-;오토코노코×女 = 오토코노코:女 = 5:5
+;子供の性別を判定
+;男×女　男の娘×男→男:女：男の娘 = 4:5:1
+;男の娘×女 = 男の娘:女 = 5:5
 ;女×女 = 女
-;오토코노코 × 오토코노코 = 오토코노코
+;男の娘 × 男の娘 = 男の娘
 ;-------------------------------------------------
 FLAG:딸성별판정처리 = 0
 IF 母親 >= 0
@@ -238,10 +245,26 @@ IF CFLAG:育ての親:딸의친부모캐릭터번호부모 != -1 && TALENT:MASTE
 							BREAK
 					NEXT
 				ENDIF
-			;いない場合は自分自身と판정させる
+			;いない場合は自分自身と判定させる
 			ELSE
 				父親 = 母親
 			ENDIF
+		;父親が触手の場合
+		ELSEIF 父親 == -2
+			;触手使いのスキルを引き継ぐ
+			ADDCHARA [[キャラ:촉수사용자(클래스)]]
+			LOCAL:2 = CHARANUM - 1
+			父親 = LOCAL:2
+			;顧客異能者
+			LOCAL:4 = 1
+			FOR LOCAL:3, 1 , 20
+				IF ABL:(LOCAL:2):("습득스킬"+TOSTR(LOCAL:3))
+					ABL:(LOCAL:2):("스킬"+TOSTR(LOCAL:4)) = ABL:(LOCAL:2):("습득스킬"+TOSTR(LOCAL:3))
+					LOCAL:4++
+				ENDIF
+				SIF LOCAL:4 == 9
+					BREAK
+			NEXT
 		ENDIF
 		CALL DAUGHTER_BIRTH, 育ての親, 母親, 父親
 		;キャラ作成していたときはDEL
@@ -307,21 +330,23 @@ ELSE
 ENDIF
 TARGET = RESULT:1
 
-CALL DAUGHTER_TALENT_SET2, 育ての親, 母親, 父親
 
 ;フラグ立て
 CFLAG:딸의생일 = CFLAG:育ての親:출산일
 CFLAG:딸의친부모캐릭터번호딸 = NO:母親
 CFLAG:딸의양부모캐릭터번호딸 = NO:育ての親
 CFLAG:딸이어머니의몇번째아이인가딸 = CFLAG:母親:몇번째아이까지낳았는가
-CFLAG:딸의부친캐릭터번호딸 = CFLAG:育ての親:111
+CFLAG:딸의부친캐릭터번호딸 = CFLAG:育ての親:임신확정후의부친판정
 SIF 父親 >= 0
 	CFLAG:딸이아버지의몇번째아이인가딸 = CFLAG:父親:몇번째아이까지낳았는가
 CFLAG:딸의친부모고유번호딸 = CFLAG:母親:캐릭터고유번호
 CFLAG:딸의양부모고유번호딸 = CFLAG:育ての親:캐릭터고유번호
 CFLAG:딸의부친고유번호딸 = CFLAG:母親:부친의고유번호부모
 CFLAG:딸의세대딸 = CFLAG:母親:딸의세대딸+ 1
-;相性설정
+
+CALL DAUGHTER_TALENT_SET2, 育ての親, 母親, 父親
+
+;相性設定
 CALL SET_RELATION, TARGET
 
 PRINTFORMW %조사처리(CALLNAME:育ての親,"가")% 키우던 아이가 조교 가능해졌습니다.
@@ -397,6 +422,7 @@ ELSE
 ENDIF
 ;次回のために消しておく
 CSTR:育ての親:부친명칭 = 
+CSTR:母親:부친명칭 = 
 IF TALENT:母親:아이
 	CSTR:외조부 = %CSTR:母親:父%
 	CSTR:외조모 = %CSTR:母親:母%
@@ -483,10 +509,14 @@ ENDIF
 ;-------------------------------------------------
 ;娘の諸能力決定関数(双方の親から素質加味)
 ;-------------------------------------------------
-@DAUGHTER_TALENT_SET2, ARG, ARG:1, ARG:2
+;育ての親,母親,父親
+@DAUGHTER_TALENT_SET2, 育ての親, 母親, 父親
 #LOCALSIZE 300
 #DIM LSKILLS, 100
 #DIM LTALENTS, 20
+#DIM 育ての親
+#DIM 母親
+#DIM 父親
 #DIM 似てる親
 #DIM 似てない親
 VARSET LOCAL
@@ -494,27 +524,27 @@ VARSET LOCAL
 ;似ている親の選定
 ;-------------------------------------------------
 ;LOCAL = 精子提供者と生みの親のうちの、似ているほうのキャラ登録番号
-;LOCAL:1 = 似ていない方の親の登録番号
+;似てない親 = 似ていない方の親の登録番号
 
 ;キャラ固有IDをそのまま格納。LOCALが-1の時は未決
 ;父親不在の場合は必ず母親に似る
-IF RAND:2 == 0 || CFLAG:ARG:부친의고유번호부모 < 0
-	LOCAL = ARG:1
-	LOCAL:1 = ARG:2
-	似てる親 = ARG:1
-	似てない親 = ARG:2
+IF RAND:2 == 0 || CFLAG:育ての親:부친의고유번호부모 < 0
+	LOCAL = 母親
+	LOCAL:1 = 母親
+	似てる親 = 母親
+	似てない親 = 母親
 ELSE
-	LOCAL = ARG:2
-	LOCAL:1 = ARG:1
-	似てる親 = ARG:2
-	似てない親 = ARG:1
+	LOCAL = 父親
+	LOCAL:1 = 母親
+	似てる親 = 父親
+	似てない親 = 母親
 ENDIF
-PRINTFORML %조사처리(CALLNAME:(ARG:1),"과")% \@STRLENS(CSTR:(ARG:1):부친명칭)?%CSTR:(ARG:1):부친명칭%#%CALLNAME:(ARG:2)%\@의 아이
+PRINTFORML %조사처리(CALLNAME:(母親),"과")% \@STRLENS(CSTR:(母親):부친명칭)?%CSTR:(母親):부친명칭%#%CALLNAME:(父親)%\@의 아이
 ;-------------------------------------------------
 ;체력・기력の설정
 ;-------------------------------------------------
 MAXBASE:체력 = (MIN(MAXBASE:似てる親:체력,2000) + LIMIT((MAXBASE:似てる親:체력 - 2000), 1, 8000) / 4 + MAX((MAXBASE:似てる親:체력 - 10000), 1) / 10) * 70
-IF CFLAG:ARG:부친의고유번호부모 < -2
+IF CFLAG:育ての親:부친의고유번호부모 <= -1
 	MAXBASE:체력 += 600
 ELSE
 	MAXBASE:체력 += (MIN(MAXBASE:(似てない親):체력,2000) + LIMIT((MAXBASE:(似てない親):체력 - 2000), 1, 8000) / 4 + MAX((MAXBASE:(似てない親):체력 - 10000), 1) / 10) * 30
@@ -524,9 +554,9 @@ TIMES MAXBASE:체력 , 0.80
 MAXBASE:체력 = MAX(MAXBASE:체력 / 10000, 10) * 100
 MAXBASE:체력 = MAXBASE:체력 + (MAX((MAXBASE:似てる親:체력 + MAXBASE:(似てない親):체력) / 1000 , 20) * 100)
 
-;기력の결정 MAG강화の1/10が元々の기력に추가される形で、似ている方と似ていない方で7:3で추가する
+;気力の決定 MAG強化の1/10が元々の気力に追加される形で、似ている方と似ていない方で7:3で追加する
 MAXBASE:기력 = (MIN(MAXBASE:似てる親:기력,2000) + LIMIT((MAXBASE:似てる親:기력 - 2000), 1, 8000) / 4 + MAX((MAXBASE:似てる親:기력 - 10000), 1) / 10) * 70
-IF CFLAG:ARG:부친의고유번호부모 < -2
+IF CFLAG:育ての親:부친의고유번호부모 <= -1
 	MAXBASE:기력 += 600
 ELSE
 	MAXBASE:기력 += (MIN(MAXBASE:(似てない親):기력,2000) + LIMIT((MAXBASE:(似てない親):기력 - 2000), 1, 8000) / 4 + MAX((MAXBASE:(似てない親):기력 - 10000), 1) / 10) * 30
@@ -553,20 +583,20 @@ NEXT
 ;教育者の기본스테이터스추가を廃止
 ;---- EDIT 004 DEL END   -------------------------
 ;-------------------------------------------------
-;MAG강화引継ぎ
+;MAG強化引継ぎ
 ;似ている方の親の30%　似ていない方の親20%、教育者の10%
 ;-------------------------------------------------
 FOR LOCAL:2, 1, 7
 	LOCALS = %GET_BASESTATUS(LOCAL:2)%강화횟수
 	CFLAG:LOCALS = CFLAG:似てる親:LOCALS * 3
 	;---- EDIT 004 MOD START -------------------------
-	;父親の판정がCを見たままだったのを修正
-	SIF CFLAG:ARG:임신확정후의부친판정 >= 0
+	;父親の判定がCを見たままだったのを修正
+	SIF CFLAG:育ての親:임신확정후의부친판정 >= 0
 		CFLAG:LOCALS += CFLAG:(似てない親):LOCALS * 2
 	;---- EDIT 004 MOD END   -------------------------
 	;---- EDIT 004 ADD START -------------------------
-	SIF CFLAG:ARG:딸교육 == 1
-		CFLAG:LOCALS += CFLAG:ARG:LOCALS * 1
+	SIF CFLAG:育ての親:딸교육 == 1
+		CFLAG:LOCALS += CFLAG:育ての親:LOCALS * 1
 	;---- EDIT 004 ADD END   -------------------------
 	CFLAG:LOCALS /= 10
 	CFLAG:능력강화횟수 += CFLAG:LOCALS
@@ -578,8 +608,8 @@ GOTO 相性決定別案
 
 ;기본値決定　반사は-100扱いで平均をとる
 FOR LOCAL:2, 0, FLAG:상성수-1
-	LOCAL:3 = BASE:(ARG:1):GET_TYPE(LOCAL:2) == 999 ? -100 # BASE:(ARG:1):GET_TYPE(LOCAL:2)
-	LOCAL:4 = BASE:(ARG:2):GET_TYPE(LOCAL:2) == 999 ? -100 # BASE:(ARG:2):GET_TYPE(LOCAL:2)
+	LOCAL:3 = BASE:(母親):GET_TYPE(LOCAL:2) == 999 ? -100 # BASE:(母親):GET_TYPE(LOCAL:2)
+	LOCAL:4 = BASE:(父親):GET_TYPE(LOCAL:2) == 999 ? -100 # BASE:(父親):GET_TYPE(LOCAL:2)
 	BASE:GET_TYPE(LOCAL:2) = (LOCAL:3+LOCAL:4) / 2
 NEXT
 
@@ -720,17 +750,19 @@ NEXT
 ;-------------------------------------------------
 ;ありえない
 ;
-;肉体部位の継承 似ている方の親のは確定、似ていない方は1/3の확률で추가판정
+;肉体部位の継承 似ている方の親のは確定、似ていない方は1/3の確率で追加判定
 FOR LOCAL:2, GETNUM(TALENT, "머리"), GETNUM(TALENT, "검격")
 	TALENT:(LOCAL:2) = (TALENT:似てる親:(LOCAL:2) + (TALENT:(似てない親):(LOCAL:2) && RAND:3) > 0)
 NEXT
-;종족・形質決定(この時点では一度全部突っ込む)
+;種族・形質決定(この時点では一度全部突っ込む)
 FOR LOCAL:2, GETNUM(TALENT,"석세서"), GETNUM(TALENT,"영매체질")+1
 	TALENT:(LOCAL:2) = TALENT:(似てる親):(LOCAL:2) ? TALENT:(似てる親):(LOCAL:2) # TALENT:(似てない親):(LOCAL:2)
 NEXT
 
-;인간顧客が親の場合、素質を見る
-SELECTCASE CFLAG:ARG:부친의고유번호부모
+;人間顧客が親の場合、素質を見る
+SELECTCASE CFLAG:育ての親:부친의고유번호부모
+	CASE -2
+		TALENT:촉수사역술 = 1
 	CASE -3
 		TALENT:이능자 = 1
 	CASE -4
@@ -885,6 +917,7 @@ ELSEIF ABL:종족 == 0
 		;LOCAL:90に残す素質をいれ、それ以外を消していく
 		;ロールの確定（根幹の素質のみ残して全消し）
 		LOCAL:90 = LOCAL:(90+RAND:(LOCAL:5))
+		LOCAL:90 = GETNUM(TALENT, "데빌시프터")
 		SELECTCASE LOCAL:90
 			CASE GETNUM(TALENT, "데빌시프터")
 				;TALENT:데빌시프터 = 0
@@ -1133,8 +1166,8 @@ ENDIF
 ;속성の決定
 ;-------------------------------------------------
 
-;인간顧客の場合は大きく랜덤が絡む
-IF CFLAG:ARG:부친의고유번호부모 < -2
+;人間顧客の場合は大きくランダムが絡む
+IF CFLAG:育ての親:부친의고유번호부모 <= -1
 	CFLAG:선악치 = LIMIT((CFLAG:似てる親:선악치*3 + RAND:255 * 2) / 5, 0 ,255)
 	CFLAG:질혼치 = LIMIT((CFLAG:似てる親:질혼치*3 + RAND:255 * 2) / 5, 0, 255)
 ELSE
@@ -1160,19 +1193,19 @@ ELSE
 	ENDIF
 ENDIF
 ;-------------------------------------------------
-;스킬継承
-;両親・教育者の스킬のうち、部位が対応しているものを
-;全てLSKILLS配列に記録後、랭크順に再配置
-;0~3を초기스킬と登録後、残り스킬を습득스킬にいれる。
-;なお、습득레벨は랭크*4+RAND:4となる
-;複数습득可な스킬でも、引き継ぐのは１つだけ
+;スキル継承
+;両親・教育者のスキルのうち、部位が対応しているものを
+;全てLSKILLS配列に記録後、ランク順に再配置
+;0~3を初期スキルと登録後、残りスキルを習得スキルにいれる。
+;なお、習得レベルはランク*4+RAND:4となる
+;複数習得可なスキルでも、引き継ぐのは１つだけ
 ;-------------------------------------------------
 
 LOCAL:3 = 0
 VARSET LSKILLS
 ;페르소나구사자と식노は스킬の継承処理を行わない
 IF !TALENT:페르소나구사자 && !TALENT:식노
-	;LSKILLS配列に깨달음えられる스킬をいれていく
+	;LSKILLS配列に覚えられる스킬をいれていく
 	FOR LOCAL:4, 0, 3
 		;似ている親
 		IF LOCAL:4 == 0
@@ -1182,9 +1215,9 @@ IF !TALENT:페르소나구사자 && !TALENT:식노
 			LOCAL:2 = 似てない親
 		;教育者
 		ELSE
-			SIF !CFLAG:ARG:딸교육
+			SIF !CFLAG:育ての親:딸교육
 				CONTINUE
-			LOCAL:2 = ARG
+			LOCAL:2 = 育ての親
 		ENDIF
 		;페르소나구사자からは継承できない
 		SIF TALENT:(LOCAL:2):페르소나구사자
@@ -1209,6 +1242,9 @@ IF !TALENT:페르소나구사자 && !TALENT:식노
 				ENDIF
 				;スキルがなかったら中断
 				SIF LOCAL:6 == 0
+					CONTINUE
+				;スキルがCSTR専用技だったら中断
+				SIF INRANGE(LOCAL:6, 3904, 3915)
 					CONTINUE
 				;似ている親以外からは継承不能スキルを引き継げない
 				IF LOCAL:4 || LOCAL:4 == 2
@@ -1250,10 +1286,13 @@ IF !TALENT:페르소나구사자 && !TALENT:식노
 						CONTINUE
 					LOCAL:6 = ABL:(LOCAL:2):@"습득스킬{LOCAL:5-FLAG:스킬수}"
 				ENDIF
-				;스킬がなかったら中断
+				;スキルがなかったら中断
 				SIF LOCAL:6 == 0
 					CONTINUE
-				;似ている親以外からは継承不能스킬を引き継げない
+				;スキルがCSTR専用技だったら中断
+				SIF INRANGE(LOCAL:6, 3904, 3915)
+					CONTINUE
+				;似ている親以外からは継承不能スキルを引き継げない
 				IF LOCAL:4 || LOCAL:4 == 2
 					RESULT = 0
 					CALLFORM SKILL_SUCCESSION_TYPE_{LOCAL:6}
@@ -1264,19 +1303,19 @@ IF !TALENT:페르소나구사자 && !TALENT:식노
 					SIF RESULT
 						CONTINUE
 				ENDIF
-				;継承部位체크
+				;継承部位チェック
 				TRYCCALLFORM 계승부위_{LOCAL:6}, TARGET
 					SIF !RESULT
 						CONTINUE
 				CATCH
 				ENDCATCH
-				;적専用체크
+				;敵専用チェック
 				TRYCCALLFORM 적전용_{LOCAL:6}
 					SIF RESULT
 						CONTINUE
 				CATCH
 				ENDCATCH
-				;重複체크
+				;重複チェック
 				SIF MATCH(LSKILLS, LOCAL:6)
 					CONTINUE
 				LSKILLS:(LOCAL:3) = LOCAL:6
@@ -1286,7 +1325,7 @@ IF !TALENT:페르소나구사자 && !TALENT:식노
 	NEXT
 	LOCAL:2 = 0
 	LOCAL:5 = 1
-	;랭크の低い順に並べ替えていく
+	;ランクの低い順に並べ替えていく
 	WHILE LOCAL:3
 		IF LSKILLS:(LOCAL:2+1) == 0
 			LOCAL:2 = 0
@@ -1319,8 +1358,8 @@ ENDIF
 ;초기링크악마の설정
 ;-------------------------------------------------
 IF TALENT:데빌시프터 == 1 || TALENT:식노 >= 1
-	;인간顧客が親の場合、ここで초기링크악마の설정と스킬の추가を行う
-	IF CFLAG:ARG:부친의고유번호부모 == -8 && TALENT:데빌시프터 && !TALENT:似てる親:데빌시프터
+	;人間顧客が親の場合、ここで初期リンク悪魔の設定とスキルの追加を行う
+	IF CFLAG:育ての親:부친의고유번호부모 == -8 && TALENT:데빌시프터 && !TALENT:似てる親:데빌시프터
 		SELECTCASE CFLAG:선악치
 			CASE IS > 170
 				SELECTCASE CFLAG:질혼치
@@ -1419,24 +1458,29 @@ IF TALENT:데빌시프터 == 1 || TALENT:식노 >= 1
 		NEXT
 	ELSE
 		LOCAL:3 = -1
-		;どちらかの親が악마の場合
-		SIF GET_DEVIL(ARG:1) || GET_DEVIL(ARG:2)
-			CFLAG:초기링크악마 = GET_DEVIL(ARG:1) ? NO:(ARG:1) # NO:(ARG:2)
-		;どちらの親もあくまでなかったか、親である악마が아이であった場合
+		;どちらかの親が悪魔の場合
+		IF CFLAG:育ての親:임신확정후의부친판정 >= 0
+			SIF GET_DEVIL(母親) || GET_DEVIL(父親)
+				CFLAG:초기링크악마 = GET_DEVIL(母親) ? NO:(母親) # NO:(父親)
+		ELSE
+			SIF GET_DEVIL(母親) || GET_DEVIL(CFLAG:育ての親:임신확정후의부친판정, 0)
+				CFLAG:초기링크악마 = GET_DEVIL(母親) ? NO:(母親) # 0
+		ENDIF
+		;どちらの親もあくまでなかったか、親である悪魔が子供であった場合
 		IF CFLAG:초기링크악마 == 0 || CFLAG:초기링크악마 == 3501 || CFLAG:초기링크악마 == 3502
-			IF (TALENT:(ARG:2):식노 || TALENT:(ARG:2):데빌시프터) && (TALENT:(ARG:1):식노 || TALENT:(ARG:1):데빌시프터)
-				LOCAL:3 = RAND:2 ? ARG:1 # ARG:2
-			ELSEIF TALENT:(ARG:2):식노 || TALENT:(ARG:2):데빌시프터
-				LOCAL:3 = ARG:2
+			IF 父親 >= 0 && (TALENT:(母親):식노 || TALENT:(母親):데빌시프터) && (TALENT:(父親):식노 || TALENT:(父親):데빌시프터)
+				LOCAL:3 = RAND:2 ? 母親 # 父親
+			ELSEIF 父親 >= 0 && (TALENT:(父親):식노 || TALENT:(父親):데빌시프터)
+				LOCAL:3 = 父親
 			ELSE
-				LOCAL:3 = ARG:1
+				LOCAL:3 = 母親
 			ENDIF
-			;親の악마を引き継ぐ
+			;親の悪魔を引き継ぐ
 			CFLAG:초기링크악마 = CFLAG:(LOCAL:3):초기링크악마
 		ENDIF
-		;공격상성→최대명중률
-		;악마のほうは악마のCSVを、親がシフター・식노ならそのまま取る
-		;ただし、親が아이である場合は링크악마のCSVを見に行く
+		;攻撃相性→最大命中率
+		;悪魔のほうは悪魔のCSVを、親がシフター・喰奴ならそのまま取る
+		;ただし、親が子供である場合はリンク悪魔のCSVを見に行く
 		FOR LOCAL:4, 186, 194
 			IF LOCAL:3 >= 0
 				LOCAL:2 = ABL:(LOCAL:3):(LOCAL:4)
@@ -1445,7 +1489,7 @@ IF TALENT:데빌시프터 == 1 || TALENT:식노 >= 1
 			ENDIF
 			ABL:(LOCAL:4) = LOCAL:2
 		NEXT
-		;악마形質を引き継ぐ場合は스킬を링크악마側に移す
+		;悪魔形質を引き継ぐ場合はスキルをリンク悪魔側に移す
 		IF LOCAL:3 == -1
 			FOR LOCAL:2, 1, FLAG:스킬수+1
 				LOCALS = 스킬{LOCAL:2}
@@ -1488,13 +1532,13 @@ ENDIF
 IF ABL:종족 > 0
 	;継承素質に数値を入れていく
 	FOR LOCAL:2, 0, 20
-		;二桁눈までに계승타입の番号を入れとく
+		;二桁目までに계승타입の番号を入れとく
 		LTALENTS:(LOCAL:2) = LOCAL:2
 		SIF TALENT:似てる親:GET_SUCCESSION(LOCAL:2)
 			LTALENTS:(LOCAL:2) += 300
 		SIF TALENT:(似てない親):GET_SUCCESSION(LOCAL:2)
 			LTALENTS:(LOCAL:2) += 200
-		SIF CFLAG:ARG:딸교육 == 1 && TALENT:ARG:GET_SUCCESSION(LOCAL:2)
+		SIF CFLAG:育ての親:딸교육 == 1 && TALENT:育ての親:GET_SUCCESSION(LOCAL:2)
 			LTALENTS:(LOCAL:2) += 100
 	NEXT
 	;一度랜덤に並び変える
@@ -1561,8 +1605,8 @@ WEND
 FOR LOCAL:5, 10, 137
 	SIF !STRLENS(TALENTNAME:(LOCAL:5))
 		CONTINUE
-	;인간顧客が相手の場合、랜덤発現が増える
-	IF CFLAG:ARG:부친의고유번호부모 < -2
+	;人間顧客が相手の場合、ランダム発現が増える
+	IF CFLAG:育ての親:부친의고유번호부모 <= -1
 		SELECTCASE RAND:100
 			CASE IS < 90
 				TALENT:(LOCAL:5) = TALENT:似てる親:(LOCAL:5)
@@ -1842,24 +1886,24 @@ IF TALENT:습득빠름
 		TALENT:습득빠름 = 0
 ENDIF
 
-;知識がない([바늘다루기]や[大甲斐性]等は才能とする)
-;정조관념,정조관결여,조합지식,금단의지식,
-IF CFLAG:ARG:딸교육 == 0 || TALENT:ARG:정조관념 == 0
+;知識がない([針さばき]や[大甲斐性]等は才能とする)
+;貞操観念,貞操無頓着,調合知識,禁断の知識,
+IF CFLAG:育ての親:딸교육 == 0 || TALENT:育ての親:정조관념 == 0
 	TALENT:정조관념 = 0
 ELSE
 	TALENT:정조관념 = 1
 ENDIF
-IF CFLAG:ARG:딸교육 == 0 || TALENT:ARG:정조관결여 == 0
+IF CFLAG:育ての親:딸교육 == 0 || TALENT:育ての親:정조관결여 == 0
 	TALENT:정조관결여 = 0
 ELSE
 	TALENT:정조관결여 = 1
 ENDIF
-IF CFLAG:ARG:딸교육 == 0 || TALENT:ARG:조합지식 == 0
+IF CFLAG:育ての親:딸교육 == 0 || TALENT:育ての親:조합지식 == 0
 	TALENT:조합지식 = 0
 ELSE
 	TALENT:조합지식 = 1
 ENDIF
-IF CFLAG:ARG:딸교육 == 0 || TALENT:ARG:금단의지식 == 0
+IF CFLAG:育ての親:딸교육 == 0 || TALENT:育ての親:금단의지식 == 0
 	TALENT:금단의지식 = 0
 ELSE
 	TALENT:금단의지식 = 1
@@ -1893,6 +1937,7 @@ TALENT:자위광 = 0
 TALENT:섹스광 = 0
 TALENT:애널광 = 0
 TALENT:음유 = 0
+TALENT:창놈 = 0
 TALENT:새드 = 0
 TALENT:마조 = 0
 IF ABL:종족 == 0
@@ -1920,15 +1965,15 @@ TALENT:여우 = TALENT:似てる親:여우 ? 1 # 0
 TALENT:요호 = TALENT:似てる親:요호 ? 1 # 0
 TALENT:흡혈귀 = TALENT:似てる親:흡혈귀 ? 1 # 0
 TALENT:고양이혀 = TALENT:似てる親:고양이혀 ? 1 # 0
-SIF CFLAG:ARG:부친의고유번호부모 == -2
+SIF CFLAG:育ての親:부친의고유번호부모 == -2
 	TALENT:촉수 = 1
-;새드마조処理部
-;一旦娘の새드마조素質を초기化
+;サドマゾ処理部
+;一旦娘のサドマゾ素質を初期化
 TALENT:새드 = 0
 TALENT:마조 = 0
 LOCAL:4 = 0
-;両親の새드마조傾向から娘の새드마조を決定する
-;LOCAL:4が正の値＝새드傾倒、負の値＝마조傾倒
+;両親のサドマゾ傾向から娘のサドマゾを決定する
+;LOCAL:4が正の値＝サド傾倒、負の値＝マゾ傾倒
 FOR LOCAL:5, 0, 2
 	IF LOCAL:5 == 0
 		LOCAL:2 = 似てる親
@@ -2046,7 +2091,7 @@ WEND
 ;-------------------------------------------------
 ;왕족・명가・落胤の引き継ぎ処理
 ;-------------------------------------------------
-IF ARG:2 >= 0
+IF 父親 >= 0
 	IF TALENT:似てる親:서출 == 2 || TALENT:(似てない親):서출 == 2
 		TALENT:서출 = 2
 	ELSEIF TALENT:似てる親:서출 == 1 || TALENT:(似てない親):서출 == 1
@@ -2056,7 +2101,7 @@ IF ARG:2 >= 0
 	ELSEIF TALENT:似てる親:명가 || TALENT:(似てない親):명가
 		TALENT:명가 = 1
 	ENDIF
-ELSEIF ARG:2 < 0
+ELSEIF 父親 < 0
 	IF TALENT:似てる親:서출 == 2
 		TALENT:서출 = 2
 	ELSEIF TALENT:似てる親:서출 == 1
@@ -2067,7 +2112,7 @@ ELSEIF ARG:2 < 0
 		TALENT:서출 = 1
 	ENDIF
 ENDIF
-;왕족・명가・落胤なら王族 > 명가 > 서출
+;王族・名家・落胤なら王族 > 名家 > 落胤
 IF TALENT:왕족 && TALENT:명가
 	TALENT:명가 = 0
 ENDIF
@@ -2077,18 +2122,20 @@ ENDIF
 IF TALENT:명가 && TALENT:서출
 	TALENT:서출 = 0
 ENDIF
-;母親が아내でないと落胤
-IF ARG:2 >= 0 && (TALENT:(ARG:1):왕족 || TALENT:(ARG:2):왕족) && TALENT:(ARG:1):아내 == 0
+;母親が妻でないと落胤
+IF 父親 >= 0 && (TALENT:(母親):왕족 || TALENT:(父親):왕족) && TALENT:(母親):아내 == 0
 	TALENT:왕족 = 0
 	TALENT:서출 = 2
-ELSEIF ARG:2 >= 0 && (TALENT:(ARG:1):명가 || TALENT:(ARG:2):명가) && TALENT:(ARG:1):아내 == 0
+ELSEIF 父親 >= 0 && (TALENT:(母親):명가 || TALENT:(父親):명가) && TALENT:(母親):아내 == 0
 	TALENT:명가 = 0
 	TALENT:서출 = 1
 ENDIF
 
-;세대を増やす
-IF TALENT:(ARG:1):세대 >=0 || TALENT:(ARG:2):세대 >=0
-	TALENT:세대 = +1 +TALENT:(ARG:1):세대 +TALENT:(ARG:2):세대
+;世代を増やす
+IF TALENT:(母親):세대 >=0 || TALENT:(父親):세대 >=0
+	TALENT:세대 = +1 +TALENT:(母親):세대
+	SIF 父親 >= 0
+		TALENT:세대 = +TALENT:(父親):세대
 ELSE
 	TALENT:세대 = +1
 ENDIF
@@ -2105,7 +2152,7 @@ ENDIF
 ;-------------------------------------------------
 ;外見・スリーサイズの遺伝
 ;-------------------------------------------------
-U = ARG:1
+U = 母親
 CALL DAUGHTER_3SIZE
 CALL DAUGHTER_APPEARANCE
 U = 0
